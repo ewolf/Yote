@@ -1,0 +1,4 @@
+GServ::AppServer is an application server whos purpose is to rapidly create
+  application mockups in perl based on idiom and design.
+
+AppServer.pm is the main file. It 

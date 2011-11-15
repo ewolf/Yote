@@ -1,0 +1,16 @@
+Thoughts on design.
+
+The server is multi threaded and the threads can perform two functions.
+
+The first function is retreving data. The threads share access to a shared data provider.
+
+The second function is passing commands to the application system.
+The threads share the ability to add to a single input list.
+
+A main thread goes through the input list in order and processes those commands. 
+The threads passing in commands can be set up to wait for the command to be processed.
+
+Some implementation details :
+- there has to be a polling command processing thread
+- server threads must communicate to the main thread
+(this could almost be done with something gearman like)
