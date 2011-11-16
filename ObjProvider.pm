@@ -38,6 +38,11 @@ sub xpath {
     return xform_out( GServ::ObjIO::xpath( $path ) );
 }
 
+sub xpath_count {
+    my $path = shift;
+    return GServ::ObjIO::xpath_count( $path );
+}
+
 sub fetch {
     my( $id ) = @_;
 

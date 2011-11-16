@@ -1,0 +1,40 @@
+* added login and create account to tests.
+
+Version 0.2 - application service
+    * create forked, sharing variable generic application that can access installed applications
+    * add GServ::Obj::is_parent_of (this will be useful for application security, like providing ownership of objects to application users
+    * Application Service
+         - server that
+           : takes two requests : commands and data requests
+           : runs a polling loop to see if there are commands to apply. 
+
+    * Application Base
+      - provides object 
+
+Version 0.1 - initial verion.
+  This is a base G library that :
+    * connects to a mysql database named sg
+    * Provides the following API
+       - GServ::ObjServ::get_root
+       - new GServ::Obj
+       - $g_obj->save
+       - get_(var) on GServ::Obj instance (root is one)
+       - set_(var) on GServ::Obj instance (root is one)
+    * has a series of unit tests
+
+
+# ---=== test app ===--- #
+ How about a feature idea generator for a first app. It functions in 3 stages
+   - toss in ideas. These are added to a big pool of all ideas
+   - triage ideas. These are added to the hot tub of ideas slated for implementation
+   - implementing ideas - ideas currently underway from the hot tub. This is the kiddy pool.
+
+Version 0.3 - cached G
+
+
+Version 0.4 - configured G with installer
+
+Features needed :
+  * load deep for objects
+  * configuration for databases et all
+  * Caching Service - used by application service on top of the ObjServ
