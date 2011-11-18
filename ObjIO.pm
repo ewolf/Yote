@@ -87,7 +87,7 @@ sub xpath_count {
     my $next_ref = 1;
     for my $l (@list) {
         next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-        my( $val, $ref ) = $DBH->selectrow_array( "SELECT field, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
+        my( $ref ) = $DBH->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
 	$next_ref = $ref;
 	last unless $next_ref;
     } #each path part
@@ -112,15 +112,18 @@ sub xpath {
     for my $l (@list) {
         next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         undef $final_val;
-        my( $val, $ref ) = $DBH->selectrow_array( "SELECT field, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
+        my( $val, $ref ) = $DBH->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
+	
         if( $ref && $val ) {
             my ( $big_val ) = $DBH->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref );
             $final_val = "v$big_val";
+	    last;
         } elsif( $ref ) {
             $next_ref = $ref;
             $final_val = $ref;
         } else {
             $final_val = "v$val";
+	    last;
         }
     } #each path part
 

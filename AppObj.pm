@@ -20,7 +20,6 @@ sub process_command {
 
     my $appstr = $cmd->{a};
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
-#    print STDERR Data::Dumper->Dump( ["APP OBJ GOT Process command",$cmd,"for $appstr $app"] );
     unless( $app ) {
         my $apps = $root->get_apps({});
 	eval {
@@ -94,9 +93,12 @@ sub create_account {
 
 	my $accts = $root->get_handles({});
 	$accts->{ $handle } = $newacct;
+	GServ::ObjProvider::stow( $accts );
 	my $emails = $root->get_emails({});
 	$emails->{ $email } = $newacct;
-	
+	GServ::ObjProvider::stow( $emails );
+	$root->save;
+
 	return { msg => "created account" };
     } #if handle
     return { err => "no handle given" };

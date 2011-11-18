@@ -9,10 +9,9 @@ use base 'GServ::ObjProvider';
 
 sub fetch_root {
     my $root = fetch( 1 );
-    
     unless( $root ) {
         $root = new GServ::AppObj;
-        stow( $root );
+        $root->save;
     }
     return $root;
 }

@@ -23,7 +23,8 @@ sub new {
 } #new
 
 sub save {
-    GServ::ObjProvider::stow( shift );
+    my $self = shift;
+    GServ::ObjProvider::stow( $self );
 } #save
 
 sub AUTOLOAD {

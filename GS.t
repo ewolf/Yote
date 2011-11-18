@@ -155,5 +155,34 @@ ok( $is_child, "object child of root" );
 my $is_child = GServ::AppProvider::a_child_of_b( $new_obj, $root_4 );
 ok( $is_child, "object child of reloaded root" );
 
+#
+#                                          #
+# ------------- app serv tests ------------#
+#
+#                                          #
+my $root = GServ::AppProvider::fetch_root();
+my $res = $root->process_command( { c => 'foo' } );
+like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
+like( $root->process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
+like( $root->process_command( { c => 'create_account', d => {h => 'root'}  } )->{err}, qr/password required/i, "no password given for create account" );
+like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'foo@bar.com' }  } )->{msg}, qr/created/i, "create account for root account" );
+
+my $root_acct = GServ::ObjProvider::xpath("/handles/root");
+unless( $root_acct ) {
+    fail( "Root not loaded" );
+    BAIL_OUT("cannot continue" );
+}
+is( GServ::ObjProvider::xpath_count("/handles"), 1, "1 handle stored");
+is( $root_acct->get_handle(), 'root', 'handle set' );
+is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
+is( $root_acct->get_password(), 'toor', 'password set' );
+ok( $root_acct->get_is_root(), 'first account is root' );
+
+like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'baz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
+like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'foo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
+like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'baz@bar.com' }  } )->{msg}, qr/created/i, "second account created" );
+my $acct = GServ::ObjProvider::xpath("/handles/toot");
+print STDERR Data::Dumper->Dump([$acct]);
+ok( ! $acct->get_is_root(), 'second account not root' );
 
 done_testing();

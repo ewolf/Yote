@@ -33,8 +33,6 @@ sub start_server {
     #make sure this thread has a valid database connectin
     GServ::ObjIO::database( DBI->connect( 'DBI:mysql:$db', $args->{uname}, $args->{password} ) );
 
-    print STDERR Data::Dumper->Dump( ["Starting Server with args",$args] );
-    
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
     my $thread = threads->new( \&_poll_commands );
@@ -70,7 +68,6 @@ sub init_server {
 #
 sub process_request {
     my $self = shift;
-#    print STDERR Data::Dumper->Dump( ["process request got incoming request"] );
     eval {
         local $SIG{'ALRM'} = sub { die "Timed Out!\n" };
         my $timeout = 6; # give the user 6 seconds to type some lines
@@ -87,11 +84,9 @@ sub process_request {
                 last;
             }
         }
-#        print STDERR Data::Dumper->Dump( ["DONE"] );
         my $command = from_json( MIME::Base64::decode($req) );
         share( $command );
 
-#        print STDERR Data::Dumper->Dump( ["process request got command",$command,\@commands] );
 
         my $wait = $command->{wait};
         share( $wait );
@@ -100,11 +95,9 @@ sub process_request {
         # Queue up the command for processing in a separate thread.
         #
         {
-#            print STDERR Data::Dumper->Dump( ["lock commands"] );
             lock( @commands );
             push( @commands, [$command,$wait] );
             cond_signal( @commands );
-#            print STDERR Data::Dumper->Dump( ["unlocked"] );
         }
         if( $wait ) {
             lock( $wait );
@@ -119,7 +112,6 @@ sub process_request {
         print STDOUT qq|{"err":"timed out"}\n\n|;
         return;
     } elsif( $@ ) {
-#        print STDERR Data::Dumper->Dump( ["ERR",$@] );
         print STDOUT to_json( { err => $@ } )."\n\n";
     }
 } #process_request
@@ -128,26 +120,18 @@ sub process_request {
 # Run by a threat that constantly polls for commands.
 #
 sub _poll_commands {
-    print STDERR Data::Dumper->Dump( ["Starting poll_commands"] );
-
     while(1) {
         my $cmd;
         {
-#            print STDERR Data::Dumper->Dump( ["polling checking first lock"] );
             lock( @commands );
             $cmd = shift @commands;
-#            print STDERR Data::Dumper->Dump( ["polling found cmd in first lock"] );
         }
         if( $cmd ) {
-#            print STDERR Data::Dumper->Dump( ["Poll Commands got command",$cmd] );
             _process_command( $cmd );
-#            print STDERR Data::Dumper->Dump( ["Poll Commands command processed",$cmd] );
         } 
         unless( @commands ) {
-#            print STDERR Data::Dumper->Dump( ["polling lock commands"] );
             lock( @commands );
             cond_wait( @commands );
-#            print STDERR Data::Dumper->Dump( ["polling lock woke up"] );
         }
     }
 
