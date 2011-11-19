@@ -1,0 +1,25 @@
+<html>
+  <head>
+<title>Yote Hello World Example</title>
+</head>
+<body>
+<h1>Yote Hello World Example</h1>
+This program contacts the GServ Server to get its hello world app.<BR>
+The messages are in the following format <ul>
+  <li><strong>a</strong> : app class</li>
+  <li><strong>c</strong> : command</li>
+  <li><strong>d</strong> : argument list (optional)</li>
+  <li><strong>t</strong> : login token</li>
+</ul>
+The message sent looks like
+<pre>
+ {
+   a => 'GServ::Hello',
+   c => 'hello',
+   t => token
+ }
+</pre>
+However this does require a Yote account.
+<hr>
+</body>
+</html>
