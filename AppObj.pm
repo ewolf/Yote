@@ -22,25 +22,31 @@ sub process_command {
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
     unless( $app ) {
         my $apps = $root->get_apps({});
-	eval {
-	    $app = $appstr->new;
-	    $apps->{$appstr} = $app;
-	};
-	if( $@ ) {
-	    return { err => "Unable to load application '$appstr'" };
-	}
+        eval {
+            eval("use $appstr");
+            $app = $appstr->new;
+            $apps->{$appstr} = $app;
+        };
+        if( $@ ) {
+            return { err => "Unable to load application '$appstr'" };
+        }
     }
-    
     my $command = $cmd->{c};
     #
     # this will not process private (beginning with _) commands, 
     # and will execute the command if its a login request, 
     # new account request or has a valid token.
     #
-    my $acct = $app->valid_token( $cmd->{t} );
+    my $acct = valid_token( $app, $cmd->{t} );
 
-    if( index( $command, '_' ) != 0 && (  $acct || $command eq 'create_account' || $command eq 'login' ) ) {
-	return $app->$command( $cmd->{d}, $acct );
+    if( $command eq 'create_account' ) {
+        return create_account( $app, $cmd->{d} );
+    }
+    elsif( $command eq 'login' ) {
+        return login( $app, $cmd->{d} );
+    }
+    elsif( index( $command, '_' ) != 0 && $acct ) {
+        return $app->$command( $cmd->{d}, $acct );
     }
     return { err => "'$cmd->{c}' not found for app '$appstr'" };
 } #process_command
@@ -49,8 +55,8 @@ sub valid_token {
     my( $root, $t ) = @_;
     if( $t =~ /(.+)\+(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
-	my $acct = GServ::ObjProvider::fetch( $uid );
-	return $acct && $acct->get_token() eq $token ? $acct : undef;
+        my $acct = GServ::ObjProvider::fetch( $uid );
+        return $acct && $acct->get_token() eq $token ? $acct : undef;
     }
     return undef;
 } #valid_token
@@ -63,43 +69,43 @@ sub create_account {
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
 
     if( $handle ) {# && $args->{email} ) {
-	if( GServ::ObjProvider::xpath("/handles/$handle") ) {
-	    return { err => "handle already taken" };
-	}
-	if( $email ) {
-	    if( GServ::ObjProvider::xpath("/emails/$email") ) {
-		return { err => "email already taken" };
-	    }
-	}
-	unless( $password ) {
-	    return { err => "password required" };
-	}
-	my $newacct = new GServ::Obj();
+        if( GServ::ObjProvider::xpath("/handles/$handle") ) {
+            return { err => "handle already taken" };
+        }
+        if( $email ) {
+            if( GServ::ObjProvider::xpath("/emails/$email") ) {
+                return { err => "email already taken" };
+            }
+        }
+        unless( $password ) {
+            return { err => "password required" };
+        }
+        my $newacct = new GServ::Obj();
 
-	#
-	# check to see how many accounts there are. If there are none,
-	# give the first root access.
-	#
-	if( GServ::ObjProvider::xpath_count( "/handles" ) == 0 ) {
-	    $newacct->set_is_root( 1 );
-	}
-	$newacct->set_handle( $handle );
-	$newacct->set_email( $email );
+        #
+        # check to see how many accounts there are. If there are none,
+        # give the first root access.
+        #
+        if( GServ::ObjProvider::xpath_count( "/handles" ) == 0 ) {
+            $newacct->set_is_root( 1 );
+        }
+        $newacct->set_handle( $handle );
+        $newacct->set_email( $email );
 
-	# save password plaintext for now. crypt later
-	$newacct->set_password( $password );
-	
-	$newacct->save();
+        # save password plaintext for now. crypt later
+        $newacct->set_password( $password );
+        
+        $newacct->save();
 
-	my $accts = $root->get_handles({});
-	$accts->{ $handle } = $newacct;
-	GServ::ObjProvider::stow( $accts );
-	my $emails = $root->get_emails({});
-	$emails->{ $email } = $newacct;
-	GServ::ObjProvider::stow( $emails );
-	$root->save;
+        my $accts = $root->get_handles({});
+        $accts->{ $handle } = $newacct;
+        GServ::ObjProvider::stow( $accts );
+        my $emails = $root->get_emails({});
+        $emails->{ $email } = $newacct;
+        GServ::ObjProvider::stow( $emails );
+        $root->save;
 
-	return { msg => "created account" };
+        return { msg => "created account" };
     } #if handle
     return { err => "no handle given" };
 
@@ -109,12 +115,12 @@ sub login {
     my( $self, $data ) = @_;
     my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
     if( $acct && $acct->get_password() eq $data->{p} ) {
-	#
-	# Create token and store with the account and return it.
-	#
-	my $token = int( rand 9 x 10 );
-	$acct->set_token( $token );
-	return { msg => "logged in", t => $token };
+        #
+        # Create token and store with the account and return it.
+        #
+        my $token = int( rand 9 x 10 );
+        $acct->set_token( $token );
+        return { msg => "logged in", t => $acct->{ID}.'+'.$token };
     }
     return { err => "incorrect login" };
 } #login

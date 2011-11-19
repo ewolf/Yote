@@ -1,3 +1,18 @@
+# ------------ working on --------
+
+# ------------ triage ------------
+
+# ----------- tasks --------------
+
+- management panel server to manage
+    * accounts
+    * apps
+    * statistics (logins,etc)
+
+- panel for creating accounts, logging in and setting personal data.
+
+# --------------------------------
+
 * added login and create account to tests.
 
 Version 0.2 - application service

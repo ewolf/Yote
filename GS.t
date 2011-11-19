@@ -182,7 +182,11 @@ like( $root->process_command( { c => 'create_account', d => {h => 'root', p => '
 like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'foo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
 like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'baz@bar.com' }  } )->{msg}, qr/created/i, "second account created" );
 my $acct = GServ::ObjProvider::xpath("/handles/toot");
-print STDERR Data::Dumper->Dump([$acct]);
 ok( ! $acct->get_is_root(), 'second account not root' );
+
+# ------ hello app test -----
+my $t = $root->process_command( { c => 'login', d => { h => 'toot', p => 'toor' } } );
+ok( $t->{t}, "logged in" );
+is( $root->process_command( { a => 'GServ::Hello', c => 'hello', t => $t->{t} } )->{r}, "hello there toot", "Hello app works with given token" );
 
 done_testing();
