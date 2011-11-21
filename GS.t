@@ -6,6 +6,7 @@ use Carp;
 
 use GServ::ObjIO;
 use GServ::AppProvider;
+use GServ::AppServer;
 
 use Test::More;
 
@@ -186,7 +187,9 @@ ok( ! $acct->get_is_root(), 'second account not root' );
 
 # ------ hello app test -----
 my $t = $root->process_command( { c => 'login', d => { h => 'toot', p => 'toor' } } );
-ok( $t->{t}, "logged in" );
+ok( $t->{t}, "logged in with token $t->{t}" );
 is( $root->process_command( { a => 'GServ::Hello', c => 'hello', t => $t->{t} } )->{r}, "hello there toot", "Hello app works with given token" );
+my $as = new GServ::AppServer;
+ok( $as, "GServ::AppServer compiles" );
 
 done_testing();

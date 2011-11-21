@@ -37,13 +37,13 @@ sub process_command {
     # and will execute the command if its a login request, 
     # new account request or has a valid token.
     #
-    my $acct = valid_token( $app, $cmd->{t} );
+    my $acct = _valid_token( $app, $cmd->{t}, $cmd->{oi} );
 
     if( $command eq 'create_account' ) {
-        return create_account( $app, $cmd->{d} );
+        return _create_account( $app, $cmd->{d}, $cmd->{oi} );
     }
     elsif( $command eq 'login' ) {
-        return login( $app, $cmd->{d} );
+        return _login( $app, $cmd->{d}, $cmd->{oi} );
     }
     elsif( index( $command, '_' ) != 0 && $acct ) {
         return $app->$command( $cmd->{d}, $acct );
@@ -51,18 +51,18 @@ sub process_command {
     return { err => "'$cmd->{c}' not found for app '$appstr'" };
 } #process_command
 
-sub valid_token {
-    my( $root, $t ) = @_;
+sub _valid_token {
+    my( $root, $t, $ip ) = @_;
     if( $t =~ /(.+)\+(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
         my $acct = GServ::ObjProvider::fetch( $uid );
-        return $acct && $acct->get_token() eq $token ? $acct : undef;
+        return $acct && $acct->get_token() eq "${token}x$ip" ? $acct : undef;
     }
     return undef;
 } #valid_token
 
-sub create_account {
-    my( $root, $args ) = @_;
+sub _create_account {
+    my( $root, $args, $ip ) = @_;
     #
     # validate account args. Needs handle (,email at some point)
     #
@@ -91,6 +91,7 @@ sub create_account {
         }
         $newacct->set_handle( $handle );
         $newacct->set_email( $email );
+	$newacct->set_created_ip( $ip );
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );
@@ -109,21 +110,21 @@ sub create_account {
     } #if handle
     return { err => "no handle given" };
 
-} #create_account
+} #_create_account
 
-sub login {
-    my( $self, $data ) = @_;
+sub _login {
+    my( $self, $data, $ip ) = @_;
     my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
     if( $acct && $acct->get_password() eq $data->{p} ) {
         #
         # Create token and store with the account and return it.
         #
         my $token = int( rand 9 x 10 );
-        $acct->set_token( $token );
+        $acct->set_token( $token."x$ip" );
         return { msg => "logged in", t => $acct->{ID}.'+'.$token };
     }
     return { err => "incorrect login" };
-} #login
+} #_login
 
 1;
 

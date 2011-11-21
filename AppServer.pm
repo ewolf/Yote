@@ -24,6 +24,12 @@ $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 my( @commands );#  : shared;
 share( @commands );
 
+sub new {
+    my $pkg = shift;
+    my $class = ref( $pkg ) || $pkg;
+    return bless {}, $class;
+}
+
 sub start_server {
     my( $self, @args ) = @_;
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
@@ -31,7 +37,7 @@ sub start_server {
     my $db = $args->{database} || 'sg';
 
     #make sure this thread has a valid database connectin
-    GServ::ObjIO::database( DBI->connect( 'DBI:mysql:$db', $args->{uname}, $args->{password} ) );
+    GServ::ObjIO::database( DBI->connect( "DBI:mysql:$db", $args->{uname}, $args->{password} ) );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
@@ -85,6 +91,7 @@ sub process_request {
             }
         }
         my $command = from_json( MIME::Base64::decode($req) );
+	$command->{oi} = $self->{server}{peeraddr}; #origin ip
         share( $command );
 
 
@@ -96,7 +103,7 @@ sub process_request {
         #
         {
             lock( @commands );
-            push( @commands, [$command,$wait] );
+            push( @commands, [$command, $wait] );
             cond_signal( @commands );
         }
         if( $wait ) {
