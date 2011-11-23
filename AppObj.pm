@@ -92,6 +92,9 @@ sub _create_account {
         $newacct->set_handle( $handle );
         $newacct->set_email( $email );
 	$newacct->set_created_ip( $ip );
+	
+	# todo
+	# $newacct->set_time_created();
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );

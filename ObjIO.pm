@@ -41,33 +41,33 @@ sub init_database {
                       PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=latin1~
 	);
-    DBI->selectrow_array( "START TRANSACTION" );
-    my $today = DBI->selectrow_array( "SELECT now()" );
+    $DBH->selectrow_array( "START TRANSACTION" );
+    my $today = $DBH->selectrow_array( "SELECT now()" );
     $today =~ s/ /T/;
-    for my $t (keys %definitions ) {
-	my( $t ) = DBI->selectrow_array( "SHOW TABLES LIKE '$t'" );
+    for my $table (keys %definitions ) {
+	my( $t ) = $DBH->selectrow_array( "SHOW TABLES LIKE '$table'" );
 	if( $t ) {
-	    my $existing_def = DBI->selectall_array( "SHOW CREATE TABLE $t" );	    
-	    my $current_def = $definitions{$t};
+	    my $existing_def = $DBH->selectall_array( "SHOW CREATE TABLE $table" );	    
+	    my $current_def = $definitions{$table};
 
 	    #normalize whitespace for comparison
 	    $current_def =~ s/[\s\n\r]+/ /gs; 
 	    $existing_def =~ s/[\s\n\r]+/ /gs; 
 	    
 	    if( lc( $current_def ) eq lc( $existing_def ) ) {
-		print STDERR "Table '$t' exists and is the same version\n";
+		print STDERR "Table '$table' exists and is the same version\n";
 	    } else {
-		my $backup = "${t}_$today";
-		print STDERR "Table definition mismatch for $t. Rename old table '$t' to '$backup' and creating new one.\n";
-		DBI->do("RENAME TABLE $t TO $backup\n");
-		DBI->do( $definitions{$t} );
+		my $backup = "${table}_$today";
+		print STDERR "Table definition mismatch for $table. Rename old table '$table' to '$backup' and creating new one.\n";
+		$DBH->do("RENAME TABLE $table TO $backup\n");
+		$DBH->do( $definitions{$table} );
 	    }
 	} else {
-	    print STDERR "Creating table $t\n";
-	    DBI->do( $definitions{$t} );
+	    print STDERR "Creating table $table\n";
+	    $DBH->do( $definitions{$table} );
 	}
     }
-    DBI->selectrow_array( "COMMIT" );
+    $DBH->selectrow_array( "COMMIT" );
 } #init_database
 
 sub database {
