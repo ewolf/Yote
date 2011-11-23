@@ -34,20 +34,20 @@ sub init_database {
                        `obj_id` int(10) unsigned NOT NULL,
                        `text` text,
                        PRIMARY KEY (`obj_id`)
-                      ) ENGINE=MyISAM DEFAULT CHARSET=latin1~,
+                      ) ENGINE=InnoDB CHARSET=latin1~,
 	objects => q~CREATE TABLE `objects` (
                      `id` int(11) NOT NULL AUTO_INCREMENT,
                      `class` varchar(255) DEFAULT NULL,
                       PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=latin1~
 	);
-    $DBH->selectrow_array( "START TRANSACTION" );
+    $DBH->do( "START TRANSACTION" );
     my $today = $DBH->selectrow_array( "SELECT now()" );
-    $today =~ s/ /T/;
+    $today =~ s/[^0-9]+//g;
     for my $table (keys %definitions ) {
 	my( $t ) = $DBH->selectrow_array( "SHOW TABLES LIKE '$table'" );
 	if( $t ) {
-	    my $existing_def = $DBH->selectall_array( "SHOW CREATE TABLE $table" );	    
+	    my $existing_def = $DBH->selectall_arrayref( "SHOW CREATE TABLE $table" );	    
 	    my $current_def = $definitions{$table};
 
 	    #normalize whitespace for comparison
