@@ -1,0 +1,19 @@
+<HTML><head>
+<script src="./jquery-latest.js"></script>
+<script src="./jquery.dumper.js"></script>
+<script src="./jquery.base64.min.js"></script>
+<script src="./json2.js"></script>
+<script src="./gserv.js"></script>
+</head>
+<body>
+blah
+<script>
+$().ready(function(){ 
+   var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
+//   a.message( "Foo", { Bar:"BaZ",Zoo:{Zap:1} }, 1, function(x,b,c) { alert(x) } );
+   a.create_account( "firsty", "blarg", "em" );
+   a.message( 'hello' );
+ } );
+</script>
+</body>
+</html>

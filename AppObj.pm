@@ -21,15 +21,10 @@ sub process_command {
     my $appstr = $cmd->{a};
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
     unless( $app ) {
-        my $apps = $root->get_apps({});
-        eval {
-            eval("use $appstr");
-            $app = $appstr->new;
-            $apps->{$appstr} = $app;
-        };
-        if( $@ ) {
-            return { err => "Unable to load application '$appstr'" };
-        }
+	my $apps = $root->get_apps({});
+	$app = $appstr->new;
+	$apps->{$app} = $app;
+	$app->save;
     }
     my $command = $cmd->{c};
     #
@@ -37,22 +32,25 @@ sub process_command {
     # and will execute the command if its a login request, 
     # new account request or has a valid token.
     #
-    my $acct = _valid_token( $app, $cmd->{t}, $cmd->{oi} );
+    my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
+    my $did_it = 0;
 
     if( $command eq 'create_account' ) {
-        return _create_account( $app, $cmd->{d}, $cmd->{oi} );
+	my $ret = $root->_create_account( $cmd->{d}, $cmd->{oi} );
+	++$did_it;
+	return $ret;
     }
     elsif( $command eq 'login' ) {
-        return _login( $app, $cmd->{d}, $cmd->{oi} );
+	return _login( $app, $cmd->{d}, $cmd->{oi} );
     }
     elsif( index( $command, '_' ) != 0 && $acct ) {
-        return $app->$command( $cmd->{d}, $acct );
+	return $app->$command( $cmd->{d}, $acct );
     }
     return { err => "'$cmd->{c}' not found for app '$appstr'" };
 } #process_command
 
 sub _valid_token {
-    my( $root, $t, $ip ) = @_;
+    my( $t, $ip ) = @_;
     if( $t =~ /(.+)\+(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
         my $acct = GServ::ObjProvider::fetch( $uid );
@@ -63,12 +61,12 @@ sub _valid_token {
 
 sub _create_account {
     my( $root, $args, $ip ) = @_;
+
     #
     # validate account args. Needs handle (,email at some point)
     #
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
-
-    if( $handle ) {# && $args->{email} ) {
+    if( $handle ) {# && $email ) {
         if( GServ::ObjProvider::xpath("/handles/$handle") ) {
             return { err => "handle already taken" };
         }
@@ -108,7 +106,6 @@ sub _create_account {
         $emails->{ $email } = $newacct;
         GServ::ObjProvider::stow( $emails );
         $root->save;
-
         return { msg => "created account" };
     } #if handle
     return { err => "no handle given" };
@@ -116,7 +113,8 @@ sub _create_account {
 } #_create_account
 
 sub _login {
-    my( $self, $data, $ip ) = @_;
+    my( $data, $ip ) = @_;
+    my $root = GServ::ObjProvider::fetch_root;
     my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
     if( $acct && $acct->get_password() eq $data->{p} ) {
         #

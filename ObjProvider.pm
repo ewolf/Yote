@@ -67,7 +67,6 @@ sub fetch {
                 return \%hash;
             }
             default {
-                eval("use $class");
                 my $obj = $class->new;
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id;

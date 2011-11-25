@@ -6,6 +6,7 @@ package GServ::Obj;
 
 use strict;
 
+use GServ::ObjProvider;
 use Data::Dumper;
 
 sub new {
@@ -93,6 +94,8 @@ sub AUTOLOAD {
     }
 
 } #AUTOLOAD
+
+sub DESTROY {}
 
 1;
 __END__
