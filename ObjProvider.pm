@@ -11,12 +11,15 @@ use GServ::ObjIO;
 
 use Data::Dumper;
 
+use WeakRef;
+
 use Exporter;
 use base 'Exporter';
 
 our @EXPORT_OK = qw(fetch stow a_child_of_b);
 
 $GServ::ObjProvider::DIRTY = {};
+$GServ::ObjProvider::WEAK_REFS = {};
 
 # --------------------  
 #   PACKAGE METHODS
@@ -49,8 +52,8 @@ sub fetch {
     # 
     # Return the object if we have a reference to its dirty state.
     #
-    my $dirty = $GServ::ObjProvider::DIRTY->{$id};
-    return $dirty if $dirty;
+    my $ref = $GServ::ObjProvider::DIRTY->{$id} || $GServ::ObjProvider::WEAK_REFS->{$id};
+    return $ref if $ref;
 
     my $obj_arry = GServ::ObjIO::fetch( $id );
     if( $obj_arry ) {
@@ -59,17 +62,26 @@ sub fetch {
             when('ARRAY') {
                 my( @arry );
                 tie @arry, 'GServ::Array', $id, map { xform_out($_) } @$data;
+		my $wref = \@arry;
+		weaken( $wref );
+		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
                 tie %hash, 'GServ::Hash', __ID__ => $id, map { $_ => xform_out($data->{$_}) } keys %$data;
+		my $wref = \%hash;
+		weaken( $wref );
+		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
                 return \%hash;
             }
             default {
                 my $obj = $class->new;
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id;
+		my $wref = $obj;
+		weaken( $wref );
+		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
                 return $obj;
             }
         }
@@ -79,9 +91,13 @@ sub fetch {
 
 sub get_id {
     my $ref = shift;
+
+    my $wref = $ref;
+
     my $class = ref( $ref );
     given( $class ) {
         when('GServ::Array') {
+	    $GServ::ObjProvider::WEAK_REFS->{$ref->[0]} = $wref;
             return $ref->[0];
         }
         when('ARRAY') {
@@ -94,15 +110,19 @@ sub get_id {
             tie @$ref, 'GServ::Array', $id;
             push( @$ref, @data );
             dirty( $ref, $id );
+	    $GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
             return $id;
         }
         when('GServ::Hash') {
+	    $GServ::ObjProvider::WEAK_REFS->{$ref->{__ID__}} = $wref;
             return $ref->{__ID__};
         }
         when('HASH') {
             my $tied = tied %$ref;
             if( $tied ) {
-                return $tied->{__ID__} || GServ::ObjIO::get_id( "HASH" );
+		my $id = $tied->{__ID__} || GServ::ObjIO::get_id( "HASH" );
+		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
+                return $id;
             } 
             my $id = GServ::ObjIO::get_id( $class );
             my( %vals ) = %$ref;
@@ -111,10 +131,12 @@ sub get_id {
                 $ref->{$key} = $vals{$key};
             }
             dirty( $ref, $id );
+	    $GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
             return $id;
         }
         default {
             $ref->{ID} ||= GServ::ObjIO::get_id( $class );
+	    $GServ::ObjProvider::WEAK_REFS->{$ref->{ID}} = $wref;
             return $ref->{ID};
         }
     }

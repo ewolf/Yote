@@ -22,12 +22,16 @@ jQuery.gServ = {
 				    p:pw,
 				    e:em
 				},
-				1 ).msg == 'created account';
+				     1, false ).msg == 'created account';
 	    },
-	    message:function( cmd, data, wait, callback ) {
+	    message:function( cmd, data, wait, async, callback ) {
+		var ret;
+		async = async == null ? true : async;
 		$.ajax({
-		    type:'POST',
-		    url:this.url,
+		    complete:function(jqXHR,textStatus) {
+			alert(textStatus);
+			alert(jqXHR);
+		    },
 		    data:{ m:$.base64.encode(JSON.stringify(
 			{
 			    a:this.app,
@@ -37,8 +41,12 @@ jQuery.gServ = {
 			    w:wait
 			} ) )
 			 }, 
-		    dataType:'jsonp'
+		    dataType:'jsonp',
+		    type:'POST',
+		    url:this.url
 		});
+		alert( 'returning ret' );
+		return ret;
 	    }
 	};
     }

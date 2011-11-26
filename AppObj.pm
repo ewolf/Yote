@@ -22,8 +22,9 @@ sub process_command {
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
     unless( $app ) {
 	my $apps = $root->get_apps({});
+	print STDERR Data::Dumper->Dump(["Making new $appstr **********"]);
 	$app = $appstr->new;
-	$apps->{$app} = $app;
+	$apps->{$appstr} = $app;
 	$app->save;
     }
     my $command = $cmd->{c};

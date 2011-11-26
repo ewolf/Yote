@@ -83,6 +83,7 @@ sub init_server {
 # This ads a command to the list of commands. If 
 #
 sub process_request {
+    print STDERR Data::Dumper->Dump(['process req called']);
     my $self = shift;
 
     my $reqstr;
@@ -94,12 +95,13 @@ sub process_request {
     my $params       = $parse_params->params;
     my $command = from_json( MIME::Base64::decode($params->{m}) );
     $command->{oi} = $self->{server}{peeraddr}; #origin ip
-    share( $command );
 
     my $wait = $command->{w};
+    my $procid = $$;
     {
+	print STDERR Data::Dumper->Dump(["locking waits for process req",$command]);
 	lock( %prid2wait );
-	$prid2wait{$$} = $wait;
+	$prid2wait{$procid} = $wait;
     }
     
     #
@@ -107,28 +109,43 @@ sub process_request {
     #
     {
 	lock( @commands );
-	push( @commands, [$command, $$] );
+	print STDERR Data::Dumper->Dump(["putting cmd on queue"]);
+	push( @commands, [$command, $procid] );
 	cond_broadcast( @commands );
     }
 
 
     print STDERR Data::Dumper->Dump(["WAIT $wait"]);
     if( $wait ) {
-	while( $prid2wait{$$} ) {
-	    lock( %prid2wait );
-	    print STDERR Data::Dumper->Dump(["PR $$ locked wait, ready to cond wait wait"]);
-	    cond_wait( %prid2wait );
+	while( 1 ) {
+	    my $wait;
+	    {
+		print STDERR Data::Dumper->Dump(["pr $$ ($procid) checking wait to lock"]);
+		lock( %prid2wait );
+		print STDERR Data::Dumper->Dump(["pr locked wait"]);
+		$wait = $prid2wait{$procid};
+	    }
+	    if( $wait ) {
+		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait"]);
+		lock( %prid2wait ); 
+		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait Locked $@"]);
+		cond_wait( %prid2wait );
+		print STDERR Data::Dumper->Dump(["pr checking cond_wait Over",$@]);
+		last unless $prid2wait{$procid};
+	    } else {
+		last;
+	    }
 	}
 	my $result;
 	{
 	    print STDERR Data::Dumper->Dump(["PR lock res",%prid2result]);
 	    lock( %prid2result );
 	    print STDERR Data::Dumper->Dump(["PR locked res"]);
-	    $result = $prid2result{$$};	
-	    delete $prid2result{$$};
+	    $result = $prid2result{$procid};	
+	    delete $prid2result{$procid};
 	}
 	print STDERR Data::Dumper->Dump(["after wait",$command,$result]);
-	print STDOUT $result;
+	print STDOUT "Content-Type: application/json\n\n$result";
     } else {
 	print STDOUT qq|{"msg":"Added command"}\n\n|;
     }
@@ -140,19 +157,21 @@ sub process_request {
 #
 sub _poll_commands {
     while(1) {
-	print STDERR Data::Dumper->Dump(["polling loop"]);
+	print STDERR Data::Dumper->Dump(["polling loop $$"]);
         my $cmd;
         {
             lock( @commands );
             $cmd = shift @commands;
         }
+	print STDERR Data::Dumper->Dump(["In loop with command $cmd"]);
         if( $cmd ) {
             _process_command( $cmd );
         } 
         unless( @commands ) {
             lock( @commands );
             cond_wait( @commands );
-        }
+	}
+	print STDERR Data::Dumper->Dump(["command count ".scalar(@commands)]);
     }
 
 } #_poll_commands
@@ -163,24 +182,26 @@ sub _process_command {
     my( $command, $procid ) = @$req;
 
     my $root = GServ::AppProvider::fetch_root();
+    print STDERR Data::Dumper->Dump(["_PC to do command"]);
     my $ret  = $root->process_command( $command );
+    print STDERR Data::Dumper->Dump(["_PC done command. obtaining lock"]);
 
     #
     # Send return value back to the caller if its waiting for it.
     #
     lock( %prid2wait );
     {
-	print STDERR Data::Dumper->Dump(["_PR lock res"]);
+	print STDERR Data::Dumper->Dump(["_PC lock res"]);
 	lock( %prid2result );
-	print STDERR Data::Dumper->Dump(["_PR locked res"]);
+	print STDERR Data::Dumper->Dump(["_PC locked res"]);
 	$prid2result{$procid} = to_json($ret);
-	print STDERR Data::Dumper->Dump(["_PR set val"]);
+	print STDERR Data::Dumper->Dump(["_PC set val"]);
     }
-    print STDERR Data::Dumper->Dump(['cond signal for wait']);
-    undef $prid2wait{$procid};
-    print STDERR Data::Dumper->Dump(["_PC releasing wait"]);
+    print STDERR Data::Dumper->Dump(['_PC cond signal for wait',\%prid2wait]);
+    delete $prid2wait{$procid};
+    print STDERR Data::Dumper->Dump(["_PC releasing wait"]);    
     cond_signal( %prid2wait );
-    print STDERR Data::Dumper->Dump(["_PC released wait"]);
+    print STDERR Data::Dumper->Dump(["_PC released wait $@",\%prid2wait]);
 
 } #_process_command
 
