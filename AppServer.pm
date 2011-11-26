@@ -21,8 +21,10 @@ use base qw(Net::Server::Fork);
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
-my( @commands );#  : shared;
+my( @commands, %prid2wait, %prid2result );
 share( @commands );
+share( %prid2wait );
+share( %prid2result );
 
 # find apps to install
 require GServ::Hello;
@@ -95,28 +97,38 @@ sub process_request {
     share( $command );
 
     my $wait = $command->{w};
-    share( $wait );
-
-    my $result = '';
-    share( $result );
-
+    {
+	lock( %prid2wait );
+	$prid2wait{$$} = $wait;
+    }
+    
     #
     # Queue up the command for processing in a separate thread.
     #
     {
 	lock( @commands );
-	push( @commands, [$command, $wait, $result] );
-	cond_signal( @commands );
+	push( @commands, [$command, $$] );
+	cond_broadcast( @commands );
     }
+
+
     print STDERR Data::Dumper->Dump(["WAIT $wait"]);
     if( $wait ) {
-	print STDERR Data::Dumper->Dump(["PR to lock wait"]);
-	lock( $wait );
-	print STDERR Data::Dumper->Dump(["PR locked wait, ready to cond wait wait"]);
-	cond_wait( $wait );
-    print STDERR Data::Dumper->Dump(["after wait",$command]);
-	print STDOUT to_json( $result );
-#	print STDOUT qq|{"msg":"waited for command"}\n\n|;
+	while( $prid2wait{$$} ) {
+	    lock( %prid2wait );
+	    print STDERR Data::Dumper->Dump(["PR $$ locked wait, ready to cond wait wait"]);
+	    cond_wait( %prid2wait );
+	}
+	my $result;
+	{
+	    print STDERR Data::Dumper->Dump(["PR lock res",%prid2result]);
+	    lock( %prid2result );
+	    print STDERR Data::Dumper->Dump(["PR locked res"]);
+	    $result = $prid2result{$$};	
+	    delete $prid2result{$$};
+	}
+	print STDERR Data::Dumper->Dump(["after wait",$command,$result]);
+	print STDOUT $result;
     } else {
 	print STDOUT qq|{"msg":"Added command"}\n\n|;
     }
@@ -147,25 +159,29 @@ sub _poll_commands {
 
 sub _process_command {
     my $req = shift;
-    print STDERR Data::Dumper->Dump(["_proc",$req]);
-    my( $command, $wait, $result ) = @$req;
+
+    my( $command, $procid ) = @$req;
 
     my $root = GServ::AppProvider::fetch_root();
-    print STDERR Data::Dumper->Dump(["process $$ command start '$wait'"]);
     my $ret  = $root->process_command( $command );
-    $result = $ret;
-    print STDERR Data::Dumper->Dump(["process $$ command returned. command now ($wait)",$command,$@,$!]);
 
     #
     # Send return value back to the caller if its waiting for it.
     #
-    if( $wait ) {
-	print STDERR Data::Dumper->Dump(['to lock wait']);
-        lock( $wait );
-	print STDERR Data::Dumper->Dump(['locked wait']);
-        cond_signal( $wait );
-	print STDERR Data::Dumper->Dump([' wait signal']);
+    lock( %prid2wait );
+    {
+	print STDERR Data::Dumper->Dump(["_PR lock res"]);
+	lock( %prid2result );
+	print STDERR Data::Dumper->Dump(["_PR locked res"]);
+	$prid2result{$procid} = to_json($ret);
+	print STDERR Data::Dumper->Dump(["_PR set val"]);
     }
+    print STDERR Data::Dumper->Dump(['cond signal for wait']);
+    undef $prid2wait{$procid};
+    print STDERR Data::Dumper->Dump(["_PC releasing wait"]);
+    cond_signal( %prid2wait );
+    print STDERR Data::Dumper->Dump(["_PC released wait"]);
+
 } #_process_command
 
 
