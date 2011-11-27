@@ -12,7 +12,7 @@ sub TIEHASH {
     my $id = $hash{__ID__};
     my $storage = bless { __ID__ => $hash{__ID__} }, $class;
     for my $key (grep { $_ ne '__ID__' } keys %hash) {
-        $storage->{$key} = GServ::ObjProvider::xform_in($hash{$key});
+        $storage->{$key} = $hash{$key};
     }
     return $storage;
 }

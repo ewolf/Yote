@@ -258,7 +258,7 @@ sub fetch {
 #
 sub get_id {
     my( $class ) = @_;
-
+    if( $class eq 'GServ::Hello' )    {eval { die "stacktrace"; }; print STDERR Data::Dumper->Dump([$@]);}
     my $res = $DBH->do( "INSERT INTO objects (class) VALUES (?)", {}, $class );
 	    print STDERR Data::Dumper->Dump(["db __LINE__",$DBH->errstr()]) if $DBH->errstr();
 

@@ -16,7 +16,7 @@ sub TIEARRAY {
     my( $id, @rest ) = @list;
     push( @$storage, $id );
     for my $item (@rest) {
-        push( @$storage, GServ::ObjProvider::xform_in( $item ) );
+        push( @$storage, $item );
     }
     return $storage;    
 }

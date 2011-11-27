@@ -61,7 +61,7 @@ sub fetch {
         given( $class ) {
             when('ARRAY') {
                 my( @arry );
-                tie @arry, 'GServ::Array', $id, map { xform_out($_) } @$data;
+                tie @arry, 'GServ::Array', $id, @$data;
 		my $wref = \@arry;
 		weaken( $wref );
 		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
@@ -69,14 +69,14 @@ sub fetch {
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'GServ::Hash', __ID__ => $id, map { $_ => xform_out($data->{$_}) } keys %$data;
+                tie %hash, 'GServ::Hash', __ID__ => $id, map { $_ => $data->{$_} } keys %$data;
 		my $wref = \%hash;
 		weaken( $wref );
 		$GServ::ObjProvider::WEAK_REFS->{$id} = $wref;
                 return \%hash;
             }
             default {
-                my $obj = $class->new;
+                my $obj = $class->new( $id );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id;
 		my $wref = $obj;
@@ -243,8 +243,6 @@ sub xform_out {
     if( index($val,'v') == 0 ) {
         return substr( $val, 1 );
     }
-    my $x = fetch( $val );
-    return $x;
     return fetch( $val );
 }
 
