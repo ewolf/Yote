@@ -93,6 +93,7 @@ sub get_id {
     my $ref = shift;
 
     my $wref = $ref;
+    weaken( $wref );
 
     my $class = ref( $ref );
     given( $class ) {

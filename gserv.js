@@ -28,8 +28,9 @@ jQuery.gServ = {
 		var ret;
 		async = async == null ? true : async;
 		$.ajax({
+		    async:false,
 		    complete:function(jqXHR,textStatus) {
-			alert(textStatus);
+			alert('status :'+textStatus);
 			alert(jqXHR);
 		    },
 		    data:{ m:$.base64.encode(JSON.stringify(
