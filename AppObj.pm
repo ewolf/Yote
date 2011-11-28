@@ -22,7 +22,6 @@ sub process_command {
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
     unless( $app ) {
 	my $apps = $root->get_apps({});
-	print STDERR Data::Dumper->Dump(["Making new $appstr **********"]);
 	$app = $appstr->new;
 	$apps->{$appstr} = $app;
 	$app->save;
@@ -42,7 +41,7 @@ sub process_command {
 	return $ret;
     }
     elsif( $command eq 'login' ) {
-	return _login( $app, $cmd->{d}, $cmd->{oi} );
+	return _login( $cmd->{d}, $cmd->{oi} );
     }
     elsif( index( $command, '_' ) != 0 && $acct ) {
 	return $app->$command( $cmd->{d}, $acct );
@@ -117,7 +116,7 @@ sub _login {
     my( $data, $ip ) = @_;
     my $root = GServ::ObjProvider::fetch_root;
     my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
-    if( $acct && $acct->get_password() eq $data->{p} ) {
+    if( $acct && ($acct->get_password() eq $data->{p}) ) {
         #
         # Create token and store with the account and return it.
         #
