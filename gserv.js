@@ -25,13 +25,35 @@ jQuery.gServ = {
 				     1, false ).msg == 'created account';
 	    },
 	    message:function( cmd, data, wait, async, callback ) {
+		$.jsonp({
+		    url: this.url,
+		    data:{
+			m: $.base64.encode(JSON.stringify(
+			    {
+				a:this.app,
+				c:cmd,
+				d:data,
+				t:this.token,
+				w:wait
+			    } ))
+		    },
+		    callbackParameter: "callback",
+		    dataFilter:function(json) { alert( $.dump(json)); return json; },
+		    success:function(json,s) { alert("complete "+s+","+$.dump(json) +","+json) },
+		    error:function(x,s) { alert("error "+s ) }
+		});
+//Jerry from Michigan calling regards to Drew & Bakery 989.671.1942
+/*
 		var ret;
 		async = async == null ? true : async;
+
 		$.ajax({
 		    async:false,
-		    complete:function(jqXHR,textStatus) {
-			alert('status :'+textStatus);
-			alert(jqXHR);
+		    success:function(data) {
+			alert('status :');
+		    },
+		    error:function(jqXHR, textStatus, errorThrown) {
+			alert('errstatus :'+$.dump(textStatus)+','+$.dump(errorThrown));
 		    },
 		    data:{ m:$.base64.encode(JSON.stringify(
 			{
@@ -42,12 +64,13 @@ jQuery.gServ = {
 			    w:wait
 			} ) )
 			 }, 
-		    dataType:'jsonp',
+		    dataType:'json',
 		    type:'POST',
 		    url:this.url
 		});
-		alert( 'returning ret' );
+
 		return ret;
+*/
 	    }
 	};
     }

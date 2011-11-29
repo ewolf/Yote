@@ -34,12 +34,12 @@ sub new {
     my $class = ref( $pkg ) || $pkg;
     return bless {}, $class;
 }
-
+my( $db, $args );
 sub start_server {
     my( $self, @args ) = @_;
-    my $args = scalar(@args) == 1 ? $args[0] : { @args };
+    $args = scalar(@args) == 1 ? $args[0] : { @args };
     $args->{port} ||= 8008;
-    my $db = $args->{database} || 'sg';
+    $db = $args->{database} || 'sg';
 
     #make sure this thread has a valid database connectin
     print STDERR Data::Dumper->Dump(['start servier']);
@@ -93,6 +93,8 @@ sub process_request {
     }
     my $parse_params = HTTP::Request::Params->new( { req => $reqstr } );
     my $params       = $parse_params->params;
+    my $callback = $params->{callback};
+    print STDERR Data::Dumper->Dump([$params]);
     my $command = from_json( MIME::Base64::decode($params->{m}) );
     $command->{oi} = $self->{server}{peeraddr}; #origin ip
 
@@ -103,7 +105,7 @@ sub process_request {
 	lock( %prid2wait );
 	$prid2wait{$procid} = $wait;
     }
-    
+    print STDERR Data::Dumper->Dump(["locking comands"]);
     #
     # Queue up the command for processing in a separate thread.
     #
@@ -118,14 +120,14 @@ sub process_request {
     print STDERR Data::Dumper->Dump(["WAIT $wait"]);
     if( $wait ) {
 	while( 1 ) {
-	    my $wait;
+	    my $do_wait;
 	    {
 		print STDERR Data::Dumper->Dump(["pr $$ ($procid) checking wait to lock"]);
 		lock( %prid2wait );
 		print STDERR Data::Dumper->Dump(["pr locked wait"]);
-		$wait = $prid2wait{$procid};
+		$do_wait = $prid2wait{$procid};
 	    }
-	    if( $wait ) {
+	    if( $do_wait ) {
 		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait"]);
 		lock( %prid2wait ); 
 		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait Locked $@"]);
@@ -144,9 +146,10 @@ sub process_request {
 	    $result = $prid2result{$procid};	
 	    delete $prid2result{$procid};
 	}
-	print STDERR Data::Dumper->Dump(["after wait",$command,$result]);
-	print STDOUT "Content-Type: application/json\n\n$result";
+	print STDERR Data::Dumper->Dump(["after wait","$callback('$result')"]);
+	print STDOUT qq|$callback('$result')|;
     } else {
+	print STDERR Data::Dumper->Dump(["no wait"]);
 	print STDOUT qq|{"msg":"Added command"}\n\n|;
     }
 
@@ -178,6 +181,8 @@ sub _poll_commands {
 
 sub _process_command {
     my $req = shift;
+
+    GServ::ObjIO::database( DBI->connect( "DBI:mysql:$db", $args->{uname}, $args->{password} ) );
 
     my( $command, $procid ) = @$req;
 

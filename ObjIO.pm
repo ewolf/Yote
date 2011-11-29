@@ -11,6 +11,7 @@ use Data::Dumper;
 use DBI;
 
 my $DBH = DBI->connect( 'DBI:mysql:sg' );
+$DBH->{mysql_auto_reconnect} = 1;
 
 use constant { 
     DATA => 2,
