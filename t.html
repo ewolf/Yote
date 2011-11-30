@@ -12,7 +12,9 @@ blah
 $().ready(function(){ 
    var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
 //   a.message( "Foo", { Bar:"BaZ",Zoo:{Zap:1} }, 1, function(x,b,c) { alert(x) } );
-   a.create_account( "firsty", "blarg", "em" );
+   var res = a.create_account( "firsty", "blarg", "em" );
+   if( res.err ) { alert( "Error creating account '" + res.err + "'" ) }
+   else { alert( res.msg ) }
    a.message( 'hello' );
  } );
 </script>

@@ -22,9 +22,10 @@ jQuery.gServ = {
 				    p:pw,
 				    e:em
 				},
-				     1, false ).msg == 'created account';
+				     1, false );
 	    },
 	    message:function( cmd, data, wait, async, callback ) {
+		var res;
 		$.jsonp({
 		    url: this.url,
 		    data:{
@@ -38,10 +39,13 @@ jQuery.gServ = {
 			    } ))
 		    },
 		    callbackParameter: "callback",
-		    dataFilter:function(json) { alert( $.dump(json)); return json; },
-		    success:function(json,s) { alert("complete "+s+","+$.dump(json) +","+json) },
+		    dataFilter:function(json) { return json; },
+		    success:function(json,s) { res = json;alert(res) },
 		    error:function(x,s) { alert("error "+s ) }
 		});
+		alert(res);
+		return res;
+		
 //Jerry from Michigan calling regards to Drew & Bakery 989.671.1942
 /*
 		var ret;
