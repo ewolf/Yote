@@ -12,7 +12,6 @@ sub fetch_root {
     unless( $root ) {
         $root = new GServ::AppObj;
         $root->save;
-	my $db = GServ::ObjIO::database();
     }
     return $root;
 }

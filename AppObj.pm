@@ -6,6 +6,8 @@ use GServ::Obj;
 
 use base 'GServ::Obj';
 
+use GServ::Hello;
+
 #
 # The AppObj is the root object. It forwards to the correct app root.
 # The request object has the fields :
@@ -17,14 +19,15 @@ use base 'GServ::Obj';
 # either c or i must be given
 sub process_command {
     my( $root, $cmd ) = @_;
+    print STDERR Data::Dumper->Dump( ["PC",$root,$cmd] );
 
     my $appstr = $cmd->{a};
     my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
     unless( $app ) {
-	my $apps = $root->get_apps({});
-	$app = $appstr->new;
-	$apps->{$appstr} = $app;
-	$app->save;
+        my $apps = $root->get_apps({});
+        $app = $appstr->new;
+        $apps->{$appstr} = $app;
+        $app->save;
     }
     my $command = $cmd->{c};
     #
@@ -33,18 +36,19 @@ sub process_command {
     # new account request or has a valid token.
     #
     my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
+    print STDERR Data::Dumper->Dump( [$acct,"acct",$cmd] );
     my $did_it = 0;
 
     if( $command eq 'create_account' ) {
-	my $ret = $root->_create_account( $cmd->{d}, $cmd->{oi} );
-	++$did_it;
-	return $ret;
+        my $ret = $root->_create_account( $cmd->{d}, $cmd->{oi} );
+        ++$did_it;
+        return $ret;
     }
     elsif( $command eq 'login' ) {
-	return _login( $cmd->{d}, $cmd->{oi} );
+        return _login( $cmd->{d}, $cmd->{oi} );
     }
     elsif( index( $command, '_' ) != 0 && $acct ) {
-	return $app->$command( $cmd->{d}, $acct );
+        return $app->$command( $cmd->{d}, $acct );
     }
     return { err => "'$cmd->{c}' not found for app '$appstr'" };
 } #process_command
@@ -89,10 +93,10 @@ sub _create_account {
         }
         $newacct->set_handle( $handle );
         $newacct->set_email( $email );
-	$newacct->set_created_ip( $ip );
-	
-	# todo
-	# $newacct->set_time_created();
+        $newacct->set_created_ip( $ip );
+        
+        # todo
+        # $newacct->set_time_created();
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );
@@ -113,9 +117,11 @@ sub _create_account {
 } #_create_account
 
 sub _login {
+    print STDERR Data::Dumper->Dump( ["IN LOGIN"] );
     my( $data, $ip ) = @_;
     my $root = GServ::ObjProvider::fetch_root;
     my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
+    print STDERR Data::Dumper->Dump( ["Done Login"] );
     if( $acct && ($acct->get_password() eq $data->{p}) ) {
         #
         # Create token and store with the account and return it.

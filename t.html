@@ -4,10 +4,8 @@
 <script src="./jquery.base64.min.js"></script>
 <script src="./jquery.jsonp-2.1.4.min.js"></script>
 <script src="./json2.js"></script>
-<script src="./gserv.js"></script>
+<script src="./gserv.js?x=7.1"></script>
 </head>
-<body>
-blah
 <script>
 $().ready(function(){ 
    var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
@@ -18,5 +16,12 @@ $().ready(function(){
    a.message( 'hello' );
  } );
 </script>
+<body>
+blah
+<form>
+   <button type=button>Foo</button>
+   <input type=text name=gah>
+   <input type=submit>
+</form>
 </body>
 </html>
