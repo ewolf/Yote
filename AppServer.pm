@@ -206,7 +206,7 @@ sub _process_command {
 } #_process_command
 
 sub _connect_db {
-    GServ::ObjIO::database( DBI->connect( @DBCONNECT ) );   
+    GServ::ObjIO::database( @DBCONNECT );   
 } #_connect_db
 
 1
