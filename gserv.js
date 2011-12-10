@@ -14,9 +14,9 @@ jQuery.gServ = {
                         h:un,
                         p:pw
                     },
-                    1, 
+                    true, 
                     false,
-                    function(data, textStatus) {
+                    function(data) {
                         if( typeof data.err === 'undefined' ) {
                             app.login_pass(data,un);
                             app.token = data.t;
@@ -45,9 +45,9 @@ jQuery.gServ = {
                         p:pw,
                         e:em
                     },
-                    1, 
+                    true, 
                     false,
-                    function(data, textStatus) {
+                    function(data) {
                         if( typeof data.err === 'undefined' ) {
                             app.create_account_pass(data,un);
                             app.token = data.t;
@@ -67,16 +67,43 @@ jQuery.gServ = {
             },
 
 
-	    /* general functions */
+	    /* register commands */
+	    register_command:function( options ) {
+		var app = this;
+		if( typeof options === "object" && 
+		    options.command != undefined &&
+		    options.succeed != undefined &&
+		    options.fail    != undefined 
+		  ) {
+		    var wait = options.wait != undefined ? options.wait : true;
+		    var async = options.async != undefined ? options.async : false;
+		    
+		    app[options.command] = function( data ) {
+			app.message( options.command, data, wait, async, function(ret) {
+			    if( typeof ret.err === 'undefined' ) {
+				options.succeed( ret );
+			    } else {
+				options.fail( ret );
+			    }
+			} );
+		    };
+		} else {
+		    $.error( "register_command called with incorrect options" );
+		}
+	    },
 
+	    /* general functions */
             message:function( cmd, data, wait, async, callback ) {
+
                 var app = this;
-                async = async == null ? true : async;
+                async = async == true ? 1 : 0;
+		wait = wait == true ? 1 : 0;
                 var enabled;
-                if( async == false ) {
+                if( async == 0 ) {
                     enabled = $(':enabled');
                     $.each( enabled, function(idx,val) { val.disabled = true } );
                 }
+
                 $.jsonp({
                         url:this.url,
                         callbackParameter:'callback',
@@ -90,7 +117,7 @@ jQuery.gServ = {
                         }, 
                         error:function(xOptions, textStatus) {
                             app.error();
-                            if( async == false ) {
+                            if( async == 0 ) {
                                 $.each( enabled, function(idx,val) { val.disabled = false } );
                             }
                         },
@@ -98,8 +125,8 @@ jQuery.gServ = {
                             return JSON.parse(json);
                         },
                         success:function(xOptions, textStatus) {
-                            callback(xOptions, textStatus);
-                            if( async == false ) {
+                            callback(xOptions);
+                            if( async == 0 ) {
                                 $.each( enabled, function(idx,val) { val.disabled = false } );
                             }
                         }

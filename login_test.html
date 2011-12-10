@@ -35,7 +35,6 @@ $().ready(function(){
     var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
 
     a.login_pass = function(data,un) {
-        alert( 'local login success :' + data.msg );
         $("span#lname").html(un);
         $("#logged_in").css( 'display', 'block' );
         $("div#login").css( 'display','none' );
@@ -47,7 +46,6 @@ $().ready(function(){
     };
 
     a.create_account_pass = function(data,un) {
-        alert( 'local create account success :' + data.msg );
         $("span#lname").html(un);
         $("#logged_in").show();
         $("div#login").hide();
@@ -64,7 +62,7 @@ $().ready(function(){
     //login button
 
     $('button#login').click( function() { 
-            a.login( $("#login > #name").val(), $("#login > #pw").val() );
+            a.login( $(".login#name").val(), $(".login#pw").val() );
         } );
     $('.login#pw,.login#name').keypress( function(e) { 
             if(e.which == 13 ) {
@@ -72,9 +70,9 @@ $().ready(function(){
             }
         } );
     $('button#register').click( function() { 
-            a.create_account( $("#register > #name").val(), 
-                              $("#register > #pw").val(), 
-                              $("#register > #email").val() );
+            a.create_account( $(".register#name").val(), 
+                              $(".register#pw").val(), 
+                              $(".register#email").val() );
                 } );
     $('.register#pw,.register#name,.register#email').keypress( function(e) { 
             if(e.which == 13 ) {
@@ -83,11 +81,16 @@ $().ready(function(){
                                   $(".register#email").val() );
             }
         } );
+
+    a.register_command( {
+	command:'hello',
+	succeed:function(data) { alert("Hello succeed with '"+data.r+"'"); },
+	fail:function(data) { alert("Hello Failed with '"+data.err+"'"); }
+    } );
     $('#hello').click( function() {
-            a.message( "hello", {}, 1, 1, function(xOptions, textStatus) {
-                    alert( "hello got back '"+xOptions.r+"'" );
-                } );
-        } );
+	a.hello();
+    } );
+
  } );
 </script>
 
