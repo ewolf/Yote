@@ -71,9 +71,8 @@ sub init_database {
 } #init_database
 
 sub database {
-    my( $db ) = @_;
-    if( $db ) {
-        $DBH = $db;
+    if( @_ ) {
+        $DBH = DBI->connect( @_ );
     }
     return $DBH;
 }
@@ -210,7 +209,7 @@ sub fetch {
     my( $id ) = @_;
 
     my( $class ) = $DBH->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
-	    print STDERR Data::Dumper->Dump(["db __LINE__",$DBH->errstr()]) if $DBH->errstr();
+    print STDERR Data::Dumper->Dump(["db __LINE__",$DBH->errstr()]) if $DBH->errstr();
 
     return undef unless $class;
     my $obj = [$id,$class];

@@ -1,0 +1,124 @@
+<html>
+  <head>
+<title>Login Test</title>
+
+<script src="./jquery-latest.js"></script>
+<script src="./jquery.dumper.js"></script>
+<script src="./jquery.base64.min.js"></script>
+<script src="./json2.js"></script>
+<script src="./gserv.js?x=1.1"></script>
+<script src="./jquery.jsonp-2.1.4.min.js"></script>
+<style>
+
+div#login {
+  border:1px solid black;
+  background-color:lightgray;
+  width:400px;
+  height:100px;
+}
+</style>
+
+<script>
+$().ready(function(){ 
+    $('div#logged_in').hide();
+    $('div#register').hide();
+    $('a#logout').click( function() {
+            $('div#register').hide();
+            $('div#logged_in').hide();
+            $('div#login').show();
+        } );
+    $('a#register').click( function() {
+            $('div#register').show();
+            $('div#logged_in').hide();
+            $('div#login').hide();
+        });
+    var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
+
+    a.login_pass = function(data,un) {
+        alert( 'local login success :' + data.msg );
+        $("span#lname").html(un);
+        $("#logged_in").css( 'display', 'block' );
+        $("div#login").css( 'display','none' );
+        $('.login#pw').val('');
+    };
+    a.login_fail = function(data) {
+        $('#login > #pw').val('');
+        alert( 'local login fail :' + data.err );
+    };
+
+    a.create_account_pass = function(data,un) {
+        alert( 'local create account success :' + data.msg );
+        $("span#lname").html(un);
+        $("#logged_in").show();
+        $("div#login").hide();
+        $("div#register").hide();
+        $('.login#pw').val('');
+    };
+    a.create_account_fail = function(data) {
+        $('#login > #pw').val('');
+        alert( 'local create account fail :' + data.err );
+    };
+
+
+    //    a.create_account("foo","bar","gaz");
+    //login button
+
+    $('button#login').click( function() { 
+            a.login( $("#login > #name").val(), $("#login > #pw").val() );
+        } );
+    $('.login#pw,.login#name').keypress( function(e) { 
+            if(e.which == 13 ) {
+                a.login( $(".login#name").val(), $(".login#pw").val() );
+            }
+        } );
+    $('button#register').click( function() { 
+            a.create_account( $("#register > #name").val(), 
+                              $("#register > #pw").val(), 
+                              $("#register > #email").val() );
+                } );
+    $('.register#pw,.register#name,.register#email').keypress( function(e) { 
+            if(e.which == 13 ) {
+                a.create_account( $(".register#name").val(), 
+                                  $(".register#pw").val(), 
+                                  $(".register#email").val() );
+            }
+        } );
+    $('#hello').click( function() {
+            a.message( "hello", {}, 1, 1, function(xOptions, textStatus) {
+                    alert( "hello got back '"+xOptions.r+"'" );
+                } );
+        } );
+ } );
+</script>
+
+</head>
+<body>
+<h1>Login Test</h1>
+
+<div id=login>
+     <div style=float:left>
+  Name <input class=login type=text id=name> <br>
+  Password <input class=login type=password id=pw> <br>
+  <button type=button id=login>Login</button>
+ </div>
+ <div style=float:left>
+   <a href='#' id='register'>Register</a><br>
+   <a href='#' id='forgot'>Forgot Password</a>
+ </div>
+</div>
+
+<div id=logged_in>
+  Logged in as <span id=lname></span><br>
+  <a href=# id=logout>Logout</a>
+  <button id=hello type=button>Hello</button>
+</div>
+
+<div id=register>
+  Name <input class=register type=text id=name> <br>
+  Email <input class=register type=text id=email><br>
+  Password <input class=register type=password id=pw><br>
+  <button type=button id=register>Register Account</button> 
+</div>
+
+</body>
+</html>

@@ -48,6 +48,7 @@ sub xpath_count {
 
 sub fetch {
     my( $id ) = @_;
+
     # 
     # Return the object if we have a reference to its dirty state.
     #
@@ -56,6 +57,7 @@ sub fetch {
     return $ref if $ref;
 
     my $obj_arry = GServ::ObjIO::fetch( $id );
+
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
         given( $class ) {

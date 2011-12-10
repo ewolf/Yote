@@ -29,6 +29,8 @@ share( %prid2result );
 # find apps to install
 require GServ::Hello;
 
+our @DBCONNECT;
+
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;
@@ -41,18 +43,20 @@ sub start_server {
     $args->{port} ||= 8008;
     my $db = $args->{database} || 'sg';
 
+#    print STDERR Data::Dumper->Dump( ["Start TO Start"] );
     #make sure this thread has a valid database connectin
-    print STDERR Data::Dumper->Dump(['start servier']);
-    GServ::ObjIO::database( DBI->connect( "DBI:mysql:$db", $args->{uname}, $args->{password} ) );
-    print STDERR Data::Dumper->Dump(['connected db']);
+    @DBCONNECT = ( "DBI:mysql:$db", $args->{uname}, $args->{password} );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
-    my $thread = threads->new( \&_poll_commands );
-    print STDERR Data::Dumper->Dump(['forked thread']);
 
-    $self->run( %$args );
-    print STDERR Data::Dumper->Dump(['thread running']);
+    my $thread = threads->new( sub { $self->run( %$args ); } );
+#    print STDERR Data::Dumper->Dump( ["Threaded"] );
+#    $self->run( %$args );
+#    print STDERR Data::Dumper->Dump(['server running']);
+
+    _poll_commands();
+
     $thread->join;
 } #start_server
 
@@ -83,71 +87,64 @@ sub init_server {
 # This ads a command to the list of commands. If 
 #
 sub process_request {
-    print STDERR Data::Dumper->Dump(['process req called']);
     my $self = shift;
 
     my $reqstr;
     while(<STDIN>) {
-	$reqstr .= $_;
-	last if $_ =~ /^[\n\r]+$/s;
+        $reqstr .= $_;
+        last if $_ =~ /^[\n\r]+$/s;
     }
+#    print STDERR Data::Dumper->Dump( [$reqstr] );
     my $parse_params = HTTP::Request::Params->new( { req => $reqstr } );
     my $params       = $parse_params->params;
+    my $callback     = $params->{callback};
     my $command = from_json( MIME::Base64::decode($params->{m}) );
+#    print STDERR Data::Dumper->Dump( [$params,$command] );
     $command->{oi} = $self->{server}{peeraddr}; #origin ip
 
     my $wait = $command->{w};
     my $procid = $$;
     {
-	print STDERR Data::Dumper->Dump(["locking waits for process req",$command]);
-	lock( %prid2wait );
-	$prid2wait{$procid} = $wait;
+        lock( %prid2wait );
+        $prid2wait{$procid} = $wait;
     }
     
     #
     # Queue up the command for processing in a separate thread.
     #
     {
-	lock( @commands );
-	print STDERR Data::Dumper->Dump(["putting cmd on queue"]);
-	push( @commands, [$command, $procid] );
-	cond_broadcast( @commands );
+        lock( @commands );
+        push( @commands, [$command, $procid] );
+        cond_broadcast( @commands );
     }
 
 
-    print STDERR Data::Dumper->Dump(["WAIT $wait"]);
     if( $wait ) {
-	while( 1 ) {
-	    my $wait;
-	    {
-		print STDERR Data::Dumper->Dump(["pr $$ ($procid) checking wait to lock"]);
-		lock( %prid2wait );
-		print STDERR Data::Dumper->Dump(["pr locked wait"]);
-		$wait = $prid2wait{$procid};
-	    }
-	    if( $wait ) {
-		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait"]);
-		lock( %prid2wait ); 
-		print STDERR Data::Dumper->Dump(["pr checking wait to cond_wait Locked $@"]);
-		cond_wait( %prid2wait );
-		print STDERR Data::Dumper->Dump(["pr checking cond_wait Over",$@]);
-		last unless $prid2wait{$procid};
-	    } else {
-		last;
-	    }
-	}
-	my $result;
-	{
-	    print STDERR Data::Dumper->Dump(["PR lock res",%prid2result]);
-	    lock( %prid2result );
-	    print STDERR Data::Dumper->Dump(["PR locked res"]);
-	    $result = $prid2result{$procid};	
-	    delete $prid2result{$procid};
-	}
-	print STDERR Data::Dumper->Dump(["after wait",$command,$result]);
-	print STDOUT "Content-Type: application/json\n\n$result";
+        while( 1 ) {
+            my $wait;
+            {
+                lock( %prid2wait );
+                $wait = $prid2wait{$procid};
+            }
+            if( $wait ) {
+                lock( %prid2wait ); 
+                cond_wait( %prid2wait );
+                last unless $prid2wait{$procid};
+            } else {
+                last;
+            }
+        }
+        my $result;
+        {
+#            print STDERR Data::Dumper->Dump( ["loop locking prid2res",\%prid2result] );
+            lock( %prid2result );
+            $result = $prid2result{$procid};	
+            delete $prid2result{$procid};
+        }
+#        print STDERR Data::Dumper->Dump(["after wait ($callback)",$command,$result]);
+        print STDOUT "$callback( '$result' )";
     } else {
-	print STDOUT qq|{"msg":"Added command"}\n\n|;
+        print STDOUT qq|$callback( '{"msg":"Added command"}' );|;
     }
 
 } #process_request
@@ -157,54 +154,53 @@ sub process_request {
 #
 sub _poll_commands {
     while(1) {
-	print STDERR Data::Dumper->Dump(["polling loop $$"]);
+#        print STDERR Data::Dumper->Dump( ["StartLoop"] );
         my $cmd;
         {
             lock( @commands );
             $cmd = shift @commands;
         }
-	print STDERR Data::Dumper->Dump(["In loop with command $cmd"]);
         if( $cmd ) {
             _process_command( $cmd );
         } 
         unless( @commands ) {
             lock( @commands );
             cond_wait( @commands );
-	}
-	print STDERR Data::Dumper->Dump(["command count ".scalar(@commands)]);
+        }
     }
 
 } #_poll_commands
 
 sub _process_command {
     my $req = shift;
-
     my( $command, $procid ) = @$req;
-
+#    print STDERR Data::Dumper->Dump( ["PC"] );
+    _connect_db();
+#    print STDERR Data::Dumper->Dump( ["Reconnect"] );
+    
     my $root = GServ::AppProvider::fetch_root();
-    print STDERR Data::Dumper->Dump(["_PC to do command"]);
+#    print STDERR Data::Dumper->Dump( [$command,$root] );
     my $ret  = $root->process_command( $command );
-    print STDERR Data::Dumper->Dump(["_PC done command. obtaining lock"]);
 
     #
     # Send return value back to the caller if its waiting for it.
     #
+#    print STDERR Data::Dumper->Dump( ["about to return and lock",\%prid2wait] );
     lock( %prid2wait );
     {
-	print STDERR Data::Dumper->Dump(["_PC lock res"]);
-	lock( %prid2result );
-	print STDERR Data::Dumper->Dump(["_PC locked res"]);
-	$prid2result{$procid} = to_json($ret);
-	print STDERR Data::Dumper->Dump(["_PC set val"]);
+#        print STDERR Data::Dumper->Dump( ["Locking prid2res",\%prid2result] );
+        lock( %prid2result );
+        $prid2result{$procid} = to_json($ret);
     }
-    print STDERR Data::Dumper->Dump(['_PC cond signal for wait',\%prid2wait]);
     delete $prid2wait{$procid};
-    print STDERR Data::Dumper->Dump(["_PC releasing wait"]);    
-    cond_signal( %prid2wait );
-    print STDERR Data::Dumper->Dump(["_PC released wait $@",\%prid2wait]);
+#    print STDERR Data::Dumper->Dump( ["broadcasting",\%prid2wait] );
+    cond_broadcast( %prid2wait );
 
 } #_process_command
 
+sub _connect_db {
+    GServ::ObjIO::database( @DBCONNECT );   
+} #_connect_db
 
 1
 
@@ -217,11 +213,19 @@ GServ::AppServer - is a library used for creating prototype applications for the
 =head1 SYNOPSIS
 
     use GServ::AppServer;
+    use GServ::ObjIO::DB;
+    use GServ::AppServer;
     
+    my $persistance_engine = new GServ::ObjIO::DB(connection params);
+    $persistance_engine->init_gserv;
+
+    my $server = new GServ::AppServer( persistance => $persistance_engine );
+
+    # --- or ----
     my $server = new GServ::AppServer;
-    $server->init_server( database => 'database to use' ); 
-    $server->start_server( port => 8008, database => 'database to use' );
-    
+    $server->attach_persistance( $persistance_engine );
+
+    $server->start_server( port => 8008 );    
 
 =head1 DESCRIPTION
 
