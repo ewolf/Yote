@@ -11,6 +11,7 @@ use Data::Dumper;
 use DBI;
 
 my $DBH = DBI->connect( 'DBI:mysql:sg' );
+$DBH->{mysql_auto_reconnect} = 1;
 
 use constant { 
     DATA => 2,
@@ -207,6 +208,8 @@ sub fetch_deep {
 #
 sub fetch {
     my( $id ) = @_;
+    print STDERR Data::Dumper->Dump( [0] );
+    print STDERR Data::Dumper->Dump( [1,$DBH->errstr()] );
 
     my( $class ) = $DBH->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
     print STDERR Data::Dumper->Dump(["db __LINE__",$DBH->errstr()]) if $DBH->errstr();

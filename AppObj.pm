@@ -123,6 +123,7 @@ sub _create_token {
 }
 
 sub _login {
+    print STDERR Data::Dumper->Dump( ["IN LOGIN"] );
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
 	my $root = GServ::ObjProvider::fetch_root;

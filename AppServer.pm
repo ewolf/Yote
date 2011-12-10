@@ -36,12 +36,12 @@ sub new {
     my $class = ref( $pkg ) || $pkg;
     return bless {}, $class;
 }
-
+my( $db, $args );
 sub start_server {
     my( $self, @args ) = @_;
-    my $args = scalar(@args) == 1 ? $args[0] : { @args };
+    $args = scalar(@args) == 1 ? $args[0] : { @args };
     $args->{port} ||= 8008;
-    my $db = $args->{database} || 'sg';
+    $db = $args->{database} || 'sg';
 
 #    print STDERR Data::Dumper->Dump( ["Start TO Start"] );
     #make sure this thread has a valid database connectin
@@ -51,9 +51,6 @@ sub start_server {
     #   - one a multi forking server and the other an event loop.
 
     my $thread = threads->new( sub { $self->run( %$args ); } );
-#    print STDERR Data::Dumper->Dump( ["Threaded"] );
-#    $self->run( %$args );
-#    print STDERR Data::Dumper->Dump(['server running']);
 
     _poll_commands();
 
@@ -108,7 +105,7 @@ sub process_request {
         lock( %prid2wait );
         $prid2wait{$procid} = $wait;
     }
-    
+    print STDERR Data::Dumper->Dump(["locking comands"]);
     #
     # Queue up the command for processing in a separate thread.
     #

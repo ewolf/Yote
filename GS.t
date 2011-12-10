@@ -191,5 +191,6 @@ ok( $t->{t}, "logged in with token $t->{t}" );
 is( $root->process_command( { a => 'GServ::Hello', c => 'hello', t => $t->{t} } )->{r}, "hello there toot", "Hello app works with given token" );
 my $as = new GServ::AppServer;
 ok( $as, "GServ::AppServer compiles" );
-
 done_testing();
+
+__END__
