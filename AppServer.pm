@@ -105,7 +105,7 @@ sub process_request {
         lock( %prid2wait );
         $prid2wait{$procid} = $wait;
     }
-    print STDERR Data::Dumper->Dump(["locking comands"]);
+#    print STDERR Data::Dumper->Dump(["locking comands"]);
     #
     # Queue up the command for processing in a separate thread.
     #

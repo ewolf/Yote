@@ -171,7 +171,10 @@ sub stow_all {
     }
 } #stow_all
 
-sub stow {
+#
+# Returns data structure representing object. References are integers. Values start with 'v'.
+#
+sub raw_data {
     my( $obj ) = @_;
     my $class = ref( $obj );
     return unless $class;
@@ -182,29 +185,54 @@ sub stow {
             my $tied = tied @$obj;
             if( $tied ) {
                 my( $id, @rest ) = @$tied;
-                GServ::ObjIO::stow( $id,'ARRAY',\@rest );
+		return \@rest;
             } else {
                 die;
             }
-            clean( $id );
         }
         when('HASH') {
             my $tied = tied %$obj;
             if( $tied ) {
-                GServ::ObjIO::stow( $id,'HASH',$tied );
+                return $tied;
             } else {
                 die;
             }
+        }
+        when('GServ::Array') {
+	    my( $id, @rest ) = @$obj;
+	    return \@rest;
+        }
+        when('GServ::Hash') {
+	    return $obj;
+        }
+        default {
+	    return $obj->{DATA};
+        }
+    }
+} #raw_data
+
+sub stow {
+    my( $obj ) = @_;
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = get_id( $obj );
+    die unless $id;
+    my $data = raw_data( $obj );
+    given( $class ) {
+        when('ARRAY') {
+	    GServ::ObjIO::stow( $id,'ARRAY', $data );
+            clean( $id );
+        }
+        when('HASH') {
+	    GServ::ObjIO::stow( $id,'HASH',$data );
             clean( $id );
         }
         when('GServ::Array') {
             if( is_dirty( $id ) ) {
-                my( $id, @rest ) = @$obj;
-                GServ::ObjIO::stow( $id,'ARRAY',\@rest );
+                GServ::ObjIO::stow( $id,'ARRAY',$data );
                 clean( $id );
             }
-            my( $id, @rest ) = @$obj;
-            for my $child (@rest) {
+            for my $child (@$data) {
 		if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
 		    stow( $GServ::ObjProvider::DIRTY->{$child} );
 		}
@@ -212,10 +240,10 @@ sub stow {
         }
         when('GServ::Hash') {
             if( is_dirty( $id ) ) {
-                GServ::ObjIO::stow( $id, 'HASH', $obj );
+                GServ::ObjIO::stow( $id, 'HASH', $data );
             }
             clean( $id );
-            for my $child (values %$obj) {
+            for my $child (values %$data) {
 		if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
 		    stow( $GServ::ObjProvider::DIRTY->{$child} );
 		}
@@ -223,10 +251,10 @@ sub stow {
         }
         default {
             if( is_dirty( $id ) ) {
-                GServ::ObjIO::stow( $id, $class, $obj->{DATA} );
+                GServ::ObjIO::stow( $id, $class, $data );
                 clean( $id );
             }
-            for my $val (values %{$obj->{DATA}}) {
+            for my $val (values %$data) {
 		if( $val > 0 && $GServ::ObjProvider::DIRTY->{$val} ) {
 		    stow( $GServ::ObjProvider::DIRTY->{$val} );
 		}
