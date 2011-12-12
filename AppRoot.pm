@@ -1,4 +1,4 @@
-package GServ::AppObj;
+package GServ::AppRoot;
 
 use strict;
 
@@ -6,8 +6,21 @@ use GServ::Obj;
 
 use base 'GServ::Obj';
 
+sub init {
+    my $self = shift;
+    # account root is used to hold account specific data for this app.
+    $self->set_account_root( new GServ::Obj );
+} #init
+
 #
-# The AppObj is the root object. It forwards to the correct app root.
+# Returns the account root attached to this AppRoot for the given account.
+#
+sub get_account_root {
+
+} #get_account_root
+
+#
+# The AppRoot is the root object. It forwards to the correct app root.
 # The request object has the fields :
 #   a - class name of app to load. Blank for root.
 #   c - command which is a sub of the app
@@ -116,6 +129,7 @@ sub _create_account {
     return { err => "no handle given" };
 
 } #_create_account
+
 
 #
 # Create token and store with the account and return it.
@@ -248,7 +262,7 @@ __END__
 
 =head1 NAME
 
-GServ::AppObj - Application Server Base Objects
+GServ::AppRoot - Application Server Base Objects
 
 =head1 SYNOPSIS
 

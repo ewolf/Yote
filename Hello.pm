@@ -1,8 +1,10 @@
 package GServ::Hello;
 
-use GServ::AppObj;
+use strict;
 
-use base GServ::AppObj;
+use GServ::AppRoot;
+
+use base GServ::AppRoot;
 
 
 sub hello {

@@ -1,4 +1,4 @@
-package SE::StellarExpanse;
+package GServ::SE::StellarExpanse;
 
 #
 # Implementation attempt at the stellar expanse game.

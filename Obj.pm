@@ -20,8 +20,12 @@ sub new {
 
     $obj->{ID} ||= GServ::ObjProvider::get_id( $obj );
 
+    $obj->init;
+
     return $obj;
 } #new
+
+sub init {}
 
 sub save {
     my $self = shift;

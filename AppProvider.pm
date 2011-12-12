@@ -2,15 +2,15 @@ package GServ::AppProvider;
 
 use strict;
 
-use GServ::AppObj;
-use GServ::ObjProvider qw/fetch stow a_child_of_b/;
+use GServ::AppRoot;
+use GServ::ObjProvider qw/fetch/;
 
 use base 'GServ::ObjProvider';
 
 sub fetch_root {
     my $root = fetch( 1 );
     unless( $root ) {
-        $root = new GServ::AppObj;
+        $root = new GServ::AppRoot;
         $root->save;
     }
     return $root;
