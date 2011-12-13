@@ -4,7 +4,7 @@ use strict;
 
 use GServ::AppRoot;
 
-use base GServ::AppRoot;
+use base 'GServ::AppRoot';
 
 
 sub hello {

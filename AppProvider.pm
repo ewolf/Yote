@@ -3,7 +3,7 @@ package GServ::AppProvider;
 use strict;
 
 use GServ::AppRoot;
-use GServ::ObjProvider qw/fetch/;
+use GServ::ObjProvider qw/fetch a_child_of_b/;
 
 use base 'GServ::ObjProvider';
 

@@ -58,12 +58,14 @@ pass( "created test database" );
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
+my( $o_count ) = query_line( "SELECT count(*) FROM objects" );
+is( $o_count, 0, "number of objects before save root" );
 my $root = GServ::AppProvider::fetch_root;
 ok( $root->{ID} == 1, "Root has id of 1" );
 my( $o_count ) = query_line( "SELECT count(*) FROM objects" );
-is( $o_count, 1, "number of objects after save root" );
+is( $o_count, 2, "number of objects after save root" ); # which also makes an account root automiatcially";
 my( $f_count ) = query_line( "SELECT count(*) FROM field" );
-is( $f_count, 0, "number of fields after save root" );
+is( $f_count, 1, "number of fields after save root" ); #1 for
 
 
 #
@@ -80,7 +82,7 @@ $root->set_hash( { "KEY" => "VALUE" } );                # 2
 $root->save();
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
-BAIL_OUT("error saving") unless is( scalar(@$db_rows), 12, "Number of db rows saved to database" );
+BAIL_OUT("error saving") unless is( scalar(@$db_rows), 13, "Number of db rows saved to database" );
 my $root_clone = GServ::AppProvider::fetch_root;
 is_deeply( $root_clone, $root, "CLONE to ROOT");
 ok( $root_clone->{ID} == 1, "Reloaded Root has id of 1" );
