@@ -18,7 +18,7 @@ sub TIEARRAY {
     for my $item (@rest) {
         push( @$storage, $item );
     }
-    return $storage;    
+    return $storage;
 }
 
 sub FETCH {
@@ -90,7 +90,7 @@ sub SPLICE {
         }
     }
     splice @$self, $start, $length, @vals;
-    
+
 }
 
 1;

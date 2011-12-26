@@ -15,6 +15,8 @@ use JSON;
 use Data::Dumper;
 
 use GServ::AppProvider;
+use GServ::ObjIO;
+use CGI;
 
 use base qw(Net::Server::Fork);
 
@@ -27,7 +29,6 @@ share( %prid2wait );
 share( %prid2result );
 
 # find apps to install
-require GServ::Hello;
 
 our @DBCONNECT;
 
@@ -40,16 +41,14 @@ my( $db, $args );
 sub start_server {
     my( $self, @args ) = @_;
     $args = scalar(@args) == 1 ? $args[0] : { @args };
-    $args->{port} ||= 8008;
-    $db = $args->{database} || 'sg';
 
-#    print STDERR Data::Dumper->Dump( ["Start TO Start"] );
-    #make sure this thread has a valid database connectin
-    @DBCONNECT = ( "DBI:mysql:$db", $args->{uname}, $args->{password} );
+    $args->{port}      ||= 8008;
+    $args->{datastore} ||= 'GServ::MysqlIO';
+
+    GServ::ObjIO::init( %$args );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
-
     my $thread = threads->new( sub { $self->run( %$args ); } );
 
     _poll_commands();
@@ -62,14 +61,11 @@ sub start_server {
 #
 sub init_server {
     my( $self, @args ) = @_;
-    my $args = scalar(@args) == 1 ? $args[0] : { @args };
-    die "Must specify database in args to init_server" unless $args->{database};
-    
-    GServ::ObjIO::init_database( $args->{database} );
+    GServ::ObjIO::init_datastore( @args );
 } #init_server
 
 #
-# Called when a request is made. This does an initial parsing and 
+# Called when a request is made. This does an initial parsing and
 # sends a data structure to process_command.
 #
 # Commands are sent with a single HTTP request parameter : m for message.
@@ -81,23 +77,33 @@ sub init_server {
 #   * w - if true, waits for command to be processed before returning
 #
 #
-# This ads a command to the list of commands. If 
+# This ads a command to the list of commands. If
 #
 sub process_request {
     my $self = shift;
 
-    my $reqstr;
-    while(<STDIN>) {
-        $reqstr .= $_;
-        last if $_ =~ /^[\n\r]+$/s;
-    }
+    my $reqstr = <STDIN>;
+    my $params = {map { split(/\=/, $_ ) } split( /\&/, $reqstr )};
+    print STDERR Data::Dumper->Dump([$reqstr,$params]);
+
+#    while(<STDIN>) {
+#        $reqstr .= $_;
+#        last if $_ =~ /^[\n\r]+$/s;
+#    }
 #    print STDERR Data::Dumper->Dump( [$reqstr] );
-    my $parse_params = HTTP::Request::Params->new( { req => $reqstr } );
-    my $params       = $parse_params->params;
-    my $callback     = $params->{callback};
+#    my $parse_params = HTTP::Request::Params->new( { req => $reqstr } );
+#    my $params       = $parse_params->params;
+#    my $CGI = new CGI;
+#    my $params = $CGI->Vars;
+    
+    print STDERR Data::Dumper->Dump( [$params,'p1'] );
+#    my $callback     = $params->{callback};
     my $command = from_json( MIME::Base64::decode($params->{m}) );
-#    print STDERR Data::Dumper->Dump( [$params,$command] );
-    $command->{oi} = $self->{server}{peeraddr}; #origin ip
+    print STDERR Data::Dumper->Dump( [$command,\%ENV] );
+
+#    return unless $ENV{REMOTE_ADDR} eq '127.0.0.1';
+    $command->{oi} = $params->{oi};
+#    $command->{oi} = $self->{server}{peeraddr}; #origin ip
 
     my $wait = $command->{w};
     my $procid = $$;
@@ -124,7 +130,7 @@ sub process_request {
                 $wait = $prid2wait{$procid};
             }
             if( $wait ) {
-                lock( %prid2wait ); 
+                lock( %prid2wait );
                 cond_wait( %prid2wait );
                 last unless $prid2wait{$procid};
             } else {
@@ -135,13 +141,17 @@ sub process_request {
         {
 #            print STDERR Data::Dumper->Dump( ["loop locking prid2res",\%prid2result] );
             lock( %prid2result );
-            $result = $prid2result{$procid};	
+            $result = $prid2result{$procid};
             delete $prid2result{$procid};
         }
 #        print STDERR Data::Dumper->Dump(["after wait ($callback)",$command,$result]);
-        print STDOUT "$callback( '$result' )";
+#        print STDOUT "$callback( '$result' )";
+	print STDERR Data::Dumper->Dump(["Printing result",$result]);
+	print "$result";
     } else {
-        print STDOUT qq|$callback( '{"msg":"Added command"}' );|;
+	print "{\"msg\":\"Added command\"}";
+
+#        print STDOUT qq|$callback( '{"msg":"Added command"}' );|;
     }
 
 } #process_request
@@ -159,7 +169,7 @@ sub _poll_commands {
         }
         if( $cmd ) {
             _process_command( $cmd );
-        } 
+        }
         unless( @commands ) {
             lock( @commands );
             cond_wait( @commands );
@@ -172,9 +182,9 @@ sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
 #    print STDERR Data::Dumper->Dump( ["PC"] );
-    _connect_db();
+    _reconnect();
 #    print STDERR Data::Dumper->Dump( ["Reconnect"] );
-    
+
     my $root = GServ::AppProvider::fetch_root();
 #    print STDERR Data::Dumper->Dump( [$command,$root] );
     my $ret  = $root->process_command( $command );
@@ -195,9 +205,9 @@ sub _process_command {
 
 } #_process_command
 
-sub _connect_db {
-    GServ::ObjIO::database( @DBCONNECT );   
-} #_connect_db
+sub _reconnect {
+    GServ::ObjIO::reconnect();
+} #_reconnect
 
 1
 
@@ -212,7 +222,7 @@ GServ::AppServer - is a library used for creating prototype applications for the
     use GServ::AppServer;
     use GServ::ObjIO::DB;
     use GServ::AppServer;
-    
+
     my $persistance_engine = new GServ::ObjIO::DB(connection params);
     $persistance_engine->init_gserv;
 
@@ -222,7 +232,7 @@ GServ::AppServer - is a library used for creating prototype applications for the
     my $server = new GServ::AppServer;
     $server->attach_persistance( $persistance_engine );
 
-    $server->start_server( port => 8008 );    
+    $server->start_server( port => 8008 );
 
 =head1 DESCRIPTION
 

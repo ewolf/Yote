@@ -16,15 +16,27 @@ sub init {
 # Returns the account root attached to this AppRoot for the given account.
 #
 sub get_account_root {
+    my( $self, $acct ) = @_;
+
+    my $acct_roots = $self->get_account_roots({});
+    my $root = $acct_roots->{$acct->{ID}};
+    unless( $root ) {
+        $root = new GServ::Obj;
+    }
+    return $root;
 
 } #get_account_root
 
 #
+# Process_command is only called on the master root, which will route the command to the appropriate root.
+#
 # The AppRoot is the root object. It forwards to the correct app root.
 # The request object has the fields :
-#   a - class name of app to load. Blank for root.
-#   c - command which is a sub of the app
-#   d - argument list
+#
+#   id - id of object to run method against
+#   a - app that the object is for.
+#   c - command or method to run
+#   d - argument data
 #   t - token for being logged in
 #
 # either c or i must be given
@@ -32,19 +44,11 @@ sub process_command {
     my( $root, $cmd ) = @_;
 #    print STDERR Data::Dumper->Dump( ["PC",$root,$cmd] );
 
-    my $appstr = $cmd->{a};
-    my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
-    unless( $app ) {
-	eval( "use $appstr" );
-        my $apps = $root->get_apps({});
-        $app = $appstr->new;
-        $apps->{$appstr} = $app;
-        $app->save;
-    }
     my $command = $cmd->{c};
+
     #
-    # this will not process private (beginning with _) commands, 
-    # and will execute the command if its a login request, 
+    # this will not process private (beginning with _) commands,
+    # and will execute the command if its a login request,
     # new account request or has a valid token.
     #
     my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
@@ -55,16 +59,38 @@ sub process_command {
     elsif( $command eq 'login' ) {
         return _login( $cmd->{d}, $cmd->{oi} );
     }
-    elsif( $command eq 'stow' ) {
-	return _stow( $app, $cmd->{d}, $acct );
+    else {
+        my $appstr = $cmd->{a};
+        my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
+
+        #generate the app if not present.
+        unless( $app ) {
+            eval( "use $appstr" );
+            if( $@ =~ /Can.t locate/ ) {
+                return { err => "App '$a' not found" };
+            }
+            my $apps = $root->get_apps({});
+            $app = $appstr->new;
+            $apps->{$appstr} = $app;
+            $app->save;
+        }
+
+        if( $command eq 'fetch_root' ) {
+            return _fetch( $app, { id => $app->{ID} }, $acct );
+        }
+        elsif( $command eq 'fetch' ) {
+            return _fetch( $app, $cmd, $acct );
+        }
+        elsif( index( $command, '_' ) != 0 && $acct ) {
+            my $obj = GServ::ObjProvider::fetch( $cmd->{id} );
+            my $ret = $app->$command( $cmd->{d}, $acct );
+            if( ref( $ret ) eq 'HASH' ) {
+                return $ret;
+            }
+            return { err => 'Command did not return' };
+        }
+        return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
-    elsif( $command eq 'fetch' ) {
-	return _fetch( $app, $cmd->{d}, $acct );
-    }
-    elsif( index( $command, '_' ) != 0 && $acct ) {
-        return $app->$command( $cmd->{d}, $acct );
-    }
-    return { err => "'$cmd->{c}' not found for app '$appstr'" };
 } #process_command
 
 sub _valid_token {
@@ -108,13 +134,13 @@ sub _create_account {
         $newacct->set_handle( $handle );
         $newacct->set_email( $email );
         $newacct->set_created_ip( $ip );
-        
+
         # todo
         # $newacct->set_time_created();
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );
-        
+
         $newacct->save();
 
         my $accts = $root->get_handles({});
@@ -142,24 +168,22 @@ sub _create_token {
 }
 
 sub _login {
-#    print STDERR Data::Dumper->Dump( ["IN LOGIN"] );
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
-	my $root = GServ::ObjProvider::fetch_root;
-	my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
-#	print STDERR Data::Dumper->Dump( ["Done Login",$data,$ip,$acct] );
-	if( $acct && ($acct->get_password() eq $data->{p}) ) {
-	    return { msg => "logged in", t => _create_token( $acct, $ip ) };
-	}
+        my $root = GServ::ObjProvider::fetch_root;
+        my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
+        if( $acct && ($acct->get_password() eq $data->{p}) ) {
+            return { msg => "logged in", t => _create_token( $acct, $ip ) };
+        }
     }
     return { err => "incorrect login" };
 } #_login
 
 #
-# Returns if the fetch is allowed to proceed. Meant to override. Default is true. 
+# Returns if the fetch is allowed to proceed. Meant to override. Default is true.
 # Takes two args : object to be fetched and data of request.
 #
-sub fetch {
+sub fetch_permitted {
     my( $obj, $data ) = @_;
     return 1;
 }
@@ -169,23 +193,32 @@ sub fetch {
 # Returns if the stow is allowed to proceed. Meant to override. Default is true.
 # Takes two args : object to be stowed and data of request.
 #
-sub stow {
+sub stow_permitted {
     my( $obj, $data ) = @_;
     return 1;
 }
 
-
 sub _fetch {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
-	my $obj = GServ::ObjProvider::fetch( $data->{id} );
-	if( $obj && 
-	    GServ::AppProvider::a_child_of_b( $obj, $app ) &&
-	    $app->fetch( $obj, $data ) )
-	{
-	    return { r => GServ::ObjProvider::raw_data( $obj ) };
-	    
-	}
+        my $obj = GServ::ObjProvider::fetch( $data->{id} );
+        if( $obj &&
+            GServ::AppProvider::a_child_of_b( $obj, $app ) &&
+            $app->fetch_permitted( $obj, $data ) )
+        {
+            my $ref = ref( $obj );
+            if( $ref ne 'ARRAY' && $ref ne 'HASH' && $ref ne 'GServ::Hash' && $ref ne 'GServ::Array' ) {
+                no strict 'refs';
+                my( @methods );
+                eval( qq<\@methods = grep { defined \&${ref}::$_\} keys \%${ref}\::;> );
+                use strict 'refs';
+
+                return { d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
+            }
+            else {
+                return { d => GServ::ObjProvider::raw_data( $obj ) };
+            }
+        }
     }
     return { err => "Unable to fetch $data->{ID}" };
 } #_fetch
@@ -193,65 +226,65 @@ sub _fetch {
 sub _stow {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
-	my $obj = GServ::ObjProvider::fetch( $data->{id} );
-	if( $obj && 
-	    GServ::AppProvider::a_child_of_b( $obj, $app ) &&
-	    $app->stow( $obj, $data ) )
-	{
-	    #verify all incoming objects are also stowable
-	    my $check = ref( $data->{v} ) eq 'ARRAY' ? @{$data->{v}}: [map { $data->{v}{$_} } grep { $_ ne '__KEY__' } %{$data->{v}}];	   
-	    for my $item (grep { $_ > 0 } @$check) { #check all ids
-		my $child = GServ::ObjProvider::fetch( $item );
-		unless( $child &&
-			GServ::AppProvider::a_child_of_b( $child, $app ) &&
-			$app->stow( $child, $data ) )
-		{
-		    return { err => "Unable to update $data->{ID}" };
-		}
-	    }
+        my $obj = GServ::ObjProvider::fetch( $data->{id} );
+        if( $obj &&
+            GServ::AppProvider::a_child_of_b( $obj, $app ) &&
+            $app->stow( $obj, $data ) )
+        {
+            #verify all incoming objects are also stowable
+            my $check = ref( $data->{v} ) eq 'ARRAY' ? @{$data->{v}}: [map { $data->{v}{$_} } grep { $_ ne '__KEY__' } %{$data->{v}}];
+            for my $item (grep { $_ > 0 } @$check) { #check all ids
+                my $child = GServ::ObjProvider::fetch( $item );
+                unless( $child &&
+                        GServ::AppProvider::a_child_of_b( $child, $app ) &&
+                        $app->stow( $child, $data ) )
+                {
+                    return { err => "Unable to update $data->{ID}" };
+                }
+            }
 
-	    #adjust the target object
-	    if( ref( $obj ) eq 'ARRAY' ) {
-		if( ref( $data->{v} ) eq 'ARRAY' ) {		    
-		    my $tied = tied @$obj;
-		    splice( @$tied, 1, $#$tied, @{$data->{v}} );
-		} else {
-		    return { err => "Missing data to update $data->{ID}" };
-		}
-	    }
-	    elsif( ref( $obj ) eq 'HASH' ) {		
-		if( ref( $data->{v} ) eq 'HASH' ) {
-		    my $tied = tied %$obj;
-		    for my $k (%{$data->{v}}) {
-			$tied->{$k} = $data->{v}{$k};
-		    }
-		    for my $k (%$tied) {
-			next if $k eq '__ID__';
-			unless( defined( $data->{v}{$k} ) ) {
-			    delete $tied->{$k};
-			}
-		    }
-		} else {
-		    return { err => "Missing data to update $data->{ID}" };
-		}		
-	    } 
-	    else { #object
-		if( ref( $data->{v} ) eq 'HASH' ) {
-		    for my $k (%{$data->{v}}) {
-			$obj->{DATA}{$k} = $data->{v}{$k};
-		    }
-		    for my $k (%{$obj->{DATA}}) {
-			unless( defined( $data->{v}{$k} ) ) {
-			    delete $obj->{DATA}{$k};
-			}
-		    }
-		} else {
-		    return { err => "Missing data to update $data->{ID}" };
-		}		
-	    }
-	    GServ::ObjProvider::stow( $obj );
-	    return { r => GServ::ObjProvider::raw_data( $obj ), msg => 'updated' };
-	}
+            #adjust the target object
+            if( ref( $obj ) eq 'ARRAY' ) {
+                if( ref( $data->{v} ) eq 'ARRAY' ) {
+                    my $tied = tied @$obj;
+                    splice( @$tied, 1, $#$tied, @{$data->{v}} );
+                } else {
+                    return { err => "Missing data to update $data->{ID}" };
+                }
+            }
+            elsif( ref( $obj ) eq 'HASH' ) {
+                if( ref( $data->{v} ) eq 'HASH' ) {
+                    my $tied = tied %$obj;
+                    for my $k (%{$data->{v}}) {
+                        $tied->{$k} = $data->{v}{$k};
+                    }
+                    for my $k (%$tied) {
+                        next if $k eq '__ID__';
+                        unless( defined( $data->{v}{$k} ) ) {
+                            delete $tied->{$k};
+                        }
+                    }
+                } else {
+                    return { err => "Missing data to update $data->{ID}" };
+                }
+            }
+            else { #object
+                if( ref( $data->{v} ) eq 'HASH' ) {
+                    for my $k (%{$data->{v}}) {
+                        $obj->{DATA}{$k} = $data->{v}{$k};
+                    }
+                    for my $k (%{$obj->{DATA}}) {
+                        unless( defined( $data->{v}{$k} ) ) {
+                            delete $obj->{DATA}{$k};
+                        }
+                    }
+                } else {
+                    return { err => "Missing data to update $data->{ID}" };
+                }
+            }
+            GServ::ObjProvider::stow( $obj );
+            return { o => GServ::ObjProvider::raw_data( $obj ), msg => 'updated' };
+        }
     }
     return { err => "Unable to update $data->{ID}" };
 } #_stow

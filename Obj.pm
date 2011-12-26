@@ -25,6 +25,12 @@ sub new {
     return $obj;
 } #new
 
+# returns true if the object passsed in is the same as this one.
+sub is {
+    my( $self, $obj ) = @_;
+    return ref( $obj ) && $obj->isa( 'GServ::Obj' ) && $obj->{ID} == $self->{ID};
+}
+
 sub init {}
 
 sub save {
@@ -35,7 +41,7 @@ sub save {
 sub AUTOLOAD {
     my( $s, $arg ) = @_;
     my $func = our $AUTOLOAD;
-    
+
     if( $func =~/:add_to_(.*)/ ) {
         my( $fld ) = $1;
         my $get = "get_$fld";
@@ -46,7 +52,7 @@ sub AUTOLOAD {
             push( @$arry, @vals );
         };
         goto &$AUTOLOAD;
-        
+
     }
     elsif( $func =~ /:remove_from_(.*)/ ) {
         my $fld = $1;
@@ -67,8 +73,8 @@ sub AUTOLOAD {
             }
         };
         goto &$AUTOLOAD;
-        
-    } 
+
+    }
     elsif ( $func =~ /:set_(.*)/ ) {
         my $fld = $1;
         no strict 'refs';

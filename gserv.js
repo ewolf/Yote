@@ -1,4 +1,4 @@
-jQuery.gServ = {
+$.gServ = {
     make_app:function(target_app,target_url){
         return {
             app:target_app,
@@ -11,8 +11,8 @@ jQuery.gServ = {
             login:function( un, pw ) {
                 var app = this;
                 this.message( 'login', {
-                        h:un,
-                        p:pw
+                    h:un,
+                    p:pw
                     },
                     true, 
                     false,
@@ -93,8 +93,7 @@ jQuery.gServ = {
 	    },
 
 	    /* general functions */
-            message:function( cmd, data, wait, async, callback ) {
-
+            message:function( cmd, send_data, wait, async, callback ) {
                 var app = this;
                 async = async == true ? 1 : 0;
 		wait = wait == true ? 1 : 0;
@@ -103,35 +102,30 @@ jQuery.gServ = {
                     enabled = $(':enabled');
                     $.each( enabled, function(idx,val) { val.disabled = true } );
                 }
-
-                $.jsonp({
-                        url:this.url,
-                        callbackParameter:'callback',
-                        data:{ m:$.base64.encode(JSON.stringify( {
-                                        a:this.app,
-                                        c:cmd,
-                                        d:data,
-                                        t:this.token,
-                                        w:wait
-                                    } ) )
-                        }, 
-                        error:function(xOptions, textStatus) {
-                            app.error();
-                            if( async == 0 ) {
-                                $.each( enabled, function(idx,val) { val.disabled = false } );
-                            }
-                        },
-                        dataFilter:function(json) {
-                            return JSON.parse(json);
-                        },
-                        success:function(xOptions, textStatus) {
-                            callback(xOptions);
-                            if( async == 0 ) {
-                                $.each( enabled, function(idx,val) { val.disabled = false } );
-                            }
-                        }
-                    });
-            }
+		alert(1);
+		var resp;
+		$.ajax( {
+		    async:false,
+		    data:{
+			m:$.base64.encode(JSON.stringify( {
+                            a:app.target_app,
+                            c:cmd,
+                            d:send_data,
+                            t:app.token,
+                            w:wait
+			} ) ) },
+		    error:function(a,b,c) { alert('connection error ' ) },
+		    success:function( data ) {
+			resp = data;
+		    },
+		    type:'POST',
+		    url:app.url
+		} );
+		alert(2);
+                if( async == 0 ) {
+                    $.each( enabled, function(idx,val) { val.disabled = false } );
+                }
+            } //message
         };
     }
 };

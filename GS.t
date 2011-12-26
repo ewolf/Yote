@@ -5,6 +5,7 @@ use strict;
 use Carp;
 
 use GServ::ObjIO;
+use GServ::MysqlIO;
 use GServ::AppProvider;
 use GServ::AppServer;
 
@@ -13,8 +14,8 @@ use Test::More;
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
-BEGIN { 
-    for my $class (qw/ObjIO Obj AppProvider Hash/) {
+BEGIN {
+    for my $class (qw/MysqlIO ObjIO Obj AppProvider Hash/) {
         use_ok( "GServ::$class" ) || BAIL_OUT( "Unable to load GServ::class" );
     }
 }
@@ -26,7 +27,11 @@ BEGIN {
 #
 # Create testing database, populate it with tables.
 #
-my $db = GServ::ObjIO::database();
+GServ::ObjIO::init(
+    datastore      => 'GServ::MysqlIO',
+    database       => 'sg',
+    );
+my $db = $GServ::ObjIO::SINGLETON->database();
 
 sub query_line {
     my( $query, @args ) = @_;
@@ -37,7 +42,9 @@ $db->do( "CREATE DATABASE IF NOT EXISTS sg_test" );
 if( $db->errstr() ) {
     BAIL_OUT( $db->errstr() );
 }
+
 $db->do( "use sg_test" );
+
 if( $db->errstr() ) {
     BAIL_OUT( $db->errstr() );
 }
@@ -49,12 +56,11 @@ for my $table (qw/objects field big_text/) {
 }
 pass( "created test database" );
 
-
 # -----------------------------------------------------
 #               start of gserv tests
 # -----------------------------------------------------
 
-                                         
+
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
@@ -67,7 +73,6 @@ is( $o_count, 2, "number of objects after save root" ); # which also makes an ac
 my( $f_count ) = query_line( "SELECT count(*) FROM field" );
 is( $f_count, 1, "number of fields after save root" ); #1 for
 
-
 #
 # Save key value fields for simple scalars, arrays and hashes.
 #                                                       # rows in fields total to 12
@@ -75,13 +80,14 @@ $root->get_default( "DEFAULT" );                        # 1
 $root->set_first( "FRIST" );                            # 1
 $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
 $root->set_reallybig( "BIG" x 1000 );                   # 1
-$root->set_gross( 12 * 12 );                            # 1 
+$root->set_gross( 12 * 12 );                            # 1
 $root->set_array( ["THIS IS AN ARRAY"] );               # 2
 $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
 $root->set_hash( { "KEY" => "VALUE" } );                # 2
 $root->save();
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
+
 BAIL_OUT("error saving") unless is( scalar(@$db_rows), 13, "Number of db rows saved to database" );
 my $root_clone = GServ::AppProvider::fetch_root;
 is_deeply( $root_clone, $root, "CLONE to ROOT");
@@ -96,7 +102,7 @@ is_deeply( $root_clone->get_default_hash(), {"DEFKEY"=>"DEFVALUE"}, "Simple defa
 my( %simple_hash ) = %{$root_clone->get_hash()};
 is_deeply( \%simple_hash, {"KEY"=>"VALUE"}, "Simple hash" );
 
-                                         
+
 #                                      #
 # ----------- deep container tests ----#
 #                                      #

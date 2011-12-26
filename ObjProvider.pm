@@ -21,9 +21,9 @@ our @EXPORT_OK = qw(fetch stow a_child_of_b);
 $GServ::ObjProvider::DIRTY = {};
 $GServ::ObjProvider::WEAK_REFS = {};
 
-# --------------------  
+# --------------------
 #   PACKAGE METHODS
-# -------------------- 
+# --------------------
 
 sub fetch_root {
     my $root = fetch( 1 );
@@ -49,7 +49,7 @@ sub xpath_count {
 sub fetch {
     my( $id ) = @_;
 
-    # 
+    #
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $GServ::ObjProvider::DIRTY->{$id} || $GServ::ObjProvider::WEAK_REFS->{$id};
@@ -64,20 +64,21 @@ sub fetch {
             when('ARRAY') {
                 my( @arry );
                 tie @arry, 'GServ::Array', $id, @$data;
-		store_weak( $id, \@arry );
+                store_weak( $id, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
                 tie %hash, 'GServ::Hash', __ID__ => $id, map { $_ => $data->{$_} } keys %$data;
-		store_weak( $id, \%hash );
+                store_weak( $id, \%hash );
                 return \%hash;
             }
             default {
+                eval("require $class");
                 my $obj = $class->new( $id );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id;
-		store_weak( $id, $obj );
+                store_weak( $id, $obj );
                 return $obj;
             }
         }
@@ -103,20 +104,20 @@ sub get_id {
             tie @$ref, 'GServ::Array', $id;
             push( @$ref, @data );
             dirty( $ref, $id );
-	    store_weak( $id, $ref );
+            store_weak( $id, $ref );
             return $id;
         }
         when('GServ::Hash') {
-	    my $wref = $ref;
+            my $wref = $ref;
             return $ref->{__ID__};
         }
         when('HASH') {
             my $tied = tied %$ref;
             if( $tied ) {
-		my $id = $tied->{__ID__} || GServ::ObjIO::get_id( "HASH" );
-		store_weak( $id, $ref );
+                my $id = $tied->{__ID__} || GServ::ObjIO::get_id( "HASH" );
+                store_weak( $id, $ref );
                 return $id;
-            } 
+            }
             my $id = GServ::ObjIO::get_id( $class );
             my( %vals ) = %$ref;
             tie %$ref, 'GServ::Hash', __ID__ => $id;
@@ -124,12 +125,12 @@ sub get_id {
                 $ref->{$key} = $vals{$key};
             }
             dirty( $ref, $id );
-	    store_weak( $id, $ref );
+            store_weak( $id, $ref );
             return $id;
         }
         default {
             $ref->{ID} ||= GServ::ObjIO::get_id( $class );
-	    store_weak( $ref->{ID}, $ref );
+            store_weak( $ref->{ID}, $ref );
             return $ref->{ID};
         }
     }
@@ -153,12 +154,12 @@ sub a_child_of_b {
         when(/^(HASH|GServ::Hash)$/) {
             for my $obj (values %$b) {
                 return 1 if( a_child_of_b( $a, $obj ) );
-            }            
+            }
         }
         default {
             for my $obj (values %{$b->{DATA}}) {
                 return 1 if( a_child_of_b( $a, xform_out( $obj ) ) );
-            }                        
+            }
         }
     }
     return 0;
@@ -185,7 +186,7 @@ sub raw_data {
             my $tied = tied @$obj;
             if( $tied ) {
                 my( $id, @rest ) = @$tied;
-		return \@rest;
+                return \@rest;
             } else {
                 die;
             }
@@ -199,19 +200,20 @@ sub raw_data {
             }
         }
         when('GServ::Array') {
-	    my( $id, @rest ) = @$obj;
-	    return \@rest;
+            my( $id, @rest ) = @$obj;
+            return \@rest;
         }
         when('GServ::Hash') {
-	    return $obj;
+            return $obj;
         }
         default {
-	    return $obj->{DATA};
+            return $obj->{DATA};
         }
     }
 } #raw_data
 
 sub stow {
+
     my( $obj ) = @_;
     my $class = ref( $obj );
     return unless $class;
@@ -220,11 +222,11 @@ sub stow {
     my $data = raw_data( $obj );
     given( $class ) {
         when('ARRAY') {
-	    GServ::ObjIO::stow( $id,'ARRAY', $data );
+            GServ::ObjIO::stow( $id,'ARRAY', $data );
             clean( $id );
         }
         when('HASH') {
-	    GServ::ObjIO::stow( $id,'HASH',$data );
+            GServ::ObjIO::stow( $id,'HASH',$data );
             clean( $id );
         }
         when('GServ::Array') {
@@ -233,9 +235,9 @@ sub stow {
                 clean( $id );
             }
             for my $child (@$data) {
-		if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
-		    stow( $GServ::ObjProvider::DIRTY->{$child} );
-		}
+                if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
+                    stow( $GServ::ObjProvider::DIRTY->{$child} );
+                }
             }
         }
         when('GServ::Hash') {
@@ -244,9 +246,9 @@ sub stow {
             }
             clean( $id );
             for my $child (values %$data) {
-		if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
-		    stow( $GServ::ObjProvider::DIRTY->{$child} );
-		}
+                if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
+                    stow( $GServ::ObjProvider::DIRTY->{$child} );
+                }
             }
         }
         default {
@@ -255,13 +257,13 @@ sub stow {
                 clean( $id );
             }
             for my $val (values %$data) {
-		if( $val > 0 && $GServ::ObjProvider::DIRTY->{$val} ) {
-		    stow( $GServ::ObjProvider::DIRTY->{$val} );
-		}
+                if( $val > 0 && $GServ::ObjProvider::DIRTY->{$val} ) {
+                    stow( $GServ::ObjProvider::DIRTY->{$val} );
+                }
             }
         }
     } #given
-    
+
 } #stow
 
 sub xform_out {
