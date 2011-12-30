@@ -20,9 +20,6 @@ sub create_game {
     $games->{$id} = $game;
 
     my $acct_root = $self->get_account_root( $acct );
-
-    my $game = new StellarExpanse();
-
     $acct_root->add_to_my_games( $game );
 
     return { msg => 'created game' };
@@ -34,12 +31,12 @@ sub submit_orders {
     my $game = fetch( $data->{game} );
     my $player = $game->get_player( $acct );
     if( $player ) {
-	if( $data->{turn} == $game->get_turn() ) {
-	    $player->get_orders([])->[$data->{turn}] = $data->{orders};
-	    return { msg => "Submitted orders for turn ".$data->{turn} };
-	} else {
-	    return { err => "Turn already over for these orders" };
-	}
+        if( $data->{turn} == $game->get_turn() ) {
+            $player->get_orders([])->[$data->{turn}] = $data->{orders};
+            return { msg => "Submitted orders for turn ".$data->{turn} };
+        } else {
+            return { err => "Turn already over for these orders" };
+        }
     }
     return { err => "Not part of this game" };
 } #submit_orders
@@ -49,8 +46,8 @@ sub get_orders {
     my $game = fetch( $data->{game} );
     my $player = $game->get_player( $acct );
     if( $player ) {
-	my $orders = $player->get_orders([])->[$game->get_turn()];
-	return { d => $orders, msg => "got orders for turn ".$game->get_turn() };
+        my $orders = $player->get_orders([])->[$game->get_turn()];
+        return { d => $orders, msg => "got orders for turn ".$game->get_turn() };
     }
     return { err => "Not part of this game" };
 } #get_orders
@@ -60,14 +57,14 @@ sub mark_as_ready {
     my $game = fetch( $data->{game} );    
     my $player = $game->get_player( $acct );
     if( $player ) {
-	if( $game->get_turn() > $data->{turn} ) {
-	    return { err => "Turn $data->{turn} already over" };
-	}
-	$player->get_ready([])->[$game->get_turn()] = $data->{ready};
-	if( $game->is_ready() ) {
-	    $game->take_turn();
-	}
-	return { msg => "marked as".($data->{ready}?" ready ":" unready ")." for turn ".$game->get_turn() };
+        if( $game->get_turn() > $data->{turn} ) {
+            return { err => "Turn $data->{turn} already over" };
+        }
+        $player->get_ready([])->[$game->get_turn()] = $data->{ready};
+        if( $game->is_ready() ) {
+            $game->take_turn();
+        }
+        return { msg => "marked as".($data->{ready}?" ready ":" unready ")." for turn ".$game->get_turn() };
     }
     return { err => "Not part of this game" };
     
@@ -77,7 +74,7 @@ sub join_game {
     my( $self, $data, $acct ) = @_;
     my $game = fetch( $data->{game} );
     if( $game ) {
-	return $game->register_player( $acct );
+        return $game->register_player( $acct );
     }
     return { err => "game not found" };
 } #join_game
@@ -89,16 +86,16 @@ sub get_games {
     
     # filter to the games that are wanted
     if( $data->{mine} ) {
-	$games = [grep { $acct->is( $_->get_created_by() ) } @$games];
+        $games = [grep { $acct->is( $_->get_created_by() ) } @$games];
     }
     if( $data->{joined} ) {
-	$games = [grep { $_->get_player( $acct ) } @$games];
+        $games = [grep { $_->get_player( $acct ) } @$games];
     }
     if( $data->{active} ) {
-	$games = [grep { $_->get_active() } @$games];
+        $games = [grep { $_->get_active() } @$games];
     }
     if( $data->{pending} ) {
-	$games = [grep { $_->get_active() == 0 } @$games];
+        $games = [grep { $_->get_active() == 0 } @$games];
     }
     return { msg => 'returning games', d => [map {[$_->{ID},$_->values]} @$games] };
 } #get_games
@@ -108,7 +105,16 @@ sub get_games {
 __END__
 
 
-qq~
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut
+
 Here is where we define the interface that the StellarExpanse UI uses
 
 
@@ -118,5 +124,3 @@ Here is where we define the interface that the StellarExpanse UI uses
 * mark_as_ready( game, turn, acct )
 * join_game( data, acct )
 * get_games( data, acct )
-
-~

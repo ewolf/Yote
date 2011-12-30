@@ -1,0 +1,20 @@
+<html><head><title>Hello World</title>
+<script src="./js/jquery-latest.js"></script>
+<script src="./js/jquery.dumper.js"></script>
+<script src="./js/jquery.base64.min.js"></script>
+<script src="./js/json2.js"></script>
+<script src="./js/gserv.js"></script>
+<script>
+  $().ready(function(){ 
+      $.gServ.init("http://127.0.0.1/cgi-bin/gserv.cgi");
+      var hello_app = $.gServ.get_app('GServ::Hello');
+
+      $('#button').click( function() {
+          var result = hello_app.hello({ name:$('#txt').val() } );
+          alert( result );
+      } );
+  });
+</script></head>
+<body><h1>Hello World</h1>
+<input type=text id=txt><BR><button type=button id=button>Say Hi</button>
+</body></html>

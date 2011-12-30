@@ -1,176 +1,176 @@
 <html>
   <head>
-<title>Stellar Expanse</title>
+    <title>Stellar Expanse</title>
 
-<script src="./jquery-latest.js"></script>
-<script src="./jquery.dumper.js"></script>
-<script src="./jquery.base64.min.js"></script>
-<script src="./json2.js"></script>
-<script src="./gserv.js?x=1.1"></script>
-<script src="./jquery.jsonp-2.1.4.min.js"></script>
-<style>
+    <script src="./js/jquery-latest.js"></script>
+    <script src="./js/jquery.dumper.js"></script>
+    <script src="./js/jquery.base64.min.js"></script>
+    <script src="./js/json2.js"></script>
+    <script src="./js/gserv.js?x=1.1"></script>
+    <script src="./js/jquery.jsonp-2.1.4.min.js"></script>
+    <style>
 
-div#login {
-  border:1px solid black;
-  background-color:lightgray;
-  width:400px;
-  height:100px;
-}
-</style>
+      div#login {
+      border:1px solid black;
+      background-color:lightgray;
+      width:400px;
+      height:100px;
+      }
+    </style>
 
-<script>
-$().ready(function(){ 
-    $('div#logged_in').hide();
-    $('div#register').hide();
-    $('a#logout').click( function() {
+    <script>
+    $().ready(function(){ 
+        $('div#logged_in').hide();
+        $('div#register').hide();
+        $('a#logout').click( function() {
             $('div#register').hide();
             $('div#logged_in').hide();
             $('div#login').show();
         } );
-    $('a#register').click( function() {
+        $('a#register').click( function() {
             $('div#register').show();
             $('div#logged_in').hide();
             $('div#login').hide();
         });
-    var a = $.gServ.make_app("GServ::SE::SEApp","http://127.0.0.1/cgi-bin/gserv.cgi");
+        var a = $.gServ.make_app("GServ::SE::SEApp","http://127.0.0.1/cgi-bin/gserv.cgi");
 
-    a.login_pass = function(data,un) {
-        $("span#lname").html(un);
-        $("#logged_in").css( 'display', 'block' );
-        $("div#login").css( 'display','none' );
-        $('.login#pw').val('');
-    };
-    a.login_fail = function(data) {
-        $('#login > #pw').val('');
-        alert( 'local login fail :' + data.err );
-    };
+        a.login_pass = function(data,un) {
+            $("span#lname").html(un);
+            $("#logged_in").css( 'display', 'block' );
+            $("div#login").css( 'display','none' );
+            $('.login#pw').val('');
+            alert('logged in');
+        };
+        a.login_fail = function(data) {
+            $('#login > #pw').val('');
+            alert( 'local login fail :' + data.err );
+        };
 
-    a.create_account_pass = function(data,un) {
-        $("span#lname").html(un);
-        $("#logged_in").show();
-        $("div#login").hide();
-        $("div#register").hide();
-        $('.login#pw').val('');
-    };
-    a.create_account_fail = function(data) {
-        $('#login > #pw').val('');
-        alert( 'local create account fail :' + data.err );
-    };
+        a.create_account_pass = function(data,un) {
+            $("span#lname").html(un);
+            $("#logged_in").show();
+            $("div#login").hide();
+            $("div#register").hide();
+            $('.login#pw').val('');
+        };
+        a.create_account_fail = function(data) {
+            $('#login > #pw').val('');
+            alert( 'local create account fail :' + data.err );
+        };
 
 
-    //login button
+        //login button
 
-    $('button#login').click( function() { 
-        a.login( $(".login#name").val(), $(".login#pw").val() );
-	a.get_games({});
-    } );
-    $('.login#pw,.login#name').keypress( function(e) { 
-        if(e.which == 13 ) {
+        $('button#login').click( function() { 
             a.login( $(".login#name").val(), $(".login#pw").val() );
-	    a.get_games({});
-        }
-    } );
-    $('button#register').click( function() { 
-        a.create_account( $(".register#name").val(), 
-                          $(".register#pw").val(), 
-                          $(".register#email").val() );
-    } );
-    $('.register#pw,.register#name,.register#email').keypress( function(e) { 
+            a.get_games({});
+        } );
+        $('.login#pw,.login#name').keypress( function(e) { 
+            if(e.which == 13 ) {
+                a.login( $(".login#name").val(), $(".login#pw").val() );
+                a.get_games({});
+            }
+        } );
+        $('button#register').click( function() { 
+            a.create_account( $(".register#name").val(), 
+                              $(".register#pw").val(), 
+                              $(".register#email").val() );
+        } );
+        $('.register#pw,.register#name,.register#email').keypress( function(e) { 
             if(e.which == 13 ) {
                 a.create_account( $(".register#name").val(), 
                                   $(".register#pw").val(), 
                                   $(".register#email").val() );
             }
+        } );
+        
+        a.register_command( {
+            command:'create_game',
+            succeed:function(data) { alert(data.msg); },
+            fail:function(data) { alert( data.err ); }
+        } );
+        a.register_command( {
+            command:'submit_orders',
+            succeed:function(data) { alert(data.msg); },
+            fail:function(data) { alert( data.err ); }
+        } );
+        a.register_command( {
+            command:'get_orders',
+            succeed:function(data) { alert(data.msg); },
+            fail:function(data) { alert( data.err ); }
+        } );
+        a.register_command( {
+            command:'mark_as_ready',
+            succeed:function(data) { alert(data.msg); },
+            fail:function(data) { alert( data.err ); }
+        } );
+        a.register_command( {
+            command:'join_game',
+            succeed:function(data) { alert(data.msg); },
+            fail:function(data) { alert( data.err ); }
+        } );
+        a.register_command( {
+            command:'get_games',
+            succeed:function(data) { 
+                $('div#available_games').empty();
+                if( data.d.length > 0 ) {
+                    var ul = $('div#available_games').append('<ul/>');
+                    for( var i=0; i < data.d.length; ++i ) {
+                        var li = ul.append('<li/>').append('<a/>').attr('href','#');
+                        li.append( data.d[i][1].name );
+                        li.click( function() {
+                            a.join_game( {game:data.d[i][0]} );
+                        } );
+                    }
+                } else {
+                    $('div#available_games').append("No Available Games");
+                }
+            },
+            fail:function(data) { alert( data.err ); }
+        } );
     } );
-    
-    a.register_command( {
-	command:'create_game',
-	succeed:function(data) { alert(data.msg); },
-	fail:function(data) { alert( data.err ); }
-    } );
-    a.register_command( {
-	command:'submit_orders',
-	succeed:function(data) { alert(data.msg); },
-	fail:function(data) { alert( data.err ); }
-    } );
-    a.register_command( {
-	command:'get_orders',
-	succeed:function(data) { alert(data.msg); },
-	fail:function(data) { alert( data.err ); }
-    } );
-    a.register_command( {
-	command:'mark_as_ready',
-	succeed:function(data) { alert(data.msg); },
-	fail:function(data) { alert( data.err ); }
-    } );
-    a.register_command( {
-	command:'join_game',
-	succeed:function(data) { alert(data.msg); },
-	fail:function(data) { alert( data.err ); }
-    } );
-    a.register_command( {
-	command:'get_games',
-	succeed:function(data) { 
-            $('div#available_games').empty();
-	    if( data.d.length > 0 ) {
-		var ul = $('div#available_games').append('<ul/>');
-		for( var i=0; i < data.d.length; ++i ) {
-		    var li = ul.append('<li/>').append('<a/>').attr('href','#');
-		    li.append( data.d[i][1].name );
-		    li.click( function() {
-			a.join_game( {game:data.d[i][0]} );
-		    } );
-		}
-	    } else {
-		$('div#available_games').append("No Available Games");
-	    }
-           },
-	fail:function(data) { alert( data.err ); }
-    } );
+  </script>
 
- } );
-</script>
+  </head>
+  <body>
+    <h1>Stellar Expanse</h1>
 
-</head>
-<body>
-<h1>Stellar Expanse</h1>
+    <div id=login>
+      <div style=float:left>
+        Name <input class=login type=text id=name> <br>
+        Password <input class=login type=password id=pw> <br>
+        <button type=button id=login>Login</button>
+      </div>
+      <div style=float:left>
+        <a href='#' id='register'>Register</a><br>
+        <a href='#' id='forgot'>Forgot Password</a>
+      </div>
+    </div>
 
-<div id=login>
-     <div style=float:left>
-  Name <input class=login type=text id=name> <br>
-  Password <input class=login type=password id=pw> <br>
-  <button type=button id=login>Login</button>
- </div>
- <div style=float:left>
-   <a href='#' id='register'>Register</a><br>
-   <a href='#' id='forgot'>Forgot Password</a>
- </div>
-</div>
+    <div id=logged_in>
+      Logged in as <span id=lname></span><br>
+      <a href=# id=logout>Logout</a>
+      <p>
 
-<div id=logged_in>
-  Logged in as <span id=lname></span><br>
-  <a href=# id=logout>Logout</a>
-  <p>
+        <div id=available_games>
+          
+        </div>
 
-  <div id=available_games>
-    
-  </div>
+        <button id=create_game>Create Game</button>
+        <div id=create_game>
+          <table>
+            <tr><td>Game Name</td><td><input type=text id=game_name></td></tr>
+            <tr><td>Number Players</td><td><input type=text id=number_players></td></tr>
+          </table>
+        </div>
+    </div>
 
-  <button id=create_game>Create Game</button>
-  <div id=create_game>
-     <table>
-       <tr><td>Game Name</td><td><input type=text id=game_name></td></tr>
-       <tr><td>Number Players</td><td><input type=text id=number_players></td></tr>
-     </table>
-   </div>
-</div>
+    <div id=register>
+      Name <input class=register type=text id=name> <br>
+      Email <input class=register type=text id=email><br>
+      Password <input class=register type=password id=pw><br>
+      <button type=button id=register>Register Account</button> 
+    </div>
 
-<div id=register>
-  Name <input class=register type=text id=name> <br>
-  Email <input class=register type=text id=email><br>
-  Password <input class=register type=password id=pw><br>
-  <button type=button id=register>Register Account</button> 
-</div>
-
-</body>
+  </body>
 </html>

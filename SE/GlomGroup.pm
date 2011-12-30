@@ -1,4 +1,4 @@
-package SE::GlomGroup;
+package GServ::SE::GlomGroup;
 
 use strict;
 
@@ -81,3 +81,16 @@ sub get_sector_count {
 }
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

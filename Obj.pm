@@ -95,6 +95,7 @@ sub AUTOLOAD {
                 $self->{DATA}{$fld} = GServ::ObjProvider::xform_in( $init_val );
                 GServ::ObjProvider::dirty( $self, $self->{ID} );
             }
+            print STDERR Data::Dumper->Dump( ["GET $fld ".$self->{DATA}{$fld}] );
             return GServ::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;

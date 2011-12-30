@@ -2,15 +2,13 @@ package GServ::Hello;
 
 use strict;
 
-use GServ::AppRoot;
-
 use base 'GServ::AppRoot';
-
 
 sub hello {
     my( $self, $data, $acct ) = @_;
-    my $name = $acct ? $acct->get_handle() : '?';
-    return { r => "hello there $name" };
+    $self->set_said( 1 + $self->get_said() );
+    my $name = $data->{name};
+    return { r => "hello there '$name'. I have said hello ".$self->get_said()." times." };
 }
 
 1;

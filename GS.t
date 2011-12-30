@@ -56,6 +56,7 @@ for my $table (qw/objects field big_text/) {
 }
 pass( "created test database" );
 
+
 # -----------------------------------------------------
 #               start of gserv tests
 # -----------------------------------------------------
@@ -75,7 +76,7 @@ is( $f_count, 1, "number of fields after save root" ); #1 for
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
-#                                                       # rows in fields total to 12
+#                                                       # rows in fields total 
 $root->get_default( "DEFAULT" );                        # 1
 $root->set_first( "FRIST" );                            # 1
 $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
@@ -83,13 +84,40 @@ $root->set_reallybig( "BIG" x 1000 );                   # 1
 $root->set_gross( 12 * 12 );                            # 1
 $root->set_array( ["THIS IS AN ARRAY"] );               # 2
 $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
+$root->get_cool_hash( { "llama" => ["this",new GServ::Obj(),{"Array",new GServ::Obj()}] } );  # 2 (6 after stow all)
 $root->set_hash( { "KEY" => "VALUE" } );                # 2
 $root->save();
+# 1 from accounts under root (default)
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-BAIL_OUT("error saving") unless is( scalar(@$db_rows), 13, "Number of db rows saved to database" );
-my $root_clone = GServ::AppProvider::fetch_root;
+BAIL_OUT("error saving") unless is( scalar(@$db_rows), 15, "Number of db rows saved to database with ordinary save" );
+
+GServ::ObjProvider::stow_all();
+
+my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
+
+BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 19, "Number of db rows saved to database with stow all" );
+
+my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
+is( scalar(@$db_rows), 12, "Number of db rows saved to database" ); #Big counts as obj
+
+
+my $root_clone = GServ::AppProvider::fetch_root();
+
+is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
+is( ref( $root_clone->get_account_root() ), 'GServ::Obj', '2nd level gserv object' );
+is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'GServ::Obj', 'deep level gserv object in hash' );
+is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'GServ::Obj', 'deep level gserv object in array' );
+
+
+
+is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
+is( ref( $root->get_account_root() ), 'GServ::Obj', '2nd level gserv object  (original root after save)' );
+is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'GServ::Obj', 'deep level gserv object in hash  (original root after save)' );
+is( ref( $root->get_cool_hash()->{llama}->[1] ), 'GServ::Obj', 'deep level gserv object in array (original root after save)' );
+
+
 is_deeply( $root_clone, $root, "CLONE to ROOT");
 ok( $root_clone->{ID} == 1, "Reloaded Root has id of 1" );
 is( $root_clone->get_default(), "DEFAULT", "get scalar with default" );
@@ -101,7 +129,6 @@ is_deeply( $root_clone->get_array(), ["THIS IS AN ARRAY"], "Simple array" );
 is_deeply( $root_clone->get_default_hash(), {"DEFKEY"=>"DEFVALUE"}, "Simple default hash" );
 my( %simple_hash ) = %{$root_clone->get_hash()};
 is_deeply( \%simple_hash, {"KEY"=>"VALUE"}, "Simple hash" );
-
 
 #                                      #
 # ----------- deep container tests ----#
@@ -175,7 +202,6 @@ like( $res->{err}, qr/not found for app/i, "received error with bad command name
 like( $root->process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
 like( $root->process_command( { c => 'create_account', d => {h => 'root'}  } )->{err}, qr/password required/i, "no password given for create account" );
 like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'foo@bar.com' }  } )->{msg}, qr/created/i, "create account for root account" );
-
 my $root_acct = GServ::ObjProvider::xpath("/handles/root");
 unless( $root_acct ) {
     fail( "Root not loaded" );

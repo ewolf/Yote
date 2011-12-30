@@ -1,32 +1,66 @@
 <html>
   <head>
-<title>Yote Hello World Example</title>
-<script src="./jquery-latest.js"></script>
-<script src="./json2.js"></script>
-<script src="./jquery.base64.min.js"></script>
-<script src="./gserv.js"></script>
-<script>
- 
-</script>
-</head>
-<body>
-<h1>Yote Hello World Example</h1>
-This program contacts the GServ Server to get its hello world app.<BR>
-The messages are in the following format <ul>
-  <li><strong>a</strong> : app class</li>
-  <li><strong>c</strong> : command</li>
-  <li><strong>d</strong> : argument list (optional)</li>
-  <li><strong>t</strong> : login token</li>
-</ul>
-The message sent looks like
-<pre>
- {
-   a => 'GServ::Hello',
-   c => 'hello',
-   t => token
- }
-</pre>
-However this does require a Yote account.
-<hr>
-</body>
+    <title>Yote Hello World Example</title>
+    <script src="./js/jquery-latest.js"></script>
+    <script src="./js/jquery.dumper.js"></script>
+    <script src="./js/jquery.base64.min.js"></script>
+    <script src="./js/json2.js"></script>
+    <script src="./js/gserv.js"></script>
+    <script>
+    $().ready(function(){
+        $.gServ.init("http://127.0.0.1/cgi-bin/gserv.cgi");
+        var hello_app = $.gServ.get_app('GServ::Hello');
+        
+        $('#button').click( function() {
+            var result = hello_app.hello({ name:$('#txt').val() } );
+            alert( result );
+        } );
+    });
+    </script>
+  </head>
+  <body>
+    <h1>Yote Hello World Example</h1>
+    <h2>Server Side Code</h2>
+    <pre>
+package GServ::Hello;
+
+use strict;
+
+use base 'GServ::AppRoot';
+
+sub hello {
+    my( $self, $data, $acct ) = @_;
+    my $name = $data->{name};
+    return { r => "hello there '$name'" };
+}
+
+1;
+    </pre>
+    <h2>Client Side Code</h2>
+    <pre>
+&lt;html&gt;&lt;head&gt;&lt;title&gt;Hello World&lt;/title&gt;
+&lt;script src="./js/jquery-latest.js"&gt;&lt;/script&gt;
+&lt;script src="./js/jquery.dumper.js"&gt;&lt;/script&gt;
+&lt;script src="./js/jquery.base64.min.js"&gt;&lt;/script&gt;
+&lt;script src="./js/json2.js"&gt;&lt;/script&gt;
+&lt;script src="./js/gserv.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  $().ready(function(){
+      $.gServ.init("http://127.0.0.1/cgi-bin/gserv.cgi");
+      <b>var hello_app = $.gServ.get_app('GServ::Hello');</b>
+
+      $('#button').click( function() {
+          <b>var result = hello_app.hello({ name:$('#txt').val() } );</b>
+          alert( result );
+      } );
+  });
+&lt;/script&gt;&lt;/head&gt;
+&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;
+&lt;input type=text id=txt&gt;&lt;BR&gt;&lt;button type=button id=button&gt;Say Hi&lt;/button&gt;
+&lt;/body&gt;&lt;/html&gt;
+    </pre>
+    <hr>
+    <h1>Hello World</h1>
+    <input type=text id=txt><BR><button type=button id=button>Say Hi</button>
+  </body>
 </html>
