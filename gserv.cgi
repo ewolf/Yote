@@ -28,7 +28,7 @@ sub main {
 	);
     print $sock join('&',map { "$_=$param->{$_}" } keys %$param )."\n";
     my $buf = <$sock>;
-    print STDERR Data::Dumper->Dump([$buf,$param,'startbuf']);
+#    print STDERR Data::Dumper->Dump([$buf,$param,'startbuf']);
 #    while( <$sock> ) {
 #	$buf .= $_;
 #	print STDERR Data::Dumper->Dump([$buf,'nextbuf']);

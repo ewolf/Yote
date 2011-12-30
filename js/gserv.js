@@ -29,7 +29,7 @@ $.gServ = {
                         root.message( key,
                                       params,
                                       1,
-                                      1,
+                                      0,
                                       function(res) { 
                                           if( res.err ) {
                                               root.error( res.err );

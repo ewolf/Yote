@@ -222,7 +222,7 @@ ok( ! $acct->get_is_root(), 'second account not root' );
 # ------ hello app test -----
 my $t = $root->process_command( { c => 'login', d => { h => 'toot', p => 'toor' } } );
 ok( $t->{t}, "logged in with token $t->{t}" );
-is( $root->process_command( { a => 'GServ::Hello', c => 'hello', t => $t->{t} } )->{r}, "hello there toot", "Hello app works with given token" );
+is( $root->process_command( { a => 'GServ::Hello', c => 'hello', d => { name => 'toot' }, t => $t->{t} } )->{r}, "hello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
 my $as = new GServ::AppServer;
 ok( $as, "GServ::AppServer compiles" );
 done_testing();
