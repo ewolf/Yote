@@ -205,7 +205,6 @@ sub stow {
     my $class = ref( $obj );
     return unless $class;
     my $id = get_id( $obj );
-    print STDERR Data::Dumper->Dump( [$obj,$id,'stow'] );
     die unless $id;
     my $data = raw_data( $obj );
     given( $class ) {

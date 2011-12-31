@@ -26,6 +26,8 @@ sub main {
 	PeerPort => '8008',
 	Proto => 'tcp',
 	);
+    open( OUT, ">>/home/irrespon/logs/gserv_relay.log" );
+    print OUT Data::Dumper->Dump(["incoming params from client ",$param]);
     print $sock join('&',map { "$_=$param->{$_}" } keys %$param )."\n";
     my $buf = <$sock>;
 #    print STDERR Data::Dumper->Dump([$buf,$param,'startbuf']);
@@ -35,6 +37,8 @@ sub main {
 #    }
 #    print $buf;
 #    print STDERR Data::Dumper->Dump(["BUFF", $buf]);
+    print OUT Data::Dumper->Dump(["server response ",$buf]);
+    close OUT;
     print "Content-Type: application/json\n\n$buf";
-     return 0;
+    return 0;
 } #main

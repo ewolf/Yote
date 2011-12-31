@@ -50,12 +50,17 @@ sub start_server {
     $args->{port}      ||= 8008;
     $args->{datastore} ||= 'GServ::MysqlIO';
 
+    `cat /home/irrespon/var/run/gserv.pid | xargs kill`;
+    `echo $$ > /home/irrespon/var/run/gserv.pid`;
+
+    
+
     GServ::ObjIO::init( %$args );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
     print STDERR Data::Dumper->Dump( [$args] );
-    my $thread = threads->new( sub { $self->run( max_servers => 2, %$args ); } );
+    my $thread = threads->new( sub { $self->run( %$args ); } );
 
     _poll_commands();
 

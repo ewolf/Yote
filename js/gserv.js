@@ -2,6 +2,7 @@ $.gServ = {
     token:null,
     err:null,
     url:null,
+    objs:[],
 
     init:function(url) {
         this.url = url;
@@ -14,6 +15,10 @@ $.gServ = {
 
     fetch:function(appname,id,app) {
         var root = this;
+
+	var async = false;
+
+	var wait  = true;
 
         if( typeof app === 'undefined' ) {
             app = {};
@@ -29,8 +34,8 @@ $.gServ = {
                 app:appname,
                 id:id
             },
-            wait:true,
-            async:false,
+            wait:wait,
+            async:async,
             failhandler:root.error,
             passhandler:function(appdata) {
                 app.id  = appdata.id;
@@ -44,9 +49,9 @@ $.gServ = {
                             var wait = true;
                             var failhandler = root.error;
                             if( typeof extra === 'object' ) {
-                                async = extra.async;
-                                wait  = extra.wait;
-                                failhandler = extra.failhandler;
+                                async = typeof extra.async === 'undefined' ? false : extra.async;
+                                wait  = typeof extra.wait  === 'undefined' ? true  : extra.wait;
+                                failhandler = typeof extra.failhandler === 'undefined' ? root.error : extra.failhandler;
                             }
                             root.message( {
                                 app:app.app,
@@ -102,7 +107,7 @@ $.gServ = {
 
     // generic server type error
     error:function(msg) {
-        alert( "an server side error has occurred : " + msg );
+        alert( "a server side error has occurred : " + $.dump(msg) );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
