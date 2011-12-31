@@ -185,3 +185,16 @@ else
 }
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

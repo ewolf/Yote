@@ -1,4 +1,4 @@
-package SE::DefaultShips;
+package GServ::SE::DefaultShips;
 
 use strict; 
 # avleft - volatile
@@ -600,3 +600,28 @@ sub get_id_by_name_or_id {
 }
 
 1;
+
+__END__
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

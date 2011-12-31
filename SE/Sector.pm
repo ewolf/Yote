@@ -1,10 +1,10 @@
-package SE::Sector;
+package GServ::SE::Sector;
 
 use strict;
 
-use G::Base;
+use GServ::Obj;
 
-use base 'G::Base';
+use base 'GServ::Obj';
 
 sub link_sectors {
     my( $self, $other ) = @_;
@@ -41,3 +41,16 @@ sub valid_links {
 }
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

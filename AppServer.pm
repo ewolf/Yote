@@ -22,6 +22,10 @@ use base qw(Net::Server::Fork);
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+$SIG{TERM} = sub {
+    Gserv::ObjProvider::stow_all();
+    exit;
+};
 
 my( @commands, %prid2wait, %prid2result );
 share( @commands );
@@ -49,7 +53,8 @@ sub start_server {
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
-    my $thread = threads->new( sub { $self->run( %$args ); } );
+    print STDERR Data::Dumper->Dump( [$args] );
+    my $thread = threads->new( sub { $self->run( max_servers => 2, %$args ); } );
 
     _poll_commands();
 
@@ -82,6 +87,10 @@ sub init_server {
 sub process_request {
     my $self = shift;
 
+#    my( @l ) = `ps ax | grep start_server`;
+    print STDERR Data::Dumper->Dump( ["Starting process $$ Request Done"]);#. Pids : ",join(',',map { s/^\s*(\d+).*/$1/;$_ } @l)] );
+
+
     my $reqstr = <STDIN>;
     my $params = {map { split(/\=/, $_ ) } split( /\&/, $reqstr )};
     print STDERR Data::Dumper->Dump([$reqstr,$params]);
@@ -99,7 +108,7 @@ sub process_request {
     print STDERR Data::Dumper->Dump( [$params,'p1'] );
 #    my $callback     = $params->{callback};
     my $command = from_json( MIME::Base64::decode($params->{m}) );
-    print STDERR Data::Dumper->Dump( [$command,\%ENV] );
+    print STDERR Data::Dumper->Dump( [$command] );
 
 #    return unless $ENV{REMOTE_ADDR} eq '127.0.0.1';
     $command->{oi} = $params->{oi};
@@ -146,14 +155,15 @@ sub process_request {
         }
 #        print STDERR Data::Dumper->Dump(["after wait ($callback)",$command,$result]);
 #        print STDOUT "$callback( '$result' )";
-	print STDERR Data::Dumper->Dump(["Printing result",$result]);
-	print "$result";
+        print STDERR Data::Dumper->Dump(["Printing result",$result]);
+        print "$result";
     } else {
-	print "{\"msg\":\"Added command\"}";
+        print "{\"msg\":\"Added command\"}";
 
 #        print STDOUT qq|$callback( '{"msg":"Added command"}' );|;
     }
-
+#    my( @l ) = `ps ax | grep start_server`;
+    print STDERR Data::Dumper->Dump( ["Process $$ Request Done"] ); #. Pids : ",join(',',map { s/^\s*(\d+).*/$1/;$_ } @l)] );
 } #process_request
 
 #
@@ -181,26 +191,28 @@ sub _poll_commands {
 sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
-#    print STDERR Data::Dumper->Dump( ["PC"] );
-    _reconnect();
-#    print STDERR Data::Dumper->Dump( ["Reconnect"] );
 
-    my $root = GServ::AppProvider::fetch_root();
-#    print STDERR Data::Dumper->Dump( [$command,$root] );
-    my $ret  = $root->process_command( $command );
+    _reconnect();
+
+    my $resp;
+
+    eval {
+        my $root = GServ::AppProvider::fetch_root();
+        my $ret  = $root->process_command( $command );
+        $resp = to_json($ret);
+        GServ::ObjProvider::stow_all();
+    };
+    $resp ||= to_json({ err => $@ });
 
     #
     # Send return value back to the caller if its waiting for it.
     #
-#    print STDERR Data::Dumper->Dump( ["about to return and lock",\%prid2wait] );
     lock( %prid2wait );
     {
-#        print STDERR Data::Dumper->Dump( ["Locking prid2res",\%prid2result] );
         lock( %prid2result );
-        $prid2result{$procid} = to_json($ret);
+        $prid2result{$procid} = $resp;
     }
     delete $prid2wait{$procid};
-#    print STDERR Data::Dumper->Dump( ["broadcasting",\%prid2wait] );
     cond_broadcast( %prid2wait );
 
 } #_process_command

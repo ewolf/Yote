@@ -2,12 +2,12 @@
   <head>
 <title>Login Test</title>
 
-<script src="./jquery-latest.js"></script>
-<script src="./jquery.dumper.js"></script>
-<script src="./jquery.base64.min.js"></script>
-<script src="./json2.js"></script>
-<script src="./gserv.js?x=1.1"></script>
-<script src="./jquery.jsonp-2.1.4.min.js"></script>
+<script src="./js/jquery-latest.js"></script>
+<script src="./js/jquery.dumper.js"></script>
+<script src="./js/jquery.base64.min.js"></script>
+<script src="./js/json2.js"></script>
+<script src="./js/gserv.js?x=1.1"></script>
+<script src="./js/jquery.jsonp-2.1.4.min.js"></script>
 <style>
 
 div#login {
@@ -32,7 +32,10 @@ $().ready(function(){
             $('div#logged_in').hide();
             $('div#login').hide();
         });
-    var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1/cgi-bin/gserv.cgi");
+    $.gServ.init("http://127.0.0.1/cgi-bin/gserv.cgi");
+    var a = $.gServ.get_app('GServ::Hello');
+    var x = a.hello();
+    alert('hello returned ' + x);
 
     a.login_pass = function(data,un) {
         $("span#lname").html(un);
@@ -81,12 +84,13 @@ $().ready(function(){
                                   $(".register#email").val() );
             }
         } );
-
+/*
     a.register_command( {
 	command:'hello',
 	succeed:function(data) { alert("Hello succeed with '"+data.r+"'"); },
 	fail:function(data) { alert("Hello Failed with '"+data.err+"'"); }
     } );
+    */
     $('#hello').click( function() {
 	a.hello();
     } );

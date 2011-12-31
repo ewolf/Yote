@@ -1,7 +1,7 @@
-package SE::Ship;
+package GServ::SE::Ship;
 
 use strict;
-use base 'G::Base';
+use base 'GServ::Obj';
 
 
 sub kill {
@@ -61,3 +61,16 @@ sub get_prototype {
 }
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

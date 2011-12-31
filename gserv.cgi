@@ -17,7 +17,7 @@ if( $ret ) {
 sub main {
     my $CGI = new CGI;
     my $param = $CGI->Vars;
-    print STDERR Data::Dumper->Dump( [\%ENV] );
+#    print STDERR Data::Dumper->Dump( [\%ENV] );
 
     $param->{oi} =  $ENV{REMOTE_ADDR};
 
@@ -28,13 +28,13 @@ sub main {
 	);
     print $sock join('&',map { "$_=$param->{$_}" } keys %$param )."\n";
     my $buf = <$sock>;
-    print STDERR Data::Dumper->Dump([$buf,'startbuf']);
+    print STDERR Data::Dumper->Dump([$buf,$param,'startbuf']);
 #    while( <$sock> ) {
 #	$buf .= $_;
 #	print STDERR Data::Dumper->Dump([$buf,'nextbuf']);
 #    }
 #    print $buf;
-    print STDERR Data::Dumper->Dump(["BUFF", $buf]);
+#    print STDERR Data::Dumper->Dump(["BUFF", $buf]);
     print "Content-Type: application/json\n\n$buf";
      return 0;
 } #main

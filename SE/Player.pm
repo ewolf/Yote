@@ -1,10 +1,10 @@
-package SE::Player;
+package GServ::SE::Player;
 
 use strict;
 
-use G::Base;
+use GServ::Obj;
 
-use base 'G::Base';
+use base 'GServ::Obj';
 
 sub message {
     my( $self, $msg ) = @_;
@@ -45,3 +45,16 @@ sub clear_orders {
 }
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

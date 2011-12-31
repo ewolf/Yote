@@ -12,12 +12,12 @@ package GServ::SE::StellarExpanse;
 
 use strict;
 
-use SE::DefaultShips;
-use SE::Group;
-use SE::GlomGroup;
-use SE::Player;
-use SE::Sector;
-use SE::Ship;
+use GServ::SE::DefaultShips;
+use GServ::SE::Group;
+use GServ::SE::GlomGroup;
+use GServ::SE::Player;
+use GServ::SE::Sector;
+use GServ::SE::Ship;
 
 use Config::General;
 use Cwd;
@@ -26,17 +26,17 @@ use Cwd;
 use lib "/home1/irrespon/proj/lib/perl5/site_perl/5.8.8";
 use GraphViz;
 
-use base 'G::Base';
+use base 'GServ::Obj';
 
-$ENV{PATH} .= ':/home1/irrespon/usr/local/bin/';
+#$ENV{PATH} .= ':/home1/irrespon/usr/local/bin/';
 
 #
 # This game can have multiple configurations.
 #
 sub flavors {
     my $pkg = shift;
-    my $root = G::Base::root();
-    my $se_root = $root->get_stellar_expanse( new G::Base() );
+    my $root = new GServ::Obj();
+    my $se_root = $root->get_stellar_expanse( new GServ::Obj() );
     my $flavors = $se_root->get_game_flavors([]);
     if( @$flavors == 0 ) {
         my $flavor = new_flavor();
@@ -47,15 +47,15 @@ sub flavors {
 } #flavors
 
 sub new_flavor {
-    my $flav = new G::Base();
+    my $flav = new GServ::Obj();
     $flav->set_name( 'classic' );
 
 #    my $maxkey = 0;
     my $ships = {};
-    for my $key (keys %SE::DefaultShips::defaultships ) {
+    for my $key (keys %GServ::SE::DefaultShips::defaultships ) {
 #        $maxkey = $key if $key > $maxkey;
-        my $prot = new G::Base();
-        my $shipdata = $SE::DefaultShips::defaultships{$key};
+        my $prot = new GServ::Obj();
+        my $shipdata = $GServ::SE::DefaultShips::defaultships{$key};
         for my $dkey (keys %$shipdata) {
             $prot->set( $dkey, $shipdata->{$dkey} );
         }
@@ -125,8 +125,8 @@ sub tick {
                             result  => 'fail',    # change if success
                 };
                 if( $repair_amount > 0 ) {
-                    my $ship = G::Base::fetch( $ship_id );
-                    if( ref($ship) eq 'SE::Ship' && $ship->get_owner() eq $player ) {
+                    my $ship = GServ::ObjProvider::fetch( $ship_id );
+                    if( ref($ship) eq 'GServ::SE::Ship' && $ship->get_owner() eq $player ) {
                         push( @repair, [ $player, $ship, $repair_amount ] );
                     } else {
                         $msg->{err} = "not found";
@@ -139,13 +139,13 @@ sub tick {
             }
             elsif( uc($cmd) eq 'G' ) { #give
                 my( $recip_id, $amount ) = @cmd;
-                my $recipient = G::Base::fetch( $recip_id );
+                my $recipient = GServ::ObjProvider::fetch( $recip_id );
                 my $msg = { type    => 'command',
                             action  => 'give',
                             command => $cmd_str,
                             result  => 'fail',    # change if success
                 };
-                if( $recipient && ref( $recipient ) eq 'SE::Player' ) {
+                if( $recipient && ref( $recipient ) eq 'GServ::SE::Player' ) {
                     if( $amount > 0 ) {
                         if( $recipient ne $player ) {
                             push( @give, [ $player, $recipient, $amount ] );
@@ -236,7 +236,7 @@ sub tick {
         # check if system is uncontested
         if( scalar( keys %player2attack_power ) == 1 ) {
             my( $attack_player_id ) = ( keys %player2attack_power );
-            my $attacker = G::Base::fetch( $attack_player_id );
+            my $attacker = GServ::ObjProvider::fetch( $attack_player_id );
             next unless $player2attack_power{$attack_player_id};
 
             #
@@ -294,9 +294,9 @@ sub tick {
         my( $player_id, $b_location, $thing_id, $name ) = @$build;
         my $cmd_str = "B $b_location $thing_id $name";
         $cmd_str =~ s/\s*$//;
-        my $player = G::Base::fetch( $player_id );
+        my $player = GServ::ObjProvider::fetch( $player_id );
         my $prototype = $self->get_flavor()->get_prototypes()->{$thing_id};
-        my $loc = G::Base::fetch( $b_location );
+        my $loc = GServ::ObjProvider::fetch( $b_location );
         my $msg = { type    => 'command',
                     action  => 'build',
                     command => $cmd_str,
@@ -304,7 +304,7 @@ sub tick {
                     err     => 'Internal Error on Build',
         };
 
-        if( ref( $loc ) ne 'SE::Sector' ) {
+        if( ref( $loc ) ne 'GServ::SE::Sector' ) {
             $msg->{err} = "Build location doesn't exist.";
         } elsif( !$prototype ) {
             $msg->{err} = "Unknown thing to build";
@@ -323,7 +323,7 @@ sub tick {
                         if( $cost <= $player->get_rus() ) {
                             undef $msg->{err};
                             if( $prototype->get_type() eq 'SHIP' || $prototype->get_type() eq 'OIND' ) {
-                                my $new_ship = new SE::Ship();
+                                my $new_ship = new GServ::SE::Ship();
                                 $new_ship->set_game( $self );
 
                                 $new_ship->set_owner( $player );
@@ -583,7 +583,7 @@ sub unload {
     my( $player, @cmd ) = @_;
     my $cmd_str = join(' ','U',@cmd);
     my( $loaded_id ) = @cmd;
-    my $obj = G::Base::fetch( $loaded_id );
+    my $obj = GServ::ObjProvider::fetch( $loaded_id );
 
     my $msg = {
         type    => 'command',
@@ -594,10 +594,10 @@ sub unload {
     };
 
     if( $obj && $obj->get_owner() eq $player ) {
-        if( ref($obj) eq 'SE::Ship' ) {
+        if( ref($obj) eq 'GServ::SE::Ship' ) {
             my $loaded_in = $obj->get_location();
             if( $loaded_in ) {
-                if( ref( $loaded_in ) eq 'SE::Ship' ) {
+                if( ref( $loaded_in ) eq 'GServ::SE::Ship' ) {
                     # validated case
                     my $new_loc = $loaded_in->get_location();
                     $new_loc->add_to_ships( $obj );
@@ -638,8 +638,8 @@ sub load_carrier {
     my( $player, @cmd ) = @_;
     my $cmd_str = join(' ','L',@cmd);
     my( $ship_id, $carrier_id ) = @cmd;
-    my $ship = G::Base::fetch( $ship_id );
-    my $carrier = G::Base::fetch( $carrier_id );
+    my $ship = GServ::ObjProvider::fetch( $ship_id );
+    my $carrier = GServ::ObjProvider::fetch( $carrier_id );
 
     my $msg = {
         type    => 'command',
@@ -650,8 +650,8 @@ sub load_carrier {
         result  => 'fail',
     };
 
-    if( ref($ship) eq 'SE::Ship' 
-        && ref($carrier) eq 'SE::Ship' 
+    if( ref($ship) eq 'GServ::SE::Ship' 
+        && ref($carrier) eq 'GServ::SE::Ship' 
         && $ship->get_owner() eq $player 
         && $carrier->get_owner() eq $player ) 
     {
@@ -697,8 +697,8 @@ sub fire {
     my( $player, @cmd ) = @_;
     my $cmd_str = join(' ','F',@cmd);
     my( $fire_ship_id, $strength, $target_id ) = @cmd;
-    my $ship = G::Base::fetch( $fire_ship_id );
-    my $target = G::Base::fetch( $target_id );
+    my $ship = GServ::ObjProvider::fetch( $fire_ship_id );
+    my $target = GServ::ObjProvider::fetch( $target_id );
 
     my $msg = {
         type    => 'command',
@@ -709,11 +709,11 @@ sub fire {
         result  => 'fail',
     };
 
-    if( ref($ship) eq 'SE::Ship'&& ref($target) eq 'SE::Ship' ) {
+    if( ref($ship) eq 'GServ::SE::Ship'&& ref($target) eq 'GServ::SE::Ship' ) {
         if( $ship->get_owner() eq $player ) {
             if( $target->get_owner() ne $player ) {
                 my( $ship_loc, $target_loc ) = ( $ship->get_location(), $target->get_location() );
-                if( ref($ship_loc) eq 'SE::Sector' && ref($target_loc) eq 'SE::Sector'  ) {
+                if( ref($ship_loc) eq 'GServ::SE::Sector' && ref($target_loc) eq 'GServ::SE::Sector'  ) {
                     if( $ship_loc eq $target_loc ) {
                         my $targets_left = $ship->get_remaining_targets();
                         if( $targets_left > 0 ) {
@@ -767,8 +767,8 @@ sub move {
     my( $self, $player, @cmd ) = @_;
     my $cmd_str = join(' ','M',@cmd);
     my( $ship_id, $location_id ) = @cmd;
-    my $ship = G::Base::fetch( $ship_id );
-    my $location = G::Base::fetch( $location_id );
+    my $ship = GServ::ObjProvider::fetch( $ship_id );
+    my $location = GServ::ObjProvider::fetch( $location_id );
     my $msg = {
         type        => 'command',
         action      => 'move',
@@ -779,7 +779,7 @@ sub move {
     };
 
     if( $location ) {
-        if( ref($ship) eq 'SE::Ship' 
+        if( ref($ship) eq 'GServ::SE::Ship' 
             && $ship->get_owner() eq $player )
         {
             if( ! $ship->get_dead( ) ) {
@@ -807,7 +807,7 @@ sub move {
 
                         # check if this system is on the players starchart. if not, make an entry
                         if( ! $node ) {
-                            $node = new G::Base();
+                            $node = new GServ::Obj();
                             $node->set_game( $self );
                             $node->set_system( $location );
                             $maps->{$location->{ID}} = $node;
@@ -933,7 +933,7 @@ sub init_game {
     $self->set_players({});
     my $players = $self->get_available_players([]);
     for (1..$self->get_number_players() ) {
-	my $player = new SE::Player();
+	my $player = new GServ::SE::Player();
 	$player->set_game( $self );
 	push( @$players, $player );
     }
@@ -980,7 +980,7 @@ sub init_game {
         my $gsecs = $g->{sectors};
         for my $gsec (@$gsecs) {
             next unless $gsec->get_owner();
-            my $node = new G::Base();
+            my $node = new GServ::Obj();
             $node->set_game( $self );
             $node->set_system( $gsec );
             $map->{ $gsec->{ID} } = $node;
@@ -1015,7 +1015,7 @@ sub init_game {
     }
     my $start_group = $selector[int(rand(scalar @selector))];
 
-    my $glom = new SE::GlomGroup();
+    my $glom = new GServ::SE::GlomGroup();
     $glom->glom( $start_group );
 
     for my $g (@$unclaimed_groups) {
@@ -1113,7 +1113,7 @@ sub make_random_group {
     for my $key (sort keys %$sectors) {
         my $sector_template = $sectors->{$key};
 
-        my $newsector = new SE::Sector();
+        my $newsector = new GServ::SE::Sector();
         $newsector->set_game( $self );
         $self->add_to_sectors( $newsector );
         $key2GSector{$key} = $newsector;
@@ -1172,7 +1172,7 @@ sub make_random_group {
         $sectA->link_sectors( $sectB );
     } #each internal to group link
 
-    my $group = new SE::Group();
+    my $group = new GServ::SE::Group();
     $group->set_sectors( [values %key2GSector] );
     return $group;
 } #make_random_group
@@ -1226,3 +1226,16 @@ sub verify_map {
 } #verify_map
 
 1;
+
+__END__
+
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+=cut

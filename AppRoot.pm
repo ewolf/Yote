@@ -3,6 +3,7 @@ package GServ::AppRoot;
 use strict;
 
 use GServ::Obj;
+use GServ::AppProvider;
 
 use base 'GServ::Obj';
 
@@ -60,38 +61,56 @@ sub process_command {
         return _login( $cmd->{d}, $cmd->{oi} );
     }
     else {
-        my $appstr = $cmd->{a};
-        my $app = $appstr ? $root->get_apps({})->{$appstr} : $root;
+        my $appstr = $command eq 'fetch_root' && ref($cmd->{d}) ? $cmd->{d}->{app} : $cmd->{a};
+        my $app;
+        if( $appstr ) {
+            
+            $app = $root->get_apps({})->{$appstr};
 
-        #generate the app if not present.
-        unless( $app ) {
-            eval( "use $appstr" );
-            if( $@ =~ /Can.t locate/ ) {
-                return { err => "App '$a' not found" };
-            }
-            my $apps = $root->get_apps({});
-            $app = $appstr->new;
-            $apps->{$appstr} = $app;
-            $app->save;
+            #generate the app if not present.
+            unless( $app ) {
+                eval( "use $appstr" );
+                if( $@ =~ /Can.t locate/ ) {
+                    return { err => "App '$a' not found" };
+                }
+                my $apps = $root->get_apps();
+                $app = $appstr->new;
+                $apps->{$appstr} = $app;
+                $app->save;
+            } 
         }
+        else {
+            $app = $root;
+        }            
 
         if( $command eq 'fetch_root' ) {
             return _fetch( $app, { id => $app->{ID} }, $acct );
         }
         elsif( $command eq 'fetch' ) {
-            return _fetch( $app, $cmd, $acct );
+            return _fetch( $app, { id => $cmd->{d}{id} }, $acct );
         }
-        elsif( index( $command, '_' ) != 0 && $acct ) {
-            my $obj = GServ::ObjProvider::fetch( $cmd->{id} );
-            my $ret = $app->$command( $cmd->{d}, $acct );
-            if( ref( $ret ) eq 'HASH' ) {
-                return $ret;
+        elsif( index( $command, '_' ) != 0 ) {
+            my $obj = GServ::ObjProvider::fetch( $cmd->{id} ) || $app;
+            if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
+                my $ret = $app->$command( $cmd->{d}, $acct );
+                if( ref( $ret ) eq 'HASH' ) {
+                    return $ret;
+                }
+                return { err => 'Command did not return' };
             }
-            return { err => 'Command did not return' };
+            return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
 } #process_command
+
+#
+# Override to control access to this app.
+#
+sub allows { 
+    my( $data, $acct ) = @_;
+    return 1;
+}
 
 sub _valid_token {
     my( $t, $ip ) = @_;
@@ -170,7 +189,7 @@ sub _create_token {
 sub _login {
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
-        my $root = GServ::ObjProvider::fetch_root;
+        my $root = GServ::AppProvider::fetch_root();
         my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
             return { msg => "logged in", t => _create_token( $acct, $ip ) };
@@ -198,6 +217,11 @@ sub stow_permitted {
     return 1;
 }
 
+#
+# Returns a data structure with the following fields :
+#   m - names of methods
+#   d - key value data, where value can be a referece (is a number) or a scalar (is prepended with 'v' )
+#
 sub _fetch {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
@@ -209,14 +233,13 @@ sub _fetch {
             my $ref = ref( $obj );
             if( $ref ne 'ARRAY' && $ref ne 'HASH' && $ref ne 'GServ::Hash' && $ref ne 'GServ::Array' ) {
                 no strict 'refs';
-                my( @methods );
-                eval( qq<\@methods = grep { defined \&${ref}::$_\} keys \%${ref}\::;> );
+                my( @methods ) = grep { $_ ne 'new' && $_ ne 'save' && $_ ne 'import' && $_ ne 'init' && $_ ne 'isa' && $_ ne 'allows' && $_ ne 'can' && substr($_,0) !~ /[_A-Z]/ } keys %{"${ref}\::"};
                 use strict 'refs';
 
-                return { d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
+                return { a => ref( $app ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
             }
             else {
-                return { d => GServ::ObjProvider::raw_data( $obj ) };
+                return { a => ref( $app ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ) };
             }
         }
     }

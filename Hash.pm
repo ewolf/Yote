@@ -45,6 +45,7 @@ sub NEXTKEY  {
 
 sub FETCH {
     my( $self, $key ) = @_;
+    print STDERR Data::Dumper->Dump( ["FETCH '$key'",$self->{$key}] );
     return $self->{$key} if $key eq '__ID__';
     return GServ::ObjProvider::xform_out( $self->{$key} );
 }

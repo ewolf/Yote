@@ -25,17 +25,6 @@ $GServ::ObjProvider::WEAK_REFS = {};
 #   PACKAGE METHODS
 # --------------------
 
-sub fetch_root {
-    my $root = fetch( 1 );
-
-    unless( $root ) {
-        $root = new GServ::Obj;
-        stow( $root );
-    }
-
-    return $root;
-} #fetch_root;
-
 sub xpath {
     my $path = shift;
     return xform_out( GServ::ObjIO::xpath( $path ) );
@@ -53,7 +42,6 @@ sub fetch {
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $GServ::ObjProvider::DIRTY->{$id} || $GServ::ObjProvider::WEAK_REFS->{$id};
-
     return $ref if $ref;
 
     my $obj_arry = GServ::ObjIO::fetch( $id );
@@ -88,7 +76,6 @@ sub fetch {
 
 sub get_id {
     my $ref = shift;
-
     my $class = ref( $ref );
     given( $class ) {
         when('GServ::Array') {
@@ -218,6 +205,7 @@ sub stow {
     my $class = ref( $obj );
     return unless $class;
     my $id = get_id( $obj );
+    print STDERR Data::Dumper->Dump( [$obj,$id,'stow'] );
     die unless $id;
     my $data = raw_data( $obj );
     given( $class ) {

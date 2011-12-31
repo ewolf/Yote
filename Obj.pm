@@ -18,9 +18,10 @@ sub new {
         DATA     => {},
     }, $class;
 
-    $obj->{ID} ||= GServ::ObjProvider::get_id( $obj );
+    my $needs_init = ! $obj->{ID};
 
-    $obj->init;
+    $obj->{ID} ||= GServ::ObjProvider::get_id( $obj );
+    $obj->init() if $needs_init;
 
     return $obj;
 } #new

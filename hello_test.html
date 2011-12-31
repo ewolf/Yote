@@ -1,0 +1,21 @@
+<html><head><title>Hello World</title>
+<script src="./js/jquery-latest.js"></script>
+<script src="./js/jquery.dumper.js"></script>
+<script src="./js/jquery.base64.min.js"></script>
+<script src="./js/json2.js"></script>
+<script src="./js/gserv.js"></script>
+<script>
+  $().ready(function(){ 
+      var hello_app = $.gServ.init("http://"+location.host+"/cgi-bin/gserv.cgi").get_app('GServ::Hello');
+      $('#button').click( function() {
+          var result = hello_app.hello({ name:$('#txt').val() } );
+          alert( result ); //get the message from running the hello method.
+          alert( 'testfield is ' + hello_app.get_testfield() ); //get the value of testfield that is attached to the app
+          var counter = hello_app.get_counter();                //get the counter object that is attached to the app
+          alert( 'counter is at ' + counter.get_count() );      //get the value of the count field of the counter object attached to the app
+      } );
+  });
+</script></head>
+<body><h1>Hello World</h1>
+<input type=text id=txt><BR><button type=button id=button>Say Hi</button>
+</body></html>
