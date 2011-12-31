@@ -29,7 +29,6 @@ BEGIN {
 #
 GServ::ObjIO::init(
     datastore      => 'GServ::MysqlIO',
-    database       => 'sg',
     );
 my $db = $GServ::ObjIO::SINGLETON->database();
 
@@ -38,18 +37,20 @@ sub query_line {
     my( @ret ) = $db->selectrow_array( $query, {}, @args );
 }
 
-$db->do( "CREATE DATABASE IF NOT EXISTS sg_test" );
-if( $db->errstr() ) {
-    BAIL_OUT( $db->errstr() );
+if( 0 ) {
+    $db->do( "CREATE DATABASE IF NOT EXISTS sg_test" );
+    if( $db->errstr() ) {
+	BAIL_OUT( $db->errstr() );
+    }
 }
 
-$db->do( "use sg_test" );
+$db->do( "use irrespon_test" );
 
 if( $db->errstr() ) {
     BAIL_OUT( $db->errstr() );
 }
 for my $table (qw/objects field big_text/) {
-    $db->do( "CREATE TEMPORARY TABLE sg_test.$table LIKE sg.$table" );
+    $db->do( "CREATE TEMPORARY TABLE irrespon_test.$table LIKE irrespon_sg.$table" );
     if( $db->errstr() ) {
         BAIL_OUT( $db->errstr() );
     }

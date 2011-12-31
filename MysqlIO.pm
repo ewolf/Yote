@@ -31,9 +31,9 @@ sub new {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db    = $args->{database} || $self->{args}{database} || 'sg';
-    my $uname = $args->{uname} || $self->{args}{uname};
-    my $pword = $args->{pword} || $self->{args}{pword};
+    my $db    = $args->{database} || $self->{args}{database} || 'irrespon_sg';
+    my $uname = $args->{uname} || $self->{args}{uname} || 'irrespon_coyo';
+    my $pword = $args->{pword} || $self->{args}{pword} || 'bigsh0e';
     $self->database( "DBI:mysql:$db", $uname, $pword );
 } #connect
 

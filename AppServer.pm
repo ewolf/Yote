@@ -22,8 +22,9 @@ use base qw(Net::Server::Fork);
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
-$SIG{TERM} = sub {
-    Gserv::ObjProvider::stow_all();
+$SIG{TERM} = sub { 
+    &GServ::ObjProvider::stow_all();
+    print STDERR Data::Dumper->Dump(["Shutting down due to term"]);
     exit;
 };
 
