@@ -85,19 +85,21 @@ sub get_games {
     my $games = values( %{$self->get_games({})} );
     
     # filter to the games that are wanted
-    if( $data->{mine} ) {
-        $games = [grep { $acct->is( $_->get_created_by() ) } @$games];
+    given( $data->{filter} ) {
+	when('mine') {
+	    $games = [grep { $acct->is( $_->get_created_by() ) } @$games];
+	}
+	when( 'joined' ) {
+	    $games = [grep { $_->get_player( $acct ) } @$games];
+	}
+	when( 'active' ) {
+	    $games = [grep { $_->get_active() } @$games];
+	}
+	when( 'pending' ) {
+	    $games = [grep { $_->get_active() == 0 } @$games];
+	}
     }
-    if( $data->{joined} ) {
-        $games = [grep { $_->get_player( $acct ) } @$games];
-    }
-    if( $data->{active} ) {
-        $games = [grep { $_->get_active() } @$games];
-    }
-    if( $data->{pending} ) {
-        $games = [grep { $_->get_active() == 0 } @$games];
-    }
-    return { msg => 'returning games', d => [map {[$_->{ID},$_->values]} @$games] };
+    return { r => [map {[$_->{ID},$_->values]} @$games] };
 } #get_games
 
 1;

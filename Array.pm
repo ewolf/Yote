@@ -6,90 +6,71 @@ use Tie::Array;
 
 use Data::Dumper;
 
-use constant {
-    OFFSET => 1,
-};
-
 sub TIEARRAY {
-    my( $class, @list ) = @_;
-    my $storage = bless [], $class;
-    my( $id, @rest ) = @list;
-    push( @$storage, $id );
-    for my $item (@rest) {
+    my( $class, $id, @list ) = @_;
+    my $storage = [];
+    my $obj = bless [$id,$storage], $class;
+    for my $item (@list) {
         push( @$storage, $item );
     }
-    return $storage;
+    return $obj;
 }
 
 sub FETCH {
     my( $self, $idx ) = @_;
-    return GServ::ObjProvider::xform_out ( $self->[$idx+OFFSET] );
+    return GServ::ObjProvider::xform_out ( $self->[1][$idx] );
 }
 
 sub FETCHSIZE {
     my $self = shift;
-    return scalar(@$self) - OFFSET;
+    return scalar(@{$self->[1]});
 }
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    $self->[$idx+OFFSET] = GServ::ObjProvider::xform_in( $val );
+    $self->[1][$idx] = GServ::ObjProvider::xform_in( $val );
 }
 sub EXISTS {
     my( $self, $idx ) = @_;
-    return defined( $self->[$idx+OFFSET] );
+    return defined( $self->[1][$idx] );
 }
 sub DELETE {
     my( $self, $idx ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    undef $self->[$idx+OFFSET];
+    undef $self->[1][$idx];
 }
 
 sub CLEAR {
     my $self = shift;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    splice @$self, 1;
+    splice @{$self->[1]};
 }
 sub PUSH {
     my( $self, @vals ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    push( @$self, map { GServ::ObjProvider::xform_in($_) } @vals );
+    push( @{$self->[1]}, map { GServ::ObjProvider::xform_in($_) } @vals );
 }
 sub POP {
     my $self = shift;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    if( @$self > OFFSET ) {
-        return GServ::ObjProvider::xform_out( pop @$self );
-    }
-    return undef;
+    return GServ::ObjProvider::xform_out( pop @{$self->[1]} );
 }
 sub SHIFT {
     my( $self ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    my $val = splice @$self, OFFSET, 1;
+    my $val = splice @{$self->[1]}, 0, 1;
     return GServ::ObjProvider::xform_out( $val );
 }
 sub UNSHIFT {
     my( $self, @vals ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-    if( @$self > OFFSET ) {
-        splice @$self, OFFSET, 0, @vals;
-    }
-    return undef;
+    unshift @{$self->[1]}, 0, 0, @vals;
 }
 sub SPLICE {
     my( $self, $offset, $length, @vals ) = @_;
     GServ::ObjProvider::dirty( $self, $self->[0] );
-
-    my $start = OFFSET + $offset;
-    if( $offset < 0 ) {
-        my $start = $#$self - $offset;
-        if( $start <= OFFSET ) {
-            $start = OFFSET;
-        }
-    }
-    splice @$self, $start, $length, @vals;
+    splice @{$self->[1]}, $offset, $length, @vals;
 
 }
 

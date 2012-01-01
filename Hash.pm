@@ -8,62 +8,53 @@ use Data::Dumper;
 use GServ::ObjProvider;
 
 sub TIEHASH {
-    my( $class, %hash ) = @_;
-    my $id = $hash{__ID__};
-    my $storage = bless { __ID__ => $hash{__ID__} }, $class;
-    for my $key (grep { $_ ne '__ID__' } keys %hash) {
+    my( $class, $id, %hash ) = @_;
+    my $storage = {};
+    my $obj = bless [ $id, $storage ], $class;
+
+    for my $key (keys %hash) {
         $storage->{$key} = $hash{$key};
     }
-    return $storage;
+    return $obj;
 }
 
 sub STORE {
     my( $self, $key, $val ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->{__ID__} );
-    $self->{$key} = GServ::ObjProvider::xform_in( $val );
+    GServ::ObjProvider::dirty( $self, $self->[0] );
+    $self->[1]{$key} = GServ::ObjProvider::xform_in( $val );
 }
 
 sub FIRSTKEY { 
     my $self = shift;
-    my $a = scalar keys %$self;
-    my( $k, $val ) = each %$self;
-    if( $k ne '__ID__' ) {
-        return wantarray ? ( $k => $val ) : $k;
-    } 
-    ( $k, $val ) = each %$self;
+    my $a = scalar keys %{$self->[1]};
+    my( $k, $val ) = each %{$self->[1]};
     return wantarray ? ( $k => $val ) : $k;
 }
 sub NEXTKEY  { 
     my $self = shift;
-    my( $k, $val ) = each %$self;
-    if( $k ne '__ID__' ) {
-        return wantarray ? ( $k => $val ) : $k;
-    } 
-    ( $k, $val ) = each %$self;
+    my( $k, $val ) = each %{$self->[1]};
     return wantarray ? ( $k => $val ) : $k;
 }
 
 sub FETCH {
     my( $self, $key ) = @_;
-    print STDERR Data::Dumper->Dump( ["FETCH '$key'",$self->{$key}] );
-    return $self->{$key} if $key eq '__ID__';
-    return GServ::ObjProvider::xform_out( $self->{$key} );
+    return GServ::ObjProvider::xform_out( $self->[1]{$key} );
 }
 
 sub EXISTS {
     my( $self, $key ) = @_;
-    return defined( $self->{$key} );
+    return defined( $self->[1]{$key} );
 }
 sub DELETE {
     my( $self, $key ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->{__ID__} );
-    return delete $self->{$key};
+    GServ::ObjProvider::dirty( $self, $self->[0]);
+    return delete $self->[1]{$key};
 }
 sub CLEAR {
     my $self = shift;
-    GServ::ObjProvider::dirty( $self, $self->{__ID__} );
-    for my $key (%$self) {
-        delete $self->{$key};
+    GServ::ObjProvider::dirty( $self, $self->[0] );
+    for my $key (%{$self->[1]}) {
+        delete $self->[1]{$key};
     }
 }
 

@@ -37,7 +37,7 @@
         });
 
         // get game root
-        var game_root = $.gServ.init("http://"+location.host+"/cgi-bin/gserv.cgi").get_app('GServ::SE::SEApp');
+        var game_root = $.gServ.init("http://"+location.host+"/cgi-bin/dev/gserv.cgi").get_app('GServ::SE::SEApp');
 
         //login
         function login() {
@@ -49,6 +49,7 @@
                                  $("div#login").css( 'display','none' );
                                  $('.login#pw').val('');
                                  var a = $.gServ.get_app('GServ::SE::SEApp');
+				 show_games();
                              },
                              function(data) { //fail
                                  $('#login > #pw').val('');
@@ -84,12 +85,12 @@
             if(e.which == 13 ) { register () }
         } );
         
-        /*
-        succeed:function(data) { 
-                $('div#available_games').empty();
-                if( data.d.length > 0 ) {
-                    var ul = $('div#available_games').append('<ul/>');
-                    for( var i=0; i < data.d.length; ++i ) {
+        function show_games() { 
+	  $('div#available_games').empty();
+	  var games = game_root.get_games( { filter:'mine' } );
+	  if( games.length > 0 ) {
+	    var ul = $('div#available_games').append('<ul/>');
+	    for( var i=0; i < games.length; ++i ) {
                         var li = ul.append('<li/>').append('<a/>').attr('href','#');
                         li.append( data.d[i][1].name );
                         li.click( function() {

@@ -3,7 +3,6 @@ package GServ::AppRoot;
 use strict;
 
 use GServ::Obj;
-use GServ::AppProvider;
 
 use base 'GServ::Obj';
 
@@ -112,6 +111,15 @@ sub allows {
     return 1;
 }
 
+sub fetch_root {
+    my $root = GServ::ObjProvider::fetch( 1 );
+    unless( $root ) {
+        $root = new GServ::AppRoot();
+        $root->save;
+    }
+    return $root;
+}
+
 sub _valid_token {
     my( $t, $ip ) = @_;
     if( $t =~ /(.+)\+(.+)/ ) {
@@ -189,7 +197,7 @@ sub _create_token {
 sub _login {
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
-        my $root = GServ::AppProvider::fetch_root();
+        my $root = fetch_root();
         my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
             return { msg => "logged in", t => _create_token( $acct, $ip ) };
@@ -227,19 +235,23 @@ sub _fetch {
     if( $data->{id} ) {
         my $obj = GServ::ObjProvider::fetch( $data->{id} );
         if( $obj &&
-            GServ::AppProvider::a_child_of_b( $obj, $app ) &&
+            GServ::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->fetch_permitted( $obj, $data ) )
         {
             my $ref = ref( $obj );
             if( $ref ne 'ARRAY' && $ref ne 'HASH' && $ref ne 'GServ::Hash' && $ref ne 'GServ::Array' ) {
                 no strict 'refs';
-                my( @methods ) = grep { $_ ne 'new' && $_ ne 'save' && $_ ne 'import' && $_ ne 'init' && $_ ne 'isa' && $_ ne 'allows' && $_ ne 'can' && substr($_,0) !~ /[_A-Z]/ } keys %{"${ref}\::"};
+                my( @methods ) = grep { $_ ne 'new' && $_ ne 'save' && $_ ne 'import' && $_ ne 'init' && $_ ne 'isa' && $_ ne 'allows' && $_ ne 'fetch_root' && $_ ne 'can' && substr($_,0) !~ /[_A-Z]/ } keys %{"${ref}\::"};
                 use strict 'refs';
 
-                return { a => ref( $app ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
+                return { a => ref( $app ), c => ref( $obj ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
             }
             else {
-                return { a => ref( $app ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ) };
+		my $d = GServ::ObjProvider::raw_data( $obj );
+		if( ref( $d ) eq 'GServ::Hash' ) {
+		    die;
+		}
+                return { a => ref( $app ), c => ref( $obj ), id => $data->{id}, d => $d };
             }
         }
     }
@@ -251,7 +263,7 @@ sub _stow {
     if( $data->{id} ) {
         my $obj = GServ::ObjProvider::fetch( $data->{id} );
         if( $obj &&
-            GServ::AppProvider::a_child_of_b( $obj, $app ) &&
+            GServ::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->stow( $obj, $data ) )
         {
             #verify all incoming objects are also stowable
@@ -259,7 +271,7 @@ sub _stow {
             for my $item (grep { $_ > 0 } @$check) { #check all ids
                 my $child = GServ::ObjProvider::fetch( $item );
                 unless( $child &&
-                        GServ::AppProvider::a_child_of_b( $child, $app ) &&
+                        GServ::ObjProvider::a_child_of_b( $child, $app ) &&
                         $app->stow( $child, $data ) )
                 {
                     return { err => "Unable to update $data->{ID}" };
@@ -270,7 +282,7 @@ sub _stow {
             if( ref( $obj ) eq 'ARRAY' ) {
                 if( ref( $data->{v} ) eq 'ARRAY' ) {
                     my $tied = tied @$obj;
-                    splice( @$tied, 1, $#$tied, @{$data->{v}} );
+                    splice @{$tied->[1]}, 0, scalar(@{$tied->[1]}), @{$data->{v}};
                 } else {
                     return { err => "Missing data to update $data->{ID}" };
                 }
@@ -279,12 +291,11 @@ sub _stow {
                 if( ref( $data->{v} ) eq 'HASH' ) {
                     my $tied = tied %$obj;
                     for my $k (%{$data->{v}}) {
-                        $tied->{$k} = $data->{v}{$k};
+                        $tied->[1]{$k} = $data->{v}{$k};
                     }
-                    for my $k (%$tied) {
-                        next if $k eq '__ID__';
+                    for my $k (%{$tied->[1]}) {
                         unless( defined( $data->{v}{$k} ) ) {
-                            delete $tied->{$k};
+                            delete $tied->[1]{$k};
                         }
                     }
                 } else {

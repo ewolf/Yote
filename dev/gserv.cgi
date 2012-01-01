@@ -23,7 +23,7 @@ sub main {
 
     my $sock = new IO::Socket::INET (
 	PeerAddr => '127.0.0.1',
-	PeerPort => '8008',
+	PeerPort => '8009',
 	Proto => 'tcp',
 	);
     open( OUT, ">>/home/irrespon/logs/gserv_relay.log" );

@@ -6,7 +6,7 @@ use Carp;
 
 use GServ::ObjIO;
 use GServ::MysqlIO;
-use GServ::AppProvider;
+use GServ::AppRoot;
 use GServ::AppServer;
 
 use Test::More;
@@ -15,7 +15,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/MysqlIO ObjIO Obj AppProvider Hash/) {
+    for my $class (qw/MysqlIO ObjIO Obj Hash/) {
         use_ok( "GServ::$class" ) || BAIL_OUT( "Unable to load GServ::class" );
     }
 }
@@ -68,7 +68,7 @@ pass( "created test database" );
 #                                      #
 my( $o_count ) = query_line( "SELECT count(*) FROM objects" );
 is( $o_count, 0, "number of objects before save root" );
-my $root = GServ::AppProvider::fetch_root;
+my $root = GServ::AppRoot::fetch_root();
 ok( $root->{ID} == 1, "Root has id of 1" );
 my( $o_count ) = query_line( "SELECT count(*) FROM objects" );
 is( $o_count, 2, "number of objects after save root" ); # which also makes an account root automiatcially";
@@ -104,7 +104,7 @@ my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
 is( scalar(@$db_rows), 12, "Number of db rows saved to database" ); #Big counts as obj
 
 
-my $root_clone = GServ::AppProvider::fetch_root();
+my $root_clone = GServ::AppRoot::fetch_root();
 
 is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
 is( ref( $root_clone->get_account_root() ), 'GServ::Obj', '2nd level gserv object' );
@@ -144,7 +144,7 @@ $root->save();
 
 #print STDERR Data::Dumper->Dump( [$db->selectall_arrayref("SELECT * FROM field ")] );
 
-my $root_2 = GServ::AppProvider::fetch_root;
+my $root_2 = GServ::AppRoot::fetch_root();
 my( %simple_hash ) = %{$root_2->get_hash()};
 delete $simple_hash{__ID__};
 is_deeply( \%simple_hash, {"KEY"=>"VALUE","FOO" => "bar", BZAZ => [ "woof", "bOOf" ]}, "Simple hash after reload" );
@@ -171,7 +171,7 @@ $root->add_to_array( "MORE STUFF" );
 $root->save();
 
 $simple_array = $root->get_array();
-my $root_3 = GServ::AppProvider::fetch_root();
+my $root_3 = GServ::AppRoot::fetch_root();
 is_deeply( $root_3, $root, "recursive data structure" );
 
 is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
@@ -182,14 +182,14 @@ is_deeply( $root_3->get_array(), $simple_array, "add to test" );
 $root->remove_from_array( "MORE STUFF" );
 $root->save();
 
-my $root_4 = GServ::AppProvider::fetch_root();
+my $root_4 = GServ::AppRoot::fetch_root();
 
 #                                          #
 # ----------- parent child node tests -----#
 #                                          #
-my $is_child = GServ::AppProvider::a_child_of_b( $new_obj, $root );
+my $is_child = GServ::ObjProvider::a_child_of_b( $new_obj, $root );
 ok( $is_child, "object child of root" );
-my $is_child = GServ::AppProvider::a_child_of_b( $new_obj, $root_4 );
+my $is_child = GServ::ObjProvider::a_child_of_b( $new_obj, $root_4 );
 ok( $is_child, "object child of reloaded root" );
 
 #
@@ -197,7 +197,7 @@ ok( $is_child, "object child of reloaded root" );
 # ------------- app serv tests ------------#
 #
 #                                          #
-my $root = GServ::AppProvider::fetch_root();
+my $root = GServ::AppRoot::fetch_root();
 my $res = $root->process_command( { c => 'foo' } );
 like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
 like( $root->process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
@@ -226,6 +226,11 @@ ok( $t->{t}, "logged in with token $t->{t}" );
 is( $root->process_command( { a => 'GServ::Hello', c => 'hello', d => { name => 'toot' }, t => $t->{t} } )->{r}, "hello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
 my $as = new GServ::AppServer;
 ok( $as, "GServ::AppServer compiles" );
+
+
+my $root = GServ::AppRoot::fetch_root();
+
+
 done_testing();
 
 __END__

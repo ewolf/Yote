@@ -12,47 +12,55 @@ use HTTP::Request::Params;
 use Net::Server::Fork;
 use MIME::Base64;
 use JSON;
+use CGI;
 use Data::Dumper;
 
-use GServ::AppProvider;
+use GServ::AppRoot;
 use GServ::ObjIO;
-use CGI;
 
 use base qw(Net::Server::Fork);
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+
+my( @commands, %prid2wait, %prid2result, $singleton );
+share( @commands );
+share( %prid2wait );
+share( %prid2result );
+
 $SIG{TERM} = sub { 
+    $singleton->server_close();
     &GServ::ObjProvider::stow_all();
     print STDERR Data::Dumper->Dump(["Shutting down due to term"]);
     exit;
 };
 
-my( @commands, %prid2wait, %prid2result );
-share( @commands );
-share( %prid2wait );
-share( %prid2result );
-
-# find apps to install
-
-our @DBCONNECT;
-
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;
-    return bless {}, $class;
+    $singleton = bless {}, $class;
+    return $singleton;
 }
 my( $db, $args );
 sub start_server {
     my( $self, @args ) = @_;
     $args = scalar(@args) == 1 ? $args[0] : { @args };
 
-    $args->{port}      ||= 8008;
-    $args->{datastore} ||= 'GServ::MysqlIO';
+    # load config file
+    my $file = `cat /home/irrespon/var/gserv.conf`;
+    my $config_data = from_json( $file );
 
-    `cat /home/irrespon/var/run/gserv.pid | xargs kill`;
-    `echo $$ > /home/irrespon/var/run/gserv.pid`;
+    $args->{port}      = $args->{port}      || $config_data->{port}      || 8008;
+    $args->{datastore} = $args->{datastore} || $config_data->{datastore} || 'GServ::MysqlIO';
+    $args->{pidfile}   = $args->{pidfile}   || $config_data->{pidfile} || '/home/irrespon/var/run/gserv.pid';
+    for my $key (keys %$config_data) {
+	$args->{$key} ||= $config_data->{$key};
+    }
 
+    `cat $args->{pidfile} | xargs kill`;
+    `echo $$ > $args->{pidfile}`;
+
+    print STDERR Data::Dumper->Dump([$file, $config_data,$args]);
     
 
     GServ::ObjIO::init( %$args );
@@ -203,8 +211,9 @@ sub _process_command {
     my $resp;
 
     eval {
-        my $root = GServ::AppProvider::fetch_root();
+        my $root = GServ::AppRoot::fetch_root();
         my $ret  = $root->process_command( $command );
+	print STDERR Data::Dumper->Dump([$ret,$root,$command,"RESPONSE FOR"]);
         $resp = to_json($ret);
         GServ::ObjProvider::stow_all();
     };

@@ -57,7 +57,7 @@ sub fetch {
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'GServ::Hash', __ID__ => $id, map { $_ => $data->{$_} } keys %$data;
+                tie %hash, 'GServ::Hash', $id, map { $_ => $data->{$_} } keys %$data;
                 store_weak( $id, \%hash );
                 return \%hash;
             }
@@ -96,18 +96,18 @@ sub get_id {
         }
         when('GServ::Hash') {
             my $wref = $ref;
-            return $ref->{__ID__};
+            return $ref->[0];
         }
         when('HASH') {
             my $tied = tied %$ref;
             if( $tied ) {
-                my $id = $tied->{__ID__} || GServ::ObjIO::get_id( "HASH" );
+                my $id = $tied->[0] || GServ::ObjIO::get_id( "HASH" );
                 store_weak( $id, $ref );
                 return $id;
             }
             my $id = GServ::ObjIO::get_id( $class );
             my( %vals ) = %$ref;
-            tie %$ref, 'GServ::Hash', __ID__ => $id;
+            tie %$ref, 'GServ::Hash', $id;
             for my $key (keys %vals) {
                 $ref->{$key} = $vals{$key};
             }
@@ -172,8 +172,7 @@ sub raw_data {
         when('ARRAY') {
             my $tied = tied @$obj;
             if( $tied ) {
-                my( $id, @rest ) = @$tied;
-                return \@rest;
+		return $tied->[1];
             } else {
                 die;
             }
@@ -181,17 +180,16 @@ sub raw_data {
         when('HASH') {
             my $tied = tied %$obj;
             if( $tied ) {
-                return $tied;
+                return $tied->[1];
             } else {
                 die;
             }
         }
         when('GServ::Array') {
-            my( $id, @rest ) = @$obj;
-            return \@rest;
+	    return $obj->[1];
         }
         when('GServ::Hash') {
-            return $obj;
+            return $obj->[1];
         }
         default {
             return $obj->{DATA};

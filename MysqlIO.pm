@@ -97,7 +97,7 @@ sub init_datastore {
             $self->{DBH}->do( $definitions{$table} );
         }
     }
-    $self->{DBH}->selectrow_array( "COMMIT" );
+    $self->{DBH}->do( "COMMIT" );
 } #init_datastore
 
 sub database {
@@ -333,7 +333,6 @@ sub stow {
             $self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
             print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
             for my $key (keys %$data) {
-                next if $key eq '__ID__';
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
