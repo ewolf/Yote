@@ -202,7 +202,7 @@ my $res = $root->process_command( { c => 'foo' } );
 like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
 like( $root->process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
 like( $root->process_command( { c => 'create_account', d => {h => 'root'}  } )->{err}, qr/password required/i, "no password given for create account" );
-like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'foo@bar.com' }  } )->{msg}, qr/created/i, "create account for root account" );
+like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'foo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
 my $root_acct = GServ::ObjProvider::xpath("/handles/root");
 unless( $root_acct ) {
     fail( "Root not loaded" );
@@ -216,7 +216,7 @@ ok( $root_acct->get_is_root(), 'first account is root' );
 
 like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'baz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
 like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'foo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
-like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'baz@bar.com' }  } )->{msg}, qr/created/i, "second account created" );
+like( $root->process_command( { c => 'create_account', d => {h => 'toot', p => 'toor', e => 'baz@bar.com' }  } )->{r}, qr/created/i, "second account created" );
 my $acct = GServ::ObjProvider::xpath("/handles/toot");
 ok( ! $acct->get_is_root(), 'second account not root' );
 

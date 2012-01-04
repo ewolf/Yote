@@ -21,7 +21,7 @@ sub hello {
     $self->set_testfield(int(rand(10))); # set this to a random value each time
     my $counter = $self->get_counter(); # this could be counted with a field, but I wanted to demo how easy it is to send objects across.
     $counter->set_count( $counter->get_count() + 1 ); #increment the value in the counter
-    return { r => "hello there '$name'. I have said hello ".$counter->get_count()." times." };
+    return "hello there '$name'. I have said hello ".$counter->get_count()." times.";
 }
 
 1;

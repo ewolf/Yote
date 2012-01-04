@@ -42,7 +42,6 @@ sub get_account_root {
 # either c or i must be given
 sub process_command {
     my( $root, $cmd ) = @_;
-#    print STDERR Data::Dumper->Dump( ["PC",$root,$cmd] );
 
     my $command = $cmd->{c};
 
@@ -52,12 +51,14 @@ sub process_command {
     # new account request or has a valid token.
     #
     my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
-
     if( $command eq 'create_account' ) {
         return $root->_create_account( $cmd->{d}, $cmd->{oi} );
     }
     elsif( $command eq 'login' ) {
         return _login( $cmd->{d}, $cmd->{oi} );
+    }
+    elsif( $command eq 'remove_account' ) {
+	return $root->_remove_account( $cmd->{d}, $acct );
     }
     else {
         my $appstr = $command eq 'fetch_root' && ref($cmd->{d}) ? $cmd->{d}->{app} : $cmd->{a};
@@ -91,12 +92,8 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = GServ::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
-                my $ret = $app->$command( $cmd->{d}, $acct );
-                if( ref( $ret ) eq 'HASH' ) {
-                    return $ret;
-                }
-                return { err => 'Command did not return' };
-            }
+		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
+	    }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
@@ -107,7 +104,7 @@ sub process_command {
 # Override to control access to this app.
 #
 sub allows { 
-    my( $data, $acct ) = @_;
+    my( $app, $data, $acct ) = @_;
     return 1;
 }
 
@@ -129,6 +126,16 @@ sub _valid_token {
     }
     return undef;
 } #valid_token
+
+sub _remove_account {
+    my( $root, $args, $acct ) = @_;
+    if( $acct && $args->{p} eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() ) {
+	delete $root->get_handles()->{$args->{h}};
+	delete $root->get_emails()->{$args->{e}};
+	return { r => "deleted account" };
+    } 
+    return { err => "unable to remove account" };
+} #_remove_account
 
 sub _create_account {
     my( $root, $args, $ip ) = @_;
@@ -162,8 +169,7 @@ sub _create_account {
         $newacct->set_email( $email );
         $newacct->set_created_ip( $ip );
 
-        # todo
-        # $newacct->set_time_created();
+	$newacct->set_time_created( time() );
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );
@@ -177,7 +183,7 @@ sub _create_account {
         $emails->{ $email } = $newacct;
         GServ::ObjProvider::stow( $emails );
         $root->save;
-        return { msg => "created account", t => _create_token( $newacct, $ip ) };
+        return { r => "created account", t => _create_token( $newacct, $ip ) };
     } #if handle
     return { err => "no handle given" };
 
@@ -200,7 +206,7 @@ sub _login {
         my $root = fetch_root();
         my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
-            return { msg => "logged in", t => _create_token( $acct, $ip ) };
+            return { r => "logged in", t => _create_token( $acct, $ip ) };
         }
     }
     return { err => "incorrect login" };
@@ -238,25 +244,38 @@ sub _fetch {
             GServ::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->fetch_permitted( $obj, $data ) )
         {
-            my $ref = ref( $obj );
-            if( $ref ne 'ARRAY' && $ref ne 'HASH' && $ref ne 'GServ::Hash' && $ref ne 'GServ::Array' ) {
-                no strict 'refs';
-                my( @methods ) = grep { $_ ne 'new' && $_ ne 'save' && $_ ne 'import' && $_ ne 'init' && $_ ne 'isa' && $_ ne 'allows' && $_ ne 'fetch_root' && $_ ne 'can' && substr($_,0) !~ /[_A-Z]/ } keys %{"${ref}\::"};
-                use strict 'refs';
-
-                return { a => ref( $app ), c => ref( $obj ), id => $data->{id}, d => GServ::ObjProvider::raw_data( $obj ), 'm' => \@methods };
-            }
-            else {
-		my $d = GServ::ObjProvider::raw_data( $obj );
-		if( ref( $d ) eq 'GServ::Hash' ) {
-		    die;
-		}
-                return { a => ref( $app ), c => ref( $obj ), id => $data->{id}, d => $d };
-            }
+	    return { r => $app->_obj_to_response( $obj ) };
         }
     }
     return { err => "Unable to fetch $data->{ID}" };
 } #_fetch
+
+#
+# Converts scalar, gserv object, hash or array to data for returning.
+#
+sub _obj_to_response {
+    my( $self, $to_convert ) = @_;
+    my $ref = ref($to_convert);
+    if( $ref ) {
+	my( $m, $d ) = ([]);
+	if( ref( $to_convert ) eq 'ARRAY' ) {
+	    my $tied = tied @$to_convert;
+	    $d = $tied->[1];
+	} 
+	elsif( ref( $to_convert ) eq 'HASH' ) {
+	    my $tied = tied %$to_convert;
+	    $d = $tied->[1];
+	} 
+	else {
+	    $d = $to_convert->{DATA};
+	    no strict 'refs';
+	    $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
+	    use strict 'refs';
+	}
+	return { a => ref( $self ), c => $ref, id => GServ::ObjProvider::get_id( $to_convert ), d => $d, m => $m };
+    } # if a reference
+    return $to_convert;
+} #_obj_to_response
 
 sub _stow {
     my( $app, $data, $acct ) = @_;
@@ -317,7 +336,7 @@ sub _stow {
                 }
             }
             GServ::ObjProvider::stow( $obj );
-            return { o => GServ::ObjProvider::raw_data( $obj ), msg => 'updated' };
+            return { r => 'updated' };
         }
     }
     return { err => "Unable to update $data->{ID}" };

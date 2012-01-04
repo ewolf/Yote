@@ -101,45 +101,32 @@ sub init_server {
 sub process_request {
     my $self = shift;
 
-#    my( @l ) = `ps ax | grep start_server`;
-    print STDERR Data::Dumper->Dump( ["Starting process $$ Request Done"]);#. Pids : ",join(',',map { s/^\s*(\d+).*/$1/;$_ } @l)] );
-
-
     my $reqstr = <STDIN>;
     my $params = {map { split(/\=/, $_ ) } split( /\&/, $reqstr )};
-    print STDERR Data::Dumper->Dump([$reqstr,$params]);
 
-#    while(<STDIN>) {
-#        $reqstr .= $_;
-#        last if $_ =~ /^[\n\r]+$/s;
-#    }
-#    print STDERR Data::Dumper->Dump( [$reqstr] );
-#    my $parse_params = HTTP::Request::Params->new( { req => $reqstr } );
-#    my $params       = $parse_params->params;
-#    my $CGI = new CGI;
-#    my $params = $CGI->Vars;
     
-    print STDERR Data::Dumper->Dump( [$params,'p1'] );
-#    my $callback     = $params->{callback};
     my $command = from_json( MIME::Base64::decode($params->{m}) );
-    print STDERR Data::Dumper->Dump( [$command] );
+    print STDERR Data::Dumper->Dump( [$command,'Inputted Command'] );
 
 #    return unless $ENV{REMOTE_ADDR} eq '127.0.0.1';
     $command->{oi} = $params->{oi};
-#    $command->{oi} = $self->{server}{peeraddr}; #origin ip
 
     my $wait = $command->{w};
     my $procid = $$;
     {
+	print STDERR Data::Dumper->Dump(["Lock prid2wait"]);
         lock( %prid2wait );
         $prid2wait{$procid} = $wait;
+	print STDERR Data::Dumper->Dump(["Locked prid2wait"]);
     }
-#    print STDERR Data::Dumper->Dump(["locking comands"]);
+
     #
     # Queue up the command for processing in a separate thread.
     #
     {
+	print STDERR Data::Dumper->Dump(["Lock commands"]);
         lock( @commands );
+	print STDERR Data::Dumper->Dump(["Locked commands"]);
         push( @commands, [$command, $procid] );
         cond_broadcast( @commands );
     }
@@ -162,22 +149,15 @@ sub process_request {
         }
         my $result;
         {
-#            print STDERR Data::Dumper->Dump( ["loop locking prid2res",\%prid2result] );
             lock( %prid2result );
             $result = $prid2result{$procid};
             delete $prid2result{$procid};
         }
-#        print STDERR Data::Dumper->Dump(["after wait ($callback)",$command,$result]);
-#        print STDOUT "$callback( '$result' )";
-        print STDERR Data::Dumper->Dump(["Printing result",$result]);
+        print STDERR Data::Dumper->Dump([$result,"Result to Send"]);
         print "$result";
     } else {
         print "{\"msg\":\"Added command\"}";
-
-#        print STDOUT qq|$callback( '{"msg":"Added command"}' );|;
     }
-#    my( @l ) = `ps ax | grep start_server`;
-    print STDERR Data::Dumper->Dump( ["Process $$ Request Done"] ); #. Pids : ",join(',',map { s/^\s*(\d+).*/$1/;$_ } @l)] );
 } #process_request
 
 #
@@ -185,14 +165,15 @@ sub process_request {
 #
 sub _poll_commands {
     while(1) {
-#        print STDERR Data::Dumper->Dump( ["StartLoop"] );
         my $cmd;
         {
             lock( @commands );
             $cmd = shift @commands;
         }
         if( $cmd ) {
+	    print STDERR Data::Dumper->Dump([" in poll, Processing",$cmd]);
             _process_command( $cmd );
+	    print STDERR Data::Dumper->Dump([" in poll, Done processing",$cmd]);
         }
         unless( @commands ) {
             lock( @commands );
@@ -213,7 +194,6 @@ sub _process_command {
     eval {
         my $root = GServ::AppRoot::fetch_root();
         my $ret  = $root->process_command( $command );
-	print STDERR Data::Dumper->Dump([$ret,$root,$command,"RESPONSE FOR"]);
         $resp = to_json($ret);
         GServ::ObjProvider::stow_all();
     };
@@ -222,11 +202,15 @@ sub _process_command {
     #
     # Send return value back to the caller if its waiting for it.
     #
+    print STDERR Data::Dumper->Dump(["IN process, locking prid2wait for",$resp]);
     lock( %prid2wait );
     {
+    print STDERR Data::Dumper->Dump(["IN process, locking prid2result for",$resp]);
         lock( %prid2result );
         $prid2result{$procid} = $resp;
     }
+    print STDERR Data::Dumper->Dump(["IN process, freeing prid2wait for",$resp]);
+
     delete $prid2wait{$procid};
     cond_broadcast( %prid2wait );
 
