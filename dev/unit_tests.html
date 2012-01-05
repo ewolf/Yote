@@ -34,7 +34,6 @@
 	  pass( msg )();
       }
       else {
-	  alert( $.dump( expected ) + "\nvs\n" + $.dump(result) );
 	  fail( msg + "( expected " + expected + " and got " + result +")" )();
       }
   }
@@ -96,13 +95,14 @@
       
 
       // have a GServ object returned
-      var obj = nologin.get( 'gserv_obj' );
+      var obj = login.get( 'gserv_obj' );
       is( typeof obj, 'object', "no login returns gserv obj" );
+
       var initval = obj.get('name');
       is( initval, 'INITY', "gserv object inited on server side" );
       
       // have gserv array returned
-      var arry = nologin.get_array();
+      var arry = login.get_array();
       is( arry.length(), 3, 'length of array returned' );
       is( arry.get(0), 'A', 'element 0 correct' );
 

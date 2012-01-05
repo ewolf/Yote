@@ -33,7 +33,7 @@ $.gServ = {
 	return {
 	    length:function() {
 		var cnt = 0;
-		for( key in self._data ) {
+		for( key in this._data ) {
 		    ++cnt;
 		}
 		return cnt;
@@ -44,7 +44,7 @@ $.gServ = {
 		if( typeof  val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( val > 0 ) { //object reference
-		    var obj = root.fetch( val );
+		    var obj = root.fetch( this._app, val );
 		    this._data[key] = obj;
 		    return obj;
 		}
@@ -54,6 +54,7 @@ $.gServ = {
             _reset:function(data) {
 		var obj = this;
 		obj._id = data.id;
+		if( obj._id === 0 ) { return; }
 		obj._app = data.a;
 		obj._class = data.c;
 		
@@ -85,7 +86,7 @@ $.gServ = {
 					    // the return value is either going to be an object or a scalar
 					    // if a scalar, then return as is. if an object, use newobj to return it
 					      if( typeof res.r === 'object' ) {
-						  ret = newobj();
+						  ret = root.newobj();
 						  ret._reset( res.r );
 					      } else {
 						  ret = res.r;
@@ -116,10 +117,10 @@ $.gServ = {
     fetch:function(appname,id,obj) {
         var root = this;
 
-	if( id > 0 )  { //if cached, return
-	    if( typeof root.objs[id] === 'object' ) {
-		return root.objs[id];
-	    }
+	if( typeof root.objs[id] === 'object' ) {
+	    return root.objs[id];
+	} else if( typeof root.objs[appname] === 'object' ) {
+	    return root.objs[appname];
 	}
 
         if( typeof obj === 'undefined' ) {  //obj may be defined for reload calls
@@ -128,8 +129,10 @@ $.gServ = {
 
         if( id > 0 ) {
             var cmd = 'fetch';
+	    root.objs[id] = obj;
         } else {
             var cmd = 'fetch_root';
+	    root.objs[appname] = obj;
         }
         var data = root.message( {
             cmd:cmd,

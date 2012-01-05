@@ -47,7 +47,7 @@ sub start_server {
     $args = scalar(@args) == 1 ? $args[0] : { @args };
 
     # load config file
-    my $file = `cat /home/irrespon/var/gserv.conf`;
+    my $file = `cat /var/gserv.conf`;
     my $config_data = from_json( $file );
 
     $args->{port}      = $args->{port}      || $config_data->{port}      || 8008;
@@ -194,6 +194,7 @@ sub _process_command {
     eval {
         my $root = GServ::AppRoot::fetch_root();
         my $ret  = $root->process_command( $command );
+	print STDERR Data::Dumper->Dump([$ret,"Response"]);
         $resp = to_json($ret);
         GServ::ObjProvider::stow_all();
     };

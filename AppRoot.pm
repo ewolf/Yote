@@ -251,28 +251,67 @@ sub _fetch {
 } #_fetch
 
 #
+# Trasnforms data structure but does not assign ids to non tied references.
+#
+sub _transform_data_no_id {
+    my $item = shift;
+    if( ref( $item ) eq 'ARRAY' ) {
+	my $tied = tied @$item;
+	if( $tied ) {
+	    return GServ::ObjProvider::get_id( $item ); 
+	}
+	return [map { _transform_data_no_id( $_ ) } @$item];
+    }
+    elsif( ref( $item ) eq 'HASH' ) {
+	my $tied = tied %$item;
+	if( $tied ) {
+	    return GServ::ObjProvider::get_id( $item ); 
+	}
+	return { map { $_ => _transform_data_no_id( $item->{$_} ) } keys %$item};
+    }
+    elsif( ref( $item ) ) {
+	return  GServ::ObjProvider::get_id( $item ); 
+    }
+    else {
+	return "v$item"; #scalar case
+    }
+} #_transform_data_no_id
+
+#
 # Converts scalar, gserv object, hash or array to data for returning.
 #
 sub _obj_to_response {
     my( $self, $to_convert ) = @_;
     my $ref = ref($to_convert);
+    my $use_id;
     if( $ref ) {
 	my( $m, $d ) = ([]);
 	if( ref( $to_convert ) eq 'ARRAY' ) {
 	    my $tied = tied @$to_convert;
-	    $d = $tied->[1];
+	    if( $tied ) {
+		$d = $tied->[1];
+		$use_id = GServ::ObjProvider::get_id( $to_convert );
+	    } else {
+		$d = _transform_data_no_id( $to_convert );
+	    }
 	} 
 	elsif( ref( $to_convert ) eq 'HASH' ) {
 	    my $tied = tied %$to_convert;
-	    $d = $tied->[1];
+	    if( $tied ) {
+		$d = $tied->[1];
+		$use_id = GServ::ObjProvider::get_id( $to_convert );
+	    } else {
+		$d = _transform_data_no_id( $to_convert );
+	    }
 	} 
 	else {
+	    $use_id = GServ::ObjProvider::get_id( $to_convert );
 	    $d = $to_convert->{DATA};
 	    no strict 'refs';
 	    $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
 	    use strict 'refs';
 	}
-	return { a => ref( $self ), c => $ref, id => GServ::ObjProvider::get_id( $to_convert ), d => $d, m => $m };
+	return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
     } # if a reference
     return $to_convert;
 } #_obj_to_response
