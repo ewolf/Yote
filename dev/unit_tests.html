@@ -76,8 +76,8 @@
       else { fail( "no login scalar has wrong result" )() }
 
       //fetch app that requires login and get scalar
-      var nologin = $.gServ.fetch( 'GServ::TestAppNeedsLogin' );
-      var scalar = nologin.get_scalar( {}, {passhandler:fail("required login returned scalar without login"),
+      var login = $.gServ.fetch( 'GServ::TestAppNeedsLogin' );
+      var scalar = login.get_scalar( {}, {passhandler:fail("required login returned scalar without login"),
 					       failhandler:pass("required login returned nothingwithout login")});
       
 
@@ -90,7 +90,7 @@
       $.gServ.login( 'unit_test_account', 'ut', pass( "able to log in" ), fail( "able to log in" ) );
 
       //app that requires login should allow get_scalar now
-      var scalar = nologin.get_scalar( {}, {failhandler:fail("required login returned scalar with login")});
+      var scalar = login.get_scalar( {}, {failhandler:fail("required login returned scalar with login")});
       ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
       
 
@@ -102,6 +102,7 @@
       is( initval, 'INITY', "gserv object inited on server side" );
       
       // have gserv array returned
+  alert( login.get_array );
       var arry = login.get_array();
       is( arry.length(), 3, 'length of array returned' );
       is( arry.get(0), 'A', 'element 0 correct' );
@@ -112,14 +113,14 @@
 
       // have gserv hash returned
       var h = arry.get(1);
-      is( h.lenght(), 1, 'hash has correct numbers' );
-      var inarry = h.get('inner');
-      is( inarry.length(), 2, 'inner array has correct length' );
-      is( inarry.get(0), 'Juan', '1st el inner array' );
-      var inh = inarry.get(1);
-      is( inh.length(), 2, 'inner hash length' );
-      is( inh.get('peanut'), 'Butter', 'first value inner hash' );
-      is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+      is( h.length, 1, 'hash has correct numbers' );
+      var inarry = h['inner'];
+      is( inarry.length, 2, 'inner array has correct length' );
+      is( inarry[0], 'Juan', '1st el inner array' );
+      var inh = inarry[1];
+      is( inh.length, 2, 'inner hash length' );
+      is( inh['peanut'], 'Butter', 'first value inner hash' );
+      is( inh['ego'].get('name'), 'INITY', 'object stored in inner hash' );
 
 
       // account removal

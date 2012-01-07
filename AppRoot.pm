@@ -251,7 +251,7 @@ sub _fetch {
 } #_fetch
 
 #
-# Trasnforms data structure but does not assign ids to non tied references.
+# Transforms data structure but does not assign ids to non tied references.
 #
 sub _transform_data_no_id {
     my $item = shift;
@@ -260,14 +260,14 @@ sub _transform_data_no_id {
 	if( $tied ) {
 	    return GServ::ObjProvider::get_id( $item ); 
 	}
-	return [map { _transform_data_no_id( $_ ) } @$item];
+	return { d => [map { _obj_to_response( $_ ) } @$item] };
     }
     elsif( ref( $item ) eq 'HASH' ) {
 	my $tied = tied %$item;
 	if( $tied ) {
 	    return GServ::ObjProvider::get_id( $item ); 
 	}
-	return { map { $_ => _transform_data_no_id( $item->{$_} ) } keys %$item};
+	return { d => map { $_ => _obj_to_response( $item->{$_} ) } keys %$item };
     }
     elsif( ref( $item ) ) {
 	return  GServ::ObjProvider::get_id( $item ); 

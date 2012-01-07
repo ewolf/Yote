@@ -39,14 +39,14 @@ $.gServ = {
 		return cnt;
 	    },
 	    _data:{},
-	    get:function(key) {
+	    get:function(key) {			       
 		var val = this._data[key]
 		if( typeof  val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
-		if( val > 0 ) { //object reference
-		    var obj = root.fetch( this._app, val );
-		    this._data[key] = obj;
-		    return obj;
+		if( (0+val) > 0 ) { //object reference
+		    var objdata = root.fetch( this._app, val );
+		    this._data[key] = objdata;
+		    return objdata;
 		}
 		return val.substring(1);
 	    }, //get
@@ -88,6 +88,10 @@ $.gServ = {
 					      if( typeof res.r === 'object' ) {
 						  ret = root.newobj();
 						  ret._reset( res.r );
+						  obj[key] = (function(x) {
+						      return function() {
+							  return x;
+						      } } )(ret);
 					      } else {
 						  ret = res.r;
 					      }
@@ -106,7 +110,7 @@ $.gServ = {
 	    }, //reset
 
             reload:function() { 
-		if( this._id > 0 ) { 
+		if( ( this._id + 0 ) > 0 ) { // 0 + forces int context
 		    root.objs[this._id] = null;
 		    return root.fetch(0,this._id,this);
 		} 
@@ -117,8 +121,10 @@ $.gServ = {
     fetch:function(appname,id,obj) {
         var root = this;
 
-	if( typeof root.objs[id] === 'object' ) {
-	    return root.objs[id];
+	if( (0+id)> 0 ) {
+	    if( typeof root.objs[id] === 'object' ) {
+		return root.objs[id];
+	    } 
 	} else if( typeof root.objs[appname] === 'object' ) {
 	    return root.objs[appname];
 	}
@@ -127,7 +133,7 @@ $.gServ = {
     	    obj = root.newobj();
         }
 
-        if( id > 0 ) {
+        if( (0 + id ) > 0 ) { // 0 + forces int context
             var cmd = 'fetch';
 	    root.objs[id] = obj;
         } else {
