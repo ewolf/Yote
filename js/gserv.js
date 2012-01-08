@@ -28,6 +28,99 @@ $.gServ = {
 	}
     },
 
+    create_obj:function(data,appname) {
+	var root = this;
+	return (function(x) {
+	    var o = {
+		_app:appname,
+		_d:{},
+		reload:function(){},
+		length:function() {
+		    var cnt = 0;
+		    for( key in this._d ) {
+			++cnt;
+		    }
+		    return cnt;
+		}
+	    };
+
+	    /*
+	      assign methods
+	    */
+	    if( typeof x.m === 'object' ) {
+		for( m in x.m ) {
+		    o[x.m[m]] = (function(key) {
+			    return function( params, extra ) {
+				var failhandler = root.error;
+				var passhandler = function(d) {};
+				if( typeof extra === 'object' ) {
+				    failhandler = typeof extra.failhandler === 'undefined' ? root.error : extra.failhandler;
+				    passhandler = typeof extra.passhandler === 'undefined' ? passhandler : extra.passhandler;
+				}
+				var ret = root.message( {
+				    app:o._app,
+				    cmd:key,
+				    data:params,
+				    wait:true,
+				    async:false,
+				    failhandler:failhandler,
+				    passhandler:passhandler
+				} ); //sending message
+			
+				if( typeof ret.r === 'object' ) {
+				    return root.create_obj( ret.r, o._app );
+				} else {
+				    return ret.r;
+				}
+			    } } )(x.m[m]);
+		} //each method
+	    } //methods
+
+	    // get fields
+	    if( typeof x.d === 'object' ) {
+		for( fld in x.d ) {
+		    var val = x.d[fld];
+		    if( typeof val === 'object' ) {
+			o._d[fld] = (function(x) { return root.create_obj(x); })(val);
+		    } else {
+			o._d[fld] = (function(x) { return x; })(val);
+		    }
+		}
+	    }
+
+	    o.get = function( key ) {
+		var val = this._d[key];
+		if( typeof val === 'undefined' ) return false;
+		if( typeof val === 'object' ) return val;
+		if( (0+val) > 0 ) {
+		    return root.fetch_obj(val,this._app);
+		}
+		return val.substring(1);
+	    }
+	    return o;
+	})(data);
+    }, //create_obj
+
+    fetch_obj:function(id,app) {
+	return this.create_obj( this.message( {
+	    app:app,
+	    cmd:'fetch',
+	    data:{ id:id },
+	    wait:true,
+	    async:false,
+	} ).r, app );
+    },
+
+    get_app:function( appname ) {
+	return this.create_obj( this.message( {
+	    app:appname,
+	    cmd:'fetch_root',
+	    data:{ app:appname },
+	    wait:true,
+	    async:false,
+	} ).r, appname );
+    },
+
     newobj:function() {
 	var root = this;
 	return {
@@ -40,7 +133,7 @@ $.gServ = {
 	    },
 	    _data:{},
 	    get:function(key) {			       
-		var val = this._data[key]
+		var val = this._data[key];
 		if( typeof  val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 ) { //object reference
@@ -54,7 +147,6 @@ $.gServ = {
             _reset:function(data) {
 		var obj = this;
 		obj._id = data.id;
-		if( obj._id === 0 ) { return; }
 		obj._app = data.a;
 		obj._class = data.c;
 		
@@ -62,50 +154,51 @@ $.gServ = {
 		if( typeof data.m === 'object' ) {
 		    for( var i=0; i< data.m.length; i++ ) {
 			obj[data.m[i]] = (function(key) {
-			    return function( params, extra ) {
-				var ret;
-				var async = false;
-				var wait = true;
-				var failhandler = root.error;
-				var passhandler = function(d) {};
-				if( typeof extra === 'object' ) {
-				    async = typeof extra.async === 'undefined' ? false : extra.async;
-				    wait  = typeof extra.wait  === 'undefined' ? true  : extra.wait;
-				    failhandler = typeof extra.failhandler === 'undefined' ? root.error : extra.failhandler;
-				    passhandler = typeof extra.passhandler === 'undefined' ? passhandler : extra.passhandler;
+			    return function( params ) {
+				var ret = root.message( {
+				    app:obj._app,
+				    cmd:key,
+				    data:params,
+				    wait:true,
+				    async:false
+				} );
+				
+				// todo. this is where the magic is going to happen
+				// the return value is either going to be an object or a scalar
+				// if a scalar, then return as is. if an object, use newobj to return it
+				if( typeof ret === 'object' ) {
+				    ret = root.newobj();
+				    ret._reset( ret.r );
+				    obj[key] = (function(x) {
+					return function() {
+					    return x;
+					} } )(ret);
+				} else {
+				    ret = res.r;
 				}
-				root.message( {
-					    app:obj._app,
-					    cmd:key,
-					    data:params,
-					    wait:wait,
-					    async:async,
-					    failhandler:failhandler,
-					    passhandler:function(res) {
-					    // todo. this is where the magic is going to happen
-					    // the return value is either going to be an object or a scalar
-					    // if a scalar, then return as is. if an object, use newobj to return it
-					      if( typeof res.r === 'object' ) {
-						  ret = root.newobj();
-						  ret._reset( res.r );
-						  obj[key] = (function(x) {
-						      return function() {
-							  return x;
-						      } } )(ret);
-					      } else {
-						  ret = res.r;
-					      }
-					      passhandler( ret );
-					    }
-				    } ); //sending message
-				return ret;
-			    } } )(data.m[i]);
-		    } //each m
+				passhandler( ret );
+			    }
+			} )(data.m[i]);
+		    } //each method
 		} //method install
-
 		//install data
+		$('#tests').append( "<br> making object data"+typeof data.d + "<br>");
 		if( typeof data.d === 'object' ) {
-		    obj._data = data.d;
+		    //todo.. make sure the tree of data gets gserved! the arrays that are there are kept as is and must be converted
+		    obj._data = (function(struct) { 
+			var ds = {};
+			for( k in struct ) {
+			    if( typeof k === 'object' ) {
+				var kval = root.newobj();
+				kval._reset( data.d[k] );
+				ds[k] = kval;
+			    } else {
+				ds[k] = data.d[k];
+			    }
+			}
+			return ds;
+		    } )( data.d );
+		    //		    obj._data = data.d;
 		} //if data to install
 	    }, //reset
 
@@ -115,7 +208,7 @@ $.gServ = {
 		    return root.fetch(0,this._id,this);
 		} 
 	    } //reload
-	};
+	}; //return
     }, //newobj
 
     fetch:function(appname,id,obj) {
@@ -130,7 +223,7 @@ $.gServ = {
 	}
 
         if( typeof obj === 'undefined' ) {  //obj may be defined for reload calls
-    	    obj = root.newobj();
+    	    var obj = root.newobj();
         }
 
         if( (0 + id ) > 0 ) { // 0 + forces int context
@@ -156,8 +249,8 @@ $.gServ = {
         } );
         return obj;
     }, //fetch
-    
-	/*   DEFAULT FUNCTIONS */
+
+    /*   DEFAULT FUNCTIONS */
     login:function( un, pw, passhandler, failhandler ) {
 	var root = this;
 	this.message( {
@@ -238,31 +331,35 @@ $.gServ = {
             enabled = $(':enabled');
             $.each( enabled, function(idx,val) { val.disabled = true } );
         }
-		var resp;
-		$.ajax( {
-		    async:async,
-		    data:{
-			    m:$.base64.encode(JSON.stringify( {
-						          a:params.app,
-							  c:params.cmd,
-							  d:params.data,
-							  t:root.token,
-							  w:wait
-							  } ) ) },
-		    error:function(a,b,c) { root.error(a) },
-		    success:function( data ) {
-			    resp = data;
-			    if( typeof data.err === 'undefined' ) {
-				if( typeof params.passhandler === 'function' ) {
-				    params.passhandler(data);
-				}
-			    } else if( typeof params.failhandler === 'function' ) {
-				params.failhandler(data);
-			    } else { alert ("Dunno : " +typeof params.failhandler ) }
-			},
-		    type:'POST',
-		    url:root.url
-		} );
+	var resp;
+	$.ajax( {
+	    async:async,
+	    data:{
+		m:$.base64.encode(JSON.stringify( {
+		    a:params.app,
+		    c:params.cmd,
+		    d:params.data,
+		    t:root.token,
+		    w:wait
+		} ) ) },
+	    dataFilter:function(a,b) { 
+//		$('#tests').append( $.dump(params) + "<hr>" + a + "<br>");
+		return a; 
+	    },
+	    error:function(a,b,c) { root.error(a); },
+	    success:function( data ) {
+		resp = data;
+		if( typeof data.err === 'undefined' ) {
+		    if( typeof params.passhandler === 'function' ) {
+			params.passhandler(data);
+		    }
+		} else if( typeof params.failhandler === 'function' ) {
+		    params.failhandler(data);
+		} else { alert ("Dunno : " +typeof params.failhandler ) }
+	    },
+	    type:'POST',
+	    url:root.url
+	} );
         if( async == 0 ) {
             $.each( enabled, function(idx,val) { val.disabled = false } );
             return resp;

@@ -8,6 +8,8 @@ use GServ::ObjIO;
 use GServ::MysqlIO;
 use GServ::AppRoot;
 use GServ::AppServer;
+use GServ::TestAppNoLogin;
+use GServ::TestAppNeedsLogin;
 
 use Test::More;
 
@@ -37,20 +39,23 @@ sub query_line {
     my( @ret ) = $db->selectrow_array( $query, {}, @args );
 }
 
+
+my( $dbn, $tdbn ) = ( 'sg', 'sg_test' );
 if( 0 ) {
-    $db->do( "CREATE DATABASE IF NOT EXISTS sg_test" );
-    if( $db->errstr() ) {
-	BAIL_OUT( $db->errstr() );
-    }
+    ( $dbn, $tdbn ) = ( 'irrespon_sg', 'irrespon_test' );
 }
 
-$db->do( "use irrespon_test" );
+$db->do( "CREATE DATABASE IF NOT EXISTS $tdbn" );
+if( $db->errstr() ) {
+    BAIL_OUT( $db->errstr() );
+}
+$db->do( "use $tdbn" );
 
 if( $db->errstr() ) {
     BAIL_OUT( $db->errstr() );
 }
 for my $table (qw/objects field big_text/) {
-    $db->do( "CREATE TEMPORARY TABLE irrespon_test.$table LIKE irrespon_sg.$table" );
+    $db->do( "CREATE TEMPORARY TABLE $tdbn.$table LIKE $dbn.$table" );
     if( $db->errstr() ) {
         BAIL_OUT( $db->errstr() );
     }
@@ -227,8 +232,21 @@ is( $root->process_command( { a => 'GServ::Hello', c => 'hello', d => { name => 
 my $as = new GServ::AppServer;
 ok( $as, "GServ::AppServer compiles" );
 
+#my $root = GServ::AppRoot::fetch_root();
 
-my $root = GServ::AppRoot::fetch_root();
+my $ta = new GServ::TestAppNeedsLogin();
+my $aaa = $ta->get_array();
+my $resp = $ta->_obj_to_response( $aaa );
+is( $resp->{d}->[0], 'vA', 'fist el' );
+is( ref( $resp->{d}[1] ), 'HASH', 'second el hash' );
+my $ina = $resp->{d}[1]{d}{inner};
+is( $ina->{d}[0], "vJuan", "inner array el" );
+my $inh = $ina->{d}[1];
+is( ref( $inh ), 'HASH', 'inner hash' );
+is( $inh->{d}{peanut}, 'vButter', "scalar in inner hash" );
+my $ino = $inh->{d}{ego};
+ok( $ino > 0, "Inner object" );
+is( $resp->{d}[2], $ino, "3rd element outer array" );
 
 
 done_testing();

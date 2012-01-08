@@ -203,10 +203,8 @@ sub _process_command {
     #
     # Send return value back to the caller if its waiting for it.
     #
-    print STDERR Data::Dumper->Dump(["IN process, locking prid2wait for",$resp]);
     lock( %prid2wait );
     {
-    print STDERR Data::Dumper->Dump(["IN process, locking prid2result for",$resp]);
         lock( %prid2result );
         $prid2result{$procid} = $resp;
     }

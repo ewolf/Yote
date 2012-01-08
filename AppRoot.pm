@@ -254,20 +254,20 @@ sub _fetch {
 # Transforms data structure but does not assign ids to non tied references.
 #
 sub _transform_data_no_id {
-    my $item = shift;
+    my( $self, $item ) = @_;
     if( ref( $item ) eq 'ARRAY' ) {
 	my $tied = tied @$item;
 	if( $tied ) {
 	    return GServ::ObjProvider::get_id( $item ); 
 	}
-	return { d => [map { _obj_to_response( $_ ) } @$item] };
+	return [map { $self->_obj_to_response( $_, 1 ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
 	my $tied = tied %$item;
 	if( $tied ) {
 	    return GServ::ObjProvider::get_id( $item ); 
 	}
-	return { d => map { $_ => _obj_to_response( $item->{$_} ) } keys %$item };
+	return { map { $_ => $self->_obj_to_response( $item->{$_}, 1 ) } keys %$item };
     }
     elsif( ref( $item ) ) {
 	return  GServ::ObjProvider::get_id( $item ); 
@@ -281,7 +281,7 @@ sub _transform_data_no_id {
 # Converts scalar, gserv object, hash or array to data for returning.
 #
 sub _obj_to_response {
-    my( $self, $to_convert ) = @_;
+    my( $self, $to_convert, $xform_out ) = @_;
     my $ref = ref($to_convert);
     my $use_id;
     if( $ref ) {
@@ -291,8 +291,9 @@ sub _obj_to_response {
 	    if( $tied ) {
 		$d = $tied->[1];
 		$use_id = GServ::ObjProvider::get_id( $to_convert );
+		return $use_id if $xform_out;
 	    } else {
-		$d = _transform_data_no_id( $to_convert );
+		$d = $self->_transform_data_no_id( $to_convert );
 	    }
 	} 
 	elsif( ref( $to_convert ) eq 'HASH' ) {
@@ -300,12 +301,14 @@ sub _obj_to_response {
 	    if( $tied ) {
 		$d = $tied->[1];
 		$use_id = GServ::ObjProvider::get_id( $to_convert );
+		return $use_id if $xform_out;
 	    } else {
-		$d = _transform_data_no_id( $to_convert );
+		$d = $self->_transform_data_no_id( $to_convert );
 	    }
 	} 
 	else {
 	    $use_id = GServ::ObjProvider::get_id( $to_convert );
+	    return $use_id if $xform_out;
 	    $d = $to_convert->{DATA};
 	    no strict 'refs';
 	    $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
@@ -313,6 +316,7 @@ sub _obj_to_response {
 	}
 	return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
     } # if a reference
+    return "v$to_convert" if $xform_out;
     return $to_convert;
 } #_obj_to_response
 
