@@ -113,10 +113,6 @@
 
       // have gserv hash returned
       var h = arry.get(1);
-  $('#tests').append( "---" + $.dump(h) + "---<br>  " + h.get + "<br>");
-  for( z in h ) { 
-    $('#tests').append( "<br>---" + z + ":" + $.dump(h[z]) + "---<br>");
-}
       is( h.length(), 1, 'hash has correct numbers' );
       var inarry = h.get('inner');
       is( inarry.length(), 2, 'inner array has correct length' );

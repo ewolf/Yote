@@ -182,7 +182,6 @@ $.gServ = {
 		    } //each method
 		} //method install
 		//install data
-		$('#tests').append( "<br> making object data"+typeof data.d + "<br>");
 		if( typeof data.d === 'object' ) {
 		    //todo.. make sure the tree of data gets gserved! the arrays that are there are kept as is and must be converted
 		    obj._data = (function(struct) { 
@@ -343,7 +342,6 @@ $.gServ = {
 		    w:wait
 		} ) ) },
 	    dataFilter:function(a,b) { 
-//		$('#tests').append( $.dump(params) + "<hr>" + a + "<br>");
 		return a; 
 	    },
 	    error:function(a,b,c) { root.error(a); },
