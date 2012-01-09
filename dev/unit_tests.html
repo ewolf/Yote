@@ -120,6 +120,7 @@
       var inh = inarry.get(1);
       is( inh.length(), 2, 'inner hash length' );
       is( inh.get('peanut'), 'Butter', 'first value inner hash' );
+      is( inh.get('ego').id, $.gServ.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
       is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
 
 

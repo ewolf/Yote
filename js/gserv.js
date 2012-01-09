@@ -34,6 +34,7 @@ $.gServ = {
 	    var o = {
 		_app:appname,
 		_d:{},
+		id:x.id,
 		reload:function(){},
 		length:function() {
 		    var cnt = 0;
@@ -97,11 +98,27 @@ $.gServ = {
 		}
 		return val.substring(1);
 	    }
+
+	    if( (0 + x.id ) > 0 ) {
+		root.objs[x.id] = o;
+		o.reload = (function(thid,tapp) {
+		    return function() {
+			root.objs[thid] = null;
+			var replace = root.fetch_obj( thid, tapp );
+			this._d = replace._d;
+			return this;
+		    }
+		} )(x.id,appname);
+	    }
+
 	    return o;
 	})(data);
     }, //create_obj
 
     fetch_obj:function(id,app) {
+	if( typeof this.objs[id] === 'object' ) {
+	    return this.objs[id];
+	}
 	return this.create_obj( this.message( {
 	    app:app,
 	    cmd:'fetch',
@@ -121,133 +138,6 @@ $.gServ = {
 	} ).r, appname );
     },
 
-    newobj:function() {
-	var root = this;
-	return {
-	    length:function() {
-		var cnt = 0;
-		for( key in this._data ) {
-		    ++cnt;
-		}
-		return cnt;
-	    },
-	    _data:{},
-	    get:function(key) {			       
-		var val = this._data[key];
-		if( typeof  val === 'undefined' ) return false;
-		if( typeof val === 'object' ) return val;
-		if( (0+val) > 0 ) { //object reference
-		    var objdata = root.fetch( this._app, val );
-		    this._data[key] = objdata;
-		    return objdata;
-		}
-		return val.substring(1);
-	    }, //get
-
-            _reset:function(data) {
-		var obj = this;
-		obj._id = data.id;
-		obj._app = data.a;
-		obj._class = data.c;
-		
-		//install methods
-		if( typeof data.m === 'object' ) {
-		    for( var i=0; i< data.m.length; i++ ) {
-			obj[data.m[i]] = (function(key) {
-			    return function( params ) {
-				var ret = root.message( {
-				    app:obj._app,
-				    cmd:key,
-				    data:params,
-				    wait:true,
-				    async:false
-				} );
-				
-				// todo. this is where the magic is going to happen
-				// the return value is either going to be an object or a scalar
-				// if a scalar, then return as is. if an object, use newobj to return it
-				if( typeof ret === 'object' ) {
-				    ret = root.newobj();
-				    ret._reset( ret.r );
-				    obj[key] = (function(x) {
-					return function() {
-					    return x;
-					} } )(ret);
-				} else {
-				    ret = res.r;
-				}
-				passhandler( ret );
-			    }
-			} )(data.m[i]);
-		    } //each method
-		} //method install
-		//install data
-		if( typeof data.d === 'object' ) {
-		    //todo.. make sure the tree of data gets gserved! the arrays that are there are kept as is and must be converted
-		    obj._data = (function(struct) { 
-			var ds = {};
-			for( k in struct ) {
-			    if( typeof k === 'object' ) {
-				var kval = root.newobj();
-				kval._reset( data.d[k] );
-				ds[k] = kval;
-			    } else {
-				ds[k] = data.d[k];
-			    }
-			}
-			return ds;
-		    } )( data.d );
-		    //		    obj._data = data.d;
-		} //if data to install
-	    }, //reset
-
-            reload:function() { 
-		if( ( this._id + 0 ) > 0 ) { // 0 + forces int context
-		    root.objs[this._id] = null;
-		    return root.fetch(0,this._id,this);
-		} 
-	    } //reload
-	}; //return
-    }, //newobj
-
-    fetch:function(appname,id,obj) {
-        var root = this;
-
-	if( (0+id)> 0 ) {
-	    if( typeof root.objs[id] === 'object' ) {
-		return root.objs[id];
-	    } 
-	} else if( typeof root.objs[appname] === 'object' ) {
-	    return root.objs[appname];
-	}
-
-        if( typeof obj === 'undefined' ) {  //obj may be defined for reload calls
-    	    var obj = root.newobj();
-        }
-
-        if( (0 + id ) > 0 ) { // 0 + forces int context
-            var cmd = 'fetch';
-	    root.objs[id] = obj;
-        } else {
-            var cmd = 'fetch_root';
-	    root.objs[appname] = obj;
-        }
-        var data = root.message( {
-            cmd:cmd,
-            data:{
-                app:appname,
-                id:id
-            },
-            wait:true,
-            async:false,
-            failhandler:root.error,
-            passhandler:function(ad) {
-		var appdata = ad.r;
-                obj._reset( appdata );
-            }
-        } );
-        return obj;
-    }, //fetch
 
     /*   DEFAULT FUNCTIONS */
     login:function( un, pw, passhandler, failhandler ) {
