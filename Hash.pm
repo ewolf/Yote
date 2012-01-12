@@ -61,6 +61,15 @@ sub CLEAR {
 1;
 __END__
 
+
+=head1 NAME
+
+GServ::Hash - All hashes in the GServ system get tied to this class.
+
+=head1 DESCRIPTION
+
+GServ::Hash extends Tie::Hash and is used by the GServ system for hash persistance.
+
 =head1 AUTHOR
 
 Eric Wolf

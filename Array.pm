@@ -77,6 +77,16 @@ sub SPLICE {
 1;
 __END__
 
+
+=head1 NAME
+
+GServ::Array - All arrays in the GServ system get tied to this class.
+
+=head1 DESCRIPTION
+
+GServ::Array extends Tie::Array and is used by the GServ system for array persistance.
+
+
 =head1 AUTHOR
 
 Eric Wolf

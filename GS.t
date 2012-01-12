@@ -4,7 +4,6 @@ use strict;
 
 use Carp;
 
-use GServ::ObjIO;
 use GServ::MysqlIO;
 use GServ::AppRoot;
 use GServ::AppServer;
@@ -17,7 +16,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/MysqlIO ObjIO Obj Hash/) {
+    for my $class (qw/MysqlIO Obj Hash/) {
         use_ok( "GServ::$class" ) || BAIL_OUT( "Unable to load GServ::class" );
     }
 }
@@ -29,10 +28,10 @@ BEGIN {
 #
 # Create testing database, populate it with tables.
 #
-GServ::ObjIO::init(
+GServ::ObjProvider::init(
     datastore      => 'GServ::MysqlIO',
     );
-my $db = $GServ::ObjIO::SINGLETON->database();
+my $db = $GServ::ObjProvider::DATASTORE->database();
 
 sub query_line {
     my( $query, @args ) = @_;
@@ -76,9 +75,9 @@ is( $o_count, 0, "number of objects before save root" );
 my $root = GServ::AppRoot::fetch_root();
 ok( $root->{ID} == 1, "Root has id of 1" );
 my( $o_count ) = query_line( "SELECT count(*) FROM objects" );
-is( $o_count, 2, "number of objects after save root" ); # which also makes an account root automiatcially";
+is( $o_count, 1, "number of objects after save root" ); # which also makes an account root automiatcially";
 my( $f_count ) = query_line( "SELECT count(*) FROM field" );
-is( $f_count, 1, "number of fields after save root" ); #1 for
+is( $f_count, 0, "number of fields after save root" ); #0 for
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
@@ -97,16 +96,16 @@ $root->save();
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-BAIL_OUT("error saving") unless is( scalar(@$db_rows), 15, "Number of db rows saved to database with ordinary save" );
+BAIL_OUT("error saving") unless is( scalar(@$db_rows), 14, "Number of db rows saved to database with ordinary save" );
 
 GServ::ObjProvider::stow_all();
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 19, "Number of db rows saved to database with stow all" );
+BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 18, "Number of db rows saved to database with stow all" );
 
 my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
-is( scalar(@$db_rows), 12, "Number of db rows saved to database" ); #Big counts as obj
+is( scalar(@$db_rows), 11, "Number of db rows saved to database" ); #Big counts as obj
 
 
 my $root_clone = GServ::AppRoot::fetch_root();

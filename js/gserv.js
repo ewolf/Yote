@@ -1,4 +1,9 @@
 /*`
+ * LICENSE AND COPYRIGHT
+ *
+ * Copyright (C) 2012 Eric Wolf
+ * This module is free software; it can be used under the terms of the artistic license
+ *
  * Here are the following public gserv calls :
  *  * init           - takes the url of the gserv relay cgi and sets it for all gserv calls
  *  * reload_all     - reloads all gserv objects that are in the gserv queue

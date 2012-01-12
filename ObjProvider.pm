@@ -7,7 +7,6 @@ use feature ':5.10';
 use GServ::Array;
 use GServ::Hash;
 use GServ::Obj;
-use GServ::ObjIO;
 
 use Data::Dumper;
 
@@ -21,18 +20,32 @@ our @EXPORT_OK = qw(fetch stow a_child_of_b);
 $GServ::ObjProvider::DIRTY = {};
 $GServ::ObjProvider::WEAK_REFS = {};
 
+our $DATASTORE;
+
 # --------------------
 #   PACKAGE METHODS
 # --------------------
 
+sub init {
+    my $args = ref( $_[0] ) ? $_[0] : { @_ };
+    my $ds = $args->{datastore};
+    eval("use $ds");
+    die $@ if $@;
+    $DATASTORE = $ds->new( $args );
+} #init
+
+sub init_datastore {
+    return $DATASTORE->init_datastore(@_);
+} #init_datastore
+
 sub xpath {
     my $path = shift;
-    return xform_out( GServ::ObjIO::xpath( $path ) );
+    return xform_out( $DATASTORE->xpath( $path ) );
 }
 
 sub xpath_count {
     my $path = shift;
-    return GServ::ObjIO::xpath_count( $path );
+    return $DATASTORE->xpath_count( $path );
 }
 
 sub fetch {
@@ -44,7 +57,7 @@ sub fetch {
     my $ref = $GServ::ObjProvider::DIRTY->{$id} || $GServ::ObjProvider::WEAK_REFS->{$id};
     return $ref if $ref;
 
-    my $obj_arry = GServ::ObjIO::fetch( $id );
+    my $obj_arry = $DATASTORE->fetch( $id );
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -84,10 +97,10 @@ sub get_id {
         when('ARRAY') {
             my $tied = tied @$ref;
             if( $tied ) {
-                return $tied->[0] || GServ::ObjIO::get_id( "ARRAY" );
+                return $tied->[0] || $DATASTORE->get_id( "ARRAY" );
             }
             my( @data ) = @$ref;
-            my $id = GServ::ObjIO::get_id( $class );
+            my $id = $DATASTORE->get_id( $class );
             tie @$ref, 'GServ::Array', $id;
             push( @$ref, @data );
             dirty( $ref, $id );
@@ -101,11 +114,11 @@ sub get_id {
         when('HASH') {
             my $tied = tied %$ref;
             if( $tied ) {
-                my $id = $tied->[0] || GServ::ObjIO::get_id( "HASH" );
+                my $id = $tied->[0] || $DATASTORE->get_id( "HASH" );
                 store_weak( $id, $ref );
                 return $id;
             }
-            my $id = GServ::ObjIO::get_id( $class );
+            my $id = $DATASTORE->get_id( $class );
             my( %vals ) = %$ref;
             tie %$ref, 'GServ::Hash', $id;
             for my $key (keys %vals) {
@@ -116,7 +129,7 @@ sub get_id {
             return $id;
         }
         default {
-            $ref->{ID} ||= GServ::ObjIO::get_id( $class );
+            $ref->{ID} ||= $DATASTORE->get_id( $class );
             store_weak( $ref->{ID}, $ref );
             return $ref->{ID};
         }
@@ -207,16 +220,16 @@ sub stow {
     my $data = raw_data( $obj );
     given( $class ) {
         when('ARRAY') {
-            GServ::ObjIO::stow( $id,'ARRAY', $data );
+            $DATASTORE->stow( $id,'ARRAY', $data );
             clean( $id );
         }
         when('HASH') {
-            GServ::ObjIO::stow( $id,'HASH',$data );
+            $DATASTORE->stow( $id,'HASH',$data );
             clean( $id );
         }
         when('GServ::Array') {
             if( is_dirty( $id ) ) {
-                GServ::ObjIO::stow( $id,'ARRAY',$data );
+                $DATASTORE->stow( $id,'ARRAY',$data );
                 clean( $id );
             }
             for my $child (@$data) {
@@ -227,7 +240,7 @@ sub stow {
         }
         when('GServ::Hash') {
             if( is_dirty( $id ) ) {
-                GServ::ObjIO::stow( $id, 'HASH', $data );
+                $DATASTORE->stow( $id, 'HASH', $data );
             }
             clean( $id );
             for my $child (values %$data) {
@@ -238,7 +251,7 @@ sub stow {
         }
         default {
             if( is_dirty( $id ) ) {
-                GServ::ObjIO::stow( $id, $class, $data );
+                $DATASTORE->stow( $id, $class, $data );
                 clean( $id );
             }
             for my $val (values %$data) {
@@ -295,13 +308,58 @@ sub clean {
 1;
 __END__
 
+=head1 NAME
+
+GServ::ObjProvider - Serves GServ objects. Configured to a persistance engine.
+
+=head1 DESCRIPTION
+
+This module is the front end for assigning IDs to objects, fetching objects, keeping track of objects that need saving (are dirty) and saving all dirty objects.
+
+The public methods of interest are 
+
+=over 4
+
+=item fetch
+
+Returns an object given an id.
+
+my $object = GServ::ObjProvider::fetch( $object_id );
+
+=item xpath
+
+Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This works only for fields of GServ objects.
+
+my $object = GServ::ObjProvider::xpath( "/foo/bar/baz" );
+
+=item xpath_count
+
+Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
+
+my $count = GServ::ObjProvider::xpath_count( "/foo/bar/baz/myarray" );
+
+=item a_child_of_b 
+
+Takes two objects as arguments. Returns true if object a is branched off of object b.
+
+if(  GServ::ObjProvider::xpath_count( $obj_a, $obj_b ) ) {
+
+
+=item stow_all
+
+Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
+
+GServ::ObjProvider::stow_all;
+
+=back
+
 =head1 AUTHOR
 
 Eric Wolf
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (C) 2011 Eric Wolf
+Copyright (C) 2012 Eric Wolf
 
 This module is free software; it can be used under the same terms as perl
 itself.

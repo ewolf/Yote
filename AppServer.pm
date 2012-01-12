@@ -16,7 +16,6 @@ use CGI;
 use Data::Dumper;
 
 use GServ::AppRoot;
-use GServ::ObjIO;
 
 use base qw(Net::Server::Fork);
 
@@ -46,6 +45,8 @@ sub start_server {
     my( $self, @args ) = @_;
     $args = scalar(@args) == 1 ? $args[0] : { @args };
 
+
+#remove all config from here. config is the job of the caller class
     # load config file
     my $file = `cat /var/gserv.conf`;
     my $config_data = from_json( $file );
@@ -60,10 +61,8 @@ sub start_server {
     `cat $args->{pidfile} | xargs kill`;
     `echo $$ > $args->{pidfile}`;
 
-    print STDERR Data::Dumper->Dump([$file, $config_data,$args]);
-    
 
-    GServ::ObjIO::init( %$args );
+    GServ::ObjProvider::init( %$args );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
@@ -80,7 +79,7 @@ sub start_server {
 #
 sub init_server {
     my( $self, @args ) = @_;
-    GServ::ObjIO::init_datastore( @args );
+    GServ::ObjProvider::init_datastore( @args );
 } #init_server
 
 #
@@ -229,28 +228,31 @@ GServ::AppServer - is a library used for creating prototype applications for the
 
 =head1 SYNOPSIS
 
-    use GServ::AppServer;
-    use GServ::ObjIO::DB;
-    use GServ::AppServer;
+use GServ::AppServer;
 
-    my $persistance_engine = new GServ::ObjIO::DB(connection params);
-    $persistance_engine->init_gserv;
+my $server = new GServ::AppServer();
 
-    my $server = new GServ::AppServer( persistance => $persistance_engine );
+$server->start_server( port =E<gt> 8008,
 
-    # --- or ----
-    my $server = new GServ::AppServer;
-    $server->attach_persistance( $persistance_engine );
+=over 32
 
-    $server->start_server( port => 8008 );
+		       datastore => 'GServ::MysqlIO',
+		       db => 'gserv_db',
+		       uname => 'gserv_db_user',
+		       pword => 'gserv_db-password' );
+
+=back
 
 =head1 DESCRIPTION
 
+This starts an application server running on a specified port and hooked up to a specified datastore.
+Additional parameters are passed to the datastore.
 
+The server set up uses Net::Server::Fork receiving and sending messages on multiple threads. These threads queue up the messages for a single threaded event loop to make things thread safe. Incomming requests can either wait for their message to be processed or return immediately.
 
 =head1 BUGS
 
-Given that this is pre pre alpha. Many yet undiscovered.
+There are likely bugs to be discovered. This is alpha software
 
 =head1 AUTHOR
 

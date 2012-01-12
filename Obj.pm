@@ -111,6 +111,56 @@ sub DESTROY {}
 1;
 __END__
 
+=head1 NAME
+
+GServ::Obj - Base class for all persistant GServ objects.
+
+=head1 DESCRIPTION
+
+GServ::Obj is a container class with hooks into the persistance engine. It has few methods, but dynamically autoloads and installed getters and setters as needed. This class is meant to be overridden by application objects, though it needs no modification to be a perfectly functional container class.
+
+=head2 PUBLIC METHODS
+
+=over 4
+
+=item new
+
+The new method takes no arguments. Any object created with new automatically gets assigned an ID and init is called only once before the object is saved in the data store.
+
+=item init
+
+This is a stub method meant to be overridden by subclasses.
+
+=item is
+
+Returns true if the object passed in is equivalent to this one. Note that only one instance of an individual object will be present at a time in the application server.
+
+=item save
+
+Takes no arguments and causes this object to be written into the datastore. This is automatically called by the application server.
+
+=back
+
+=head2 AUTOLOADED METHODS
+
+=over 4
+
+=item get_foo(initilizing_value)
+
+Returns the value of foo where foo can be any string. This may take a single argument such that if foo is undefined in the object, it will be set to the initial argument. This may return an array reference, hash reference, GServ::Obj or scalar.
+
+=item set_foo(item)
+
+Sets the value of foo to the given argument, which may be an array reference, hash reference, GServ::Obj or scalar.
+
+=item add_to_bar(item)
+
+Ads the item to the list bar. If bar does not exist, it is created as a list. If it exists and is not a list, an error will be thrown.
+
+=item remove_from_list(item)
+
+Removes the item from the list bar. If bar does not exist, it is created as a list. If it exists and is not a list, an error will be thrown.
+
 =head1 AUTHOR
 
 Eric Wolf

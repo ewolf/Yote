@@ -1,4 +1,4 @@
-package GServ::AppRoot;
+ackage GServ::AppRoot;
 
 use strict;
 
@@ -6,29 +6,25 @@ use GServ::Obj;
 
 use base 'GServ::Obj';
 
-sub init {
-    my $self = shift;
-    # account root is used to hold account specific data for this app.
-    $self->set_account_root( new GServ::Obj );
-} #init
-
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
 sub get_account_root {
     my( $self, $acct ) = @_;
 
-    my $acct_roots = $self->get_account_roots({});
+    my $acct_roots = $self->get_account_roots();
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
         $root = new GServ::Obj;
+	$acct_roots->{$acct->{ID}} = $root;
     }
     return $root;
 
 } #get_account_root
 
 #
-# Process_command is only called on the master root, which will route the command to the appropriate root.
+# Process_command is only called on the master root, 
+#   which will route the command to the appropriate root.
 #
 # The AppRoot is the root object. It forwards to the correct app root.
 # The request object has the fields :
@@ -395,11 +391,31 @@ GServ::AppRoot - Application Server Base Objects
 
 =head1 SYNOPSIS
 
-    This object is meant to be extended to provide GServ apps.
+This object is meant to be extended to provide GServ apps.
 
 =head1 DESCRIPTION
 
+Each Web Application has a single container object as the entry point to that object which is an instance of the GServ::AppRoot class. A GServ::AppRoot extends GServ::Obj and provides some class methods and the following stub methods.
 
+=head2 CLASS METHODS
+
+=item fetch_root - returns the master root object.
+
+The master root object contains all web application roots. It is an AppRoot object.
+
+Returns the root object. This is always object 1 for the App Server.
+
+=head2 STUB METHODS
+
+=item init - called the first time this root is created. Initializes account root.
+
+=head3 INSTANCE METHODS
+
+=item get_account_root( login ) - Returns an account object associated with a login object.
+
+The account root is there to store information specific to the account in question. It could include 
+documents specific to the account or games the account is participating in. This is distinct from the
+login object itself, though there is a one to one mapping between the account root and the login.
 
 =head1 AUTHOR
 

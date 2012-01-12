@@ -363,6 +363,21 @@ sub stow {
 1;
 __END__
 
+=head1 NAME
+
+GServ::MysqlIO - A mysql persistance engine for GServ.
+
+=head1 DESCRIPTION
+
+This can be installed as a singleton of GServ::ObjProvider and does the actual storage and retreival of GServ objects.
+
+=head1 CONFIGURATION
+
+The package name is used as an argument to the GServ::ObjProvider package which also takes the configuration parameters for Gserv::MysqlIO.
+
+GServ::ObjProvider::init( datastore => 'GServ::MysqlIO', db => 'gserv_db', uname => 'gserv_db_user', pword => 'gserv_db_password' );
+
+
 =head1 AUTHOR
 
 Eric Wolf
