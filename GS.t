@@ -12,6 +12,11 @@ use GServ::TestAppNeedsLogin;
 
 use Test::More;
 
+use Data::Dumper;
+
+use vars qw($VERSION);
+$VERSION = '0.01';
+
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 

@@ -1,8 +1,11 @@
-ackage GServ::AppRoot;
+package GServ::AppRoot;
 
 use strict;
 
 use GServ::Obj;
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 use base 'GServ::Obj';
 

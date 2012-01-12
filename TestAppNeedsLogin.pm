@@ -10,6 +10,10 @@ use GServ::Obj;
 
 use base 'GServ::AppRoot';
 
+use vars qw($VERSION);
+
+$VERSION = '0.01';
+
 sub init {
     my $self = shift;
     $self->set_gserv_obj( new GServ::TestAppNoLogin() );
@@ -45,3 +49,5 @@ sub get_hash {
 }
 
 1;
+
+__END__

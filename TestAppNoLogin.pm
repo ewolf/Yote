@@ -10,6 +10,10 @@ use GServ::Obj;
 
 use base 'GServ::AppRoot';
 
+use vars qw($VERSION);
+
+$VERSION = '0.01';
+
 #
 # need subs to return : scalars, lists, hashes, g-objects
 #
@@ -21,3 +25,5 @@ sub get_scalar {
 
 
 1;
+
+__END__

@@ -4,8 +4,11 @@ use strict;
 
 use Tie::Hash;
 
-use Data::Dumper;
 use GServ::ObjProvider;
+
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 sub TIEHASH {
     my( $class, $id, %hash ) = @_;

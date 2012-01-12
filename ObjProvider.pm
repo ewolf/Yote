@@ -8,8 +8,6 @@ use GServ::Array;
 use GServ::Hash;
 use GServ::Obj;
 
-use Data::Dumper;
-
 use WeakRef;
 
 use Exporter;
@@ -21,6 +19,10 @@ $GServ::ObjProvider::DIRTY = {};
 $GServ::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
+
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 # --------------------
 #   PACKAGE METHODS

@@ -18,6 +18,9 @@ use Data::Dumper;
 use GServ::AppRoot;
 
 use base qw(Net::Server::Fork);
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
@@ -45,22 +48,10 @@ sub start_server {
     my( $self, @args ) = @_;
     $args = scalar(@args) == 1 ? $args[0] : { @args };
 
-
-#remove all config from here. config is the job of the caller class
-    # load config file
-    my $file = `cat /var/gserv.conf`;
-    my $config_data = from_json( $file );
-
-    $args->{port}      = $args->{port}      || $config_data->{port}      || 8008;
-    $args->{datastore} = $args->{datastore} || $config_data->{datastore} || 'GServ::MysqlIO';
-    $args->{pidfile}   = $args->{pidfile}   || $config_data->{pidfile} || '/home/irrespon/var/run/gserv.pid';
-    for my $key (keys %$config_data) {
-	$args->{$key} ||= $config_data->{$key};
+    if( $args->{pidfile} ) {
+	`cat $args->{pidfile} | xargs kill`;
+	`echo $$ > $args->{pidfile}`;
     }
-
-    `cat $args->{pidfile} | xargs kill`;
-    `echo $$ > $args->{pidfile}`;
-
 
     GServ::ObjProvider::init( %$args );
 

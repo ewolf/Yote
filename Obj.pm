@@ -7,7 +7,10 @@ package GServ::Obj;
 use strict;
 
 use GServ::ObjProvider;
-use Data::Dumper;
+
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 sub new {
     my( $pkg, $id ) = @_;

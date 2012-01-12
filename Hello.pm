@@ -6,6 +6,10 @@ use GServ::Obj;
 
 use base 'GServ::AppRoot';
 
+use vars qw($VERSION);
+
+$VERSION = '0.01';
+
 sub init {
     my $self = shift;
     #when the hello is created for the first time, install a counter to track how many times it is called

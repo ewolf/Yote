@@ -4,7 +4,9 @@ use strict;
 
 use Tie::Array;
 
-use Data::Dumper;
+use vars qw($VERSION);
+
+$VERSION = '0.01';
 
 sub TIEARRAY {
     my( $class, $id, @list ) = @_;

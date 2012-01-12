@@ -10,6 +10,10 @@ use feature ':5.10';
 use Data::Dumper;
 use DBI;
 
+use vars qw($VERSION);
+
+$VERSION = '0.01';
+
 use constant {
     DATA => 2,
     MAX_LENGTH => 1025,
