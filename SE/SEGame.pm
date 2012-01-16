@@ -1,10 +1,10 @@
-package GServ::SE::SEGame;
+package Yote::SE::SEGame;
 
-use GServ::Obj;
+use Yote::Obj;
 
 use Data::Dumper;
 
-use base 'GServ::Obj';
+use base 'Yote::Obj';
 
 sub get_player {
     my( $self, $acct_or_id ) = @_;
@@ -24,7 +24,7 @@ sub register_player {
     return { err => "game is now full" } unless $self->players_needed_to_beging() > 0;
     return { err => "name '$name' already taken" } if grep { lc($name) eq lc($_->get_name()) } values %{$self->get_players({})};
     return { err => "already joined game" } if grep { $acct->{ID} == $_ } keys %{$self->get_players()};
-    my $player = new GServ::SE::Player();
+    my $player = new Yote::SE::Player();
     $self->get_players({})->{$acct->{ID}} = $player;
     return { msg => "registered with game ".$self->get_name() };
 } #register_players

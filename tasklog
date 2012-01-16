@@ -17,7 +17,7 @@
 
 Version 0.2 - application service
     * create forked, sharing variable generic application that can access installed applications
-    * add GServ::Obj::is_parent_of (this will be useful for application security, like providing ownership of objects to application users
+    * add Yote::Obj::is_parent_of (this will be useful for application security, like providing ownership of objects to application users
     * Application Service
          - server that
            : takes two requests : commands and data requests
@@ -30,11 +30,11 @@ Version 0.1 - initial verion.
   This is a base G library that :
     * connects to a mysql database named sg
     * Provides the following API
-       - GServ::ObjServ::get_root
-       - new GServ::Obj
+       - Yote::ObjServ::get_root
+       - new Yote::Obj
        - $g_obj->save
-       - get_(var) on GServ::Obj instance (root is one)
-       - set_(var) on GServ::Obj instance (root is one)
+       - get_(var) on Yote::Obj instance (root is one)
+       - set_(var) on Yote::Obj instance (root is one)
     * has a series of unit tests
 
 

@@ -1,7 +1,7 @@
-package GServ::SE::Ship;
+package Yote::SE::Ship;
 
 use strict;
-use base 'GServ::Obj';
+use base 'Yote::Obj';
 
 
 sub kill {

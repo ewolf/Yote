@@ -1,22 +1,22 @@
-package GServ::SE::SEApp;
+package Yote::SE::SEApp;
 
 use strict;
 
-use GServ::AppRoot;
-use GServ::SE::SEGame;
-use GServ::SE::StellarExpanse;
+use Yote::AppRoot;
+use Yote::SE::SEGame;
+use Yote::SE::StellarExpanse;
 
-use base 'GServ::AppRoot';
+use base 'Yote::AppRoot';
 
 sub create_game {
     my( $self, $data, $acct ) = @_;
 
     my $games = $self->get_games({});
-    my $game = new GServ::SE::SEGame();
+    my $game = new Yote::SE::SEGame();
     $game->set_name( $data->{name} );
     $game->set_number_players( $data->{number_players} );
     $game->set_created_by( $acct );
-    my $id = GServ::ObjProvider::get_id( $game );
+    my $id = Yote::ObjProvider::get_id( $game );
     $games->{$id} = $game;
 
     my $acct_root = $self->get_account_root( $acct );

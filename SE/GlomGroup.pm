@@ -1,4 +1,4 @@
-package GServ::SE::GlomGroup;
+package Yote::SE::GlomGroup;
 
 use strict;
 

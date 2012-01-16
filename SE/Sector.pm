@@ -1,10 +1,10 @@
-package GServ::SE::Sector;
+package Yote::SE::Sector;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 
-use base 'GServ::Obj';
+use base 'Yote::Obj';
 
 sub link_sectors {
     my( $self, $other ) = @_;

@@ -1,4 +1,4 @@
-package GServ::SE::Group;
+package Yote::SE::Group;
 
 use strict;
 
@@ -34,10 +34,10 @@ sub link_group {
 
     die "no free links to connect in link_group" unless $group->get_outbound_count() && $self->get_outbound_count();
 
-    my( @selector ) = map { GServ::ObjProvider::fetch( $_ ) } grep { $self->{outbound}{$_} > 0 } keys %{$self->{outbound}};
+    my( @selector ) = map { Yote::ObjProvider::fetch( $_ ) } grep { $self->{outbound}{$_} > 0 } keys %{$self->{outbound}};
     my $self_sector = $selector[int(rand(scalar @selector))];
 
-    my( @selector ) = map { GServ::ObjProvider::fetch( $_ ) } grep { $group->{outbound}{$_} > 0 } keys %{$group->{outbound}};
+    my( @selector ) = map { Yote::ObjProvider::fetch( $_ ) } grep { $group->{outbound}{$_} > 0 } keys %{$group->{outbound}};
     my $group_sector = $selector[int(rand(scalar @selector))];
     if( $group_sector ) {
         $self_sector->link_sectors( $group_sector );            

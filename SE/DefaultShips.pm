@@ -1,4 +1,4 @@
-package GServ::SE::DefaultShips;
+package Yote::SE::DefaultShips;
 
 use strict; 
 # avleft - volatile

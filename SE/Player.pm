@@ -1,10 +1,10 @@
-package GServ::SE::Player;
+package Yote::SE::Player;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 
-use base 'GServ::Obj';
+use base 'Yote::Obj';
 
 sub message {
     my( $self, $msg ) = @_;

@@ -448,7 +448,7 @@ sub full_data {
     $data->{tech} = $tech;
 
     my $murl = "StellarExpanse/data/maps/$game->{ID}/".$game->get_turn()."/$player->{ID}";
-    my $mapurl = "$ENV{GSERV_ROOT}/$murl.png";
+    my $mapurl = "$ENV{YOTE_ROOT}/$murl.png";
 #    my $mapurl = "http://dev.pandamonkey.com/~wolf/game/$murl.png";
 #    my $mapurl = "/ac/$murl.png";
 

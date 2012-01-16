@@ -1,4 +1,4 @@
-package SE::FlavorEditor;
+package Yote::SE::FlavorEditor;
 
 use strict;
 
