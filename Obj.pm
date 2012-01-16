@@ -1,12 +1,12 @@
-package GServ::Obj;
+package Yote::Obj;
 
 #
-# A GServ object, mostly just syntactic sugar
+# A Yote object, mostly just syntactic sugar
 #
 
 use strict;
 
-use GServ::ObjProvider;
+use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
@@ -23,7 +23,7 @@ sub new {
 
     my $needs_init = ! $obj->{ID};
 
-    $obj->{ID} ||= GServ::ObjProvider::get_id( $obj );
+    $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->init() if $needs_init;
 
     return $obj;
@@ -32,14 +32,14 @@ sub new {
 # returns true if the object passsed in is the same as this one.
 sub is {
     my( $self, $obj ) = @_;
-    return ref( $obj ) && $obj->isa( 'GServ::Obj' ) && $obj->{ID} == $self->{ID};
+    return ref( $obj ) && $obj->isa( 'Yote::Obj' ) && $obj->{ID} == $self->{ID};
 }
 
 sub init {}
 
 sub save {
     my $self = shift;
-    GServ::ObjProvider::stow( $self );
+    Yote::ObjProvider::stow( $self );
 } #save
 
 sub AUTOLOAD {
@@ -53,7 +53,7 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
 	    my $get = "get_$fld";
 	    my $arry = $self->$get([]); # init array if need be
-	    if( ref( $arry ) eq 'GServ::Array' ) {
+	    if( ref( $arry ) eq 'Yote::Array' ) {
 		$arry->PUSH( @vals );
 	    } else {
 		push( @$arry, @vals );
@@ -75,7 +75,7 @@ sub AUTOLOAD {
                 for my $i (0..$#$arry) {
                     if( $arry->[$i] eq $val ) {
                         --$count;
-			if( ref( $arry ) eq 'GServ::Array' ) {
+			if( ref( $arry ) eq 'Yote::Array' ) {
 			    $arry->SPLICE( $i, 1 );
 			} else {
 			    splice @$arry, $i, 1;
@@ -94,8 +94,8 @@ sub AUTOLOAD {
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
-            my $inval = GServ::ObjProvider::xform_in( $val );
-            GServ::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+            my $inval = Yote::ObjProvider::xform_in( $val );
+            Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval
         };
         goto &$AUTOLOAD;
@@ -106,19 +106,19 @@ sub AUTOLOAD {
         *$AUTOLOAD = sub {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
-                $self->{DATA}{$fld} = GServ::ObjProvider::xform_in( $init_val );
+                $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );
 		if( ref( $init_val ) ) {
-		    GServ::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
+		    Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
 		}
-                GServ::ObjProvider::dirty( $self, $self->{ID} );
+                Yote::ObjProvider::dirty( $self, $self->{ID} );
             }
-            return GServ::ObjProvider::xform_out( $self->{DATA}{$fld} );
+            return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
 	use strict 'refs';
         goto &$AUTOLOAD;
     }
     else {
-        die "Unknown GServ::Obj function '$func'";
+        die "Unknown Yote::Obj function '$func'";
     }
 
 } #AUTOLOAD
@@ -130,11 +130,11 @@ __END__
 
 =head1 NAME
 
-GServ::Obj - Base class for all persistant GServ objects.
+Yote::Obj - Base class for all persistant Yote objects.
 
 =head1 DESCRIPTION
 
-GServ::Obj is a container class with hooks into the persistance engine. It has few methods, but dynamically autoloads and installed getters and setters as needed. This class is meant to be overridden by application objects, though it needs no modification to be a perfectly functional container class.
+Yote::Obj is a container class with hooks into the persistance engine. It has few methods, but dynamically autoloads and installed getters and setters as needed. This class is meant to be overridden by application objects, though it needs no modification to be a perfectly functional container class.
 
 =head2 PUBLIC METHODS
 
@@ -164,11 +164,11 @@ Takes no arguments and causes this object to be written into the datastore. This
 
 =item get_foo(initilizing_value)
 
-Returns the value of foo where foo can be any string. This may take a single argument such that if foo is undefined in the object, it will be set to the initial argument. This may return an array reference, hash reference, GServ::Obj or scalar.
+Returns the value of foo where foo can be any string. This may take a single argument such that if foo is undefined in the object, it will be set to the initial argument. This may return an array reference, hash reference, Yote::Obj or scalar.
 
 =item set_foo(item)
 
-Sets the value of foo to the given argument, which may be an array reference, hash reference, GServ::Obj or scalar.
+Sets the value of foo to the given argument, which may be an array reference, hash reference, Yote::Obj or scalar.
 
 =item add_to_bar(item)
 

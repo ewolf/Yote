@@ -1,10 +1,10 @@
-package GServ::Hash;
+package Yote::Hash;
 
 use strict;
 
 use Tie::Hash;
 
-use GServ::ObjProvider;
+use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
@@ -23,8 +23,8 @@ sub TIEHASH {
 
 sub STORE {
     my( $self, $key, $val ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
-    $self->[1]{$key} = GServ::ObjProvider::xform_in( $val );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
+    $self->[1]{$key} = Yote::ObjProvider::xform_in( $val );
 }
 
 sub FIRSTKEY { 
@@ -41,7 +41,7 @@ sub NEXTKEY  {
 
 sub FETCH {
     my( $self, $key ) = @_;
-    return GServ::ObjProvider::xform_out( $self->[1]{$key} );
+    return Yote::ObjProvider::xform_out( $self->[1]{$key} );
 }
 
 sub EXISTS {
@@ -50,12 +50,12 @@ sub EXISTS {
 }
 sub DELETE {
     my( $self, $key ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0]);
+    Yote::ObjProvider::dirty( $self, $self->[0]);
     return delete $self->[1]{$key};
 }
 sub CLEAR {
     my $self = shift;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     for my $key (%{$self->[1]}) {
         delete $self->[1]{$key};
     }
@@ -67,11 +67,11 @@ __END__
 
 =head1 NAME
 
-GServ::Hash - All hashes in the GServ system get tied to this class.
+Yote::Hash - All hashes in the Yote system get tied to this class.
 
 =head1 DESCRIPTION
 
-GServ::Hash extends Tie::Hash and is used by the GServ system for hash persistance.
+Yote::Hash extends Tie::Hash and is used by the Yote for hash persistance.
 
 =head1 AUTHOR
 

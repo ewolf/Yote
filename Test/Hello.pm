@@ -1,10 +1,10 @@
-package GServ::Hello;
+package Yote::Test::Hello;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 
-use base 'GServ::AppRoot';
+use base 'Yote::AppRoot';
 
 use vars qw($VERSION);
 
@@ -13,7 +13,7 @@ $VERSION = '0.01';
 sub init {
     my $self = shift;
     #when the hello is created for the first time, install a counter to track how many times it is called
-    my $counter = $self->get_counter( new GServ::Obj() );
+    my $counter = $self->get_counter( new Yote::Obj() );
     $self->set_testfield(int(rand(10)));
     $self->get_list( [ 1, "Bagel", $counter ] );
     $self->get_hash( { one=>1, food => "Bagel", thing => $counter } );

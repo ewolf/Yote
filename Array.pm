@@ -1,4 +1,4 @@
-package GServ::Array;
+package Yote::Array;
 
 use strict;
 
@@ -20,7 +20,7 @@ sub TIEARRAY {
 
 sub FETCH {
     my( $self, $idx ) = @_;
-    return GServ::ObjProvider::xform_out ( $self->[1][$idx] );
+    return Yote::ObjProvider::xform_out ( $self->[1][$idx] );
 }
 
 sub FETCHSIZE {
@@ -30,8 +30,8 @@ sub FETCHSIZE {
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
-    $self->[1][$idx] = GServ::ObjProvider::xform_in( $val );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
+    $self->[1][$idx] = Yote::ObjProvider::xform_in( $val );
 }
 sub EXISTS {
     my( $self, $idx ) = @_;
@@ -39,39 +39,39 @@ sub EXISTS {
 }
 sub DELETE {
     my( $self, $idx ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     undef $self->[1][$idx];
 }
 
 sub CLEAR {
     my $self = shift;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     splice @{$self->[1]};
 }
 sub PUSH {
     my( $self, @vals ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
-    push( @{$self->[1]}, map { GServ::ObjProvider::xform_in($_) } @vals );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
+    push( @{$self->[1]}, map { Yote::ObjProvider::xform_in($_) } @vals );
 }
 sub POP {
     my $self = shift;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
-    return GServ::ObjProvider::xform_out( pop @{$self->[1]} );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
+    return Yote::ObjProvider::xform_out( pop @{$self->[1]} );
 }
 sub SHIFT {
     my( $self ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     my $val = splice @{$self->[1]}, 0, 1;
-    return GServ::ObjProvider::xform_out( $val );
+    return Yote::ObjProvider::xform_out( $val );
 }
 sub UNSHIFT {
     my( $self, @vals ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     unshift @{$self->[1]}, 0, 0, @vals;
 }
 sub SPLICE {
     my( $self, $offset, $length, @vals ) = @_;
-    GServ::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self, $self->[0] );
     splice @{$self->[1]}, $offset, $length, @vals;
 
 }
@@ -82,11 +82,11 @@ __END__
 
 =head1 NAME
 
-GServ::Array - All arrays in the GServ system get tied to this class.
+Yote::Array - All arrays in the Yote system get tied to this class.
 
 =head1 DESCRIPTION
 
-GServ::Array extends Tie::Array and is used by the GServ system for array persistance.
+Yote::Array extends Tie::Array and is used by the Yote system for array persistance.
 
 
 =head1 AUTHOR

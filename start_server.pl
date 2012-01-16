@@ -2,9 +2,9 @@
 
 use strict;
 
-use GServ::AppServer;
+use Yote::WebAppServer;
 
-my $s= new GServ::AppServer;
-$s->start_server( datastore => 'GServ::MysqlIO',
+my $s= new GServ::WebAppServer;
+$s->start_server( datastore => 'Yote::MysqlIO',
 		  database  => 'sg',
 		  port      => 8008 );

@@ -1,12 +1,12 @@
-package GServ::ObjProvider;
+package Yote::ObjProvider;
 
 use strict;
 
 use feature ':5.10';
 
-use GServ::Array;
-use GServ::Hash;
-use GServ::Obj;
+use Yote::Array;
+use Yote::Hash;
+use Yote::Obj;
 
 use WeakRef;
 
@@ -15,8 +15,8 @@ use base 'Exporter';
 
 our @EXPORT_OK = qw(fetch stow a_child_of_b);
 
-$GServ::ObjProvider::DIRTY = {};
-$GServ::ObjProvider::WEAK_REFS = {};
+$Yote::ObjProvider::DIRTY = {};
+$Yote::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
 
@@ -56,7 +56,7 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $GServ::ObjProvider::DIRTY->{$id} || $GServ::ObjProvider::WEAK_REFS->{$id};
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
     return $ref if $ref;
 
     my $obj_arry = $DATASTORE->fetch( $id );
@@ -66,13 +66,13 @@ sub fetch {
         given( $class ) {
             when('ARRAY') {
                 my( @arry );
-                tie @arry, 'GServ::Array', $id, @$data;
+                tie @arry, 'Yote::Array', $id, @$data;
                 store_weak( $id, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'GServ::Hash', $id, map { $_ => $data->{$_} } keys %$data;
+                tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
                 store_weak( $id, \%hash );
                 return \%hash;
             }
@@ -93,7 +93,7 @@ sub get_id {
     my $ref = shift;
     my $class = ref( $ref );
     given( $class ) {
-        when('GServ::Array') {
+        when('Yote::Array') {
             return $ref->[0];
         }
         when('ARRAY') {
@@ -105,13 +105,13 @@ sub get_id {
             }
             my( @data ) = @$ref;
             my $id = $DATASTORE->get_id( $class );
-            tie @$ref, 'GServ::Array', $id;
+            tie @$ref, 'Yote::Array', $id;
             push( @$ref, @data );
             dirty( $ref, $id );
             store_weak( $id, $ref );
             return $id;
         }
-        when('GServ::Hash') {
+        when('Yote::Hash') {
             my $wref = $ref;
             return $ref->[0];
         }
@@ -125,7 +125,7 @@ sub get_id {
             }
             my $id = $DATASTORE->get_id( $class );
             my( %vals ) = %$ref;
-            tie %$ref, 'GServ::Hash', $id;
+            tie %$ref, 'Yote::Hash', $id;
             for my $key (keys %vals) {
                 $ref->{$key} = $vals{$key};
             }
@@ -151,12 +151,12 @@ sub a_child_of_b {
     $seen->{$bid} = 1;
     return 1 if get_id($a) == get_id($b);
     given( $bref ) {
-        when(/^(ARRAY|GServ::Array)$/) {
+        when(/^(ARRAY|Yote::Array)$/) {
             for my $obj (@$b) {
                 return 1 if( a_child_of_b( $a, $obj ) );
             }
         }
-        when(/^(HASH|GServ::Hash)$/) {
+        when(/^(HASH|Yote::Hash)$/) {
             for my $obj (values %$b) {
                 return 1 if( a_child_of_b( $a, $obj ) );
             }
@@ -171,7 +171,7 @@ sub a_child_of_b {
 } #a_child_of_b
 
 sub stow_all {
-    my( @objs ) = values %{$GServ::ObjProvider::DIRTY};
+    my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
     for my $obj (@objs) {
         stow( $obj );
     }
@@ -179,8 +179,8 @@ sub stow_all {
 
 sub reset {
     stow_all();
-    $GServ::ObjProvider::DIRTY = {};
-    $GServ::ObjProvider::WEAK_REFS = {};
+    $Yote::ObjProvider::DIRTY = {};
+    $Yote::ObjProvider::WEAK_REFS = {};
 }
 
 #
@@ -209,10 +209,10 @@ sub raw_data {
                 die;
             }
         }
-        when('GServ::Array') {
+        when('Yote::Array') {
 	    return $obj->[1];
         }
-        when('GServ::Hash') {
+        when('Yote::Hash') {
             return $obj->[1];
         }
         default {
@@ -238,25 +238,25 @@ sub stow {
             $DATASTORE->stow( $id,'HASH',$data );
             clean( $id );
         }
-        when('GServ::Array') {
+        when('Yote::Array') {
             if( is_dirty( $id ) ) {
                 $DATASTORE->stow( $id,'ARRAY',$data );
                 clean( $id );
             }
             for my $child (@$data) {
-                if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
-                    stow( $GServ::ObjProvider::DIRTY->{$child} );
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$child} );
                 }
             }
         }
-        when('GServ::Hash') {
+        when('Yote::Hash') {
             if( is_dirty( $id ) ) {
                 $DATASTORE->stow( $id, 'HASH', $data );
             }
             clean( $id );
             for my $child (values %$data) {
-                if( $child > 0 && $GServ::ObjProvider::DIRTY->{$child} ) {
-                    stow( $GServ::ObjProvider::DIRTY->{$child} );
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$child} );
                 }
             }
         }
@@ -266,8 +266,8 @@ sub stow {
                 clean( $id );
             }
             for my $val (values %$data) {
-                if( $val > 0 && $GServ::ObjProvider::DIRTY->{$val} ) {
-                    stow( $GServ::ObjProvider::DIRTY->{$val} );
+                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$val} );
                 }
             }
         }
@@ -294,26 +294,26 @@ sub xform_in {
 
 sub store_weak {
     my( $id, $ref ) = @_;
-    die "SW" if ref($ref) eq 'GServ::Hash';
+    die "SW" if ref($ref) eq 'Yote::Hash';
     my $weak = $ref;
     weaken( $weak );
-    $GServ::ObjProvider::WEAK_REFS->{$id} = $weak;
+    $Yote::ObjProvider::WEAK_REFS->{$id} = $weak;
 }
 
 sub dirty {
     my $obj = shift;
     my $id = shift;
-    $GServ::ObjProvider::DIRTY->{$id} = $obj;
+    $Yote::ObjProvider::DIRTY->{$id} = $obj;
 }
 
 sub is_dirty {
     my $id = shift;
-    return $GServ::ObjProvider::DIRTY->{$id};
+    return $Yote::ObjProvider::DIRTY->{$id};
 }
 
 sub clean {
     my $id = shift;
-    delete $GServ::ObjProvider::DIRTY->{$id};
+    delete $Yote::ObjProvider::DIRTY->{$id};
 }
 
 1;
@@ -321,7 +321,7 @@ __END__
 
 =head1 NAME
 
-GServ::ObjProvider - Serves GServ objects. Configured to a persistance engine.
+Yote::ObjProvider - Serves Yote objects. Configured to a persistance engine.
 
 =head1 DESCRIPTION
 
@@ -335,32 +335,32 @@ The public methods of interest are
 
 Returns an object given an id.
 
-my $object = GServ::ObjProvider::fetch( $object_id );
+my $object = Yote::ObjProvider::fetch( $object_id );
 
 =item xpath
 
-Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This works only for fields of GServ objects.
+Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This works only for fields of Yote objects.
 
-my $object = GServ::ObjProvider::xpath( "/foo/bar/baz" );
+my $object = Yote::ObjProvider::xpath( "/foo/bar/baz" );
 
 =item xpath_count
 
 Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
 
-my $count = GServ::ObjProvider::xpath_count( "/foo/bar/baz/myarray" );
+my $count = Yote::ObjProvider::xpath_count( "/foo/bar/baz/myarray" );
 
 =item a_child_of_b 
 
 Takes two objects as arguments. Returns true if object a is branched off of object b.
 
-if(  GServ::ObjProvider::xpath_count( $obj_a, $obj_b ) ) {
+if(  Yote::ObjProvider::xpath_count( $obj_a, $obj_b ) ) {
 
 
 =item stow_all
 
 Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
 
-GServ::ObjProvider::stow_all;
+Yote::ObjProvider::stow_all;
 
 =back
 

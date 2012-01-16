@@ -6,7 +6,7 @@
 <script src="./js/jquery.dumper.js"></script>
 <script src="./js/jquery.base64.min.js"></script>
 <script src="./js/json2.js"></script>
-<script src="./js/gserv.js?x=1.1"></script>
+<script src="./js/yote.js?x=1.1"></script>
 <script src="./js/jquery.jsonp-2.1.4.min.js"></script>
 <style>
 
@@ -32,8 +32,8 @@ $().ready(function(){
             $('div#logged_in').hide();
             $('div#login').hide();
         });
-    $.gServ.init("http://127.0.0.1/cgi-bin/gserv.cgi");
-    var a = $.gServ.get_app('GServ::Hello');
+    $.yote.init("http://127.0.0.1/cgi-bin/yote.cgi");
+    var a = $.yote.get_app('Yote::Test::Hello');
     var x = a.hello();
     alert('hello returned ' + x);
 

@@ -4,19 +4,19 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Here are the following public gserv calls :
- *  * init           - takes the url of the gserv relay cgi and sets it for all gserv calls
- *  * reload_all     - reloads all gserv objects that are in the gserv queue
+ * Here are the following public yote calls :
+ *  * init           - takes the url of the yote relay cgi and sets it for all yote calls
+ *  * reload_all     - reloads all yote objects that are in the yote queue
  *  * create_account - sets the login token
  *  * login          - sets the login token
- *  * fetch_root     - returns a gserv object (uses login token)
- *  * methods attached to gserv object :
+ *  * fetch_root     - returns a yote object (uses login token)
+ *  * methods attached to yote object :
  *    ** reload - refreshes the data of this object with a call to the server
- *    ** get(field) - returns a gserv object or a scalar value attached to this gserv object (uses login token)
- *    ** any method defined on the server side, which returns a gserv object or a scalar value (uses login token)
+ *    ** get(field) - returns a yote object or a scalar value attached to this yote object (uses login token)
+ *    ** any method defined on the server side, which returns a yote object or a scalar value (uses login token)
  */
 
-$.gServ = {
+$.yote = {
     token:null,
     err:null,
     url:null,
@@ -167,7 +167,7 @@ $.gServ = {
 
     // generic server type error
     error:function(msg) {
-        alert( "a server side error has occurred : " + $.dump(msg) );
+        alert( "a server side error has occurred : " + msg );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
@@ -258,5 +258,6 @@ $.gServ = {
             return resp;
         }
     } //message
-}; //$.gServ
+}; //$.yote
+
 

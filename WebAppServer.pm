@@ -1,4 +1,4 @@
-package GServ::AppServer;
+package Yote::WebAppServer;
 
 #
 # Proof of concept server with main loop.
@@ -15,7 +15,7 @@ use JSON;
 use CGI;
 use Data::Dumper;
 
-use GServ::AppRoot;
+use Yote::AppRoot;
 
 use base qw(Net::Server::Fork);
 use vars qw($VERSION);
@@ -32,7 +32,7 @@ share( %prid2result );
 
 $SIG{TERM} = sub { 
     $singleton->server_close();
-    &GServ::ObjProvider::stow_all();
+    &Yote::ObjProvider::stow_all();
     print STDERR Data::Dumper->Dump(["Shutting down due to term"]);
     exit;
 };
@@ -53,7 +53,7 @@ sub start_server {
 	`echo $$ > $args->{pidfile}`;
     }
 
-    GServ::ObjProvider::init( %$args );
+    Yote::ObjProvider::init( %$args );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
@@ -70,7 +70,7 @@ sub start_server {
 #
 sub init_server {
     my( $self, @args ) = @_;
-    GServ::ObjProvider::init_datastore( @args );
+    Yote::ObjProvider::init_datastore( @args );
 } #init_server
 
 #
@@ -182,11 +182,11 @@ sub _process_command {
     my $resp;
 
     eval {
-        my $root = GServ::AppRoot::fetch_root();
+        my $root = Yote::AppRoot::fetch_root();
         my $ret  = $root->process_command( $command );
 	print STDERR Data::Dumper->Dump([$ret,"Response"]);
         $resp = to_json($ret);
-        GServ::ObjProvider::stow_all();
+        Yote::ObjProvider::stow_all();
     };
     $resp ||= to_json({ err => $@ });
 
@@ -206,7 +206,7 @@ sub _process_command {
 } #_process_command
 
 sub _reconnect {
-    GServ::ObjIO::reconnect();
+    Yote::ObjIO::reconnect();
 } #_reconnect
 
 1
@@ -215,22 +215,22 @@ __END__
 
 =head1 NAME
 
-GServ::AppServer - is a library used for creating prototype applications for the web.
+Yote::WebAppServer - is a library used for creating prototype applications for the web.
 
 =head1 SYNOPSIS
 
-use GServ::AppServer;
+use Yote::WebAppServer;
 
-my $server = new GServ::AppServer();
+my $server = new Yote::WebAppServer();
 
 $server->start_server( port =E<gt> 8008,
 
 =over 32
 
-		       datastore => 'GServ::MysqlIO',
-		       db => 'gserv_db',
-		       uname => 'gserv_db_user',
-		       pword => 'gserv_db-password' );
+		       datastore => 'Yote::MysqlIO',
+		       db => 'yote_db',
+		       uname => 'yote_db_user',
+		       pword => 'yote_db-password' );
 
 =back
 

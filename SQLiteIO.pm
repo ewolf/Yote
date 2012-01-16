@@ -1,4 +1,4 @@
-package GServ::SQLiteIO;
+package Yote::SQLiteIO;
 
 #
 # This stows and fetches G objects from a database store and provides object ids.
@@ -340,17 +340,17 @@ __END__
 
 =head1 NAME
 
-GServ::SQLiteIO - A SQLite persistance engine for GServ.
+Yote::SQLiteIO - A SQLite persistance engine for Yote.
 
 =head1 DESCRIPTION
 
-This can be installed as a singleton of GServ::ObjProvider and does the actual storage and retreival of GServ objects.
+This can be installed as a singleton of Yote::ObjProvider and does the actual storage and retreival of Yote objects.
 
 =head1 CONFIGURATION
 
-The package name is used as an argument to the GServ::ObjProvider package which also takes the configuration parameters for Gserv::SQLiteIO.
+The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::SQLiteIO.
 
-GServ::ObjProvider::init( datastore => 'GServ::SQLiteIO', db => 'gserv_db', uname => 'gserv_db_user', pword => 'gserv_db_password' );
+Yote::ObjProvider::init( datastore => 'Yote::SQLiteIO', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
 
 
 =head1 AUTHOR

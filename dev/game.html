@@ -6,7 +6,7 @@
     <script src="./js/jquery.dumper.js"></script>
     <script src="./js/jquery.base64.min.js"></script>
     <script src="./js/json2.js"></script>
-    <script src="./js/gserv.js?x=1.1"></script>
+    <script src="./js/yote.js?x=1.1"></script>
     <script src="./js/jquery.jsonp-2.1.4.min.js"></script>
     <style>
 
@@ -37,7 +37,7 @@
         });
 
         // get game root
-        var game_root = $.gServ.init("http://"+location.host+"/cgi-bin/dev/gserv.cgi").get_app('GServ::SE::SEApp');
+        var game_root = $.yote.init("http://"+location.host+"/cgi-bin/dev/yote.cgi").get_app('Yote::SE::SEApp');
 
         //login
         function login() {
@@ -48,7 +48,7 @@
                                  $("#logged_in").css( 'display', 'block' );
                                  $("div#login").css( 'display','none' );
                                  $('.login#pw').val('');
-                                 var a = $.gServ.get_app('GServ::SE::SEApp');
+                                 var a = $.yote.get_app('Yote::SE::SEApp');
 				 show_games();
                              },
                              function(data) { //fail

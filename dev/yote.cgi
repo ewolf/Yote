@@ -2,7 +2,7 @@
 
 use strict;
 
-use lib '/home1/irrespon/gserv.cgi';
+use lib '/home1/irrespon/yote.cgi';
 
 use CGI;
 use Data::Dumper;
@@ -25,10 +25,10 @@ sub main {
 
     my $sock = new IO::Socket::INET (
 	PeerAddr => '127.0.0.1',
-	PeerPort => '8008',
+	PeerPort => '8009',
 	Proto => 'tcp',
 	);
-    open( OUT, ">>/home/irrespon/logs/gserv_relay.log" );
+    open( OUT, ">>/home/irrespon/logs/yote_relay.log" );
     print OUT Data::Dumper->Dump(["incoming params from client ",$param]);
     print $sock join('&',map { "$_=$param->{$_}" } keys %$param )."\n";
     my $buf = <$sock>;

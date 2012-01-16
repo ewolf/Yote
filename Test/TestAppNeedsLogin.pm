@@ -1,4 +1,4 @@
-package GServ::TestAppNeedsLogin;
+package Yote::Test::TestAppNeedsLogin;
 
 #
 # created for the html unit tests
@@ -6,9 +6,9 @@ package GServ::TestAppNeedsLogin;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 
-use base 'GServ::AppRoot';
+use base 'Yote::AppRoot';
 
 use vars qw($VERSION);
 
@@ -16,8 +16,8 @@ $VERSION = '0.01';
 
 sub init {
     my $self = shift;
-    $self->set_gserv_obj( new GServ::TestAppNoLogin() );
-    $self->get_gserv_obj()->set_name( "INITY" );
+    $self->set_yote_obj( new Yote::Test::TestAppNoLogin() );
+    $self->get_yote_obj()->set_name( "INITY" );
 }
 
 sub allows {
@@ -35,17 +35,17 @@ sub get_scalar {
 
 sub get_nologin_obj {
     my( $self, $data, $acct ) = @_;
-    return $self->get_gserv_obj();
+    return $self->get_yote_obj();
 }
 
 sub get_array {
     my( $self, $data, $acct ) = @_;
-    return [ 'A', { inner => [ 'Juan', { peanut => 'Butter', ego => $self->get_gserv_obj() }] }, $self->get_gserv_obj()  ];
+    return [ 'A', { inner => [ 'Juan', { peanut => 'Butter', ego => $self->get_yote_obj() }] }, $self->get_yote_obj()  ];
 }
 
 sub get_hash {
     my( $self, $data, $acct ) = @_;
-    return { hash => "is something like", wid => $self->get_gserv_obj() };
+    return { hash => "is something like", wid => $self->get_yote_obj() };
 }
 
 1;

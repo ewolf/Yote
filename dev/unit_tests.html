@@ -12,7 +12,7 @@
 <script src="../js/jquery.dumper.js"></script>
 <script src="../js/jquery.base64.min.js"></script>
 <script src="../js/json2.js"></script>
-<script src="../js/gserv.js"></script>
+<script src="../js/yote.js"></script>
 <script>
   var tests = 0;
   var failed = 0;
@@ -65,43 +65,43 @@
 	*    object
 	*/
 
-      // init gserv
-      $.gServ.init( "http://"+location.host+"/cgi-bin/dev/gserv.cgi" );
+      // init yote
+      $.yote.init( "http://"+location.host+"/cgi-bin/dev/yote.cgi" );
 
 
       //fetch app that doesn't require login and get scalar
-      var nologin = $.gServ.get_app( 'GServ::TestAppNoLogin' );
+      var nologin = $.yote.get_app( 'Yote::TestAppNoLogin' );
       var scalar = nologin.get_scalar( {}, {failhandler:fail("no login scalar returned")});
       if( typeof scalar !== 'object' && scalar === 'BEEP' ) { pass("no login scalar")(); } 
       else { fail( "no login scalar has wrong result" )() }
 
       //fetch app that requires login and get scalar
-      var login = $.gServ.get_app( 'GServ::TestAppNeedsLogin' );
+      var login = $.yote.get_app( 'Yote::TestAppNeedsLogin' );
       var scalar = login.get_scalar( {}, {passhandler:fail("required login returned scalar without login"),
 					       failhandler:pass("required login returned nothingwithout login")});
       
 
       // account creation. 
-      $.gServ.create_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass("create account"), fail("create account") );
-      $.gServ.create_account( 'unit_test_account', 'ut', 'zobody@fenowyn.com', fail("created account with same handle"), pass("refused to create account with same handle") );
-      $.gServ.create_account( 'nunit_test_account', 'ut', 'nobody@fenowyn.com', fail("created account with same email"), pass("refused to create account with same email") );
+      $.yote.create_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass("create account"), fail("create account") );
+      $.yote.create_account( 'unit_test_account', 'ut', 'zobody@fenowyn.com', fail("created account with same handle"), pass("refused to create account with same handle") );
+      $.yote.create_account( 'nunit_test_account', 'ut', 'nobody@fenowyn.com', fail("created account with same email"), pass("refused to create account with same email") );
 
-      $.gServ.login( 'unit_test_account', 'uz', fail( "able to log in with wrong password" ), pass( "unable to log in with wrong password" ) );
-      $.gServ.login( 'unit_test_account', 'ut', pass( "able to log in" ), fail( "able to log in" ) );
+      $.yote.login( 'unit_test_account', 'uz', fail( "able to log in with wrong password" ), pass( "unable to log in with wrong password" ) );
+      $.yote.login( 'unit_test_account', 'ut', pass( "able to log in" ), fail( "able to log in" ) );
 
       //app that requires login should allow get_scalar now
       var scalar = login.get_scalar( {}, {failhandler:fail("required login returned scalar with login")});
       ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
       
 
-      // have a GServ object returned
-      var obj = login.get( 'gserv_obj' );
-      is( typeof obj, 'object', "no login returns gserv obj" );
+      // have a Yote object returned
+      var obj = login.get( 'yote_obj' );
+      is( typeof obj, 'object', "no login returns yote obj" );
 
       var initval = obj.get('name');
-      is( initval, 'INITY', "gserv object inited on server side" );
+      is( initval, 'INITY', "yote object inited on server side" );
       
-      // have gserv array returned
+      // have yote array returned
       var arry = login.get_array();
       is( arry.length(), 3, 'length of array returned' );
       is( arry.get(0), 'A', 'element 0 correct' );
@@ -109,9 +109,9 @@
 
       //check if el 2 is object
       var inobj = arry.get(2);
-      is( inobj.get('name'), 'INITY', "gserv object inited on server side" );
+      is( inobj.get('name'), 'INITY', "yote object inited on server side" );
 
-      // have gserv hash returned
+      // have yote hash returned
       var h = arry.get(1);
       is( h.length(), 1, 'hash has correct numbers' );
       var inarry = h.get('inner');
@@ -120,12 +120,12 @@
       var inh = inarry.get(1);
       is( inh.length(), 2, 'inner hash length' );
       is( inh.get('peanut'), 'Butter', 'first value inner hash' );
-      is( inh.get('ego').id, $.gServ.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
+      is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
       is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
 
 
       // account removal
-      $.gServ.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+      $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
       
       wrap_up();
   } ); //ready

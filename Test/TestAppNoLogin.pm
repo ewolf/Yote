@@ -1,4 +1,4 @@
-package GServ::TestAppNoLogin;
+package Yote::Test::TestAppNoLogin;
 
 #
 # created for the html unit tests
@@ -6,9 +6,9 @@ package GServ::TestAppNoLogin;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 
-use base 'GServ::AppRoot';
+use base 'Yote::AppRoot';
 
 use vars qw($VERSION);
 

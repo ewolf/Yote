@@ -1,13 +1,13 @@
-package GServ::AppRoot;
+package Yote::AppRoot;
 
 use strict;
 
-use GServ::Obj;
+use Yote::Obj;
 use vars qw($VERSION);
 
 $VERSION = '0.01';
 
-use base 'GServ::Obj';
+use base 'Yote::Obj';
 
 #
 # Returns the account root attached to this AppRoot for the given account.
@@ -18,7 +18,7 @@ sub get_account_root {
     my $acct_roots = $self->get_account_roots();
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
-        $root = new GServ::Obj;
+        $root = new Yote::Obj;
 	$acct_roots->{$acct->{ID}} = $root;
     }
     return $root;
@@ -89,7 +89,7 @@ sub process_command {
             return _fetch( $app, { id => $cmd->{d}{id} }, $acct );
         }
         elsif( index( $command, '_' ) != 0 ) {
-            my $obj = GServ::ObjProvider::fetch( $cmd->{id} ) || $app;
+            my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
 		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
 	    }
@@ -108,9 +108,9 @@ sub allows {
 }
 
 sub fetch_root {
-    my $root = GServ::ObjProvider::fetch( 1 );
+    my $root = Yote::ObjProvider::fetch( 1 );
     unless( $root ) {
-        $root = new GServ::AppRoot();
+        $root = new Yote::AppRoot();
         $root->save;
     }
     return $root;
@@ -120,7 +120,7 @@ sub _valid_token {
     my( $t, $ip ) = @_;
     if( $t =~ /(.+)\+(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
-        my $acct = GServ::ObjProvider::fetch( $uid );
+        my $acct = Yote::ObjProvider::fetch( $uid );
         return $acct && $acct->get_token() eq "${token}x$ip" ? $acct : undef;
     }
     return undef;
@@ -144,24 +144,24 @@ sub _create_account {
     #
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
     if( $handle ) {# && $email ) {
-        if( GServ::ObjProvider::xpath("/handles/$handle") ) {
+        if( Yote::ObjProvider::xpath("/handles/$handle") ) {
             return { err => "handle already taken" };
         }
         if( $email ) {
-            if( GServ::ObjProvider::xpath("/emails/$email") ) {
+            if( Yote::ObjProvider::xpath("/emails/$email") ) {
                 return { err => "email already taken" };
             }
         }
         unless( $password ) {
             return { err => "password required" };
         }
-        my $newacct = new GServ::Obj();
+        my $newacct = new Yote::Obj();
 
         #
         # check to see how many accounts there are. If there are none,
         # give the first root access.
         #
-        if( GServ::ObjProvider::xpath_count( "/handles" ) == 0 ) {
+        if( Yote::ObjProvider::xpath_count( "/handles" ) == 0 ) {
             $newacct->set_is_root( 1 );
         }
         $newacct->set_handle( $handle );
@@ -177,10 +177,10 @@ sub _create_account {
 
         my $accts = $root->get_handles({});
         $accts->{ $handle } = $newacct;
-        GServ::ObjProvider::stow( $accts );
+        Yote::ObjProvider::stow( $accts );
         my $emails = $root->get_emails({});
         $emails->{ $email } = $newacct;
-        GServ::ObjProvider::stow( $emails );
+        Yote::ObjProvider::stow( $emails );
         $root->save;
         return { r => "created account", t => _create_token( $newacct, $ip ) };
     } #if handle
@@ -203,7 +203,7 @@ sub _login {
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
         my $root = fetch_root();
-        my $acct = GServ::ObjProvider::xpath("/handles/$data->{h}");
+        my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
             return { r => "logged in", t => _create_token( $acct, $ip ) };
         }
@@ -238,9 +238,9 @@ sub stow_permitted {
 sub _fetch {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
-        my $obj = GServ::ObjProvider::fetch( $data->{id} );
+        my $obj = Yote::ObjProvider::fetch( $data->{id} );
         if( $obj &&
-            GServ::ObjProvider::a_child_of_b( $obj, $app ) &&
+            Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->fetch_permitted( $obj, $data ) )
         {
 	    return { r => $app->_obj_to_response( $obj ) };
@@ -257,19 +257,19 @@ sub _transform_data_no_id {
     if( ref( $item ) eq 'ARRAY' ) {
 	my $tied = tied @$item;
 	if( $tied ) {
-	    return GServ::ObjProvider::get_id( $item ); 
+	    return Yote::ObjProvider::get_id( $item ); 
 	}
 	return [map { $self->_obj_to_response( $_, 1 ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
 	my $tied = tied %$item;
 	if( $tied ) {
-	    return GServ::ObjProvider::get_id( $item ); 
+	    return Yote::ObjProvider::get_id( $item ); 
 	}
 	return { map { $_ => $self->_obj_to_response( $item->{$_}, 1 ) } keys %$item };
     }
     elsif( ref( $item ) ) {
-	return  GServ::ObjProvider::get_id( $item ); 
+	return  Yote::ObjProvider::get_id( $item ); 
     }
     else {
 	return "v$item"; #scalar case
@@ -277,7 +277,7 @@ sub _transform_data_no_id {
 } #_transform_data_no_id
 
 #
-# Converts scalar, gserv object, hash or array to data for returning.
+# Converts scalar, yote object, hash or array to data for returning.
 #
 sub _obj_to_response {
     my( $self, $to_convert, $xform_out ) = @_;
@@ -289,7 +289,7 @@ sub _obj_to_response {
 	    my $tied = tied @$to_convert;
 	    if( $tied ) {
 		$d = $tied->[1];
-		$use_id = GServ::ObjProvider::get_id( $to_convert );
+		$use_id = Yote::ObjProvider::get_id( $to_convert );
 		return $use_id if $xform_out;
 	    } else {
 		$d = $self->_transform_data_no_id( $to_convert );
@@ -299,14 +299,14 @@ sub _obj_to_response {
 	    my $tied = tied %$to_convert;
 	    if( $tied ) {
 		$d = $tied->[1];
-		$use_id = GServ::ObjProvider::get_id( $to_convert );
+		$use_id = Yote::ObjProvider::get_id( $to_convert );
 		return $use_id if $xform_out;
 	    } else {
 		$d = $self->_transform_data_no_id( $to_convert );
 	    }
 	} 
 	else {
-	    $use_id = GServ::ObjProvider::get_id( $to_convert );
+	    $use_id = Yote::ObjProvider::get_id( $to_convert );
 	    return $use_id if $xform_out;
 	    $d = $to_convert->{DATA};
 	    no strict 'refs';
@@ -322,17 +322,17 @@ sub _obj_to_response {
 sub _stow {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
-        my $obj = GServ::ObjProvider::fetch( $data->{id} );
+        my $obj = Yote::ObjProvider::fetch( $data->{id} );
         if( $obj &&
-            GServ::ObjProvider::a_child_of_b( $obj, $app ) &&
+            Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->stow( $obj, $data ) )
         {
             #verify all incoming objects are also stowable
             my $check = ref( $data->{v} ) eq 'ARRAY' ? @{$data->{v}}: [map { $data->{v}{$_} } grep { $_ ne '__KEY__' } %{$data->{v}}];
             for my $item (grep { $_ > 0 } @$check) { #check all ids
-                my $child = GServ::ObjProvider::fetch( $item );
+                my $child = Yote::ObjProvider::fetch( $item );
                 unless( $child &&
-                        GServ::ObjProvider::a_child_of_b( $child, $app ) &&
+                        Yote::ObjProvider::a_child_of_b( $child, $app ) &&
                         $app->stow( $child, $data ) )
                 {
                     return { err => "Unable to update $data->{ID}" };
@@ -377,7 +377,7 @@ sub _stow {
                     return { err => "Missing data to update $data->{ID}" };
                 }
             }
-            GServ::ObjProvider::stow( $obj );
+            Yote::ObjProvider::stow( $obj );
             return { r => 'updated' };
         }
     }
@@ -390,15 +390,15 @@ __END__
 
 =head1 NAME
 
-GServ::AppRoot - Application Server Base Objects
+Yote::AppRoot - Application Server Base Objects
 
 =head1 SYNOPSIS
 
-This object is meant to be extended to provide GServ apps.
+This object is meant to be extended to provide Yote apps.
 
 =head1 DESCRIPTION
 
-Each Web Application has a single container object as the entry point to that object which is an instance of the GServ::AppRoot class. A GServ::AppRoot extends GServ::Obj and provides some class methods and the following stub methods.
+Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
 
 =head2 CLASS METHODS
 

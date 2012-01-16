@@ -1,15 +1,15 @@
-This document descripes the idioms used with gserv.
+This document descripes the idioms used with yote.
 
-Builtin GServ commands
-  These commands are provided for all GServer interactions :
+Builtin Yote commands
+  These commands are provided for all Yote interactions :
 
  - login
  - create_account
  - fetch : fetches object. the client creates a javascript object analog (or avatar or whatever) of it.
-           gserv does not allow one app to fetch data for an other app. The app itself can extend
+           yote does not allow one app to fetch data for an other app. The app itself can extend
 	   the fetch function to provide further object security, but cannot override the app object 
 	   ownership check.
- - stow : saves the object. gserv does not allow one app to stow data for an other app.
+ - stow : saves the object. yote does not allow one app to stow data for an other app.
 
 Other commands are defined by the indivual G App.
 
@@ -23,7 +23,7 @@ Messages from the server to the client are in the form :
     c => command for app,
     d => data for app,
     t => login token,
-    w => boolean instructing gserv to wait for command to complete before returning,
+    w => boolean instructing yote to wait for command to complete before returning,
   }
 
 Messages returned from the server to the client are of the form :

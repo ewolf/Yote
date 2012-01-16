@@ -4,11 +4,11 @@
 <script src="./jquery.base64.min.js"></script>
 <script src="./jquery.jsonp-2.1.4.min.js"></script>
 <script src="./json2.js"></script>
-<script src="./gserv.js?x=7.1"></script>
+<script src="./yote.js?x=7.1"></script>
 </head>
 <script>
 $().ready(function(){ 
-   var a = $.gServ.make_app("GServ::Hello","http://127.0.0.1:8008/");
+   var a = $.yote.make_app("Yote::Test::Hello","http://127.0.0.1:8008/");
 //   a.message( "Foo", { Bar:"BaZ",Zoo:{Zap:1} }, 1, function(x,b,c) { alert(x) } );
    var res = a.create_account( "firsty", "blarg", "em" );
    if( res.err ) { alert( "Error creating account '" + res.err + "'" ) }
