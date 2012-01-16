@@ -99,7 +99,9 @@ sub get_id {
         when('ARRAY') {
             my $tied = tied @$ref;
             if( $tied ) {
-                return $tied->[0] || $DATASTORE->get_id( "ARRAY" );
+		$tied->[0] ||= $DATASTORE->get_id( "ARRAY" );
+                store_weak( $tied->[0], $ref );
+		return $tied->[0];
             }
             my( @data ) = @$ref;
             my $id = $DATASTORE->get_id( $class );
@@ -115,10 +117,11 @@ sub get_id {
         }
         when('HASH') {
             my $tied = tied %$ref;
+
             if( $tied ) {
-                my $id = $tied->[0] || $DATASTORE->get_id( "HASH" );
-                store_weak( $id, $ref );
-                return $id;
+		$tied->[0] ||= $DATASTORE->get_id( "HASH" );
+                store_weak( $tied->[0], $ref );
+		return $tied->[0];
             }
             my $id = $DATASTORE->get_id( $class );
             my( %vals ) = %$ref;
@@ -173,6 +176,12 @@ sub stow_all {
         stow( $obj );
     }
 } #stow_all
+
+sub reset {
+    stow_all();
+    $GServ::ObjProvider::DIRTY = {};
+    $GServ::ObjProvider::WEAK_REFS = {};
+}
 
 #
 # Returns data structure representing object. References are integers. Values start with 'v'.

@@ -48,34 +48,44 @@ sub AUTOLOAD {
 
     if( $func =~/:add_to_(.*)/ ) {
         my( $fld ) = $1;
-        my $get = "get_$fld";
-        my $arry = $s->$get([]); # init array if need be
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, @vals ) = @_;
-            push( @$arry, @vals );
+	    my $get = "get_$fld";
+	    my $arry = $self->$get([]); # init array if need be
+	    if( ref( $arry ) eq 'GServ::Array' ) {
+		$arry->PUSH( @vals );
+	    } else {
+		push( @$arry, @vals );
+	    }
         };
+	use strict 'refs';
         goto &$AUTOLOAD;
 
     }
     elsif( $func =~ /:remove_from_(.*)/ ) {
         my $fld = $1;
-        my $get = "get_$fld";
-        my $arry = $s->$get([]); # init array if need be
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
+	    my $get = "get_$fld";
+	    my $arry = $self->$get([]); # init array if need be
             my $count = grep { $_ eq $val } @$arry;
             while( $count ) {
                 for my $i (0..$#$arry) {
                     if( $arry->[$i] eq $val ) {
                         --$count;
-                        splice @$arry, $i, 1;
+			if( ref( $arry ) eq 'GServ::Array' ) {
+			    $arry->SPLICE( $i, 1 );
+			} else {
+			    splice @$arry, $i, 1;
+			}
                         last;
                     }
                 }
             }
         };
+	use strict 'refs';
         goto &$AUTOLOAD;
 
     }
@@ -97,10 +107,14 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 $self->{DATA}{$fld} = GServ::ObjProvider::xform_in( $init_val );
+		if( ref( $init_val ) ) {
+		    GServ::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
+		}
                 GServ::ObjProvider::dirty( $self, $self->{ID} );
             }
             return GServ::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
+	use strict 'refs';
         goto &$AUTOLOAD;
     }
     else {
