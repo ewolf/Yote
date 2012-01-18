@@ -1,4 +1,68 @@
-Yote::WebAppServer is an application server whos purpose is to rapidly create
-  application mockups in perl based on idiom and design.
+Yote requirements : -------------------------------------------------------
 
-AppServer.pm is the main file. 
+* perl version 5.10
+* file location or mysql database
+* webserver that can run perl cgi files
+* jquery (provided with this distrubution, too)
+
+Yote setup-----------------------------------------------------------------
+
+To set up the Yote Web App Server, you will need 
+
+* the Yote::WebAppServer module in your path
+* to modify the start_server.pl file
+* a web server that can run cgi files.
+* to put scripts/yote.cgi into your cgi-bin directory
+* to put scripts/yote.js into a javascript directory on your webserver
+* to put scripts/*.js into your javascript directory (if you don't have those already)
+
+If you want to have Yote run on a mysql back end, you must
+
+* create a database for yote to run on.
+* run the init_datastore.pl program to set up tables on the database.
+
+Using Yote -----------------------------------------------------------------
+
+(see http://fenowyn.com/yote)
+
+
+Starting the Web App Server
+       use Yote::WebAppServer;
+
+       my $server = new Yote::WebAppServer();
+
+       $server->start_server( port => 8008,
+                              datastore  => 'Yote::SQLiteIO',
+                              sqlitefile => 'yote.database' );
+
+
+# -----------------------------
+
+Client Side Coding
+
+  var hello_app = $.gServ.get_app( 'Yote::Hello' );
+  var result = hello_app.hello({ name:"fred" } );
+  var counter = hello_app.get_counter();
+
+# -------------------------------
+
+Server Side Coding
+
+package Yote::Hello;
+
+use strict;
+use Yote::Obj;
+use base 'Yote::AppRoot';
+
+sub init {
+    my $self = shift;
+    my $counter = $self->get_counter( new Yote::Obj() );
+}
+sub hello {
+    my( $self, $data, $acct ) = @_;
+    my $name = $data->{name};
+    my $counter = $self->get_counter();
+    $counter->set_count( $counter->get_count() + 1 );
+    return "hello there '$name'. I have said hello ".$counter->get_count()." times.";
+}
+1;
