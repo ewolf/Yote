@@ -1,3 +1,16 @@
+find out how to show this file in emacs automatically, and have emacs open up the
+files I need
+________________
+
+package yote :
+
+* set up dependencies in installer
+* test installer
+* have a make remove or something
+
+________________
+
+
 SQLite
 Mongo
 CPAN pkg

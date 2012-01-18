@@ -2,8 +2,6 @@
 
 use strict;
 
-use lib '/home1/irrespon/yote.cgi';
-
 use CGI;
 use Data::Dumper;
 use IO::Socket;
