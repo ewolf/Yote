@@ -7,12 +7,14 @@ Yote requirements : -------------------------------------------------------
 
 Yote setup-----------------------------------------------------------------
 
-To set up the Yote Web App Server, you will need 
+To set up the Yote Web App Server, you will need to
 
-* the Yote::WebAppServer module in your path
-* to modify the start_server.pl file
-* a web server that can run cgi files.
-* to put scripts/yote.cgi into your cgi-bin directory
+* put the Yote::WebAppServer module in your path
+* modify the start_server.pl file
+* get a web server that can run cgi files.
+* get yote.cgi from http://fenowyn.com/yote/dl/yote.html
+* yote.cgi into your cgi-bin directory
+* get js files from http://fenowyn.com/yote/js/yote.js (also in that dir : jquery-latest.js, json2.js, jquery.base64.min.js )
 * to put scripts/yote.js into a javascript directory on your webserver
 * to put scripts/*.js into your javascript directory (if you don't have those already)
 
@@ -40,9 +42,16 @@ Starting the Web App Server
 
 Client Side Coding
 
+ <script src="./js/jquery-latest.js"></script>
+    <script src="./js/jquery.dumper.js"></script>
+    <script src="./js/jquery.base64.min.js"></script>
+    <script src="./js/json2.js"></script>
+    <script src="./js/yote.js"></script>
+    <script>
   var hello_app = $.gServ.get_app( 'Yote::Hello' );
   var result = hello_app.hello({ name:"fred" } );
   var counter = hello_app.get_counter();
+    </script>
 
 # -------------------------------
 
