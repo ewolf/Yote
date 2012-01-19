@@ -12,7 +12,7 @@ To set up the Yote Web App Server, you will need to
 * put the Yote::WebAppServer module in your path
 * modify the start_server.pl file
 * get a web server that can run cgi files.
-* get yote.cgi from http://fenowyn.com/yote/dl/yote.html
+* get yote.cgi from http://fenowyn.com/yote/dl/yote.txt
 * yote.cgi into your cgi-bin directory
 * get js files from http://fenowyn.com/yote/js/yote.js (also in that dir : jquery-latest.js, json2.js, jquery.base64.min.js )
 * to put scripts/yote.js into a javascript directory on your webserver

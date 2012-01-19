@@ -167,7 +167,7 @@ $.yote = {
 
     // generic server type error
     error:function(msg) {
-        alert( "a server side error has occurred : " + msg );
+        console.dir( "a server side error has occurred : " + msg );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
