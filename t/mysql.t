@@ -8,11 +8,12 @@ use Yote::MysqlIO;
 use Yote::AppRoot;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
-use Yote::SQLiteIO;
 
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
+use File::Spec::Functions qw( catdir updir );
 use Test::More;
+use Test::Pod;
 
 
 use vars qw($VERSION);
@@ -31,47 +32,32 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-#
-# Create testing database, populate it with tables.
-#
-if(0){  #turning this off for now as it requires that MySQL be set up already.
-    Yote::ObjProvider::init(
-	datastore      => 'Yote::MysqlIO',
-	);
-    my $db = $Yote::ObjProvider::DATASTORE->database();
-    my( $dbn, $tdbn ) = ( 'sg', 'sg_test' );
+Yote::ObjProvider::init(
+    datastore      => 'Yote::MysqlIO',
+    );
+my $db = $Yote::ObjProvider::DATASTORE->database();
+my( $dbn, $tdbn ) = ( 'sg', 'sg_test' );
 
-    $db->do( "CREATE DATABASE IF NOT EXISTS $tdbn" );
+$db->do( "CREATE DATABASE IF NOT EXISTS $tdbn" );
+if( $db->errstr() ) {
+    BAIL_OUT( $db->errstr() );
+}
+$db->do( "use $tdbn" );
+
+if( $db->errstr() ) {
+    BAIL_OUT( $db->errstr() );
+}
+for my $table (qw/objects field big_text/) {
+    $db->do( "CREATE TEMPORARY TABLE $tdbn.$table LIKE $dbn.$table" );
     if( $db->errstr() ) {
 	BAIL_OUT( $db->errstr() );
     }
-    $db->do( "use $tdbn" );
-
-    if( $db->errstr() ) {
-	BAIL_OUT( $db->errstr() );
-    }
-    for my $table (qw/objects field big_text/) {
-	$db->do( "CREATE TEMPORARY TABLE $tdbn.$table LIKE $dbn.$table" );
-	if( $db->errstr() ) {
-	    BAIL_OUT( $db->errstr() );
-	}
-    }
-    
-    pass( "created test database" );
-
-    test_suite( $db );
-    Yote::ObjProvider::reset();
 }
-if(1){
-    my( $fh, $name ) = mkstemp( "/tmp/SQLiteTest.XXXX" );
-    Yote::ObjProvider::init(
-	datastore      => 'Yote::SQLiteIO',
-	sqlitefile     => $name,
-	);
-    my $db = $Yote::ObjProvider::DATASTORE->database();
-    $Yote::ObjProvider::DATASTORE->init_datastore();
-    test_suite( $db );
-}
+
+pass( "created test database" );
+
+test_suite( $db );
+Yote::ObjProvider::reset();
 
 done_testing();
 
@@ -170,8 +156,6 @@ sub test_suite {
     $simple_hash->{BZAZ} = [ "woof", "bOOf" ];
     $root->save();
 
-#print STDERR Data::Dumper->Dump( [$db->selectall_arrayref("SELECT * FROM field ")] );
-
     my $root_2 = Yote::AppRoot::fetch_root();
     my( %simple_hash ) = %{$root_2->get_hash()};
     delete $simple_hash{__ID__};
@@ -210,7 +194,6 @@ sub test_suite {
 
     $root->remove_from_array( "MORE STUFF" );
     $root->save();
-    print STDERR Data::Dumper->Dump([$simple_array]);
     is( scalar(@$simple_array), 2, "add_to test array count after remove" );
     $root->remove_from_array( "MOREO STUFF" );
     $simple_array = $root_3->get_array();

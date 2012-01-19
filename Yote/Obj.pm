@@ -178,6 +178,8 @@ Ads the item to the list bar. If bar does not exist, it is created as a list. If
 
 Removes the item from the list bar. If bar does not exist, it is created as a list. If it exists and is not a list, an error will be thrown.
 
+=back
+
 =head1 AUTHOR
 
 Eric Wolf

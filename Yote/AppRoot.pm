@@ -402,19 +402,31 @@ Each Web Application has a single container object as the entry point to that ob
 
 =head2 CLASS METHODS
 
+=over 4
+
 =item fetch_root - returns the master root object.
 
 The master root object contains all web application roots. It is an AppRoot object.
 
 Returns the root object. This is always object 1 for the App Server.
 
+=back
+
 =head2 STUB METHODS
+
+=over 4
 
 =item init - called the first time this root is created. Initializes account root.
 
+=back
+
 =head3 INSTANCE METHODS
 
+=over 4
+
 =item get_account_root( login ) - Returns an account object associated with a login object.
+
+=back
 
 The account root is there to store information specific to the account in question. It could include 
 documents specific to the account or games the account is participating in. This is distinct from the

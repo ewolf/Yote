@@ -35,9 +35,6 @@ sub new {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db    = $args->{database} || $self->{args}{database};
-    my $uname = $args->{uname} || $self->{args}{uname};
-    my $pword = $args->{pword} || $self->{args}{pword};
     my $file  = $args->{sqlitefile};
     $self->database( "DBI:SQLite:db=$file" )
 } #connect

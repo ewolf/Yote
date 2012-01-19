@@ -1,16 +1,9 @@
-find out how to show this file in emacs automatically, and have emacs open up the
-files I need
-________________
-
-package yote :
-
-* set up dependencies in installer
-* test installer
-* have a make remove or something
-
-________________
-
-
-SQLite
-Mongo
-CPAN pkg
+* update fenowyn.com/yote page
+   - update fenowyn.com with PODs.
+   - do complete examples
+* "Database is locked" errors on server side running tests
+* update README with more specific instructions on installing javascript and cgi files.
+* configuration for yote .yote files, passwords, etc.
+* make installer program
+* upload to cpan
+* create MongoDB IO
