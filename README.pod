@@ -1,0 +1,195 @@
+=head1 Name
+
+YOTE
+
+=head1 Summary
+
+Yote is a platform for creating web based applications by bridging
+client side javascript with server side, automatically persistant perl
+objects. Yote provides javascript objects with methods that map to
+their server side counterparts.
+
+See http://fenowyn.com/yote for more information.
+
+=head1 Requirements
+
+=over 4 
+
+=item * perl version 5.10
+
+=item * A webserver that can run perl cgi files
+
+=item * jquery (provided with this distribution, or from http://docs.jquery.com/Downloading_jQuery)
+
+=back
+
+=head1 Setup
+
+Following is how to verify that you have each of the requirements and,
+if not, to get it.
+
+=over 4
+
+=item * perl version 5.10
+
+To verify if you have this:
+
+       $ which perl
+
+If your version is too low, look at using perlbrew to upgrade:
+
+       http://search.cpan.org/~gugod/App-perlbrew-0.39/bin/perlbrew
+
+(From the perlbrew docs:)
+
+       $ curl -kL http://install.perlbrew.pl | bash
+       $ perl install 5.14.2  # Current version as of 2012-01-20
+
+This installs the perlbrew executable, the perl-5.14.2 executable, and
+all core Perl modules into ~/perl5/perlbrew/.
+
+You may also want to use cpanm (or another CPAN shell) to install
+additional modules for the new perl version.
+
+=item * Server-side storage: a writable file or a MySQL database
+
+MySQL storage is OPTIONAL!  If you just want to do a quick test, file
+storage should be fine.  If you want MySQL storage, verify / install
+as follows:
+
+
+OSX has MySQL installed by default.  Verify that it's running by
+doing: 
+
+ $ mysql -u root
+
+(NOTE: For simplicity, the directions in this README connect to MySQL
+as 'root'.  In practice, you should use a separate user with lower
+permissions.)
+
+
+Many Linux distributions come with MySQL.  If it is not installed and
+running by default, install it as per
+http://dev.mysql.com/doc/refman/5.5/en/installing.html  (v5.5.x is
+latest as of 2012-01-20).
+
+
+Once MySQL is running, create a database for Yote to use and
+initialize it as follows:
+
+       $ mysql -u root
+       mysql> create database yote;
+       mysql> \q
+       $ script/init_datastore.pl 
+
+!!!
+@@DKSNOTE:  init_datastore.pl is not included in the current version
+of Yote
+!!!
+
+=item * A webserver that can run perl cgi files
+
+OSX has Apache installed by default.  To verify it is running and
+allow it to run CGIs, do the following:
+
+       System Preferences > Sharing > Web Sharing 
+         
+Ensure that the checkbox is checked; if so, the web server is up.
+
+
+By default, CGIs are served from /Library/WebServer/CGI-Executables/
+(hereinafter '$CGI_BIN')
+
+By default, content is served from ~/Sites/ (hereinafter '$SITE_ROOT')
+
+
+On Linux, @@TODO
+
+=item * yote.cgi
+
+ $ cp cgi/yote.cgi $CGI_BIN/
+ $ chmod 755 $CGI_BIN/yote.cgi
+
+=item * jquery
+
+On OSX or Linux:
+
+ $ mkdir -p $SITE_ROOT/js
+ $ cp $YOTE_ROOT/javascript/* $SITE_ROOT/js
+
+=item * put the Yote::WebAppServer module in your path
+
+On OSX / Linux:
+
+ $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
+
+=item * modify the start_server.pl file
+
+!!!
+@@DKSNOTE:  Can't find anything matching this name -- missing
+dependency?
+!!!
+
+=back
+
+=head1 Using Yote
+
+=head2 Start the Web App Server
+
+Starting the Web App Server from the command line:
+
+       $ script/yote_server
+
+This starts the server on the default port (8008), using SQLiteIO, and
+writing to file ~/.yote/SQLite.yote.db.
+
+   
+Starting the Web App Server from a package:
+
+       use Yote::WebAppServer;
+
+       my $server = new Yote::WebAppServer();
+
+       $server->start_server( port => 8008,
+                              datastore  => 'Yote::SQLiteIO',
+                              sqlitefile => 'yote.database' );
+
+
+
+=head2 Coding with Yote
+
+=head3 Client Side
+
+       <script src="./js/jquery-latest.js"></script>
+       <script src="./js/jquery.dumper.js"></script>
+       <script src="./js/jquery.base64.min.js"></script>
+       <script src="./js/json2.js"></script>
+       <script src="./js/yote.js"></script>
+       <script>
+           var hello_app = $.gServ.get_app( 'Yote::Hello' );
+           var result = hello_app.hello({ name:"fred" } );
+           var counter = hello_app.get_counter();
+       </script>
+
+=head3 Server Side
+
+       package Yote::Hello;
+
+       use strict;
+       use Yote::Obj;
+       use base 'Yote::AppRoot';
+
+       sub init {
+           my $self = shift;
+           my $counter = $self->get_counter( new Yote::Obj() );
+       }
+       sub hello {
+           my( $self, $data, $acct ) = @_;
+           my $name = $data->{name};
+           my $counter = $self->get_counter();
+           $counter->set_count( $counter->get_count() + 1 );
+           return "hello there '$name'. I have said hello ". $counter->get_count() . " times.";
+       }
+       1;
+
+=cut
