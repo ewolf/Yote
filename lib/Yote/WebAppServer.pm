@@ -22,20 +22,11 @@ use vars qw($VERSION);
 
 $VERSION = '0.01';
 
-use Carp;
-$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 my( @commands, %prid2wait, %prid2result, $singleton );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
-
-$SIG{TERM} = sub { 
-    $singleton->server_close();
-    &Yote::ObjProvider::stow_all();
-    print STDERR Data::Dumper->Dump(["Shutting down due to term"]);
-    exit;
-};
 
 sub new {
     my $pkg = shift;
@@ -43,21 +34,15 @@ sub new {
     $singleton = bless {}, $class;
     return $singleton;
 }
-my( $db, $args );
+
 sub start_server {
     my( $self, @args ) = @_;
-    $args = scalar(@args) == 1 ? $args[0] : { @args };
-
-    if( $args->{pidfile} ) {
-	`cat $args->{pidfile} | xargs kill`;
-	`echo $$ > $args->{pidfile}`;
-    }
+    my $args = scalar(@args) == 1 ? $args[0] : { @args };
 
     Yote::ObjProvider::init( %$args );
 
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
-    print STDERR Data::Dumper->Dump( [$args] );
     my $thread = threads->new( sub { $self->run( %$args ); } );
 
     _poll_commands();

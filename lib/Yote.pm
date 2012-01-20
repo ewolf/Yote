@@ -1,7 +1,7 @@
 pakcage Yote;
 
 use vars qw($VERSION);
-$Version = '0.01';
+$VERSION = '0.01';
 
 1;
 

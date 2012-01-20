@@ -1,0 +1,94 @@
+#!/usr/bin/env perl
+
+#
+# start_server.pl - this file is meant to be configured by the user.
+#                   You don't want to include world readable passwords
+#                   so add your own configuration 
+#                    (pending a better yote configuration)
+#
+
+
+use strict;
+use Yote::WebAppServer;
+
+use Config::Simple;
+
+use Carp;
+$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+
+my $pidfile = "/var/run/yote.pid";
+$SIG{TERM} = sub { 
+    &Yote::ObjProvider::stow_all();
+    print STDERR "Shutting down due to term\n";
+    unlink( $pidfile );
+    exit;
+};
+
+my $s = new Yote::WebAppServer;
+
+
+#
+# The order of the config is @ARGV, %ENV, ~/.yoterc || ~/.yote/yote.conf || /etc/yote.conf, 
+#
+`mkdir -p $ENV{HOME}/.yote`;
+my( %config ) = ( port => 8008, datastore => 'Yote::SQLiteIO', sqlitefile => "$ENV{HOME}/.yote/SQLite.yote.db" );
+my( $file ) = grep { -e $_ } ("$ENV{HOME}/.yoterc","$ENV{HOME}/.yote/yote.conf","/etc/yote.conf");
+
+if( $file ) {
+    my $c = new Config::Simple( $file );
+    my $vars = $c->vars;
+    for my $key (%$vars) {
+	$config{$key} = $vars->{$key};
+    }
+}
+for my $param (keys %ENV) {
+    $config{$param} = $ENV{$param};
+}
+
+while( @ARGV ) {
+    my $first = shift @ARGV;
+    if($first eq '--shutdown') {
+	`cat $pidfile | xargs kill` if -e $pidfile;
+	unlink( $pidfile );
+	exit;
+    }
+    elsif( $first eq '--restart' ) {
+	#
+	# kill any old servers hanging around
+	#
+	`cat $pidfile | xargs kill` if -e $pidfile;
+	last;
+    }
+    elsif( $first =~ /^--([^=]+)=(.*)/ ) {
+	$config{$1} = $2;
+    }
+    elsif( $first =~ /^-([^-].*)/ ) {
+	$config{$1} = shift @ARGV;
+    }
+} #while args
+
+#
+# Check to make sure no processes are still hanging around.
+#
+if( -e $pidfile ) {
+    open( IN, "<$pidfile" );
+    my $pid = <IN>; 
+    chomp( $pid );
+
+    my( @haspid ) = `ps -p $pid`;
+    my $haspid = grep { $_ =~ /\b$pid\b/ } @haspid;
+    if( $haspid ) {
+	print STDERR "Process $pid still alive. Unable to start yote server\n";
+	exit 1;
+    }
+}
+
+#
+# Normal start
+#
+`echo $$ > $pidfile`;
+
+$s->start_server( %config );
+
+__END__
+

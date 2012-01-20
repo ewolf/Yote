@@ -27,8 +27,13 @@ Using Yote -----------------------------------------------------------------
 
 (see http://fenowyn.com/yote)
 
+Starting the Web App Server with default port 8008 using SQLiteIO (writing to file ~/.yote/SQLite.yote.db) :
+       just launch 
+          >yote_server
 
-Starting the Web App Server
+
+
+Starting the Web App Server via libraries
        use Yote::WebAppServer;
 
        my $server = new Yote::WebAppServer();
@@ -36,6 +41,7 @@ Starting the Web App Server
        $server->start_server( port => 8008,
                               datastore  => 'Yote::SQLiteIO',
                               sqlitefile => 'yote.database' );
+
 
 
 # -----------------------------
