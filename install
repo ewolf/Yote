@@ -29,8 +29,13 @@ for (	'perl Build.PL',
 		system($_);
 	}
 
+say "\nInstalling Javascript files...\n";
 make_path( "$SITE_ROOT/js" );
-cp( File::Spec->catfile($Bin, 'javascript', '*'), $SITE_ROOT );
+for ( glob(File::Spec->catfile($Bin, 'javascript', '*')) ) {
+	cp( $_, File::Spec->catfile($SITE_ROOT, 'js') );
+}
+
+say "\nInstalling yote.cgi...\n";
 cp( File::Spec->catfile($Bin, 'cgi', 'yote.cgi'), $CGI_BIN );
 chmod 0755, File::Spec->catfile($CGI_BIN, 'yote.cgi');
 
