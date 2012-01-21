@@ -3,11 +3,32 @@ Name
 
 Summary
     Yote is a platform for creating web based applications by bridging
-    client side javascript with server side, automatically persistant perl
+    client side javascript with server side, automatically persistent perl
     objects. Yote provides javascript objects with methods that map to their
     server side counterparts.
 
     See http://fenowyn.com/yote for more information.
+
+Quickstart for OSX / Linux
+    In the following directions, $SITE_ROOT is the document root of your web
+    site and $YOTE_ROOT is the directory where the Yote Build.PL file
+    resides.
+
+    1. Ensure you have a web server that will serve CGIs
+    2. Install stuff and start the server
+            $ perl Build.PL
+            $ ./Build
+            $ ./Build installdeps
+            $ ./Build install
+            $ mkdir -p $SITE_ROOT/js
+            $ cp $YOTE_ROOT/javascript/* $SITE_ROOT
+            $ cp cgi/yote.cgi $CGI_BIN/
+            $ chmod 755 $CGI_BIN/yote.cgi
+            $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
+            $ script/yote_server
+
+    3. Write your own code (e.g. "hello world" app, website code, etc)
+    4. Profit!!!
 
 Requirements
     *   perl version 5.10
@@ -17,7 +38,15 @@ Requirements
     *   jquery (provided with this distribution, or from
         http://docs.jquery.com/Downloading_jQuery)
 
-Setup
+    *   Some sort of server-side storage (MySQL or a writable file)
+
+Install Yote
+        $ perl Build.PL
+        $ ./Build
+        $ ./Build test
+        $ ./Build install
+
+Verify / install the requirements
     Following is how to verify that you have each of the requirements and,
     if not, to get it.
 
@@ -25,7 +54,7 @@ Setup
 
         To verify if you have this:
 
-               $ which perl
+               $ perl -v
 
         If your version is too low, look at using perlbrew to upgrade:
 
@@ -34,27 +63,33 @@ Setup
         (From the perlbrew docs:)
 
                $ curl -kL http://install.perlbrew.pl | bash
-               $ perl install 5.14.2  # Current version as of 2012-01-20
+               $ ~/perl5/perlbrew/bin/perlbrew install 5.14.2  # Current version as of 2012-01-20
+               $ ~/perl5/perlbrew/bin/perlbrew use 5.14.2
+               $ perl -v  # Should now tell you 5.14.2
 
         This installs the perlbrew executable, the perl-5.14.2 executable,
-        and all core Perl modules into ~/perl5/perlbrew/.
+        and all core Perl modules into ~/perl5/perlbrew/. It then sets the
+        current shell to use the new version.
 
         You may also want to use cpanm (or another CPAN shell) to install
         additional modules for the new perl version.
 
-    *   Server-side storage: a writable file or a MySQL database
+    *   Storage
 
-        MySQL storage is OPTIONAL! If you just want to do a quick test, file
-        storage should be fine. If you want MySQL storage, verify / install
-        as follows:
+        Yote needs to store data server side. This can be in a MySQL
+        database or a file (which will become a SQLite database). Other
+        options, including MongoDB, are in the works -- patches welcome!
+
+        If you want MySQL storage, verify / install as follows:
 
         OSX has MySQL installed by default. Verify that it's running by
         doing:
 
-         $ mysql -u root
+               $ mysql -u root
 
         (NOTE: For simplicity, the directions in this README connect to
-        MySQL as 'root'. In practice, you should use a separate user with
+        MySQL as 'root'. This will work and it makes these directions
+        easier, but in general practice you should connect via a user with
         lower permissions.)
 
         Many Linux distributions come with MySQL. If it is not installed and
@@ -65,9 +100,7 @@ Setup
         Once MySQL is running, create a database for Yote to use and
         initialize it as follows:
 
-               $ mysql -u root
-               mysql> create database yote;
-               mysql> \q
+               $ echo 'create database yote;' | mysql -u root
                $ script/init_datastore.pl
 
         !!! @@DKSNOTE: init_datastore.pl is not included in the current
@@ -92,21 +125,21 @@ Setup
 
     *   yote.cgi
 
-         $ cp cgi/yote.cgi $CGI_BIN/
-         $ chmod 755 $CGI_BIN/yote.cgi
+            $ cp cgi/yote.cgi $CGI_BIN/
+            $ chmod 755 $CGI_BIN/yote.cgi
 
     *   jquery
 
         On OSX or Linux:
 
-         $ mkdir -p $SITE_ROOT/js
-         $ cp $YOTE_ROOT/javascript/* $SITE_ROOT/js
+            $ mkdir -p $SITE_ROOT/js
+            $ cp $YOTE_ROOT/javascript/* $SITE_ROOT/js
 
     *   put the Yote::WebAppServer module in your path
 
         On OSX / Linux:
 
-         $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
+            $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
 
     *   modify the start_server.pl file
 
@@ -129,8 +162,8 @@ Using Yote
            my $server = new Yote::WebAppServer();
 
            $server->start_server( port => 8008,
-                                  datastore  => 'Yote::SQLiteIO',
-                                  sqlitefile => 'yote.database' );
+                      datastore  => 'Yote::SQLiteIO',
+                      sqlitefile => 'yote.database' );
 
   Coding with Yote
    Client Side
@@ -146,22 +179,24 @@ Using Yote
            </script>
 
    Server Side
-           package Yote::Hello;
+        package Yote::Hello;
 
-           use strict;
-           use Yote::Obj;
-           use base 'Yote::AppRoot';
+        use strict;
+        use Yote::Obj;
+        use base 'Yote::AppRoot';
 
-           sub init {
-               my $self = shift;
-               my $counter = $self->get_counter( new Yote::Obj() );
-           }
-           sub hello {
-               my( $self, $data, $acct ) = @_;
-               my $name = $data->{name};
-               my $counter = $self->get_counter();
-               $counter->set_count( $counter->get_count() + 1 );
-               return "hello there '$name'. I have said hello ". $counter->get_count() . " times.";
-           }
-           1;
+        sub init {
+            my $self = shift;
+            my $counter = $self->get_counter( new Yote::Obj() );
+        }
+
+        sub hello {
+            my( $self, $data, $acct ) = @_;
+            my $name = $data->{name};
+            my $counter = $self->get_counter();
+            $counter->set_count( $counter->get_count() + 1 );
+            return "hello there '$name'. I have said hello ". $counter->get_count() . " times.";
+        }
+
+        1;
 
