@@ -35,6 +35,12 @@ for ( glob(File::Spec->catfile($Bin, 'javascript', '*')) ) {
 	cp( $_, File::Spec->catfile($SITE_ROOT, 'js') );
 }
 
+say "\nInstalling sample pages to web root...\n";
+for ( glob(File::Spec->catfile($Bin, 'sample', '*')) ) {
+	say "\tInstalling $_...";
+	cp( $_, $SITE_ROOT );
+}
+
 say "\nInstalling yote.cgi...\n";
 cp( File::Spec->catfile($Bin, 'cgi', 'yote.cgi'), $CGI_BIN );
 chmod 0755, File::Spec->catfile($CGI_BIN, 'yote.cgi');
