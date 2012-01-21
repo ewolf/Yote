@@ -16,16 +16,7 @@ Quickstart for OSX / Linux
 
     1. Ensure you have a web server that will serve CGIs
     2. Install stuff and start the server
-            $ perl Build.PL
-            $ ./Build
-            $ ./Build installdeps
-            $ ./Build install
-            $ mkdir -p $SITE_ROOT/js
-            $ cp $YOTE_ROOT/javascript/* $SITE_ROOT
-            $ cp cgi/yote.cgi $CGI_BIN/
-            $ chmod 755 $CGI_BIN/yote.cgi
-            $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
-            $ script/yote_server
+            $ ./install '/path/to/your/web/root' '/path/to/cgi-bin'
 
     3. Write your own code (e.g. "hello world" app, website code, etc)
     4. Profit!!!

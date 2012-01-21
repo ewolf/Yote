@@ -17,28 +17,23 @@ In the following directions, $SITE_ROOT is the document root of your
 web site and $YOTE_ROOT is the directory where the Yote Build.PL file
 resides.
 
+It's as easy as...
+
 =over 4
 
 =item 1. Ensure you have a web server that will serve CGIs
 
 =item 2. Install stuff and start the server
 
-    $ perl Build.PL
-    $ ./Build
-    $ ./Build installdeps
-    $ ./Build install
-    $ mkdir -p $SITE_ROOT/js
-    $ cp $YOTE_ROOT/javascript/* $SITE_ROOT
-    $ cp cgi/yote.cgi $CGI_BIN/
-    $ chmod 755 $CGI_BIN/yote.cgi
-    $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
-    $ script/yote_server
+    $ ./install '/path/to/your/web/root' '/path/to/cgi-bin'
 
 =item 3. Write your own code (e.g. "hello world" app, website code, etc)
 
-=item 4. Profit!!! 
-
 =back
+
+(Note that the yote_server is automatically started in the background
+in step 2.  Be sure to kill this when you're done with it, or they
+will tend to pile up.)
 
 =head1 Requirements
 
