@@ -11,12 +11,15 @@
 use strict;
 use feature 'say';
 
-use Yote::WebAppServer;
-
+use Carp;
 use Config::Simple;
 use FindBin qw/$Bin/;
 
-use Carp;
+use Yote::WebAppServer;
+
+use lib "$Bin/../lib";
+
+
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 my $pidfile = "$Bin/yote.pid";
