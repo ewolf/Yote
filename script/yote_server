@@ -9,14 +9,22 @@
 
 
 use strict;
-use Yote::WebAppServer;
-
-use Config::Simple;
+use feature 'say';
 
 use Carp;
+use Config::Simple;
+use FindBin qw/$Bin/;
+
+use Yote::WebAppServer;
+
+use lib "$Bin/../lib";
+
+
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
-my $pidfile = "/var/run/yote.pid";
+my $pidfile = "$Bin/yote.pid";
+say "Pidfile: $pidfile";
+
 $SIG{TERM} = sub { 
     &Yote::ObjProvider::stow_all();
     print STDERR "Shutting down due to term\n";
