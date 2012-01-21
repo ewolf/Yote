@@ -34,5 +34,5 @@ cp( File::Spec->catfile($Bin, 'javascript', '*'), $SITE_ROOT );
 cp( File::Spec->catfile($Bin, 'cgi', 'yote.cgi'), $CGI_BIN );
 chmod 0755, File::Spec->catfile($CGI_BIN, 'yote.cgi');
 
-print "Starting script/yote_server...\n\n";
+print "\nStarting script/yote_server in the background...\n\n";
 exec("(script/yote_server &)");
