@@ -20,16 +20,10 @@ lib/Yote/Test/TestAppNeedsLogin.pm
 lib/Yote/Test/TestAppNoLogin.pm
 lib/Yote/WebAppServer.pm
 lib/Yote.pm
-Makefile
 Makefile.PL
 MANIFEST
-MYMETA.json
-MYMETA.yml
-pm_to_blib
 README
 README.pod
-README.pod~
-README~
 sample/hello.html
 sample/hello_test.html
 sample/login_test.html
