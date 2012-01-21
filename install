@@ -1,0 +1,38 @@
+#!/usr/bin/env perl
+
+use feature 'say';
+
+use FindBin qw/$Bin/;
+use File::Copy qw/cp/;
+use File::Path qw/make_path/;
+use File::Spec;
+
+if ( @ARGV != 2 ) {
+    print <<'EOT';
+
+Usage:  ./install '/path/to/your/web/root' '/path/to/cgi-bin'
+
+EOT
+	exit(0);
+}
+
+my $SITE_ROOT = shift;
+my $CGI_BIN   = shift;
+
+for (	'perl Build.PL', 
+		'./Build', 
+		'./Build installdeps', 
+		'./Build install',
+	)
+	{
+		say "\nRunning $_...";
+		system($_);
+	}
+
+make_path( "$SITE_ROOT/js" );
+cp( File::Spec->catfile($Bin, 'javascript', '*'), $SITE_ROOT );
+cp( File::Spec->catfile($Bin, 'cgi', 'yote.cgi'), $CGI_BIN );
+chmod 0755, File::Spec->catfile($CGI_BIN, 'yote.cgi');
+
+print "Starting script/yote_server...\n\n";
+exec("script/yote_server");
