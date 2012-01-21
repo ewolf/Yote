@@ -14,9 +14,10 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
     },
     requires => {
+		     'forks'                 => 0,
 		     'Config::Simple'        => 4.58,
-	             'App::Options'          => 1.12,
-		     'DBD::Mysql'            => 4.014,
+             'App::Options'          => 1.12,
+		     'DBD::mysql'            => 4.014,
 		     'DBD::SQLite'           => 1.35,
 		     'HTTP::Request::Params' => 1.01,
 		     'JSON'                  => 2.22,
