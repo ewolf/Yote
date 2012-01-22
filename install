@@ -1,0 +1,49 @@
+#!/usr/bin/env perl
+
+use feature 'say';
+
+use FindBin qw/$Bin/;
+use File::Copy qw/cp/;
+use File::Path qw/make_path/;
+use File::Spec;
+
+if ( @ARGV != 2 ) {
+    print <<'EOT';
+
+Usage:  ./install '/path/to/your/web/root' '/path/to/cgi-bin'
+
+EOT
+	exit(0);
+}
+
+my $SITE_ROOT = shift;
+my $CGI_BIN   = shift;
+
+for (	'perl Build.PL', 
+		'./Build', 
+		'./Build installdeps', 
+		'./Build install',
+	)
+	{
+		say "\nRunning $_...";
+		system($_);
+	}
+
+say "\nInstalling Javascript files...\n";
+make_path( "$SITE_ROOT/js" );
+for ( glob(File::Spec->catfile($Bin, 'javascript', '*')) ) {
+	cp( $_, File::Spec->catfile($SITE_ROOT, 'js') );
+}
+
+say "\nInstalling sample pages to web root...\n";
+for ( glob(File::Spec->catfile($Bin, 'sample', '*')) ) {
+	say "\tInstalling $_...";
+	cp( $_, $SITE_ROOT );
+}
+
+say "\nInstalling yote.cgi...\n";
+cp( File::Spec->catfile($Bin, 'cgi', 'yote.cgi'), $CGI_BIN );
+chmod 0755, File::Spec->catfile($CGI_BIN, 'yote.cgi');
+
+print "\nStarting script/yote_server in the background...\n\n";
+exec("(script/yote_server &)");
