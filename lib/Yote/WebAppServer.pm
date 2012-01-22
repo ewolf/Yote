@@ -162,6 +162,8 @@ sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
 
+    _reconnect();
+
     my $resp;
 
     eval {
@@ -187,6 +189,10 @@ sub _process_command {
     cond_broadcast( %prid2wait );
 
 } #_process_command
+
+sub _reconnect {
+    Yote::ObjIO::reconnect();
+} #_reconnect
 
 1
 
