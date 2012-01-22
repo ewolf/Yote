@@ -35,20 +35,26 @@ sub new {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $file  = $args->{sqlitefile};
-    $self->database( "DBI:SQLite:db=$file" )
+    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile};
+    $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
+	print STDERR "-----------------------------------------------------------------------------\n\n\n\n\n\n\n\n";
+    print STDERR Data::Dumper->Dump([$file]);
 } #connect
 
-sub reconnect {
+
+sub disconnect {
     my $self = shift;
-    $self->connect();
+    $self->{DBH}->disconnect();
+} #disconnect
+
+sub commit {
+    my $self = shift;
+    $self->{DBH}->commit();
 }
+
 
 sub init_datastore {
     my $self = shift;
-    my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db = $args->{sqlitefile}       || $self->{args}{sqlitefile};
-    $self->database( "DBI:SQLite:db=$db" );
 
     my %definitions = (
         field => q~CREATE TABLE field (
@@ -71,15 +77,8 @@ sub init_datastore {
 	print STDERR "Creating table $table\n";
 	$self->{DBH}->do( $definitions{$table} );
     }
+    $self->{DBH}->commit;
 } #init_datastore
-
-sub database {
-    my $self = shift;
-    if( @_ ) {
-        $self->{DBH} = DBI->connect( @_ );
-    }
-    return $self->{DBH};
-}
 
 #
 # Returns the number of entries in the data structure given.
@@ -213,7 +212,11 @@ sub fetch {
     my( $self, $id ) = @_;
 
     my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    print STDERR Data::Dumper->Dump([$self->{DBH},$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    
+    if( $self->{DBH}->errstr() ) {
+	eval {die };print STDERR Data::Dumper->Dump([$@]); die;
+    }
 
     return undef unless $class;
     my $obj = [$id,$class];

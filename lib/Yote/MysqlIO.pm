@@ -38,22 +38,16 @@ sub connect {
     my $db    = $args->{database} || $self->{args}{database};
     my $uname = $args->{uname} || $self->{args}{uname};
     my $pword = $args->{pword} || $self->{args}{pword};
-    $self->database( "DBI:mysql:$db", $uname, $pword );
+    $self->{DBH} = DBI->connect( "DBI:mysql:$db", $uname, $pword );
 } #connect
 
-sub reconnect {
+sub disconnect {
     my $self = shift;
-    $self->connect();
-}
+    $self->{DBH}->disconnect();
+} #disconnect
 
 sub init_datastore {
     my $self = shift;
-    my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db = $args->{db}       || $self->{args}{db};
-    my $uname = $args->{uname} || $self->{args}{uname};
-    my $pword = $args->{pword} || $self->{args}{pword};
-
-    $self->database( "DBI:mysql:$db", $uname, $pword );
 
     my %definitions = (
         field => q~CREATE TABLE `field` (
@@ -103,14 +97,6 @@ sub init_datastore {
     }
     $self->{DBH}->do( "COMMIT" );
 } #init_datastore
-
-sub database {
-    my $self = shift;
-    if( @_ ) {
-        $self->{DBH} = DBI->connect( @_ );
-    }
-    return $self->{DBH};
-}
 
 #
 # Returns the number of entries in the data structure given.

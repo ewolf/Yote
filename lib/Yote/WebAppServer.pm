@@ -162,7 +162,7 @@ sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
 
-    _reconnect();
+    Yote::ObjProvider::connect();
 
     my $resp;
 
@@ -188,13 +188,11 @@ sub _process_command {
     delete $prid2wait{$procid};
     cond_broadcast( %prid2wait );
 
+    Yote::ObjProvider::commit();
+    Yote::ObjProvider::disconnect();
 } #_process_command
 
-sub _reconnect {
-    Yote::ObjIO::reconnect();
-} #_reconnect
-
-1
+1;
 
 __END__
 

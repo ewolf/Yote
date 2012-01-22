@@ -40,9 +40,21 @@ sub init_datastore {
     return $DATASTORE->init_datastore(@_);
 } #init_datastore
 
+sub connect {
+    return $DATASTORE->connect();
+}
+
+sub disconnect {
+    return $DATASTORE->disconnect();
+}
+
 sub xpath {
     my $path = shift;
     return xform_out( $DATASTORE->xpath( $path ) );
+}
+
+sub commit {
+    $DATASTORE->commit();
 }
 
 sub xpath_count {
