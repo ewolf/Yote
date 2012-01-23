@@ -37,8 +37,6 @@ sub connect {
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
     my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile};
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
-	print STDERR "-----------------------------------------------------------------------------\n\n\n\n\n\n\n\n";
-    print STDERR Data::Dumper->Dump([$file]);
 } #connect
 
 
