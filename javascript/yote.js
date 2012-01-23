@@ -19,7 +19,7 @@
 $.yote = {
     token:null,
     err:null,
-    url:null,
+    url:'/cgi-bin/yote.cgi',
     objs:{},
 
     init:function(url) {
@@ -167,7 +167,7 @@ $.yote = {
 
     // generic server type error
     error:function(msg) {
-        console.dir( "a server side error has occurred : " + msg );
+        console.dir( "a server side error has occurred : " + $.dump(msg) );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
@@ -248,7 +248,7 @@ $.yote = {
 		    }
 		} else if( typeof params.failhandler === 'function' ) {
 		    params.failhandler(data);
-		} else { alert ("Dunno : " +typeof params.failhandler ) }
+		} else { alert ("Dunno : " + typeof params.failhandler ) }
 	    },
 	    type:'POST',
 	    url:root.url

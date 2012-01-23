@@ -30,7 +30,6 @@ my $s = new Yote::WebAppServer;
 
 $SIG{TERM} = sub { 
     $s->shutdown();
-    &Yote::ObjProvider::stow_all();
     print STDERR "Shutting down due to term\n";
     unlink( $pidfile );
     exit;
@@ -61,7 +60,12 @@ while( @ARGV ) {
 	#
 	# kill any old servers hanging around
 	#
-	`cat $pidfile | xargs kill` if -e $pidfile;
+	if( -e $pidfile ) {
+	    my $res = `cat $pidfile | xargs kill`;
+	    print STDERR Data::Dumper->Dump([$res,$!,$@]);
+	    unlink( $pidfile );
+	    sleep(2);
+	}
 	last;
     }
     elsif( $first =~ /^--([^=]+)=(.*)/ ) {
