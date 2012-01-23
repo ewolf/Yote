@@ -44,11 +44,20 @@ sub start_server {
     # fork out for two starting threads
     #   - one a multi forking server and the other an event loop.
     my $thread = threads->new( sub { $self->run( %$args ); } );
+    $self->{thread} = $thread;
 
     _poll_commands();
 
     $thread->join;
 } #start_server
+
+sub shutdown {
+    my $self = shift;
+    print STDERR "Shutting down \n";
+    &Yote::ObjProvider::stow_all();
+    $self->{thread}->kill('TERM')->join();
+    print STDERR "Shut down server thread.\n";
+} #shutdown
 
 #
 # Sets up Initial database server and tables.
@@ -142,8 +151,10 @@ sub _poll_commands {
     while(1) {
         my $cmd;
         {
+	    print STDERR "Extracting Command\n";
             lock( @commands );
             $cmd = shift @commands;
+	    print STDERR "Got Command\n";
         }
         if( $cmd ) {
 	    print STDERR Data::Dumper->Dump([" in poll, Processing",$cmd]);
@@ -151,8 +162,11 @@ sub _poll_commands {
 	    print STDERR Data::Dumper->Dump([" in poll, Done processing",$cmd]);
         }
         unless( @commands ) {
+	    print STDERR "Locking commands\n";
             lock( @commands );
+	    print STDERR "Waiting for commands\n";
             cond_wait( @commands );
+	    print STDERR "Got Command\n";
         }
     }
 

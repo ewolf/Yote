@@ -26,14 +26,16 @@ $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 my $pidfile = "$Bin/yote.pid";
 say "Bin dir $Bin\nPidfile: $pidfile";
 
+my $s = new Yote::WebAppServer;
+
 $SIG{TERM} = sub { 
+    $s->shutdown();
     &Yote::ObjProvider::stow_all();
     print STDERR "Shutting down due to term\n";
     unlink( $pidfile );
     exit;
 };
 
-my $s = new Yote::WebAppServer;
 
 
 #
@@ -51,7 +53,7 @@ my( %config ) = ( port => 8008,
 while( @ARGV ) {
     my $first = shift @ARGV;
     if($first eq '--shutdown') {
-	`cat $pidfile | xargs kill` if -e $pidfile;
+	`cat $pidfile | xargs kill -TERM` if -e $pidfile;
 	unlink( $pidfile );
 	exit;
     }
