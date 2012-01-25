@@ -56,7 +56,7 @@ sub shutdown {
     print STDERR "Shutting down yote server \n";
     &Yote::ObjProvider::stow_all();
     print STDERR "Killing threads \n";
-    $self->{thread}->kill('TERM')->detach();
+    $self->{thread}->detach();
     print STDERR "Shut down server thread.\n";
 } #shutdown
 

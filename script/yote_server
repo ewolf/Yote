@@ -52,7 +52,7 @@ my( %config ) = ( port => 8008,
 while( @ARGV ) {
     my $first = shift @ARGV;
     if($first eq '--shutdown') {
-	`cat $pidfile | xargs kill -TERM` if -e $pidfile;
+	`cat $pidfile | grep yote_server | xargs kill` if -e $pidfile;
 	unlink( $pidfile );
 	exit;
     }
@@ -61,7 +61,7 @@ while( @ARGV ) {
 	# kill any old servers hanging around
 	#
 	if( -e $pidfile ) {
-	    my $res = `cat $pidfile | xargs kill`;
+	    my $res = `cat $pidfile | grep yote_server | xargs kill`;
 	    print STDERR Data::Dumper->Dump([$res,$!,$@]);
 	    unlink( $pidfile );
 	    sleep(2);
