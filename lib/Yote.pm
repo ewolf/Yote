@@ -1,4 +1,4 @@
-pakcage Yote;
+package Yote;
 
 use vars qw($VERSION);
 $VERSION = '0.04';

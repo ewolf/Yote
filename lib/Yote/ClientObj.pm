@@ -26,3 +26,13 @@ sub get {
 }
 
 1;
+
+__END__
+
+=NAME
+
+    Yote::ClientObj
+
+=SYNOPSIS
+
+ClientObj objects provide methods for apps to be developed entirely on the client side.
