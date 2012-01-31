@@ -8,6 +8,8 @@ my $builder = Module::Build->current;
 
 my $base = $builder->args( 'install_base' ) || '/usr/local/yote';
 
+mkpath( $base );
+
 copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
 
 my $file = shift @ARGV;
@@ -124,8 +126,9 @@ END
 #
 my $cgi = $builder->notes( 'cgi_dir' );
 mkpath( "$cgi/yote" );
+chmod( "755", "$cgi/yote" );
 copy( "cgi/yote.cgi", "$cgi/yote/" ) or die "Unable to copy file $!";
-chmod( "+x", "$cgi/yote/" );
+chmod( "755", "$cgi/yote/yote.cgi" );
 
 
 my $cgipath = $builder->notes( 'cgi_path' );

@@ -29,6 +29,11 @@ my $build = $class->new(
 	'IO::Socket'            => 1.31,
 	'Test::Simple'          => 0.44,
 	'WeakRef'               => 0.01,
+	'forks'                 => 0,
+	'File:Copy'             => 0,
+	'File:Path'             => 0,
+	'File:chmod'            => 0,
+	'DBI'                   => 0,
     },
 );
 
