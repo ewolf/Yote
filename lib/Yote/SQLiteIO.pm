@@ -32,6 +32,10 @@ sub new {
     return $self;
 } #new
 
+sub database {
+    return shift->{DBH};
+}
+
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
@@ -46,8 +50,7 @@ sub disconnect {
 } #disconnect
 
 sub commit {
-    my $self = shift;
-    $self->{DBH}->commit();
+    #dummy for sqlite singlethread
 }
 
 
@@ -75,7 +78,6 @@ sub init_datastore {
 	print STDERR "Creating table $table\n";
 	$self->{DBH}->do( $definitions{$table} );
     }
-    $self->{DBH}->commit;
 } #init_datastore
 
 #

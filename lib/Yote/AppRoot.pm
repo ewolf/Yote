@@ -91,13 +91,21 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
-		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
+		return { r =>  $app->_run_command( $command, $cmd->{d}, $acct ) };
 	    }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
 } #process_command
+
+#
+# Override to change signature of app methods
+#
+sub _run_command {
+    my( $app, $command, $arguments, $acct ) = @_;
+    return $app->_obj_to_response( $app->$command( $arguments, $acct ) );
+} #_run_command
 
 #
 # Override to control access to this app.
