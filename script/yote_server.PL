@@ -8,7 +8,7 @@ my $builder = Module::Build->current;
 
 my $base = $builder->args( 'install_base' ) || '/usr/local/yote';
 
-mkpath( $base );
+mkpath( $base ) or die "Unable to make '$base' : $!";
 
 copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
 
@@ -125,17 +125,17 @@ END
 # now get cgi-bin and js files.
 #
 my $cgi = $builder->notes( 'cgi_dir' );
-mkpath( "$cgi/yote" );
-chmod( "755", "$cgi/yote" );
+mkpath( "$cgi/yote" )  or die "Unable to make '$cgi/yote' : $!";
+chmod( 0755, "$cgi/yote" );
 copy( "cgi/yote.cgi", "$cgi/yote/" ) or die "Unable to copy file $!";
-chmod( "755", "$cgi/yote/yote.cgi" );
+chmod( 0755, "$cgi/yote/yote.cgi" );
 
 
 my $cgipath = $builder->notes( 'cgi_path' );
 
 open my $fin, "<", "javascript/yote.js" or die "Unable to open javascript file $!";
 my $js = $builder->notes( 'js_dir' );
-mkpath( "$js/yote" );
+mkpath( "$js/yote" ) or die "Unable to make '$js/yote' : $!";
 open my $fout, '>', "$js/yote/yote.js" or die "Unable to create file : $!";
 
 while( !eof($fin) ) {
@@ -146,6 +146,25 @@ while( !eof($fin) ) {
 close( $fin );
 close( $fout );
 
+my $htmlroot = $builder->notes( 'html_root' );
+my $js_path = $builder->notes( 'js_path' );
+mkpath( "$htmlroot/yote" )  or die "Unable to make '$htmlroot/yote' : $!";;
+open my $fin, "<", "sample/hello.html" or die "Unable to open file : $!";
+open my $fout, ">", "$htmlroot/yote/index.html" or die "Unable to open file : $!";
+while( !eof($fin) ) {
+    my $line = <$fin>;
+    $line =~ s!JSPATH!$js_path/!g;
+    print $fout $line;
+}
+close( $fin );
+close( $fout );
+
+
+for my $jsfile (qw{ jquery-latest.js jquery.dumper.js json2.js jquery.base64.min.js }) {
+    unless( -e "$js/$jsfile" ) {
+	copy( "javascript/$jsfile", "$js/$jsfile" );
+    }
+}
 
 __END__
 
