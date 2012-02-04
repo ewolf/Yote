@@ -35,9 +35,9 @@ $.yote = {
 
     create_obj:function(data,appname) {
 	var root = this;
-	return (function(x) {
+	return (function(x,an) {
 	    var o = {
-		_app:appname,
+		_app:an,
 		_d:{},
 		id:x.id,
 		reload:function(){},
@@ -113,11 +113,10 @@ $.yote = {
 			this._d = replace._d;
 			return this;
 		    }
-		} )(x.id,appname);
+		} )(x.id,an);
 	    }
-
 	    return o;
-	})(data);
+         })(data,appname);
     }, //create_obj
 
     fetch_obj:function(id,app) {
@@ -170,7 +169,7 @@ $.yote = {
             async:false,
             passhandler:function(data) {
 	        root.token = data.t;
-		root.acct = data.a;
+		root.acct = root.create_obj( data.a, root );
 		if( typeof passhandler === 'function' ) {
 			passhandler(data);
 		}
@@ -197,7 +196,7 @@ $.yote = {
             async:false,
             passhandler:function(data) {
 	        root.token = data.t;
-		root.acct = data.a;
+		root.acct = root.create_obj( data.a, root );
 		if( typeof passhandler === 'function' ) {
 			passhandler(data);
 		}
@@ -262,8 +261,8 @@ $.yote = {
 			params.passhandler(data);
 		    }
 		} else if( typeof params.failhandler === 'function' ) {
-		    params.failhandler(data);
-		} else { alert ("Dunno : " + typeof params.failhandler ) }
+		    params.failhandler(data.err);
+		} else { } //error case. no handler defined alert ("Dunno : " + typeof params.failhandler ) }
 	    },
 	    type:'POST',
 	    url:root.url

@@ -91,7 +91,9 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
-		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
+		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, 
+								      $app->get_account_root( $acct ),
+								      $acct ) ) };
 	    }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
@@ -107,6 +109,9 @@ sub allows {
     return 1;
 }
 
+#
+# Fetch master root object.
+#
 sub fetch_root {
     my $root = Yote::ObjProvider::fetch( 1 );
     unless( $root ) {
@@ -182,7 +187,7 @@ sub _create_account {
         $emails->{ $email } = $newacct;
         Yote::ObjProvider::stow( $emails );
         $root->save;
-        return { r => "created account", a => $newacct, t => _create_token( $newacct, $ip ) };
+        return { r => "created account", a => $root->_obj_to_response( $newacct ), t => _create_token( $newacct, $ip ) };
     } #if handle
     return { err => "no handle given" };
 
@@ -205,7 +210,7 @@ sub _login {
         my $root = fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
-            return { r => "logged in", a => $acct, t => _create_token( $acct, $ip ) };
+            return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
         }
     }
     return { err => "incorrect login" };
