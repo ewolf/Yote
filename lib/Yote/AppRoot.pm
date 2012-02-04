@@ -91,21 +91,13 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
-		return { r =>  $app->_run_command( $command, $cmd->{d}, $acct ) };
+		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
 	    }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
 } #process_command
-
-#
-# Override to change signature of app methods
-#
-sub _run_command {
-    my( $app, $command, $arguments, $acct ) = @_;
-    return $app->_obj_to_response( $app->$command( $arguments, $acct ) );
-} #_run_command
 
 #
 # Override to control access to this app.
@@ -176,7 +168,7 @@ sub _create_account {
         $newacct->set_email( $email );
         $newacct->set_created_ip( $ip );
 
-	$newacct->set_time_created( time() );
+        $newacct->set_time_created( time() );
 
         # save password plaintext for now. crypt later
         $newacct->set_password( $password );
@@ -190,7 +182,7 @@ sub _create_account {
         $emails->{ $email } = $newacct;
         Yote::ObjProvider::stow( $emails );
         $root->save;
-        return { r => "created account", t => _create_token( $newacct, $ip ) };
+        return { r => "created account", a => $newacct, t => _create_token( $newacct, $ip ) };
     } #if handle
     return { err => "no handle given" };
 
@@ -213,7 +205,7 @@ sub _login {
         my $root = fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq $data->{p}) ) {
-            return { r => "logged in", t => _create_token( $acct, $ip ) };
+            return { r => "logged in", a => $acct, t => _create_token( $acct, $ip ) };
         }
     }
     return { err => "incorrect login" };

@@ -156,14 +156,28 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+                root.acct  = data.a;
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //login
+
+    logout:function() {
+        this.token = undefined;
+        this.acct = undefined;
+    }, //logout
+
+    get_account:function() {
+        return this.acct;
+    },
+
+    is_logged_in:function() {
+        return typeof this.acct === 'object';
+    }, //is_logged_in
 
     // generic server type error
     error:function(msg) {
@@ -171,7 +185,7 @@ $.yote = {
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'create_account', 
             data:{
@@ -182,18 +196,19 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+                root.acct = data.a;
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //create_account
 
     
     remove_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'remove_account', 
             data:{
