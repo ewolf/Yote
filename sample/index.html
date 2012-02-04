@@ -1,0 +1,245 @@
+<html>
+  <head>
+    <title>Yote Hello World Example</title>
+    <script src="/js/jquery-latest.js"></script>
+    <script src="/js/jquery.dumper.js"></script>
+    <script src="/js/jquery.base64.min.js"></script>
+    <script src="/js/json2.js"></script>
+    <script src="/js/yote/yote.js"></script>
+    <script>
+    $().ready(function(){
+        var hello_app;
+        function hello() {
+	        if( typeof hello_app === 'undefined' ) {
+	            hello_app = $.yote.get_app('Yote::Test::Hello' );
+            }
+            var result = hello_app.hello({ name:$('#txt').val() } );
+            alert( result );
+
+	    }
+        $('#button').click( function() {
+	        hello();
+        } );
+        $('#txt').keypress( function(e) {
+            if(e.which == 13 ) {
+	            hello();
+	        }
+        } );
+
+        make_login_box( '#login_div' );
+
+        function make_login_box(target) {
+            $(target).empty();
+            $(target).append( "<span id=login_msg class=warning>zzz</span><BR>" +
+
+                              // do login
+                              "<div style=display:none id=y_login_div>" +
+                              "<table><tr><td>Handle</td><td><input class=login id=login type=text></td>" +
+                              "</tr><tr><td>Password</td><td><input class=login id=password type=password>" +
+                              "</td></tr></table><br>" +
+                              "<a href='#' id=register_link>Register</a>" +
+                              "<input class=login id=login_submit type=submit value=Login>" +
+                              "</div>" +
+
+                              // not logged in
+                              "<div style=display:none id=y_not_loggedin>" +
+                              "Not logged in. <a href='#' id=login_link>Login</a><BR>" +
+                              "<a href='#' id=register_link>Register</a>" +
+                              "</div>" +
+
+                              // register account
+                              "<div style=display:none id=y_register_account>" +
+                              "<table><tr><td>Handle</td><td><input class=register id=login type=text></td>" +
+                              "</tr><tr><td>Email</td><td><input class=register id=email type=text>" +
+                              "</tr><tr><td>Password</td><td><input class=register id=password type=password>" +
+                              "<input id=register_submit type=submit value=Register>" +
+                              "</div>" +
+
+                              // recover
+                              "<div style=display:none id=y_recover_account>" +
+                              "Email <input class=recover id=email> " +
+                              "<input id=recover_submit type=submit value=Recover>" +
+                              "</div>" +
+
+                              // logged in
+                              "<div style=display:none id=y_logged_in>" +
+                              "Logged in as <span class=logged_in id=handle></span><BR> [<a id=logout_link href='#'>logout</a>]" +
+                              "</div>"
+                            );
+            var install_function = function( f ) { return f; }
+            var on_enter = function(f) { return function(e) { if(e.which == 13 ) { f(); } } }
+            var to_login = function(msg) {
+                msg = msg || '';
+                $( target + ' > #login_msg' ).empty();
+                $( target + ' > #login_msg' ).append( msg );      
+                $( target + ' > div ' ).hide();
+                $( target + ' > div#y_login_div' ).show();
+            }
+            var to_register = function(msg) {
+                msg = msg || '';
+                $( target + ' > #login_msg' ).empty();
+                $( target + ' > #login_msg' ).append( msg );      
+
+                $( target + ' > div ' ).hide();
+                $( target + ' > div#y_register_account' ).show();
+            }
+            var to_logged_in = function(name) {
+                $( target + ' > div ' ).hide();
+                $( target + ' .logged_in#handle' ).val(name);
+                $( target + ' > div#y_logged_in' ).show();                
+            }
+            var do_login = function() {
+                $.yote.login( $( target + " .login#login").val(),
+                              $(target + " .login#password").val(),
+                              function(data) { //pass
+                                  to_logged_in($.yote.acct.get('handle'));
+                              },
+
+                              function(data) { //fail
+                                  to_login(data);
+                              }
+                            );
+            }
+            var do_register = function() {
+                $.yote.create_account( $( target + " .register#login").val(),
+                                       $( target + " .register#email").val(),
+                                       $( target + " .register#password").val(),
+                                       function(data) { //pass
+                                           to_logged_in($.yote.acct.get('handle'));
+                                       },
+                                       
+                                       function(data) { //fail
+                                           to_register(data);
+                                       }
+                                     );                
+            }
+            var logout = function() {
+                $( target + ' > div ' ).hide();
+                $( target + ' > div#y_not_loggedin' ).show();
+                $( target + ' #password' ).val('');
+            }
+            //link actions
+            $( target + ' #login_link').click( install_function(to_login) );
+            $( target + ' #register_link').click( install_function(to_register) );
+
+            //button actions
+            $( target + ' #login_submit').click( install_function(do_login) );
+            $( target + ' .login#login,' + target + ' .login#password' ).keypress( on_enter(do_login) );
+            $( target + ' #register_submit').click( install_function(do_register) );
+            $( target + ' .register#login,' + target + ' .register#password,' + target + ' .register#email' ).keypress( on_enter(do_register) );
+
+            if( $.yote.is_logged_in() ) {
+                var acct = $.yote.get_account();
+                $( target + ' > .logged_in#handle' ).val( acct.get('handle') );
+                $( target + ' > div' ).hide();
+                $( target + ' > div#y_logged_in' ).show();
+            } else {
+                logout();
+            }
+
+        } //make_login_box
+    });
+    </script>
+    <style>
+      .emp   { font-family:"Lucida Console",monospace;  }
+#login_div { border: 1px solid black;padding:5px; margin: 5px;}
+    </style>
+  </head>
+  <body>
+    <h1>Yote Application Server Hello World Example</h1>
+Get Yote  on github : <a href=https://github.com/ewolf/Yote>https://github.com/ewolf/Yote</a>
+<hr>
+<div>
+    <h2>Hello World</h2>
+    <div id=login_div>
+    </div>
+    <input type=text id=txt><BR><button type=button id=button>Say Hi</button>
+</div>
+<hr>
+<h2>What's going on here?</h2>
+<blockquote>
+<p>
+ Yote provides javascript objects that are linked to perl objects running in an application server. These perl objects get the following features :
+<ul>
+<li>Automatic Persistance without a schema.</li>
+<li>idiomatic getters and setters for fields. Calling set_foo("bar") on a Yote object automatically creates and populates the field 'foo'. Calling get_foo("bar") returns the value of foo, populating it with 'bar' if its not yet defined. Fields may contain scalars, hashes, arrays and Yote objects.</li>
+<li>more syntactic sugar : add_to_mylist, remove_from_mylist causes an array field 'mylist' to be created and populated</li>
+<li>Circular References are allowed</li>
+<li>public methods (beginning with a lower case letter) may be invoked by javascript objects</li>
+<li>Methods for creating accounts, logging in</li>
+<li>Tokens can be used for logging in, and are linked to IP</li>
+<li>Passwords are not plaintext.</li>
+<li>Ability to limit access to which accounts may access which methods or objects</li>
+<li>Yote object method execution is thread-safe. Yote web application server receives messages in different threads, but has a single threaded execution process. </li>
+</ul>
+
+</p>
+<p>
+Once Yote has been set up, the client and server are written as described below.<ul>
+<li>The client contacts the server and gets the (singleton) root app with the perl package name (Yote::Hello).</li>
+<li>The hello method is called on the app and its response is stored in result.</li>
+<li></li>
+</ul>
+</p>
+</blockquote>
+<hr>
+    <h2>Client Side Code</h2>
+<blockquote>
+    <pre>
+&lt;html&gt;&lt;head&gt;&lt;title&gt;Hello World&lt;/title&gt;
+&lt;script src="/js/jquery-latest.js"&gt;&lt;/script&gt;
+&lt;script src="/js/jquery.dumper.js"&gt;&lt;/script&gt;
+&lt;script src="/js/jquery.base64.min.js"&gt;&lt;/script&gt;
+&lt;script src="/js/json2.js"&gt;&lt;/script&gt;
+&lt;script src="/js/yote.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  $().ready(function(){ <span class=emp>
+      var hello_app = $.yote.get_app('Yote::Hello');
+      $('#button').click( function() {
+          var result = hello_app.hello({ name:$('#txt').val() } );
+          alert( result ); //get the message from running the hello method.
+          alert( 'testfield is ' + hello_app.get_testfield() ); //get the value of testfield that is attached to the app
+          var counter = hello_app.get_counter();                //get the counter object that is attached to the app
+          alert( 'counter is at ' + counter.get_count() );      //get the value of the count field of the counter object attached to the app
+      } );
+</emp>
+  });
+&lt;/script&gt;&lt;/head&gt;
+&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;
+&lt;input type=text id=txt&gt;&lt;BR&gt;&lt;button type=button id=button&gt;Say Hi&lt;/button&gt;
+&lt;/body&gt;&lt;/html&gt;
+    </pre>
+</blockquote>
+<hr>
+    <h2>Server Side Code</h2>
+<blockquote>
+    <pre>
+package Yote::Hello;
+
+use strict;
+
+use Yote::Obj;
+
+use base 'Yote::AppRoot';
+
+sub init {
+    my $self = shift;
+    #when the hello is created for the first time, install a counter to track how many times it is called
+    $self-&gt;set_counter( new Yote::Obj() );
+}
+
+sub hello {
+    my( $self, $data, $acct ) = @_;
+    my $name = $data-&gt;{name};
+    $self-&gt;set_testfield(int(rand(10)); # set this to a random value each time
+    my $counter = $self-&gt;get_counter(); # this could be counted with a field, but I wanted to demo how easy it is to send objects across.
+    $counter-&gt;set_count( $counter-&gt;get_count() + 1 ); #increment the value in the counter
+    return { r =&gt; "hello there '$name'. I have said hello ".$counter-&gt;get_count()." times." };
+}
+
+1;
+    </pre>
+</blockquote>
+    <hr>
+  </body>
+</html>
