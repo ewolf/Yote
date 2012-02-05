@@ -3,6 +3,9 @@ package Yote::AppRoot;
 use strict;
 
 use Yote::Obj;
+
+use Crypt::Passwd;
+
 use vars qw($VERSION);
 
 $VERSION = '0.01';
@@ -176,7 +179,7 @@ sub _create_account {
         $newacct->set_time_created( time() );
 
         # save password plaintext for now. crypt later
-        $newacct->set_password( $password );
+        $newacct->set_password( _encrypt_pass($password, $newacct) );
 
         $newacct->save();
 
@@ -209,12 +212,17 @@ sub _login {
     if( $data->{h} ) {
         my $root = fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
-        if( $acct && ($acct->get_password() eq $data->{p}) ) {
+        if( $acct && ($acct->get_password() eq _encrypt_pass( $data->{p}, $acct) ) ) {
             return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
         }
     }
     return { err => "incorrect login" };
 } #_login
+
+sub _encrypt_pass {
+    my( $pw, $acct ) = @_;
+    return unix_std_crypt( $pw, $acct->get_handle() );
+} #_encrypt_pass
 
 #
 # Returns if the fetch is allowed to proceed. Meant to override. Default is true.

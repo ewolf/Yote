@@ -31,10 +31,11 @@ my $build = $class->new(
 	'WeakRef'               => 0.01,
 	'Acme::Damn'            => 0,
 	'forks'                 => 0,
-	'File::Copy'             => 0,
-	'File::Path'             => 0,
-	'File::chmod'            => 0,
+	'File::Copy'            => 0,
+	'File::Path'            => 0,
+	'File::chmod'           => 0,
 	'DBI'                   => 0,
+	'Crypt::Passwd'         => 0,
     },
 );
 
