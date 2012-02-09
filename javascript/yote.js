@@ -15,22 +15,6 @@
  *    ** get(field) - returns a yote object or a scalar value attached to this yote object (uses login token)
  *    ** any method defined on the server side, which returns a yote object or a scalar value (uses login token)
  */
-Object.keys = Object.keys || (function () {
-	var hasOwnProperty = Object.prototype.hasOwnProperty;
-
-	return function (o) {
-	    if (typeof o != "object" && typeof o != "function" || o === null)
-		    throw new TypeError("Object.keys called on a non-object");
-
-	    var result = [];
-	    for (var name in o) {
-		    if (hasOwnProperty.call(o, name))
-		        result.push(name);
-	    }
-
-	    return result;
-	};
-})();
 $.yote = {
     token:null,
     err:null,
@@ -81,17 +65,19 @@ $.yote = {
 				                failhandler:failhandler,
 				                passhandler:passhandler
 				            } ); //sending message
-			                
 				            if( typeof ret.r === 'object' ) {
 				                return root.create_obj( ret.r, o._app );
 				            } else {
                                 if( typeof ret.r === 'undefined' ) {
                                     if( typeof failhandler === 'function' ) {
-                                        failhandler();
+                                        failhandler('no return value');
                                     }
                                     return undefined;
                                 }
-				                return ret.r;
+                                if( (0+ret.r) > 0 ) {
+                                    return root.fetch_obj(ret.r,this._app);
+                                }
+				                return ret.r.substring(1);
 				            }
 			            } } )(x.m[m]);
 		        } //each method
@@ -157,23 +143,23 @@ $.yote = {
             failhandler:failhandler,
             passhandler:passhandler
 	    } );
-        if( typeof res.r === 'undefined' ) {
+        if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
             return undefined;
         } 
 	    return this.create_obj(  res.r, appname );
     },
 
     logout:function() {
-	this.token = undefined;
-	this.acct = undefined;
+	    this.token = undefined;
+	    this.acct = undefined;
     }, //logout
 
     get_account:function() {
-	return this.acct;
+	    return this.acct;
     },
 
     is_logged_in:function() {
-	return typeof this.acct === 'object';
+	    return typeof this.acct === 'object';
     }, //is_logged_in
 
 
@@ -189,12 +175,12 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		root.acct = data.a;
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+		        root.acct = root.create_obj( data.a, root );
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //login
@@ -205,7 +191,7 @@ $.yote = {
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'create_account', 
             data:{
@@ -216,12 +202,12 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		root.acct = data.a;
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+		        root.acct = root.create_obj( data.a, root );
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //create_account
@@ -258,7 +244,7 @@ $.yote = {
     }, //reset_password
     
     remove_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'remove_account', 
             data:{
@@ -279,9 +265,8 @@ $.yote = {
     }, //remove_account
 
     translate_data:function(data) {
-        return data;
         if( typeof data === 'object' ) {
-            if( data.id > 0 && typeof data._d !== 'undefined' ) {
+            if( data.id + 0 > 0 && typeof data._d !== 'undefined' ) {
                 return data.id;
             }
             var ret = Object();
@@ -293,16 +278,23 @@ $.yote = {
         return 'v' + data;
     }, //translate_data
 
+    disable:function() {
+        this.enabled = $(':enabled');
+        $.each( this.enabled, function(idx,val) { val.disabled = true } );
+    }, //disable
+    
+    reenable:function() {
+        $.each( this.enabled, function(idx,val) { val.disabled = false } );
+    }, //reenable
+
 	/* general functions */
     message:function( params ) {
         var root = this;
         var data = root.translate_data( params.data );
         async = params.async == true ? 1 : 0;
 		wait  = params.wait  == true ? 1 : 0;
-        var enabled;
         if( async == 0 ) {
-            enabled = $(':enabled');
-            $.each( enabled, function(idx,val) { val.disabled = true } );
+            root.disable();
         }
 	    var resp;
 	    $.ajax( {
@@ -315,7 +307,7 @@ $.yote = {
 		            t:root.token,
 		            w:wait
 		        } ) ) },
-	        dataFilter:function(a,b) { 
+	        dataFilter:function(a,b) {
 		        return a; 
 	        },
 	        error:function(a,b,c) { root.error(a); },
@@ -345,7 +337,7 @@ $.yote = {
 	        url:root.url
 	    } );
         if( async == 0 ) {
-            $.each( enabled, function(idx,val) { val.disabled = false } );
+            root.reenable();
             return resp;
         }
     } //message

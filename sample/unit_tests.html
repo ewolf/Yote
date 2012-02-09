@@ -13,6 +13,7 @@
 <script src="../js/jquery.base64.min.js"></script>
 <script src="../js/json2.js"></script>
 <script src="../js/yote/yote.js"></script>
+<script src="../js/yote/yote.util.js"></script>
 <script>
     var tests = 0;
 var failed = 0;
@@ -80,10 +81,8 @@ $().ready(function(){
         var nologin = $.yote.get_app( 'Yote::Test::TestAppNoLogin' );
 
         step('get_scalar called on testappnologin');
-        alert(0);
-        var scalar = nologin.get_scalar( {}, fail("no login scalar returned") );
-        alert(1);
-        if( scalar === 'BEEP' ) { 
+        var scalar = nologin.get_scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
+        if( scalar === "BEEP" ) { 
             pass("no login scalar")(); 
         } 
         else { 
@@ -121,7 +120,7 @@ $().ready(function(){
 
         //app that requires login should allow get_scalar now
         step('get_scalar called on testappneedslogin to succeed');
-        var scalar = login.get_scalar( {}, fail("required login returned scalar with login") );
+        var scalar = login.get_scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
         ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
         
 
@@ -132,6 +131,16 @@ $().ready(function(){
             fail( "yote_obj not returned" );
             return;      
         }
+
+        // try passing in a javascript proxy object as a data parameter
+        var o1 = login.make_obj( {text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
+        var o2 = login.make_obj( {text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
+        login.give_obj( o1 );
+        login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'bar', 'correct object 1 text' );
+        login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'foo', 'correct object 2 text' );
+
         pass( "no login returns yote obj" );      
         step('name get called on testappneedslogin to succeed');
         var initval = obj.get('name');
@@ -173,8 +182,13 @@ $().ready(function(){
         is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
     }
 
-    do_tests();
-    $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+    try {
+        do_tests();
+        $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+    }
+    catch( err ) {
+        alert( err );
+    }
     wrap_up();
 } ); //ready
 </script>

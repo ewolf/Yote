@@ -51,7 +51,7 @@ sub process_command {
     my $command = $cmd->{c};
 
     my $data = _translate_data( $cmd->{d} );
-    print STDERR Data::Dumper->Dump( [$cmd->{d},$data,"TRANSLATE"] );
+
     #
     # this will not process private (beginning with _) commands,
     # and will execute the command if its a login request,
@@ -105,9 +105,9 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
-                return { r => $app->_obj_to_response( $app->$command( $data ), 
-                                                      $app->get_account_root( $acct ),
-                                                      $acct ) };
+                return { r => $app->_obj_to_response( $app->$command( $data,
+                                                                      $app->get_account_root( $acct ),
+                                                                      $acct ) ) };
         }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
@@ -117,7 +117,7 @@ sub process_command {
 
 sub _translate_data {
     my $val = shift;
-    return $val;
+
     if( ref( $val ) ) { #from javacript object, or hash
         return { map {  $_ => _translate_data( $val->{$_} ) } keys %$val };
     }
@@ -336,6 +336,7 @@ sub _fetch {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
         my $obj = Yote::ObjProvider::fetch( $data->{id} );
+        print STDERR Data::Dumper->Dump( [$obj,$app,$app->fetch_permitted( $obj, $data )] );
         if( $obj &&
             Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->fetch_permitted( $obj, $data ) )

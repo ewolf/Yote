@@ -86,14 +86,24 @@ sub init_server {
 sub process_request {
     my $self = shift;
 
+    print STDERR ")START---------------- PROC REQ $$ ------------------(\n";
+
     my $reqstr = <STDIN>;
     my $params = {map { split(/\=/, $_ ) } split( /\&/, $reqstr )};
 
     
-    my $command = from_json( MIME::Base64::decode($params->{m}) );
+    my $command;
+    eval {
+        $command = from_json( MIME::Base64::decode($params->{m}) );
+    };
+    if( $@ ) {
+        print "{\"err\":\"$@\"}";        
+        print STDERR "Got error $@\n";
+        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
+        return;
+    }
     print STDERR Data::Dumper->Dump( [$command,'Inputted Command'] );
 
-#    return unless $ENV{REMOTE_ADDR} eq '127.0.0.1';
     $command->{oi} = $params->{oi};
 
     my $wait = $command->{w};
@@ -121,12 +131,20 @@ sub process_request {
         while( 1 ) {
             my $wait;
             {
+                print STDERR "process request lock prid2wait\n";
                 lock( %prid2wait );
                 $wait = $prid2wait{$procid};
+                print STDERR "process request locked prid2wait. got wait '$wait'\n";
             }
             if( $wait ) {
+                print STDERR "process request lock prid2wait for wait\n";
                 lock( %prid2wait );
-                cond_wait( %prid2wait );
+                print STDERR "process request cond wait prid2wait for wait\n";
+                if( $prid2wait{$procid} ) {
+                    cond_wait( %prid2wait );
+                }
+                print STDERR "process request cond wait done prid2wait for wait. procid ($procid)\n";
+                print STDERR  Data::Dumper->Dump([\%prid2wait]);
                 last unless $prid2wait{$procid};
             } else {
                 last;
@@ -143,6 +161,8 @@ sub process_request {
     } else {
         print "{\"msg\":\"Added command\"}";
     }
+    print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
+
 } #process_request
 
 #
@@ -158,9 +178,9 @@ sub _poll_commands {
             print STDERR "Got Command\n";
         }
         if( $cmd ) {
-            print STDERR " in poll, Processing command\n";
+            print STDERR ">===================== START Processing command (poll $$) ============<\n";
             _process_command( $cmd );
-            print STDERR " in poll, Done processing\n";
+            print STDERR ">===================== DONE Processing command (poll $$) ============<\n";
         }
         unless( @commands ) {
             print STDERR "Locking commands\n";
@@ -193,15 +213,19 @@ sub _process_command {
     #
     # Send return value back to the caller if its waiting for it.
     #
+    print STDERR " _process_command Lock prid2wait\n";
     lock( %prid2wait );
+    print STDERR " _process_command Locked prid2wait\n";
     {
         lock( %prid2result );
         $prid2result{$procid} = $resp;
     }
-    print STDERR Data::Dumper->Dump(["IN process, freeing prid2wait for",$resp]);
+    print STDERR Data::Dumper->Dump(["IN process, freeing prid2wait for process ($procid)",$resp,\%prid2wait]);
 
     delete $prid2wait{$procid};
+    print STDERR " _process_command Broadcast prid2wait (deleted $procid)\n";
     cond_broadcast( %prid2wait );
+    print STDERR " _process_command Broadcasted prid2wait\n";
 
     Yote::ObjProvider::commit();
     Yote::ObjProvider::disconnect();

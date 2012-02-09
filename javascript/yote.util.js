@@ -88,7 +88,6 @@ $.yote.util = {
 			              },
 
 			              function(data) { //fail
-                              alert('f');
 			                  to_login(data);
 			              }
 			            );
