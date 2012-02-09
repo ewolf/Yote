@@ -7,6 +7,7 @@ package Yote::Test::TestAppNeedsLogin;
 use strict;
 
 use Yote::Obj;
+use Yote::Test::TestAppNoLogin;
 
 use base 'Yote::AppRoot';
 

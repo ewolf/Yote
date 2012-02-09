@@ -99,19 +99,19 @@ sub process_request {
     my $wait = $command->{w};
     my $procid = $$;
     {
-	print STDERR Data::Dumper->Dump(["Lock prid2wait"]);
+        print STDERR Data::Dumper->Dump(["Lock prid2wait"]);
         lock( %prid2wait );
         $prid2wait{$procid} = $wait;
-	print STDERR Data::Dumper->Dump(["Locked prid2wait"]);
+        print STDERR Data::Dumper->Dump(["Locked prid2wait"]);
     }
 
     #
     # Queue up the command for processing in a separate thread.
     #
     {
-	print STDERR Data::Dumper->Dump(["Lock commands"]);
+        print STDERR Data::Dumper->Dump(["Lock commands"]);
         lock( @commands );
-	print STDERR Data::Dumper->Dump(["Locked commands"]);
+        print STDERR Data::Dumper->Dump(["Locked commands"]);
         push( @commands, [$command, $procid] );
         cond_broadcast( @commands );
     }
@@ -152,22 +152,22 @@ sub _poll_commands {
     while(1) {
         my $cmd;
         {
-	    print STDERR "Extracting Command\n";
+            print STDERR "Extracting Command\n";
             lock( @commands );
             $cmd = shift @commands;
-	    print STDERR "Got Command\n";
+            print STDERR "Got Command\n";
         }
         if( $cmd ) {
-	    print STDERR Data::Dumper->Dump([" in poll, Processing",$cmd]);
+            print STDERR " in poll, Processing command\n";
             _process_command( $cmd );
-	    print STDERR Data::Dumper->Dump([" in poll, Done processing",$cmd]);
+            print STDERR " in poll, Done processing\n";
         }
         unless( @commands ) {
-	    print STDERR "Locking commands\n";
+            print STDERR "Locking commands\n";
             lock( @commands );
-	    print STDERR "Waiting for commands\n";
+            print STDERR "Waiting for commands\n";
             cond_wait( @commands );
-	    print STDERR "Got Command\n";
+            print STDERR "Got Command\n";
         }
     }
 
@@ -184,7 +184,7 @@ sub _process_command {
     eval {
         my $root = Yote::AppRoot::fetch_root();
         my $ret  = $root->process_command( $command );
-	print STDERR Data::Dumper->Dump([$ret,"Response"]);
+        print STDERR Data::Dumper->Dump(["Process command response : ",$ret]);
         $resp = to_json($ret);
         Yote::ObjProvider::stow_all();
     };

@@ -3,6 +3,12 @@ package Yote::AppRoot;
 use strict;
 
 use Yote::Obj;
+
+use Crypt::Passwd;
+use Email::Valid;
+use MIME::Lite;
+use MIME::Base64;
+
 use vars qw($VERSION);
 
 $VERSION = '0.01';
@@ -19,7 +25,7 @@ sub get_account_root {
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
         $root = new Yote::Obj;
-	$acct_roots->{$acct->{ID}} = $root;
+        $acct_roots->{$acct->{ID}} = $root;
     }
     return $root;
 
@@ -44,6 +50,8 @@ sub process_command {
 
     my $command = $cmd->{c};
 
+    my $data = _translate_data( $cmd->{d} );
+    print STDERR Data::Dumper->Dump( [$cmd->{d},$data,"TRANSLATE"] );
     #
     # this will not process private (beginning with _) commands,
     # and will execute the command if its a login request,
@@ -51,16 +59,22 @@ sub process_command {
     #
     my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
     if( $command eq 'create_account' ) {
-        return $root->_create_account( $cmd->{d}, $cmd->{oi} );
+        return $root->_create_account( $data, $cmd->{oi} );
     }
     elsif( $command eq 'login' ) {
-        return _login( $cmd->{d}, $cmd->{oi} );
+        return _login( $data, $cmd->{oi} );
     }
     elsif( $command eq 'remove_account' ) {
-	return $root->_remove_account( $cmd->{d}, $acct );
+        return $root->_remove_account( $data, $acct );
+    }
+    elsif( $command eq 'recover_password' ) {
+        return $root->_recover_password( $data );
+    }
+    elsif( $command eq 'reset_password' ) {
+        return $root->_reset_password( $data );
     }
     else {
-        my $appstr = $command eq 'fetch_root' && ref($cmd->{d}) ? $cmd->{d}->{app} : $cmd->{a};
+        my $appstr = $command eq 'fetch_root' && ref($data) ? $data->{app} : $cmd->{a};
         my $app;
         if( $appstr ) {
             
@@ -86,18 +100,30 @@ sub process_command {
             return _fetch( $app, { id => $app->{ID} }, $acct );
         }
         elsif( $command eq 'fetch' ) {
-            return _fetch( $app, { id => $cmd->{d}{id} }, $acct );
+            return _fetch( $app, { id => $data->{id} }, $acct );
         }
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
-            if( $app->allows( $cmd->{d}, $acct ) && $obj->can( $command ) ) {
-		return { r => $app->_obj_to_response( $app->$command( $cmd->{d}, $acct ) ) };
-	    }
+            if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
+                return { r => $app->_obj_to_response( $app->$command( $data ), 
+                                                      $app->get_account_root( $acct ),
+                                                      $acct ) };
+        }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
 } #process_command
+
+sub _translate_data {
+    my $val = shift;
+    return $val;
+    if( ref( $val ) ) { #from javacript object, or hash
+        return { map {  $_ => _translate_data( $val->{$_} ) } keys %$val };
+    }
+    return undef unless $val;
+    return index($val,'v') == 0 ? substr( $val, 1 ) : Yote::ObjProvider::fetch( $val );
+}
 
 #
 # Override to control access to this app.
@@ -107,6 +133,9 @@ sub allows {
     return 1;
 }
 
+#
+# Fetch master root singleton object.
+#
 sub fetch_root {
     my $root = Yote::ObjProvider::fetch( 1 );
     unless( $root ) {
@@ -126,12 +155,72 @@ sub _valid_token {
     return undef;
 } #valid_token
 
+sub _recover_password {
+    my( $root, $args ) = @_;
+    my $email = $args->{e};
+    my $from_url = $args->{u};
+    my $to_reset = $args->{t};
+    my $acct = $root->get_emails({})->{$email};
+    if( $acct ) {
+        my $now = time();
+        if( $now - $acct->get_last_recovery_time() > (60*15) ) { #need to wait 15 mins
+            my $rand_token = int( rand 9 x 10 );
+            my $recovery_hash = $root->get_recovery_accts({});
+            my $times = 0;
+            while( $recovery_hash->{$rand_token} && ++$times < 100 ) {
+                $rand_token = int( rand 9 x 10 );
+            }
+            if( $recovery_hash->{$rand_token} ) {
+                return { err => "error recovering password" };
+            }
+            $acct->set_recovery_token( $rand_token );
+            $acct->set_recovery_from_url( $from_url );
+            $acct->set_last_recovery_time( $now );
+            $acct->set_recovery_tries( $acct->get_recovery_tries() + 1 );
+            $recovery_hash->{$rand_token} = $acct;
+            my $link = "$to_reset?t=$rand_token&p=".MIME::Base64::encode($from_url);
+            # email
+            my $msg = MIME::Lite->new(
+                From    => 'yote@127.0.0.1',
+                To      => $email,
+                Subject => 'Password Recovery',
+                Type    => 'text/html',
+                Data    => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
+                );
+            $msg->send();
+        } else {
+            return { err => "password recovery attempt failed" };
+        }
+    }
+    return { r => "password recovery initiated" };
+} #_recover_password
+
+sub _reset_password {
+    my( $root, $args ) = @_;
+
+    my $rand_token = $args->{t};
+    my $newpass = $args->{p};
+
+    my $recovery_hash = $root->get_recovery_accts({});
+    my $acct = $recovery_hash->{$rand_token};
+    if( $acct ) {
+        my $now = $acct->get_last_recovery_time();
+        delete $recovery_hash->{$rand_token};
+        if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
+            $acct->set_password( _encrypt_pass( $newpass, $acct ) );
+            $acct->set_recovery_token( undef );
+            return { r => "Password Reset" };
+        }
+    }
+    return { err => "Recovery Link Expired or not valid" };
+} #_reset_password
+
 sub _remove_account {
     my( $root, $args, $acct ) = @_;
-    if( $acct && $args->{p} eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() ) {
-	delete $root->get_handles()->{$args->{h}};
-	delete $root->get_emails()->{$args->{e}};
-	return { r => "deleted account" };
+    if( $acct && _encrypt_pass($args->{p}, $acct) eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() ) {
+        delete $root->get_handles()->{$args->{h}};
+        delete $root->get_emails()->{$args->{e}};
+        return { r => "deleted account" };
     } 
     return { err => "unable to remove account" };
 } #_remove_account
@@ -150,6 +239,9 @@ sub _create_account {
         if( $email ) {
             if( Yote::ObjProvider::xpath("/emails/$email") ) {
                 return { err => "email already taken" };
+            }
+            unless( Email::Valid->address( $email ) ) {
+                return { err => "invalid email" };
             }
         }
         unless( $password ) {
@@ -171,7 +263,7 @@ sub _create_account {
         $newacct->set_time_created( time() );
 
         # save password plaintext for now. crypt later
-        $newacct->set_password( $password );
+        $newacct->set_password( _encrypt_pass($password, $newacct) );
 
         $newacct->save();
 
@@ -182,7 +274,7 @@ sub _create_account {
         $emails->{ $email } = $newacct;
         Yote::ObjProvider::stow( $emails );
         $root->save;
-        return { r => "created account", a => $newacct, t => _create_token( $newacct, $ip ) };
+        return { r => "created account", a => $root->_obj_to_response( $newacct ), t => _create_token( $newacct, $ip ) };
     } #if handle
     return { err => "no handle given" };
 
@@ -204,12 +296,17 @@ sub _login {
     if( $data->{h} ) {
         my $root = fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
-        if( $acct && ($acct->get_password() eq $data->{p}) ) {
-            return { r => "logged in", a => $acct, t => _create_token( $acct, $ip ) };
+        if( $acct && ($acct->get_password() eq _encrypt_pass( $data->{p}, $acct) ) ) {
+            return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
         }
     }
     return { err => "incorrect login" };
 } #_login
+
+sub _encrypt_pass {
+    my( $pw, $acct ) = @_;
+    return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
+} #_encrypt_pass
 
 #
 # Returns if the fetch is allowed to proceed. Meant to override. Default is true.
@@ -243,7 +340,7 @@ sub _fetch {
             Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
             $app->fetch_permitted( $obj, $data ) )
         {
-	    return { r => $app->_obj_to_response( $obj ) };
+            return { r => $app->_obj_to_response( $obj ) };
         }
     }
     return { err => "Unable to fetch $data->{ID}" };
@@ -255,24 +352,24 @@ sub _fetch {
 sub _transform_data_no_id {
     my( $self, $item ) = @_;
     if( ref( $item ) eq 'ARRAY' ) {
-	my $tied = tied @$item;
-	if( $tied ) {
-	    return Yote::ObjProvider::get_id( $item ); 
-	}
-	return [map { $self->_obj_to_response( $_, 1 ) } @$item];
+        my $tied = tied @$item;
+        if( $tied ) {
+            return Yote::ObjProvider::get_id( $item ); 
+        }
+        return [map { $self->_obj_to_response( $_, 1 ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
-	my $tied = tied %$item;
-	if( $tied ) {
-	    return Yote::ObjProvider::get_id( $item ); 
-	}
-	return { map { $_ => $self->_obj_to_response( $item->{$_}, 1 ) } keys %$item };
+        my $tied = tied %$item;
+        if( $tied ) {
+            return Yote::ObjProvider::get_id( $item ); 
+        }
+        return { map { $_ => $self->_obj_to_response( $item->{$_}, 1 ) } keys %$item };
     }
     elsif( ref( $item ) ) {
-	return  Yote::ObjProvider::get_id( $item ); 
+        return  Yote::ObjProvider::get_id( $item ); 
     }
     else {
-	return "v$item"; #scalar case
+        return "v$item"; #scalar case
     }
 } #_transform_data_no_id
 
@@ -284,36 +381,36 @@ sub _obj_to_response {
     my $ref = ref($to_convert);
     my $use_id;
     if( $ref ) {
-	my( $m, $d ) = ([]);
-	if( ref( $to_convert ) eq 'ARRAY' ) {
-	    my $tied = tied @$to_convert;
-	    if( $tied ) {
-		$d = $tied->[1];
-		$use_id = Yote::ObjProvider::get_id( $to_convert );
-		return $use_id if $xform_out;
-	    } else {
-		$d = $self->_transform_data_no_id( $to_convert );
-	    }
-	} 
-	elsif( ref( $to_convert ) eq 'HASH' ) {
-	    my $tied = tied %$to_convert;
-	    if( $tied ) {
-		$d = $tied->[1];
-		$use_id = Yote::ObjProvider::get_id( $to_convert );
-		return $use_id if $xform_out;
-	    } else {
-		$d = $self->_transform_data_no_id( $to_convert );
-	    }
-	} 
-	else {
-	    $use_id = Yote::ObjProvider::get_id( $to_convert );
-	    return $use_id if $xform_out;
-	    $d = $to_convert->{DATA};
-	    no strict 'refs';
-	    $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
-	    use strict 'refs';
-	}
-	return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
+        my( $m, $d ) = ([]);
+        if( ref( $to_convert ) eq 'ARRAY' ) {
+            my $tied = tied @$to_convert;
+            if( $tied ) {
+                $d = $tied->[1];
+                $use_id = Yote::ObjProvider::get_id( $to_convert );
+                return $use_id if $xform_out;
+            } else {
+                $d = $self->_transform_data_no_id( $to_convert );
+            }
+        } 
+        elsif( ref( $to_convert ) eq 'HASH' ) {
+            my $tied = tied %$to_convert;
+            if( $tied ) {
+                $d = $tied->[1];
+                $use_id = Yote::ObjProvider::get_id( $to_convert );
+                return $use_id if $xform_out;
+            } else {
+                $d = $self->_transform_data_no_id( $to_convert );
+            }
+        } 
+        else {
+            $use_id = Yote::ObjProvider::get_id( $to_convert );
+            return $use_id if $xform_out;
+            $d = $to_convert->{DATA};
+            no strict 'refs';
+            $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
+            use strict 'refs';
+        }
+        return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
     } # if a reference
     return "v$to_convert" if $xform_out;
     return $to_convert;

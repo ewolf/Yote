@@ -209,7 +209,7 @@ sub test_suite {
     is( Yote::ObjProvider::xpath_count("/handles"), 1, "1 handle stored");
     is( $root_acct->get_handle(), 'root', 'handle set' );
     is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
-    is( $root_acct->get_password(), 'toor', 'password set' );
+    not( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
     ok( $root_acct->get_is_root(), 'first account is root' );
 
     like( $root->process_command( { c => 'create_account', d => {h => 'root', p => 'toor', e => 'baz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );

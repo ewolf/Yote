@@ -19,16 +19,23 @@ sub main {
     my $param = $CGI->Vars;
 #    print STDERR Data::Dumper->Dump( [\%ENV] );
 
+    local $SIG{ALRM} = sub { 
+        print "Content-Type: application/json\n\n".to_json( { err => "timeout from server" } );
+    };
+
+    alarm(3);
+
     $param->{oi} =  $ENV{REMOTE_ADDR};
 
     my $sock = new IO::Socket::INET (
-	PeerAddr => '127.0.0.1',
-	PeerPort => '8008',
-	Proto => 'tcp',
-	);
+        PeerAddr => '127.0.0.1',
+        PeerPort => '8008',
+        Proto => 'tcp',
+        );
 
     print $sock join('&',map { "$_=$param->{$_}" } keys %$param )."\n";
     my $buf = <$sock>;
     print "Content-Type: application/json\n\n$buf";
+    alarm(0);
     return 0;
 } #main
