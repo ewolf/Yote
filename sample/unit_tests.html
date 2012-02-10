@@ -12,123 +12,185 @@
 <script src="../js/jquery.dumper.js"></script>
 <script src="../js/jquery.base64.min.js"></script>
 <script src="../js/json2.js"></script>
-<script src="../js/yote.js"></script>
+<script src="../js/yote/yote.js"></script>
+<script src="../js/yote/yote.util.js"></script>
 <script>
-  var tests = 0;
-  var failed = 0;
-  function fail( test ) {
-     return function(d) {
-       ++failed;
-       ++tests;
-       $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
-     }
-  }
-  function pass( test ) {
-     return function(d) {
-       ++tests;
-       $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
-     }
-  }
-  function is( result, expected, msg ) {
-      if( result === expected ) {
-	  pass( msg )();
-      }
-      else {
-	  fail( msg + "( expected " + expected + " and got " + result +")" )();
-      }
-  }
-  function ok( result, msg ) {
-      if( result === true ) {
-	  pass( msg )();
-      }
-      else { 
-	  fail( msg )();
-      }
-  }
-  function wrap_up() {
-      if( failed > 0 ) {
+    var tests = 0;
+var failed = 0;
+function fail( test ) {
+    return function(d) {
+        ++failed;
+        ++tests;
+        $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
+    }
+}
+function pass( test ) {
+    return function(d) {
+        ++tests;
+        $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
+    }
+}
+function is( result, expected, msg ) {
+    if( result === expected ) {
+	    pass( msg )();
+    }
+    else {
+	    fail( msg + "( expected " + expected + " and got " + result +")" )();
+    }
+}
+function ok( result, msg ) {
+    if( result === true ) {
+	    pass( msg )();
+    }
+    else { 
+	    fail( msg )();
+    }
+}
+function wrap_up() {
+    if( failed > 0 ) {
         $('#results').append( "Failed " + failed + " tests out of " + tests );
-      } else {
+    } else {
         $('#results').append( "Passed all " + tests + " tests" );
-      }
-  }
-  $().ready(function(){ 
-       /* check 
-	*    account creation   ^
-	*    removing account   ^
-	*    login              ^
-	*    app fetching       ^
-	*    object methods     ^
-	*    returned scalar    ^
-	*    array              
-	*    hash
-	*    object
-	*/
-
-      // init yote
-      $.yote.init( "http://"+location.host+"/cgi-bin/dev/yote.cgi" );
-
-
-      //fetch app that doesn't require login and get scalar
-      var nologin = $.yote.get_app( 'Yote::TestAppNoLogin' );
-      var scalar = nologin.get_scalar( {}, {failhandler:fail("no login scalar returned")});
-      if( typeof scalar !== 'object' && scalar === 'BEEP' ) { pass("no login scalar")(); } 
-      else { fail( "no login scalar has wrong result" )() }
-
-      //fetch app that requires login and get scalar
-      var login = $.yote.get_app( 'Yote::TestAppNeedsLogin' );
-      var scalar = login.get_scalar( {}, {passhandler:fail("required login returned scalar without login"),
-					       failhandler:pass("required login returned nothingwithout login")});
-      
-
-      // account creation. 
-      $.yote.create_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass("create account"), fail("create account") );
-      $.yote.create_account( 'unit_test_account', 'ut', 'zobody@fenowyn.com', fail("created account with same handle"), pass("refused to create account with same handle") );
-      $.yote.create_account( 'nunit_test_account', 'ut', 'nobody@fenowyn.com', fail("created account with same email"), pass("refused to create account with same email") );
-
-      $.yote.login( 'unit_test_account', 'uz', fail( "able to log in with wrong password" ), pass( "unable to log in with wrong password" ) );
-      $.yote.login( 'unit_test_account', 'ut', pass( "able to log in" ), fail( "able to log in" ) );
-
-      //app that requires login should allow get_scalar now
-      var scalar = login.get_scalar( {}, {failhandler:fail("required login returned scalar with login")});
-      ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
-      
-
-      // have a Yote object returned
-      var obj = login.get( 'yote_obj' );
-      is( typeof obj, 'object', "no login returns yote obj" );
-
-      var initval = obj.get('name');
-      is( initval, 'INITY', "yote object inited on server side" );
-      
-      // have yote array returned
-      var arry = login.get_array();
-      is( arry.length(), 3, 'length of array returned' );
-      is( arry.get(0), 'A', 'element 0 correct' );
+    }
+}
+var step_count = 0;
+function step( msg ) {
+    console.dir( "step " + step_count + ':' + msg  );
+    step_count++;
+}
+$().ready(function(){ 
+    /* check 
+	 *    account creation   ^
+	 *    removing account   ^
+	 *    login              ^
+	 *    app fetching       ^
+	 *    object methods     ^
+	 *    returned scalar    ^
+	 *    array              
+	 *    hash
+	 *    object
+	 */
+    function do_tests() {
+        // init yote
+        step('init');
+        $.yote.init( "http://"+location.host+"/cgi-bin/yote/yote.cgi" );
 
 
-      //check if el 2 is object
-      var inobj = arry.get(2);
-      is( inobj.get('name'), 'INITY', "yote object inited on server side" );
+        //fetch app that doesn't require login and get scalar
+        step('get app testappnologin');
+        var nologin = $.yote.get_app( 'Yote::Test::TestAppNoLogin' );
 
-      // have yote hash returned
-      var h = arry.get(1);
-      is( h.length(), 1, 'hash has correct numbers' );
-      var inarry = h.get('inner');
-      is( inarry.length(), 2, 'inner array has correct length' );
-      is( inarry.get(0), 'Juan', '1st el inner array' );
-      var inh = inarry.get(1);
-      is( inh.length(), 2, 'inner hash length' );
-      is( inh.get('peanut'), 'Butter', 'first value inner hash' );
-      is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
-      is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+        step('get_scalar called on testappnologin');
+        var scalar = nologin.get_scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
+        if( scalar === "BEEP" ) { 
+            pass("no login scalar")(); 
+        } 
+        else { 
+            fail( "no login scalar has wrong result" )();
+        }
+        
+        //fetch app that requires login and get scalar
+        step('get app testappneedslogin');
+        var login = $.yote.get_app( 'Yote::Test::TestAppNeedsLogin' );
+        step('get_scalar called on testappneedslogin');
+        var scalar = login.get_scalar( {}, 
+                                       fail("required login returned scalar without login"),
+	                                   pass("required login returned nothingwithout login") );
+        
+        step('create account');
+        // account creation. 
+        $.yote.create_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass("create account"), fail("create account") );
+
+        step('create account with same handle');
+        $.yote.create_account( 'unit_test_account', 'ut', 'zobody@fenowyn.com', fail("created account with same handle"), pass("refused to create account with same handle") ); 
+
+        step('create account with same email');
+       $.yote.create_account( 'nunit_test_account', 'ut', 'nobody@fenowyn.com', fail("created account with same email"), pass("refused to create account with same email") );
+
+        step('login with wrong password');
+        $.yote.login( 'unit_test_account', 
+                      'uz', 
+                      fail( "able to log in with wrong password" ),
+                      pass( "unable to log in with wrong password" ) );
+        step('login with correct password');
+        $.yote.login( 'unit_test_account', 
+                      'ut', 
+                      pass( "able to log in" ),
+                      fail( "able to log in" ) );
+
+        //app that requires login should allow get_scalar now
+        step('get_scalar called on testappneedslogin to succeed');
+        var scalar = login.get_scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
+        ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
+        
+
+        // have a Yote object returned
+        step('yote_obj get called on testappneedslogin to succeed');
+        var obj = login.get( 'yote_obj' );
+        if( typeof obj !== 'object' ) {
+            fail( "yote_obj not returned" );
+            return;      
+        }
+
+        // try passing in a javascript proxy object as a data parameter
+        var o1 = login.make_obj( {text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
+        var o2 = login.make_obj( {text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
+        login.give_obj( o1 );
+        login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'bar', 'correct object 1 text' );
+        login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'foo', 'correct object 2 text' );
+
+        pass( "no login returns yote obj" );      
+        step('name get called on testappneedslogin to succeed');
+        var initval = obj.get('name');
+        is( initval, 'INITY', "yote object inited on server side" );
+        
+        // have yote array returned
+        step('get_array called on testappneedslogin to succeed');
+        var arry = login.get_array();
+        is( arry.length(), 3, 'length of array returned' );
+        is( arry.get(0), 'A', 'element 0 correct' );
 
 
-      // account removal
-      $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
-      
-      wrap_up();
-  } ); //ready
+        //check if el 2 is object
+        var inobj = arry.get(2);
+        
+        step('name get called on testappneedslogin to succeed');
+        is( inobj.get('name'), 'INITY', "yote object inited on server side" );
+
+        // have yote hash returned
+        step('get hash in array');
+        var h = arry.get(1);
+        step('get size of hash');
+        is( h.length(), 1, 'hash has correct numbers' );
+        step('get inner array of hash');
+        var inarry = h.get('inner');
+        step('inner array correct length');
+        is( inarry.length(), 2, 'inner array has correct length' );
+        step('first element in inner array');
+        is( inarry.get(0), 'Juan', '1st el inner array' );
+        step('second element hash in inner array');
+        var inh = inarry.get(1);
+        step('2nd hash length');
+        is( inh.length(), 2, 'inner hash length' );
+        step('2nd hash peanut value');
+        is( inh.get('peanut'), 'Butter', 'first value inner hash' );
+        step('2nd hash ego object with id');
+        is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
+        step('2nd hash ego object with name');
+        is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+    }
+
+    try {
+        do_tests();
+        $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+    }
+    catch( err ) {
+        alert( err );
+    }
+    wrap_up();
+} ); //ready
 </script>
 
 </head>

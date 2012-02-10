@@ -51,41 +51,41 @@ sub AUTOLOAD {
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, @vals ) = @_;
-	    my $get = "get_$fld";
-	    my $arry = $self->$get([]); # init array if need be
-	    if( ref( $arry ) eq 'Yote::Array' ) {
-		$arry->PUSH( @vals );
-	    } else {
-		push( @$arry, @vals );
-	    }
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
+            if( ref( $arry ) eq 'Yote::Array' ) {
+                $arry->PUSH( @vals );
+            } else {
+                push( @$arry, @vals );
+            }
         };
-	use strict 'refs';
+        use strict 'refs';
         goto &$AUTOLOAD;
 
     }
-    elsif( $func =~ /:remove_from_(.*)/ ) {
+    elsif( $func =~ /:remove_from_(.*)/ ) { #removes the first instance of the target thing from the list
         my $fld = $1;
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
-	    my $get = "get_$fld";
-	    my $arry = $self->$get([]); # init array if need be
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
             my $count = grep { $_ eq $val } @$arry;
             while( $count ) {
                 for my $i (0..$#$arry) {
                     if( $arry->[$i] eq $val ) {
                         --$count;
-			if( ref( $arry ) eq 'Yote::Array' ) {
-			    $arry->SPLICE( $i, 1 );
-			} else {
-			    splice @$arry, $i, 1;
-			}
+                        if( ref( $arry ) eq 'Yote::Array' ) {
+                            $arry->SPLICE( $i, 1 );
+                        } else {
+                            splice @$arry, $i, 1;
+                        }
                         last;
                     }
                 }
             }
         };
-	use strict 'refs';
+        use strict 'refs';
         goto &$AUTOLOAD;
 
     }
@@ -107,14 +107,14 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );
-		if( ref( $init_val ) ) {
-		    Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
-		}
+                if( ref( $init_val ) ) {
+                    Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
+                }
                 Yote::ObjProvider::dirty( $self, $self->{ID} );
             }
             return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
-	use strict 'refs';
+        use strict 'refs';
         goto &$AUTOLOAD;
     }
     else {

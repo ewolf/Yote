@@ -19,8 +19,13 @@ $VERSION = '0.01';
 #
 
 sub get_scalar {
-    my( $self, $data, $acct ) = @_;
+    my( $self, $data, $acct_root, $acct ) = @_;
     return "BEEP";
+}
+
+sub apply_zap {
+    my( $self, $data, $acct_root, $acct ) = @_;
+    $self->set_zap( $data );
 }
 
 

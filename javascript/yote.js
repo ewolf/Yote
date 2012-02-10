@@ -1,4 +1,4 @@
-/*`
+/*
  * LICENSE AND COPYRIGHT
  *
  * Copyright (C) 2012 Eric Wolf
@@ -15,11 +15,10 @@
  *    ** get(field) - returns a yote object or a scalar value attached to this yote object (uses login token)
  *    ** any method defined on the server side, which returns a yote object or a scalar value (uses login token)
  */
-
 $.yote = {
     token:null,
     err:null,
-    url:'/cgi-bin/yote.cgi',
+    url:'/cgi-bin/yote/yote.cgi',
     objs:{},
 
     init:function(url) {
@@ -28,138 +27,146 @@ $.yote = {
     },
 
     reload_all:function() { //reloads all objects
-	for( id in this.objs ) {
-	    this.objs[id].reload();
-	}
+	    for( id in this.objs ) {
+	        this.objs[id].reload();
+	    }
     },
 
     create_obj:function(data,appname) {
-	var root = this;
-	return (function(x,an) {
-	    var o = {
-		_app:an,
-		_d:{},
-		id:x.id,
-		reload:function(){},
-		length:function() {
-		    var cnt = 0;
-		    for( key in this._d ) {
-			++cnt;
-		    }
-		    return cnt;
-		}
-	    };
+	    var root = this;
+	    return (function(x,an) {
+	        var o = {
+		        _app:an,
+		        _d:{},
+		        id:x.id,
+		        reload:function(){},
+		        length:function() {
+		            var cnt = 0;
+		            for( key in this._d ) {
+			            ++cnt;
+		            }
+		            return cnt;
+		        }
+	        };
 
-	    /*
-	      assign methods
-	    */
-	    if( typeof x.m === 'object' ) {
-		for( m in x.m ) {
-		    o[x.m[m]] = (function(key) {
-			    return function( params, extra ) {
-				var failhandler = root.error;
-				var passhandler = function(d) {};
-				if( typeof extra === 'object' ) {
-				    failhandler = typeof extra.failhandler === 'undefined' ? root.error : extra.failhandler;
-				    passhandler = typeof extra.passhandler === 'undefined' ? passhandler : extra.passhandler;
-				}
-				var ret = root.message( {
-				    app:o._app,
-				    cmd:key,
-				    data:params,
-				    wait:true,
-				    async:false,
-				    failhandler:failhandler,
-				    passhandler:passhandler
-				} ); //sending message
-			
-				if( typeof ret.r === 'object' ) {
-				    return root.create_obj( ret.r, o._app );
-				} else {
-				    return ret.r;
-				}
-			    } } )(x.m[m]);
-		} //each method
-	    } //methods
+	        /*
+	          assign methods
+	        */
+	        if( typeof x.m === 'object' ) {
+		        for( m in x.m ) {
+		            o[x.m[m]] = (function(key) {
+			            return function( params, passhandler, failhandler ) {
+				            var ret = root.message( {
+				                app:o._app,
+				                cmd:key,
+				                data:params,
+				                wait:true,
+				                async:false,
+				                failhandler:failhandler,
+				                passhandler:passhandler
+				            } ); //sending message
+				            if( typeof ret.r === 'object' ) {
+				                return root.create_obj( ret.r, o._app );
+				            } else {
+                                if( typeof ret.r === 'undefined' ) {
+                                    if( typeof failhandler === 'function' ) {
+                                        failhandler('no return value');
+                                    }
+                                    return undefined;
+                                }
+                                if( (0+ret.r) > 0 ) {
+                                    return root.fetch_obj(ret.r,this._app);
+                                }
+				                return ret.r.substring(1);
+				            }
+			            } } )(x.m[m]);
+		        } //each method
+	        } //methods
 
-	    // get fields
-	    if( typeof x.d === 'object' ) {
-		for( fld in x.d ) {
-		    var val = x.d[fld];
-		    if( typeof val === 'object' ) {
-			o._d[fld] = (function(x) { return root.create_obj(x); })(val);
-		    } else {
-			o._d[fld] = (function(x) { return x; })(val);
-		    }
-		}
-	    }
+	        // get fields
+	        if( typeof x.d === 'object' ) {
+		        for( fld in x.d ) {
+		            var val = x.d[fld];
+		            if( typeof val === 'object' ) {
+			            o._d[fld] = (function(x) { return root.create_obj(x); })(val);
+		            } else {
+			            o._d[fld] = (function(x) { return x; })(val);
+		            }
+		        }
+	        }
 
-	    o.get = function( key ) {
-		var val = this._d[key];
-		if( typeof val === 'undefined' ) return false;
-		if( typeof val === 'object' ) return val;
-		if( (0+val) > 0 ) {
-		    return root.fetch_obj(val,this._app);
-		}
-		return val.substring(1);
-	    }
+	        o.get = function( key ) {
+		        var val = this._d[key];
+		        if( typeof val === 'undefined' ) return false;
+		        if( typeof val === 'object' ) return val;
+		        if( (0+val) > 0 ) {
+		            return root.fetch_obj(val,this._app);
+		        }
+		        return val.substring(1);
+	        }
 
-	    if( (0 + x.id ) > 0 ) {
-		root.objs[x.id] = o;
-		o.reload = (function(thid,tapp) {
-		    return function() {
-			root.objs[thid] = null;
-			var replace = root.fetch_obj( thid, tapp );
-			this._d = replace._d;
-			return this;
-		    }
-		} )(x.id,an);
-	    }
-	    return o;
-         })(data,appname);
+	        if( (0 + x.id ) > 0 ) {
+		        root.objs[x.id] = o;
+		        o.reload = (function(thid,tapp) {
+		            return function() {
+			            root.objs[thid] = null;
+			            var replace = root.fetch_obj( thid, tapp );
+			            this._d = replace._d;
+			            return this;
+		            }
+		        } )(x.id,an);
+	        }
+	        return o;
+        })(data,appname);
     }, //create_obj
 
     fetch_obj:function(id,app) {
-	if( typeof this.objs[id] === 'object' ) {
-	    return this.objs[id];
-	}
-	return this.create_obj( this.message( {
-	    app:app,
-	    cmd:'fetch',
-	    data:{ id:id },
-	    wait:true,
-	    async:false,
-	} ).r, app );
+	    if( typeof this.objs[id] === 'object' ) {
+	        return this.objs[id];
+	    }
+	    return this.create_obj( this.message( {
+	        app:app,
+	        cmd:'fetch',
+	        data:{ id:id },
+	        wait:true,
+	        async:false,
+	    } ).r, app );
     },
 
-    get_app:function( appname ) {
-	return this.create_obj( this.message( {
-	    app:appname,
-	    cmd:'fetch_root',
-	    data:{ app:appname },
-	    wait:true,
-	    async:false,
-	} ).r, appname );
+    get_app:function( appname,passhandler,failhandler ) {
+        var res = this.message( {
+	        app:appname,
+	        cmd:'fetch_root',
+	        data:{ app:appname },
+	        wait:true,
+	        async:false,
+            failhandler:failhandler,
+            passhandler:passhandler
+	    } );
+        if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
+            return undefined;
+        } 
+	    return this.create_obj(  res.r, appname );
     },
 
     logout:function() {
-	this.token = undefined;
-	this.acct = undefined;
+	    this.token = undefined;
+	    this.acct = undefined;
     }, //logout
 
     get_account:function() {
-	return this.acct;
+	    return this.acct;
     },
 
     is_logged_in:function() {
-	return typeof this.acct === 'object';
+	    return typeof this.acct === 'object';
     }, //is_logged_in
 
 
     /*   DEFAULT FUNCTIONS */
     login:function( un, pw, passhandler, failhandler ) {
-	var root = this;
-	this.message( {
+	    var root = this;
+	    this.message( {
             cmd:'login', 
             data:{
                 h:un,
@@ -168,12 +175,12 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		root.acct = root.create_obj( data.a, root );
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+		        root.acct = root.create_obj( data.a, root );
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //login
@@ -184,7 +191,7 @@ $.yote = {
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'create_account', 
             data:{
@@ -195,19 +202,49 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		root.acct = root.create_obj( data.a, root );
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+		        root.acct = root.create_obj( data.a, root );
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //create_account
 
+    recover_password:function( em, from_url, to_url, passhandler, failhandler ) {
+	    var root = this;
+        this.message( {
+            cmd:'recover_password', 
+            data:{
+		        e:em,
+		        u:from_url,
+                t:to_url
+            },
+            wait:true, 
+            async:false,
+	        passhandler:passhandler,
+            failhandler:failhandler
+        } );
+    }, //recover_password
+
+    reset_password:function( token, newpassword, passhandler, failhandler ) {
+	    var root = this;
+        this.message( {
+            cmd:'reset_password', 
+            data:{
+		        t:token,
+		        p:newpassword	
+            },
+            wait:true, 
+            async:false,
+	        passhandler:passhandler,
+            failhandler:failhandler
+        } );
+    }, //reset_password
     
     remove_account:function( un, pw, em, passhandler, failhandler ) {
-	var root = this;
+	    var root = this;
         this.message( {
             cmd:'remove_account', 
             data:{
@@ -218,57 +255,89 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	        root.token = data.t;
-		if( typeof passhandler === 'function' ) {
-			passhandler(data);
-		}
-	    },
+	            root.token = data.t;
+		        if( typeof passhandler === 'function' ) {
+			        passhandler(data);
+		        }
+	        },
             failhandler:failhandler
         } );
     }, //remove_account
 
+    translate_data:function(data) {
+        if( typeof data === 'object' ) {
+            if( data.id + 0 > 0 && typeof data._d !== 'undefined' ) {
+                return data.id;
+            }
+            var ret = Object();
+            for( var key in data ) {
+                ret[key] = this.translate_data( data[key] );
+            }
+            return ret;
+        }
+        return 'v' + data;
+    }, //translate_data
 
+    disable:function() {
+        this.enabled = $(':enabled');
+        $.each( this.enabled, function(idx,val) { val.disabled = true } );
+    }, //disable
+    
+    reenable:function() {
+        $.each( this.enabled, function(idx,val) { val.disabled = false } );
+    }, //reenable
 
 	/* general functions */
     message:function( params ) {
         var root = this;
+        var data = root.translate_data( params.data );
         async = params.async == true ? 1 : 0;
 		wait  = params.wait  == true ? 1 : 0;
-        var enabled;
         if( async == 0 ) {
-            enabled = $(':enabled');
-            $.each( enabled, function(idx,val) { val.disabled = true } );
+            root.disable();
         }
-	var resp;
-	$.ajax( {
-	    async:async,
-	    data:{
-		m:$.base64.encode(JSON.stringify( {
-		    a:params.app,
-		    c:params.cmd,
-		    d:params.data,
-		    t:root.token,
-		    w:wait
-		} ) ) },
-	    dataFilter:function(a,b) { 
-		return a; 
-	    },
-	    error:function(a,b,c) { root.error(a); },
-	    success:function( data ) {
-		resp = data;
-		if( typeof data.err === 'undefined' ) {
-		    if( typeof params.passhandler === 'function' ) {
-			params.passhandler(data);
-		    }
-		} else if( typeof params.failhandler === 'function' ) {
-		    params.failhandler(data.err);
-		} else { } //error case. no handler defined alert ("Dunno : " + typeof params.failhandler ) }
-	    },
-	    type:'POST',
-	    url:root.url
-	} );
+	    var resp;
+	    $.ajax( {
+	        async:async,
+	        data:{
+		        m:$.base64.encode(JSON.stringify( {
+		            a:params.app,
+		            c:params.cmd,
+		            d:data,
+		            t:root.token,
+		            w:wait
+		        } ) ) },
+	        dataFilter:function(a,b) {
+		        return a; 
+	        },
+	        error:function(a,b,c) { root.error(a); },
+	        success:function( data ) {
+                if( typeof data !== 'undefined' ) {
+		            resp = data; //for returning synchronous
+		            if( typeof data.err === 'undefined' ) {
+		                if( typeof params.passhandler === 'function' ) {
+			                params.passhandler(data);
+		                }
+		            } else if( typeof params.failhandler === 'function' ) {
+		                params.failhandler(data.err);
+		            } else { 
+                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + $.dump({
+		                    a:params.app,
+		                    c:params.cmd,
+		                    d:data,
+		                    t:root.token,
+		                    w:wait
+		                }) );
+                    } //error case. no handler defined alert ("Dunno : " + typeof params.failhandler ) }
+                } else {
+                    console.dir( "Success reported but no response data received" );
+                }
+	        },
+	        type:'POST',
+	        url:root.url
+	    } );
         if( async == 0 ) {
-            $.each( enabled, function(idx,val) { val.disabled = false } );
+            root.reenable();
             return resp;
         }
     } //message

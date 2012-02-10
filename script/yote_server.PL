@@ -66,16 +66,30 @@ my( \%config ) = ( port       => 8008,
 while( \@ARGV ) {
     my \$first = shift \@ARGV;
     if(\$first eq '--shutdown') {
-	`cat \$pidfile | grep yote_server | xargs kill` if -e \$pidfile;
-	unlink( \$pidfile );
-	exit;
+        if( -e \$pidfile ) {
+            my \$pid = `cat \$pidfile`;
+            \$pid =~ s/[\n\r]+\$//i;
+            my \$is_pid =  `ps ax | egrep "^\s\*\$pid\s+" | grep yote_server`;
+            if( \$is_pid ) {
+                print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
+                `kill \$pid`;
+            }
+            unlink( \$pidfile );
+        }
+        exit;
     }
     elsif( \$first eq '--restart' ) {
 	#
 	# kill any old servers hanging around
 	#
 	if( -e \$pidfile ) {
-	    my \$res = `cat \$pidfile | grep yote_server | xargs kill`;
+            my \$pid = `cat \$pidfile`;
+            \$pid =~ s/[\n\r]+\$//i;
+            my \$is_pid =  `ps ax | egrep "^\s\*\$pid\s+" | grep yote_server`;
+            if( \$is_pid ) {
+                print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
+                `kill \$pid`;
+            }
 	    unlink( \$pidfile );
 	    sleep(2);
 	}

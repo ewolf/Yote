@@ -1,3 +1,4 @@
+
 use Module::Build;
 
 use File::Path qw/mkpath/;
@@ -36,6 +37,9 @@ my $build = $class->new(
 	'File::chmod'           => 0,
 	'DBI'                   => 0,
 	'Crypt::Passwd'         => 0,
+	'Email::Valid'          => 0,
+	'MIME::Lite'            => 0,
+	'MIME::Base64'          => 0,
     },
 );
 
