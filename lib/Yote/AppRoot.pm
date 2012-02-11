@@ -107,7 +107,7 @@ sub process_command {
             if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
                 return { r => $app->_obj_to_response( $app->$command( $data,
                                                                       $app->get_account_root( $acct ),
-                                                                      $acct ) ) };
+                                                                      $acct ), 1 ) };
         }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }

@@ -82,12 +82,7 @@ $().ready(function(){
 
         step('get_scalar called on testappnologin');
         var scalar = nologin.get_scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
-        if( scalar === "BEEP" ) { 
-            pass("no login scalar")(); 
-        } 
-        else { 
-            fail( "no login scalar has wrong result" )();
-        }
+        is( scalar, "BEEP", "value of login scalar" );
         
         //fetch app that requires login and get scalar
         step('get app testappneedslogin');
