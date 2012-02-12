@@ -85,7 +85,7 @@ while( \@ARGV ) {
 	if( -e \$pidfile ) {
             my \$pid = `cat \$pidfile`;
             \$pid =~ s/[\\n\\r]+\$//i;
-            my \$is_pid =  `ps ax | egrep "^\s\*\$pid\s+" | grep yote_server`;
+            my \$is_pid =  `ps ax | egrep "^\\s\*\$pid\\s+" | grep yote_server`;
             if( \$is_pid ) {
                 print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
                 `kill \$pid`;
