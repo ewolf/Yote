@@ -20,7 +20,7 @@ sub init {
 }
 
 sub hello {
-    my( $self, $data, $acct ) = @_;
+    my( $self, $data, $acct_root, $acct ) = @_;
     my $name = $data->{name};
     $self->set_testfield(int(rand(10))); # set this to a random value each time
     my $counter = $self->get_counter(); # this could be counted with a field, but I wanted to demo how easy it is to send objects across.
