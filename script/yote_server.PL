@@ -68,8 +68,8 @@ while( \@ARGV ) {
     if(\$first eq '--shutdown') {
         if( -e \$pidfile ) {
             my \$pid = `cat \$pidfile`;
-            \$pid =~ s/[\n\r]+\$//i;
-            my \$is_pid =  `ps ax | egrep "^\s\*\$pid\s+" | grep yote_server`;
+            \$pid =~ s/[\\n\\r]+\$//i;
+            my \$is_pid =  `ps ax | egrep "^\\s\*\$pid\\s+" | grep yote_server`;
             if( \$is_pid ) {
                 print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
                 `kill \$pid`;
@@ -84,7 +84,7 @@ while( \@ARGV ) {
 	#
 	if( -e \$pidfile ) {
             my \$pid = `cat \$pidfile`;
-            \$pid =~ s/[\n\r]+\$//i;
+            \$pid =~ s/[\\n\\r]+\$//i;
             my \$is_pid =  `ps ax | egrep "^\s\*\$pid\s+" | grep yote_server`;
             if( \$is_pid ) {
                 print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
@@ -119,7 +119,7 @@ if( -e \$pidfile ) {
     chomp( \$pid );
 
     my( \@haspid ) = `ps -p \$pid`;
-    my \$haspid = grep { \$_ =~ /\b\$pid\b/ } \@haspid;
+    my \$haspid = grep { \$_ =~ /\\b\$pid\\b/ } \@haspid;
     if( \$haspid ) {
 	print STDERR "Process \$pid still alive. Unable to start yote server\n";
 	exit 1;
@@ -173,6 +173,15 @@ while( !eof($fin) ) {
 close( $fin );
 close( $fout );
 
+open my $fin, "<", "sample/unit_tests.html" or die "Unable to open file : $!";
+open my $fout, ">", "$htmlroot/yote/unit_tests.html" or die "Unable to open file : $!";
+while( !eof($fin) ) {
+    my $line = <$fin>;
+    $line =~ s!JSPATH!$js_path/!g;
+    print $fout $line;
+}
+close( $fin );
+close( $fout );
 
 for my $jsfile (qw{ jquery-latest.js jquery.dumper.js json2.js jquery.base64.min.js }) {
     unless( -e "$js/$jsfile" ) {
