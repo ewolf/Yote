@@ -6,6 +6,7 @@ javascript/jquery.dumper.js
 javascript/jquery.jsonp-2.1.4.min.js
 javascript/json2.js
 javascript/yote.js
+javascript/yote.util.js
 lib/Yote/AppRoot.pm
 lib/Yote/Array.pm
 lib/Yote/ClientObj.pm

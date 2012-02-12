@@ -9,17 +9,6 @@ Summary
 
     See http://fenowyn.com/yote for more information.
 
-Quickstart for OSX / Linux
-    In the following directions, $SITE_ROOT is the document root of your web
-    site and $YOTE_ROOT is the directory where the Yote Build.PL file
-    resides.
-
-    1. Ensure you have a web server that will serve CGIs
-    2. Install stuff and start the server
-            $ ./install '/path/to/your/web/root' '/path/to/cgi-bin'
-
-    3. Write your own code (e.g. "hello world" app, website code, etc)
-    4. Profit!!!
 
 Requirements
     *   perl version 5.10
