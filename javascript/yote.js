@@ -18,7 +18,7 @@
 $.yote = {
     token:null,
     err:null,
-    url:'/CGIPATH/yote/yote.cgi',
+    url:'/CGIPATH/yote.cgi',
     objs:{},
 
     init:function(url) {

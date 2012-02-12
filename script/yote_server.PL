@@ -15,6 +15,8 @@ copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
 my $file = shift @ARGV;
 open my $fh, '>', $file or die "Unable to create file : $!";
 
+my $port = $builder->notes( 'port' );
+
 print $fh <<END;
 #!/usr/bin/env perl
 
@@ -59,7 +61,7 @@ unless( -e \$sqlitefile ) {
     my \$sqlite = new Yote::SQLiteIO( sqlitefile => \$sqlitefile );
     \$sqlite->init_datastore();
 }
-my( \%config ) = ( port       => 8008, 
+my( \%config ) = ( port       => $port, 
 		  datastore  => 'Yote::SQLiteIO', 
 		  sqlitefile => \$sqlitefile );
 
@@ -141,7 +143,20 @@ END
 my $cgi = $builder->notes( 'cgi_dir' );
 mkpath( "$cgi/yote" ) ;
 chmod( 0755, "$cgi/yote" );
+
 copy( "cgi/yote.cgi", "$cgi/yote/" ) or die "Unable to copy file $!";
+open my $fin, "<", "cgi/yote.cgi" or die "Unable to open cgi file $!";
+open my $fout, '>', "$cgi/yote/yote.cgi" or die "Unable to create file : $!";
+
+while( !eof($fin) ) {
+    my $line = <$fin>;
+   $line =~ s/PORT/$port/g;
+   print $fout $line;
+}
+close( $fin );
+close( $fout );
+
+
 chmod( 0755, "$cgi/yote/yote.cgi" );
 
 
