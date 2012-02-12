@@ -43,24 +43,26 @@ my $build = $class->new(
     },
 );
 
-my %dirs = (
-    cgi_dir   => "What is the location of your cgi-bin directory?",
-    js_dir    => "What is the location of your javascript Directory?",
-    html_root => "What is the location of your web root Directory?",
-    cgi_path  => "What is the relative url of the cgi-bin on your webserver?",
-    js_path  => "What is the relative url of the javascript on your webserver?",
+my %vals = (
+    cgi_dir       => "What is the location of your cgi-bin directory?",
+    js_dir        => "What is the location of your javascript Directory?",
+    html_root_dir => "What is the location of your web root Directory?",
+    cgi_path      => "What is the relative url of the cgi-bin on your webserver?",
+    js_path       => "What is the relative url of the javascript on your webserver?",
+    port          => "What port will yote run on? (8008 is the default)",
     );
-for my $key (sort keys %dirs) {
-    my $dir;
-    until( -d $dir ) {
-	$dir = $build->prompt( $dirs{$key} );
-	last if $key =~ /_path$/; #not a dir on the file system but a path on the webserver
-	unless( -d $dir ) {
-	    print "Directory '$dir' not found. Try again\n";
+for my $key (sort keys %vals) {
+    $val = $build->prompt( $vals{$key} );
+    if( $key =~ /_dir$/ ) {
+	until( -d $val ) {
+	    print "Directory '$val' not found. Try again\n";
+	    $val = $build->prompt( $vals{$key} );
 	}
+    } elsif( $key eq 'port' ) {
+	$val ||= 8008;
     }
-    $build->notes( $key => $dir );
-}
+    $build->notes( $key => $val );
+} #each key/val
 
 $build->create_build_script();
 

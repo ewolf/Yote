@@ -175,6 +175,7 @@ $().ready(function(){
         is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
         step('2nd hash ego object with name');
         is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+        wrap_up();
     }
 
     try {
@@ -184,7 +185,6 @@ $().ready(function(){
     catch( err ) {
         alert( err );
     }
-    wrap_up();
 } ); //ready
 </script>
 

@@ -9,17 +9,11 @@ Summary
 
     See http://fenowyn.com/yote for more information.
 
-Quickstart for OSX / Linux
-    In the following directions, $SITE_ROOT is the document root of your web
-    site and $YOTE_ROOT is the directory where the Yote Build.PL file
-    resides.
-
-    1. Ensure you have a web server that will serve CGIs
-    2. Install stuff and start the server
-            $ ./install '/path/to/your/web/root' '/path/to/cgi-bin'
-
-    3. Write your own code (e.g. "hello world" app, website code, etc)
-    4. Profit!!!
+Note
+    As of this writing Yote is on version 0.072. 
+    It is not yet stable and is in pre-alpha mode.
+    Consider this alpha software once version 0.100 is reached.
+    Please email coyocanid@gmail.com to report bugs or issues or feature requests.
 
 Requirements
     *   perl version 5.10
@@ -37,111 +31,18 @@ Install Yote
         $ ./Build test
         $ ./Build install
 
-Verify / install the requirements
-    Following is how to verify that you have each of the requirements and,
-    if not, to get it.
+Changing Ports
+      If you want to change the port once yote has been installed, 
 
-    *   perl version 5.10
-
-        To verify if you have this:
-
-               $ perl -v
-
-        If your version is too low, look at using perlbrew to upgrade:
-
-               http://search.cpan.org/~gugod/App-perlbrew-0.39/bin/perlbrew
-
-        (From the perlbrew docs:)
-
-               $ curl -kL http://install.perlbrew.pl | bash
-               $ ~/perl5/perlbrew/bin/perlbrew install 5.14.2  # Current version as of 2012-01-20
-               $ ~/perl5/perlbrew/bin/perlbrew use 5.14.2
-               $ perl -v  # Should now tell you 5.14.2
-
-        This installs the perlbrew executable, the perl-5.14.2 executable,
-        and all core Perl modules into ~/perl5/perlbrew/. It then sets the
-        current shell to use the new version.
-
-        You may also want to use cpanm (or another CPAN shell) to install
-        additional modules for the new perl version.
-
-    *   Storage
-
-        Yote needs to store data server side. This can be in a MySQL
-        database or a file (which will become a SQLite database). Other
-        options, including MongoDB, are in the works -- patches welcome!
-
-        If you want MySQL storage, verify / install as follows:
-
-        OSX has MySQL installed by default. Verify that it's running by
-        doing:
-
-               $ mysql -u root
-
-        (NOTE: For simplicity, the directions in this README connect to
-        MySQL as 'root'. This will work and it makes these directions
-        easier, but in general practice you should connect via a user with
-        lower permissions.)
-
-        Many Linux distributions come with MySQL. If it is not installed and
-        running by default, install it as per
-        http://dev.mysql.com/doc/refman/5.5/en/installing.html (v5.5.x is
-        latest as of 2012-01-20).
-
-        Once MySQL is running, create a database for Yote to use and
-        initialize it as follows:
-
-               $ echo 'create database yote;' | mysql -u root
-               $ script/init_datastore.pl
-
-        !!! @@DKSNOTE: init_datastore.pl is not included in the current
-        version of Yote !!!
-
-    *   A webserver that can run perl cgi files
-
-        OSX has Apache installed by default. To verify it is running and
-        allow it to run CGIs, do the following:
-
-               System Preferences > Sharing > Web Sharing
-
-        Ensure that the checkbox is checked; if so, the web server is up.
-
-        By default, CGIs are served from /Library/WebServer/CGI-Executables/
-        (hereinafter '$CGI_BIN')
-
-        By default, content is served from ~/Sites/ (hereinafter
-        '$SITE_ROOT')
-
-        On Linux, @@TODO
-
-    *   yote.cgi
-
-            $ cp cgi/yote.cgi $CGI_BIN/
-            $ chmod 755 $CGI_BIN/yote.cgi
-
-    *   jquery
-
-        On OSX or Linux:
-
-            $ mkdir -p $SITE_ROOT/js
-            $ cp $YOTE_ROOT/javascript/* $SITE_ROOT/js
-
-    *   put the Yote::WebAppServer module in your path
-
-        On OSX / Linux:
-
-            $ export PERL5LIB=$YOTE_ROOT/lib:$PERL5LIB
-
-    *   modify the start_server.pl file
-
-        !!! @@DKSNOTE: Can't find anything matching this name -- missing
-        dependency? !!!
+Verify by running html test
+      $ yote_server
+      open http://<myhost>/yote/unit_tests.html
 
 Using Yote
   Start the Web App Server
     Starting the Web App Server from the command line:
 
-           $ script/yote_server
+           $ yote_server
 
     This starts the server on the default port (8008), using SQLiteIO, and
     writing to file ~/.yote/SQLite.yote.db.
