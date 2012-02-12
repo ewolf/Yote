@@ -154,11 +154,12 @@ open my $fout, '>', "$js/yote/yote.js" or die "Unable to create file : $!";
 
 while( !eof($fin) ) {
     my $line = <$fin>;
-   $line =~ s!/cgi-bin/yote.cgi!$cgipath/yote/yote.cgi!g;
+   $line =~ s!/CGIPATH/yote.cgi!$cgipath/yote/yote.cgi!g;
    print $fout $line;
 }
 close( $fin );
 close( $fout );
+copy( "javascript/yote.util.js", "$js/yote/" ) or die "Unable to copy file $!";
 
 my $htmlroot = $builder->notes( 'html_root' );
 my $js_path = $builder->notes( 'js_path' );
