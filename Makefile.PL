@@ -59,7 +59,9 @@ for my $key (sort keys %vals) {
 	    $val = $build->prompt( $vals{$key} );
 	}
     } elsif( $key eq 'port' ) {
-	$val ||= 8008;
+	if( $val == 0 ) {
+	    $val = 8008;
+	}
     }
     $build->notes( $key => $val );
 } #each key/val

@@ -318,6 +318,10 @@ sub dirty {
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
 }
 
+sub dirty_ids {
+    return keys %$Yote::ObjProvider::DIRTY;
+}
+
 sub is_dirty {
     my $id = shift;
     return $Yote::ObjProvider::DIRTY->{$id};

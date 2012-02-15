@@ -117,8 +117,6 @@ $().ready(function(){
         step('get_scalar called on testappneedslogin to succeed');
         var scalar = login.get_scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
         ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
-        
-
         // have a Yote object returned
         step('yote_obj get called on testappneedslogin to succeed');
         var obj = login.get( 'yote_obj' );
@@ -131,10 +129,19 @@ $().ready(function(){
         var o1 = login.make_obj( {text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
         var o2 = login.make_obj( {text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
         login.give_obj( o1 );
+        is( o1.get('text'), 'foo', 'correct object 1 text directly a' );
+        is( o2.get('text'), 'bar', 'correct object 2 text directly a' );
         login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'bar', 'correct object 1 text' );
+        var o3 = login.get('obj');
+    console.dir( login );
+    console.dir( o3 );
+        is( o3.get('text'), 'bar', 'correct object 1 text directly' );
         login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'foo', 'correct object 2 text' );
+        o3 = login.get('obj');
+        is( o3.get('text'), 'foo', 'correct object 2 text directly' );
+
 
         pass( "no login returns yote obj" );      
         step('name get called on testappneedslogin to succeed');
@@ -178,13 +185,17 @@ $().ready(function(){
         wrap_up();
     }
 
-    try {
+//    try {
         do_tests();
         $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+/*
     }
     catch( err ) {
-        alert( err );
+        console.dir( 'got err ' + err  );
+        if( err.stack ) { console.dir( err.stack ) }
+        alert( 'got err ' + err );
     }
+*/
 } ); //ready
 </script>
 

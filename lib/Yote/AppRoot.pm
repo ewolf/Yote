@@ -105,9 +105,12 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
-                return { r => $app->_obj_to_response( $app->$command( $data,
-                                                                      $app->get_account_root( $acct ),
-                                                                      $acct ), 1 ) };
+                my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
+                my $resp = $app->_obj_to_response( $obj->$command( $data,
+                                                                   $app->get_account_root( $acct ),
+                                                                   $acct ), 1 );
+                my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
+                return { r => $resp, d => \@dirty_delta };
         }
             return { err => "'$cmd->{c}' not found for app '$appstr'" };
         }
