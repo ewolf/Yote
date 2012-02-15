@@ -20,7 +20,7 @@ use Yote::AppRoot;
 use base qw(Net::Server::Fork);
 use vars qw($VERSION);
 
-$VERSION = '0.073';
+$VERSION = '0.074';
 
 
 my( @commands, %prid2wait, %prid2result, $singleton );
