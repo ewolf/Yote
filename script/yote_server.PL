@@ -10,7 +10,9 @@ my $base = $builder->args( 'install_base' ) || '/usr/local/yote';
 
 mkpath( $base );
 
-copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
+unless( -f "data/SQLite.yote.db" ) {
+    copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
+}
 
 my $file = shift @ARGV;
 open my $fh, '>', $file or die "Unable to create file : $!";
