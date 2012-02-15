@@ -35,6 +35,16 @@ sub is {
     return ref( $obj ) && $obj->isa( 'Yote::Obj' ) && $obj->{ID} == $self->{ID};
 }
 
+# shallow clones this object
+sub clone {
+    my $self = shift;
+    my $class = ref( $self );
+    my $clone = $class->new;
+    for my $field (keys %{$self->{DATA}}) {
+	
+    }
+} #clone
+
 sub init {}
 
 sub save {

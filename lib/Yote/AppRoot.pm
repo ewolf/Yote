@@ -105,7 +105,7 @@ sub process_command {
         elsif( index( $command, '_' ) != 0 ) {
             my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
             if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
-                return { r => $app->_obj_to_response( $app->$command( $data,
+                return { r => $app->_obj_to_response( $obj->$command( $data,
                                                                       $app->get_account_root( $acct ),
                                                                       $acct ), 1 ) };
         }
