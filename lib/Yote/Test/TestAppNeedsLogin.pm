@@ -52,7 +52,6 @@ sub obj_text {
 
 sub give_obj {
     my( $self, $data, $acct_root, $acct ) = @_;
-    print STDERR Data::Dumper->Dump( ["Give OBJ",$data] );
     $self->set_obj( $data );
     return '';
 }

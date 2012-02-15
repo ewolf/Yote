@@ -58,6 +58,7 @@ $.yote = {
 			            return function( params, passhandler, failhandler ) {
 				            var ret = root.message( {
 				                app:o._app,
+                                id:o.id,
 				                cmd:key,
 				                data:params,
 				                wait:true,
@@ -65,6 +66,19 @@ $.yote = {
 				                failhandler:failhandler,
 				                passhandler:passhandler
 				            } ); //sending message
+
+                            //dirty objects that may need a refresh
+                            if( typeof ret.d === 'object' ) {
+                                console.dir( "checking dirty " + $.dump(ret.d) );
+                                for( var i=0; i<ret.d.length; ++i ) {
+                                    var oid = ret.d[i];
+                                    if( root.objs[oid] != null
+                                        && typeof root.objs[oid] !== 'undefined' ) {
+                                        root.objs[oid].reload();
+                                    }
+                                }
+                            }
+
 				            if( typeof ret.r === 'object' ) {
 				                return root.create_obj( ret.r, o._app );
 				            } else {
@@ -97,6 +111,7 @@ $.yote = {
 
 	        o.get = function( key ) {
 		        var val = this._d[key];
+                console.dir( this );
 		        if( typeof val === 'undefined' ) return false;
 		        if( typeof val === 'object' ) return val;
 		        if( (0+val) > 0 ) {
@@ -107,21 +122,25 @@ $.yote = {
 
 	        if( (0 + x.id ) > 0 ) {
 		        root.objs[x.id] = o;
-		        o.reload = (function(thid,tapp) {
+		        o.reload = (function(thid,tapp,ob) {
 		            return function() {
-			            root.objs[thid] = null;
+                        root.objs[thid] = null;
+                        console.dir('reload called for ' + thid + ' on app ' + tapp );
 			            var replace = root.fetch_obj( thid, tapp );
-			            this._d = replace._d;
-			            return this;
+                        console.dir( replace );
+			            ob._d = replace._d;
+			            root.objs[thid] = ob;
+			            return ob;
 		            }
-		        } )(x.id,an);
+		        } )(x.id,an,o);
 	        }
 	        return o;
         })(data,appname);
     }, //create_obj
 
     fetch_obj:function(id,app) {
-	    if( typeof this.objs[id] === 'object' ) {
+	    if( typeof this.objs[id] === 'object' && this.objs[id] != null ) {
+            console.dir( 'found object for ' + id + ' of type ' + typeof this.objs[id] );
 	        return this.objs[id];
 	    }
 	    return this.create_obj( this.message( {
@@ -328,7 +347,7 @@ $.yote = {
 		                    t:root.token,
 		                    w:wait
 		                }) );
-                    } //error case. no handler defined alert ("Dunno : " + typeof params.failhandler ) }
+                    } //error case. no handler defined 
                 } else {
                     console.dir( "Success reported but no response data received" );
                 }
