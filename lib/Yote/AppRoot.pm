@@ -18,10 +18,10 @@ use base 'Yote::Obj';
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
-sub get_account_root {
+sub _get_account_root {
     my( $self, $acct ) = @_;
 
-    my $acct_roots = $self->get_account_roots();
+    my $acct_roots = $self->get_account_roots({});
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
         $root = new Yote::Obj;
@@ -29,7 +29,7 @@ sub get_account_root {
     }
     return $root;
 
-} #get_account_root
+} #_get_account_root
 
 #
 # Process_command is only called on the master root, 
@@ -45,7 +45,7 @@ sub get_account_root {
 #   t - token for being logged in
 #
 # either c or i must be given
-sub process_command {
+sub _process_command {
     my( $root, $cmd ) = @_;
 
     my $command = $cmd->{c};
@@ -102,21 +102,27 @@ sub process_command {
         elsif( $command eq 'fetch' ) {
             return _fetch( $app, { id => $data->{id} }, $acct );
         }
-        elsif( index( $command, '_' ) != 0 ) {
-            my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
-            if( $app->allows( $data, $acct ) && $obj->can( $command ) ) {
-                my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
-                my $resp = $app->_obj_to_response( $obj->$command( $data,
-                                                                   $app->get_account_root( $acct ),
-                                                                   $acct ), 1 );
-                my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
-                return { r => $resp, d => \@dirty_delta };
+        elsif( $command eq 'update' ) {
+            my $obj = Yote::ObjProvider::fetch( $data->{id} );
+            if( $obj && $app->_stow_permitted( $data->{d} ) ) {
+                $obj->absorb( $data->{d} );
+                return { msg => "updated" };
+            }
+            return { err => "unable to update" };
         }
-            return { err => "'$cmd->{c}' not found for app '$appstr'" };
-        }
+
+        my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
+        if( $app->_allows( $command, $data, $acct ) && $obj->can( $command ) ) {
+            my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
+            my $resp = $app->_obj_to_response( $obj->$command( $data,
+                                                               $app->_get_account_root( $acct ),
+                                                               $acct ), 1 );
+            my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
+            return { r => $resp, d => \@dirty_delta };
+        } 
         return { err => "'$cmd->{c}' not found for app '$appstr'" };
     }
-} #process_command
+} #_process_command
 
 sub _translate_data {
     my $val = shift;
@@ -131,8 +137,9 @@ sub _translate_data {
 #
 # Override to control access to this app.
 #
-sub allows { 
-    my( $app, $data, $acct ) = @_;
+sub _allows { 
+    my( $app, $command, $data, $acct ) = @_;
+    return 0 if index( $command, '_' ) == 0 || $command eq 'absorb';
     return 1;
 }
 
@@ -315,7 +322,7 @@ sub _encrypt_pass {
 # Returns if the fetch is allowed to proceed. Meant to override. Default is true.
 # Takes two args : object to be fetched and data of request.
 #
-sub fetch_permitted {
+sub _fetch_permitted {
     my( $obj, $data ) = @_;
     return 1;
 }
@@ -325,7 +332,7 @@ sub fetch_permitted {
 # Returns if the stow is allowed to proceed. Meant to override. Default is true.
 # Takes two args : object to be stowed and data of request.
 #
-sub stow_permitted {
+sub _stow_permitted {
     my( $obj, $data ) = @_;
     return 1;
 }
@@ -339,10 +346,9 @@ sub _fetch {
     my( $app, $data, $acct ) = @_;
     if( $data->{id} ) {
         my $obj = Yote::ObjProvider::fetch( $data->{id} );
-        print STDERR Data::Dumper->Dump( [$obj,$app,$app->fetch_permitted( $obj, $data )] );
         if( $obj &&
             Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-            $app->fetch_permitted( $obj, $data ) )
+            $app->_fetch_permitted( $obj, $data ) )
         {
             return { r => $app->_obj_to_response( $obj ) };
         }
@@ -411,7 +417,7 @@ sub _obj_to_response {
             return $use_id if $xform_out;
             $d = $to_convert->{DATA};
             no strict 'refs';
-            $m = [ grep { $_ !~ /^([_A-Z].*|allows|can|fetch_root|fetch_permitted|[i]mport|init|isa|new|save)$/ } keys %{"${ref}\::"} ];
+            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
             use strict 'refs';
         }
         return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
@@ -525,7 +531,7 @@ Returns the root object. This is always object 1 for the App Server.
 
 =over 4
 
-=item get_account_root( login ) - Returns an account object associated with a login object.
+=item _get_account_root( login ) - Returns an account object associated with a login object.
 
 =back
 

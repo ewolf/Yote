@@ -21,8 +21,8 @@ sub init {
     $self->get_yote_obj()->set_name( "INITY" );
 }
 
-sub allows {
-    my( $self, $data, $acct ) = @_;
+sub _allows {
+    my( $self, $command, $data, $acct ) = @_;
     return defined($acct);
 }
 

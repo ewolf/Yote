@@ -66,8 +66,14 @@ Using Yote
            <script src="./js/json2.js"></script>
            <script src="./js/yote.js"></script>
            <script>
+	       /* Get the account root singleton object. */
                var hello_app = $.gServ.get_app( 'Yote::Hello' );
+
+	       /* Returns a string. If the method results in changes in other
+	          javascript objects, those objects will automatically be updated. */
                var result = hello_app.hello({ name:"fred" } );
+
+	       /* Returns a counter object */
                var counter = hello_app.get_counter();
            </script>
 
@@ -76,18 +82,50 @@ Using Yote
 
         use strict;
         use Yote::Obj;
+
+	#
+	# A singleton of this class is created and accessed by the 
+	# client with get_app.
+	#
         use base 'Yote::AppRoot';
 
+	#
+	# Init is called only the very first time an Yote::AppRoot
+	# is instantiated.
+	#
         sub init {
             my $self = shift;
+
+	    #
+	    # 'get_counter' does not need an explicit definition. 
+	    # A get_ method passed an argument will use that as a default.
+	    #
             my $counter = $self->get_counter( new Yote::Obj() );
         }
 
+	#
+	# The client object can call this directly.
+	#   hello_app.hello({ name:"wilma" });
+	#   The argument { name => "wilma" } is passed to the $data parameter of the method.
+	#   If a user is logged in on the client, that user will have an account root container
+	#    object associated with the approot singleton. This container will be used to store
+	#    user data specific to this app, like documents, stats and the like.
+ 	#
         sub hello {
-            my( $self, $data, $acct ) = @_;
+            my( $self, $data, $acct_root, $acct ) = @_;
             my $name = $data->{name};
             my $counter = $self->get_counter();
+
+	    #
+	    # 'set_count' does not need an explicit definition.
+	    #
             $counter->set_count( $counter->get_count() + 1 );
+
+	    #
+	    # The return value is a string in this case.
+	    # var msg = hello_app.hello({name:"foo"}); 
+	    # msg will be the string "hello there 'foo'. I have said hello 1 times."
+	    #
             return "hello there '$name'. I have said hello ". $counter->get_count() . " times.";
         }
 

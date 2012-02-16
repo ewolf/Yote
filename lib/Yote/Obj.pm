@@ -36,10 +36,11 @@ sub absorb {
     my $self = shift;
     my $data = ref( $_[0] ) ? $_[0] : { @_ };
     for my $fld (%$data) {
-	my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-	Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-	$self->{DATA}{$fld} = $inval;
+        my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
+        Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+        $self->{DATA}{$fld} = $inval;
     } #each field
+    print STDERR Data::Dumper->Dump( [$data,$self] );
     return undef;
 } #absorb
 

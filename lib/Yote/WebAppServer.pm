@@ -20,7 +20,7 @@ use Yote::AppRoot;
 use base qw(Net::Server::Fork);
 use vars qw($VERSION);
 
-$VERSION = '0.074';
+$VERSION = '0.075';
 
 
 my( @commands, %prid2wait, %prid2result, $singleton );
@@ -70,7 +70,7 @@ sub init_server {
 
 #
 # Called when a request is made. This does an initial parsing and
-# sends a data structure to process_command.
+# sends a data structure to _process_command.
 #
 # Commands are sent with a single HTTP request parameter : m for message.
 #
@@ -203,7 +203,7 @@ sub _process_command {
 
     eval {
         my $root = Yote::AppRoot::fetch_root();
-        my $ret  = $root->process_command( $command );
+        my $ret  = $root->_process_command( $command );
         print STDERR Data::Dumper->Dump(["Process command response : ",$ret]);
         $resp = to_json($ret);
         Yote::ObjProvider::stow_all();

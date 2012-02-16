@@ -102,14 +102,14 @@ sub test_suite {
     my $root_clone = Yote::AppRoot::fetch_root();
 
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->get_account_root() ), 'Yote::Obj', '2nd level yote object' );
+    is( ref( $root_clone->_get_account_root() ), 'Yote::Obj', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
 
 
     is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->get_account_root() ), 'Yote::Obj', '2nd level yote object  (original root after save)' );
+    is( ref( $root->_get_account_root() ), 'Yote::Obj', '2nd level yote object  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 
@@ -196,11 +196,11 @@ sub test_suite {
 #
 #                                          #
     my $root = Yote::AppRoot::fetch_root();
-    my $res = $root->process_command( { c => 'foo' } );
+    my $res = $root->_process_command( { c => 'foo' } );
     like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
-    like( $root->process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
-    like( $root->process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err}, qr/password required/i, "no password given for create account : " . $root->process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err} );
-    like( $root->process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
+    like( $root->_process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
+    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err}, qr/password required/i, "no password given for create account : " . $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err} );
+    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
     my $root_acct = Yote::ObjProvider::xpath("/handles/root");
     unless( $root_acct ) {
 	fail( "Root not loaded" );
@@ -212,16 +212,16 @@ sub test_suite {
     not( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
     ok( $root_acct->get_is_root(), 'first account is root' );
 
-    like( $root->process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
-    like( $root->process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
-    like( $root->process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{r}, qr/created/i, "second account created" );
+    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
+    like( $root->_process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
+    like( $root->_process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{r}, qr/created/i, "second account created" );
     my $acct = Yote::ObjProvider::xpath("/handles/toot");
     ok( ! $acct->get_is_root(), 'second account not root' );
 
 # ------ hello app test -----
-    my $t = $root->process_command( { c => 'login', d => { h => 'vtoot', p => 'vtoor' } } );
+    my $t = $root->_process_command( { c => 'login', d => { h => 'vtoot', p => 'vtoor' } } );
     ok( $t->{t}, "logged in with token $t->{t}" );
-    is( $root->process_command( { a => 'Yote::Test::Hello', c => 'hello', d => { name => 'vtoot' }, t => $t->{t} } )->{r}, "vhello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
+    is( $root->_process_command( { a => 'Yote::Test::Hello', c => 'hello', d => { name => 'vtoot' }, t => $t->{t} } )->{r}, "vhello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
     my $as = new Yote::WebAppServer;
     ok( $as, "Yote::WebAppServer compiles" );
 
