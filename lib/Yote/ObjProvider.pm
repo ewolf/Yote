@@ -165,17 +165,17 @@ sub a_child_of_b {
     given( $bref ) {
         when(/^(ARRAY|Yote::Array)$/) {
             for my $obj (@$b) {
-                return 1 if( a_child_of_b( $a, $obj ) );
+                return 1 if( a_child_of_b( $a, $obj, $seen ) );
             }
         }
         when(/^(HASH|Yote::Hash)$/) {
             for my $obj (values %$b) {
-                return 1 if( a_child_of_b( $a, $obj ) );
+                return 1 if( a_child_of_b( $a, $obj, $seen ) );
             }
         }
         default {
             for my $obj (values %{$b->{DATA}}) {
-                return 1 if( a_child_of_b( $a, xform_out( $obj ) ) );
+                return 1 if( a_child_of_b( $a, xform_out( $obj ), $seen ) );
             }
         }
     }
