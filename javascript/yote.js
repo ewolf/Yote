@@ -370,6 +370,7 @@ $.yote = {
 		            a:params.app,
 		            c:params.cmd,
 		            d:data,
+                            id:params.id,
 		            t:root.token,
 		            w:wait
 		        } ) ) },
@@ -391,6 +392,7 @@ $.yote = {
 		                    a:params.app,
 		                    c:params.cmd,
 		                    d:data,
+                                    id:params.id,
 		                    t:root.token,
 		                    w:wait
 		                }) );
