@@ -123,18 +123,21 @@ $.yote = {
             o.stage = (function(ob)  {
                 return function( key, val ) {
                     ob._stage[key] = root.translate_data( val );
+                    console.dir(key +',' + val + ',' + ob._stage[key] );
                 } 
             })(o);
 
             // sends data structure as an update, or uses staged values if no data
             o.send_update = (function(ob) {
                 return function(data,failhandler,passhandler) {
+                    var to_send = {};
                     if( typeof data === 'undefined' ) {
-                        var to_send = ob._stage;
+                        for( var key in ob._stage ) {
+                            to_send[key] = root.untranslate_data(ob._stage[key]);
+                        }
                     } else {
-                        var to_send = {};
                         for( var key in data ) {
-                            to_send[key] = root.translate_data( data[key] );
+                            to_send[key] = data[key];
                         }
                     }
                     var needs = 0;
@@ -142,7 +145,8 @@ $.yote = {
                         needs = 1;
                     }
                     if( needs == 0 ) { return; }
-
+                    console.dir("to send");
+                    console.dir( to_send );
                     root.message( {
                         app:ob._app,
                         cmd:'update',
@@ -335,6 +339,8 @@ $.yote = {
             if( data.id + 0 > 0 && typeof data._d !== 'undefined' ) {
                 return data.id;
             }
+            // this case is for paramers being sent thru message
+            // that will not get ids.
             var ret = Object();
             for( var key in data ) {
                 ret[key] = this.translate_data( data[key] );
@@ -343,6 +349,17 @@ $.yote = {
         }
         return 'v' + data;
     }, //translate_data
+
+    untranslate_data:function(data) {
+        if( data.substring(0,1) == 'v' ) {
+            return data.substring(1);
+        }
+        if( typeof this.objs[data] === 'object' ) {
+            return this.objs[data];
+        }
+        console.dir( "Don't know how to translate " );
+        console.dir( data );
+    }, //untranslate_data
 
     disable:function() {
         this.enabled = $(':enabled');

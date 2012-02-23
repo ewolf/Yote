@@ -417,7 +417,7 @@ sub _obj_to_response {
             return $use_id if $xform_out;
             $d = $to_convert->{DATA};
             no strict 'refs';
-            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
+            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|is|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
             use strict 'refs';
         }
         return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
