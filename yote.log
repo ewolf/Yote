@@ -1,0 +1,1934 @@
+Extracting Command
+2012/02/04-20:14:03 Yote::WebAppServer (type Net::Server::Fork) starting! pid(2042)
+Using default listen value of 128
+Binding to TCP port 8008 on host *
+Group Not Defined.  Defaulting to EGID '0 0'
+User Not Defined.  Defaulting to EUID '0'
+Got Command
+Locking commands
+Waiting for commands
+$VAR1 = {
+          'w' => 1,
+          'c' => 'fetch_root',
+          'a' => 'Yote::Test::TestAppNeedsLogin',
+          'd' => {
+                   'app' => 'Yote::Test::TestAppNeedsLogin'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2045'
+        ];
+$VAR1 = {
+          'r' => {
+                   'c' => 'Yote::Test::TestAppNeedsLogin',
+                   'a' => 'Yote::Test::TestAppNeedsLogin',
+                   'm' => [
+                            'get_array',
+                            'get_yote_obj',
+                            'get_scalar',
+                            'set_yote_obj',
+                            'get_nologin_obj',
+                            'get_hash'
+                          ],
+                   'd' => {
+                            'yote_obj' => 15
+                          },
+                   'id' => 14
+                 }
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2045'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'get_scalar',
+          'a' => 'Yote::Test::TestAppNeedsLogin'
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+'
+          },
+          '2047'
+        ];
+$VAR1 = {
+          'err' => '\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\''
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\'"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+'
+          },
+          '2047'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\'"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2049'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v2021595009x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+2021595009'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v2021595009x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+2021595009"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2049'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v2021595009x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+2021595009"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'fetch_root',
+          'a' => 'Yote::Test::TestAppNeedsLogin',
+          'd' => {
+                   'app' => 'Yote::Test::TestAppNeedsLogin'
+                 },
+          't' => '7+2021595009'
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+',
+            't' => '7+2021595009'
+          },
+          '2051'
+        ];
+$VAR1 = {
+          'r' => {
+                   'c' => 'Yote::Test::TestAppNeedsLogin',
+                   'a' => 'Yote::Test::TestAppNeedsLogin',
+                   'm' => [
+                            'get_array',
+                            'get_yote_obj',
+                            'get_scalar',
+                            'set_yote_obj',
+                            'get_nologin_obj',
+                            'get_hash'
+                          ],
+                   'd' => {
+                            'yote_obj' => 15
+                          },
+                   'id' => 14
+                 }
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+',
+            't' => '7+2021595009'
+          },
+          '2051'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'get_scalar',
+          'a' => 'Yote::Test::TestAppNeedsLogin',
+          't' => '7+2021595009'
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+',
+            't' => '7+2021595009'
+          },
+          '2053'
+        ];
+$VAR1 = {
+          'r' => 'ZEEP'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"r":"ZEEP"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+',
+            't' => '7+2021595009'
+          },
+          '2053'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"r":"ZEEP"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'fetch_root',
+          'a' => 'Yote::Test::TestAppNeedsLogin',
+          'd' => {
+                   'app' => 'Yote::Test::TestAppNeedsLogin'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2055'
+        ];
+$VAR1 = {
+          'r' => {
+                   'c' => 'Yote::Test::TestAppNeedsLogin',
+                   'a' => 'Yote::Test::TestAppNeedsLogin',
+                   'm' => [
+                            'get_array',
+                            'get_yote_obj',
+                            'get_scalar',
+                            'set_yote_obj',
+                            'get_nologin_obj',
+                            'get_hash'
+                          ],
+                   'd' => {
+                            'yote_obj' => 15
+                          },
+                   'id' => 14
+                 }
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'fetch_root',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'd' => {
+                     'app' => 'Yote::Test::TestAppNeedsLogin'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2055'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"r":{"c":"Yote::Test::TestAppNeedsLogin","a":"Yote::Test::TestAppNeedsLogin","m":["get_array","get_yote_obj","get_scalar","set_yote_obj","get_nologin_obj","get_hash"],"d":{"yote_obj":"15"},"id":14}}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'get_scalar',
+          'a' => 'Yote::Test::TestAppNeedsLogin'
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+'
+          },
+          '2057'
+        ];
+$VAR1 = {
+          'err' => '\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\''
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\'"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'get_scalar',
+            'a' => 'Yote::Test::TestAppNeedsLogin',
+            'oi' => '99.72.158.74
+'
+          },
+          '2057'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"\'get_scalar\' not found for app \'Yote::Test::TestAppNeedsLogin\'"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2059'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v3051286745x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+3051286745'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v3051286745x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+3051286745"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2059'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v3051286745x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+3051286745"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2066'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v8305654073x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+8305654073'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v8305654073x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+8305654073"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2066'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v8305654073x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+8305654073"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => 'foo',
+                   'p' => 'foo',
+                   'h' => 'bar'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => 'foo',
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2069'
+        ];
+$VAR1 = {
+          'err' => 'handle already taken'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"handle already taken"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => 'foo',
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2069'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"handle already taken"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'foo',
+                   'h' => 'bar'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2071'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vfoo',
+                            'created_ip' => 'v99.72.158.74',
+                            'time_created' => 'v1328381572',
+                            'password' => 'vfoo',
+                            'handle' => 'vbar',
+                            'token' => 'v5061479562x99.72.158.74
+'
+                          },
+                   'id' => '10'
+                 },
+          'r' => 'logged in',
+          't' => '10+5061479562'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v5061479562x99.72.158.74\\n"},"id":"10"},"r":"logged in","t":"10+5061479562"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2071'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v5061479562x99.72.158.74\\n"},"id":"10"},"r":"logged in","t":"10+5061479562"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2096'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v7168357042x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+7168357042'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v7168357042x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+7168357042"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2096'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v7168357042x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+7168357042"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'foo',
+                   'h' => 'bar'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2123'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vfoo',
+                            'created_ip' => 'v99.72.158.74',
+                            'time_created' => 'v1328381572',
+                            'password' => 'vfoo',
+                            'handle' => 'vbar',
+                            'token' => 'v672845772x99.72.158.74
+'
+                          },
+                   'id' => '10'
+                 },
+          'r' => 'logged in',
+          't' => '10+672845772'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v672845772x99.72.158.74\\n"},"id":"10"},"r":"logged in","t":"10+672845772"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2123'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v672845772x99.72.158.74\\n"},"id":"10"},"r":"logged in","t":"10+672845772"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2125'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v1797778337x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+1797778337'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v1797778337x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+1797778337"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2125'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v1797778337x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+1797778337"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2129'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2129'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2132'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2132'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2134'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2134'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2148'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2148'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2151'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2151'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2154'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2154'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2157'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2157'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2159'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2159'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2161'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2161'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'create_account',
+          'd' => {
+                   'e' => '',
+                   'p' => '',
+                   'h' => ''
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2164'
+        ];
+$VAR1 = {
+          'err' => 'no handle given'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"no handle given"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'create_account',
+            'd' => {
+                     'e' => '',
+                     'p' => '',
+                     'h' => ''
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '2164'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"no handle given"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'bar',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'bar',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '3621'
+        ];
+$VAR1 = {
+          'err' => 'incorrect login'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"incorrect login"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'bar',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '3621'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"incorrect login"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '3623'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v9133703787x99.72.158.74
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+9133703787'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v9133703787x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+9133703787"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '99.72.158.74
+'
+          },
+          '3623'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v9133703787x99.72.158.74\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+9133703787"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'bar',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'bar',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4170'
+        ];
+$VAR1 = {
+          'err' => 'incorrect login'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"err":"incorrect login"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'bar',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4170'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"err":"incorrect login"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4172'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v6335331999x76.21.9.243
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+6335331999'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v6335331999x76.21.9.243\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+6335331999"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4172'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v6335331999x76.21.9.243\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+6335331999"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'baz',
+                   'h' => 'foo'
+                 },
+          't' => '7+6335331999'
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+',
+            't' => '7+6335331999'
+          },
+          '4174'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vbar',
+                            'created_ip' => 'v99.72.158.74
+',
+                            'time_created' => 'v1328379229',
+                            'password' => 'vbaz',
+                            'handle' => 'vfoo',
+                            'token' => 'v4192445401x76.21.9.243
+',
+                            'is_root' => 'v1'
+                          },
+                   'id' => '7'
+                 },
+          'r' => 'logged in',
+          't' => '7+4192445401'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v4192445401x76.21.9.243\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+4192445401"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'baz',
+                     'h' => 'foo'
+                   },
+            'oi' => '76.21.9.243
+',
+            't' => '7+6335331999'
+          },
+          '4174'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vbar","created_ip":"v99.72.158.74\\n","time_created":"v1328379229","password":"vbaz","handle":"vfoo","token":"v4192445401x76.21.9.243\\n","is_root":"v1"},"id":"7"},"r":"logged in","t":"7+4192445401"}';
+$VAR2 = 'Result to Send';
+$VAR1 = {
+          'w' => 1,
+          'c' => 'login',
+          'd' => {
+                   'p' => 'foo',
+                   'h' => 'bar'
+                 }
+        };
+$VAR2 = 'Inputted Command';
+$VAR1 = 'Lock prid2wait';
+$VAR1 = 'Locked prid2wait';
+$VAR1 = 'Lock commands';
+$VAR1 = 'Locked commands';
+Got Command
+Extracting Command
+Got Command
+$VAR1 = ' in poll, Processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4176'
+        ];
+$VAR1 = {
+          'a' => {
+                   'c' => 'Yote::Obj',
+                   'a' => 'Yote::AppRoot',
+                   'm' => [
+                            'is',
+                            'get_password',
+                            'get_token',
+                            'set_token'
+                          ],
+                   'd' => {
+                            'email' => 'vfoo',
+                            'created_ip' => 'v99.72.158.74',
+                            'time_created' => 'v1328381572',
+                            'password' => 'vfoo',
+                            'handle' => 'vbar',
+                            'token' => 'v2653739361x76.21.9.243
+'
+                          },
+                   'id' => '10'
+                 },
+          'r' => 'logged in',
+          't' => '10+2653739361'
+        };
+$VAR2 = 'Response';
+$VAR1 = 'IN process, freeing prid2wait for';
+$VAR2 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v2653739361x76.21.9.243\\n"},"id":"10"},"r":"logged in","t":"10+2653739361"}';
+$VAR1 = ' in poll, Done processing';
+$VAR2 = [
+          {
+            'w' => 1,
+            'c' => 'login',
+            'd' => {
+                     'p' => 'foo',
+                     'h' => 'bar'
+                   },
+            'oi' => '76.21.9.243
+'
+          },
+          '4176'
+        ];
+Locking commands
+Waiting for commands
+$VAR1 = '{"a":{"c":"Yote::Obj","a":"Yote::AppRoot","m":["is","get_password","get_token","set_token"],"d":{"email":"vfoo","created_ip":"v99.72.158.74","time_created":"v1328381572","password":"vfoo","handle":"vbar","token":"v2653739361x76.21.9.243\\n"},"id":"10"},"r":"logged in","t":"10+2653739361"}';
+$VAR2 = 'Result to Send';

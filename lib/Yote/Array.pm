@@ -30,51 +30,55 @@ sub FETCHSIZE {
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     $self->[1][$idx] = Yote::ObjProvider::xform_in( $val );
 }
+sub STORESIZE {}  #stub for array
+
 sub EXISTS {
     my( $self, $idx ) = @_;
     return defined( $self->[1][$idx] );
 }
 sub DELETE {
     my( $self, $idx ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
-    undef $self->[1][$idx];
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
+    delete $self->[1][$idx];
 }
 
 sub CLEAR {
     my $self = shift;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
-    splice @{$self->[1]};
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
+    @{$self->[1]} = ();
 }
 sub PUSH {
     my( $self, @vals ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     push( @{$self->[1]}, map { Yote::ObjProvider::xform_in($_) } @vals );
 }
 sub POP {
     my $self = shift;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     return Yote::ObjProvider::xform_out( pop @{$self->[1]} );
 }
 sub SHIFT {
     my( $self ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     my $val = splice @{$self->[1]}, 0, 1;
     return Yote::ObjProvider::xform_out( $val );
 }
 sub UNSHIFT {
     my( $self, @vals ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
-    unshift @{$self->[1]}, 0, 0, @vals;
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
+    unshift @{$self->[1]}, map {Yote::ObjProvider::xform_in($_)} @vals;
 }
 sub SPLICE {
     my( $self, $offset, $length, @vals ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
-    splice @{$self->[1]}, $offset, $length, @vals;
-
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
+    return map { Yote::ObjProvider::xform_out($_) } splice @{$self->[1]}, $offset, $length, map {Yote::ObjProvider::xform_in($_)} @vals;
 }
+sub EXTEND {}
+
+sub DESTROY {}
 
 1;
 __END__

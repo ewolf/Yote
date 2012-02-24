@@ -19,6 +19,7 @@ $Yote::ObjProvider::DIRTY = {};
 $Yote::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
+our $CACHE;
 
 use vars qw($VERSION);
 
@@ -30,10 +31,14 @@ $VERSION = '0.01';
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $ds = $args->{datastore};
+    my $ds = $args->{datastore} || 'Yote::SQLiteIO';
     eval("use $ds");
     die $@ if $@;
     $DATASTORE = $ds->new( $args );
+    my $cache = $args->{cache} || 'Yote::Cache';
+#    $cache = 'Yote::Test::DummyCache';
+    eval("use $cache");
+    $CACHE = $cache->new( $args );
 } #init
 
 sub init_datastore {
@@ -68,7 +73,7 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
+    my $ref = $CACHE->fetch($id) || $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
     return $ref if $ref;
 
     my $obj_arry = $DATASTORE->fetch( $id );
@@ -79,12 +84,14 @@ sub fetch {
             when('ARRAY') {
                 my( @arry );
                 tie @arry, 'Yote::Array', $id, @$data;
+                my $tied = tied @arry; $tied->[2] = \@arry;
                 store_weak( $id, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
                 tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
+                my $tied = tied %hash; $tied->[2] = \%hash;
                 store_weak( $id, \%hash );
                 return \%hash;
             }
@@ -101,6 +108,25 @@ sub fetch {
     return undef;
 } #fetch
 
+sub row_size { #returns number of rows this object has.
+    my $ref = shift;
+    if( ref($ref) eq 'ARRAY' ) {
+        return scalar @$ref;
+    }
+    elsif( ref($ref) eq 'HASH' ) {
+        return scalar keys %$ref;
+    }
+    elsif( ref($ref) eq 'Yote::Array' ) {
+        return $ref->FETCHSIZE();
+    }
+    elsif( ref($ref) eq 'Yote::Hash' ) {
+        return $ref->keycount();
+    }
+    else {
+        return $ref->size();
+    }
+} #row_size
+
 sub get_id {
     my $ref = shift;
     my $class = ref( $ref );
@@ -111,13 +137,14 @@ sub get_id {
         when('ARRAY') {
             my $tied = tied @$ref;
             if( $tied ) {
-		$tied->[0] ||= $DATASTORE->get_id( "ARRAY" );
+                $tied->[0] ||= $DATASTORE->get_id( "ARRAY" );
                 store_weak( $tied->[0], $ref );
-		return $tied->[0];
+                return $tied->[0];
             }
             my( @data ) = @$ref;
             my $id = $DATASTORE->get_id( $class );
             tie @$ref, 'Yote::Array', $id;
+            my $tied = tied @$ref; $tied->[2] = $ref;
             push( @$ref, @data );
             dirty( $ref, $id );
             store_weak( $id, $ref );
@@ -131,13 +158,14 @@ sub get_id {
             my $tied = tied %$ref;
 
             if( $tied ) {
-		$tied->[0] ||= $DATASTORE->get_id( "HASH" );
+                $tied->[0] ||= $DATASTORE->get_id( "HASH" );
                 store_weak( $tied->[0], $ref );
-		return $tied->[0];
+                return $tied->[0];
             }
             my $id = $DATASTORE->get_id( $class );
             my( %vals ) = %$ref;
             tie %$ref, 'Yote::Hash', $id;
+            my $tied = tied %$ref; $tied->[2] = $ref;
             for my $key (keys %vals) {
                 $ref->{$key} = $vals{$key};
             }
@@ -208,7 +236,7 @@ sub raw_data {
         when('ARRAY') {
             my $tied = tied @$obj;
             if( $tied ) {
-		return $tied->[1];
+                return $tied->[1];
             } else {
                 die;
             }
@@ -222,7 +250,7 @@ sub raw_data {
             }
         }
         when('Yote::Array') {
-	    return $obj->[1];
+            return $obj->[1];
         }
         when('Yote::Hash') {
             return $obj->[1];
@@ -307,6 +335,7 @@ sub xform_in {
 sub store_weak {
     my( $id, $ref ) = @_;
     die "SW" if ref($ref) eq 'Yote::Hash';
+    $CACHE->stow( $id, $ref );
     my $weak = $ref;
     weaken( $weak );
     $Yote::ObjProvider::WEAK_REFS->{$id} = $weak;
@@ -323,7 +352,8 @@ sub dirty_ids {
 }
 
 sub is_dirty {
-    my $id = shift;
+    my $obj = shift;
+    my $id = ref($obj) ? get_id($obj) : $obj;
     return $Yote::ObjProvider::DIRTY->{$id};
 }
 

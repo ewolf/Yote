@@ -134,8 +134,6 @@ $().ready(function(){
         login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'bar', 'correct object 1 text' );
         var o3 = login.get('obj');
-    console.dir( login );
-    console.dir( o3 );
         is( o3.get('text'), 'bar', 'correct object 1 text directly' );
         login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'foo', 'correct object 2 text' );
@@ -149,7 +147,6 @@ $().ready(function(){
         o3.send_update({text:'baf',zip:'zap'});
         is( o3.get('text'), 'baf', 'correct object 2 text directly' );
         is( o3.get('zip'), 'zap', 'correct object 2 text directly' );
-
 
         pass( "no login returns yote obj" );      
         step('name get called on testappneedslogin to succeed');
@@ -190,12 +187,25 @@ $().ready(function(){
         is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
         step('2nd hash ego object with name');
         is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+
+        //test javascript object caching and multi loading of objects.
+        $.yote.dump_cache();
+        is( $.yote.cache_size(), 0, "cache now empty" );
+        var login = $.yote.get_app( 'Yote::Test::TestAppNeedsLogin' );
+        is( $.yote.cache_size(), 1, "cache with one object" );
+        login.load_direct_descendents();
+        is( $.yote.cache_size(), 5, "cache with two objects" );
+
         wrap_up();
     }
 
 //    try {
+    var d = new Date();
+    var t2 = d.getTime();
         do_tests();
         $.yote.remove_account( 'unit_test_account', 'ut', 'nobody@fenowyn.com', pass( "remove account" ), fail( "remove account" ) );
+    var d2 = new Date();
+    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
 /*
     }
     catch( err ) {
