@@ -125,6 +125,118 @@ sub test_suite {
     is_deeply( $root_clone->get_default_hash(), {"DEFKEY"=>"DEFVALUE"}, "Simple default hash" );
     my( %simple_hash ) = %{$root_clone->get_hash()};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE"}, "Simple hash" );
+    
+
+    #
+    # Test dirtying of hash. Tests if tied,  put, clear and delete
+    #
+    my $clone_hash = $root_clone->get_hash();
+    is_deeply( $clone_hash, { KEY => 'VALUE' }, "hash def" );
+    my $hid = Yote::ObjProvider::get_id( $clone_hash );
+    ok( !Yote::ObjProvider::is_dirty( $clone_hash ), "hash not dirty" );
+    is( ref(tied %$clone_hash),'Yote::Hash',"clone hash tied");
+    # -- put
+    $clone_hash->{fooh} = 'barh';
+    ok( Yote::ObjProvider::is_dirty( $clone_hash ), "Hash dirty after change" );
+    my $fetched_hash = Yote::ObjProvider::fetch( $hid );
+    is_deeply( $fetched_hash, { fooh => 'barh', KEY => 'VALUE' }, "hash after put" );
+    is( Yote::ObjProvider::row_size($fetched_hash), 2, "Size of hash by obj provider" );
+    is( $fetched_hash->{fooh}, 'barh', "changed hash works" );
+    Yote::ObjProvider::stow( $fetched_hash );
+    ok( !Yote::ObjProvider::is_dirty( $clone_hash ), "hash not dirty after change and save" );
+    # -- delete
+    delete $clone_hash->{fooh};
+    ok( Yote::ObjProvider::is_dirty( $clone_hash ), "Hash dirty after delete" );
+    $fetched_hash = Yote::ObjProvider::fetch( $hid );
+    is_deeply( $fetched_hash, { KEY => 'VALUE' }, " hash after delete" );
+    is( $fetched_hash->{fooh}, undef, " hash after deletion works" );
+    Yote::ObjProvider::stow( $fetched_hash );
+    ok( !Yote::ObjProvider::is_dirty( $clone_hash ), "hash not dirty after delete and save" );
+    # -- clear
+    %$clone_hash = (); 
+    ok( Yote::ObjProvider::is_dirty( $clone_hash ), "Hash dirty after clear" );
+    $fetched_hash = Yote::ObjProvider::fetch( $hid );
+    is_deeply( $fetched_hash, {}, "Hash other reference also clear" );
+    Yote::ObjProvider::stow( $fetched_hash );
+    ok( !Yote::ObjProvider::is_dirty( $clone_hash ), "Hash dirty after clear and save" );
+    # -- reset simple hash
+    $clone_hash->{KEY} = 'VALUE';
+
+    #
+    # Test dirtying of array. tests store, delete, clear, push, pop, shift, unshift, splice
+    #
+    my $def_arry = $root_clone->get_default_array();
+    is_deeply( $def_arry, [ 'DEFAULT ARRAY' ], "default array def" );
+    my $aid = Yote::ObjProvider::get_id( $def_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array not dirty" );
+    is( ref(tied @$def_arry),'Yote::Array',"clone array tied");
+    # - store
+    $def_arry->[13] = "booya";  #14 
+    $def_arry->[12] = "zoog";  
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after store" );
+    my $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ['DEFAULT ARRAY',(map { undef } (1..11)),'zoog','booya'], "array after store" );
+    is( $fetched_arry->[12], 'zoog', 'changed array works after store');
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after store and save" );
+    # - delete
+    delete $def_arry->[12];
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ['DEFAULT ARRAY',(map { undef } (1..12)),'booya'], "array after delete" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after delete" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after delete" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after delete and save" );
+    # - clear
+    @{$def_arry} = ();
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry,[], "array after clear" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after clear" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after clear" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after clear and save" );
+    # - push 
+    push @$def_arry, "one", "two", "tree";
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["one", "two", "tree"], "array after push" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after push" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after push" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after push and save" );    
+    # - pop
+    is( pop @$def_arry, "tree", "pop array value" );
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["one", "two"], "array after pop" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after pop" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after pop" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after pop and save" );    
+    # - shift
+    is( shift @$def_arry, "one", "shifted array value" );
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["two"], "array after shift" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after shift" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after shift" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after shift and save" );    
+    # - unshift
+    unshift @$def_arry, "newguy", "orange", "Lemon", "tango";
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["newguy", "orange", "Lemon", "tango", "two"], "array after unshift" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after unshift" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after unshift" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after unshift and save" );    
+    # - splice
+    my( @slice ) = splice @$def_arry, 1, 2, "Booga", "Boo", "Bobby";
+    is_deeply( \@slice, ["orange","Lemon"], "spliced array value" );
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["newguy", "Booga", "Boo", "Bobby", "tango","two"], "array after splice" );
+    is( Yote::ObjProvider::row_size($fetched_arry), 6, "Size of array by obj provider" );
+    ok( Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after splice" );
+    ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after splice" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after splice and save" );    
 
 #                                      #
 # ----------- deep container tests ----#
@@ -158,6 +270,8 @@ sub test_suite {
     $simple_hash->{BZAZ}[2] = $simple_hash;
     my $new_obj = new Yote::Obj;
     $new_obj->set_cow( "FIRSTY" );
+    is( $new_obj->size(), 1, "Size of objects" );
+    is( Yote::ObjProvider::row_size($new_obj), 1, "Size of objects by obj provider" );
     $root->set_obj( $new_obj );
     $root->add_to_array( "MORE STUFF" );
     $root->add_to_array( "MORE STUFF" );
@@ -240,7 +354,7 @@ sub test_suite {
     my $ino = $inh->{d}{ego};
     ok( $ino > 0, "Inner object" );
     is( $resp->{d}[2], $ino, "3rd element outer array" );
-
+    print STDERR Data::Dumper->Dump( [$Yote::ObjProvider::CACHE] );
 } #test suite
 
 __END__

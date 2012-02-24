@@ -21,9 +21,14 @@ sub TIEHASH {
     return $obj;
 }
 
+sub keycount {
+    my $self = shift;
+    return scalar keys %{$self->[1]};
+}
+
 sub STORE {
     my( $self, $key, $val ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     $self->[1]{$key} = Yote::ObjProvider::xform_in( $val );
 }
 
@@ -50,15 +55,16 @@ sub EXISTS {
 }
 sub DELETE {
     my( $self, $key ) = @_;
-    Yote::ObjProvider::dirty( $self, $self->[0]);
+    Yote::ObjProvider::dirty( $self->[2], $self->[0]);
     return delete $self->[1]{$key};
 }
 sub CLEAR {
     my $self = shift;
-    Yote::ObjProvider::dirty( $self, $self->[0] );
-    for my $key (%{$self->[1]}) {
-        delete $self->[1]{$key};
-    }
+    Yote::ObjProvider::dirty( $self->[2], $self->[0] );
+    %{$self->[1]} = ();
+#    for my $key (%{$self->[1]}) {
+#        delete $self->[1]{$key};
+#    }
 }
 
 1;

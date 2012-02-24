@@ -1,4 +1,27 @@
 $.yote.util = {
+    ids:0,
+    next_id:function() {
+        return 'yidx_'+this.ids++;
+    },
+    stage_text_field:function(attachpoint,yoteobj,fieldname) {
+        var val = yoteobj.get(fieldname);
+        var idname = this.next_id();
+        attachpoint.append( '<input type=text id=' + idname + '>' );
+        $( '#'+idname ).val( val );
+        $( '#'+idname ).keyup( (function (o,k,id,initial) {
+            return function(e) {
+                var newval = $(id).val();
+                o.stage(k,newval);
+                console.dir(o);
+                if( initial != newval ) {
+                    $(id).css('background-color','lightyellow' );
+                } else {
+                    $(id).css('background-color','white' );
+                }
+            }
+        } )(yoteobj,fieldname,'#'+idname,val) );
+        return $( '#' + idname );
+    },
     make_login_box:function(args) {
 	    var target = args['target'];
 	    var logged_in_f = args['on_login'];

@@ -29,6 +29,10 @@ sub new {
     return $obj;
 } #new
 
+sub size {
+    return scalar keys %{shift->{DATA}};
+} #size
+
 #
 # Takes the entire key/value pairs of data as field/value pairs attached to this.
 #

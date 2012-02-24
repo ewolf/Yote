@@ -32,6 +32,22 @@ $.yote = {
 	    }
     },
 
+    dump_cache:function() {
+        this.objs = {};
+    },
+
+    is_in_cache:function(id) {
+        return typeof this.objs[id] === 'object' && this.objs[id] != null;
+    },
+
+    cache_size:function() {
+        var i = 0;
+        for( v in this.objs ) {
+            ++i;
+        }
+        return i;
+    },
+
     create_obj:function(data,appname) {
 	    var root = this;
 	    return (function(x,an) {
@@ -72,8 +88,7 @@ $.yote = {
                             if( typeof ret.d === 'object' ) {
                                 for( var i=0; i<ret.d.length; ++i ) {
                                     var oid = ret.d[i];
-                                    if( root.objs[oid] != null
-                                        && typeof root.objs[oid] !== 'undefined' ) {
+                                    if( root.is_in_cache(oid) ) {
                                         root.objs[oid].reload();
                                     }
                                 }
@@ -117,15 +132,26 @@ $.yote = {
 		            return root.fetch_obj(val,this._app);
 		        }
 		        return val.substring(1);
-	        }
+	        };
 
             // stages functions for updates
             o.stage = (function(ob)  {
                 return function( key, val ) {
                     ob._stage[key] = root.translate_data( val );
-                    console.dir(key +',' + val + ',' + ob._stage[key] );
                 } 
             })(o);
+
+            // loads direct descendents of this object
+            o.load_direct_descendents = function() {
+                var ids = Array();
+                for( var fld in this._d ) {
+                    var id = this._d[fld];
+                    if( id + 0 > 0 ) {
+                        ids.push(id);
+                    }
+                }
+                root.multi_fetch_obj(ids,this._app);
+            };
 
             // sends data structure as an update, or uses staged values if no data
             o.send_update = (function(ob) {
@@ -145,8 +171,7 @@ $.yote = {
                         needs = 1;
                     }
                     if( needs == 0 ) { return; }
-                    console.dir("to send");
-                    console.dir( to_send );
+
                     root.message( {
                         app:ob._app,
                         cmd:'update',
@@ -162,7 +187,7 @@ $.yote = {
                         passhandler:(function(td) {
                             return function() {
                                 for( var key in td ) {
-                                    ob._d[key] = td[key];
+                                    ob._d[key] = root.translate_data(td[key]);
                                 }
                                 ob._stage = {};
                                 if( typeof passhandler === 'function' ) {
@@ -190,8 +215,30 @@ $.yote = {
         })(data,appname);
     }, //create_obj
 
+    multi_fetch_obj:function(ids,app) {
+        var root = this;
+        var to_fetch = Array();
+        for( var idx in ids ) {
+            if( ! this.is_in_cache( ids[idx] ) ) {
+                to_fetch.push( ids[idx] );
+            }
+        }
+        this.message( {
+            app:app,
+            cmd:'multi_fetch',
+            data:{ ids:to_fetch },
+            wait:true,
+            async:false,
+            passhandler:function(data) {
+                for( var key in data.r ) {
+                    root.create_obj( data.r[key] );
+                }
+            }
+        } );
+    }, //multi_fetch_obj
+
     fetch_obj:function(id,app) {
-	    if( typeof this.objs[id] === 'object' && this.objs[id] != null ) {
+	    if( this.is_in_cache( id ) ) {
 	        return this.objs[id];
 	    }
 	    return this.create_obj( this.message( {
@@ -199,7 +246,7 @@ $.yote = {
 	        cmd:'fetch',
 	        data:{ id:id },
 	        wait:true,
-	        async:false,
+	        async:false
 	    } ).r, app );
     },
 
@@ -257,7 +304,7 @@ $.yote = {
 
     // generic server type error
     error:function(msg) {
-        console.dir( "a server side error has occurred : " + $.dump(msg) );
+        console.dir( "a server side error has occurred : " + msg );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
@@ -354,11 +401,10 @@ $.yote = {
         if( data.substring(0,1) == 'v' ) {
             return data.substring(1);
         }
-        if( typeof this.objs[data] === 'object' ) {
+        if( this.is_in_cache(data) ) {
             return this.objs[data];
         }
-        console.dir( "Don't know how to translate " );
-        console.dir( data );
+        console.dir( "Don't know how to translate " + data);
     }, //untranslate_data
 
     disable:function() {
@@ -374,6 +420,7 @@ $.yote = {
     message:function( params ) {
         var root = this;
         var data = root.translate_data( params.data );
+//        console.dir( "to send " + $.dump({ d:data, c:params.cmd }) );
         async = params.async == true ? 1 : 0;
 		wait  = params.wait  == true ? 1 : 0;
         if( async == 0 ) {
@@ -387,11 +434,12 @@ $.yote = {
 		            a:params.app,
 		            c:params.cmd,
 		            d:data,
-                            id:params.id,
+                    id:params.id,
 		            t:root.token,
 		            w:wait
 		        } ) ) },
 	        dataFilter:function(a,b) {
+//                console.dir('incoming ' + a );
 		        return a; 
 	        },
 	        error:function(a,b,c) { root.error(a); },
@@ -405,14 +453,14 @@ $.yote = {
 		            } else if( typeof params.failhandler === 'function' ) {
 		                params.failhandler(data.err);
 		            } else { 
-                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + $.dump({
+                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + {
 		                    a:params.app,
 		                    c:params.cmd,
 		                    d:data,
                                     id:params.id,
 		                    t:root.token,
 		                    w:wait
-		                }) );
+		                } );
                     } //error case. no handler defined 
                 } else {
                     console.dir( "Success reported but no response data received" );
