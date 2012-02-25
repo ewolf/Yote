@@ -22,6 +22,9 @@ $.yote.util = {
         } )(yoteobj,fieldname,'#'+idname,val) );
         return $( '#' + idname );
     },
+    stage_select:function(attachpoint,yoteobj,fieldname) {
+        
+    },
     make_login_box:function(args) {
 	    var target = args['target'];
 	    var logged_in_f = args['on_login'];

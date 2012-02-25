@@ -1,7 +1,9 @@
 package Yote::Obj;
 
 #
-# A Yote object, mostly just syntactic sugar
+# A Yote object, mostly just syntactic sugar.
+# method names are capitolized to indicate that they are not meant
+# as target methods for yote javascript objects.
 #
 
 use strict;
@@ -60,8 +62,9 @@ sub clone {
     my $class = ref( $self );
     my $clone = $class->new;
     for my $field (keys %{$self->{DATA}}) {
-	
+        $clone->{DATA}{$field} = $self->{DATA}{$field};
     }
+    return $clone;
 } #clone
 
 sub init {}

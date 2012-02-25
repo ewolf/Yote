@@ -453,14 +453,14 @@ $.yote = {
 		            } else if( typeof params.failhandler === 'function' ) {
 		                params.failhandler(data.err);
 		            } else { 
-                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + {
+                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + $.dump({
 		                    a:params.app,
 		                    c:params.cmd,
 		                    d:data,
                                     id:params.id,
 		                    t:root.token,
 		                    w:wait
-		                } );
+		                }) );
                     } //error case. no handler defined 
                 } else {
                     console.dir( "Success reported but no response data received" );
