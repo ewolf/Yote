@@ -191,7 +191,7 @@ while( !eof($fin) ) {
 close( $fin );
 close( $fout );
 
-open my $fin, "<", "sample/unit_tests.html" or die "Unable to open file : $!";
+open my $fin, "<", "sample/unit_tests.html.TMPL" or die "Unable to open file : $!";
 open my $fout, ">", "$htmlroot/yote/unit_tests.html" or die "Unable to open file : $!";
 while( !eof($fin) ) {
     my $line = <$fin>;
@@ -200,6 +200,7 @@ while( !eof($fin) ) {
 }
 close( $fin );
 close( $fout );
+copy( "$htmlroot/yote/unit_tests.html", "sample/unit_tests.html.TMPL" );
 
 for my $jsfile (qw{ jquery-latest.js jquery.dumper.js json2.js jquery.base64.min.js }) {
     unless( -e "$js/$jsfile" ) {

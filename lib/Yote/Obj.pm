@@ -128,7 +128,7 @@ sub AUTOLOAD {
             my( $self, $val ) = @_;
             my $inval = Yote::ObjProvider::xform_in( $val );
             Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-            $self->{DATA}{$fld} = $inval
+            $self->{DATA}{$fld} = $inval;
         };
         goto &$AUTOLOAD;
     }
