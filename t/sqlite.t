@@ -100,7 +100,6 @@ sub test_suite {
 
 
     my $root_clone = Yote::AppRoot::fetch_root();
-
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
     is( ref( $root_clone->_get_account_root() ), 'Yote::Obj', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
@@ -354,7 +353,6 @@ sub test_suite {
     my $ino = $inh->{d}{ego};
     ok( $ino > 0, "Inner object" );
     is( $resp->{d}[2], $ino, "3rd element outer array" );
-    print STDERR Data::Dumper->Dump( [$Yote::ObjProvider::CACHE] );
 } #test suite
 
 __END__
