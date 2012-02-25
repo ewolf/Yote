@@ -67,6 +67,36 @@ sub xpath_count {
     return $DATASTORE->xpath_count( $path );
 }
 
+#
+# deep clone this object. 
+#   Descendents of Yote::AppRoot and objects that do not descend from Yote::Obj
+#   are shallow copied for safety.
+#
+sub deep_clone {
+    my $object = shift;
+    my $class = ref( $object );
+    if( ref( $object ) ) {
+        if( ref( $object ) eq 'ARRAY' ) {
+            my $clone_arry = [];
+            get_id( $clone_arry ); #force tie
+            push @$clone_arry, map { deep_clone($_) } @$object;
+            return $clone_arry;
+        }
+        elsif( ref( $object ) eq 'HASH' ) {
+            my $clone_hash = {};
+            get_id( $clone_hash ); #force tie
+            (%$clone_hash) = map { $_ => deep_clone($_) } keys %$object;
+            return $clone_hash;
+        }
+        elsif( $object->isa( 'Yote::Obj' ) && (! $object->isa( 'Yote::AppRoot') ) ) {
+            my $clone = $class->new();
+            (%{$clone->{DATA}}) = map { $_ => xform_in( deep_clone(xform_out($_)) ) } keys %{$object->{DATA}};
+            return $clone;
+        }
+    } #if reference        
+    return $object;
+} #deep_clone
+
 sub fetch {
     my( $id ) = @_;
 

@@ -127,6 +127,12 @@ sub _process_command {
     }
 } #_process_command
 
+# this makes the account root visible to javascript, which will have easier access to its methods.
+sub fetch_account_root {
+    my( $self, $data, $acct_root, $acct ) = @_;
+    return  { r => $acct_root };
+}
+
 sub _translate_data {
     my $val = shift;
 
