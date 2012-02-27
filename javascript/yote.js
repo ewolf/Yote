@@ -49,40 +49,40 @@ $.yote = {
     },
 
     create_obj:function(data,appname) {
-	    var root = this;
-	    return (function(x,an) {
-	        var o = {
-		        _app:an,
-		        _d:{},
-		        id:x.id,
+	var root = this;
+	return (function(x,an) {
+	    var o = {
+		_app:an,
+		_d:{},
+		id:x.id,
                 _stage:{},
-		        reload:function(){},
-		        length:function() {
-		            var cnt = 0;
-		            for( key in this._d ) {
-			            ++cnt;
-		            }
-		            return cnt;
-		        }
-	        };
+		reload:function(){},
+		length:function() {
+		    var cnt = 0;
+		    for( key in this._d ) {
+			++cnt;
+		    }
+		    return cnt;
+		}
+	    };
 
-	        /*
-	          assign methods
-	        */
-	        if( typeof x.m === 'object' ) {
-		        for( m in x.m ) {
-		            o[x.m[m]] = (function(key) {
-			            return function( params, passhandler, failhandler ) {
-				            var ret = root.message( {
-				                app:o._app,
+	    /*
+	      assign methods
+	    */
+	    if( typeof x.m === 'object' ) {
+		for( m in x.m ) {
+		    o[x.m[m]] = (function(key) {
+			return function( params, passhandler, failhandler ) {
+			    var ret = root.message( {
+				app:o._app,
                                 id:o.id,
-				                cmd:key,
-				                data:params,
-				                wait:true,
-				                async:false,
-				                failhandler:failhandler,
-				                passhandler:passhandler
-				            } ); //sending message
+				cmd:key,
+				data:params,
+				wait:true,
+				async:false,
+				failhandler:failhandler,
+				passhandler:passhandler
+			    } ); //sending message
 
                             //dirty objects that may need a refresh
                             if( typeof ret.d === 'object' ) {
@@ -94,9 +94,9 @@ $.yote = {
                                 }
                             }
 
-				            if( typeof ret.r === 'object' ) {
-				                return root.create_obj( ret.r, o._app );
-				            } else {
+			    if( typeof ret.r === 'object' ) {
+				return root.create_obj( ret.r, o._app );
+			    } else {
                                 if( typeof ret.r === 'undefined' ) {
                                     if( typeof failhandler === 'function' ) {
                                         failhandler('no return value');
@@ -106,33 +106,35 @@ $.yote = {
                                 if( (0+ret.r) > 0 ) {
                                     return root.fetch_obj(ret.r,this._app);
                                 }
-				                return ret.r.substring(1);
-				            }
-			            } } )(x.m[m]);
-		        } //each method
-	        } //methods
+				return ret.r.substring(1);
+			    }
+			} } )(x.m[m]);
+		} //each method
+	    } //methods
 
-	        // get fields
-	        if( typeof x.d === 'object' ) {
-		        for( fld in x.d ) {
-		            var val = x.d[fld];
-		            if( typeof val === 'object' ) {
-			            o._d[fld] = (function(x) { return root.create_obj(x); })(val);
-		            } else {
-			            o._d[fld] = (function(x) { return x; })(val);
-		            }
-		        }
-	        }
+	    o.get = function( key ) {
+		var val = this._d[key];
+		if( typeof val === 'undefined' ) return false;
+		if( typeof val === 'object' ) return val;
+		if( (0+val) > 0 ) {
+		    return root.fetch_obj(val,this._app);
+		}
+		return val.substring(1);
+	    };
 
-	        o.get = function( key ) {
-		        var val = this._d[key];
-		        if( typeof val === 'undefined' ) return false;
-		        if( typeof val === 'object' ) return val;
-		        if( (0+val) > 0 ) {
-		            return root.fetch_obj(val,this._app);
-		        }
-		        return val.substring(1);
-	        };
+	    // get fields
+	    if( typeof x.d === 'object' ) {
+		for( fld in x.d ) {
+		    var val = x.d[fld];
+		    if( typeof val === 'object' ) {
+			o._d[fld] = (function(x) { return root.create_obj(x); })(val);
+			
+		    } else {
+			o._d[fld] = (function(x) { return x; })(val);
+		    }
+		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+		}
+	    }
 
             // stages functions for updates
             o.stage = (function(ob)  {
@@ -199,19 +201,19 @@ $.yote = {
                 }
             })(o);
 
-	        if( (0 + x.id ) > 0 ) {
-		        root.objs[x.id] = o;
-		        o.reload = (function(thid,tapp,ob) {
-		            return function() {
+	    if( (0 + x.id ) > 0 ) {
+		root.objs[x.id] = o;
+		o.reload = (function(thid,tapp,ob) {
+		    return function() {
                         root.objs[thid] = null;
-			            var replace = root.fetch_obj( thid, tapp );
-			            ob._d = replace._d;
-			            root.objs[thid] = ob;
-			            return ob;
-		            }
-		        } )(x.id,an,o);
-	        }
-	        return o;
+			var replace = root.fetch_obj( thid, tapp );
+			ob._d = replace._d;
+			root.objs[thid] = ob;
+			return ob;
+		    }
+		} )(x.id,an,o);
+	    }
+	    return o;
         })(data,appname);
     }, //create_obj
 
@@ -238,52 +240,52 @@ $.yote = {
     }, //multi_fetch_obj
 
     fetch_obj:function(id,app) {
-	    if( this.is_in_cache( id ) ) {
-	        return this.objs[id];
-	    }
-	    return this.create_obj( this.message( {
-	        app:app,
-	        cmd:'fetch',
-	        data:{ id:id },
-	        wait:true,
-	        async:false
-	    } ).r, app );
+	if( this.is_in_cache( id ) ) {
+	    return this.objs[id];
+	}
+	return this.create_obj( this.message( {
+	    app:app,
+	    cmd:'fetch',
+	    data:{ id:id },
+	    wait:true,
+	    async:false
+	} ).r, app );
     },
 
     get_app:function( appname,passhandler,failhandler ) {
         var res = this.message( {
-	        app:appname,
-	        cmd:'fetch_root',
-	        data:{ app:appname },
-	        wait:true,
-	        async:false,
+	    app:appname,
+	    cmd:'fetch_root',
+	    data:{ app:appname },
+	    wait:true,
+	    async:false,
             failhandler:failhandler,
             passhandler:passhandler
-	    } );
+	} );
         if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
             return undefined;
         } 
-	    return this.create_obj(  res.r, appname );
+	return this.create_obj(  res.r, appname );
     },
 
     logout:function() {
-	    this.token = undefined;
-	    this.acct = undefined;
+	this.token = undefined;
+	this.acct = undefined;
     }, //logout
 
     get_account:function() {
-	    return this.acct;
+	return this.acct;
     },
 
     is_logged_in:function() {
-	    return typeof this.acct === 'object';
+	return typeof this.acct === 'object';
     }, //is_logged_in
 
 
     /*   DEFAULT FUNCTIONS */
     login:function( un, pw, passhandler, failhandler ) {
-	    var root = this;
-	    this.message( {
+	var root = this;
+	this.message( {
             cmd:'login', 
             data:{
                 h:un,
@@ -292,12 +294,12 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	            root.token = data.t;
-		        root.acct = root.create_obj( data.a, root );
-		        if( typeof passhandler === 'function' ) {
-			        passhandler(data);
-		        }
-	        },
+	        root.token = data.t;
+		root.acct = root.create_obj( data.a, root );
+		if( typeof passhandler === 'function' ) {
+		    passhandler(data);
+		}
+	    },
             failhandler:failhandler
         } );
     }, //login
@@ -308,7 +310,7 @@ $.yote = {
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
-	    var root = this;
+	var root = this;
         this.message( {
             cmd:'create_account', 
             data:{
@@ -319,49 +321,49 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	            root.token = data.t;
-		        root.acct = root.create_obj( data.a, root );
-		        if( typeof passhandler === 'function' ) {
-			        passhandler(data);
-		        }
-	        },
+	        root.token = data.t;
+		root.acct = root.create_obj( data.a, root );
+		if( typeof passhandler === 'function' ) {
+		    passhandler(data);
+		}
+	    },
             failhandler:failhandler
         } );
     }, //create_account
 
     recover_password:function( em, from_url, to_url, passhandler, failhandler ) {
-	    var root = this;
+	var root = this;
         this.message( {
             cmd:'recover_password', 
             data:{
-		        e:em,
-		        u:from_url,
+		e:em,
+		u:from_url,
                 t:to_url
             },
             wait:true, 
             async:false,
-	        passhandler:passhandler,
+	    passhandler:passhandler,
             failhandler:failhandler
         } );
     }, //recover_password
 
     reset_password:function( token, newpassword, passhandler, failhandler ) {
-	    var root = this;
+	var root = this;
         this.message( {
             cmd:'reset_password', 
             data:{
-		        t:token,
-		        p:newpassword	
+		t:token,
+		p:newpassword	
             },
             wait:true, 
             async:false,
-	        passhandler:passhandler,
+	    passhandler:passhandler,
             failhandler:failhandler
         } );
     }, //reset_password
     
     remove_account:function( un, pw, em, passhandler, failhandler ) {
-	    var root = this;
+	var root = this;
         this.message( {
             cmd:'remove_account', 
             data:{
@@ -372,11 +374,11 @@ $.yote = {
             wait:true, 
             async:false,
             passhandler:function(data) {
-	            root.token = data.t;
-		        if( typeof passhandler === 'function' ) {
-			        passhandler(data);
-		        }
-	        },
+	        root.token = data.t;
+		if( typeof passhandler === 'function' ) {
+		    passhandler(data);
+		}
+	    },
             failhandler:failhandler
         } );
     }, //remove_account
@@ -416,59 +418,59 @@ $.yote = {
         $.each( this.enabled, function(idx,val) { val.disabled = false } );
     }, //reenable
 
-	/* general functions */
+    /* general functions */
     message:function( params ) {
         var root = this;
         var data = root.translate_data( params.data );
-//        console.dir( "to send " + $.dump({ d:data, c:params.cmd }) );
+	//        console.dir( "to send " + $.dump({ d:data, c:params.cmd }) );
         async = params.async == true ? 1 : 0;
-		wait  = params.wait  == true ? 1 : 0;
+	wait  = params.wait  == true ? 1 : 0;
         if( async == 0 ) {
             root.disable();
         }
-	    var resp;
-	    $.ajax( {
-	        async:async,
-	        data:{
-		        m:$.base64.encode(JSON.stringify( {
+	var resp;
+	$.ajax( {
+	    async:async,
+	    data:{
+		m:$.base64.encode(JSON.stringify( {
+		    a:params.app,
+		    c:params.cmd,
+		    d:data,
+                    id:params.id,
+		    t:root.token,
+		    w:wait
+		} ) ) },
+	    dataFilter:function(a,b) {
+		//                console.dir('incoming ' + a );
+		return a; 
+	    },
+	    error:function(a,b,c) { root.error(a); },
+	    success:function( data ) {
+                if( typeof data !== 'undefined' ) {
+		    resp = data; //for returning synchronous
+		    if( typeof data.err === 'undefined' ) {
+		        if( typeof params.passhandler === 'function' ) {
+			    params.passhandler(data);
+		        }
+		    } else if( typeof params.failhandler === 'function' ) {
+		        params.failhandler(data.err);
+		    } else { 
+                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + $.dump({
 		            a:params.app,
 		            c:params.cmd,
 		            d:data,
-                    id:params.id,
+                            id:params.id,
 		            t:root.token,
 		            w:wait
-		        } ) ) },
-	        dataFilter:function(a,b) {
-//                console.dir('incoming ' + a );
-		        return a; 
-	        },
-	        error:function(a,b,c) { root.error(a); },
-	        success:function( data ) {
-                if( typeof data !== 'undefined' ) {
-		            resp = data; //for returning synchronous
-		            if( typeof data.err === 'undefined' ) {
-		                if( typeof params.passhandler === 'function' ) {
-			                params.passhandler(data);
-		                }
-		            } else if( typeof params.failhandler === 'function' ) {
-		                params.failhandler(data.err);
-		            } else { 
-                        console.dir( "Invalid failhandler given. It is type " + typeof params.failhandler + ',' + '. call was : ' + $.dump({
-		                    a:params.app,
-		                    c:params.cmd,
-		                    d:data,
-                                    id:params.id,
-		                    t:root.token,
-		                    w:wait
-		                }) );
+		        }) );
                     } //error case. no handler defined 
                 } else {
                     console.dir( "Success reported but no response data received" );
                 }
-	        },
-	        type:'POST',
-	        url:root.url
-	    } );
+	    },
+	    type:'POST',
+	    url:root.url
+	} );
         if( async == 0 ) {
             root.reenable();
             return resp;

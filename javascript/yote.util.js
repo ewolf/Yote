@@ -21,9 +21,23 @@ $.yote.util = {
             }
         } )(yoteobj,fieldname,'#'+idname,val) );
         return $( '#' + idname );
-    },
-    stage_select:function(attachpoint,yoteobj,fieldname) {
-        
+    }, //stage_text_field
+
+    /*
+      yote_obj/yote_fieldname 
+          - object and field to set an example from the list
+            list_fieldname - field in the list objects to get the item name for.
+    */
+    stage_select:function(attachpoint,yote_obj,yote_fieldname,list,list_fieldname) {},
+
+    make_select:function(attachpoint,list,list_fieldname) {
+	var idname = this.next_id();
+        attachpoint.append( '<select id='+idname+'>' );
+	for( var i in list ) {
+	    var item = list[i];
+	    $( '#'+idname ).append( '<option value='+item.id+'>'+item.get(list_fieldname)+'</option>' );
+	}
+	return $( '#' + idname );
     },
     make_login_box:function(args) {
 	    var target = args['target'];

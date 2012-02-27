@@ -6,50 +6,35 @@
     <script src="/js/jquery.base64.min.js"></script>
     <script src="/js/json2.js"></script>
     <script src="/js/yote/yote.js"></script>
-    <script src="/js/yote/yote.util.js"></script>
     <script>
     $().ready(function(){
-        var hello_app;
+        var hello_app = $.yote.get_app('Yote::Test::Hello');
         function hello() {
-	        if( typeof hello_app === 'undefined' ) {
-	            hello_app = $.yote.get_app('Yote::Test::Hello' );
-            }
-            var result = hello_app.hello({ name:$('#txt').val() } );
-            alert( result );
+           var result = hello_app.hello({ name:$('#txt').val() } );
+           alert( result );
 
-	    }
+	}	
         $('#button').click( function() {
-	        hello();
+	       hello();
         } );
-        $('#txt').keypress( function(e) {
-            if(e.which == 13 ) {
-	            hello();
-	        }
+        $('#txt').keypress( function(e) { 
+            if(e.which == 13 ) { 
+	       hello();
+	    }
         } );
 
-	$.yote.util.make_login_box( { 
-		target:'#login_div'/*,
-				     on_login:function(){ var x = $.yote.get_app('Yote::Test::TestAppNeedsLogin'); alert(x.get_scalar()); },
-				     on_logout:function(){ var x = $.yote.get_app('Yote::Test::TestAppNeedsLogin'); alert(x.get_scalar()) }*/
-		    });
-	
-	});
+    });
     </script>
     <style>
-      .emp   { font-family:"Lucida Console",monospace;  }
-#login_div { border: 1px solid black;padding:5px; margin: 5px;}
+      .emp { font-family:"Lucida Console",monospace;  }
     </style>
   </head>
   <body>
     <h1>Yote Application Server Hello World Example</h1>
 Get Yote  on github : <a href=https://github.com/ewolf/Yote>https://github.com/ewolf/Yote</a>
 <hr>
-<div>
     <h2>Hello World</h2>
-    <div id=login_div>
-    </div>
     <input type=text id=txt><BR><button type=button id=button>Say Hi</button>
-</div>
 <hr>
 <h2>What's going on here?</h2>
 <blockquote>
@@ -89,7 +74,7 @@ Once Yote has been set up, the client and server are written as described below.
 &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   $().ready(function(){ <span class=emp>
-      var hello_app = $.yote.get_app('Yote::Hello');
+      var hello_app = $.yote.init("http://"+location.host+"/cgi-bin/yote.cgi").get_app('Yote::Hello');
       $('#button').click( function() {
           var result = hello_app.hello({ name:$('#txt').val() } );
           alert( result ); //get the message from running the hello method.
@@ -120,7 +105,7 @@ use base 'Yote::AppRoot';
 sub init {
     my $self = shift;
     #when the hello is created for the first time, install a counter to track how many times it is called
-    $self-&gt;set_counter( new Yote::Obj() );
+    $self-&gt;set_counter( new Yote::Obj() );  
 }
 
 sub hello {

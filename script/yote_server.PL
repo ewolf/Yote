@@ -200,7 +200,7 @@ while( !eof($fin) ) {
 }
 close( $fin );
 close( $fout );
-copy( "$htmlroot/yote/unit_tests.html", "sample/unit_tests.html.TMPL" );
+copy( "$htmlroot/yote/unit_tests.html", "sample/unit_tests.html" );
 
 for my $jsfile (qw{ jquery-latest.js jquery.dumper.js json2.js jquery.base64.min.js }) {
     unless( -e "$js/$jsfile" ) {

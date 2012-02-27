@@ -119,7 +119,8 @@ $().ready(function(){
         ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
         // have a Yote object returned
         step('yote_obj get called on testappneedslogin to succeed');
-        var obj = login.get( 'yote_obj' );
+
+        var obj = login.get_yote_obj();
         if( typeof obj !== 'object' ) {
             fail( "yote_obj not returned" );
             return;      
@@ -129,28 +130,28 @@ $().ready(function(){
         var o1 = login.make_obj( {text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
         var o2 = login.make_obj( {text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
         login.give_obj( o1 );
-        is( o1.get('text'), 'foo', 'correct object 1 text directly a' );
-        is( o2.get('text'), 'bar', 'correct object 2 text directly a' );
+        is( o1.get_text(), 'foo', 'correct object 1 text directly a' );
+        is( o2.get_text(), 'bar', 'correct object 2 text directly a' );
         login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'bar', 'correct object 1 text' );
-        var o3 = login.get('obj');
-        is( o3.get('text'), 'bar', 'correct object 1 text directly' );
+        var o3 = login.get_obj();
+        is( o3.get_text(), 'bar', 'correct object 1 text directly' );
         login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'foo', 'correct object 2 text' );
-        o3 = login.get('obj');
-        is( o3.get('text'), 'foo', 'correct object 2 text directly' );
+        o3 = login.get_obj();
+        is( o3.get_text(), 'foo', 'correct object 2 text directly' );
 
         o3.stage( 'text', 'baz' );
-        is( o3.get('text'), 'foo', 'correct object 2 text directly' );
+        is( o3.get_text(), 'foo', 'correct object 2 text directly' );
         o3.send_update();
-        is( o3.get('text'), 'baz', 'correct object 2 text directly' );
+        is( o3.get_text(), 'baz', 'correct object 2 text directly' );
         o3.send_update({text:'baf',zip:'zap'});
-        is( o3.get('text'), 'baf', 'correct object 2 text directly' );
+        is( o3.get_text(), 'baf', 'correct object 2 text directly' );
         is( o3.get('zip'), 'zap', 'correct object 2 text directly' );
 
         pass( "no login returns yote obj" );      
         step('name get called on testappneedslogin to succeed');
-        var initval = obj.get('name');
+        var initval = obj.get_name();
         is( initval, 'INITY', "yote object inited on server side" );
         
         // have yote array returned
@@ -164,7 +165,7 @@ $().ready(function(){
         var inobj = arry.get(2);
         
         step('name get called on testappneedslogin to succeed');
-        is( inobj.get('name'), 'INITY', "yote object inited on server side" );
+        is( inobj.get_name(), 'INITY', "yote object inited on server side" );
 
         // have yote hash returned
         step('get hash in array');
@@ -186,7 +187,7 @@ $().ready(function(){
         step('2nd hash ego object with id');
         is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
         step('2nd hash ego object with name');
-        is( inh.get('ego').get('name'), 'INITY', 'object stored in inner hash' );
+        is( inh.get('ego').get_name(), 'INITY', 'object stored in inner hash' );
 
         //test javascript object caching and multi loading of objects.
         $.yote.dump_cache();
