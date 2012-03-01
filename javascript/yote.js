@@ -55,6 +55,7 @@ $.yote = {
 		_app:an,
 		_d:{},
 		id:x.id,
+		class:x.c,
                 _stage:{},
 		reload:function(){},
 		length:function() {
@@ -250,7 +251,21 @@ $.yote = {
 	    wait:true,
 	    async:false
 	} ).r, app );
-    },
+    }, //fetch_obj
+
+    fetch_root:function( passhandler, failhandler ) {
+        var res = this.message( {
+	    cmd:'fetch_root',
+	    wait:true,
+	    async:false,
+            failhandler:failhandler,
+            passhandler:passhandler
+	} );
+        if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
+            return undefined;
+        } 
+	return this.create_obj(  res.r );	
+    }, //get_root
 
     get_app:function( appname,passhandler,failhandler ) {
         var res = this.message( {
