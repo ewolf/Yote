@@ -108,7 +108,13 @@ sub _process_command {
         elsif( $command eq 'update' ) {
             my $obj = Yote::ObjProvider::fetch( $data->{id} );
             if( $obj && $app->_stow_permitted( $data->{d} ) ) {
-                $obj->absorb( $data->{d} );
+                if( ref( $obj ) eq 'ARRAY' ) {
+                    @{$obj} = values %{$data->{d}};
+                } elsif( ref( $obj ) eq 'HASH' ) {
+                    %{$obj} = map { $_ => $data->{d}{$_} } keys %{$data->{d}};
+                } else {
+                    $obj->absorb( $data->{d} );
+                }
                 return { msg => "updated" };
             }
             return { err => "unable to update" };
@@ -425,7 +431,7 @@ sub _obj_to_response {
     my $use_id;
     if( $ref ) {
         my( $m, $d ) = ([]);
-        if( ref( $to_convert ) eq 'ARRAY' ) {
+        if( $ref eq 'ARRAY' ) {
             my $tied = tied @$to_convert;
             if( $tied ) {
                 $d = $tied->[1];
@@ -435,7 +441,7 @@ sub _obj_to_response {
                 $d = $self->_transform_data_no_id( $to_convert );
             }
         } 
-        elsif( ref( $to_convert ) eq 'HASH' ) {
+        elsif( $ref eq 'HASH' ) {
             my $tied = tied %$to_convert;
             if( $tied ) {
                 $d = $tied->[1];
@@ -450,7 +456,7 @@ sub _obj_to_response {
             return $use_id if $xform_out;
             $d = $to_convert->{DATA};
             no strict 'refs';
-            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|is|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
+            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
             use strict 'refs';
         }
         return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };

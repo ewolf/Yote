@@ -236,6 +236,14 @@ sub test_suite {
     ok( Yote::ObjProvider::is_dirty( $fetched_arry ), "array dirty after splice" );
     Yote::ObjProvider::stow( $fetched_arry );
     ok( !Yote::ObjProvider::is_dirty( $def_arry ), "array dirty after splice and save" );    
+    # - set in place
+    my $last_set = $fetched_arry;
+    @{$fetched_arry} = ("This Is","new");
+    ok( Yote::ObjProvider::is_dirty( $last_set ), "array dirty after set in place" );
+    Yote::ObjProvider::stow( $fetched_arry );
+    $fetched_arry = Yote::ObjProvider::fetch( $aid );
+    is_deeply( $fetched_arry, ["This Is","new"], "array after set in place" );
+    
 
 #                                      #
 # ----------- deep container tests ----#

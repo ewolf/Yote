@@ -3,7 +3,6 @@ $.yote.util = {
     next_id:function() {
         return 'yidx_'+this.ids++;
     },
-
     stage_text_field:function(attachpoint,yoteobj,fieldname) {
         var val = yoteobj.get(fieldname);
         var idname = this.next_id();
@@ -13,8 +12,7 @@ $.yote.util = {
             return function(e) {
                 var newval = $(id).val();
                 o.stage(k,newval);
-                console.dir(o);
-                if( initial != newval ) {
+                if( initial != newval || o.is_dirty(k)) {
                     $(id).css('background-color','lightyellow' );
                 } else {
                     $(id).css('background-color','white' );
@@ -24,19 +22,46 @@ $.yote.util = {
         return $( '#' + idname );
     }, //stage_text_field
 
-    stage_textarea:function(attachpoint,yoteobj,fieldname,cols,rows) {
-        var val = yoteobj.get(fieldname);
-        var idname = this.next_id();
-        attachpoint.append( '<textarea id=' + idname + ' cols='+cols+' rows=' +rows+'></textarea>' );
-        $( '#'+idname ).text( val ).html(); //make sure & is represented as &amp;
+    stage_textarea:function(args) {
+        var attachpoint = args['attachpoint'];
+        var yoteobj   = args['yoteobj'];
+        var fieldname = args['fieldname'];
+        var cols      = args['cols'];
+        var rows      = args['rows'];
+        var as_list   = args['as_list'];
+
+        var idname    = this.next_id();
+        attachpoint.append( '<textarea cols='+cols+' rows='+rows+' id=' + idname + '></textarea>' );
+        var val;
+        if( as_list == true ) {
+            var a = Array();
+            for( var i=0; i < yoteobj.length(); ++i ) {
+                a.push( yoteobj.get( i ) );
+            }
+            val = a.join( '\n' );
+            $( '#'+idname ).attr( 'value', val );
+        } else {
+            val = yoteobj.get(fieldname);
+            $( '#'+idname ).attr( 'value', val );
+        }
         $( '#'+idname ).keyup( (function (o,k,id,initial) {
             return function(e) {
-                var newval = $(id).val();
-                o.stage(k,newval);
-                if( initial != newval ) {
+                var newval = $(id).attr('value');
+
+                if( initial != newval || o.is_dirty(k)) {
                     $(id).css('background-color','lightyellow' );
                 } else {
                     $(id).css('background-color','white' );
+                }
+
+                if( as_list == true ) {
+                    newval = newval.split( /\r\n|\r|\n/ );
+                    for( var nk in newval ) {
+                        o.stage( nk, newval[nk] );
+                    }
+                }
+                else {
+                    o.stage(k,newval);
                 }
             }
         } )(yoteobj,fieldname,'#'+idname,val) );
@@ -45,19 +70,54 @@ $.yote.util = {
 
     /*
       yote_obj/yote_fieldname 
-          - object and field to set an example from the list
-            list_fieldname - field in the list objects to get the item name for.
+      - object and field to set an example from the list
+      list_fieldname - field in the list objects to get the item name for.
     */
-    stage_select:function(attachpoint,yote_obj,yote_fieldname,list,list_fieldname) {},
+    stage_object_select:function(args) {
+        var attachpoint    = args['attachpoint'];
+        var yote_obj       = args['yote_obj'];
+        var yote_fieldname = args['yote_fieldname'];
+        var yote_list      = args['yote_list'];
+        var list_fieldname = args['list_fieldname'];
+        var include_none   = args['include_none'];
+        var current        = yote_obj.get( yote_fieldname );
+
+        var current_id = typeof current === 'undefined' ? undefined : current.id;
+	    var idname = this.next_id();
+        attachpoint.append( '<SELECT id='+idname+'>' + (include_none == true ? '<option value="">None</option>' : '' ) + '</select>' );
+        for( var i=0; i<yote_list.length(); ++i ) {
+            var obj = yote_list.get( i );
+            var val = obj.get( list_fieldname );
+            $( '#' + idname ).append( '<option value="' + obj.id + '" ' 
+                                      + (obj.id==current_id ? 'selected' :'') + '>' + val + '</option>' );
+            $( '#' + idname ).click(
+                ( function(o,k,id,initial) {
+                    return function() {
+                        var newid = $(id).val();
+                        if( 0 + newid > 0 ) {
+                            o.stage(k,fetch_obj(newid,obj._app));
+                        } else {
+                            o.stage(k,undefined);
+                        }
+                        if( initial != newid || o.is_dirty(k) ) {
+                            $(id).css('background-color','lightyellow' );
+                        } else {
+                            $(id).css('background-color','white' );
+                        }
+                    }
+                } )(yote_obj,yote_fieldname,'#'+idname,current_id)
+            );
+        }
+    }, //stage_select
 
     make_select:function(attachpoint,list,list_fieldname) {
-	var idname = this.next_id();
-        attachpoint.append( '<select id='+idname+'>' );
-	for( var i in list ) {
-	    var item = list[i];
-	    $( '#'+idname ).append( '<option value='+item.id+'>'+item.get(list_fieldname)+'</option>' );
-	}
-	return $( '#' + idname );
+	    var idname = this.next_id();
+        attachpoint.append( '<select id='+idname+'></select>' );
+	    for( var i in list ) {
+	        var item = list[i];
+	        $( '#'+idname ).append( '<option value='+item.id+'>'+item.get(list_fieldname)+'</option>' );
+	    }
+	    return $( '#' + idname );
     },
     make_login_box:function(args) {
 	    var target = args['target'];
