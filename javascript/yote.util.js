@@ -3,6 +3,7 @@ $.yote.util = {
     next_id:function() {
         return 'yidx_'+this.ids++;
     },
+
     stage_text_field:function(attachpoint,yoteobj,fieldname) {
         var val = yoteobj.get(fieldname);
         var idname = this.next_id();
@@ -22,6 +23,25 @@ $.yote.util = {
         } )(yoteobj,fieldname,'#'+idname,val) );
         return $( '#' + idname );
     }, //stage_text_field
+
+    stage_textarea:function(attachpoint,yoteobj,fieldname,cols,rows) {
+        var val = yoteobj.get(fieldname);
+        var idname = this.next_id();
+        attachpoint.append( '<textarea id=' + idname + ' cols='+cols+' rows=' +rows+'></textarea>' );
+        $( '#'+idname ).text( val ).html(); //make sure & is represented as &amp;
+        $( '#'+idname ).keyup( (function (o,k,id,initial) {
+            return function(e) {
+                var newval = $(id).val();
+                o.stage(k,newval);
+                if( initial != newval ) {
+                    $(id).css('background-color','lightyellow' );
+                } else {
+                    $(id).css('background-color','white' );
+                }
+            }
+        } )(yoteobj,fieldname,'#'+idname,val) );
+        return $( '#' + idname );
+    }, //stage_textarea
 
     /*
       yote_obj/yote_fieldname 
