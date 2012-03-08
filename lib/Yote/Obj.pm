@@ -27,6 +27,7 @@ sub new {
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->init() if $needs_init;
+    $obj->_on_load();
 
     return $obj;
 } #new
@@ -67,7 +68,30 @@ sub clone {
     return $clone;
 } #clone
 
+# deep clone this object. This will clone any yote object that is not an AppRoot.
+sub _power_clone {
+    my $self = shift;
+    my $class = ref( $self );
+    my $clone = $class->new;
+    for my $field (keys %{$self->{DATA}}) {
+        my $id_or_val = $self->{DATA}{$field};
+        if( $id_or_val > 0 ) { #means its a reference
+            my $val = Yote::ObjProvider::xform_out( $id_or_val );
+            if( $val->isa( 'Yote::AppRoot' ) || $val->{NO_DEEP_CLONE} ) {
+                $clone->{DATA}{$field} = $id_or_val;
+            } else {
+                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( $val->_power_clone() );
+            }
+        } else {
+            $clone->{DATA}{$field} = $id_or_val;
+        }
+    }
+    return $clone;
+    
+} #_power_clone
+
 sub init {}
+sub _on_load {}
 
 sub save {
     my $self = shift;
