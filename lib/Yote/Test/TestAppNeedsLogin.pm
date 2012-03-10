@@ -21,11 +21,6 @@ sub init {
     $self->get_yote_obj()->set_name( "INITY" );
 }
 
-sub _allows {
-    my( $self, $command, $data, $acct ) = @_;
-    return defined($acct);
-}
-
 #
 # need subs to return : scalars, lists, hashes, g-objects
 #

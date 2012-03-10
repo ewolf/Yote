@@ -54,7 +54,8 @@ sub absorb {
 # returns true if the object passsed in is the same as this one.
 sub is {
     my( $self, $obj ) = @_;
-    return ref( $obj ) && $obj->isa( 'Yote::Obj' ) && $obj->{ID} == $self->{ID};
+    return ref( $obj ) && ref( $obj ) eq ref( $self ) &&
+        Yote::ObjProvider::get_id( $obj ) == Yote::ObjProvider::get_id( $self );
 }
 
 # shallow clones this object
@@ -68,19 +69,52 @@ sub clone {
     return $clone;
 } #clone
 
-# deep clone this object. This will clone any yote object that is not an AppRoot.
+#
+# Deep clone this object. This will clone any yote object that is not an AppRoot or flagged
+# to not deep clone.
+# If an object is referenced below itself, the references below it will be set to the 
+# reference of the clone. For example, if you have the structure $A = { "foo" =>  $B(NO_DEEP_CLONE), "bar" => [1,2,$A,$C] } 
+# and you deep clone A, you will get $Aclone = { "foo" => $B, "bar" => [1,2,$Aclone,$Cclone] }
+#
 sub _power_clone {
-    my $self = shift;
-    my $class = ref( $self );
+    my( $item, $replacements ) = @_;
+    my $class = ref( $item );
+    return $item unless $class;
+
+    $replacements ||= {};
+    my $id = Yote::ObjProvider::get_id( $item );
+    return $replacements->{$id} if $replacements->{$id};
+
+    if( $class eq 'ARRAY' ) {
+        my $arry_clone = [ map { _power_clone( $_, $replacements ) } @$item ];
+        Yote::ObjProvider::get_id( $arry_clone );
+        $replacements->{$id} = $arry_clone;
+        return $arry_clone;
+    }
+    if( $class eq 'HASH' ) {
+        my $hash_clone = { map { $_ => _power_clone( $item->{$_}, $replacements ) } keys %$item };
+        Yote::ObjProvider::get_id( $hash_clone );
+        $replacements->{$id} = $hash_clone;
+        return $hash_clone;
+    }
+
     my $clone = $class->new;
-    for my $field (keys %{$self->{DATA}}) {
-        my $id_or_val = $self->{DATA}{$field};
+    $replacements->{$item->{ID}} = $clone;
+
+    for my $field (keys %{$item->{DATA}}) {
+        my $id_or_val = $item->{DATA}{$field};
         if( $id_or_val > 0 ) { #means its a reference
             my $val = Yote::ObjProvider::xform_out( $id_or_val );
-            if( $val->isa( 'Yote::AppRoot' ) || $val->{NO_DEEP_CLONE} ) {
-                $clone->{DATA}{$field} = $id_or_val;
+            if( ref( $val ) eq 'ARRAY' ) {
+                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( [map { _power_clone( $_, $replacements ) } @$val] );
+            } elsif( ref( $val ) eq 'HASH' ) {
+                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( {map { $_ => _power_clone( $val->{$_}, $replacements ) } keys %$val} );
             } else {
-                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( $val->_power_clone() );
+                if( $val->isa( 'Yote::AppRoot' ) || $val->{NO_DEEP_CLONE} ) {
+                    $clone->{DATA}{$field} = $id_or_val;
+                } else {
+                    $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( _power_clone( $val, $replacements ) );
+                }
             }
         } else {
             $clone->{DATA}{$field} = $id_or_val;
@@ -92,11 +126,6 @@ sub _power_clone {
 
 sub init {}
 sub _on_load {}
-
-sub save {
-    my $self = shift;
-    Yote::ObjProvider::stow( $self );
-} #save
 
 sub AUTOLOAD {
     my( $s, $arg ) = @_;

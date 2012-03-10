@@ -8,6 +8,8 @@ use Yote::MysqlIO;
 use Yote::AppRoot;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
+use Yote::Test::TestDeepCloner;
+use Yote::Test::TestNoDeepCloner;
 use Yote::SQLiteIO;
 
 use Data::Dumper;
@@ -25,7 +27,7 @@ $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
     for my $class (qw/MysqlIO Obj Hash SQLiteIO/) {
-        use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::class" );
+        use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
     }
 }
 
@@ -82,14 +84,8 @@ sub test_suite {
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
     $root->get_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 2 (6 after stow all)
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
-    $root->save();
-# 1 from accounts under root (default)
-
-    my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
-
-    BAIL_OUT("error saving") unless is( scalar(@$db_rows), 14, "Number of db rows saved to database with ordinary save" );
-
     Yote::ObjProvider::stow_all();
+# 1 from accounts under root (default)
 
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
@@ -254,7 +250,7 @@ sub test_suite {
     my $simple_hash = $root->get_hash();
     $simple_hash->{FOO} = "bar";
     $simple_hash->{BZAZ} = [ "woof", "bOOf" ];
-    $root->save();
+    Yote::ObjProvider::stow_all();
 
     my $root_2 = Yote::AppRoot::fetch_root();
     my( %simple_hash ) = %{$root_2->get_hash()};
@@ -269,7 +265,7 @@ sub test_suite {
     is_deeply( $simple_hash, $root_2->get_hash(), "the modified hash saved" );
     is_deeply( $simple_array, $root_2->get_array(), "the modified array saved" );
 
-    $root->save();
+    Yote::ObjProvider::stow_all();
 
 #                                          #
 # ----------- objects in objects tests ----#
@@ -282,7 +278,7 @@ sub test_suite {
     $root->set_obj( $new_obj );
     $root->add_to_array( "MORE STUFF" );
     $root->add_to_array( "MORE STUFF" );
-    $root->save();
+    Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
     my $root_3 = Yote::AppRoot::fetch_root();
@@ -295,13 +291,56 @@ sub test_suite {
     is_deeply( $root_3->get_array(), $simple_array, "add to test" );
 
     $root->remove_from_array( "MORE STUFF" );
-    $root->save();
+    Yote::ObjProvider::stow_all();
     is( scalar(@$simple_array), 2, "add_to test array count after remove" );
     $root->remove_from_array( "MOREO STUFF" );
     $simple_array = $root_3->get_array();
     is( scalar(@$simple_array), 2, "add_to test array count after second remove" );
 
     my $root_4 = Yote::AppRoot::fetch_root();
+
+
+    # test shallow and deep clone.
+    my $target_obj = new Yote::Obj();
+    my $deep_cloner = new Yote::Test::TestDeepCloner();
+    $deep_cloner->set_ref_to_clone( $target_obj );
+    $deep_cloner->set_num_value( 1234 );
+    $deep_cloner->set_array( [ "array", { of => "Awsome" } ] );
+    $deep_cloner->set_hash( { "woot" => "Biza" } );
+    $deep_cloner->set_txt_value( "This is text" );
+    $deep_cloner->set_big_txt_value( "BIG" x 1000 );
+    $target_obj->set_deep_cloner( $deep_cloner );
+    my $shallow_cloner = new Yote::Test::TestNoDeepCloner();    
+    $target_obj->set_shallow_cloner( $shallow_cloner );
+    my $arry = $target_obj->get_reftest([]);
+    $target_obj->set_reftest2( $arry );
+    push( @$arry, "FOO" );
+    is_deeply( $target_obj->get_reftest2(), $target_obj->get_reftest(), "ref test equivalency" );
+    ok( Yote::Obj::is( $target_obj->get_reftest2(), $target_obj->get_reftest() ), "ref test yote identity 2" );
+    is( ''.$target_obj->get_reftest2(), ''.$target_obj->get_reftest(), "thingy identity" );
+    
+    my $shallow_clone = $deep_cloner->clone();
+    ok( $target_obj->is( $shallow_clone->get_ref_to_clone() ), "shallow clone did not clone reference" );
+    is( $shallow_clone->get_big_txt_value(), "BIG" x 1000, "shallow clone got big text value" );
+    is( $shallow_clone->get_txt_value(), "This is text", "shallow clone copied text" );
+    is( $shallow_clone->get_num_value(), 1234, "shallow clone copied numbers" );
+    is_deeply( $shallow_clone->get_array(), [ "array", { of => "Awsome" } ], "data structures in deep clone array" );
+    is_deeply( $shallow_clone->get_hash(), { "woot" => "Biza" }, "data structures in deep clone hash" );
+    is_deeply( $shallow_clone->get_array(), $deep_cloner->get_array(), "arrays are identical" );
+    is_deeply( $shallow_clone->get_hash(), $deep_cloner->get_hash(), "hashes are identical" );
+    $shallow_clone->set_big_txt_value("now I'm small");
+    is( $deep_cloner->get_big_txt_value(), "BIG" x 1000, "changing big value on clone didn't change value on original." );
+
+    my $deep_clone = $target_obj->_power_clone();
+    ok( $deep_clone->get_shallow_cloner()->is( $shallow_cloner ), "deep clone did not clone NO CLONE object" );
+    ok( ! $deep_clone->get_deep_cloner()->is( $deep_cloner ), "did clone internal reference" );
+    ok( $deep_clone->is( $deep_clone->get_deep_cloner()->get_ref_to_clone() ), "deep clone replaces old reference with clone reference" );
+
+    is_deeply( $deep_clone->get_deep_cloner()->get_array(), $deep_cloner->get_array(), "arrays are separate but identical" );
+    ok( $deep_clone->get_deep_cloner()->get_array()->[1] ne $deep_cloner->get_array()->[1], "arrays are separate but identical" );
+    is_deeply( $deep_clone->get_deep_cloner()->get_hash(), $deep_cloner->get_hash(), "hashes are separate but identical" );
+    ok( $deep_clone->get_deep_cloner()->get_hash() ne $deep_cloner->get_hash(), "hashes are separate but identical" );
+    
 
 #                                          #
 # ----------- parent child node tests -----#
@@ -318,19 +357,21 @@ sub test_suite {
 #                                          #
     my $root = Yote::AppRoot::fetch_root();
     my $res = $root->_process_command( { c => 'foo' } );
+    Yote::ObjProvider::stow_all();
     like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
     like( $root->_process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
     like( $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err}, qr/password required/i, "no password given for create account : " . $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err} );
     like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
+    Yote::ObjProvider::stow_all();
     my $root_acct = Yote::ObjProvider::xpath("/handles/root");
     unless( $root_acct ) {
-	fail( "Root not loaded" );
-	BAIL_OUT("cannot continue" );
+        fail( "Root not loaded" );
+        BAIL_OUT("cannot continue" );
     }
     is( Yote::ObjProvider::xpath_count("/handles"), 1, "1 handle stored");
     is( $root_acct->get_handle(), 'root', 'handle set' );
     is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
-    not( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
+    isnt( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
     ok( $root_acct->get_is_root(), 'first account is root' );
 
     like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );

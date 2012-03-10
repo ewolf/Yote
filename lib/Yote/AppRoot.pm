@@ -25,6 +25,7 @@ sub _get_account_root {
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
         $root = new Yote::Obj;
+        $root->set_account( $acct );
         $acct_roots->{$acct->{ID}} = $root;
     }
     return $root;
@@ -89,7 +90,6 @@ sub _process_command {
                 my $apps = $root->get_apps();
                 $app = $appstr->new;
                 $apps->{$appstr} = $app;
-                $app->save;
             } 
         }
         else {
@@ -121,7 +121,7 @@ sub _process_command {
         }
 
         my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
-        if( $app->_allows( $command, $data, $acct ) && $obj->can( $command ) ) {
+        if( $app->_allows( $command, $data, $acct, $obj ) && $obj->can( $command ) ) {
             my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
             my $resp = $app->_obj_to_response( $obj->$command( $data,
                                                                $app->_get_account_root( $acct ),
@@ -150,10 +150,11 @@ sub _translate_data {
 }
 
 #
-# Override to control access to this app.
+# Override to control access to this app. If this returns true, the given command
+# can be exectued on the object with the data and account.
 #
 sub _allows { 
-    my( $app, $command, $data, $acct ) = @_;
+    my( $app, $command, $data, $acct, $obj ) = @_;
     return 0 if index( $command, '_' ) == 0 || $command eq 'absorb';
     return 1;
 }
@@ -162,12 +163,7 @@ sub _allows {
 # Fetch master root singleton object.
 #
 sub fetch_root {
-    my $root = Yote::ObjProvider::fetch( 1 );
-    unless( $root ) {
-        $root = new Yote::AppRoot();
-        $root->save;
-    }
-    return $root;
+    return Yote::ObjProvider::fetch( 1 ) || new Yote::AppRoot();
 }
 
 sub _valid_token {
@@ -287,18 +283,13 @@ sub _create_account {
 
         $newacct->set_time_created( time() );
 
-        # save password plaintext for now. crypt later
         $newacct->set_password( _encrypt_pass($password, $newacct) );
-
-        $newacct->save();
 
         my $accts = $root->get_handles({});
         $accts->{ $handle } = $newacct;
-        Yote::ObjProvider::stow( $accts );
         my $emails = $root->get_emails({});
         $emails->{ $email } = $newacct;
-        Yote::ObjProvider::stow( $emails );
-        $root->save;
+        &Yote::ObjProvider::stow_all();
         return { r => "created account", a => $root->_obj_to_response( $newacct ), t => _create_token( $newacct, $ip ) };
     } #if handle
     return { err => "no handle given" };
@@ -456,7 +447,7 @@ sub _obj_to_response {
             return $use_id if $xform_out;
             $d = $to_convert->{DATA};
             no strict 'refs';
-            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|fetch_root|import|init|isa|new|save|absorb)$/ } keys %{"${ref}\::"} ];
+            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|fetch_root|import|init|isa|new|absorb)$/ } keys %{"${ref}\::"} ];
             use strict 'refs';
         }
         return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
@@ -464,71 +455,6 @@ sub _obj_to_response {
     return "v$to_convert" if $xform_out;
     return $to_convert;
 } #_obj_to_response
-
-sub _stow {
-    my( $app, $data, $acct ) = @_;
-    if( $data->{id} ) {
-        my $obj = Yote::ObjProvider::fetch( $data->{id} );
-        if( $obj &&
-            Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-            $app->stow( $obj, $data ) )
-        {
-            #verify all incoming objects are also stowable
-            my $check = ref( $data->{v} ) eq 'ARRAY' ? @{$data->{v}}: [map { $data->{v}{$_} } grep { $_ ne '__KEY__' } %{$data->{v}}];
-            for my $item (grep { $_ > 0 } @$check) { #check all ids
-                my $child = Yote::ObjProvider::fetch( $item );
-                unless( $child &&
-                        Yote::ObjProvider::a_child_of_b( $child, $app ) &&
-                        $app->stow( $child, $data ) )
-                {
-                    return { err => "Unable to update $data->{ID}" };
-                }
-            }
-
-            #adjust the target object
-            if( ref( $obj ) eq 'ARRAY' ) {
-                if( ref( $data->{v} ) eq 'ARRAY' ) {
-                    my $tied = tied @$obj;
-                    splice @{$tied->[1]}, 0, scalar(@{$tied->[1]}), @{$data->{v}};
-                } else {
-                    return { err => "Missing data to update $data->{ID}" };
-                }
-            }
-            elsif( ref( $obj ) eq 'HASH' ) {
-                if( ref( $data->{v} ) eq 'HASH' ) {
-                    my $tied = tied %$obj;
-                    for my $k (%{$data->{v}}) {
-                        $tied->[1]{$k} = $data->{v}{$k};
-                    }
-                    for my $k (%{$tied->[1]}) {
-                        unless( defined( $data->{v}{$k} ) ) {
-                            delete $tied->[1]{$k};
-                        }
-                    }
-                } else {
-                    return { err => "Missing data to update $data->{ID}" };
-                }
-            }
-            else { #object
-                if( ref( $data->{v} ) eq 'HASH' ) {
-                    for my $k (%{$data->{v}}) {
-                        $obj->{DATA}{$k} = $data->{v}{$k};
-                    }
-                    for my $k (%{$obj->{DATA}}) {
-                        unless( defined( $data->{v}{$k} ) ) {
-                            delete $obj->{DATA}{$k};
-                        }
-                    }
-                } else {
-                    return { err => "Missing data to update $data->{ID}" };
-                }
-            }
-            Yote::ObjProvider::stow( $obj );
-            return { r => 'updated' };
-        }
-    }
-    return { err => "Unable to update $data->{ID}" };
-} #_stow
 
 1;
 
