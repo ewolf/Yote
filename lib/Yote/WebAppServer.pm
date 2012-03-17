@@ -1,4 +1,4 @@
-Bpackage Yote::WebAppServer;
+package Yote::WebAppServer;
 
 #
 # Proof of concept server with main loop.
