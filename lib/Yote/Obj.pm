@@ -17,6 +17,7 @@ $VERSION = '0.01';
 sub new {
     my( $pkg, $id ) = @_;
     my $class = ref($pkg) || $pkg;
+
     my $obj = bless {
         ID       => $id,
         DATA     => {},
@@ -68,67 +69,6 @@ sub clone {
     return $clone;
 } #clone
 
-#
-# Deep clone this object. This will clone any yote object that is not an AppRoot or flagged
-# to not deep clone.
-# If an object is referenced below itself, the references below it will be set to the 
-# reference of the clone. For example, if you have the structure $A = { "foo" =>  $B(NO_DEEP_CLONE), "bar" => [1,2,$A,$C] } 
-# and you deep clone A, you will get $Aclone = { "foo" => $B, "bar" => [1,2,$Aclone,$Cclone] }
-#
-sub _power_clone {
-    my( $item, $replacements, $deep_check, $cc ) = @_;
-    my $class = ref( $item );
-
-    if( $cc ) {
-	$$cc++ ;
-    } else {
-	$$cc = 0;
-    }
-
-    return $item unless $class;
-
-    $replacements ||= {};
-    my $id = Yote::ObjProvider::get_id( $item );
-    return $replacements->{$id} if $replacements->{$id};
-
-    if( $class eq 'ARRAY' ) {
-        my $arry_clone = [ map { _power_clone( $_, $replacements, 1, $cc ) } @$item ];
-        Yote::ObjProvider::get_id( $arry_clone );
-        $replacements->{$id} = $arry_clone;
-        return $arry_clone;
-    }
-    if( $class eq 'HASH' ) {
-        my $hash_clone = { map { $_ => _power_clone( $item->{$_}, $replacements, 1, $cc ) } keys %$item };
-        Yote::ObjProvider::get_id( $hash_clone );
-        $replacements->{$id} = $hash_clone;
-        return $hash_clone;
-    }
-    return $item if ( $deep_check && $item->{NO_DEEP_CLONE} ) || $item->isa( 'Yote::AppRoot' );
-    my $clone = $class->new;
-    $replacements->{$item->{ID}} = $clone;
-
-    for my $field (keys %{$item->{DATA}}) {
-        my $id_or_val = $item->{DATA}{$field};
-        if( $id_or_val > 0 ) { #means its a reference
-            my $val = Yote::ObjProvider::xform_out( $id_or_val );
-            if( ref( $val ) eq 'ARRAY' ) {
-                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( [map { _power_clone( $_, $replacements, 1, $cc ) } @$val] );
-            } elsif( ref( $val ) eq 'HASH' ) {
-                $clone->{DATA}{$field} = Yote::ObjProvider::xform_in( {map { $_ => _power_clone( $val->{$_}, $replacements, 1, $cc ) } keys %$val} );
-            } else {
-		$clone->{DATA}{$field} = Yote::ObjProvider::xform_in( _power_clone( $val, $replacements, 1, $cc ) );
-            }
-        } else {
-            $clone->{DATA}{$field} = $id_or_val;
-        }
-    }
-
-    unless( $deep_check ) {
-	print STDERR "Cloned $$cc items\n"; #print STDERR Data::Dumper->Dump([]);
-    }
-    return $clone;
-    
-} #_power_clone
 
 sub init {}
 sub _on_load {}

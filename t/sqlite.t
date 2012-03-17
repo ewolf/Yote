@@ -331,7 +331,7 @@ sub test_suite {
     $shallow_clone->set_big_txt_value("now I'm small");
     is( $deep_cloner->get_big_txt_value(), "BIG" x 1000, "changing big value on clone didn't change value on original." );
 
-    my $deep_clone = $target_obj->_power_clone();
+    my $deep_clone = Yote::ObjProvider::power_clone( $target_obj );
     ok( $deep_clone->get_shallow_cloner()->is( $shallow_cloner ), "deep clone did not clone NO CLONE object" );
     ok( ! $deep_clone->get_deep_cloner()->is( $deep_cloner ), "did clone internal reference" );
     ok( $deep_clone->is( $deep_clone->get_deep_cloner()->get_ref_to_clone() ), "deep clone replaces old reference with clone reference" );

@@ -68,34 +68,55 @@ sub xpath_count {
 }
 
 #
-# deep clone this object. 
-#   Descendents of Yote::AppRoot and objects that do not descend from Yote::Obj
-#   are shallow copied for safety.
+# Deep clone this object. This will clone any yote object that is not an AppRoot or flagged
+# to not deep clone.
+# If an object is referenced below itself, the references below it will be set to the 
+# reference of the clone. For example, if you have the structure $A = { "foo" =>  $B(NO_DEEP_CLONE), "bar" => [1,2,$A,$C] } 
+# and you deep clone A, you will get $Aclone = { "foo" => $B, "bar" => [1,2,$Aclone,$Cclone] }
 #
-sub deep_clone {
-    my $object = shift;
-    my $class = ref( $object );
-    if( ref( $object ) ) {
-        if( ref( $object ) eq 'ARRAY' ) {
-            my $clone_arry = [];
-            get_id( $clone_arry ); #force tie
-            push @$clone_arry, map { deep_clone($_) } @$object;
-            return $clone_arry;
+sub power_clone {
+    my( $item, $replacements ) = @_;
+    my $class = ref( $item );
+    return $item unless $class;
+
+    my $at_start = 0;
+    unless( $replacements ) {
+        $at_start = 1;
+        $replacements = {};
+    }
+    my $id = get_id( $item );
+    return $replacements->{$id} if $replacements->{$id};
+
+    if( $class eq 'ARRAY' ) {
+        my $arry_clone = [ map { power_clone( $_, $replacements ) } @$item ];
+        my $c_id = get_id( $arry_clone );
+        $replacements->{$id} = $c_id;
+        return $arry_clone;
+    }
+    elsif( $class eq 'HASH' ) {
+        my $hash_clone = { map { $_ => power_clone( $item->{$_}, $replacements ) } keys %$item };
+        my $c_id = get_id( $hash_clone );
+        $replacements->{$id} = $c_id;
+        return $hash_clone;
+    }
+    else {
+        return $item if $item->{NO_DEEP_CLONE} && (! $at_start);
+    }
+
+    my $clone = $class->new;
+    $replacements->{$item->{ID}} = get_id( $clone );
+
+    for my $field (keys %{$item->{DATA}}) {
+        my $id_or_val = $item->{DATA}{$field};
+        if( $id_or_val > 0 ) { #means its a reference
+            $clone->{DATA}{$field} = $replacements->{$id_or_val} || xform_in( power_clone( xform_out( $id_or_val ), $replacements ) );
+        } else {
+            $clone->{DATA}{$field} = $id_or_val;
         }
-        elsif( ref( $object ) eq 'HASH' ) {
-            my $clone_hash = {};
-            get_id( $clone_hash ); #force tie
-            (%$clone_hash) = map { $_ => deep_clone($_) } keys %$object;
-            return $clone_hash;
-        }
-        elsif( $object->isa( 'Yote::Obj' ) && (! $object->isa( 'Yote::AppRoot') ) ) {
-            my $clone = $class->new();
-            (%{$clone->{DATA}}) = map { $_ => xform_in( deep_clone(xform_out($_)) ) } keys %{$object->{DATA}};
-            return $clone;
-        }
-    } #if reference        
-    return $object;
-} #deep_clone
+    }
+    return $clone;
+    
+} #power_clone
 
 sub fetch {
     my( $id ) = @_;
