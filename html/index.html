@@ -10,19 +10,19 @@
     $().ready(function(){
         var hello_app = $.yote.get_app('Yote::Test::Hello');
         function hello() {
-           var result = hello_app.hello({ name:$('#txt').val() } );
-           alert( result );
-
-	}	
+            var result = hello_app.hello({ name:$('#txt').val() } );
+            alert( result );
+            
+	    }	
         $('#button').click( function() {
-	       hello();
+	        hello();
         } );
         $('#txt').keypress( function(e) { 
             if(e.which == 13 ) { 
-	       hello();
-	    }
+	            hello();
+	        }
         } );
-
+        
     });
     </script>
     <style>
@@ -30,7 +30,40 @@
     </style>
   </head>
   <body>
-    <h1>Yote Application Server Hello World Example</h1>
+    <H1>Yote</H1>
+Code server side, use client side.
+<HR>
+<H2>What is Yote</H2>
+<P>Yote is a perl library and server and javascript library that designed for
+rapid development of web applications. 
+<P>
+Yote Provides :
+  <ul>
+    <li>Javascript objects bound to server objects</li>
+    <li>Automatic persistance</li>
+    <li>Arbitrarily complex object mapping</li>
+    <li>Account authentication with encrypted passwords</li>
+    <li>Access control for methods and objects</li>
+  </ul>
+<P>
+Yote Objects :
+  <ul>
+    <li>Branch out from a root container object</li>
+    <li>are key/value pair containers</li>
+    <li>are automatically saved by the system</li>
+    <li>have fields that are assigned at runtime</li>
+    <li>do not use database schemas</li>
+    <li>are lazy loaded as they are accessed, even if they are fields of an other object.</li>
+    <li>are stored in an arbitrarily comples tree</li>
+    <ul>
+      <li>scalars</li>
+      <li>Yote objects</li>
+      <li>arrays</li>
+      <li>hashes</li>
+    </ul>
+  </ul>
+</P>
+<hr>
 Get Yote  on github : <a href=https://github.com/ewolf/Yote>https://github.com/ewolf/Yote</a>
 <hr>
     <h2>Hello World</h2>
@@ -74,7 +107,7 @@ Once Yote has been set up, the client and server are written as described below.
 &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   $().ready(function(){ <span class=emp>
-      var hello_app = $.yote.init("http://"+location.host+"/cgi-bin/yote.cgi").get_app('Yote::Hello');
+      var hello_app = $.yote.get_app('Yote::Hello');
       $('#button').click( function() {
           var result = hello_app.hello({ name:$('#txt').val() } );
           alert( result ); //get the message from running the hello method.
