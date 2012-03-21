@@ -436,9 +436,12 @@ my $object = Yote::ObjProvider::fetch( $object_id );
 
 =item xpath
 
-Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This works only for fields of Yote objects.
+Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
 
-my $object = Yote::ObjProvider::xpath( "/foo/bar/baz" );
+For example, get the value of the hash keyed to 'zap' where the hash is the  second element of an array that is attached to the root with the key 'baz' : 
+
+my $object = Yote::ObjProvider::xpath( "/baz/1/zap" );
+
 
 =item xpath_count
 

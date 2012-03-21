@@ -105,7 +105,7 @@ sub xpath_count {
 } #xpath_count
 
 #
-# Returns a single value given the xpath (hash only, and notation is slash separated from root)
+# Returns a single value given the xpath (notation is slash separated from root)
 # This will always query persistance directly for the value, bypassing objects.
 # The use for this is to fetch specific things from potentially very long hashes that you don't want to
 #   load in their entirety.
@@ -118,6 +118,7 @@ sub xpath {
     for my $l (@list) {
         next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         undef $final_val;
+
         my( $val, $ref ) = $self->{DBH}->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
         print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
 

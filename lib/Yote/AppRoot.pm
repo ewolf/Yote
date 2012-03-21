@@ -18,7 +18,7 @@ use base 'Yote::Obj';
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
-sub _get_account_root {
+sub account_root {
     my( $self, $acct ) = @_;
 
     my $acct_roots = $self->get_account_roots({});
@@ -30,7 +30,7 @@ sub _get_account_root {
     }
     return $root;
 
-} #_get_account_root
+} #account_root
 
 #
 # Process_command is only called on the master root, 
@@ -124,7 +124,7 @@ sub _process_command {
         if( $app->_allows( $command, $data, $acct, $obj ) && $obj->can( $command ) ) {
             my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
             my $resp = $app->_obj_to_response( $obj->$command( $data,
-                                                               $app->_get_account_root( $acct ),
+                                                               $app->account_root( $acct ),
                                                                $acct ), 1 );
             my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
             return { r => $resp, d => \@dirty_delta };
@@ -386,6 +386,11 @@ sub _multi_fetch {
     return { err => "Unable to fetch $data->{ids}" };
 } #_multi_fetch
 
+sub _xpath {
+    my( $self, $pathstr ) = @_;
+    return Yote::ObjProvider::xpath( '/apps/' . ref( $self ) . '/' . $pathstr );
+}
+
 #
 # Transforms data structure but does not assign ids to non tied references.
 #
@@ -496,7 +501,7 @@ Returns the root object. This is always object 1 for the App Server.
 
 =over 4
 
-=item _get_account_root( login ) - Returns an account object associated with a login object.
+=item account_root( login ) - Returns an account object associated with a login object.
 
 =back
 
