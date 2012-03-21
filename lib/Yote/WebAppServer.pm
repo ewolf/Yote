@@ -1,4 +1,4 @@
-Bpackage Yote::WebAppServer;
+package Yote::WebAppServer;
 
 #
 # Proof of concept server with main loop.
@@ -20,7 +20,7 @@ use Yote::AppRoot;
 use base qw(Net::Server::Fork);
 use vars qw($VERSION);
 
-$VERSION = '0.080';
+$VERSION = '0.081';
 
 
 my( @commands, %prid2wait, %prid2result, $singleton );
