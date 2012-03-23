@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Yote Hello World Example</title>
+    <title>Yote</title>
     <script src="/js/jquery-latest.js"></script>
     <script src="/js/jquery.dumper.js"></script>
     <script src="/js/jquery.base64.min.js"></script>
@@ -66,36 +66,239 @@ Yote Objects :
 <hr>
 Get Yote  on github : <a href=https://github.com/ewolf/Yote>https://github.com/ewolf/Yote</a>
 <hr>
-    <h2>Hello World</h2>
-    <input type=text id=txt><BR><button type=button id=button>Say Hi</button>
-<hr>
-<h2>What's going on here?</h2>
+ <H2>Secret Collect</H2>
+<P>Let's make a trivial but real riddle game called 'Secret Collect'. 
+In this game, you add riddles and try to answer the riddles of others.</P>
+<P>
+You start the game by entering in 3 riddles. You answer others riddles 
+to steal them away. If your riddles are stolen, you may enter to get to three.
+Your score is how many riddles you own.
+</P>
+<p>
+The first step in creating this app is to sketch out a design and the elements needed.
+</P>
+<h3>Elements</h3>
 <blockquote>
-<p>
- Yote provides javascript objects that are linked to perl objects running in an application server. These perl objects get the following features :
-<ul>
-<li>Automatic Persistance without a schema.</li>
-<li>idiomatic getters and setters for fields. Calling set_foo("bar") on a Yote object automatically creates and populates the field 'foo'. Calling get_foo("bar") returns the value of foo, populating it with 'bar' if its not yet defined. Fields may contain scalars, hashes, arrays and Yote objects.</li>
-<li>more syntactic sugar : add_to_mylist, remove_from_mylist causes an array field 'mylist' to be created and populated</li>
-<li>Circular References are allowed</li>
-<li>public methods (beginning with a lower case letter) may be invoked by javascript objects</li>
-<li>Methods for creating accounts, logging in</li>
-<li>Tokens can be used for logging in, and are linked to IP</li>
-<li>Passwords are not plaintext.</li>
-<li>Ability to limit access to which accounts may access which methods or objects</li>
-<li>Yote object method execution is thread-safe. Yote web application server receives messages in different threads, but has a single threaded execution process. </li>
-</ul>
+  <h4>Application</h4>
 
-</p>
-<p>
-Once Yote has been set up, the client and server are written as described below.<ul>
-<li>The client contacts the server and gets the (singleton) root app with the perl package name (Yote::Hello).</li>
-<li>The hello method is called on the app and its response is stored in result.</li>
-<li></li>
-</ul>
-</p>
+  The application runs the game. It keeps track of players and questions. The players
+  call methods on the application to play the game. Yote creates a singleton instance of
+  the application mapped to its package name internally. This application will store a list
+  of riddles that can be collected.
+
+  <h4>Players</h4>
+
+  Yote provides Account objects, which are the players in this case.
+  Methods invoked on the application are invoked with 
+  Yote account objects, automatically passed to the called method. Accounts are created and 
+  accessed using the javascript calls $.yote.create_account and $.yote.login. Once logged in,
+  the javascript in the browser keeps track of the login state and account identification.
+  
+  Each account has a container object per application. This is meant to store things 
+  like documents, games played in the app, messages sent and received or pictures stored. 
+  For this application, it stores a list of collected secrets.
+    
+  <h4>Riddles</h4>
+
+  Riddles are the secrets to be collected in the game. They are basic yote objects containing a question
+  and an encrypted version of the answer to prevent cheating.
+  
 </blockquote>
-<hr>
+<h3>Object Model</h3>
+<h4>Application</h4>
+Class : <i>Yote::Sample::SecretCollect</i>
+<blockquote>
+Methods - Player data is automatically passed to the methods.
+<ul>
+ <li>add_riddle( { question:"question", answer:"answer" } )</li>
+ <li>can_start()</li>
+ <li>random_riddle()</li>
+</ul>
+Data
+<ul>
+ <li>riddles (list)</li>
+ <li>riddle_count (number)</li>
+</ul>
+</blockquote>
+<h4>Player Data</h4>
+Class : <i>Yote::AccountRoot</i>
+<blockquote>
+Data
+<ul>
+ <li>my_riddles</li>
+ <li>guesses</li>
+</ul>
+</blockquote>
+<h4>Riddle</h4>
+Class : <i>Yote::Obj</i>
+<blockquote>
+Data
+<ul>
+ <li>question</li>
+ <li>secret_answer - encyrpted answer</li>
+ <li>owner - who currently owns it. This is an account root object.</li>
+ <li>collect_count - number of times this has been collected</li>
+ <li>guesses - number of times this has been guessed</li>
+</ul>
+</blockquote>
+<h3>Client Side Code</h3>
+<pre>
+&lt;html&gt;&lt;head&gt;&lt;title&gt;Secret Collect&lt;/title&gt;
+&lt;script src="/js/jquery-latest.js"&gt;&lt;/script&gt;
+&lt;script src="/js/jquery.dumper.js"&gt;&lt;/script&gt;
+&lt;script src="/js/jquery.base64.min.js"&gt;&lt;/script&gt;
+&lt;script src="/js/json2.js"&gt;&lt;/script&gt;
+&lt;script src="/js/yote.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  $().ready(function(){ <span class=emp>
+      var secret_collect_app = $.yote.get_app('Yote::Sample::SecretCollect');
+      $('#button').click( function() {
+          var result = hello_app.hello({ name:$('#txt').val() } );
+          alert( result ); //get the message from running the hello method.
+          alert( 'testfield is ' + hello_app.get_testfield() ); //get the value of testfield that is attached to the app
+          var counter = hello_app.get_counter();                //get the counter object that is attached to the app
+          alert( 'counter is at ' + counter.get_count() );      //get the value of the count field of the counter object attached to the app
+      } );
+</emp>
+  });
+&lt;/script&gt;&lt;/head&gt;
+&lt;body&gt;&lt;h1&gt;Secret Collect&lt;/h1&gt;
+&lt;/body&gt;&lt;/html&gt;
+</pre>
+
+<h3>Server Side Code</h3>
+As long as the classes defined are in perl's classpath, they will be accessible. 
+There is no need to start the yote server to load them. At the time of this writing
+if you make changes to the classes, yote must be restarted to see those changes.
+<pre>
+package Yote::Sample::SecretCollect;
+
+use base 'Yote::AppRoot';
+
+use Crypt::Passwd;
+
+sub add_riddle {
+
+    my( $self,      # This singleton AppRoot object. 
+                    # It lives in /apps/Yote::Sample::SecretCollect
+                    # Calling 
+                    #   var app = $.yote.fetch_root('Yote::Sample::SecretCollect');
+                    #   on the client side will return only this instance.
+        
+        $data,      # The data structure sent by the client.
+                    # This app is expecting app.add_riddle({question:'ques',answer:'ans'});
+        $acct_root, # This is a container specific to the account calling add_riddle
+                    # and the SecretCollect app. This is meant to store state data
+                    # for the player that does not clash with state data they have
+                    # for any other app.
+        
+        $acct       # The account object the user is logged in as. 
+                    # It is created by calling 
+                    #   $.yote.create_account( {} );
+        ) = @_;
+
+    #
+    # Create a new riddle object and add it to the account root's riddle supply.
+    # encrypt the riddle to hide its answer.
+    #
+    # The riddle methods 'set_question', 'set_secret_answer', 'set_owner'
+    #    are automatically there and need no definition.
+    # The account root
+    #
+    my $riddle = new Yote::Obj();
+    $riddle-&gt;set_question( $data-&gt;{question} );
+    $riddle-&gt;set_secret_answer( unix_std_crypt( $data-&gt;{answer}, 
+                                                $data-&gt;{question} ) );
+    $riddle-&gt;set_owner( $acct_root );
+    $acct_root-&gt;add_to_my_riddles( $riddle );
+
+    #
+    # add the riddle to all riddles the app has
+    #
+    $self-&gt;add_to_riddles( $riddle );
+    $self-&gt;set_riddle_count( 1 + $self-&gt;get_riddle_count() );
+
+    return { msg =&gt; 'riddle added' };
+
+} #add_riddle
+
+sub can_start {
+
+    my( $self, $data, $acct_root, $acct ) = @_;
+
+    # need 3 riddles to start guessing
+    return { r =&gt; @{ $acct_root-&gt;get_riddles( [] ) } &gt; 0 };
+}
+
+
+sub random_riddle {
+
+    my( $self, $data, $acct_root, $acct ) = @_;
+
+    unless( $self-&gt;can_start( $data, $acct_root, $acct ) ) {
+        return { err =&gt; 'Must have 3 riddles to guess others' };
+    }
+
+    my $riddle_count = $self-&gt;get_riddle_count();
+
+    if( $riddle_count == 0 ) {
+        return { err =&gt; 'there are no riddles to guess' };
+    }
+
+    #
+    # Pick the riddle without having to load in the whole riddle array :
+    #
+    my $riddle_idx = int( rand( $riddle_count ) );
+    my $riddle = $self-&gt;_xpath( &quot;/riddles/$riddle_idx&quot; );
+
+    return { riddle =&gt; $riddle };
+
+} #random_riddle
+
+
+
+sub guess_riddle {
+
+    my( $self, $data, $acct_root, $acct ) = @_;
+
+    my $riddle = $data-&gt;{riddle};
+    my $answer = $data-&gt;{answer};
+
+    my $riddle_owner = $riddle-&gt;get_owner();
+
+    #
+    # Collect stats on the riddle. They can be accessed on the client side
+    #   by calling riddle.get_guesses();
+    # Don't bother incrementing for one's own riddle.
+    #
+    if( ! $riddle_owner-&gt;is( $acct_root ) ) {
+        $riddle-&gt;set_guesses( 1 + $riddle-&gt;get_guesses() );
+        $acct_root-&gt;set_guesses( 1 + $acct_root-&gt;get_guesses() );
+    }
+
+    if( $riddle-&gt;get_secret_answer() eq unix_std_crypt( $answer, $riddle-&gt;get_question() ) ) {
+        #
+        # A secret collect! Change ownership and update the stats.
+        #
+        if( ! $riddle_owner-&gt;is( $acct_root ) ) {
+            $acct_root-&gt;set_collected_count( 1 + $acct_root-&gt;get_collected_count() );
+            $riddle-&gt;set_collect_count( 1 + $riddle-&gt;get_collect_count() );
+
+            $riddle_owner-&gt;remove_from_my_riddles( $riddle );
+            $acct_root-&gt;add_to_my_riddles( $riddle );
+            $riddle-&gt;set_owner( $acct_root );
+        }
+        return { msg =&gt; 'You collected this riddle' };		     
+    } 
+    else {
+        return { msg =&gt; 'You got the wrong answer' };
+    }
+} #guess_riddle
+
+
+1;
+</pre>
+
     <h2>Client Side Code</h2>
 <blockquote>
     <pre>

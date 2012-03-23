@@ -97,14 +97,14 @@ sub test_suite {
 
     my $root_clone = Yote::AppRoot::fetch_root();
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->account_root() ), 'Yote::Obj', '2nd level yote object' );
+    is( ref( $root_clone->account_root() ), 'Yote::AccountRoot', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
 
 
     is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->account_root() ), 'Yote::Obj', '2nd level yote object  (original root after save)' );
+    is( ref( $root->account_root() ), 'Yote::AccountRoot', '2nd level yote object  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 

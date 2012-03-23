@@ -3,6 +3,7 @@ package Yote::AppRoot;
 use strict;
 
 use Yote::Obj;
+use Yote::AccountRoot;
 
 use Crypt::Passwd;
 use Email::Valid;
@@ -15,6 +16,11 @@ $VERSION = '0.01';
 
 use base 'Yote::Obj';
 
+sub _on_load {
+    my $self = shift;
+    $self->{NO_DEEP_CLONE} = 1;
+}
+
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
@@ -24,7 +30,7 @@ sub account_root {
     my $acct_roots = $self->get_account_roots({});
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
-        $root = new Yote::Obj;
+        $root = new Yote::AccountRoot;
         $root->set_account( $acct );
         $acct_roots->{$acct->{ID}} = $root;
     }

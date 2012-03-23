@@ -251,18 +251,19 @@ $.yote.util = {
 	        if( typeof logged_out_f === 'function' ) { logged_out_f(); }
 	    }
 	    //link actions
-	    $( target + ' #login_link').click( install_function(to_login) );
-	    $( target + ' #register_link').click( install_function(to_register) );
-	    $( target + ' #logout_link').click( install_function(logout) );
-	    $( target + ' #forgot_link').click( install_function(to_recover) );
+        var nada = function() {};
+	    $( target + ' #login_link').click( install_function(to_login || nada ) );
+	    $( target + ' #register_link').click( install_function(to_register || nada) );
+	    $( target + ' #logout_link').click( install_function(logout || nada) );
+	    $( target + ' #forgot_link').click( install_function(to_recover || nada) );
 
 	    //button actions
-	    $( target + ' #login_submit').click( install_function(do_login) );
+	    $( target + ' #login_submit').click( install_function(do_login || nada) );
 	    $( target + ' .login#login,' + target + ' .login#password' ).keypress( on_enter(do_login) );
-	    $( target + ' #register_submit').click( install_function(do_register) );
+	    $( target + ' #register_submit').click( install_function(do_register || nada) );
 	    $( target + ' .register#login,' + target + ' .register#password,' + target + ' .register#email' ).keypress( on_enter(do_register) );
 	    $( target + ' .recover#email' ).keypress( on_enter(do_recover) );
-	    $( target + ' #recover_submit' ).click( install_function(do_recover) );
+	    $( target + ' #recover_submit' ).click( install_function(do_recover || nada) );
 
 	    if( $.yote.is_logged_in() ) {
 	        var acct = $.yote.get_account();
