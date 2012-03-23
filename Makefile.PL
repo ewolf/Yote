@@ -10,7 +10,7 @@ my $build = $class->new(
     dist_abstract => 'Web App Server w/ autopersistant objects',
     license       => 'perl',
 
-    dist_version_from => 'lib/Yote/WebAppServer.pm',
+    dist_version_from => 'lib/Yote.pm',
     module_name   => 'Yote',
 
     PL_files => {
