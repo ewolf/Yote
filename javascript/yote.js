@@ -301,6 +301,7 @@ $.yote = {
     logout:function() {
 	    this.token = undefined;
 	    this.acct = undefined;
+        $.cookie('yoken','');
     }, //logout
 
     get_account:function() {
@@ -308,9 +309,37 @@ $.yote = {
     },
 
     is_logged_in:function() {
-	    return typeof this.acct === 'object';
+        if( typeof this.acct === 'object' ) {
+            return true;
+        }
+        else {
+            var t = $.cookie('yoken');
+            if( typeof t === 'string' ) {
+                return this.verify_token( t );
+            }
+        }
+	    return false;
     }, //is_logged_in
 
+    verify_token:function( token ) {
+        var root = this;
+        var ans = this.message( {
+            cmd:'verify_token',
+            data:{
+                t:token
+            },
+            wait:true,
+            async:false,
+            passhandler:function(data) {},
+            failhandler:root.error
+        } );
+        if( typeof ans === 'object' && ans.r ) {
+            root.token = token;
+            root.acct = root.create_obj( ans.r, root );
+            return true;
+        }
+        return false;
+    }, //verify_token
 
     /*   DEFAULT FUNCTIONS */
     login:function( un, pw, passhandler, failhandler ) {
@@ -326,6 +355,7 @@ $.yote = {
             passhandler:function(data) {
 	            root.token = data.t;
 		        root.acct = root.create_obj( data.a, root );
+                $.cookie('yoken',root.token, { expires: 7 });
 		        if( typeof passhandler === 'function' ) {
 		            passhandler(data);
 		        }
@@ -353,6 +383,7 @@ $.yote = {
             passhandler:function(data) {
 	            root.token = data.t;
 		        root.acct = root.create_obj( data.a, root );
+                $.cookie('yoken',root.token, { expires: 7 });
 		        if( typeof passhandler === 'function' ) {
 		            passhandler(data);
 		        }

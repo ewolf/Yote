@@ -410,6 +410,7 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
 
+    is( Yote::ObjProvider::xpath("/foo/0"), "an", "xpath with array first element" );
     is( Yote::ObjProvider::xpath("/foo/1"), "array", "xpath with array" );
     is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
 

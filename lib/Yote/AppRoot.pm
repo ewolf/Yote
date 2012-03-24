@@ -71,6 +71,9 @@ sub _process_command {
     elsif( $command eq 'login' ) {
         return _login( $data, $cmd->{oi} );
     }
+    elsif( $command eq 'verify_token' ) {
+        return { r => fetch_root()->_obj_to_response(_valid_token( $data->{t}, $cmd->{oi} ) ) };
+    }
     elsif( $command eq 'remove_account' ) {
         return $root->_remove_account( $data, $acct );
     }

@@ -250,8 +250,10 @@ $.yote.util = {
 	        $.yote.logout();
 	        if( typeof logged_out_f === 'function' ) { logged_out_f(); }
 	    }
+
 	    //link actions
         var nada = function() {};
+
 	    $( target + ' #login_link').click( install_function(to_login || nada ) );
 	    $( target + ' #register_link').click( install_function(to_register || nada) );
 	    $( target + ' #logout_link').click( install_function(logout || nada) );
@@ -266,10 +268,7 @@ $.yote.util = {
 	    $( target + ' #recover_submit' ).click( install_function(do_recover || nada) );
 
 	    if( $.yote.is_logged_in() ) {
-	        var acct = $.yote.get_account();
-	        $( target + ' > .logged_in#handle' ).val( acct.get('handle') );
-	        $( target + ' > div' ).hide();
-	        $( target + ' > div#y_logged_in' ).show();
+            to_logged_in( $.yote.get_account().get_handle() );
 	    } else {
 	        logout();
 	    }
