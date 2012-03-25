@@ -88,7 +88,7 @@ sub xpath_count {
     my( @list ) = split( /\//, $path );
     my $next_ref = 1;
     for my $l (@list) {
-        next unless defined($l) && $l ne ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+        next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         my( $ref ) = $self->{DBH}->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
         print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
 
@@ -116,7 +116,7 @@ sub xpath {
     my $next_ref = 1;
     my $final_val;
     for my $l (@list) {
-        next unless defined($l) && $l ne ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+        next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         undef $final_val;
 
         my( $val, $ref ) = $self->{DBH}->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
