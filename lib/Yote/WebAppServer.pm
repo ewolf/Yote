@@ -23,10 +23,11 @@ use vars qw($VERSION);
 $VERSION = '0.080';
 
 
-my( @commands, %prid2wait, %prid2result, $singleton );
+my( @commands, %prid2wait, %prid2result, $singleton, $cron_id );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
+share( $cron_id );
 
 sub new {
     my $pkg = shift;
@@ -41,14 +42,20 @@ sub start_server {
 
     Yote::ObjProvider::init( %$args );
 
-    # fork out for two starting threads
-    #   - one a multi forking server and the other an event loop.
-    my $thread = threads->new( sub { $self->run( %$args ); } );
-    $self->{thread} = $thread;
+    # fork out for three starting threads
+    #   - one a multi forking server (parent class)
+    #   - and the parent thread an event loop.
+
+    # server thread
+    my $server_thread = threads->new( sub { $self->run( %$args ); } );
+    $self->{server_thread} = $server_thread;
+
+    # cron thread
+    my $cron_thread = threads->new( sub { $self->loop_cron(); } );
 
     _poll_commands();
 
-    $thread->join;
+    $server_thread->join;
 } #start_server
 
 sub shutdown {
@@ -56,9 +63,28 @@ sub shutdown {
     print STDERR "Shutting down yote server \n";
     &Yote::ObjProvider::stow_all();
     print STDERR "Killing threads \n";
-    $self->{thread}->detach();
+    $self->{server_thread}->detach();
     print STDERR "Shut down server thread.\n";
 } #shutdown
+
+#
+# Checks every minute to see if any commands were put in the root's cron area.
+#
+sub loop_cron {
+    my $self = shift;
+    
+    while(1) {
+	sleep(60);
+	{
+	    lock( @commands );
+	    my $rnd = int( 10000 * rand() );
+	    $cron_id = $rnd;
+	    push( @commands, [ { c => 'check_cron', cron_id => $rnd },$$] );
+	    print STDERR Data::Dumper->Dump(["Adding Cron Check command"]);
+	}
+    }
+
+} #loop_cron
 
 #
 # Sets up Initial database server and tables.
@@ -108,7 +134,7 @@ sub process_request {
 
     my $wait = $command->{w};
     my $procid = $$;
-    {
+    if( $wait ) {
         print STDERR Data::Dumper->Dump(["Lock prid2wait"]);
         lock( %prid2wait );
         $prid2wait{$procid} = $wait;
@@ -151,7 +177,7 @@ sub process_request {
             }
         }
         my $result;
-        {
+        if( $wait ) {
             lock( %prid2result );
             $result = $prid2result{$procid};
             delete $prid2result{$procid};
@@ -197,6 +223,8 @@ sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
 
+    my $wait = $command->{w};
+
     Yote::ObjProvider::connect();
 
     my $resp;
@@ -213,19 +241,21 @@ sub _process_command {
     #
     # Send return value back to the caller if its waiting for it.
     #
-    print STDERR " _process_command Lock prid2wait\n";
-    lock( %prid2wait );
-    print STDERR " _process_command Locked prid2wait\n";
-    {
-        lock( %prid2result );
-        $prid2result{$procid} = $resp;
-    }
-    print STDERR Data::Dumper->Dump(["IN process, freeing prid2wait for process ($procid)",$resp,\%prid2wait]);
+    if( $wait ) {
+	print STDERR " _process_command Lock prid2wait\n";
+	lock( %prid2wait );
+	print STDERR " _process_command Locked prid2wait\n";
+	{
+	    lock( %prid2result );
+	    $prid2result{$procid} = $resp;
+	}
+	print STDERR Data::Dumper->Dump(["IN process, freeing prid2wait for process ($procid)",$resp,\%prid2wait]);
 
-    delete $prid2wait{$procid};
-    print STDERR " _process_command Broadcast prid2wait (deleted $procid)\n";
-    cond_broadcast( %prid2wait );
-    print STDERR " _process_command Broadcasted prid2wait\n";
+	delete $prid2wait{$procid};
+	print STDERR " _process_command Broadcast prid2wait (deleted $procid)\n";
+	cond_broadcast( %prid2wait );
+	print STDERR " _process_command Broadcasted prid2wait\n";
+    }
 
     Yote::ObjProvider::commit();
     Yote::ObjProvider::disconnect();

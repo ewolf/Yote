@@ -74,6 +74,23 @@ sub _process_command {
     elsif( $command eq 'reset_password' ) {
         return $root->_reset_password( $data );
     }
+    elsif( $command eq 'check_cron' ) {
+	if( $cmd->{cron_id} == $Yote::WebAppServer::cron_id  ) {
+	    my $cron_pkg = $root->get_cron_package('Yote::Cron');
+            my $app = $root->get_apps({})->{$cron_pkg};
+	    unless( $app ) {
+                eval( "use $cron_pkg" );
+                if( $@ =~ /Can.t locate/ ) {
+		    print STDERR Data::Dumper->Dump(["No Cron Found"]);
+                    return { err => "App '$a' not found" };
+                }
+                my $apps = $root->get_apps();
+                $app = $cron_pkg->new;
+                $apps->{$cron_pkg} = $app;		
+	    }
+	    $app->check_cron();
+	}
+    }
     else {
         my $appstr = $command eq 'fetch_root' && ref($data) ? $data->{app} : $cmd->{a};
         my $app;
