@@ -97,14 +97,14 @@ sub test_suite {
 
     my $root_clone = Yote::AppRoot::fetch_root();
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->_get_account_root() ), 'Yote::Obj', '2nd level yote object' );
+    is( ref( $root_clone->account_root() ), 'Yote::AccountRoot', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
 
 
     is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->_get_account_root() ), 'Yote::Obj', '2nd level yote object  (original root after save)' );
+    is( ref( $root->account_root() ), 'Yote::AccountRoot', '2nd level yote object  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 
@@ -387,11 +387,11 @@ sub test_suite {
     my $as = new Yote::WebAppServer;
     ok( $as, "Yote::WebAppServer compiles" );
 
-#my $root = Yote::AppRoot::fetch_root();
 
     my $ta = new Yote::Test::TestAppNeedsLogin();
     my $aaa = $ta->get_array();
     my $resp = $ta->_obj_to_response( $aaa );
+
     is( $resp->{d}->[0], 'vA', 'fist el' );
     is( ref( $resp->{d}[1] ), 'HASH', 'second el hash' );
     my $ina = $resp->{d}[1]{d}{inner};
@@ -402,6 +402,26 @@ sub test_suite {
     my $ino = $inh->{d}{ego};
     ok( $ino > 0, "Inner object" );
     is( $resp->{d}[2], $ino, "3rd element outer array" );
+
+
+    $root->add_to_foo( "an", "array", "test" );
+    my $hf = $root->get_hashfoo( {} );
+    $hf->{zort} = 'zot';
+
+    Yote::ObjProvider::stow_all();
+
+    is( Yote::ObjProvider::xpath("/foo/0"), "an", "xpath with array first element" );
+    is( Yote::ObjProvider::xpath("/foo/1"), "array", "xpath with array" );
+    is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
+
+    $root->_process_command( { c => 'fetch_root', a =>'Yote::Test::TestAppNeedsLogin' } );
+    Yote::ObjProvider::stow_all();
+    my $app = Yote::ObjProvider::xpath( '/apps/Yote::Test::TestAppNeedsLogin' );
+    $app->add_to_azzy( "A","B","C","D");
+    Yote::ObjProvider::stow_all();
+    ok( ref( $app ) eq 'Yote::Test::TestAppNeedsLogin', "xpath gets AppObj" );
+    is( $app->_xpath( '/azzy/2' ), 'C', "xpath from AppRoot object" );
+
 } #test suite
 
 __END__

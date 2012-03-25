@@ -1,1 +1,2 @@
+* fail and pass return functions for application and object methods
 * create MongoDB IO

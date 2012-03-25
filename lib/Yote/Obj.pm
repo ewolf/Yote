@@ -1,9 +1,12 @@
 package Yote::Obj;
 
 #
-# A Yote object, mostly just syntactic sugar.
-# method names are capitolized to indicate that they are not meant
-# as target methods for yote javascript objects.
+# This is base Yote Object class. 
+# It is a container class containing key value pairs via getters and setters.
+# To set a value, call $obj->set_foo( $value ); 
+# To get a value, call my $val = $obj->get_foo();
+# Get takes an optional value argument. The value of foo is set to this
+#  if it did not previously have a value.
 #
 
 use strict;
