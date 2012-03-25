@@ -8,6 +8,7 @@
     <script src="/js/yote/yote.js"></script>
     <script>
     $().ready(function(){
+        
         var hello_app = $.yote.get_app('Yote::Test::Hello');
         function hello() {
             var result = hello_app.hello({ name:$('#txt').val() } );
@@ -22,7 +23,10 @@
 	            hello();
 	        }
         } );
-        
+
+	var page_counter = $.yote.get_app('Yote::Census');
+	page_counter.show_count();
+	$('#counter').append( page_counter.get_count() );
     });
     </script>
     <style>
@@ -357,5 +361,6 @@ sub hello {
     </pre>
 </blockquote>
     <hr>
+This page has been viewed <span id=counter></span> times.
   </body>
 </html>
