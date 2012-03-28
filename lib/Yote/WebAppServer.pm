@@ -156,7 +156,7 @@ sub process_http_request {
 		my $app = Yote::ObjProvider::fetch( "/apps/$app_name" );
 		my $html = $app->get_html();
 		if( $html ) {
-		    print "Content-Type: text/html\n\n$html";		    
+		    print "Content-Type: text/html\n\n$html";
 		} else {
 		    do404();
 		}
