@@ -26,6 +26,7 @@ $.yote.system.util = {
         var app = $.yote.get_app( '/' );
         console.dir( app );
         
+	
 
     }, //embed_editor
 };

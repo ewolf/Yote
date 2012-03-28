@@ -1,0 +1,111 @@
+
+# ----- jan 31 -----------
+
+did the things to do below
+
+# --------------- Things to do ---------->
+
+* add forks, File::Copy, File::Path, File::chmod, DBI, DBD::SQLite to requirements
+* make sure SQLite is created
+* make sure cgi-bin/yote and cgi-bin/yote/yote.cgi have the correct permissions
+* copy example files as well. Maybe to a yote directory off of htdocs.
+* make hello.html into index.html
+* create ec2 image for my instance
+
+
+# ---------------- because of -------------#
+
+jan 30th, 2012 :
+
+  I set up an ec2 instance and tried to cpan Yote, but it did not work all 
+that well. There were a few dependency issues :
+  * fork
+  * File::chmod
+  * DBD::SQLite (due to a lacking DBI)
+  
+
+ after resolving those, yote_server still did not run :
+
+DBI connect('db=/usr/local/yote/SQLite.yote.db','',...) failed: unable to open database file at /usr/local/share/perl/5.10.1/Yote/SQLiteIO.pm line 39
+Creating table objects
+Can't call method "do" on an undefined value at /usr/local/share/perl/5.10.1/Yote/SQLiteIO.pm line 76.
+ at /usr/local/bin/yote_server line 21
+        main::__ANON__('Can\'t call method "do" on an undefined value at /usr/local/s...') called at /usr/local/share/perl/5.10.1/Yote/SQLiteIO.pm line 76
+        Yote::SQLiteIO::init_datastore('Yote::SQLiteIO=HASH(0x9a8d0a0)') called at /usr/local/bin/yote_server line 43
+
+The database was not installed properly
+root@ip-10-243-121-128:~/proj/Yote# file /usr/local/yote
+/usr/local/yote: SQLite 3.x database
+
+after moving the sqlite database, things started up on the yote_server, but not
+the cgi. That had the wrong permissions :
+
+root@ip-10-243-121-128:~/proj/Yote/sample# ls -al /usr/lib/cgi-bin/yote/yote.cgi
+-rw-r--r-- 1 root root 640 2012-01-31 03:39 /usr/lib/cgi-bin/yote/yote.cgi
+
+also the permissions of the subdirectory off of cgi-bin were wrong :
+ls -al /usr/lib/cgi-bin/
+total 28
+drwxr-xr-x  3 root root  4096 2012-01-31 03:39 .
+drwxr-xr-x 73 root root 20480 2012-01-31 03:54 ..
+d---------  2 root root  4096 2012-01-31 03:39 yote
+
+
+The hello example also needed modification to run, but it did run!
+
+
+# ------------ working on --------
+
+# ------------ triage ------------
+
+# ----------- tasks --------------
+
+- management panel server to manage
+    * accounts
+    * apps
+    * statistics (logins,etc)
+
+- panel for creating accounts, logging in and setting personal data.
+
+# --------------------------------
+
+* added login and create account to tests.
+
+Version 0.2 - application service
+    * create forked, sharing variable generic application that can access installed applications
+    * add Yote::Obj::is_parent_of (this will be useful for application security, like providing ownership of objects to application users
+    * Application Service
+         - server that
+           : takes two requests : commands and data requests
+           : runs a polling loop to see if there are commands to apply. 
+
+    * Application Base
+      - provides object 
+
+Version 0.1 - initial verion.
+  This is a base G library that :
+    * connects to a mysql database named sg
+    * Provides the following API
+       - Yote::ObjServ::get_root
+       - new Yote::Obj
+       - $g_obj->save
+       - get_(var) on Yote::Obj instance (root is one)
+       - set_(var) on Yote::Obj instance (root is one)
+    * has a series of unit tests
+
+
+# ---=== test app ===--- #
+ How about a feature idea generator for a first app. It functions in 3 stages
+   - toss in ideas. These are added to a big pool of all ideas
+   - triage ideas. These are added to the hot tub of ideas slated for implementation
+   - implementing ideas - ideas currently underway from the hot tub. This is the kiddy pool.
+
+Version 0.3 - cached G
+
+
+Version 0.4 - configured G with installer
+
+Features needed :
+  * load deep for objects
+  * configuration for databases et all
+  * Caching Service - used by application service on top of the ObjServ

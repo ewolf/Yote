@@ -16,6 +16,7 @@ use CGI;
 use Data::Dumper;
 
 use Yote::AppRoot;
+use Yote::ObjProvider;
 
 use base qw(Net::Server::HTTP);
 use vars qw($VERSION);
@@ -148,14 +149,24 @@ sub process_http_request {
     if( $path[0] eq '_' ) {
 
         # find app or root
-        my $app = $path[1] eq 'r' ? undef : $path[2];
+        my $app_name = $path[1] eq 'r' ? undef : $path[2];
         
         if( $verb eq 'GET' ) {
+	    if( $path[1] eq 'h' ) { #get the human html set up for the app if any
+		my $app = Yote::ObjProvider::fetch( "/apps/$app_name" );
+		my $html = $app->get_html();
+		if( $html ) {
+		    print "Content-Type: text/html\n\n$html";		    
+		} else {
+		    do404();
+		}
+		return;
+	    }
             my $cmd = $path[1] eq 'r' ? 'get_app' : 'fetch';
             my $id = $path[1] eq 'i' ? $path[3] : '/' . join( '/', @path[3..$#path] );
             if( $path[1] eq 'r' ) {
                 $id = '/apps/' . join( '/', @path[2..$#path] );
-                $app = $path[2];
+                $app_name = $path[2];
             }
             #
             # For invoking methods the following is needed :
@@ -163,7 +174,7 @@ sub process_http_request {
             #  * app (contained before id or is the first part of the xpath after apps)
             #
             $command = {
-                a  => $app,
+                a  => $app_name,
                 c  => $cmd,
                 id => $id,
                 t  => $command->{t},
@@ -190,7 +201,7 @@ sub process_http_request {
             my $cmd = pop @path;
             my $id = $path[1] eq 'i' ? $path[2] : '/' . join( '/', @path[3..$#path] );
 
-            $command->{a}  = $app;
+            $command->{a}  = $app_name;
             $command->{c}  = $cmd;
             $command->{id} = $id;
         } # PUT
@@ -198,7 +209,7 @@ sub process_http_request {
             my $id = $path[1] eq 'i' ? $path[3] : '/' . join( '/', @path[3..$#path] );
             my $data = from_json( MIME::Base64::decode($command->{m}) );
             $command = {
-                a  => $app,
+                a  => $app_name,
                 c  => 'update',
                 data  => $data->{data},
                 id => $id,
@@ -209,11 +220,6 @@ sub process_http_request {
         $command->{oi} = $remote_ip;
     } 
     else { #serve html
-
-	# the html is all stored within the Yote app objects themselves.
-	# one file for one app
-	
-
 	    my $root = $self->{args}{webroot};
 	    my $dest = join('/',@path);
 	    if( open( IN, "<$root/$dest" ) ) {
@@ -223,7 +229,7 @@ sub process_http_request {
             }
             close( IN );
 	    } else {
-            print "Content-Type: text/html\n\nERROR :404 ($!,$root/$dest)\n";
+		    do404();
 	    }
 	    return;
     } #serve html
@@ -332,6 +338,10 @@ sub _process_command {
 
     Yote::ObjProvider::disconnect();
 } #_process_command
+
+sub do404 {
+    print "Content-Type: text/html\n\nERROR : 404\n";
+}
 
 1;
 

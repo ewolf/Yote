@@ -4,6 +4,7 @@ use strict;
 
 use Yote::Obj;
 use Yote::SystemObj;
+use Yote::YoteRoot;
 
 use Crypt::Passwd;
 use Email::Valid;

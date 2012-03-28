@@ -55,13 +55,13 @@ my \$s = new Yote::WebAppServer;
 # The order of the config is \@ARGV, \%ENV, ~/.yoterc || ~/.yote/yote.conf || /etc/yote.conf, 
 #
 my \$sqlitefile = "$base/data/SQLite.yote.db";
-my \$html_root = "$base/html";
+my \$webroot = "$base/html";
 unless( -e \$sqlitefile ) {
     my \$sqlite = new Yote::SQLiteIO( sqlitefile => \$sqlitefile );
     \$sqlite->ensure_datastore();
 }
 my( \%config ) = ( port       => $port, 
-		   html_root  => \$html_root,
+		   webroot  => \$webroot,
 		   datastore  => 'Yote::SQLiteIO', 
 		   sqlitefile => \$sqlitefile );
 

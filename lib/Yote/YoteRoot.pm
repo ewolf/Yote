@@ -8,7 +8,7 @@ use strict;
 
 sub init {
     my $self = shift;
-    $self->set_alias({});
+#    $self->set_alias({});
 }
 
 sub alias_to_xpath {
