@@ -5,11 +5,10 @@
  * This module is free software; it can be used under the terms of the artistic license
  *
  * Here are the following public yote calls :
- *  * init           - takes the url of the yote relay cgi and sets it for all yote calls
  *  * reload_all     - reloads all yote objects that are in the yote queue
  *  * create_account - sets the login token
  *  * login          - sets the login token
- *  * fetch_root     - returns a yote object (uses login token)
+ *  * get_root       - returns a yote app object (uses login token)
  *  * methods attached to yote object :
  *    ** reload - refreshes the data of this object with a call to the server
  *    ** get(field) - returns a yote object or a scalar value attached to this yote object (uses login token)
@@ -18,13 +17,7 @@
 $.yote = {
     token:null,
     err:null,
-    url:'/cgi-bin/yote/yote.cgi',
     objs:{},
-
-    init:function(url) {
-        this.url = url;
-        return this;
-    },
 
     reload_all:function() { //reloads all objects
 	    for( id in this.objs ) {
@@ -76,14 +69,15 @@ $.yote = {
 		            o[x.m[m]] = (function(key) {
 			            return function( params, passhandler, failhandler ) {
 			                var ret = root.message( {
+				                async:false,
 				                app:o._app,
-                                id:o.id,
 				                cmd:key,
 				                data:params,
-				                wait:true,
-				                async:false,
 				                failhandler:failhandler,
-				                passhandler:passhandler
+                                id:o.id,
+				                passhandler:passhandler,
+                                verb:'PUT',
+				                wait:true,
 			                } ); //sending message
 
                             //dirty objects that may need a refresh
@@ -146,6 +140,11 @@ $.yote = {
                 }
             }
 
+            // resets staged info
+            o.reset = function() {
+                this._stage = {};
+            }
+
             o.is_dirty = function(field) {
                 return typeof field === 'undefined' ? this._dirty : this._stage[field] !== this._d[field] ;
             }
@@ -164,58 +163,58 @@ $.yote = {
 
             // sends data structure as an update, or uses staged values if no data
             o.send_update = function(data,failhandler,passhandler) {
-                    var to_send = {};
-                    if( this.c === 'Array' ) {                        
-                        to_send = Array();
-                    }
-                    if( typeof data === 'undefined' ) {
-                        for( var key in this._stage ) {
-                            if( this.c === 'Array' ) {
-                                to_send.push( root.untranslate_data(this._stage[key]) );
-                            } else {
-                                to_send[key] = root.untranslate_data(this._stage[key]);
-                            }
-                        }
-                    } else {
-                        for( var key in data ) {
-                            if( this.c === 'Array' ) {
-                                to_send.push( data[key] );
-                            } else {
-                                to_send[key] = data[key];
-                            }
+                var to_send = {};
+                if( this.c === 'Array' ) {                        
+                    to_send = Array();
+                }
+                if( typeof data === 'undefined' ) {
+                    for( var key in this._stage ) {
+                        if( this.c === 'Array' ) {
+                            to_send.push( root.untranslate_data(this._stage[key]) );
+                        } else {
+                            to_send[key] = root.untranslate_data(this._stage[key]);
                         }
                     }
-                    var needs = 0;
-                    for( var key in to_send ) { 
-                        needs = 1;
+                } else {
+                    for( var key in data ) {
+                        if( this.c === 'Array' ) {
+                            to_send.push( data[key] );
+                        } else {
+                            to_send[key] = data[key];
+                        }
                     }
-                    if( needs == 0 ) { return; }
-
-                    root.message( {
-                        app:this._app,
-                        cmd:'update',
-                        data:{ id:this.id, 
-                               d:to_send },
-                        wait:true,
-                        async:false,
-                        failhandler:function() {
-                            if( typeof failhandler === 'function' ) {
-                                failhandler();
+                }
+                var needs = 0;
+                for( var key in to_send ) { 
+                    needs = 1;
+                }
+                if( needs == 0 ) { return; }
+                
+                root.message( {
+                    app:this._app,
+                    async:false,
+                    data:to_send,
+                    failhandler:function() {
+                        if( typeof failhandler === 'function' ) {
+                            failhandler();
+                        }
+                    },        
+                    id:this.id,
+                    passhandler:(function(td) {
+                        return function() {
+                            for( var key in td ) {
+                                o._d[key] = root.translate_data(td[key]);
                             }
-                        },
-                        passhandler:(function(td) {
-                            return function() {
-                                for( var key in td ) {
-                                    this._d[key] = root.translate_data(td[key]);
-                                }
-                                this._stage = {};
-                                if( typeof passhandler === 'function' ) {
-                                    passhandler();
-                                }
+                            o._stage = {};
+                            if( typeof passhandler === 'function' ) {
+                                passhandler();
                             }
-                        } )(to_send)
-                    } );
-            }
+                        }
+                    } )(to_send),
+                    verb:'POST',
+                    wait:true 
+                } );
+            };
 
 	        if( (0 + x.id ) > 0 ) {
 		        root.objs[x.id] = o;
@@ -224,6 +223,11 @@ $.yote = {
                         root.objs[thid] = null;
 			            var replace = root.fetch_obj( thid, tapp );
 			            this._d = replace._d;
+                        for( fld in this._d ) {
+                            if( typeof this['get_' + fld] !== 'function' ) {
+                                this['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+                            }
+                        }
 			            root.objs[thid] = this;
 			            return this;
 		            }
@@ -243,59 +247,43 @@ $.yote = {
         }
         this.message( {
             app:app,
+            async:false,
             cmd:'multi_fetch',
             data:{ ids:to_fetch },
-            wait:true,
-            async:false,
             passhandler:function(data) {
                 for( var key in data.r ) {
                     root.create_obj( data.r[key] );
                 }
-            }
+            },
+            verb:'PUT',
+            wait:true,
         } );
     }, //multi_fetch_obj
 
-    fetch_obj:function(id,app) {
+    fetch_obj:function(id,app,passhandler,failhandler ) {
 	    if( this.is_in_cache( id ) ) {
 	        return this.objs[id];
 	    }
 	    return this.create_obj( this.message( {
+            async:false,
 	        app:app,
-	        cmd:'fetch',
-	        data:{ id:id },
+            failhandler:failhandler,
+	        id:id,
+            passhandler:passhandler,
+            verb:'GET',
 	        wait:true,
-	        async:false
 	    } ).r, app );
     }, //fetch_obj
 
-    fetch_root:function( passhandler, failhandler ) {
-        var res = this.message( {
-	        cmd:'fetch_root',
-	        wait:true,
-	        async:false,
-            failhandler:failhandler,
-            passhandler:passhandler
-	    } );
-        if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
-            return undefined;
-        } 
-	    return this.create_obj(  res.r );	
-    }, //get_root
-
     get_app:function( appname,passhandler,failhandler ) {
-        var res = this.message( {
-	        app:appname,
-	        cmd:'fetch_root',
-	        data:{ app:appname },
-	        wait:true,
-	        async:false,
+	    return this.create_obj( this.message( {
+            async:false,
             failhandler:failhandler,
-            passhandler:passhandler
-	    } );
-        if( typeof res === 'undefined' || typeof res.r === 'undefined' ) {
-            return undefined;
-        } 
-	    return this.create_obj(  res.r, appname );
+	        id:appname,
+            passhandler:passhandler,
+            verb:'GET',
+	        wait:true,
+	    } ).r, appname );
     },
 
     logout:function() {
@@ -324,14 +312,15 @@ $.yote = {
     verify_token:function( token ) {
         var root = this;
         var ans = this.message( {
+            async:false,
             cmd:'verify_token',
             data:{
                 t:token
             },
+            failhandler:root.error,
             wait:true,
-            async:false,
             passhandler:function(data) {},
-            failhandler:root.error
+            verb:'PUT',
         } );
         if( typeof ans === 'object' && ans.r ) {
             root.token = token;
@@ -345,13 +334,13 @@ $.yote = {
     login:function( un, pw, passhandler, failhandler ) {
 	    var root = this;
 	    this.message( {
+            async:false,
             cmd:'login', 
             data:{
                 h:un,
                 p:pw
             },
-            wait:true, 
-            async:false,
+            failhandler:failhandler,
             passhandler:function(data) {
 	            root.token = data.t;
 		        root.acct = root.create_obj( data.a, root );
@@ -360,26 +349,28 @@ $.yote = {
 		            passhandler(data);
 		        }
 	        },
-            failhandler:failhandler
+            verb:'PUT',
+            wait:true, 
         } );
     }, //login
 
     // generic server type error
     error:function(msg) {
-        console.dir( "a server side error has occurred : " + msg );
+        console.dir( "a server side error has occurred" );
+        console.dir( msg );
     },
     
     create_account:function( un, pw, em, passhandler, failhandler ) {
 	    var root = this;
         this.message( {
+            async:false,
             cmd:'create_account', 
             data:{
                 h:un,
                 p:pw,
                 e:em
             },
-            wait:true, 
-            async:false,
+            failhandler:failhandler,
             passhandler:function(data) {
 	            root.token = data.t;
 		        root.acct = root.create_obj( data.a, root );
@@ -388,59 +379,61 @@ $.yote = {
 		            passhandler(data);
 		        }
 	        },
-            failhandler:failhandler
+            verb:'PUT',
+            wait:true, 
         } );
     }, //create_account
 
     recover_password:function( em, from_url, to_url, passhandler, failhandler ) {
 	    var root = this;
         this.message( {
+            async:false,
             cmd:'recover_password', 
             data:{
 		        e:em,
 		        u:from_url,
                 t:to_url
             },
-            wait:true, 
-            async:false,
+            failhandler:failhandler,
 	        passhandler:passhandler,
-            failhandler:failhandler
         } );
     }, //recover_password
 
     reset_password:function( token, newpassword, passhandler, failhandler ) {
 	    var root = this;
         this.message( {
+            async:false,
             cmd:'reset_password', 
             data:{
 		        t:token,
 		        p:newpassword	
             },
-            wait:true, 
-            async:false,
+            failhandler:failhandler,
 	        passhandler:passhandler,
-            failhandler:failhandler
+            verb:'PUT',
+            wait:true, 
         } );
     }, //reset_password
     
     remove_account:function( un, pw, em, passhandler, failhandler ) {
 	    var root = this;
         this.message( {
+            async:false,
             cmd:'remove_account', 
             data:{
                 h:un,
                 p:pw,
                 e:em
             },
-            wait:true, 
-            async:false,
+            failhandler:failhandler,
             passhandler:function(data) {
 	            root.token = data.t;
 		        if( typeof passhandler === 'function' ) {
 		            passhandler(data);
 		        }
 	        },
-            failhandler:failhandler
+            verb:'PUT',
+            wait:true, 
         } );
     }, //remove_account
 
@@ -486,28 +479,48 @@ $.yote = {
 
     /* general functions */
     message:function( params ) {
-        var root = this;
-        var data = root.translate_data( params.data );
-	    //        console.dir( "to send " + $.dump({ d:data, c:params.cmd }) );
-        async = params.async == true ? 1 : 0;
-	    wait  = params.wait  == true ? 1 : 0;
+        var root  = this;
+        var data  = root.translate_data( params.data || {} );
+        var async = params.async == true ? 1 : 0;
+	    var wait  = params.wait  == true ? 1 : 0;
+        var url   = params.url;
+        var verb  = params.verb;
+        var app   = params.app;
+        var cmd   = params.cmd;
+        var id    = params.id; //id to act on
+
         if( async == 0 ) {
             root.disable();
         }
+        var url = '/_';
+        if( typeof app === 'undefined' ) {
+            url = url + '/r';
+            if( verb == 'GET' ) {
+                url = url + '/' + id;
+            }
+        } else if( 0 + id > 0 ) {
+            url = url + '/i/' + app + '/' + id;
+        } else {
+            url = url + '/o/' + app + '/' + id;
+        }
+        if( typeof cmd !== 'undefined' ) {
+            url = url + '/' + cmd;
+        }
+
+        var put_data = {
+            a:app,
+            data:data,
+            t:root.token,
+            w:wait
+        };
 	    var resp;
 	    $.ajax( {
 	        async:async,
 	        data:{
-		        m:$.base64.encode(JSON.stringify( {
-		            a:params.app,
-		            c:params.cmd,
-		            d:data,
-                    id:params.id,
-		            t:root.token,
-		            w:wait
-		        } ) ) },
+		        m:$.base64.encode(JSON.stringify( put_data ) )
+            },
 	        dataFilter:function(a,b) {
-		        //                console.dir('incoming ' + a );
+		        console.dir('incoming '); console.dir( a );
 		        return a; 
 	        },
 	        error:function(a,b,c) { root.error(a); },
@@ -534,8 +547,8 @@ $.yote = {
                     console.dir( "Success reported but no response data received" );
                 }
 	        },
-	        type:'POST',
-	        url:root.url
+	        type:verb,
+	        url:url
 	    } );
         if( async == 0 ) {
             root.reenable();

@@ -3,7 +3,7 @@ package Yote::AppRoot;
 use strict;
 
 use Yote::Obj;
-use Yote::AccountRoot;
+use Yote::SystemObj;
 
 use Crypt::Passwd;
 use Email::Valid;
@@ -14,7 +14,7 @@ use vars qw($VERSION);
 
 $VERSION = '0.01';
 
-use base 'Yote::Obj';
+use base 'Yote::SystemObj';
 
 sub _on_load {
     my $self = shift;
@@ -30,7 +30,7 @@ sub account_root {
     my $acct_roots = $self->get_account_roots({});
     my $root = $acct_roots->{$acct->{ID}};
     unless( $root ) {
-        $root = new Yote::AccountRoot;
+        $root = new Yote::SystemObj;
         $root->set_account( $acct );
         $acct_roots->{$acct->{ID}} = $root;
     }
@@ -54,10 +54,9 @@ sub account_root {
 # either c or i must be given
 sub _process_command {
     my( $root, $cmd ) = @_;
-
     my $command = $cmd->{c};
 
-    my $data = _translate_data( $cmd->{d} );
+    my $data = _translate_data( $cmd->{data} );
 
     #
     # this will not process private (beginning with _) commands,
@@ -72,7 +71,7 @@ sub _process_command {
         return _login( $data, $cmd->{oi} );
     }
     elsif( $command eq 'verify_token' ) {
-        return { r => fetch_root()->_obj_to_response(_valid_token( $data->{t}, $cmd->{oi} ) ) };
+        return { r => _fetch_root()->_obj_to_response(_valid_token( $data->{t}, $cmd->{oi} ) ) };
     }
     elsif( $command eq 'remove_account' ) {
         return $root->_remove_account( $data, $acct );
@@ -84,24 +83,24 @@ sub _process_command {
         return $root->_reset_password( $data );
     }
     elsif( $command eq 'check_cron' ) {
-	if( $cmd->{cron_id} == $Yote::WebAppServer::cron_id  ) {
-	    my $cron_pkg = $root->get_cron_package('Yote::Cron');
+        if( $cmd->{cron_id} == $Yote::WebAppServer::cron_id  ) {
+            my $cron_pkg = $root->get_cron_package('Yote::Cron');
             my $app = $root->get_apps({})->{$cron_pkg};
-	    unless( $app ) {
+            unless( $app ) {
                 eval( "use $cron_pkg" );
                 if( $@ =~ /Can.t locate/ ) {
-		    print STDERR Data::Dumper->Dump(["No Cron Found"]);
+                    print STDERR Data::Dumper->Dump(["No Cron Found"]);
                     return { err => "App '$a' not found" };
                 }
                 my $apps = $root->get_apps();
                 $app = $cron_pkg->new;
                 $apps->{$cron_pkg} = $app;		
-	    }
-	    $app->check_cron();
-	}
+            }
+            $app->check_cron();
+        }
     }
     else {
-        my $appstr = $command eq 'fetch_root' && ref($data) ? $data->{app} : $cmd->{a};
+        my $appstr = $cmd->{a};
         my $app;
         if( $appstr ) {
             
@@ -122,24 +121,25 @@ sub _process_command {
             $app = $root;
         }            
 
-        if( $command eq 'fetch_root' ) {
-            return _fetch( $app, { id => $app->{ID} }, $acct );
+        if( $command eq 'get_app' ) {
+            my $x =  _fetch( $app, $app->{ID}, $acct );
+            return $x;
         }
         elsif( $command eq 'fetch' ) {
-            return _fetch( $app, { id => $data->{id} }, $acct );
+            return _fetch( $app, $cmd->{id}, $acct );
         }
         elsif( $command eq 'multi_fetch' ) {
             return _multi_fetch( $app, { ids => $data->{ids} }, $acct );
         }
         elsif( $command eq 'update' ) {
-            my $obj = Yote::ObjProvider::fetch( $data->{id} );
-            if( $obj && $app->_stow_permitted( $data->{d} ) ) {
+            my $obj = Yote::ObjProvider::fetch( $cmd->{id} );
+            if( $obj && $app->_stow_permitted( $data ) ) {
                 if( ref( $obj ) eq 'ARRAY' ) {
-                    @{$obj} = values %{$data->{d}};
+                    @{$obj} = values %{$data};
                 } elsif( ref( $obj ) eq 'HASH' ) {
-                    %{$obj} = map { $_ => $data->{d}{$_} } keys %{$data->{d}};
+                    %{$obj} = map { $_ => $data->{$_} } keys %{$data};
                 } else {
-                    $obj->absorb( $data->{d} );
+                    $obj->_absorb( $data );
                 }
                 return { msg => "updated" };
             }
@@ -159,12 +159,6 @@ sub _process_command {
     }
 } #_process_command
 
-# this makes the account root visible to javascript, which will have easier access to its methods.
-sub fetch_account_root {
-    my( $self, $data, $acct_root, $acct ) = @_;
-    return  { r => $acct_root };
-}
-
 sub _translate_data {
     my $val = shift;
 
@@ -181,15 +175,15 @@ sub _translate_data {
 #
 sub _allows { 
     my( $app, $command, $data, $acct, $obj ) = @_;
-    return 0 if index( $command, '_' ) == 0 || $command eq 'absorb';
+    return 0 if index( $command, '_' ) == 0 || $app->{ID} == 1;
     return 1;
 }
 
 #
 # Fetch master root singleton object.
 #
-sub fetch_root {
-    return Yote::ObjProvider::fetch( 1 ) || new Yote::AppRoot();
+sub _fetch_root {
+    return Yote::ObjProvider::fetch( 1 ) || new Yote::YoteRoot();
 }
 
 sub _valid_token {
@@ -207,7 +201,7 @@ sub _recover_password {
     my $email = $args->{e};
     my $from_url = $args->{u};
     my $to_reset = $args->{t};
-    my $acct = $root->get_emails({})->{$email};
+    my $acct = Yote::ObjProvider::xpath( "/emails/$email" );
     if( $acct ) {
         my $now = time();
         if( $now - $acct->get_last_recovery_time() > (60*15) ) { #need to wait 15 mins
@@ -302,6 +296,8 @@ sub _create_account {
         #
         if( Yote::ObjProvider::xpath_count( "/handles" ) == 0 ) {
             $newacct->set_is_root( 1 );
+        } else {
+            $newacct->set_is_root( 0 );
         }
         $newacct->set_handle( $handle );
         $newacct->set_email( $email );
@@ -336,7 +332,7 @@ sub _create_token {
 sub _login {
     my( $data, $ip ) = @_;
     if( $data->{h} ) {
-        my $root = fetch_root();
+        my $root = _fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq _encrypt_pass( $data->{p}, $acct) ) ) {
             return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
@@ -355,18 +351,19 @@ sub _encrypt_pass {
 # Takes two args : object to be fetched and data of request.
 #
 sub _fetch_permitted {
-    my( $obj, $data ) = @_;
+    my( $obj, $id ) = @_;
     return 1;
 }
 
 
 #
-# Returns if the stow is allowed to proceed. Meant to override. Default is true.
+# Returns if the stow is allowed to proceed. Meant to override. 
+#     Default is true for anything not a system object (like app or account)
 # Takes two args : object to be stowed and data of request.
 #
 sub _stow_permitted {
     my( $obj, $data ) = @_;
-    return 1;
+    return $obj && $obj->isa( "Yote::SystemObj" );
 }
 
 #
@@ -375,17 +372,17 @@ sub _stow_permitted {
 #   d - key value data, where value can be a referece (is a number) or a scalar (is prepended with 'v' )
 #
 sub _fetch {
-    my( $app, $data, $acct ) = @_;
-    if( $data->{id} ) {
-        my $obj = Yote::ObjProvider::fetch( $data->{id} );
+    my( $app, $id, $acct ) = @_;
+    if( $id ) {
+        my $obj = Yote::ObjProvider::fetch( $id );
         if( $obj &&
             Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-            $app->_fetch_permitted( $obj, $data ) )
+            $app->_fetch_permitted( $obj, $id ) )
         {
             return { r => $app->_obj_to_response( $obj ) };
         }
     }
-    return { err => "Unable to fetch $data->{id}" };
+    return { err => "Unable to fetch $id" };
 } #_fetch
 
 
@@ -402,7 +399,7 @@ sub _multi_fetch {
             my $obj = Yote::ObjProvider::fetch( $id );
             if( $obj &&
                 Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-                $app->_fetch_permitted( $obj, $data ) )
+                $app->_fetch_permitted( $obj, $id ) )
             {
                 $ret{$id} = $app->_obj_to_response( $obj );
             }
@@ -478,7 +475,7 @@ sub _obj_to_response {
             return $use_id if $xform_out;
             $d = $to_convert->{DATA};
             no strict 'refs';
-            $m = [ grep { $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|fetch_root|import|init|isa|new|absorb)$/ } keys %{"${ref}\::"} ];
+            $m = [ grep { $_ && $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|import|init|isa|new)$/ } keys %{"${ref}\::"} ];
             use strict 'refs';
         }
         return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
@@ -507,7 +504,7 @@ Each Web Application has a single container object as the entry point to that ob
 
 =over 4
 
-=item fetch_root - returns the master root object.
+=item _fetch_root - returns the master root object.
 
 The master root object contains all web application roots. It is an AppRoot object.
 

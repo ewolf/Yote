@@ -18,7 +18,7 @@ $VERSION = '0.01';
 # need subs to return : scalars, lists, hashes, g-objects
 #
 
-sub get_scalar {
+sub scalar {
     my( $self, $data, $acct_root, $acct ) = @_;
     return "BEEP";
 }

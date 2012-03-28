@@ -35,15 +35,11 @@ sub init {
     eval("use $ds");
     die $@ if $@;
     $DATASTORE = $ds->new( $args );
+    $DATASTORE->ensure_datastore();
     my $cache = $args->{cache} || 'Yote::Cache';
-#    $cache = 'Yote::Test::DummyCache';
     eval("use $cache");
     $CACHE = $cache->new( $args );
 } #init
-
-sub init_datastore {
-    return $DATASTORE->init_datastore(@_);
-} #init_datastore
 
 sub connect {
     return $DATASTORE->connect();
@@ -56,10 +52,6 @@ sub disconnect {
 sub xpath {
     my $path = shift;
     return xform_out( $DATASTORE->xpath( $path ) );
-}
-
-sub commit {
-    $DATASTORE->commit();
 }
 
 sub xpath_count {
@@ -119,39 +111,44 @@ sub power_clone {
 } #power_clone
 
 sub fetch {
-    my( $id ) = @_;
+    my( $id_or_xpath ) = @_;
+
+    if( $id_or_xpath && $id_or_xpath == 0 ) {
+	#assume xpath
+	return xpath( $id_or_xpath );
+    }
 
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $CACHE->fetch($id) || $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
+    my $ref = $CACHE->fetch($id_or_xpath) || $Yote::ObjProvider::DIRTY->{$id_or_xpath} || $Yote::ObjProvider::WEAK_REFS->{$id_or_xpath};
     return $ref if $ref;
 
-    my $obj_arry = $DATASTORE->fetch( $id );
+    my $obj_arry = $DATASTORE->fetch( $id_or_xpath );
 
     if( $obj_arry ) {
-        my( $id, $class, $data ) = @$obj_arry;
+        my( $id_or_xpath, $class, $data ) = @$obj_arry;
         given( $class ) {
             when('ARRAY') {
                 my( @arry );
-                tie @arry, 'Yote::Array', $id, @$data;
+                tie @arry, 'Yote::Array', $id_or_xpath, @$data;
                 my $tied = tied @arry; $tied->[2] = \@arry;
-                store_weak( $id, \@arry );
+                store_weak( $id_or_xpath, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
+                tie %hash, 'Yote::Hash', $id_or_xpath, map { $_ => $data->{$_} } keys %$data;
                 my $tied = tied %hash; $tied->[2] = \%hash;
-                store_weak( $id, \%hash );
+                store_weak( $id_or_xpath, \%hash );
                 return \%hash;
             }
             default {
                 eval("require $class");
-                my $obj = $class->new( $id );
+                my $obj = $class->new( $id_or_xpath );
                 $obj->{DATA} = $data;
-                $obj->{ID} = $id;
-                store_weak( $id, $obj );
+                $obj->{ID} = $id_or_xpath;
+                store_weak( $id_or_xpath, $obj );
                 return $obj;
             }
         }

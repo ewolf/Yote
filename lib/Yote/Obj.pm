@@ -42,7 +42,7 @@ sub size {
 #
 # Takes the entire key/value pairs of data as field/value pairs attached to this.
 #
-sub absorb {
+sub _absorb {
     my $self = shift;
     my $data = ref( $_[0] ) ? $_[0] : { @_ };
     for my $fld (keys %$data) {
@@ -51,7 +51,7 @@ sub absorb {
         $self->{DATA}{$fld} = $inval;
     } #each field
     return undef;
-} #absorb
+} #_absorb
 
 
 # returns true if the object passsed in is the same as this one.

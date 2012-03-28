@@ -39,8 +39,9 @@ sub database {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile};
+    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/use/local/yote/data';
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
+    $self->{file} = $file;
 } #connect
 
 
@@ -49,27 +50,22 @@ sub disconnect {
     $self->{DBH}->disconnect();
 } #disconnect
 
-sub commit {
-    #dummy for sqlite singlethread
-}
-
-
-sub init_datastore {
+sub ensure_datastore {
     my $self = shift;
 
     my %definitions = (
-        field => q~CREATE TABLE field (
+        field => q~CREATE TABLE IF NOT EXISTS field (
                    obj_id INTEGER NOT NULL,
                    field varchar(300) DEFAULT NULL,
                    ref_id INTEGER DEFAULT NULL,
                    value varchar(1025) DEFAULT NULL );
                    CREATE INDEX obj_id field;
                    CREATE INDEX ref_id field;~,
-        big_text => q~CREATE TABLE big_text (
+        big_text => q~CREATE TABLE IF NOT EXISTS big_text (
                        obj_id INTEGER NOT NULL,
                        text text
                       ); CREATE INDEX obj_id big_text;~,
-        objects => q~CREATE TABLE objects (
+        objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
                      class varchar(255) DEFAULT NULL
                       )~
@@ -78,7 +74,11 @@ sub init_datastore {
 	print STDERR "Creating table $table\n";
 	$self->{DBH}->do( $definitions{$table} );
     }
-} #init_datastore
+} #ensure_datastore
+
+sub reset_datastore {
+    my $self = shift;
+} #reset_datastore
 
 #
 # Returns the number of entries in the data structure given.

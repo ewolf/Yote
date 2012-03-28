@@ -1,11 +1,12 @@
 <html>
   <head>
     <title>Yote</title>
-    <script src="/js/jquery-latest.js"></script>
-    <script src="/js/jquery.dumper.js"></script>
-    <script src="/js/jquery.base64.min.js"></script>
-    <script src="/js/json2.js"></script>
-    <script src="/js/yote/yote.js"></script>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+    <script src="/yote/js/yote.js"></script>
     <script>
     $().ready(function(){
         
@@ -38,13 +39,15 @@
 Code server side, use client side.
 <HR>
 <H2>What is Yote</H2>
-<P>Yote is a perl library and server and javascript library that designed for
-rapid development of web applications. 
+<P>Yote is a web application server, 
+a set of perl libraries and a set of javascript libraries.</p>
+
+<P>It is designed for rapid development of web applications. </P>
 <P>
 Yote Provides :
   <ul>
     <li>Javascript objects bound to server objects</li>
-    <li>Automatic persistance</li>
+    <li>Automatic Object persistance</li>
     <li>Arbitrarily complex object mapping</li>
     <li>Account authentication with encrypted passwords</li>
     <li>Access control for methods and objects</li>
@@ -186,7 +189,7 @@ sub add_riddle {
     my( $self,      # This singleton AppRoot object. 
                     # It lives in /apps/Yote::Sample::SecretCollect
                     # Calling 
-                    #   var app = $.yote.fetch_root('Yote::Sample::SecretCollect');
+                    #   var app = $.yote.get_app('Yote::Sample::SecretCollect');
                     #   on the client side will return only this instance.
         
         $data,      # The data structure sent by the client.

@@ -41,7 +41,6 @@ Yote::ObjProvider::init(
     sqlitefile     => $name,
     );
 my $db = $Yote::ObjProvider::DATASTORE->database();
-$Yote::ObjProvider::DATASTORE->init_datastore();
 test_suite( $db );
 
 done_testing();
@@ -65,7 +64,7 @@ sub test_suite {
 #                                      #
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 0, "number of objects before save root" );
-    my $root = Yote::AppRoot::fetch_root();
+    my $root = Yote::AppRoot::_fetch_root();
     ok( $root->{ID} == 1, "Root has id of 1" );
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 1, "number of objects after save root" ); # which also makes an account root automiatcially";
@@ -95,16 +94,16 @@ sub test_suite {
     is( scalar(@$db_rows), 11, "Number of db rows saved to database" ); #Big counts as obj
 
 
-    my $root_clone = Yote::AppRoot::fetch_root();
+    my $root_clone = Yote::AppRoot::_fetch_root();
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->account_root() ), 'Yote::AccountRoot', '2nd level yote object' );
+    is( ref( $root_clone->account_root() ), 'Yote::SystemObj', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
 
 
     is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->account_root() ), 'Yote::AccountRoot', '2nd level yote object  (original root after save)' );
+    is( ref( $root->account_root() ), 'Yote::SystemObj', '2nd level yote object  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 
@@ -252,7 +251,7 @@ sub test_suite {
     $simple_hash->{BZAZ} = [ "woof", "bOOf" ];
     Yote::ObjProvider::stow_all();
 
-    my $root_2 = Yote::AppRoot::fetch_root();
+    my $root_2 = Yote::AppRoot::_fetch_root();
     my( %simple_hash ) = %{$root_2->get_hash()};
     delete $simple_hash{__ID__};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE","FOO" => "bar", BZAZ => [ "woof", "bOOf" ]}, "Simple hash after reload" );
@@ -281,7 +280,7 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
-    my $root_3 = Yote::AppRoot::fetch_root();
+    my $root_3 = Yote::AppRoot::_fetch_root();
     is_deeply( $root_3, $root, "recursive data structure" );
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
@@ -297,7 +296,7 @@ sub test_suite {
     $simple_array = $root_3->get_array();
     is( scalar(@$simple_array), 2, "add_to test array count after second remove" );
 
-    my $root_4 = Yote::AppRoot::fetch_root();
+    my $root_4 = Yote::AppRoot::_fetch_root();
 
 
     # test shallow and deep clone.
@@ -355,13 +354,13 @@ sub test_suite {
 # ------------- app serv tests ------------#
 #
 #                                          #
-    my $root = Yote::AppRoot::fetch_root();
+    my $root = Yote::AppRoot::_fetch_root();
     my $res = $root->_process_command( { c => 'foo' } );
     Yote::ObjProvider::stow_all();
     like( $res->{err}, qr/not found for app/i, "received error with bad command name" );
     like( $root->_process_command( { c => 'create_account'  } )->{err}, qr/no handle|password required/i, "no handle or password given for create account" );
-    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err}, qr/password required/i, "no password given for create account : " . $root->_process_command( { c => 'create_account', d => {h => 'vroot'}  } )->{err} );
-    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
+    like( $root->_process_command( { c => 'create_account', data => {h => 'vroot'}  } )->{err}, qr/password required/i, "no password given for create account : " . $root->_process_command( { c => 'create_account', data => {h => 'vroot'}  } )->{err} );
+    like( $root->_process_command( { c => 'create_account', data => {h => 'vroot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{r}, qr/created/i, "create account for root account" );
     Yote::ObjProvider::stow_all();
     my $root_acct = Yote::ObjProvider::xpath("/handles/root");
     unless( $root_acct ) {
@@ -374,22 +373,22 @@ sub test_suite {
     isnt( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
     ok( $root_acct->get_is_root(), 'first account is root' );
 
-    like( $root->_process_command( { c => 'create_account', d => {h => 'vroot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
-    like( $root->_process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
-    like( $root->_process_command( { c => 'create_account', d => {h => 'vtoot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{r}, qr/created/i, "second account created" );
+    like( $root->_process_command( { c => 'create_account', data => {h => 'vroot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{err}, qr/handle already taken/i, "handle already taken" );
+    like( $root->_process_command( { c => 'create_account', data => {h => 'vtoot', p => 'vtoor', e => 'vfoo@bar.com' }  } )->{err}, qr/email already taken/i, "email already taken" );
+    like( $root->_process_command( { c => 'create_account', data => {h => 'vtoot', p => 'vtoor', e => 'vbaz@bar.com' }  } )->{r}, qr/created/i, "second account created" );
     my $acct = Yote::ObjProvider::xpath("/handles/toot");
     ok( ! $acct->get_is_root(), 'second account not root' );
 
 # ------ hello app test -----
-    my $t = $root->_process_command( { c => 'login', d => { h => 'vtoot', p => 'vtoor' } } );
+    my $t = $root->_process_command( { c => 'login', data => { h => 'vtoot', p => 'vtoor' } } );
     ok( $t->{t}, "logged in with token $t->{t}" );
-    is( $root->_process_command( { a => 'Yote::Test::Hello', c => 'hello', d => { name => 'vtoot' }, t => $t->{t} } )->{r}, "vhello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
+    is( $root->_process_command( { a => 'Yote::Test::Hello', c => 'hello', data => { name => 'vtoot' }, t => $t->{t} } )->{r}, "vhello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
     my $as = new Yote::WebAppServer;
     ok( $as, "Yote::WebAppServer compiles" );
 
 
     my $ta = new Yote::Test::TestAppNeedsLogin();
-    my $aaa = $ta->get_array();
+    my $aaa = $ta->array();
     my $resp = $ta->_obj_to_response( $aaa );
 
     is( $resp->{d}->[0], 'vA', 'fist el' );
@@ -413,7 +412,7 @@ sub test_suite {
     is( Yote::ObjProvider::xpath("/foo/1"), "array", "xpath with array" );
     is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
 
-    $root->_process_command( { c => 'fetch_root', a =>'Yote::Test::TestAppNeedsLogin' } );
+    $root->_process_command( { c => 'get_app', a =>'Yote::Test::TestAppNeedsLogin' } );
     Yote::ObjProvider::stow_all();
     my $app = Yote::ObjProvider::xpath( '/apps/Yote::Test::TestAppNeedsLogin' );
     $app->add_to_azzy( "A","B","C","D");

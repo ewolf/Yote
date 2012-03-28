@@ -30,7 +30,7 @@ sub add_riddle {
     my( $self,      # This singleton AppRoot object. 
                     # It lives in /apps/Yote::Sample::SecretCollect
                     # Calling 
-                    # "var app = $.yote.fetch_root('Yote::Sample::SecretCollect');"
+                    # "var app = $.yote.get_app('Yote::Sample::SecretCollect');"
                     #   on the client side will return only this instance.
         
         $data,      # The data structure sent by the client.
