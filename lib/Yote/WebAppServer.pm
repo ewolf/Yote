@@ -77,14 +77,14 @@ sub loop_cron {
     my $self = shift;
     
     while(1) {
-	sleep(60);
-	{
-	    lock( @commands );
-	    my $rnd = int( 10000 * rand() );
-	    $cron_id = $rnd;
-	    push( @commands, [ { c => 'check_cron', cron_id => $rnd },$$] );
-	    print STDERR Data::Dumper->Dump(["Adding Cron Check command"]);
-	}
+        sleep(60);
+        {
+            lock( @commands );
+            my $rnd = int( 10000 * rand() );
+            $cron_id = $rnd;
+            push( @commands, [ { c => 'check_cron', cron_id => $rnd },$$] );
+            print STDERR Data::Dumper->Dump(["Adding Cron Check command"]);
+        }
     }
 
 } #loop_cron
@@ -152,17 +152,17 @@ sub process_http_request {
         my $app_name = $path[1] eq 'r' ? undef : $path[2];
         
         if( $verb eq 'GET' ) {
-	    if( $path[1] eq 'h' ) { #get the human html set up for the app if any
-		my $app = Yote::ObjProvider::fetch( "/apps/$app_name" );
-		my $html = $app->get_html();
-		if( $html ) {
-		    print "Content-Type: text/html\n\n$html";
-		} else {
-		    do404();
-		}
-		return;
-	    }
-            my $cmd = $path[1] eq 'r' ? 'get_app' : 'fetch';
+            if( $path[1] eq 'h' ) { #get the human html set up for the app if any
+                my $app = Yote::ObjProvider::fetch( "/apps/$app_name" );
+                my $html = $app->get_html();
+                if( $html ) {
+                    print "Content-Type: text/html\n\n$html";
+                } else {
+                    do404();
+                }
+                return;
+            }
+            my $cmd = $path[1] eq 'r' ? 'fetch_app' : 'fetch';
             my $id = $path[1] eq 'i' ? $path[3] : '/' . join( '/', @path[3..$#path] );
             if( $path[1] eq 'r' ) {
                 $id = '/apps/' . join( '/', @path[2..$#path] );
@@ -200,8 +200,13 @@ sub process_http_request {
             }
             my $cmd = pop @path;
             my $id = $path[1] eq 'i' ? $path[2] : '/' . join( '/', @path[3..$#path] );
+	    if( $path[1] eq 'r' ) {
+		$id = undef;
+	    }
 
-            $command->{a}  = $app_name;
+            if( $path[1] ne 'r' ) {
+                $command->{a}  = $app_name;
+            }
             $command->{c}  = $cmd;
             $command->{id} = $id;
         } # PUT
@@ -223,7 +228,12 @@ sub process_http_request {
 	    my $root = $self->{args}{webroot};
 	    my $dest = join('/',@path);
 	    if( open( IN, "<$root/$dest" ) ) {
-            print "Content-Type: text/html\n\n";
+		if( $dest =~ /^yote\/js/ ) {
+		    print "Content-Type: text/javascript\n\n";
+		}
+		else {
+		    print "Content-Type: text/html\n\n";
+		}
             while(<IN>) {
                 print $_;
             }
@@ -318,22 +328,24 @@ sub _process_command {
     eval {
         my $root = Yote::AppRoot::_fetch_root();
         my $ret  = $root->_process_command( $command );
-        $resp = to_json($ret);
+        $resp = $ret;
         Yote::ObjProvider::stow_all();
     };
-    $resp ||= to_json({ err => $@ });
+    $resp ||= { err => $@ };
+    $resp->{r} ||= '';
+    $resp = to_json( $resp );
 
     #
     # Send return value back to the caller if its waiting for it.
     #
     if( $wait ) {
-	lock( %prid2wait );
-	{
-	    lock( %prid2result );
-	    $prid2result{$procid} = $resp;
-	}
-	delete $prid2wait{$procid};
-	cond_broadcast( %prid2wait );
+        lock( %prid2wait );
+        {
+            lock( %prid2result );
+            $prid2result{$procid} = $resp;
+        }
+        delete $prid2wait{$procid};
+        cond_broadcast( %prid2wait );
     }
 
     Yote::ObjProvider::disconnect();
@@ -357,16 +369,7 @@ use Yote::WebAppServer;
 
 my $server = new Yote::WebAppServer();
 
-$server->start_server( port =E<gt> 8008,
-
-=over 32
-
-		       datastore => 'Yote::MysqlIO',
-		       db => 'yote_db',
-		       uname => 'yote_db_user',
-		       pword => 'yote_db-password' );
-
-=back
+$server->start_server();
 
 =head1 DESCRIPTION
 

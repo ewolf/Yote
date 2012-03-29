@@ -67,7 +67,7 @@ Using Yote
            <script src="./js/yote.js"></script>
            <script>
 	       /* Get the account root singleton object. */
-               var hello_app = $.gServ.get_app( 'Yote::Hello' );
+               var hello_app = $.gServ.fetch_app( 'Yote::Hello' );
 
 	       /* Returns a string. If the method results in changes in other
 	          javascript objects, those objects will automatically be updated. */
@@ -85,7 +85,7 @@ Using Yote
 
 	#
 	# A singleton of this class is created and accessed by the 
-	# client with get_app.
+	# client with fetch_app.
 	#
         use base 'Yote::AppRoot';
 

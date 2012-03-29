@@ -203,7 +203,7 @@ Starting the Web App Server from a package:
        <script src="./js/json2.js"></script>
        <script src="./js/yote.js"></script>
        <script>
-           var hello_app = $.gServ.get_app( 'Yote::Hello' );
+           var hello_app = $.gServ.fetch_app( 'Yote::Hello' );
            var result = hello_app.hello({ name:"fred" } );
            var counter = hello_app.get_counter();
        </script>

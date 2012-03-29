@@ -23,7 +23,6 @@ sub init {
 
 sub _allows {
     my( $app, $command, $data, $acct, $obj ) = @_;
-    print STDERR Data::Dumper->Dump( [$acct,"ALLLOZ"] );
     return defined( $acct );
 }
 
@@ -74,6 +73,12 @@ sub array {
 sub get_hash {
     my( $self, $data, $acct_root, $acct ) = @_;
     return { hash => "is something like", wid => $self->get_yote_obj() };
+}
+
+sub reset {
+    my $self = shift;
+    $self->set_obj( undef );
+    $self->set_made([]);
 }
 
 1;

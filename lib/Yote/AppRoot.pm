@@ -2,6 +2,7 @@ package Yote::AppRoot;
 
 use strict;
 
+use Yote::Account;
 use Yote::Obj;
 use Yote::SystemObj;
 use Yote::YoteRoot;
@@ -25,7 +26,7 @@ sub _on_load {
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
-sub account_root {
+sub _account_root {
     my( $self, $acct ) = @_;
 
     my $acct_roots = $self->get_account_roots({});
@@ -37,7 +38,7 @@ sub account_root {
     }
     return $root;
 
-} #account_root
+} #_account_root
 
 #
 # Process_command is only called on the master root, 
@@ -56,7 +57,6 @@ sub account_root {
 sub _process_command {
     my( $root, $cmd ) = @_;
     my $command = $cmd->{c};
-
     my $data = _translate_data( $cmd->{data} );
 
     #
@@ -86,12 +86,12 @@ sub _process_command {
     elsif( $command eq 'check_cron' ) {
         if( $cmd->{cron_id} == $Yote::WebAppServer::cron_id  ) {
             my $cron_pkg = $root->get_cron_package('Yote::Cron');
-            my $app = $root->get_apps({})->{$cron_pkg};
+            my $app = $root->get_apps()->{$cron_pkg};
             unless( $app ) {
                 eval( "use $cron_pkg" );
                 if( $@ =~ /Can.t locate/ ) {
                     print STDERR Data::Dumper->Dump(["No Cron Found"]);
-                    return { err => "App '$a' not found" };
+                    return { err => "App '$cron_pkg' not found" };
                 }
                 my $apps = $root->get_apps();
                 $app = $cron_pkg->new;
@@ -100,18 +100,22 @@ sub _process_command {
             $app->check_cron();
         }
     }
+    elsif( $command eq 'fetch_root' ) {
+	my $r = _fetch_root();
+        return { r => $r->_obj_to_response( $r ) };
+    }
     else {
         my $appstr = $cmd->{a};
         my $app;
         if( $appstr ) {
             
-            $app = $root->get_apps({})->{$appstr};
+            $app = $root->get_apps()->{$appstr};
 
             #generate the app if not present.
             unless( $app ) {
                 eval( "use $appstr" );
                 if( $@ =~ /Can.t locate/ ) {
-                    return { err => "App '$a' not found" };
+                    return { err => "App '$appstr' not found" };
                 }
                 my $apps = $root->get_apps();
                 $app = $appstr->new;
@@ -122,9 +126,8 @@ sub _process_command {
             $app = $root;
         }            
 
-        if( $command eq 'get_app' ) {
-            my $x =  _fetch( $app, $app->{ID}, $acct );
-            return $x;
+        if( $command eq 'fetch_app' ) {
+            return  _fetch( $app, $app->{ID}, $acct );
         }
         elsif( $command eq 'fetch' ) {
             return _fetch( $app, $cmd->{id}, $acct );
@@ -148,10 +151,11 @@ sub _process_command {
         }
 
         my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
+
         if( $app->_allows( $command, $data, $acct, $obj ) && $obj->can( $command ) ) {
             my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
             my $resp = $app->_obj_to_response( $obj->$command( $data,
-                                                               $app->account_root( $acct ),
+                                                               $app->_account_root( $acct ),
                                                                $acct ), 1 );
             my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
             return { r => $resp, d => \@dirty_delta };
@@ -176,7 +180,7 @@ sub _translate_data {
 #
 sub _allows { 
     my( $app, $command, $data, $acct, $obj ) = @_;
-    return 0 if index( $command, '_' ) == 0 || $app->{ID} == 1;
+    return 0 if index( $command, '_' ) == 0;
     return 1;
 }
 
@@ -259,7 +263,7 @@ sub _reset_password {
 
 sub _remove_account {
     my( $root, $args, $acct ) = @_;
-    if( $acct && _encrypt_pass($args->{p}, $acct) eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() ) {
+    if( $acct && _encrypt_pass($args->{p}, $acct) eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() && ! $acct->get_is_first_account() ) {
         delete $root->get_handles()->{$args->{h}};
         delete $root->get_emails()->{$args->{e}};
         return { r => "deleted account" };
@@ -274,7 +278,7 @@ sub _create_account {
     # validate account args. Needs handle (,email at some point)
     #
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
-    if( $handle ) {# && $email ) {
+    if( $handle ) {
         if( Yote::ObjProvider::xpath("/handles/$handle") ) {
             return { err => "handle already taken" };
         }
@@ -289,7 +293,7 @@ sub _create_account {
         unless( $password ) {
             return { err => "password required" };
         }
-        my $newacct = new Yote::Obj();
+        my $newacct = new Yote::Account();
 
         #
         # check to see how many accounts there are. If there are none,
@@ -297,6 +301,7 @@ sub _create_account {
         #
         if( Yote::ObjProvider::xpath_count( "/handles" ) == 0 ) {
             $newacct->set_is_root( 1 );
+            $newacct->set_is_first_account( 1 );
         } else {
             $newacct->set_is_root( 0 );
         }
@@ -308,9 +313,9 @@ sub _create_account {
 
         $newacct->set_password( _encrypt_pass($password, $newacct) );
 
-        my $accts = $root->get_handles({});
+        my $accts = $root->get_handles();
         $accts->{ $handle } = $newacct;
-        my $emails = $root->get_emails({});
+        my $emails = $root->get_emails();
         $emails->{ $email } = $newacct;
         &Yote::ObjProvider::stow_all();
         return { r => "created account", a => $root->_obj_to_response( $newacct ), t => _create_token( $newacct, $ip ) };
@@ -336,6 +341,9 @@ sub _login {
         my $root = _fetch_root();
         my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
         if( $acct && ($acct->get_password() eq _encrypt_pass( $data->{p}, $acct) ) ) {
+            if( $data->{rr} && ! $acct->get_is_root() ) {
+                return { err => "need a root login" };
+            }
             return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
         }
     }
@@ -495,11 +503,30 @@ Yote::AppRoot - Application Server Base Objects
 
 =head1 SYNOPSIS
 
-This object is meant to be extended to provide Yote apps.
+Extend this class to make an application, and fill it with methods that you want for your application.
+
 
 =head1 DESCRIPTION
 
 Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
+
+=head2 Client Methods
+
+Clients automatically call the following methods on an application or the Yote Root application /
+
+=over 4
+
+=item create_account
+
+=item login
+
+=item verify_token
+
+=item remove_account
+
+=item reset_password
+
+=back
 
 =head2 CLASS METHODS
 
@@ -525,7 +552,7 @@ Returns the root object. This is always object 1 for the App Server.
 
 =over 4
 
-=item account_root( login ) - Returns an account object associated with a login object.
+=item _account_root( login ) - Returns an account object associated with a login object.
 
 =back
 

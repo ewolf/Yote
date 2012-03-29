@@ -28,6 +28,10 @@ sub apply_zap {
     $self->set_zap( $data );
 }
 
+sub reset {
+    my $self = shift;
+    $self->set_zap( undef );
+}
 
 1;
 

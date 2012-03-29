@@ -10,7 +10,7 @@
     <script>
     $().ready(function(){
         
-        var hello_app = $.yote.get_app('Yote::Test::Hello');
+        var hello_app = $.yote.fetch_app('Yote::Test::Hello');
         function hello() {
             var result = hello_app.hello({ name:$('#txt').val() } );
             alert( result );
@@ -25,7 +25,7 @@
 	        }
         } );
 
-	var page_counter = $.yote.get_app('Yote::Census');
+	var page_counter = $.yote.fetch_app('Yote::Census');
 	page_counter.show_count();
 	$('#counter').append( page_counter.get_count() );
     });
@@ -158,7 +158,7 @@ Data
 &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   $().ready(function(){ <span class=emp>
-      var secret_collect_app = $.yote.get_app('Yote::Sample::SecretCollect');
+      var secret_collect_app = $.yote.fetch_app('Yote::Sample::SecretCollect');
       $('#button').click( function() {
           var result = hello_app.hello({ name:$('#txt').val() } );
           alert( result ); //get the message from running the hello method.
@@ -189,7 +189,7 @@ sub add_riddle {
     my( $self,      # This singleton AppRoot object. 
                     # It lives in /apps/Yote::Sample::SecretCollect
                     # Calling 
-                    #   var app = $.yote.get_app('Yote::Sample::SecretCollect');
+                    #   var app = $.yote.fetch_app('Yote::Sample::SecretCollect');
                     #   on the client side will return only this instance.
         
         $data,      # The data structure sent by the client.
@@ -317,7 +317,7 @@ sub guess_riddle {
 &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   $().ready(function(){ <span class=emp>
-      var hello_app = $.yote.get_app('Yote::Hello');
+      var hello_app = $.yote.fetch_app('Yote::Hello');
       $('#button').click( function() {
           var result = hello_app.hello({ name:$('#txt').val() } );
           alert( result ); //get the message from running the hello method.

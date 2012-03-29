@@ -121,10 +121,12 @@ $.yote.util = {
     },
     make_login_box:function(args) {
 	    var target = args['target'];
-	    var logged_in_f = args['on_login'];
+	    var logged_in_f = args['on_login']   || args['on_in'];
+	    var created_f = args['on_register']  || args['on_in'];
+	    var recover_f = args['on_recover']   || args['on_in'];
 	    var logged_out_f = args['on_logout'];
-	    var created_f = args['on_register'];
-	    var recover_f = args['on_recover'];
+        var require_root = args['require_root'];
+
 	    $(target).empty();
 	    $(target).append( "<span id=login_msg_outerspan style=display:none><span id=login_msg_span class=warning></span><BR></span>" +
 
@@ -199,17 +201,17 @@ $.yote.util = {
 	        $( target + ' > div#y_logged_in' ).show();                
 	    }
 	    var do_login = function() {
-	        $.yote.login( $( target + " .login#login").val(),
-			              $(target + " .login#password").val(),
+	        $.yote.login( $( target + " .yotelogin#login").val(),
+			              $(target + " .yotelogin#password").val(),
 			              function(data) { //pass
-			                  to_logged_in($.yote.acct.get('handle'));
+			                  to_logged_in($.yote.yotelogin.get('handle'));
 			                  // note the following line will work but is not closure safe yet.
 			                  if( typeof logged_in_f === 'function' ) { logged_in_f(); }
 			              },
-
 			              function(data) { //fail
 			                  to_login(data);
-			              }
+			              },
+                          require_root
 			            );
 	    }
 	    var do_register = function() {
@@ -218,7 +220,7 @@ $.yote.util = {
 				                       $( target + " .register#password").val(),
 				                       $( target + " .register#email").val(),
 				                       function(data) { //pass
-				                           to_logged_in($.yote.acct.get('handle'),"Created Account");
+				                           to_logged_in($.yote.yotelogin.get('handle'),"Created Account");
 				                           if( typeof created_f === 'function' ) { created_f(); }
 				                       },
                                        
@@ -245,7 +247,13 @@ $.yote.util = {
 	    }
 	    var logout = function() {
 	        $( target + ' > div ' ).hide();
-	        $( target + ' > div#y_not_loggedin' ).show();
+            var rootapp = $.yote.fetch_root();
+            if( rootapp.number_of_accounts() > 0 ) {
+	            $( target + ' > div#y_not_loggedin' ).show();
+            } else {
+                $( target + ' > div#y_register_account' ).show();
+                message( "Create Initial Root Account" );
+            }
 	        $( target + ' #password' ).val('');
 	        $.yote.logout();
 	        if( typeof logged_out_f === 'function' ) { logged_out_f(); }
@@ -268,7 +276,7 @@ $.yote.util = {
 	    $( target + ' #recover_submit' ).click( install_function(do_recover || nada) );
 
 	    if( $.yote.is_logged_in() ) {
-            to_logged_in( $.yote.get_account().get_handle() );
+            to_logged_in( $.yote.get_login().get_handle() );
 	    } else {
 	        logout();
 	    }

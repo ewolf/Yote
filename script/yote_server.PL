@@ -35,6 +35,7 @@ use Yote::SQLiteIO;
 
 use lib "\$Bin/../lib";
 
+push( \@INC, "$base/lib" );
 
 \$SIG{ __DIE__ } = sub { Carp::confess( \@_ ) };
 

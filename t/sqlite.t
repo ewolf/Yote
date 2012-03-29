@@ -67,9 +67,9 @@ sub test_suite {
     my $root = Yote::AppRoot::_fetch_root();
     ok( $root->{ID} == 1, "Root has id of 1" );
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
-    is( $o_count, 1, "number of objects after save root" ); # which also makes an account root automiatcially";
+    is( $o_count, 5, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts and app_alias underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
-    is( $f_count, 0, "number of fields after save root" ); #0 for
+    is( $f_count, 0, "number of fields after save root" ); 
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
@@ -85,25 +85,26 @@ sub test_suite {
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
     Yote::ObjProvider::stow_all();
 # 1 from accounts under root (default)
-
+# 1 from apps under root
+# 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 18, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 22, "Number of db rows saved to database with stow all" );
 
     my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
-    is( scalar(@$db_rows), 11, "Number of db rows saved to database" ); #Big counts as obj
+    is( scalar(@$db_rows), 15, "Number of db rows saved to database" ); #Big counts as obj
 
 
     my $root_clone = Yote::AppRoot::_fetch_root();
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->account_root() ), 'Yote::SystemObj', '2nd level yote object' );
+    is( ref( $root_clone->_account_root() ), 'Yote::SystemObj', '2nd level yote object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
 
 
     is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->account_root() ), 'Yote::SystemObj', '2nd level yote object  (original root after save)' );
+    is( ref( $root->_account_root() ), 'Yote::SystemObj', '2nd level yote object  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 

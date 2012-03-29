@@ -8,7 +8,7 @@
  *  * reload_all     - reloads all yote objects that are in the yote queue
  *  * create_account - sets the login token
  *  * login          - sets the login token
- *  * get_root       - returns a yote app object (uses login token)
+ *  * fetch_root       - returns a yote app object (uses login token)
  *  * methods attached to yote object :
  *    ** reload - refreshes the data of this object with a call to the server
  *    ** get(field) - returns a yote object or a scalar value attached to this yote object (uses login token)
@@ -217,24 +217,24 @@ $.yote = {
             };
 
 	        if( (0 + x.id ) > 0 ) {
-		        root.objs[x.id] = o;
-		        o.reload = (function(thid,tapp) {
-		            return function() {
-                        root.objs[thid] = null;
-			            var replace = root.fetch_obj( thid, tapp );
-			            this._d = replace._d;
-                        for( fld in this._d ) {
-                            if( typeof this['get_' + fld] !== 'function' ) {
-                                this['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-                            }
-                        }
-			            root.objs[thid] = this;
-			            return this;
-		            }
-		        } )(x.id,an);
+		    root.objs[x.id] = o;
+		    o.reload = (function(thid,tapp) {
+		        return function() {
+			    root.objs[thid] = null;
+			    var replace = root.fetch_obj( thid, tapp );
+			    this._d = replace._d;
+			    for( fld in this._d ) {
+				if( typeof this['get_' + fld] !== 'function' ) {
+				    this['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+				}
+			    }
+			    root.objs[thid] = this;
+			    return this;
+		        }
+		    } )(x.id,an);
 	        }
 	        return o;
-        })(data,appname);
+            })(data,appname);
     }, //create_obj
 
     multi_fetch_obj:function(ids,app) {
@@ -275,29 +275,46 @@ $.yote = {
 	    } ).r, app );
     }, //fetch_obj
 
-    get_app:function( appname,passhandler,failhandler ) {
+    fetch_root:function( passhandler, failhandler ) {
+	var root = this;
+	var root_obj = this.create_obj( this.message( {
+            async:false,
+            cmd:'fetch_root',
+            data:{},
+            failhandler:failhandler,
+            passhandler:passhandler,
+            verb:'PUT',
+	        wait:true,
+	    } ).r );
+	root_obj.reload = function() {};
+	return root_obj;
+    }, //fetch_root
+
+    fetch_app:function( appname,passhandler,failhandler ) {
 	    return this.create_obj( this.message( {
+            app:appname,
             async:false,
             failhandler:failhandler,
+            cmd:'fetch_app',
 	        id:appname,
             passhandler:passhandler,
-            verb:'GET',
+            verb:'PUT',
 	        wait:true,
 	    } ).r, appname );
     },
 
     logout:function() {
 	    this.token = undefined;
-	    this.acct = undefined;
+	    this.yotelogin = undefined;
         $.cookie('yoken','');
     }, //logout
 
-    get_account:function() {
-	    return this.acct;
+    get_login:function() {
+	    return this.yotelogin;
     },
 
     is_logged_in:function() {
-        if( typeof this.acct === 'object' ) {
+        if( typeof this.yotelogin === 'object' ) {
             return true;
         }
         else {
@@ -324,26 +341,27 @@ $.yote = {
         } );
         if( typeof ans === 'object' && ans.r ) {
             root.token = token;
-            root.acct = root.create_obj( ans.r, root );
+            root.yotelogin = root.create_obj( ans.r, root );
             return true;
         }
         return false;
     }, //verify_token
 
     /*   DEFAULT FUNCTIONS */
-    login:function( un, pw, passhandler, failhandler ) {
+    login:function( un, pw, passhandler, failhandler, require_root ) {
 	    var root = this;
 	    this.message( {
             async:false,
             cmd:'login', 
             data:{
                 h:un,
-                p:pw
+                p:pw,
+                rr:require_root
             },
             failhandler:failhandler,
             passhandler:function(data) {
 	            root.token = data.t;
-		        root.acct = root.create_obj( data.a, root );
+		        root.yotelogin = root.create_obj( data.a, root );
                 $.cookie('yoken',root.token, { expires: 7 });
 		        if( typeof passhandler === 'function' ) {
 		            passhandler(data);
@@ -373,7 +391,7 @@ $.yote = {
             failhandler:failhandler,
             passhandler:function(data) {
 	            root.token = data.t;
-		        root.acct = root.create_obj( data.a, root );
+		        root.yotelogin = root.create_obj( data.a, root );
                 $.cookie('yoken',root.token, { expires: 7 });
 		        if( typeof passhandler === 'function' ) {
 		            passhandler(data);
@@ -496,7 +514,10 @@ $.yote = {
         if( typeof app === 'undefined' ) {
             url = url + '/r';
             if( verb == 'GET' ) {
-                url = url + '/' + id;
+                if( typeof params.failhandler === 'function' ) {
+                    params.failhandler("incorrect path ");
+                }
+                return;
             }
         } else if( 0 + id > 0 ) {
             url = url + '/i/' + app + '/' + id;
@@ -514,13 +535,14 @@ $.yote = {
             w:wait
         };
 	    var resp;
+//        console.dir('outgoing ' + url + ' (' + cmd + ')');        console.dir( put_data );
 	    $.ajax( {
 	        async:async,
 	        data:{
 		        m:$.base64.encode(JSON.stringify( put_data ) )
             },
 	        dataFilter:function(a,b) {
-		        console.dir('incoming '); console.dir( a );
+//		        console.dir('incoming '); console.dir( a );
 		        return a; 
 	        },
 	        error:function(a,b,c) { root.error(a); },
