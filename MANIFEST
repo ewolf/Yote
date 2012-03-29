@@ -1,4 +1,5 @@
 ./install
+./lib/Yote/Account.pm
 ./lib/Yote/AccountRoot.pm
 ./lib/Yote/AppRoot.pm
 ./lib/Yote/Array.pm
@@ -23,6 +24,7 @@
 ./lib/Yote/YoteRoot.pm
 ./lib/Yote.pm
 ./Makefile.PL
+./MANIFEST
 ./NOW
 ./README
 ./README.pod
