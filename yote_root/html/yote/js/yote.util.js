@@ -248,7 +248,7 @@ $.yote.util = {
 	    var logout = function() {
 	        $( target + ' > div ' ).hide();
             var rootapp = $.yote.fetch_root();
-            if( rootapp.number_of_accounts() > 0 ) {
+            if( rootapp.number_of_accounts() > 1 ) {
 	            $( target + ' > div#y_not_loggedin' ).show();
             } else {
                 $( target + ' > div#y_register_account' ).show();

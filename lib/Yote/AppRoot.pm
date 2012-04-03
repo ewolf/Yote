@@ -1,497 +1,69 @@
 package Yote::AppRoot;
 
+#
+# Base class for all Yote applications.
+#
+
 use strict;
 
-use Yote::Account;
 use Yote::Obj;
-use Yote::SystemObj;
-use Yote::YoteRoot;
-
 use Crypt::Passwd;
 use Email::Valid;
 use MIME::Lite;
 use MIME::Base64;
 
-use vars qw($VERSION);
+use base 'Yote::Obj';
 
-$VERSION = '0.01';
-
-use base 'Yote::SystemObj';
-
-sub _on_load {
-    my $self = shift;
-    $self->{NO_DEEP_CLONE} = 1;
-}
+#
+# Available to all apps. Used for verification and for cookie login.
+#
+sub token_login {
+    my( $self, $data ) = @_;
+    my( $t, $ip ) = ( $data->{t}, $data->{ip} );
+    if( $t =~ /(.+)\+(.+)/ ) {
+        my( $uid, $token ) = ( $1, $2 );
+        my $login = Yote::ObjProvider::fetch( $uid );
+        return $login && $login->get_token() eq "${token}x$ip" ? { l => $login, t => $token } : undef;
+    }
+    return undef;
+} #token_login
 
 #
 # Returns the account root attached to this AppRoot for the given account.
 #
-sub _account_root {
-    my( $self, $acct ) = @_;
+sub _get_account {
+    my( $self, $login ) = @_;
+    my $accts = $self->get__account_roots({});
+    my $acct = $accts->{$login->{ID}};
+    unless( $acct ) {
+        $acct = new Yote::Obj();
+        $acct->set__allowed_access({});
+        $acct->set_login( $login );
+        $accts->{$login->{ID}} = $acct;
+    }
+    return $acct;
 
-    my $acct_roots = $self->get_account_roots({});
-    my $root = $acct_roots->{$acct->{ID}};
-    unless( $root ) {
-        $root = new Yote::SystemObj;
-        $root->set_account( $acct );
-        $acct_roots->{$acct->{ID}} = $root;
-    }
-    return $root;
-
-} #_account_root
-
-#
-# Process_command is only called on the master root, 
-#   which will route the command to the appropriate root.
-#
-# The AppRoot is the root object. It forwards to the correct app root.
-# The request object has the fields :
-#
-#   id - id of object to run method against
-#   a - app that the object is for.
-#   c - command or method to run
-#   d - argument data
-#   t - token for being logged in
-#
-# either c or i must be given
-sub _process_command {
-    my( $root, $cmd ) = @_;
-    my $command = $cmd->{c};
-    my $data = _translate_data( $cmd->{data} );
-
-    #
-    # this will not process private (beginning with _) commands,
-    # and will execute the command if its a login request,
-    # new account request or has a valid token.
-    #
-    my $acct = _valid_token( $cmd->{t}, $cmd->{oi} );
-    if( $command eq 'create_account' ) {
-        return $root->_create_account( $data, $cmd->{oi} );
-    }
-    elsif( $command eq 'login' ) {
-        return _login( $data, $cmd->{oi} );
-    }
-    elsif( $command eq 'verify_token' ) {
-        return { r => _fetch_root()->_obj_to_response(_valid_token( $data->{t}, $cmd->{oi} ) ) };
-    }
-    elsif( $command eq 'remove_account' ) {
-        return $root->_remove_account( $data, $acct );
-    }
-    elsif( $command eq 'recover_password' ) {
-        return $root->_recover_password( $data );
-    }
-    elsif( $command eq 'reset_password' ) {
-        return $root->_reset_password( $data );
-    }
-    elsif( $command eq 'check_cron' ) {
-        if( $cmd->{cron_id} == $Yote::WebAppServer::cron_id  ) {
-            my $cron_pkg = $root->get_cron_package('Yote::Cron');
-            my $app = $root->get_apps()->{$cron_pkg};
-            unless( $app ) {
-                eval( "use $cron_pkg" );
-                if( $@ =~ /Can.t locate/ ) {
-                    print STDERR Data::Dumper->Dump(["No Cron Found"]);
-                    return { err => "App '$cron_pkg' not found" };
-                }
-                my $apps = $root->get_apps();
-                $app = $cron_pkg->new;
-                $apps->{$cron_pkg} = $app;		
-            }
-            $app->check_cron();
-        }
-    }
-    elsif( $command eq 'fetch_root' ) {
-	my $r = _fetch_root();
-        return { r => $r->_obj_to_response( $r ) };
-    }
-    else {
-        my $appstr = $cmd->{a};
-        my $app;
-        if( $appstr ) {
-            
-            $app = $root->get_apps()->{$appstr};
-
-            #generate the app if not present.
-            unless( $app ) {
-                eval( "use $appstr" );
-                if( $@ =~ /Can.t locate/ ) {
-                    return { err => "App '$appstr' not found" };
-                }
-                my $apps = $root->get_apps();
-                $app = $appstr->new;
-                $apps->{$appstr} = $app;
-            } 
-        }
-        else {
-            $app = $root;
-        }            
-
-        if( $command eq 'fetch_app' ) {
-            return  _fetch( $app, $app->{ID}, $acct );
-        }
-        elsif( $command eq 'fetch' ) {
-            return _fetch( $app, $cmd->{id}, $acct );
-        }
-        elsif( $command eq 'multi_fetch' ) {
-            return _multi_fetch( $app, { ids => $data->{ids} }, $acct );
-        }
-        elsif( $command eq 'update' ) {
-            my $obj = Yote::ObjProvider::fetch( $cmd->{id} );
-            if( $obj && $app->_stow_permitted( $data ) ) {
-                if( ref( $obj ) eq 'ARRAY' ) {
-                    @{$obj} = values %{$data};
-                } elsif( ref( $obj ) eq 'HASH' ) {
-                    %{$obj} = map { $_ => $data->{$_} } keys %{$data};
-                } else {
-                    $obj->_absorb( $data );
-                }
-                return { msg => "updated" };
-            }
-            return { err => "unable to update" };
-        }
-
-        my $obj = Yote::ObjProvider::fetch( $cmd->{id} ) || $app;
-
-        if( $app->_allows( $command, $data, $acct, $obj ) && $obj->can( $command ) ) {
-            my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
-            my $resp = $app->_obj_to_response( $obj->$command( $data,
-                                                               $app->_account_root( $acct ),
-                                                               $acct ), 1 );
-            my @dirty_delta = grep { ! $before{$_} } (Yote::ObjProvider::dirty_ids());
-            return { r => $resp, d => \@dirty_delta };
-        } 
-        return { err => "'$cmd->{c}' not found for app '$appstr'" };
-    }
-} #_process_command
-
-sub _translate_data {
-    my $val = shift;
-
-    if( ref( $val ) ) { #from javacript object, or hash
-        return { map {  $_ => _translate_data( $val->{$_} ) } keys %$val };
-    }
-    return undef unless $val;
-    return index($val,'v') == 0 ? substr( $val, 1 ) : Yote::ObjProvider::fetch( $val );
-}
+} #_get_account
 
 #
-# Override to control access to this app. If this returns true, the given command
-# can be exectued on the object with the data and account.
+# Returns true if the object was given to the account via the API, as opposed to a random object id
+#   being picked.
 #
-sub _allows { 
-    my( $app, $command, $data, $acct, $obj ) = @_;
-    return 0 if index( $command, '_' ) == 0;
+sub _account_can_access {
     return 1;
-}
+#    my( $self, $account, $object ) = @_;
+#    my $o_id = Yote::ObjProvider::get_id( $object );
+#    return $account->get_login()->get__allowed_access()->{ $o_id };
+} #_account_can_access
 
 #
-# Fetch master root singleton object.
+# Encrypt the password so its not saved in plain text.
 #
-sub _fetch_root {
-    return Yote::ObjProvider::fetch( 1 ) || new Yote::YoteRoot();
-}
-
-sub _valid_token {
-    my( $t, $ip ) = @_;
-    if( $t =~ /(.+)\+(.+)/ ) {
-        my( $uid, $token ) = ( $1, $2 );
-        my $acct = Yote::ObjProvider::fetch( $uid );
-        return $acct && $acct->get_token() eq "${token}x$ip" ? $acct : undef;
-    }
-    return undef;
-} #valid_token
-
-sub _recover_password {
-    my( $root, $args ) = @_;
-    my $email = $args->{e};
-    my $from_url = $args->{u};
-    my $to_reset = $args->{t};
-    my $acct = Yote::ObjProvider::xpath( "/emails/$email" );
-    if( $acct ) {
-        my $now = time();
-        if( $now - $acct->get_last_recovery_time() > (60*15) ) { #need to wait 15 mins
-            my $rand_token = int( rand 9 x 10 );
-            my $recovery_hash = $root->get_recovery_accts({});
-            my $times = 0;
-            while( $recovery_hash->{$rand_token} && ++$times < 100 ) {
-                $rand_token = int( rand 9 x 10 );
-            }
-            if( $recovery_hash->{$rand_token} ) {
-                return { err => "error recovering password" };
-            }
-            $acct->set_recovery_token( $rand_token );
-            $acct->set_recovery_from_url( $from_url );
-            $acct->set_last_recovery_time( $now );
-            $acct->set_recovery_tries( $acct->get_recovery_tries() + 1 );
-            $recovery_hash->{$rand_token} = $acct;
-            my $link = "$to_reset?t=$rand_token&p=".MIME::Base64::encode($from_url);
-            # email
-            my $msg = MIME::Lite->new(
-                From    => 'yote@127.0.0.1',
-                To      => $email,
-                Subject => 'Password Recovery',
-                Type    => 'text/html',
-                Data    => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
-                );
-            $msg->send();
-        } else {
-            return { err => "password recovery attempt failed" };
-        }
-    }
-    return { r => "password recovery initiated" };
-} #_recover_password
-
-sub _reset_password {
-    my( $root, $args ) = @_;
-
-    my $rand_token = $args->{t};
-    my $newpass = $args->{p};
-
-    my $recovery_hash = $root->get_recovery_accts({});
-    my $acct = $recovery_hash->{$rand_token};
-    if( $acct ) {
-        my $now = $acct->get_last_recovery_time();
-        delete $recovery_hash->{$rand_token};
-        if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
-            $acct->set_password( _encrypt_pass( $newpass, $acct ) );
-            $acct->set_recovery_token( undef );
-            return { r => "Password Reset" };
-        }
-    }
-    return { err => "Recovery Link Expired or not valid" };
-} #_reset_password
-
-sub _remove_account {
-    my( $root, $args, $acct ) = @_;
-    if( $acct && _encrypt_pass($args->{p}, $acct) eq $acct->get_password() && $args->{h} eq $acct->get_handle() && $args->{e} eq $acct->get_email() && ! $acct->get_is_first_account() ) {
-        delete $root->get_handles()->{$args->{h}};
-        delete $root->get_emails()->{$args->{e}};
-        return { r => "deleted account" };
-    } 
-    return { err => "unable to remove account" };
-} #_remove_account
-
-sub _create_account {
-    my( $root, $args, $ip ) = @_;
-
-    #
-    # validate account args. Needs handle (,email at some point)
-    #
-    my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
-    if( $handle ) {
-        if( Yote::ObjProvider::xpath("/handles/$handle") ) {
-            return { err => "handle already taken" };
-        }
-        if( $email ) {
-            if( Yote::ObjProvider::xpath("/emails/$email") ) {
-                return { err => "email already taken" };
-            }
-            unless( Email::Valid->address( $email ) ) {
-                return { err => "invalid email" };
-            }
-        }
-        unless( $password ) {
-            return { err => "password required" };
-        }
-        my $newacct = new Yote::Account();
-
-        #
-        # check to see how many accounts there are. If there are none,
-        # give the first root access.
-        #
-        if( Yote::ObjProvider::xpath_count( "/handles" ) == 0 ) {
-            $newacct->set_is_root( 1 );
-            $newacct->set_is_first_account( 1 );
-        } else {
-            $newacct->set_is_root( 0 );
-        }
-        $newacct->set_handle( $handle );
-        $newacct->set_email( $email );
-        $newacct->set_created_ip( $ip );
-
-        $newacct->set_time_created( time() );
-
-        $newacct->set_password( _encrypt_pass($password, $newacct) );
-
-        my $accts = $root->get_handles();
-        $accts->{ $handle } = $newacct;
-        my $emails = $root->get_emails();
-        $emails->{ $email } = $newacct;
-        &Yote::ObjProvider::stow_all();
-        return { r => "created account", a => $root->_obj_to_response( $newacct ), t => _create_token( $newacct, $ip ) };
-    } #if handle
-    return { err => "no handle given" };
-
-} #_create_account
-
-
-#
-# Create token and store with the account and return it.
-#
-sub _create_token {
-    my( $acct, $ip ) = @_;
-    my $token = int( rand 9 x 10 );
-    $acct->set_token( $token."x$ip" );
-    return $acct->{ID}.'+'.$token;
-}
-
-sub _login {
-    my( $data, $ip ) = @_;
-    if( $data->{h} ) {
-        my $root = _fetch_root();
-        my $acct = Yote::ObjProvider::xpath("/handles/$data->{h}");
-        if( $acct && ($acct->get_password() eq _encrypt_pass( $data->{p}, $acct) ) ) {
-            if( $data->{rr} && ! $acct->get_is_root() ) {
-                return { err => "need a root login" };
-            }
-            return { r => "logged in", a => $root->_obj_to_response( $acct ), t => _create_token( $acct, $ip ) };
-        }
-    }
-    return { err => "incorrect login" };
-} #_login
-
 sub _encrypt_pass {
-    my( $pw, $acct ) = @_;
+    my( $self, $pw, $acct ) = @_;
     return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
 } #_encrypt_pass
 
-#
-# Returns if the fetch is allowed to proceed. Meant to override. Default is true.
-# Takes two args : object to be fetched and data of request.
-#
-sub _fetch_permitted {
-    my( $obj, $id ) = @_;
-    return 1;
-}
-
-
-#
-# Returns if the stow is allowed to proceed. Meant to override. 
-#     Default is true for anything not a system object (like app or account)
-# Takes two args : object to be stowed and data of request.
-#
-sub _stow_permitted {
-    my( $obj, $data ) = @_;
-    return $obj && $obj->isa( "Yote::SystemObj" );
-}
-
-#
-# Returns a data structure with the following fields :
-#   m - names of methods
-#   d - key value data, where value can be a referece (is a number) or a scalar (is prepended with 'v' )
-#
-sub _fetch {
-    my( $app, $id, $acct ) = @_;
-    if( $id ) {
-        my $obj = Yote::ObjProvider::fetch( $id );
-        if( $obj &&
-            Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-            $app->_fetch_permitted( $obj, $id ) )
-        {
-            return { r => $app->_obj_to_response( $obj ) };
-        }
-    }
-    return { err => "Unable to fetch $id" };
-} #_fetch
-
-
-#
-# Returns a list of data structure with the following fields :
-#   m - names of methods
-#   d - key value data, where value can be a referece (is a number) or a scalar (is prepended with 'v' )
-#
-sub _multi_fetch {
-    my( $app, $data, $acct ) = @_;
-    if( $data->{ids} ) {
-        my %ret;
-        for my $id (values %{$data->{ids}}) {
-            my $obj = Yote::ObjProvider::fetch( $id );
-            if( $obj &&
-                Yote::ObjProvider::a_child_of_b( $obj, $app ) &&
-                $app->_fetch_permitted( $obj, $id ) )
-            {
-                $ret{$id} = $app->_obj_to_response( $obj );
-            }
-        }
-        return { r => \%ret };
-    } #if ids given
-    return { err => "Unable to fetch $data->{ids}" };
-} #_multi_fetch
-
-sub _xpath {
-    my( $self, $pathstr ) = @_;
-    return Yote::ObjProvider::xpath( '/apps/' . ref( $self ) . '/' . $pathstr );
-}
-
-#
-# Transforms data structure but does not assign ids to non tied references.
-#
-sub _transform_data_no_id {
-    my( $self, $item ) = @_;
-    if( ref( $item ) eq 'ARRAY' ) {
-        my $tied = tied @$item;
-        if( $tied ) {
-            return Yote::ObjProvider::get_id( $item ); 
-        }
-        return [map { $self->_obj_to_response( $_, 1 ) } @$item];
-    }
-    elsif( ref( $item ) eq 'HASH' ) {
-        my $tied = tied %$item;
-        if( $tied ) {
-            return Yote::ObjProvider::get_id( $item ); 
-        }
-        return { map { $_ => $self->_obj_to_response( $item->{$_}, 1 ) } keys %$item };
-    }
-    elsif( ref( $item ) ) {
-        return  Yote::ObjProvider::get_id( $item ); 
-    }
-    else {
-        return "v$item"; #scalar case
-    }
-} #_transform_data_no_id
-
-#
-# Converts scalar, yote object, hash or array to data for returning.
-#
-sub _obj_to_response {
-    my( $self, $to_convert, $xform_out ) = @_;
-    my $ref = ref($to_convert);
-    my $use_id;
-    if( $ref ) {
-        my( $m, $d ) = ([]);
-        if( $ref eq 'ARRAY' ) {
-            my $tied = tied @$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-                return $use_id if $xform_out;
-            } else {
-                $d = $self->_transform_data_no_id( $to_convert );
-            }
-        } 
-        elsif( $ref eq 'HASH' ) {
-            my $tied = tied %$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-                return $use_id if $xform_out;
-            } else {
-                $d = $self->_transform_data_no_id( $to_convert );
-            }
-        } 
-        else {
-            $use_id = Yote::ObjProvider::get_id( $to_convert );
-            return $use_id if $xform_out;
-            $d = $to_convert->{DATA};
-            no strict 'refs';
-            $m = [ grep { $_ && $_ !~ /^(_.*|[A-Z].*|set_.*|get_.*|is|clone|can|import|init|isa|new)$/ } keys %{"${ref}\::"} ];
-            use strict 'refs';
-        }
-        return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
-    } # if a reference
-    return "v$to_convert" if $xform_out;
-    return $to_convert;
-} #_obj_to_response
 
 1;
 

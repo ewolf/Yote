@@ -24,11 +24,10 @@ use vars qw($VERSION);
 $VERSION = '0.081';
 
 
-my( @commands, %prid2wait, %prid2result, $singleton, $cron_id );
+my( @commands, %prid2wait, %prid2result, $singleton );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
-share( $cron_id );
 
 sub new {
     my $pkg = shift;
@@ -53,12 +52,12 @@ sub start_server {
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;
 
-    # cron thread
-#    my $cron_thread = threads->new( sub { $self->loop_cron(); } );
-
     _poll_commands();
 
     $server_thread->join;
+
+    Yote::ObjProvider::disconnect();
+
 } #start_server
 
 sub shutdown {
@@ -69,25 +68,6 @@ sub shutdown {
     $self->{server_thread}->detach();
     print STDERR "Shut down server thread.\n";
 } #shutdown
-
-#
-# Checks every minute to see if any commands were put in the root's cron area.
-#
-sub loop_cron {
-    my $self = shift;
-    
-    while(1) {
-        sleep(60);
-        {
-            lock( @commands );
-            my $rnd = int( 10000 * rand() );
-            $cron_id = $rnd;
-            push( @commands, [ { c => 'check_cron', cron_id => $rnd },$$] );
-            print STDERR Data::Dumper->Dump(["Adding Cron Check command"]);
-        }
-    }
-
-} #loop_cron
 
 #
 # Sets up Initial database server and tables.
@@ -103,12 +83,6 @@ sub init_server {
 #
 # Commands are sent with a single HTTP request parameter : m for message.
 #
-# Commands have the following structure :
-#   * a - app
-#   * c - cmd
-#   * d - data
-#   * w - if true, waits for command to be processed before returning
-#
 #
 # This ads a command to the list of commands. If
 #
@@ -117,29 +91,22 @@ sub process_http_request {
     my $self = shift;
 
     #
-    # Define here what the paths mean :
-    #   GET  /y/i/<app>/<id>?token                   <---- object by id
-    #   GET  /y/o/<app>/path/to/obj?token            <---- object by xpath 
-    #   GET  /y/r/<app>?token                        <---- app object by app name
-    #   GET  anything else, assume a web page
+    # There are two requests :
+    #   * web page
+    #   * command. starts with '_'. like _/{app id}/{obj id}/{command} or _/{command}
     #
-    #   PUT /y/i/<app>/id/method?token,data          <---- run method with posted parameters
-    #   PUT /y/o/<app>/path/to/obj/method?token,data <---- run method with posted parameters
-    #   PUT /y/r/method                              <---- root method, needs no token
-    #
-    #   POST  /y/i/<app>/<id>?token                  <---- update object by id
-    #   POST  /y/o/<app>/path/to/obj?token           <---- update object by xpath 
-    #
-    # For POST commands, the following data is included :
-    #   m => (base64 encded) {
-    #      d:data (ref vs value yote encoded)
-    # 
-    #
-    # 
-    #
-    my $CGI = new CGI;
 
-    my $command = $CGI->Vars();
+    # Commands have the following structure :
+    #   * a  - action
+    #   * ai - app id to invoke command on
+    #   * d  - data
+    #   * oi - object id to invoke command on
+    #   * p  - ip address
+    #   * t  - token for verification
+    #   * w  - if true, waits for command to be processed before returning
+    #
+    my $CGI  = new CGI;
+    my $vars = $CGI->Vars();
 
     my( $uri, $remote_ip, $verb ) = @ENV{'PATH_INFO','REMOTE_ADDR','REQUEST_METHOD'};
 
@@ -148,92 +115,77 @@ sub process_http_request {
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );    
     if( $path[0] eq '_' ) {
 
-        # find app or root
-        my $app_name = $path[1] eq 'r' ? undef : $path[2];
-        
-        if( $verb eq 'GET' ) {
-            if( $path[1] eq 'h' ) { #get the human html set up for the app if any
-                my $app = Yote::ObjProvider::fetch( "/apps/$app_name" );
-                my $html = $app->get_html();
-                if( $html ) {
-                    print "Content-Type: text/html\n\n$html";
-                } else {
-                    do404();
-                }
-                return;
-            }
-            my $cmd = $path[1] eq 'r' ? 'fetch_app' : 'fetch';
-            my $id = $path[1] eq 'i' ? $path[3] : '/' . join( '/', @path[3..$#path] );
-            if( $path[1] eq 'r' ) {
-                $id = '/apps/' . join( '/', @path[2..$#path] );
-                $app_name = $path[2];
-            }
-            #
-            # For invoking methods the following is needed :
-            #  * id or xpath of object
-            #  * app (contained before id or is the first part of the xpath after apps)
-            #
-            $command = {
-                a  => $app_name,
-                c  => $cmd,
-                id => $id,
-                t  => $command->{t},
-                w  => 1,
-            };
-        } # GET
-        elsif( $verb eq 'PUT' ) {
-            #
-            # For invoking methods the following is needed :
-            #  * token - to id the account
-            #  * command
-            #  * id or xpath of object
-            #  * app (contained before id or is the first part of the xpath after apps)
-            #
-            eval {
-                $command = from_json( MIME::Base64::decode($command->{m}) );
-            };
-            if( $@ ) {
-                print "{\"err\":\"$@\"}";        
-                print STDERR "Got error $@\n";
-                print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
-                return;
-            }
-            my $cmd = pop @path;
-            my $id = $path[1] eq 'i' ? $path[2] : '/' . join( '/', @path[3..$#path] );
-	    if( $path[1] eq 'r' ) {
-		$id = undef;
-	    }
+        my $action = pop( @path );
+        my $obj_id = int( pop( @path ) ) || 1;
+        my $app_id = int( pop( @path ) ) || 1;
+        my $wait = $vars->{w};
 
-            if( $path[1] ne 'r' ) {
-                $command->{a}  = $app_name;
+        my $command = {
+            a  => $action,
+            ai => $app_id,
+            d  => $vars->{d},
+            oi => $obj_id,
+            p  => $remote_ip,
+            t  => $vars->{t},
+            w  => $wait,
+        };
+
+        my $procid = $$;
+        if( $wait ) {
+            lock( %prid2wait );
+            $prid2wait{$procid} = $wait;
+        }
+
+        #
+        # Queue up the command for processing in a separate thread.
+        #
+        {
+            lock( @commands );
+            push( @commands, [$command, $procid] );
+            cond_broadcast( @commands );
+        }
+
+        #
+        # If the connection is waiting for an answer, give it
+        #
+        if( $wait ) {
+            while( 1 ) {
+                my $wait;
+                {
+                    lock( %prid2wait );
+                    $wait = $prid2wait{$procid};
+                }
+                if( $wait ) {
+                    lock( %prid2wait );
+                    if( $prid2wait{$procid} ) {
+                        cond_wait( %prid2wait );
+                    }
+                    last unless $prid2wait{$procid};
+                } else {
+                    last;
+                }
             }
-            $command->{c}  = $cmd;
-            $command->{id} = $id;
-        } # PUT
-        elsif( $verb eq 'POST' ) {
-            my $id = $path[1] eq 'i' ? $path[3] : '/' . join( '/', @path[3..$#path] );
-            my $data = from_json( MIME::Base64::decode($command->{m}) );
-            $command = {
-                a  => $app_name,
-                c  => 'update',
-                data  => $data->{data},
-                id => $id,
-                t  => $command->{t},
-                w  => 1,
-            };
-        } # POST
-        $command->{oi} = $remote_ip;
-    } 
-    else { #serve html
+            my $result;
+            if( $wait ) {
+                lock( %prid2result );
+                $result = $prid2result{$procid};
+                delete $prid2result{$procid};
+            }
+            print STDERR "Sending result $result\n";
+            print "Content-Type: text/json\n\n";
+            print "$result";
+        } 
+        else {  #not waiting for an answer, but give an acknowledgement
+            print "{\"msg\":\"Added command\"}";
+        }        
+#        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
+    } #if a command on an object
+
+    else { #serve up a web page
 	    my $root = $self->{args}{webroot};
 	    my $dest = join('/',@path);
 	    if( open( IN, "<$root/$dest" ) ) {
-		if( $dest =~ /^yote\/js/ ) {
-		    print "Content-Type: text/javascript\n\n";
-		}
-		else {
-		    print "Content-Type: text/html\n\n";
-		}
+            print "Content-Type: text/html\n\n";
             while(<IN>) {
                 print $_;
             }
@@ -241,61 +193,14 @@ sub process_http_request {
 	    } else {
 		    do404();
 	    }
+#        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
 	    return;
     } #serve html
 
-    my $wait = $command->{w};
-    my $procid = $$;
-    if( $wait ) {
-        lock( %prid2wait );
-        $prid2wait{$procid} = $wait;
-    }
-
-    #
-    # Queue up the command for processing in a separate thread.
-    #
-    {
-        lock( @commands );
-        push( @commands, [$command, $procid] );
-        cond_broadcast( @commands );
-    }
-
-
-    if( $wait ) {
-        while( 1 ) {
-            my $wait;
-            {
-                lock( %prid2wait );
-                $wait = $prid2wait{$procid};
-            }
-            if( $wait ) {
-                lock( %prid2wait );
-                if( $prid2wait{$procid} ) {
-                    cond_wait( %prid2wait );
-                }
-                last unless $prid2wait{$procid};
-            } else {
-                last;
-            }
-        }
-        my $result;
-        if( $wait ) {
-            lock( %prid2result );
-            $result = $prid2result{$procid};
-            delete $prid2result{$procid};
-        }
-        print STDERR "Sending result $result\n";
-        print "Content-Type: text/json\n\n";
-        print "$result";
-    } else {
-        print "{\"msg\":\"Added command\"}";
-    }
-    print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
-    return;
 } #process_request
 
 #
-# Run by a threat that constantly polls for commands.
+# Run by a thread that constantly polls for commands.
 #
 sub _poll_commands {
     while(1) {
@@ -321,18 +226,64 @@ sub _process_command {
 
     my $wait = $command->{w};
 
-    Yote::ObjProvider::connect();
-
     my $resp;
-
+    
+    Yote::ObjProvider::start_transaction();
+    
     eval {
-        my $root = Yote::AppRoot::_fetch_root();
-        my $ret  = $root->_process_command( $command );
-        $resp = $ret;
-        Yote::ObjProvider::stow_all();
+        my $obj_id = $command->{oi};
+        my $app_id = $command->{ai};
+
+        my $app        = Yote::ObjProvider::fetch( $app_id );
+
+        my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
+        my $login      = $app->token_login( { t => $command->{t}, ip => $command->{p} } );
+
+        #
+        # Only the root object can be accessed without a login.
+        #
+        if( $app_id > 1 && ! $login ) {
+            die "Access Error no login";
+        }
+
+        my $app_object = Yote::ObjProvider::fetch( $obj_id );
+        my $action     = $command->{a};
+        my $account;
+
+        # hidden parts of the args
+        if( ref( $data ) eq 'HASH' ) {
+            $data->{_ip} = $command->{p};
+        }
+
+        if( $login ) {
+            $account = $app->_get_account( $login->{l} );
+            if( ! $app->_account_can_access( $account, $app_object ) ) {
+                die "Access Error";
+            }
+        }
+
+        #
+        # dirty delta is a list of ids that have changed by this action. It tells the 
+        #    client to reload those objects.
+        #
+        my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
+
+        my $ret = $app_object->$action( $data, $account );
+
+        my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );
+
+        $resp = { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => \@dirty_delta };
     };
-    $resp ||= { err => $@ };
-    $resp->{r} ||= '';
+    if( $@ ) {
+	my $err = $@;
+	$err =~ s/at \/\S+\.pm.*//s;
+        print STDERR Data::Dumper->Dump( ["ERROR",$@] );
+        $resp = { err => $err, r => '' };
+    }
+
+    Yote::ObjProvider::stow_all();
+    Yote::ObjProvider::commit_transaction();
+
     $resp = to_json( $resp );
 
     #
@@ -348,8 +299,21 @@ sub _process_command {
         cond_broadcast( %prid2wait );
     }
 
-    Yote::ObjProvider::disconnect();
+
 } #_process_command
+
+#
+# Translates from vValue and reference_id to values and references
+#
+sub _translate_data {
+    my $val = shift;
+
+    if( ref( $val ) ) { #from javacript object, or hash. no fields with underscores accepted
+        return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) == -1 } keys %$val };
+    }
+    return undef unless $val;
+    return index($val,'v') == 0 ? substr( $val, 1 ) : Yote::ObjProvider::fetch( $val );
+}
 
 sub do404 {
     print "Content-Type: text/html\n\nERROR : 404\n";
@@ -373,7 +337,7 @@ $server->start_server();
 
 =head1 DESCRIPTION
 
-This starts an application server running on a specified port and hooked up to a specified datastore.
+This starts an appslication server running on a specified port and hooked up to a specified datastore.
 Additional parameters are passed to the datastore.
 
 The server set up uses Net::Server::Fork receiving and sending messages on multiple threads. These threads queue up the messages for a single threaded event loop to make things thread safe. Incomming requests can either wait for their message to be processed or return immediately.

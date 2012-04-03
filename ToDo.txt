@@ -1,4 +1,2 @@
-* _field does not get sent to the client
-* redo the javascript - server IO
-  - make it simpler. Center around the yote root server object
-    move login, create account, etc to the object rather than the function framework in javascript.
+* fail and pass return functions for application and object methods
+* create MongoDB IO

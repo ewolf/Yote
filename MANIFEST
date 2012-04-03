@@ -1,3 +1,4 @@
+./Build
 ./install
 ./lib/Yote/Account.pm
 ./lib/Yote/AccountRoot.pm
@@ -7,10 +8,13 @@
 ./lib/Yote/Census.pm
 ./lib/Yote/ClientObj.pm
 ./lib/Yote/Cron.pm
+./lib/Yote/FreeApp.pm
 ./lib/Yote/Hash.pm
+./lib/Yote/Login.pm
 ./lib/Yote/MysqlIO.pm
 ./lib/Yote/Obj.pm
 ./lib/Yote/ObjProvider.pm
+./lib/Yote/Sample/Census.pm
 ./lib/Yote/Sample/SecretCollect.pm
 ./lib/Yote/SQLiteIO.pm
 ./lib/Yote/SystemObj.pm
@@ -25,7 +29,9 @@
 ./lib/Yote.pm
 ./Makefile.PL
 ./MANIFEST
+./MYMETA.yml
 ./NOW
+./P.tar
 ./README
 ./README.pod
 ./script/yote_server.PL
@@ -50,5 +56,13 @@
 ./yote_root/html/yote/reset.html
 ./yote_root/html/yote/sample/secret_collect.html
 ./yote_root/html/yote/unit_tests.html
-./yote_root/SQLite.yote.db
 ./yote_root/yote.pid
+./_build/auto_features
+./_build/build_params
+./_build/cleanup
+./_build/config_data
+./_build/features
+./_build/magicnum
+./_build/notes
+./_build/prereqs
+./_build/runtime_params
