@@ -10,6 +10,7 @@ $.yote = {
     token:null,
     err:null,
     objs:{},
+    debug:false,
 
     fetch_root:function() {
 
@@ -24,8 +25,8 @@ $.yote = {
         if( typeof t === 'string' ) {
             var ret = this.root.token_login( { t:t } );
 	        if( typeof ret !== 'undefined' ) {
-		        this.token     = ret.t;
-		        this.login_obj = ret.l;
+		    this.token     = ret.t;
+		    this.login_obj = $.yote._create_obj( ret.l );
 	        }
         }
 
@@ -33,6 +34,13 @@ $.yote = {
 
     }, //fetch_root
     
+    get_login:function() {
+	return this.login_obj;
+    }, //get_login
+
+    is_logged_in:function() {
+	return typeof this.login_obj === 'object';
+    }, //is_logged_in
 
     _dump_cache:function() {
         this.objs = {};
@@ -74,37 +82,42 @@ $.yote = {
 	          assign methods
 	        */
 	        if( typeof x.m === 'object' ) {
-		        for( m in x.m ) {
-		            o[x.m[m]] = (function(key) {
-			            return function( params, passhandler, failhandler ) {
-			                var ret = root.message( {
-				                async:false,
-				                app_id:o._app_id,
-				                cmd:key,
-				                data:params,
-				                failhandler:failhandler,
-                                obj_id:o.id,
-				                passhandler:passhandler,
-				                wait:true,
-				                t:root.token,
-			                } ); //sending message
+		    for( m in x.m ) {
+		        o[x.m[m]] = (function(key) {
+			    return function( params, passhandler, failhandler ) {
+			        if( o.id == 1 && ( key == 'login' || key == 'create_login' ) ) {
+				    var ph = passhandler;
+				    passhandler = (function(p) { 
+					return function( r ) {
+				            $.yote.token = r.r.d.t.substring(1);
+				            $.yote.login_obj = $.yote._create_obj(r.r.d.l);
+					    console.dir( $.yote.login_obj )
+					    p( r );
+					} } )(ph);
+				}
 
-			                if( o.id == 1 && ( key == 'login' || key == 'create_login' ) ) {
-				                if( typeof ret.err !== 'string' ) {
-				                    root.token = ret.r.d.t.substring(1);
-				                }
-			                }
-			                
+			        var ret = root.message( {
+				    async:false,
+				    app_id:o._app_id,
+				    cmd:key,
+				    data:params,
+				    failhandler:failhandler,
+                                    obj_id:o.id,
+				    passhandler:passhandler,
+				    wait:true,
+				    t:root.token,
+			        } ); //sending message
+			        
 
-                            //dirty objects that may need a refresh
-                            if( typeof ret.d === 'object' ) {
-                                for( var i=0; i<ret.d.length; ++i ) {
-                                    var oid = ret.d[i];
-                                    if( root._is_in_cache(oid) ) {
-                                        root.objs[oid].reload();
+				//dirty objects that may need a refresh
+				if( typeof ret.d === 'object' ) {
+                                    for( var i=0; i<ret.d.length; ++i ) {
+					var oid = ret.d[i];
+					if( root._is_in_cache(oid) ) {
+                                            root.objs[oid].reload();
+					}
                                     }
-                                }
-                            }
+				}
 
 			                if( typeof ret.r === 'object' ) {
 				                return root._create_obj( ret.r, o._app_id );
@@ -322,13 +335,20 @@ $.yote = {
         };
 	    var resp;
 
-        //console.dir('outgoing ' + url );  console.dir( put_data );
+        if( $.yote.debug == true ) {
+	    console.dir('outgoing ' + url );  
+	    console.dir( data );
+	    console.dir( JSON.stringify( {d:data} ) );
+	    console.dir( put_data ); 
+	}
 
 	    $.ajax( {
 	        async:async,
 	        data:put_data,
 	        dataFilter:function(a,b) {
-		        //console.dir('incoming '); console.dir( a );
+        if( $.yote.debug == true ) {
+	    console.dir('incoming '); console.dir( a );
+	}
 		        return a; 
 	        },
 	        error:function(a,b,c) { root._error(a); },

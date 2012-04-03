@@ -125,7 +125,6 @@ $.yote.util = {
 	    var created_f = args['on_register']  || args['on_in'];
 	    var recover_f = args['on_recover']   || args['on_in'];
 	    var logged_out_f = args['on_logout'];
-        var require_root = args['require_root'];
 
 	    $(target).empty();
 	    $(target).append( "<span id=login_msg_outerspan style=display:none><span id=login_msg_span class=warning></span><BR></span>" +
@@ -180,7 +179,8 @@ $.yote.util = {
 	    var install_function = function( f ) { return function() { f(); } }
 	    var on_enter = function(f) { return function(e) { if(e.which == 13 ) { f(); } } }
 	    var to_login = function(msg) {
-		    message( msg );
+		console.dir( msg );
+		message( msg );
 	        $( target + ' > div ' ).hide();
 	        $( target + ' > div#y_login_div' ).show();
 	    }
@@ -201,61 +201,68 @@ $.yote.util = {
 	        $( target + ' > div#y_logged_in' ).show();                
 	    }
 	    var do_login = function() {
-	        $.yote.login( $( target + " .yotelogin#login").val(),
-			              $(target + " .yotelogin#password").val(),
-			              function(data) { //pass
-			                  to_logged_in($.yote.yotelogin.get('handle'));
-			                  // note the following line will work but is not closure safe yet.
-			                  if( typeof logged_in_f === 'function' ) { logged_in_f(); }
-			              },
-			              function(data) { //fail
+		console.dir( $( target + ' .login#login' ) );
+	        $.yote.root.login( { h:$( target + " .login#login").val(),
+			             p:$(target + " .login#password").val()
+				   },
+			           function(data) { //pass
+					    console.dir( $.yote.login_obj )
+
+			               to_logged_in($.yote.login_obj.get('handle'));
+			               // note the following line will work but is not closure safe yet.
+			               if( typeof logged_in_f === 'function' ) { logged_in_f(); }
+			           },
+			           function(data) { //fail
 			                  to_login(data);
-			              },
-                          require_root
-			            );
+			           }
+			         );
 	    }
 	    var do_register = function() {
+
             if( $( target + " .register#password").val().length > 2 ) {
-	            $.yote.create_account( $( target + " .register#login").val(),
-				                       $( target + " .register#password").val(),
-				                       $( target + " .register#email").val(),
-				                       function(data) { //pass
-				                           to_logged_in($.yote.yotelogin.get('handle'),"Created Account");
-				                           if( typeof created_f === 'function' ) { created_f(); }
-				                       },
-                                       
-				                       function(data) { //fail
-				                           to_register(data);
-				                       }
-				                     );     
+	        $.yote.root.create_login( { h:$( target + " .register#login").val(),
+				            p:$( target + " .register#password").val(),
+				            e:$( target + " .register#email").val()
+					  },
+				          function(data) { //pass
+					      to_logged_in($.yote.login_obj.get('handle'),"Created Account");
+					      if( typeof created_f === 'function' ) { created_f(); }
+				          },
+					  
+				          function(data) { //fail
+					      to_register(data);
+				          }
+				        );     
             } else {
                 to_register("password too short");
             }           
 	    }
 	    var do_recover = function() {
-	        $.yote.recover_password( $( target + ' .recover#email' ).val(), 
-                                     window.location.href,
-                                     window.location.href.replace(/[^\/]$/, 'reset.html' ),
-                                     function(d) {
-                                         to_login( "sent recovery email" );
-                                     },
-                                     function(d) {
-                                         message(d);
-                                     }
-                                   );
+	        $.yote.root.recover_password( { e:$( target + ' .recover#email' ).val(), 
+						u:window.location.href,
+						t:window.location.href.replace(/[^\/]$/, 'reset.html' )
+					      },
+					      function(d) {
+						  to_login( "sent recovery email" );
+					      },
+					      function(d) {
+						  message(d);
+					      }
+					    );
 	        if( typeof recover_f === 'function' ) { recover_f(); }
 	    }
 	    var logout = function() {
 	        $( target + ' > div ' ).hide();
             var rootapp = $.yote.fetch_root();
-            if( rootapp.number_of_accounts() > 1 ) {
+
+            if( rootapp.number_of_accounts() > 0 ) {
 	            $( target + ' > div#y_not_loggedin' ).show();
             } else {
                 $( target + ' > div#y_register_account' ).show();
                 message( "Create Initial Root Account" );
             }
 	        $( target + ' #password' ).val('');
-	        $.yote.logout();
+	        $.yote.root.logout();
 	        if( typeof logged_out_f === 'function' ) { logged_out_f(); }
 	    }
 

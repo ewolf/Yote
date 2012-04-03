@@ -26,6 +26,10 @@ sub fetch_app_by_class {
     return $app;
 } #fetch_app_by_class
 
+sub number_of_accounts {
+    return Yote::ObjProvider::xpath_count( "/_handles" );
+} #number_of_accounts
+
 #
 # Returns this root object.
 #
