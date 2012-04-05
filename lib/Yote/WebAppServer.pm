@@ -237,7 +237,8 @@ sub _process_command {
         my $app        = Yote::ObjProvider::fetch( $app_id );
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login      = $app->token_login( { t => $command->{t}, ip => $command->{p} } );
+        my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
+	print STDERR Data::Dumper->Dump(["DATA",$command ]);
 
         #
         # Only the root object can be accessed without a login.
@@ -256,7 +257,8 @@ sub _process_command {
         }
 
         if( $login ) {
-            $account = $app->_get_account( $login->{l} );
+            $account = $app->_get_account( $login );
+	    print STDERR Data::Dumper->Dump(["Account from app",$app,$account,$login]);
             if( ! $app->_account_can_access( $account, $app_object ) ) {
                 die "Access Error";
             }
@@ -267,7 +269,7 @@ sub _process_command {
         #    client to reload those objects.
         #
         my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
-
+	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data] );
         my $ret = $app_object->$action( $data, $account );
 
         my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );

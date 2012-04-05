@@ -84,7 +84,6 @@ sub power_clone {
         return $hash_clone;
     }
     else {
-	print STDERR Data::Dumper->Dump(["BOINK", $item]) if $item->isa( 'Yote::AppRoot' ) && (! $at_start);
         return $item if $item->isa( 'Yote::AppRoot' ) && (! $at_start);
     }
 
@@ -106,8 +105,6 @@ sub power_clone {
 	for my $obj (@cloned) {
 	    $cloned{ ref( $obj ) }++;
 	}
-	print STDERR Data::Dumper->Dump(["Cloned " .scalar(keys %$replacements)." items"]);
-	print STDERR Data::Dumper->Dump([\%cloned]);
     }
 
     return $clone;

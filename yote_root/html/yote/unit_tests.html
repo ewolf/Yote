@@ -33,18 +33,18 @@ function pass( test ) {
 }
 function is( result, expected, msg ) {
     if( result === expected ) {
-	    pass( msg )();
+	pass( msg )();
     }
     else {
-	    fail( msg + "( expected " + expected + " and got " + result +")" )();
+	fail( msg + "( expected " + expected + " and got " + result +")" )();
     }
 }
 function ok( result, msg ) {
     if( result === true ) {
-	    pass( msg )();
+	pass( msg )();
     }
     else { 
-	    fail( msg )();
+	fail( msg )();
     }
 }
 function wrap_up() {
@@ -61,23 +61,24 @@ function step( msg ) {
 }
 $().ready(function(){ 
     /* check 
-	 *    account creation   ^
-	 *    removing account   ^
-	 *    login              ^
-	 *    app fetching       ^
-	 *    object methods     ^
-	 *    returned scalar    ^
-	 *    array              
-	 *    hash
-	 *    object
-	 */
+     *    account creation   ^
+     *    removing account   ^
+     *    login              ^
+     *    app fetching       ^
+     *    object methods     ^
+     *    returned scalar    ^
+     *    array              
+     *    hash
+     *    object
+     */
     function do_tests() {
         // init yote
-        var root = $.yote.fetch_root();
+        $.yote.init();
+        $.yote.debug = false;
 
         //fetch app that doesn't require login and get scalar
         step('get app testappnologin');
-        var nologin = root.fetch_app_by_class( 'Yote::Test::TestAppNoLogin' );
+        var nologin = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
         nologin.reset();
         step('scalar called on testappnologin');
         var scalar = nologin.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
@@ -85,7 +86,7 @@ $().ready(function(){
         
         //fetch app that requires login and get scalar
         step('get app testappneedslogin');
-        var login = root.fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' );
+        var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
         login.reset();
         step('scalar called on testappneedslogin');
         var scalar = login.scalar( {}, 
@@ -94,43 +95,31 @@ $().ready(function(){
         
         step('create account');
         // account creation. 
-        root.create_login( { h:'unit_test_account0', 
-                             p:'ut', 
-			     e:'nobodyelse@fenowyn.com'
-			   }, pass("create first account"), fail("create first account") );
-	
-        root.create_login( { h:'unit_test_account',
-			     p:'ut', 
-			     e:'nobody@fenowyn.com'
-			     }, pass("create account"), fail("create account") );
+        $.yote.create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
+			pass("create first account"), fail("create first account") );
+
+        $.yote.create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
+			pass("create first account"), fail("create account") );
 	
         step('create account with same handle');
-        root.create_login( {h:'unit_test_account', 
-			    p:'ut', 
-			    e:'zobody@fenowyn.com'
-			   }, fail("created account with same handle"), pass("refused to create account with same handle") ); 
-	
-        step('create account with same email');
-	root.create_login( {h:'nunit_test_account', 
-			    p:'ut',
-			    e:'nobody@fenowyn.com'
-			   }, fail("created account with same email"), pass("refused to create account with same email") );
+        $.yote.create_login( 'unit_test_account', 'ut', 'zobody@fenowyn.com',
+			fail("created account with same handle"), pass("refused to create account with same handle") );
+
+        $.yote.create_login( 'nunit_test_account', 'ut', 'nobody@fenowyn.com',
+			fail("created account with same email"), pass("refused to create account with same email") );
 	
         step('login with wrong password');
-	root.login( {h:'unit_test_account',
-		     p:'uz'},
-                    fail( "able to log in with wrong password" ),
-                    pass( "unable to log in with wrong password" ) );
+	$.yote.login( 'unit_test_account','uz',
+                      fail( "able to log in with wrong password" ),
+                      pass( "unable to log in with wrong password" ) );
         step('login with correct password');
-        root.login( {h:'unit_test_account', 
-		     p:'ut'},
-                    pass( "able to log in" ),
-                    fail( "able to log in" ) );
+        $.yote.login( 'unit_test_account', 'ut',
+                      pass( "able to log in" ),
+                      fail( "able to log in" ) );
 	
         //app that requires login should allow scalar now
         step('scalar called on testappneedslogin to succeed');
         var scalar = login.scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
-	console.dir('scalar');	console.dir( scalar );
         ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
         // have a Yote object returned
         step('yote_obj get called on testappneedslogin to succeed');
@@ -151,8 +140,6 @@ $().ready(function(){
         is( login.obj_text(), 'bar', 'correct object 1 text' );
 
         var o3 = login.get_obj();
-        console.dir( o2 );
-        console.dir( o3 );
         is( o3.get_Text(), 'bar', 'correct object 1 text directly' );
         login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
         is( login.obj_text(), 'foo', 'correct object 2 text' );
@@ -170,7 +157,7 @@ $().ready(function(){
         o3.send_update();
         is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
-    //Text is writable, zap doesn't exist and so it not, and bext is not writeable
+	//Text is writable, zap doesn't exist and so it not, and bext is not writeable
         o3.send_update({Text:'baf',bext:'Again',zip:'zap'}); 
         is( o3.get_Text(), 'baf', 'correct object 2 text directly' );
         is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
@@ -219,10 +206,10 @@ $().ready(function(){
         //test javascript object caching and multi loading of objects.
         $.yote._dump_cache();
         is( $.yote._cache_size(), 0, "cache now empty" );
-        var login = root.fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' );
-        is( $.yote._cache_size(), 1, "cache with one object" );
+        var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+        is( $.yote._cache_size(), 2, "cache with loginapp and root" );
         login.load_direct_descendents();
-        is( $.yote._cache_size(), 4, "cache with two objects" );
+        is( $.yote._cache_size(), 5, "cache with loginapp, root and loginapps threefields (made,yoteobj,obj) " );
 
         wrap_up();
     }
@@ -231,19 +218,18 @@ $().ready(function(){
     var d = new Date();
     var t2 = d.getTime();
     do_tests();
-    $.yote.root.remove_login( { h:'unit_test_account', 
-			 p:'ut', 
-			 e:'nobody@fenowyn.com' }, pass( "remove login" ), fail( "remove login" ) );
+    $.yote.remove_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com', 
+			 pass( "remove login" ), fail( "remove login" ) );
     var d2 = new Date();
     $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
-/*
-    }
-    catch( err ) {
-        console.dir( 'got err ' + err  );
-        if( err.stack ) { console.dir( err.stack ) }
-        alert( 'got err ' + err );
-    }
-*/
+    /*
+      }
+      catch( err ) {
+      console.dir( 'got err ' + err  );
+      if( err.stack ) { console.dir( err.stack ) }
+      alert( 'got err ' + err );
+      }
+    */
 } ); //ready
 </script>
 

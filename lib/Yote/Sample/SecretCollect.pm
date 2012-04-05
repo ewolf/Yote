@@ -2,7 +2,6 @@ package Yote::Sample::SecretCollect;
 
 use base 'Yote::AppRoot';
 
-use Crypt::Passwd;
 
 #
 # Init is run only the first time this Yote object is created and assigned
@@ -23,27 +22,18 @@ sub init {
 
 } #init
 
+sub _init_account {
+    my( $self, $acct ) = @_;
+    $acct->set_guesses( 0 );
+    $acct->set_my_riddles( [] );
+}
+
+#
+# Add a riddle to your collection. May do this until you have 3.
+#
 sub add_riddle {
 
-#    my( $self, $data, $acct_root, $acct ) = @_;
-
-    my( $self,      # This singleton AppRoot object. 
-                    # It lives in /apps/Yote::Sample::SecretCollect
-                    # Calling 
-                    # "var app = $.yote.get_app('Yote::Sample::SecretCollect');"
-                    #   on the client side will return only this instance.
-        
-        $data,      # The data structure sent by the client.
-                    # This app is expecting app.add_riddle({question:"ques",answer:"ans"});
-        $acct_root, # This is a container specific to the account calling add_riddle
-                    # and the SecretCollect app. This is meant to store state data
-                    # for the player that does not clash with state data they have
-                    # for any other app.
-        
-        $acct       # The account object the user is logged in as. 
-                    # It is created by calling 
-                    #   $.yote.create_account( {} );
-        ) = @_;
+    my( $self, $data, $acct ) = @_;
 
     #
     # Create a new riddle object and add it to the account root's riddle supply.
@@ -55,11 +45,9 @@ sub add_riddle {
     #
     my $riddle = new Yote::Obj();
     $riddle->set_question( $data->{question} );
-    print STDERR Data::Dumper->Dump( [$data->{answer},$data->{question},"SSSSSSSSSS"] );
-    $riddle->set_secret_answer( unix_std_crypt( $data->{answer}, 
-                                                $data->{question} ) );
-    $riddle->set_owner( $acct_root );
-    $acct_root->add_to_my_riddles( $riddle );
+    $riddle->set__answer( $data->{answer} );   # _answer won't be sent to the client because it starts with an underscore
+    $riddle->set_owner( $acct );
+    $acct->add_to_my_riddles( $riddle );
 
     #
     # add the riddle to all riddles the app has
@@ -71,20 +59,25 @@ sub add_riddle {
 
 } #add_riddle
 
+#
+# Can start playing if you have 3 or more questions.
+#
 sub can_start {
 
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
 
     # need 3 riddles to start guessing
-    return @{ $self->get_riddles( [] ) } > 2;
+    return @{ $acct->get_my_riddles( ) } > 2;
 }
 
-
+#
+# Give a random riddle to the guesser
+#
 sub random_riddle {
 
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
 
-    unless( $self->can_start( $data, $acct_root, $acct ) ) {
+    unless( $self->can_start( $data, $acct ) ) {
         die "Must have 3 riddles to guess others";
     }
 
@@ -98,30 +91,14 @@ sub random_riddle {
     # Pick the riddle without having to load in the whole riddle array :
     #
     my $riddle_idx = int( rand( $riddle_count ) );
-    my $riddle = $self->_xpath( "/riddles/$riddle_idx" );
-    print STDERR Data::Dumper->Dump( [$riddle_idx,$self->get_riddles([]),$riddle] );
+    my $riddle = Yote::ObjProvider::xpath( "/apps/Yote::Sample::SecretCollect/riddles/$riddle_idx" );
     return $riddle; # should standardize the sending of this. have a send success, send error
 
 } #random_riddle
 
-sub my_guess_count {
-
-    my( $self, $data, $acct_root, $acct ) = @_;
-
-    print STDERR Data::Dumper->Dump( ["GUess count",$acct_root] );
-    return $acct_root->get_guesses() || 0;
-
-} #my_guess_count
-
-sub my_riddles {
-
-    my( $self, $data, $acct_root, $acct ) = @_;
-    return $acct_root->get_my_riddles([]);
-} #my_riddles
-
 sub guess_riddle {
 
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
 
     my $riddle = $data->{riddle};
     my $answer = $data->{answer};
@@ -129,19 +106,19 @@ sub guess_riddle {
     my $riddle_owner = $riddle->get_owner();
 
     $riddle->set_guesses( 1 + $riddle->get_guesses() );
-    $acct_root->set_guesses( 1 + $acct_root->get_guesses() );
+    $acct->set_guesses( 1 + $acct->get_guesses() );
 
-    if( $riddle->get_secret_answer() eq unix_std_crypt( $answer, $riddle->get_question() ) ) {
+    if( $riddle->get__answer() eq $answer ) {
         #
         # A secret collect! Change ownership and update the stats.
         #
-        if( ! $riddle_owner->is( $acct_root ) ) {
-            $acct_root->set_collected_count( 1 + $acct_root->get_collected_count() );
+        if( ! $riddle_owner->_is( $acct ) ) {
+            $acct->set_collected_count( 1 + $acct->get_collected_count() );
             $riddle->set_collect_count( 1 + $riddle->get_collect_count() );
 
             $riddle_owner->remove_from_my_riddles( $riddle );
-            $acct_root->add_to_my_riddles( $riddle );
-            $riddle->set_owner( $acct_root );
+            $acct->add_to_my_riddles( $riddle );
+            $riddle->set_owner( $acct );
         }
         return 1;
     } 

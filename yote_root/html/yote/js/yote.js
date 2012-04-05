@@ -12,28 +12,99 @@ $.yote = {
     objs:{},
     debug:false,
 
-    fetch_root:function() {
-
-        this.root = this._create_obj( this.message( {
-            async:false,
-            cmd:'fetch_root',
-            verb:'PUT',
-	        wait:true,
-	    } ).r, 1 );
+    init:function() {
+	var root = this.fetch_root();
 
         var t = $.cookie('yoken');
         if( typeof t === 'string' ) {
-            var ret = this.root.token_login( { t:t } );
-	        if( typeof ret !== 'undefined' ) {
-		    this.token     = ret.t;
-		    this.login_obj = $.yote._create_obj( ret.l );
-	        }
+            var ret = root.token_login( { t:t } );
+	    if( typeof ret === 'object' ) {
+		this.token     = t;
+		this.login_obj = ret;
+	    }
         }
+    }, //init
 
-	    return this.root;
-
+    fetch_root:function() {
+	return this.objs[1] || this._create_obj( this.message( {
+            async:false,
+            cmd:'fetch_root',
+            verb:'PUT',
+	    wait:true,
+	} ).r, 1 );
+	
     }, //fetch_root
+
+    fetch_app:function(appname,passhandler,failhandler) {
+	var root = this.fetch_root();
+	if( typeof root === 'object' ) {
+	    var ret = root.fetch_app_by_class( appname );
+	    ret._app_id = ret.id;
+	    return ret;
+	} else if( typeof failhanlder === 'function' ) {
+	    failhandler('lost connection to yote server');
+	} else {
+	    _error('lost connection to yote server');
+	}
+    }, //fetch_app
+
+
+    create_login:function( handle, password, email, passhandler, failhandler ) {
+	var root = this.fetch_root();
+	if( typeof root === 'object' ) {
+	    root.create_login( { h:handle, p:password, e:email }, 
+			       function(res) {
+				   $.yote.token = res.r.d.t.substring(1);
+				   $.yote.login_obj = $.yote._create_obj(res.r.d.l);
+				   $.cookie( 'yoken', $.yote.token );
+				   passhandler(res);
+			       },
+			       failhandler );
+	    return $.yote.login_obj;
+	} else if( typeof failhanlder === 'function' ) {
+	    failhandler('lost connection to yote server');
+	} else {
+	    _error('lost connection to yote server');
+	}
+    }, //create_login
+
+    login:function( handle, password, passhandler, failhandler ) {
+	var root = this.fetch_root();
+	if( typeof root === 'object' ) {
+	    root.login( { h:handle, p:password }, 
+			function(res) {
+			    $.yote.token = res.r.d.t.substring(1);
+			    $.yote.login_obj = $.yote._create_obj(res.r.d.l);
+			    $.cookie( 'yoken', $.yote.token );
+			    passhandler(res);
+			},
+			failhandler );
+	    return $.yote.login_obj;
+	} else if( typeof failhanlder === 'function' ) {
+	    failhandler('lost connection to yote server');
+	} else {
+	    _error('lost connection to yote server');
+	}
+    }, //login
     
+
+    remove_login:function( handle, password, email, passhandler, failhandler ) {
+	var root = this.fetch_root();
+	if( typeof root === 'object' ) {
+	    root.remove_login( { h:handle, p:password, e:email }, 
+			       function(res) {
+				   $.yote.token = undefined;
+				   $.yote.login_obj = undefined;
+				   passhandler(res);
+			       },
+			       failhandler );
+	} else if( typeof failhanlder === 'function' ) {
+	    failhandler('lost connection to yote server');
+	} else {
+	    _error('lost connection to yote server');
+	}
+    }, //remove_login
+
     get_login:function() {
 	return this.login_obj;
     }, //get_login
@@ -59,113 +130,101 @@ $.yote = {
     },
 
     _create_obj:function(data,app_id) {
-	    var root = this;
-	    return (function(x,an) {
-	        var o = {
-		        _app_id:app_id,
+	var root = this;
+	return (function(x,an,ai) {
+	    var o = {
+		_app_id:ai,
                 _dirty:false,
-		        _d:{},
-		        id:x.id,
-		        class:x.c,
+		_d:{},
+		id:x.id,
+		class:x.c,
                 _stage:{},
-		        reload:function(){},
-		        length:function() {
-		            var cnt = 0;
-		            for( key in this._d ) {
-			            ++cnt;
-		            }
-		            return cnt;
-		        }
-	        };
+		reload:function(){},
+		length:function() {
+		    var cnt = 0;
+		    for( key in this._d ) {
+			++cnt;
+		    }
+		    return cnt;
+		}
+	    };
 
-	        /*
-	          assign methods
-	        */
-	        if( typeof x.m === 'object' ) {
-		    for( m in x.m ) {
-		        o[x.m[m]] = (function(key) {
-			    return function( params, passhandler, failhandler ) {
-			        if( o.id == 1 && ( key == 'login' || key == 'create_login' ) ) {
-				    var ph = passhandler;
-				    passhandler = (function(p) { 
-					return function( r ) {
-				            $.yote.token = r.r.d.t.substring(1);
-				            $.yote.login_obj = $.yote._create_obj(r.r.d.l);
-					    console.dir( $.yote.login_obj )
-					    p( r );
-					} } )(ph);
-				}
+	    /*
+	      assign methods
+	    */
+	    if( typeof x.m === 'object' ) {
+		for( m in x.m ) {
+		    o[x.m[m]] = (function(key) {
+			return function( params, passhandler, failhandler ) {
+			    var ret = root.message( {
+				async:false,
+				app_id:o._app_id,
+				cmd:key,
+				data:params,
+				failhandler:failhandler,
+                                obj_id:o.id,
+				passhandler:passhandler,
+				wait:true,
+				t:root.token,
+			    } ); //sending message
+			    
 
-			        var ret = root.message( {
-				    async:false,
-				    app_id:o._app_id,
-				    cmd:key,
-				    data:params,
-				    failhandler:failhandler,
-                                    obj_id:o.id,
-				    passhandler:passhandler,
-				    wait:true,
-				    t:root.token,
-			        } ); //sending message
-			        
-
-				//dirty objects that may need a refresh
-				if( typeof ret.d === 'object' ) {
-                                    for( var i=0; i<ret.d.length; ++i ) {
-					var oid = ret.d[i];
-					if( root._is_in_cache(oid) ) {
-                                            root.objs[oid].reload();
-					}
-                                    }
-				}
-
-			                if( typeof ret.r === 'object' ) {
-				                return root._create_obj( ret.r, o._app_id );
-			                } else {
+			    //dirty objects that may need a refresh
+			    if( typeof ret.d === 'object' ) {
+                                for( var i=0; i<ret.d.length; ++i ) {
+				    var oid = ret.d[i];
+				    if( root._is_in_cache(oid) ) {
+                                        root.objs[oid].reload();
+				    }
+                                }
+			    }
+			    if( typeof ret.r === 'object' ) {
+				return root._create_obj( ret.r, o._app_id );
+			    } else {
                                 if( typeof ret.r === 'undefined' ) {
-                                    if( typeof failhandler === 'function' ) {
+				    if( typeof failhandler === 'function' ) {
                                         failhandler('no return value');
-                                    }
-                                    return undefined;
+				    }
+				    return undefined;
                                 }
                                 if( (0+ret.r) > 0 ) {
-                                    return root.fetch_obj(ret.r,this._app_id);
+				    return root.fetch_obj(ret.r,this._app_id);
                                 }
-				                return ret.r.substring(1);
-			                }
-			            } } )(x.m[m]);
-		        } //each method
-	        } //methods
+				return ret.r.substring(1);
+			    }
+			} } )(x.m[m]);
+		} //each method
+	    } //methods
 
-	        o.get = function( key ) {
-		        var val = this._stage[key] || this._d[key];
-		        if( typeof val === 'undefined' ) return false;
-		        if( typeof val === 'object' ) return val;
-		        if( (0+val) > 0 ) {
-		            var obj = root.objs[val] || root.root.fetch(val);
+	    o.get = function( key ) {
+		var val = this._stage[key] || this._d[key];
+		if( typeof val === 'undefined' ) return false;
+		if( typeof val === 'object' ) return val;
+		if( (0+val) > 0 ) {
+		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val);
                     if( this._stage[key] == val ) {
                         this._stage[key] = obj;
                     } else {
                         this._d[key] = obj;
                     }
                     return obj;
-		        }
-		        return val.substring(1);
-	        };
+		}
+		return val.substring(1);
+	    };
 
-	        // get fields
-	        if( typeof x.d === 'object' ) {
-		        for( fld in x.d ) {
-		            var val = x.d[fld];
-		            if( typeof val === 'object' ) {
-			            o._d[fld] = (function(x) { return root._create_obj(x); })(val);
-			            
-		            } else {
-			            o._d[fld] = (function(x) { return x; })(val);
-		            }
-		            o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-		        }
-	        }
+	    // get fields
+	    if( typeof x.d === 'object' ) {
+		for( fld in x.d ) {
+		    var val = x.d[fld];
+		    if( typeof val === 'object' ) {
+			o._d[fld] = (function(x) { return root._create_obj(x); })(val);
+			
+		    } else {
+			o._d[fld] = (function(x) { return x; })(val);
+		    }
+		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+		}
+	    }
 
             // stages functions for updates
             o.stage = function( key, val ) {
@@ -243,25 +302,25 @@ $.yote = {
                 } );
             };
 
-	        if( (0 + x.id ) > 0 ) {
-		        root.objs[x.id] = o;
-		        o.reload = (function(thid,tapp) {
-		            return function() {
-			            root.objs[thid] = null;
-			            var replace = root.root.fetch( thid );
-			            this._d = replace._d;
+	    if( (0 + x.id ) > 0 ) {
+		root.objs[x.id] = o;
+		o.reload = (function(thid,tapp) {
+		    return function() {
+			root.objs[thid] = null;
+			var replace = $.yote.fetch_root().fetch( thid );
+			this._d = replace._d;
                         for( fld in this._d ) {
                             if( typeof this['get_' + fld] !== 'function' ) {
                                 this['get_'+fld] = (function(fl) { 
                                     return function() { return this.get(fl) } } )(fld);
                             }
                         }
-			            root.objs[thid] = this;
-			            return this;
-		            }
-		        } )(x.id,an);
-	        }
-	        return o;
+			root.objs[thid] = this;
+			return this;
+		    }
+		} )(x.id,an,app_id);
+	    }
+	    return o;
         })(data,app_id);
     }, //_create_obj
 
@@ -302,12 +361,13 @@ $.yote = {
 
     _disable:function() {
         this.enabled = $(':enabled');
-        $.each( this.enabled, function(idx,val) { val.disabled = true } );
+	$.yote.da = [];
+//	$.each( this.enabled, function(idx,val) { val.disabled = true; $.yote.da.push( val ) } );
         $("body").css("cursor", "wait");
     }, //_disable
     
     _reenable:function() {
-        $.each( this.enabled, function(idx,val) { val.disabled = false } );
+//        $.each( $.yote.da, function(idx,val) { val.disabled = false } );
         $("body").css("cursor", "auto");
     }, //_reenable
 
@@ -316,9 +376,9 @@ $.yote = {
         var root   = this;
         var data   = root._translate_data( params.data || {} );
         var async  = params.async == true ? 1 : 0;
-	    var wait   = params.wait  == true ? 1 : 0;
+	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
-        var app_id = params.app;
+        var app_id = params.app_id;
         var cmd    = params.cmd;
         var obj_id = params.obj_id; //id to act on
         if( async == 0 ) {
@@ -333,7 +393,7 @@ $.yote = {
             t:root.token,
             w:wait
         };
-	    var resp;
+	var resp;
 
         if( $.yote.debug == true ) {
 	    console.dir('outgoing ' + url );  
@@ -342,33 +402,33 @@ $.yote = {
 	    console.dir( put_data ); 
 	}
 
-	    $.ajax( {
-	        async:async,
-	        data:put_data,
-	        dataFilter:function(a,b) {
-        if( $.yote.debug == true ) {
-	    console.dir('incoming '); console.dir( a );
-	}
-		        return a; 
-	        },
-	        error:function(a,b,c) { root._error(a); },
-	        success:function( data ) {
+	$.ajax( {
+	    async:async,
+	    data:put_data,
+	    dataFilter:function(a,b) {
+		if( $.yote.debug == true ) {
+		    console.dir('incoming '); console.dir( a );
+		}
+		return a; 
+	    },
+	    error:function(a,b,c) { root._error(a); },
+	    success:function( data ) {
                 if( typeof data !== 'undefined' ) {
-		            resp = data; //for returning synchronous
-		            if( typeof data.err === 'undefined' ) {
-		                if( typeof params.passhandler === 'function' ) {
-			                params.passhandler(data);
-		                }
-		            } else if( typeof params.failhandler === 'function' ) {
-		                params.failhandler(data.err);
+		    resp = data; //for returning synchronous
+		    if( typeof data.err === 'undefined' ) {
+		        if( typeof params.passhandler === 'function' ) {
+			    params.passhandler(data);
+		        }
+		    } else if( typeof params.failhandler === 'function' ) {
+		        params.failhandler(data.err);
                     } //error case. no handler defined 
                 } else {
                     console.dir( "Success reported but no response data received" );
                 }
-	        },
-	        type:'POST',
-	        url:url
-	    } );
+	    },
+	    type:'POST',
+	    url:url
+	} );
         if( async == 0 ) {
             root._reenable();
             return resp;
