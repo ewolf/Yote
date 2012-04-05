@@ -74,6 +74,7 @@ $().ready(function(){
     function do_tests() {
         // init yote
         $.yote.init();
+        $.yote.logout();
         $.yote.debug = false;
 
         //fetch app that doesn't require login and get scalar
@@ -86,6 +87,7 @@ $().ready(function(){
         
         //fetch app that requires login and get scalar
         step('get app testappneedslogin');
+
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
         login.reset();
         step('scalar called on testappneedslogin');
@@ -96,7 +98,7 @@ $().ready(function(){
         step('create account');
         // account creation. 
         $.yote.create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
-			pass("create first account"), fail("create first account") );
+			pass("create first account"), pass("create first account already existed") );
 
         $.yote.create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
 			pass("create first account"), fail("create account") );

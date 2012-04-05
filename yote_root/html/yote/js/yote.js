@@ -87,6 +87,11 @@ $.yote = {
 	}
     }, //login
     
+    logout:function() {
+	$.yote.login_obj = undefined;
+	$.yote.token = undefined;
+	$.cookie( 'yoken', '' );
+    }, //logout
 
     remove_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();

@@ -182,19 +182,24 @@ sub process_http_request {
     } #if a command on an object
 
     else { #serve up a web page
-	    my $root = $self->{args}{webroot};
-	    my $dest = join('/',@path);
-	    if( open( IN, "<$root/$dest" ) ) {
-            print "Content-Type: text/html\n\n";
+	my $root = $self->{args}{webroot};
+	my $dest = join('/',@path);
+	if( open( IN, "<$root/$dest" ) ) {
+	    if( $dest =~ /^yote\/js/ ) {
+		print "Content-Type: text/javascript\n\n";
+	    }
+	    else {
+		print "Content-Type: text/html\n\n";
+	    }
             while(<IN>) {
                 print $_;
             }
             close( IN );
-	    } else {
-		    do404();
-	    }
+	} else {
+	    do404();
+	}
 #        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
-	    return;
+	return;
     } #serve html
 
 } #process_request
@@ -238,14 +243,7 @@ sub _process_command {
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
         my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
-	print STDERR Data::Dumper->Dump(["DATA",$command ]);
-
-        #
-        # Only the root object can be accessed without a login.
-        #
-        if( $app_id > 1 && ! $login ) {
-            die "Access Error no login";
-        }
+	print STDERR Data::Dumper->Dump(["DATA",$command,  MIME::Base64::decode( $command->{d} ), $data ]);
 
         my $app_object = Yote::ObjProvider::fetch( $obj_id );
         my $action     = $command->{a};
@@ -258,7 +256,7 @@ sub _process_command {
 
         if( $login ) {
             $account = $app->_get_account( $login );
-	    print STDERR Data::Dumper->Dump(["Account from app",$app,$account,$login]);
+
             if( ! $app->_account_can_access( $account, $app_object ) ) {
                 die "Access Error";
             }
@@ -269,7 +267,7 @@ sub _process_command {
         #    client to reload those objects.
         #
         my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
-	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data] );
+	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data,"and account",$account,'and login',$account?$account->get_login():'none'] );
         my $ret = $app_object->$action( $data, $account );
 
         my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );
