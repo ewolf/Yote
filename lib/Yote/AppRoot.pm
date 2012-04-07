@@ -14,6 +14,9 @@ use MIME::Base64;
 
 use base 'Yote::Obj';
 
+use vars qw($VERSION);
+$VERSION = '0.085';
+
 #
 # Available to all apps. Used for verification and for cookie login.
 #
