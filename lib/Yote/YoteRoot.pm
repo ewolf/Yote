@@ -34,7 +34,11 @@ sub number_of_accounts {
 # Returns this root object.
 #
 sub fetch_root {
-    return Yote::ObjProvider::fetch( 1 );
+    my $root = Yote::ObjProvider::fetch( 1 );
+    unless( $root ) {
+	$root = new Yote::YoteRoot();
+    }
+    return $root;
 }
 
 #

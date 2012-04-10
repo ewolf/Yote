@@ -108,7 +108,7 @@ $.yote.util = {
                 } )(yote_obj,yote_fieldname,'#'+idname,current_id)
             );
         }
-    }, //stage_select
+    }, //stage_object_select
 
     make_select:function(attachpoint,list,list_fieldname) {
 	var idname = this.next_id();
@@ -180,7 +180,6 @@ $.yote.util = {
 	var install_function = function( f ) { return function() { f(); } }
 	var on_enter = function(f) { return function(e) { if(e.which == 13 ) { f(); } } }
 	var to_login = function(msg) {
-	    console.dir( msg );
 	    message( msg );
 	    $( target + ' > div ' ).hide();
 	    $( target + ' > div#y_login_div' ).show();
@@ -200,13 +199,11 @@ $.yote.util = {
 	    $( target + ' .logged_in#handle' ).empty();
 	    $( target + ' .logged_in#handle' ).append(name);
 	    $( target + ' > div#y_logged_in' ).show();                
+	    logged_in_f();
 	}
 	var do_login = function() {
-	    console.dir( $( target + ' .login#login' ) );
 	    $.yote.login( $( target + " .login#login").val(), $(target + " .login#password").val(),
 			  function(data) { //pass
-			      console.dir( $.yote.login_obj )
-			      
 			      to_logged_in($.yote.login_obj.get('handle'));
 			      // note the following line will work but is not closure safe yet.
 			      if( typeof logged_in_f === 'function' ) { logged_in_f(); }
@@ -281,7 +278,6 @@ $.yote.util = {
 	$( target + ' .register#login,' + target + ' .register#password,' + target + ' .register#email' ).keypress( on_enter(do_register) );
 	$( target + ' .recover#email' ).keypress( on_enter(do_recover) );
 	$( target + ' #recover_submit' ).click( install_function(do_recover || nada) );
-
 	if( $.yote.is_logged_in() ) {
             to_logged_in( $.yote.get_login().get_handle() );
 	} else {
