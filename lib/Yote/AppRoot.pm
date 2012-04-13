@@ -42,6 +42,40 @@ sub account {
 } #account
 
 #
+# Returns the direct descendents of the object passed in.
+#
+sub multi_fetch {
+    my( $self, $obj, $account ) = @_;
+
+    my( @ret );
+
+    my $ref = ref( $obj );
+    if( $ref eq 'ARRAY' ) {
+	for my $item (@$obj) {
+	    if( ref( $item ) ) {
+		push( @ret, Yote::ObjProvider::xform_out( $item ) );
+	    }
+	}
+    } 
+    elsif( $ref eq 'HASH' ) {
+	for my $item (values %$obj) {
+	    if( ref( $item ) ) {
+		push( @ret, Yote::ObjProvider::xform_out( $item ) );
+	    }
+	}
+    }
+    elsif( $ref ) {
+	for my $item (map { $obj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$obj->{DATA}}) {
+	    if( ref( $item ) ) {
+		push( @ret, Yote::ObjProvider::xform_out( $item ) );
+	    }
+	}
+    }
+
+    return \@ret;
+} #multi_fetch
+
+#
 # Returns the account root attached to this AppRoot for the given account.
 #
 sub _get_account {

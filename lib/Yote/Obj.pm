@@ -74,6 +74,17 @@ sub update {
     return $updated;
 } #update
 
+sub rekey {
+    my( $self, $data, $account ) = @_;
+    my( $from, $to ) = ( $data->{from}, $data->{to} );
+    if( $self->{DATA}{$to} ) {
+	die "Keyname '$to' already taken";
+    }
+    $self->{DATA}{$to} = $self->{DATA}{$from};
+    delete $self->{DATA}{$from};
+    return 1;
+} #rekey
+
 sub load_direct_descendents {
     my( $self, $data, $account ) = @_;
     my @ret;

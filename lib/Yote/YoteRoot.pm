@@ -53,6 +53,7 @@ sub fetch {
     die "Access Error";
 } #fetch
 
+
 #
 # Validates that the given credentials are given
 #   (client side) use : login({h:'handle',p:'password'});
@@ -161,7 +162,7 @@ sub remove_login {
     {
         delete $self->get__handles()->{$args->{h}};
         delete $self->get__emails()->{$args->{e}};
-        $self->add_to_removed_logins( $login );
+        $self->add_to__removed_logins( $login );
         return "deleted account";
     } 
     die "unable to remove account";

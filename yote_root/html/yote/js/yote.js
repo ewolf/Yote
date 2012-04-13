@@ -49,6 +49,13 @@ $.yote = {
     }, //fetch_app
 
 
+    load_direct_descendents:function( app, obj ) {
+	var desc = app.multi_fetch( obj );
+	for( var i=0; i<desc.length(); i++ ) {
+	    desc.get(i);
+	}
+    }, //load_direct_descendents
+
     create_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
@@ -222,10 +229,10 @@ $.yote = {
 		for( fld in x.d ) {
 		    var val = x.d[fld];
 		    if( typeof val === 'object' ) {
-			o._d[fld] = (function(x) { return root._create_obj(x); })(val);
+			o._d[fld] = (function(xx) { return root._create_obj(xx); })(val);
 			
 		    } else {
-			o._d[fld] = (function(x) { return x; })(val);
+			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
 		}
