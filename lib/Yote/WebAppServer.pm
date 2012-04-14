@@ -184,6 +184,9 @@ sub process_http_request {
     else { #serve up a web page
 	my $root = $self->{args}{webroot};
 	my $dest = join('/',@path);
+	if( -d "<$root/$dest" ) {
+	    $dest .= '/index.html';
+	}
 	if( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /^yote\/js/ ) {
 		print "Content-Type: text/javascript\n\n";
