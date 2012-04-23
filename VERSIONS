@@ -1,3 +1,10 @@
+April 18, 2012.
+
+I skipped a few versions here and a lot has happened.
+
+Version 0.086 :
+ * Yote is now a stand alone web server as well as an app server.
+ * no longer use cgi files. 
 
 # ----- jan 31 -----------
 

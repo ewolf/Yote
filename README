@@ -5,12 +5,13 @@ Summary
     Yote is a platform for creating web based applications by bridging
     client side javascript with server side, automatically persistent perl
     objects. Yote provides javascript objects with methods that map to their
-    server side counterparts.
+    server side counterparts. 
 
-    See http://fenowyn.com/yote for more information.
+    Yote also is a simple web server as well as an app server.
+
 
 Note
-    As of this writing Yote is on version 0.072. 
+    As of this writing Yote is on version 0.086. 
     It is not yet stable and is in pre-alpha mode.
     Consider this alpha software once version 0.100 is reached.
     Please email coyocanid@gmail.com to report bugs or issues or 
@@ -19,21 +20,20 @@ Note
 Requirements
     *   perl version 5.10
 
-    *   A webserver that can run perl cgi files
-
-    *   jquery (provided with this distribution, or from
-        http://docs.jquery.com/Downloading_jQuery)
-
-    *   Some sort of server-side storage (MySQL or a writable file)
-
 Install Yote
-        $ perl Build.PL
+	$ export INSTALL_BASE=/usr/local/yote #optional. default is /usr/local/yote
+	$ export YOTEPORT=8008 #optional      #optional. default is 8008
+
+	$ # Thru CPAN ---	
+
+	$ cpan Yote
+
+	$ #  OR ---
+		
+        $ perl Build.PL 
         $ ./Build
         $ ./Build test
         $ ./Build install
-
-Changing Ports
-      If you want to change the port once yote has been installed, 
 
 Verify by running html test
       $ yote_server
@@ -43,7 +43,7 @@ Using Yote
   Start the Web App Server
     Starting the Web App Server from the command line:
 
-           $ yote_server
+           $ yote_server --port=8008 # default is port set up with, or 8008
 
     This starts the server on the default port (8008), using SQLiteIO, and
     writing to file ~/.yote/SQLite.yote.db.
@@ -54,27 +54,35 @@ Using Yote
 
            my $server = new Yote::WebAppServer();
 
-           $server->start_server( port => 8008,
-                      datastore  => 'Yote::SQLiteIO',
-                      sqlitefile => 'yote.database' );
+           $server->start_server( port       => 8008,
+	                          webroot    => 'path/to/my/html/files', 
+				  sqlitefile => 'yote.database_filename' );
 
   Coding with Yote
    Client Side
-           <script src="./js/jquery-latest.js"></script>
-           <script src="./js/jquery.dumper.js"></script>
-           <script src="./js/jquery.base64.min.js"></script>
-           <script src="./js/json2.js"></script>
-           <script src="./js/yote.js"></script>
+           <script src="/yote/js/jquery-latest.js"></script>
+    	   <script src="/yote/js/jquery.dumper.js"></script>
+     	   <script src="/yote/js/jquery.cookie.js"></script>
+    	   <script src="/yote/js/jquery.base64.min.js"></script>
+    	   <script src="/yote/js/json2.js"></script>
+    	   <script src="/yote/js/yote.js"></script>
+    	   <script src="/yote/js/yote.util.js"></script>
+    	   <script src="/yote/js/yote.system.util.js"></script>
            <script>
+	       $.yote.init();
+
 	       /* Get the account root singleton object. */
-               var hello_app = $.gServ.fetch_app( 'Yote::Hello' );
+               var hello_app = $.yote.fetch_app( 'Yote::Hello' );
 
 	       /* Returns a string. If the method results in changes in other
 	          javascript objects, those objects will automatically be updated. */
-               var result = hello_app.hello({ name:"fred" } );
+               var result = hello_app.hello( { name:"fred" } );
 
 	       /* Returns a counter object */
                var counter = hello_app.get_counter();
+
+	       alert( 'server said ' + result );
+	       alert( 'counter in server has count of ' + counter.get_count() );
            </script>
 
    Server Side
@@ -84,35 +92,44 @@ Using Yote
         use Yote::Obj;
 
 	#
-	# A singleton of this class is created and accessed by the 
-	# client with fetch_app.
+	# Any subclass of Yote::AppRoot will have a singleton instance in the Yote engine
+	# that will be returned to the client with '$.yote.fetch_app( "app classname" )'.
 	#
         use base 'Yote::AppRoot';
 
 	#
-	# Init is called only the very first time an Yote::AppRoot
-	# is instantiated.
+	# Init is called only the very first time an Yote::AppRoot is instantiated. 
+	# This is not called when this object is retreived from storage.
 	#
         sub init {
+
             my $self = shift;
 
 	    #
 	    # 'get_counter' does not need an explicit definition. 
-	    # A get_ method passed an argument will use that as a default.
+	    # A get_ method passed an argument will initialize the field if it is undefined.
 	    #
             my $counter = $self->get_counter( new Yote::Obj() );
-        }
+
+        } #init
 
 	#
-	# The client object can call this directly.
-	#   hello_app.hello({ name:"wilma" });
+	# Any server side method takes 3 optional arguments on the client side :
+	#       data, onSucceedFunction, onFailFunction
+	#
+	# Conversely, any server side method takes 3 automatically passed parameters :
+	#    self, data, account.
+	#
 	#   The argument { name => "wilma" } is passed to the $data parameter of the method.
-	#   If a user is logged in on the client, that user will have an account root container
-	#    object associated with the approot singleton. This container will be used to store
-	#    user data specific to this app, like documents, stats and the like.
+	#
+	#   If a user is logged in to Yote on the client, that user's account will automatcially
+	#    be passed into the server side method as the last argument. The account object is
+	#    a Yote::Obj object meant to store any information specific to the user *and* this
+	#    applications. A user will get a different account object for each different App.
  	#
         sub hello {
-            my( $self, $data, $acct_root, $acct ) = @_;
+
+            my( $self, $data, $acct ) = @_;
             my $name = $data->{name};
             my $counter = $self->get_counter();
 
@@ -124,10 +141,11 @@ Using Yote
 	    #
 	    # The return value is a string in this case.
 	    # var msg = hello_app.hello({name:"foo"}); 
-	    # msg will be the string "hello there 'foo'. I have said hello 1 times."
+	    # msg will be the string "hello there 'foo'."
 	    #
             return "hello there '$name'. I have said hello ". $counter->get_count() . " times.";
-        }
+
+        } #hello
 
         1;
 

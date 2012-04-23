@@ -75,7 +75,7 @@ $().ready(function(){
         // init yote
         $.yote.init();
         $.yote.logout();
-        $.yote.debug = false;
+        $.yote.debug = true;
 
         //fetch app that doesn't require login and get scalar
         step('get app testappnologin');
@@ -135,7 +135,7 @@ $().ready(function(){
         // try passing in a javascript proxy object as a data parameter
         var o1 = login.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
         var o2 = login.make_obj( {Text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
-        login.give_obj( o1 );
+        login.give_obj( o1, pass( "gave object 1" ), fail( "gave object 1" ) );
         is( o1.get_Text(), 'foo', 'correct object 1 text directly a' );
         is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
         login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );

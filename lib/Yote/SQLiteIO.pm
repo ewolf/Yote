@@ -53,14 +53,15 @@ sub disconnect {
 
 sub start_transaction {
     my $self = shift;
-
-    $self->{DBH}->do( "BEGIN TRANSACTION" );
+    $self->{DBH}->do( "BEGIN EXCLUSIVE TRANSACTION" );
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 sub commit_transaction {
     my $self = shift;
 
     $self->{DBH}->do( "COMMIT TRANSACTION" );
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 
@@ -84,9 +85,11 @@ sub ensure_datastore {
                      class varchar(255) DEFAULT NULL
                       )~
         );
+    $self->start_transaction();
     for my $table (keys %definitions ) {
         $self->{DBH}->do( $definitions{$table} );
     }
+    $self->commit_transaction();
 } #ensure_datastore
 
 sub reset_datastore {
@@ -160,7 +163,6 @@ sub xpath {
 #
 sub fetch {
     my( $self, $id ) = @_;
-
     my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     
@@ -218,68 +220,80 @@ sub get_id {
     return $self->{DBH}->last_insert_id(undef,undef,undef,undef);
 } #get_id
 
+sub apply_updates {
+    my( $self, $upds ) = @_;
+
+    for my $up (@$upds) {
+	$self->{DBH}->do( @$upds );
+	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    }
+} #apply_updates
+
+sub stow {
+    my( $self, $id, $class, $data ) = @_;
+
+    my $updates = $self->stow_updates( $id, $class, $data );
+
+    for my $upd (@$updates) {
+	$self->{DBH}->do( @$upd );
+	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    }
+    
+} #stow
+
 #
 # Stores the object to persistance. Object is an array ref in the form id,class,data
 #
-sub stow {
+sub stow_updates {
     my( $self, $id, $class, $data ) = @_;
+
+    my( @cmds );
+
     given( $class ) {
         when('ARRAY') {
-            $self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
+
 
             for my $i (0..$#$data) {
                 my $val = $data->[$i];
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-                        $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
 
                     } else {
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) ] );
 
                     }
                 } else {
-                    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val );
-                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val ] );
 
                 }
             }
         }
         default {
-            $self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
             for my $key (keys %$data) {
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-                        $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
 
                     } else {
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) );
-                        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) ] );
                     }
                 }
                 else {
-                    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val );
-                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val ] );
                 }
             } #each key
         }
     }
-} #stow
+    return \@cmds;
+} # stow_updates
 
 
 1;

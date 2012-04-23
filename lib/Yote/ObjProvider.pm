@@ -13,6 +13,7 @@ use Yote::SQLiteIO;
 use WeakRef;
 
 $Yote::ObjProvider::DIRTY = {};
+$Yote::ObjProvider::CHANGED = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
 
@@ -25,9 +26,15 @@ $VERSION = '0.01';
 # --------------------
 #   PACKAGE METHODS
 # --------------------
+sub new {
+    my $ref = shift;
+    my $class = ref( $ref ) || $ref;
+    return bless {}, $class;
+}
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
+    print STDERR Data::Dumper->Dump([$args]);
     $DATASTORE = new Yote::SQLiteIO( $args );
     $DATASTORE->ensure_datastore();
     new Yote::YoteRoot(); #ensure that there is the singleton root object.
@@ -100,7 +107,7 @@ sub power_clone {
     }
 
     if( $at_start ) {
-	my( @cloned ) = map { Yote::ObjProvider::fetch($_)  } keys %$replacements;
+	my( @cloned ) = map { fetch($_)  } keys %$replacements;
 	my( %cloned );
 	for my $obj (@cloned) {
 	    $cloned{ ref( $obj ) }++;
@@ -260,6 +267,22 @@ sub a_child_of_b {
     return 0;
 } #a_child_of_b
 
+sub apply_udpates {
+    my $updates = shift;
+
+    $DATASTORE->apply_updates( $updates );
+
+} #apply_updates
+
+sub stow_all_updates {
+    my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
+    my( @cmd );
+    for my $obj (@objs) {
+        push( @cmd, @{stow_updates( $obj ) });
+    }
+    return \@cmd;
+} #stow_all_updates
+
 sub stow_all {
     my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
     for my $obj (@objs) {
@@ -268,7 +291,6 @@ sub stow_all {
 } #stow_all
 
 sub stow {
-
     my( $obj ) = @_;
     my $class = ref( $obj );
     return unless $class;
@@ -321,6 +343,60 @@ sub stow {
 
 } #stow
 
+sub stow_updates {
+    my( $obj ) = @_;
+    my( @cmds );
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = get_id( $obj );
+    die unless $id;
+    my $data = _raw_data( $obj );
+    given( $class ) {
+        when('ARRAY') {
+            push( @cmds, @{$DATASTORE->stow_updates( $id,'ARRAY', $data )} );
+            _clean( $id );
+        }
+        when('HASH') {
+            push( @cmds, @{$DATASTORE->stow_updates( $id,'HASH',$data )} );
+            _clean( $id );
+        }
+        when('Yote::Array') {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id,'ARRAY',$data )} );
+                _clean( $id );
+            }
+            for my $child (@$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$child} )} );
+                }
+            }
+        }
+        when('Yote::Hash') {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id, 'HASH', $data )} );
+            }
+            _clean( $id );
+            for my $child (values %$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$child} )} );
+                }
+            }
+        }
+        default {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id, $class, $data )} );
+                _clean( $id );
+            }
+            for my $val (values %$data) {
+                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$val} )} );
+                }
+            }
+        }
+    } #given
+    return \@cmds;
+} #stow
+
 sub xform_out {
     my $val = shift;
     return undef unless defined( $val );
@@ -338,6 +414,13 @@ sub xform_in {
     return "v$val";
 }
 
+sub reset_changed {
+    $Yote::ObjProvider::CHANGED = {};
+}
+
+sub fetch_changed {
+    return [keys %{$Yote::ObjProvider::CHANGED}];
+}
 
 #
 # Markes given object as dirty.
@@ -346,6 +429,7 @@ sub dirty {
     my $obj = shift;
     my $id = shift;
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
+    $Yote::ObjProvider::CHANGED->{$id} = $obj;
 }
 
 #

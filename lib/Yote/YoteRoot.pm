@@ -4,12 +4,14 @@ use Yote::Login;
 
 use base 'Yote::AppRoot';
 
+our $HANDLE_CACHE = {};
+our $EMAIL_CACHE = {};
+
 use strict;
 
 sub init {
     my $self = shift;
     $self->set_apps({});
-    $self->set_app_alias({});
     $self->set__handles({});
     $self->set__emails({});
 } #init
@@ -81,6 +83,12 @@ sub logout {
     }
 } #logout
 
+sub flush_credential_cache {
+    $EMAIL_CACHE = {};
+    $HANDLE_CACHE = {};
+} #flush_credential_cache
+
+
 #
 # Creates a login with credentials provided
 #   (client side) use : create_login({h:'handle',e:'email',p:'password'});
@@ -96,11 +104,11 @@ sub create_login {
     #
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
     if( $handle ) {
-        if( Yote::ObjProvider::xpath("/_handles/$handle") ) {
+        if( $HANDLE_CACHE->{$handle} || Yote::ObjProvider::xpath("/_handles/$handle") ) {
             die "handle already taken";
         }
         if( $email ) {
-            if( Yote::ObjProvider::xpath("/_emails/$email") ) {
+            if( $EMAIL_CACHE->{$email} || Yote::ObjProvider::xpath("/_emails/$email") ) {
                 die "email already taken";
             }
             unless( Email::Valid->address( $email ) ) {
@@ -110,6 +118,10 @@ sub create_login {
         unless( $password ) {
             die "password required";
         }
+
+	$EMAIL_CACHE->{$email}   = 1;
+	$HANDLE_CACHE->{$handle} = 1;
+
         my $new_login = new Yote::Login();
 
         #
@@ -134,7 +146,7 @@ sub create_login {
         $logins->{ $handle } = $new_login;
         my $emails = $self->get__emails();
         $emails->{ $email } = $new_login;
-
+	
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
     } #if handle
 

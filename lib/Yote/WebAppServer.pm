@@ -24,10 +24,11 @@ use vars qw($VERSION);
 $VERSION = '0.081';
 
 
-my( @commands, %prid2wait, %prid2result, $singleton );
+my( @commands, %prid2wait, %prid2result, $singleton, @saves );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
+share( @saves );
 
 sub new {
     my $pkg = shift;
@@ -44,6 +45,12 @@ sub start_server {
 
     Yote::ObjProvider::init( %$args );
 
+    # saving thread
+    my $saving_thread = threads->new( sub { _save_loop( $args ) } );
+    $self->{saving_thread} = $saving_thread;
+    sleep( 2 );
+
+
     # fork out for three starting threads
     #   - one a multi forking server (parent class)
     #   - and the parent thread an event loop.
@@ -52,20 +59,22 @@ sub start_server {
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;
 
+
     _poll_commands();
 
     $server_thread->join;
 
-    Yote::ObjProvider::disconnect();
+   Yote::ObjProvider::disconnect();
 
 } #start_server
 
 sub shutdown {
     my $self = shift;
     print STDERR "Shutting down yote server \n";
-    &Yote::ObjProvider::stow_all();
+    Yote::ObjProvider::stow_all();
     print STDERR "Killing threads \n";
     $self->{server_thread}->detach();
+    $self->{saving_thread}->detach();
     print STDERR "Shut down server thread.\n";
 } #shutdown
 
@@ -74,8 +83,25 @@ sub shutdown {
 #
 sub init_server {
     my( $self, @args ) = @_;
-    Yote::ObjProvider::init_datastore( @args );
+   Yote::ObjProvider::init_datastore( @args );
 } #init_server
+
+sub _save_loop {
+    while( 1 ) {
+	my $data;
+	{
+	    lock( @saves );
+	    $data = shift @saves;
+	}
+	if( $data ) {
+	    Yote::ObjProvider::apply_updates( $data );
+	}
+	unless( @saves ) {
+	    lock( @saves );
+	    cond_wait( @saves );
+	}
+    }
+} #_save_loop
 
 #
 # Called when a request is made. This does an initial parsing and
@@ -224,6 +250,12 @@ sub _poll_commands {
             lock( @commands );
             cond_wait( @commands );
         }
+	if( $cmd ) {
+	    lock( @saves );
+	    push( @saves,  Yote::ObjProvider::stow_all_updates() );
+	    Yote::YoteRoot::flush_credential_cache();
+	    cond_broadcast( @saves );
+	}
     }
 
 } #_poll_commands
@@ -236,8 +268,6 @@ sub _process_command {
 
     my $resp;
     
-    Yote::ObjProvider::start_transaction();
-    
     eval {
         my $obj_id = $command->{oi};
         my $app_id = $command->{ai};
@@ -248,7 +278,7 @@ sub _process_command {
         my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
 	print STDERR Data::Dumper->Dump(["DATA",$command,  MIME::Base64::decode( $command->{d} ), $data ]);
 
-        my $app_object = Yote::ObjProvider::fetch( $obj_id );
+        my $app_object =Yote::ObjProvider::fetch( $obj_id );
         my $action     = $command->{a};
         my $account;
 
@@ -269,13 +299,17 @@ sub _process_command {
         # dirty delta is a list of ids that have changed by this action. It tells the 
         #    client to reload those objects.
         #
-        my %before = map { $_ => 1 } (Yote::ObjProvider::dirty_ids());
+#        my %before = map { $_ => 1 } ( Yote::ObjProvider::dirty_ids() );
+	
+	Yote::ObjProvider::reset_changed();
+
 	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data,"and account",$account,'and login',$account?$account->get_login():'none'] );
         my $ret = $app_object->$action( $data, $account );
 
-        my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );
+#        my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );
+	my $dirty_delta = Yote::ObjProvider::fetch_changed();
 
-        $resp = { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => \@dirty_delta };
+        $resp = { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => $dirty_delta };
     };
     if( $@ ) {
 	my $err = $@;
@@ -283,9 +317,6 @@ sub _process_command {
         print STDERR Data::Dumper->Dump( ["ERROR",$@] );
         $resp = { err => $err, r => '' };
     }
-
-    Yote::ObjProvider::stow_all();
-    Yote::ObjProvider::commit_transaction();
 
     $resp = to_json( $resp );
 

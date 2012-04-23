@@ -373,13 +373,12 @@ $.yote = {
 
     _disable:function() {
         this.enabled = $(':enabled');
-	$.yote.da = [];
-//	$.each( this.enabled, function(idx,val) { val.disabled = true; $.yote.da.push( val ) } );
+	$.each( this.enabled, function(idx,val) { val.disabled = true; } );
         $("body").css("cursor", "wait");
     }, //_disable
     
     _reenable:function() {
-//        $.each( $.yote.da, function(idx,val) { val.disabled = false } );
+        $.each( this.enabled, function(idx,val) { val.disabled = false } );
         $("body").css("cursor", "auto");
     }, //_reenable
 
