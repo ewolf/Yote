@@ -23,10 +23,10 @@ $VERSION = '0.085';
 sub token_login {
     my( $self, $data ) = @_;
     my( $t, $ip ) = ( $data->{t}, $data->{_ip} );
-    if( $t =~ /(.+)\+(.+)/ ) {
+    if( $t =~ /(.+)\-(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
         my $login = Yote::ObjProvider::fetch( $uid );
-        if( $login && $login->get_token() eq "${token}x$ip" ) {
+        if( $login && $login->get__token() eq "${token}x$ip" ) {
 	    return $login;
 	}
     }

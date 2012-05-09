@@ -338,8 +338,8 @@ $.yote = {
 
     // generic server type error
     _error:function(msg) {
-        console.dir( "a server side error has occurred" );
-        console.dir( msg );
+        console.log( "a server side error has occurred" );
+        console.log( msg );
     },
     
     _translate_data:function(data) {
@@ -368,7 +368,7 @@ $.yote = {
         if( this._is_in_cache(data) ) {
             return this.objs[data];
         }
-        console.dir( "Don't know how to translate " + data);
+        console.log( "Don't know how to translate " + data);
     }, //_untranslate_data
 
     _disable:function() {
@@ -407,10 +407,10 @@ $.yote = {
 	var resp;
 
         if( $.yote.debug == true ) {
-	    console.dir('outgoing ' + url );  
-	    console.dir( data );
-	    console.dir( JSON.stringify( {d:data} ) );
-	    console.dir( put_data ); 
+	    console.log('outgoing ' + url );  
+	    console.log( data );
+	    console.log( JSON.stringify( {d:data} ) );
+	    console.log( put_data ); 
 	}
 
 	$.ajax( {
@@ -418,7 +418,7 @@ $.yote = {
 	    data:put_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
-		    console.dir('incoming '); console.dir( a );
+		    console.log('incoming '); console.log( a );
 		}
 		return a; 
 	    },
@@ -434,7 +434,7 @@ $.yote = {
 		        params.failhandler(data.err);
                     } //error case. no handler defined 
                 } else {
-                    console.dir( "Success reported but no response data received" );
+                    console.log( "Success reported but no response data received" );
                 }
 	    },
 	    type:'POST',

@@ -136,8 +136,9 @@ sub process_http_request {
 
     my( $uri, $remote_ip, $verb ) = @ENV{'PATH_INFO','REMOTE_ADDR','REQUEST_METHOD'};
 
-    print STDERR ")START pid $$ : $verb $uri\n";
-
+    $uri =~ s/\s+HTTP\S+\s*$//;
+    print STDERR ")STaRt pid $$ : $verb $uri : ";
+    print STDERR Data::Dumper->Dump([$vars]);
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );    
     if( $path[0] eq '_' ) {
 
@@ -213,6 +214,7 @@ sub process_http_request {
 	if( -d "<$root/$dest" ) {
 	    $dest .= '/index.html';
 	}
+	print STDERR Data::Dumper->Dump(["$root/$dest","SERV"]);
 	if( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /^yote\/js/ ) {
 		print "Content-Type: text/javascript\n\n";
@@ -251,10 +253,13 @@ sub _poll_commands {
             cond_wait( @commands );
         }
 	if( $cmd ) {
-	    lock( @saves );
-	    push( @saves,  Yote::ObjProvider::stow_all_updates() );
-	    Yote::YoteRoot::flush_credential_cache();
-	    cond_broadcast( @saves );
+	    Yote::ObjProvider::start_transaction();
+	    Yote::ObjProvider::stow_all();
+	    Yote::ObjProvider::commit_transaction();
+#	    lock( @saves );#
+#	    push( @saves,  Yote::ObjProvider::stow_all_updates() );
+#	    Yote::YoteRoot::flush_credential_cache();
+#	    cond_broadcast( @saves );
 	}
     }
 
@@ -263,7 +268,7 @@ sub _poll_commands {
 sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
-
+#    print STDERR Data::Dumper->Dump([$command,"CMD"]);
     my $wait = $command->{w};
 
     my $resp;
@@ -276,7 +281,8 @@ sub _process_command {
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
         my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
-	print STDERR Data::Dumper->Dump(["DATA",$command,  MIME::Base64::decode( $command->{d} ), $data ]);
+	print STDERR Data::Dumper->Dump(["data",$data,$command,$login]);
+
 
         my $app_object =Yote::ObjProvider::fetch( $obj_id );
         my $action     = $command->{a};
@@ -303,7 +309,7 @@ sub _process_command {
 	
 	Yote::ObjProvider::reset_changed();
 
-	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data,"and account",$account,'and login',$account?$account->get_login():'none'] );
+#	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data,"and account",$account,'and login',$account?$account->get_login():'none'] );
         my $ret = $app_object->$action( $data, $account );
 
 #        my @dirty_delta = grep { ! $before{$_} } ( Yote::ObjProvider::dirty_ids() );

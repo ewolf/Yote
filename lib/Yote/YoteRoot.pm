@@ -79,7 +79,7 @@ sub logout {
     my( $self, $data, $acct ) = @_;
     if( $acct ) {
 	my $login = $acct->get_login();
-	$login->set_token();
+	$login->set__token();
     }
 } #logout
 
@@ -263,8 +263,8 @@ sub reset_password {
 sub _create_token {
     my( $self, $login, $ip ) = @_;
     my $token = int( rand 9 x 10 );
-    $login->set_token( $token."x$ip" );
-    return $login->{ID}.'+'.$token;
+    $login->set__token( $token."x$ip" );
+    return $login->{ID}.'-'.$token;
 }
 
 1;
