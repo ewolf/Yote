@@ -7,19 +7,17 @@ use feature ':5.10';
 use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
+use Yote::YoteRoot;
+use Yote::SQLiteIO;
 
 use WeakRef;
 
-use Exporter;
-use base 'Exporter';
-
-our @EXPORT_OK = qw(fetch stow a_child_of_b);
-
 $Yote::ObjProvider::DIRTY = {};
+$Yote::ObjProvider::CHANGED = {};
+$Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
-our $CACHE;
 
 use vars qw($VERSION);
 
@@ -28,38 +26,35 @@ $VERSION = '0.01';
 # --------------------
 #   PACKAGE METHODS
 # --------------------
+sub new {
+    my $ref = shift;
+    my $class = ref( $ref ) || $ref;
+    return bless {}, $class;
+}
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $ds = $args->{datastore} || 'Yote::SQLiteIO';
-    eval("use $ds");
-    die $@ if $@;
-    $DATASTORE = $ds->new( $args );
-    my $cache = $args->{cache} || 'Yote::Cache';
-#    $cache = 'Yote::Test::DummyCache';
-    eval("use $cache");
-    $CACHE = $cache->new( $args );
+    print STDERR Data::Dumper->Dump([$args]);
+    $DATASTORE = new Yote::SQLiteIO( $args );
+    $DATASTORE->ensure_datastore();
+    new Yote::YoteRoot(); #ensure that there is the singleton root object.
 } #init
-
-sub init_datastore {
-    return $DATASTORE->init_datastore(@_);
-} #init_datastore
-
-sub connect {
-    return $DATASTORE->connect();
-}
 
 sub disconnect {
     return $DATASTORE->disconnect();
 }
 
+sub start_transaction {
+    return $DATASTORE->start_transaction();
+}
+
+sub commit_transaction {
+    return $DATASTORE->commit_transaction();
+}
+
 sub xpath {
     my $path = shift;
     return xform_out( $DATASTORE->xpath( $path ) );
-}
-
-sub commit {
-    $DATASTORE->commit();
 }
 
 sub xpath_count {
@@ -68,94 +63,106 @@ sub xpath_count {
 }
 
 #
-# deep clone this object. 
-#   Descendents of Yote::AppRoot and objects that do not descend from Yote::Obj
-#   are shallow copied for safety.
+# Deep clone this object. This will clone any yote object that is not an AppRoot.
 #
-sub deep_clone {
-    my $object = shift;
-    my $class = ref( $object );
-    if( ref( $object ) ) {
-        if( ref( $object ) eq 'ARRAY' ) {
-            my $clone_arry = [];
-            get_id( $clone_arry ); #force tie
-            push @$clone_arry, map { deep_clone($_) } @$object;
-            return $clone_arry;
+sub power_clone {
+    my( $item, $replacements ) = @_;
+    my $class = ref( $item );
+    return $item unless $class;
+
+    my $at_start = 0;
+    unless( $replacements ) {
+        $at_start = 1;
+        $replacements ||= {};
+    }
+    my $id = get_id( $item );
+    return $replacements->{$id} if $replacements->{$id};
+
+    if( $class eq 'ARRAY' ) {
+        my $arry_clone = [ map { power_clone( $_, $replacements ) } @$item ];
+        my $c_id = get_id( $arry_clone );
+        $replacements->{$id} = $c_id;
+        return $arry_clone;
+    }
+    elsif( $class eq 'HASH' ) {
+        my $hash_clone = { map { $_ => power_clone( $item->{$_}, $replacements ) } keys %$item };
+        my $c_id = get_id( $hash_clone );
+        $replacements->{$id} = $c_id;
+        return $hash_clone;
+    }
+    else {
+        return $item if $item->isa( 'Yote::AppRoot' ) && (! $at_start);
+    }
+
+    my $clone = $class->new;
+    $replacements->{ $id } = get_id( $clone );
+
+    for my $field (keys %{$item->{DATA}}) {
+        my $id_or_val = $item->{DATA}{$field};
+        if( $id_or_val > 0 ) { #means its a reference
+            $clone->{DATA}{$field} = $replacements->{$id_or_val} || xform_in( power_clone( xform_out( $id_or_val ), $replacements ) );
+        } else {
+            $clone->{DATA}{$field} = $id_or_val;
         }
-        elsif( ref( $object ) eq 'HASH' ) {
-            my $clone_hash = {};
-            get_id( $clone_hash ); #force tie
-            (%$clone_hash) = map { $_ => deep_clone($_) } keys %$object;
-            return $clone_hash;
-        }
-        elsif( $object->isa( 'Yote::Obj' ) && (! $object->isa( 'Yote::AppRoot') ) ) {
-            my $clone = $class->new();
-            (%{$clone->{DATA}}) = map { $_ => xform_in( deep_clone(xform_out($_)) ) } keys %{$object->{DATA}};
-            return $clone;
-        }
-    } #if reference        
-    return $object;
-} #deep_clone
+    }
+
+    if( $at_start ) {
+	my( @cloned ) = map { fetch($_)  } keys %$replacements;
+	my( %cloned );
+	for my $obj (@cloned) {
+	    $cloned{ ref( $obj ) }++;
+	}
+    }
+
+    return $clone;
+    
+} #power_clone
 
 sub fetch {
-    my( $id ) = @_;
+    my( $id_or_xpath ) = @_;
+
+    if( $id_or_xpath && $id_or_xpath == 0 ) {
+	#assume xpath
+	return xpath( $id_or_xpath );
+    }
 
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $CACHE->fetch($id) || $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
+    my $ref = $Yote::ObjProvider::DIRTY->{$id_or_xpath} || $Yote::ObjProvider::WEAK_REFS->{$id_or_xpath};
     return $ref if $ref;
 
-    my $obj_arry = $DATASTORE->fetch( $id );
+    my $obj_arry = $DATASTORE->fetch( $id_or_xpath );
 
     if( $obj_arry ) {
-        my( $id, $class, $data ) = @$obj_arry;
+        my( $id_or_xpath, $class, $data ) = @$obj_arry;
         given( $class ) {
             when('ARRAY') {
                 my( @arry );
-                tie @arry, 'Yote::Array', $id, @$data;
+                tie @arry, 'Yote::Array', $id_or_xpath, @$data;
                 my $tied = tied @arry; $tied->[2] = \@arry;
-                store_weak( $id, \@arry );
+                _store_weak( $id_or_xpath, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
+                tie %hash, 'Yote::Hash', $id_or_xpath, map { $_ => $data->{$_} } keys %$data;
                 my $tied = tied %hash; $tied->[2] = \%hash;
-                store_weak( $id, \%hash );
+                _store_weak( $id_or_xpath, \%hash );
                 return \%hash;
             }
             default {
                 eval("require $class");
-                my $obj = $class->new( $id );
+                my $obj = $class->new( $id_or_xpath );
                 $obj->{DATA} = $data;
-                $obj->{ID} = $id;
-                store_weak( $id, $obj );
+                $obj->{ID} = $id_or_xpath;
+                _store_weak( $id_or_xpath, $obj );
                 return $obj;
             }
         }
     }
     return undef;
 } #fetch
-
-sub row_size { #returns number of rows this object has.
-    my $ref = shift;
-    if( ref($ref) eq 'ARRAY' ) {
-        return scalar @$ref;
-    }
-    elsif( ref($ref) eq 'HASH' ) {
-        return scalar keys %$ref;
-    }
-    elsif( ref($ref) eq 'Yote::Array' ) {
-        return $ref->FETCHSIZE();
-    }
-    elsif( ref($ref) eq 'Yote::Hash' ) {
-        return $ref->keycount();
-    }
-    else {
-        return $ref->size();
-    }
-} #row_size
 
 sub get_id {
     my $ref = shift;
@@ -168,7 +175,7 @@ sub get_id {
             my $tied = tied @$ref;
             if( $tied ) {
                 $tied->[0] ||= $DATASTORE->get_id( "ARRAY" );
-                store_weak( $tied->[0], $ref );
+                _store_weak( $tied->[0], $ref );
                 return $tied->[0];
             }
             my( @data ) = @$ref;
@@ -177,7 +184,7 @@ sub get_id {
             my $tied = tied @$ref; $tied->[2] = $ref;
             push( @$ref, @data );
             dirty( $ref, $id );
-            store_weak( $id, $ref );
+            _store_weak( $id, $ref );
             return $id;
         }
         when('Yote::Hash') {
@@ -189,7 +196,7 @@ sub get_id {
 
             if( $tied ) {
                 $tied->[0] ||= $DATASTORE->get_id( "HASH" );
-                store_weak( $tied->[0], $ref );
+                _store_weak( $tied->[0], $ref );
                 return $tied->[0];
             }
             my $id = $DATASTORE->get_id( $class );
@@ -200,16 +207,36 @@ sub get_id {
                 $ref->{$key} = $vals{$key};
             }
             dirty( $ref, $id );
-            store_weak( $id, $ref );
+            _store_weak( $id, $ref );
             return $id;
         }
         default {
             $ref->{ID} ||= $DATASTORE->get_id( $class );
-            store_weak( $ref->{ID}, $ref );
+            _store_weak( $ref->{ID}, $ref );
             return $ref->{ID};
         }
     }
 } #get_id
+
+sub package_methods {
+    my $pkg = shift;
+    my $methods = $Yote::ObjProvider::PKG_TO_METHODS{$pkg};
+    unless( $methods ) {
+
+        no strict 'refs';
+
+        my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|add_to_.*|remove_from_.*|init|import|set_.*|get_.*|can|isa|new)$/ } keys %{"${pkg}\::"};
+
+        for my $class ( @{"${pkg}\::ISA" } ) {
+            my $pm = package_methods( $class );
+            push @m, @$pm;
+        }
+        $methods = \@m;
+        $Yote::ObjProvider::PKG_TO_METHODS{$pkg} = $methods;
+        use strict 'refs';
+    }
+    return $methods;
+} #package_methods
 
 sub a_child_of_b {
     my( $a, $b, $seen ) = @_;
@@ -240,6 +267,22 @@ sub a_child_of_b {
     return 0;
 } #a_child_of_b
 
+sub apply_udpates {
+    my $updates = shift;
+
+    $DATASTORE->apply_updates( $updates );
+
+} #apply_updates
+
+sub stow_all_updates {
+    my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
+    my( @cmd );
+    for my $obj (@objs) {
+        push( @cmd, @{stow_updates( $obj ) });
+    }
+    return \@cmd;
+} #stow_all_updates
+
 sub stow_all {
     my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
     for my $obj (@objs) {
@@ -247,16 +290,163 @@ sub stow_all {
     }
 } #stow_all
 
-sub reset {
-    stow_all();
-    $Yote::ObjProvider::DIRTY = {};
-    $Yote::ObjProvider::WEAK_REFS = {};
+sub stow {
+    my( $obj ) = @_;
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = get_id( $obj );
+    die unless $id;
+    my $data = _raw_data( $obj );
+    given( $class ) {
+        when('ARRAY') {
+            $DATASTORE->stow( $id,'ARRAY', $data );
+            _clean( $id );
+        }
+        when('HASH') {
+            $DATASTORE->stow( $id,'HASH',$data );
+            _clean( $id );
+        }
+        when('Yote::Array') {
+            if( _is_dirty( $id ) ) {
+                $DATASTORE->stow( $id,'ARRAY',$data );
+                _clean( $id );
+            }
+            for my $child (@$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$child} );
+                }
+            }
+        }
+        when('Yote::Hash') {
+            if( _is_dirty( $id ) ) {
+                $DATASTORE->stow( $id, 'HASH', $data );
+            }
+            _clean( $id );
+            for my $child (values %$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$child} );
+                }
+            }
+        }
+        default {
+            if( _is_dirty( $id ) ) {
+                $DATASTORE->stow( $id, $class, $data );
+                _clean( $id );
+            }
+            for my $val (values %$data) {
+                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
+                    stow( $Yote::ObjProvider::DIRTY->{$val} );
+                }
+            }
+        }
+    } #given
+
+} #stow
+
+sub stow_updates {
+    my( $obj ) = @_;
+    my( @cmds );
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = get_id( $obj );
+    die unless $id;
+    my $data = _raw_data( $obj );
+    given( $class ) {
+        when('ARRAY') {
+            push( @cmds, @{$DATASTORE->stow_updates( $id,'ARRAY', $data )} );
+            _clean( $id );
+        }
+        when('HASH') {
+            push( @cmds, @{$DATASTORE->stow_updates( $id,'HASH',$data )} );
+            _clean( $id );
+        }
+        when('Yote::Array') {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id,'ARRAY',$data )} );
+                _clean( $id );
+            }
+            for my $child (@$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$child} )} );
+                }
+            }
+        }
+        when('Yote::Hash') {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id, 'HASH', $data )} );
+            }
+            _clean( $id );
+            for my $child (values %$data) {
+                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$child} )} );
+                }
+            }
+        }
+        default {
+            if( _is_dirty( $id ) ) {
+                push( @cmds, @{$DATASTORE->stow_updates( $id, $class, $data )} );
+                _clean( $id );
+            }
+            for my $val (values %$data) {
+                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
+                    push( @cmds, @{stow_updates( $Yote::ObjProvider::DIRTY->{$val} )} );
+                }
+            }
+        }
+    } #given
+    return \@cmds;
+} #stow
+
+sub xform_out {
+    my $val = shift;
+    return undef unless defined( $val );
+    if( index($val,'v') == 0 ) {
+        return substr( $val, 1 );
+    }
+    return fetch( $val );
 }
+
+sub xform_in {
+    my $val = shift;
+    if( ref( $val ) ) {
+        return get_id( $val );
+    }
+    return "v$val";
+}
+
+sub reset_changed {
+    $Yote::ObjProvider::CHANGED = {};
+}
+
+sub fetch_changed {
+    return [keys %{$Yote::ObjProvider::CHANGED}];
+}
+
+#
+# Markes given object as dirty.
+#
+sub dirty {
+    my $obj = shift;
+    my $id = shift;
+    $Yote::ObjProvider::DIRTY->{$id} = $obj;
+    $Yote::ObjProvider::CHANGED->{$id} = $obj;
+}
+
+#
+# Returns ids that are dirty
+#
+sub dirty_ids {
+    return keys %$Yote::ObjProvider::DIRTY;
+}
+
+#
+# 'private' methods ----------------------
+#
 
 #
 # Returns data structure representing object. References are integers. Values start with 'v'.
 #
-sub raw_data {
+sub _raw_data {
     my( $obj ) = @_;
     my $class = ref( $obj );
     return unless $class;
@@ -289,108 +479,26 @@ sub raw_data {
             return $obj->{DATA};
         }
     }
-} #raw_data
+} #_raw_data
 
-sub stow {
-
-    my( $obj ) = @_;
-    my $class = ref( $obj );
-    return unless $class;
-    my $id = get_id( $obj );
-    die unless $id;
-    my $data = raw_data( $obj );
-    given( $class ) {
-        when('ARRAY') {
-            $DATASTORE->stow( $id,'ARRAY', $data );
-            clean( $id );
-        }
-        when('HASH') {
-            $DATASTORE->stow( $id,'HASH',$data );
-            clean( $id );
-        }
-        when('Yote::Array') {
-            if( is_dirty( $id ) ) {
-                $DATASTORE->stow( $id,'ARRAY',$data );
-                clean( $id );
-            }
-            for my $child (@$data) {
-                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
-                    stow( $Yote::ObjProvider::DIRTY->{$child} );
-                }
-            }
-        }
-        when('Yote::Hash') {
-            if( is_dirty( $id ) ) {
-                $DATASTORE->stow( $id, 'HASH', $data );
-            }
-            clean( $id );
-            for my $child (values %$data) {
-                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
-                    stow( $Yote::ObjProvider::DIRTY->{$child} );
-                }
-            }
-        }
-        default {
-            if( is_dirty( $id ) ) {
-                $DATASTORE->stow( $id, $class, $data );
-                clean( $id );
-            }
-            for my $val (values %$data) {
-                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
-                    stow( $Yote::ObjProvider::DIRTY->{$val} );
-                }
-            }
-        }
-    } #given
-
-} #stow
-
-sub xform_out {
-    my $val = shift;
-    return undef unless defined( $val );
-    if( index($val,'v') == 0 ) {
-        return substr( $val, 1 );
-    }
-    return fetch( $val );
-}
-
-sub xform_in {
-    my $val = shift;
-    if( ref( $val ) ) {
-        return get_id( $val );
-    }
-    return "v$val";
-}
-
-sub store_weak {
+sub _store_weak {
     my( $id, $ref ) = @_;
     die "SW" if ref($ref) eq 'Yote::Hash';
-    $CACHE->stow( $id, $ref );
     my $weak = $ref;
     weaken( $weak );
     $Yote::ObjProvider::WEAK_REFS->{$id} = $weak;
-}
+} #_store_weak
 
-sub dirty {
-    my $obj = shift;
-    my $id = shift;
-    $Yote::ObjProvider::DIRTY->{$id} = $obj;
-}
-
-sub dirty_ids {
-    return keys %$Yote::ObjProvider::DIRTY;
-}
-
-sub is_dirty {
+sub _is_dirty {
     my $obj = shift;
     my $id = ref($obj) ? get_id($obj) : $obj;
     return $Yote::ObjProvider::DIRTY->{$id};
-}
+} #_is_dirty
 
-sub clean {
+sub _clean {
     my $id = shift;
     delete $Yote::ObjProvider::DIRTY->{$id};
-}
+} #_clean
 
 1;
 __END__
@@ -415,9 +523,12 @@ my $object = Yote::ObjProvider::fetch( $object_id );
 
 =item xpath
 
-Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This works only for fields of Yote objects.
+Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
 
-my $object = Yote::ObjProvider::xpath( "/foo/bar/baz" );
+For example, get the value of the hash keyed to 'zap' where the hash is the  second element of an array that is attached to the root with the key 'baz' : 
+
+my $object = Yote::ObjProvider::xpath( "/baz/1/zap" );
+
 
 =item xpath_count
 

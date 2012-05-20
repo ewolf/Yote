@@ -7,17 +7,13 @@ use File::chmod qw( symchmod lschmod );
 my $builder = Module::Build->current;
 
 my $base = $builder->args( 'install_base' ) || '/usr/local/yote';
+my $port = $builder->args( 'port' ) || 8008;
 
 mkpath( $base );
-
-unless( -f "data/SQLite.yote.db" ) {
-    copy( "data/SQLite.yote.db", $base ) or die "Unable to copy : $!";
-}
 
 my $file = shift @ARGV;
 open my $fh, '>', $file or die "Unable to create file : $!";
 
-my $port = $builder->notes( 'port' );
 
 print $fh <<END;
 #!/usr/bin/env perl
@@ -39,6 +35,7 @@ use Yote::SQLiteIO;
 
 use lib "\$Bin/../lib";
 
+push( \@INC, "$base/lib" );
 
 \$SIG{ __DIE__ } = sub { Carp::confess( \@_ ) };
 
@@ -58,14 +55,16 @@ my \$s = new Yote::WebAppServer;
 #
 # The order of the config is \@ARGV, \%ENV, ~/.yoterc || ~/.yote/yote.conf || /etc/yote.conf, 
 #
-my \$sqlitefile = "$base/SQLite.yote.db";
+my \$sqlitefile = "$base/data/SQLite.yote.db";
+my \$webroot = "$base/html";
 unless( -e \$sqlitefile ) {
     my \$sqlite = new Yote::SQLiteIO( sqlitefile => \$sqlitefile );
-    \$sqlite->init_datastore();
+    \$sqlite->ensure_datastore();
 }
 my( \%config ) = ( port       => $port, 
-		  datastore  => 'Yote::SQLiteIO', 
-		  sqlitefile => \$sqlitefile );
+		   webroot  => \$webroot,
+		   datastore  => 'Yote::SQLiteIO', 
+		   sqlitefile => \$sqlitefile );
 
 while( \@ARGV ) {
     my \$first = shift \@ARGV;
@@ -138,75 +137,6 @@ if( -e \$pidfile ) {
 \$s->start_server( \%config );
 
 END
-
-#
-# now get cgi-bin and js files.
-#
-my $cgi = $builder->notes( 'cgi_dir' );
-mkpath( "$cgi/yote" ) ;
-chmod( 0755, "$cgi/yote" );
-
-copy( "cgi/yote.cgi", "$cgi/yote/" ) or die "Unable to copy file $!";
-open my $fin, "<", "cgi/yote.cgi" or die "Unable to open cgi file $!";
-open my $fout, '>', "$cgi/yote/yote.cgi" or die "Unable to create file : $!";
-
-while( !eof($fin) ) {
-    my $line = <$fin>;
-   $line =~ s/PORT/$port/g;
-   print $fout $line;
-}
-close( $fin );
-close( $fout );
-
-
-chmod( 0755, "$cgi/yote/yote.cgi" );
-
-
-my $cgipath = $builder->notes( 'cgi_path' );
-
-open my $fin, "<", "javascript/yote.js" or die "Unable to open javascript file $!";
-my $js = $builder->notes( 'js_dir' );
-mkpath( "$js/yote" );
-open my $fout, '>', "$js/yote/yote.js" or die "Unable to create file : $!";
-
-while( !eof($fin) ) {
-    my $line = <$fin>;
-   $line =~ s!/CGIPATH/yote.cgi!$cgipath/yote/yote.cgi!g;
-   print $fout $line;
-}
-close( $fin );
-close( $fout );
-copy( "javascript/yote.util.js", "$js/yote/" ) or die "Unable to copy file $!";
-
-my $htmlroot = $builder->notes( 'html_root' );
-my $js_path = $builder->notes( 'js_path' );
-mkpath( "$htmlroot/yote" );
-open my $fin, "<", "sample/hello.html" or die "Unable to open file : $!";
-open my $fout, ">", "$htmlroot/yote/index.html" or die "Unable to open file : $!";
-while( !eof($fin) ) {
-    my $line = <$fin>;
-    $line =~ s!JSPATH!$js_path/!g;
-    print $fout $line;
-}
-close( $fin );
-close( $fout );
-
-open my $fin, "<", "sample/unit_tests.html.TMPL" or die "Unable to open file : $!";
-open my $fout, ">", "$htmlroot/yote/unit_tests.html" or die "Unable to open file : $!";
-while( !eof($fin) ) {
-    my $line = <$fin>;
-    $line =~ s!JSPATH!$js_path/!g;
-    print $fout $line;
-}
-close( $fin );
-close( $fout );
-copy( "$htmlroot/yote/unit_tests.html", "sample/unit_tests.html.TMPL" );
-
-for my $jsfile (qw{ jquery-latest.js jquery.dumper.js json2.js jquery.base64.min.js }) {
-    unless( -e "$js/$jsfile" ) {
-	copy( "javascript/$jsfile", "$js/$jsfile" );
-    }
-}
 
 __END__
 

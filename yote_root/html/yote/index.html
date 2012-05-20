@@ -1,0 +1,46 @@
+<HTML>
+<HEAD>
+ <TITLE>Yote System</TITLE>
+
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <script src="/yote/js/yote.system.util.js"></script>
+
+<script lang="javascript">
+
+$().ready( function() { 
+    function show_system() {
+        $('#apps').empty();
+        if( $.yote.is_logged_in() == false ) {
+            $('#login').append( "Error logging in" );
+            return;
+        }
+        $('#apps').append('<div id=installed_apps></div>' +
+                             '<button type=button id=install_button>Install App</button>' +
+                             '' );
+    } //show system
+
+    $.yote.util.make_login_box({ target:'#login',
+                                 on_in:function() { show_system() },
+                                 require_root:1 });
+} ); 
+
+</script>
+
+</HEAD>
+<BODY>
+<H1>Yote Admin</H1>
+<div class=maindiv>
+ <div id=login>
+ </div>
+ <div id=apps>  
+ </div>
+</div>
+
+</BODY>
+</HTML>

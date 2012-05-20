@@ -39,8 +39,9 @@ sub database {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile};
+    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/use/local/yote/data';
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
+    $self->{file} = $file;
 } #connect
 
 
@@ -49,36 +50,51 @@ sub disconnect {
     $self->{DBH}->disconnect();
 } #disconnect
 
-sub commit {
-    #dummy for sqlite singlethread
+
+sub start_transaction {
+    my $self = shift;
+    $self->{DBH}->do( "BEGIN EXCLUSIVE TRANSACTION" );
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+}
+
+sub commit_transaction {
+    my $self = shift;
+
+    $self->{DBH}->do( "COMMIT TRANSACTION" );
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 
-sub init_datastore {
+sub ensure_datastore {
     my $self = shift;
 
     my %definitions = (
-        field => q~CREATE TABLE field (
+        field => q~CREATE TABLE IF NOT EXISTS field (
                    obj_id INTEGER NOT NULL,
                    field varchar(300) DEFAULT NULL,
                    ref_id INTEGER DEFAULT NULL,
                    value varchar(1025) DEFAULT NULL );
                    CREATE INDEX obj_id field;
                    CREATE INDEX ref_id field;~,
-        big_text => q~CREATE TABLE big_text (
+        big_text => q~CREATE TABLE IF NOT EXISTS big_text (
                        obj_id INTEGER NOT NULL,
                        text text
                       ); CREATE INDEX obj_id big_text;~,
-        objects => q~CREATE TABLE objects (
+        objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
                      class varchar(255) DEFAULT NULL
                       )~
         );
+    $self->start_transaction();
     for my $table (keys %definitions ) {
-	print STDERR "Creating table $table\n";
-	$self->{DBH}->do( $definitions{$table} );
+        $self->{DBH}->do( $definitions{$table} );
     }
-} #init_datastore
+    $self->commit_transaction();
+} #ensure_datastore
+
+sub reset_datastore {
+    my $self = shift;
+} #reset_datastore
 
 #
 # Returns the number of entries in the data structure given.
@@ -88,16 +104,17 @@ sub xpath_count {
     my( @list ) = split( /\//, $path );
     my $next_ref = 1;
     for my $l (@list) {
-        next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
         my( $ref ) = $self->{DBH}->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
-        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         $next_ref = $ref;
         last unless $next_ref;
     } #each path part
 
     my( $count ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?", {}, $next_ref );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
 
     return $count;
@@ -105,7 +122,7 @@ sub xpath_count {
 } #xpath_count
 
 #
-# Returns a single value given the xpath (hash only, and notation is slash separated from root)
+# Returns a single value given the xpath (notation is slash separated from root)
 # This will always query persistance directly for the value, bypassing objects.
 # The use for this is to fetch specific things from potentially very long hashes that you don't want to
 #   load in their entirety.
@@ -116,14 +133,14 @@ sub xpath {
     my $next_ref = 1;
     my $final_val;
     for my $l (@list) {
-        next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         undef $final_val;
         my( $val, $ref ) = $self->{DBH}->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
-        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         if( $ref && $val ) {
             my ( $big_val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             $final_val = "v$big_val";
             last;
@@ -142,81 +159,13 @@ sub xpath {
 } #xpath
 
 #
-# Returns a list of objects as a result : All objects connected to the one specified
-# by the id.
-#
-# The objects are returned as array refs with 3 fields :
-#   id, class, data
-#
-sub fetch_deep {
-    my( $self, $id, $seen ) = @_;
-
-    $seen ||= {};
-
-    my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-
-    return undef unless $class;
-    my $obj = [$id,$class];
-    given( $class ) {
-        when('ARRAY') {
-            $obj->[DATA] = [];
-        }
-        default {
-            $obj->[DATA] = {};
-        }
-    }
-
-    $seen->{$id} = $obj;
-
-    given( $class ) {
-        when('ARRAY') {
-            my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-            for my $row (@$res) {
-                my( $idx, $ref_id, $value ) = @$row;
-                $obj->[DATA][$idx] = $ref_id || $value;
-                if( $ref_id ) {
-                    fetch_deep( $ref_id, $seen );
-                }
-            }
-        }
-        when('BIGTEXT') {
-            ($obj->[DATA]) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-        }
-        default {
-            my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-            for my $row (@$res) {
-                my( $field, $ref_id, $value ) = @$row;
-                $obj->[DATA]{$field} = $ref_id || $value;
-                if( $ref_id ) {
-                    fetch_deep( $ref_id, $seen );
-                }
-            }
-        } # hash or object
-    }
-
-    return [values %$seen];
-} #fetch_deep
-
-#
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.
 #
 sub fetch {
     my( $self, $id ) = @_;
-
     my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
-    print STDERR Data::Dumper->Dump([$self->{DBH},$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     
-    if( $self->{DBH}->errstr() ) {
-	eval {die };print STDERR Data::Dumper->Dump([$@]); die;
-    }
 
     return undef unless $class;
     my $obj = [$id,$class];
@@ -224,13 +173,13 @@ sub fetch {
         when('ARRAY') {
             $obj->[DATA] = [];
             my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+            die $self->{DBH}->errstr() if $self->{DBH}->errstr();            
 
             for my $row (@$res) {
                 my( $idx, $ref_id, $value ) = @$row;
                 if( $ref_id && $value ) {
                     my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
-                    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
                     ( $obj->[DATA][$idx] ) = "v$val";
                 } else {
@@ -241,13 +190,13 @@ sub fetch {
         default {
             $obj->[DATA] = {};
             my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             for my $row (@$res) {
                 my( $field, $ref_id, $value ) = @$row;
                 if( $ref_id && $value ) {
                     my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
-                    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
                     ( $obj->[DATA]{$field} ) = "v$val";
                 } else {
@@ -266,73 +215,85 @@ sub get_id {
     my( $self, $class ) = @_;
 
     my $res = $self->{DBH}->do( "INSERT INTO objects (class) VALUES (?)", {}, $class );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
     return $self->{DBH}->last_insert_id(undef,undef,undef,undef);
 } #get_id
 
+sub apply_updates {
+    my( $self, $upds ) = @_;
+
+    for my $up (@$upds) {
+	$self->{DBH}->do( @$upds );
+	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    }
+} #apply_updates
+
+sub stow {
+    my( $self, $id, $class, $data ) = @_;
+
+    my $updates = $self->stow_updates( $id, $class, $data );
+
+    for my $upd (@$updates) {
+	$self->{DBH}->do( @$upd );
+	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    }
+    
+} #stow
+
 #
 # Stores the object to persistance. Object is an array ref in the form id,class,data
 #
-sub stow {
+sub stow_updates {
     my( $self, $id, $class, $data ) = @_;
+
+    my( @cmds );
+
     given( $class ) {
         when('ARRAY') {
-            $self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
+
 
             for my $i (0..$#$data) {
                 my $val = $data->[$i];
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-                        $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
 
                     } else {
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) ] );
 
                     }
                 } else {
-                    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val );
-                    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val ] );
 
                 }
             }
         }
         default {
-            $self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
             for my $key (keys %$data) {
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-                        $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
 
                     } else {
-                        $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) );
-                        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) ] );
                     }
                 }
                 else {
-                    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val );
-                    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val ] );
                 }
             } #each key
         }
     }
-} #stow
+    return \@cmds;
+} # stow_updates
 
 
 1;

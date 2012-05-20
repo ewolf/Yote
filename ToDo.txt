@@ -1,1 +1,2 @@
+* add thread for saving database. has to lock a access var for variables
 * create MongoDB IO

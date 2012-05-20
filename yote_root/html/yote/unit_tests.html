@@ -1,0 +1,244 @@
+<html>
+<head>
+<title>Yote Unit Tests</title>
+
+<style>
+ .fail { color:red }
+ .pass { color:green }
+ body { background-color:wheat }
+</style>
+
+<script src="/yote/js/jquery-latest.js"></script>
+<script src="/yote/js/jquery.cookie.js"></script>
+<script src="/yote/js/jquery.dumper.js"></script>
+<script src="/yote/js/jquery.base64.min.js"></script>
+<script src="/yote/js/json2.js"></script>
+<script src="/yote/js/yote.js"></script>
+<script src="/yote/js/yote.util.js"></script>
+<script>
+    var tests = 0;
+var failed = 0;
+function fail( test ) {
+    return function(d) {
+        ++failed;
+        ++tests;
+        $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
+    }
+}
+function pass( test ) {
+    return function(d) {
+        ++tests;
+        $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
+    }
+}
+function is( result, expected, msg ) {
+    if( result === expected ) {
+	pass( msg )();
+    }
+    else {
+	fail( msg + "( expected " + expected + " and got " + result +")" )();
+    }
+}
+function ok( result, msg ) {
+    if( result === true ) {
+	pass( msg )();
+    }
+    else { 
+	fail( msg )();
+    }
+}
+function wrap_up() {
+    if( failed > 0 ) {
+        $('#results').append( "Failed " + failed + " tests out of " + tests );
+    } else {
+        $('#results').append( "Passed all " + tests + " tests" );
+    }
+}
+var step_count = 0;
+function step( msg ) {
+    console.dir( "step " + step_count + ':' + msg  );
+    step_count++;
+}
+$().ready(function(){ 
+    /* check 
+     *    account creation   ^
+     *    removing account   ^
+     *    login              ^
+     *    app fetching       ^
+     *    object methods     ^
+     *    returned scalar    ^
+     *    array              
+     *    hash
+     *    object
+     */
+    function do_tests() {
+        // init yote
+        $.yote.init();
+        $.yote.logout();
+        $.yote.debug = true;
+
+        //fetch app that doesn't require login and get scalar
+        step('get app testappnologin');
+        var nologin = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
+        nologin.reset();
+        step('scalar called on testappnologin');
+        var scalar = nologin.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
+        is( scalar, "BEEP", "value of login scalar" );
+        
+        //fetch app that requires login and get scalar
+        step('get app testappneedslogin');
+
+        var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+        login.reset();
+        step('scalar called on testappneedslogin');
+        var scalar = login.scalar( {}, 
+                                   fail("required login returned scalar without login"),
+	                           pass("required login returned nothingwithout login") );
+        
+        step('create account');
+        // account creation. 
+        $.yote.create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
+			pass("create first account"), pass("create first account already existed") );
+
+        $.yote.create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
+			pass("create first account"), fail("create account") );
+	
+        step('create account with same handle');
+        $.yote.create_login( 'unit_test_account', 'ut', 'zobody@fenowyn.com',
+			fail("created account with same handle"), pass("refused to create account with same handle") );
+
+        $.yote.create_login( 'nunit_test_account', 'ut', 'nobody@fenowyn.com',
+			fail("created account with same email"), pass("refused to create account with same email") );
+	
+        step('login with wrong password');
+	$.yote.login( 'unit_test_account','uz',
+                      fail( "able to log in with wrong password" ),
+                      pass( "unable to log in with wrong password" ) );
+        step('login with correct password');
+        $.yote.login( 'unit_test_account', 'ut',
+                      pass( "able to log in" ),
+                      fail( "able to log in" ) );
+	
+        //app that requires login should allow scalar now
+        step('scalar called on testappneedslogin to succeed');
+        var scalar = login.scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
+        ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
+        // have a Yote object returned
+        step('yote_obj get called on testappneedslogin to succeed');
+
+        var obj = login.get_yote_obj();
+        if( typeof obj !== 'object' ) {
+            fail( "yote_obj not returned" );
+            return;      
+        }
+
+        // try passing in a javascript proxy object as a data parameter
+        var o1 = login.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
+        var o2 = login.make_obj( {Text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
+        login.give_obj( o1, pass( "gave object 1" ), fail( "gave object 1" ) );
+        is( o1.get_Text(), 'foo', 'correct object 1 text directly a' );
+        is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
+        login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'bar', 'correct object 1 text' );
+
+        var o3 = login.get_obj();
+        is( o3.get_Text(), 'bar', 'correct object 1 text directly' );
+        login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
+        is( login.obj_text(), 'foo', 'correct object 2 text' );
+        o3 = login.get_obj();
+        is( o3.get_Text(), 'foo', 'correct object 2 text directly' );
+
+        o3.stage( 'Text', 'baz' );
+        is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
+        o3.reset();
+        is( o3.get_Text(), 'foo', 'correct object 2 text directly' );
+
+        o3.stage( 'Text', 'baz' );
+        is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
+
+        o3.send_update();
+        is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
+
+	//Text is writable, zap doesn't exist and so it not, and bext is not writeable
+        o3.send_update({Text:'baf',bext:'Again',zip:'zap'}); 
+        is( o3.get_Text(), 'baf', 'correct object 2 text directly' );
+        is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
+        is( o3.get('zip'), false, 'correct object 2 text directly' );
+
+        pass( "no login returns yote obj" );      
+        step('name get called on testappneedslogin to succeed');
+        var initval = obj.get_name();
+        is( initval, 'INITY', "yote object inited on server side" );
+        
+        // have yote array returned
+        step('array called on testappneedslogin to succeed');
+        var arry = login.array();
+        is( arry.length(), 3, 'length of array returned' );
+        is( arry.get(0), 'A', 'element 0 correct' );
+
+
+        //check if el 2 is object
+        var inobj = arry.get(2);
+        
+        step('name get called on testappneedslogin to succeed');
+        is( inobj.get_name(), 'INITY', "yote object inited on server side" );
+
+        // have yote hash returned
+        step('get hash in array');
+        var h = arry.get(1);
+        step('get size of hash');
+        is( h.length(), 1, 'hash has correct numbers' );
+        step('get inner array of hash');
+        var inarry = h.get('inner');
+        step('inner array correct length');
+        is( inarry.length(), 2, 'inner array has correct length' );
+        step('first element in inner array');
+        is( inarry.get(0), 'Juan', '1st el inner array' );
+        step('second element hash in inner array');
+        var inh = inarry.get(1);
+        step('2nd hash length');
+        is( inh.length(), 2, 'inner hash length' );
+        step('2nd hash peanut value');
+        is( inh.get('peanut'), 'Butter', 'first value inner hash' );
+        step('2nd hash ego object with id');
+        is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
+        step('2nd hash ego object with name');
+        is( inh.get('ego').get_name(), 'INITY', 'object stored in inner hash' );
+
+        //test javascript object caching and multi loading of objects.
+        $.yote._dump_cache();
+        is( $.yote._cache_size(), 0, "cache now empty" );
+        var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+        is( $.yote._cache_size(), 2, "cache with loginapp and root" );
+        login.load_direct_descendents();
+        is( $.yote._cache_size(), 5, "cache with loginapp, root and loginapps threefields (made,yoteobj,obj) " );
+
+        wrap_up();
+    }
+
+    //    try {
+    var d = new Date();
+    var t2 = d.getTime();
+    do_tests();
+    $.yote.remove_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com', 
+			 pass( "remove login" ), fail( "remove login" ) );
+    var d2 = new Date();
+    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+    /*
+      }
+      catch( err ) {
+      console.dir( 'got err ' + err  );
+      if( err.stack ) { console.dir( err.stack ) }
+      alert( 'got err ' + err );
+      }
+    */
+} ); //ready
+</script>
+
+</head>
+<body>
+<h1>Yote Unit Tests</h1>
+<div id=tests></div>
+<div id=results></div>
+</body>
+</html>
