@@ -1,2 +1,6 @@
-* add thread for saving database. has to lock a access var for variables
-* create MongoDB IO
+* add GRU module for searches against tag lists
+* update to not use backticks
+* make sure installer script works universally
+* build yote homepage
+* build page editor
+* yote objects that brige to files an allow for editing.
