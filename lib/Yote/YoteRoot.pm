@@ -65,7 +65,6 @@ sub login {
     my( $self, $data ) = @_;
 
     my $ip = $data->{_ip};
-
     if( $data->{h} ) {
         my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
         if( $login && ($login->get__password() eq $self->_encrypt_pass( $data->{p}, $login) ) ) {
@@ -174,6 +173,8 @@ sub remove_login {
     {
         delete $self->get__handles()->{$args->{h}};
         delete $self->get__emails()->{$args->{e}};
+	delete $HANDLE_CACHE->{$args->{h}};
+	delete $EMAIL_CACHE->{$args->{e}};
         $self->add_to__removed_logins( $login );
         return "deleted account";
     } 

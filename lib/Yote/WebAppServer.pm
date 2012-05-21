@@ -348,8 +348,8 @@ sub _process_command {
 sub _translate_data {
     my $val = shift;
 
-    if( ref( $val ) ) { #from javacript object, or hash. no fields with underscores accepted
-        return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) == -1 } keys %$val };
+    if( ref( $val ) ) { #from javacript object, or hash. no fields starting with underscores accepted
+        return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
     }
     return undef unless $val;
     return index($val,'v') == 0 ? substr( $val, 1 ) : Yote::ObjProvider::fetch( $val );

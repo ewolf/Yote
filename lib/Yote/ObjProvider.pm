@@ -34,10 +34,9 @@ sub new {
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    print STDERR Data::Dumper->Dump([$args]);
     $DATASTORE = new Yote::SQLiteIO( $args );
     $DATASTORE->ensure_datastore();
-    new Yote::YoteRoot(); #ensure that there is the singleton root object.
+    fetch(1) || new Yote::YoteRoot(); #ensure that there is the singleton root object.
 } #init
 
 sub disconnect {
