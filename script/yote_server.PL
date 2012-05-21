@@ -24,29 +24,26 @@ print $fh <<END;
 
 
 use strict;
-use feature 'say';
 
 use Carp;
 use Config::Simple;
-use FindBin qw/\$Bin/;
 
 use Yote::WebAppServer;
 use Yote::SQLiteIO;
-
-use lib "\$Bin/../lib";
+use File::Pid;
 
 push( \@INC, "$base/lib" );
 
 \$SIG{ __DIE__ } = sub { Carp::confess( \@_ ) };
 
-my \$pidfile = "$base/yote.pid";
+my $pidfile = File::Pid->new( { file => "$base/yote.pid" } );
 
 my \$s = new Yote::WebAppServer;
 
 \$SIG{TERM} = sub { 
     \$s->shutdown();
     print STDERR "Shutting down due to term\n";
-    unlink( \$pidfile );
+    \$pidfile->remove();
     exit;
 };
 
@@ -66,36 +63,26 @@ my( \%config ) = ( port       => $port,
 		   datastore  => 'Yote::SQLiteIO', 
 		   sqlitefile => \$sqlitefile );
 
+my \$do_start = 1;
 while( \@ARGV ) {
     my \$first = shift \@ARGV;
     if(\$first eq '--shutdown') {
-        if( -e \$pidfile ) {
-            my \$pid = `cat \$pidfile`;
-            \$pid =~ s/[\\n\\r]+\$//i;
-            my \$is_pid =  `ps ax | egrep "^\\s\*\$pid\\s+" | grep yote_server`;
-            if( \$is_pid ) {
-                print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
-                `kill \$pid`;
-            }
-            unlink( \$pidfile );
-        }
+	if( \$pidfile->running() ) {
+	    \$pidfile->pid->kill();
+	}
+	\$pidfile->remove();
+	\$do_start = 0;
         exit;
     }
     elsif( \$first eq '--restart' ) {
 	#
 	# kill any old servers hanging around
 	#
-	if( -e \$pidfile ) {
-            my \$pid = `cat \$pidfile`;
-            \$pid =~ s/[\\n\\r]+\$//i;
-            my \$is_pid =  `ps ax | egrep "^\\s\*\$pid\\s+" | grep yote_server`;
-            if( \$is_pid ) {
-                print STDERR Data::Dumper->Dump( ["shutting down yote server pid \$pid"] );
-                `kill \$pid`;
-            }
-	    unlink( \$pidfile );
-	    sleep(2);
+	if( \$pidfile->running() ) {
+	    \$pidfile->pid->kill();
 	}
+	\$pidfile->write();
+	\$do_start = 0;
 	last;
     }
     elsif( \$first =~ /^--([^=]+)=(.*)/ ) {
@@ -116,16 +103,9 @@ while( \@ARGV ) {
 #
 # Check to make sure no processes are still hanging around.
 #
-if( -e \$pidfile ) {
-    open( IN, "<\$pidfile" );
-    my \$pid = <IN>; 
-    chomp( \$pid );
-
-    my( \@haspid ) = `ps -p \$pid`;
-    my \$haspid = grep { \$_ =~ /\\b\$pid\\b/ } \@haspid;
-    if( \$haspid ) {
-	print STDERR "Process \$pid still alive. Unable to start yote server\n";
-	exit 1;
+if( \$do_start ) {
+    if( \$pidfile->running() ) {
+        \$pidfile->pid->kill();
     }
 }
 

@@ -25,6 +25,7 @@ my $build = $class->new(
         'File::Copy'            => 2.18,
         'File::Path'            => '2.08_01',
         'File::chmod'           => 0.32,
+	'File::Pid'             => 0,
         
         'DBD::SQLite'           => 1.35,
         'JSON'                  => 2.22,
