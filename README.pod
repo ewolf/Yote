@@ -42,7 +42,7 @@ It's as easy as...
 
 =over 4 
 
-=item * perl version 5.10
+=item 1 perl version 5.10
 
 =back
 
@@ -53,7 +53,7 @@ if not, to get it.
 
 =over 4
 
-=item * perl version 5.10
+=item 1 perl version 5.10
 
 To verify if you have this:
 
