@@ -6,3 +6,5 @@
 * yote objects that brige to files an allow for editing.
 * unit test that allows underscores in field names when translating data from the client
 * bug SE game : should disallow wrong values for starting players and resources and levels
+* replace Crypt:Passwd with something better.
+* unit test of app id passing in the IO. If its missing, the wrong account may be used.
