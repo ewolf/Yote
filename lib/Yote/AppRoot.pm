@@ -11,6 +11,7 @@ use Crypt::Passwd;
 use Email::Valid;
 use MIME::Lite;
 use MIME::Base64;
+use Yote::Messenger;
 
 use base 'Yote::Obj';
 
@@ -83,9 +84,10 @@ sub _get_account {
     my $accts = $self->get__account_roots({});
     my $acct = $accts->{$login->{ID}};
     unless( $acct ) {
-        $acct = new Yote::Obj();
+        $acct = new Yote::Messenger();
         $acct->set__allowed_access({});
         $acct->set_login( $login );
+	$acct->set_handle( $login->get_handle() );
         $accts->{$login->{ID}} = $acct;
 	$self->_init_account( $acct );
     }
