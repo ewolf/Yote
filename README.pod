@@ -2,6 +2,12 @@
 
 YOTE
 
+=head1 Note
+
+Yote is still in a pre alpha state and is being developed. 
+A large part of the development is documentation and communication. 
+Yote is not ready for production at the time of this writing and will not be advertised as such.
+
 =head1 Summary
 
 Yote is a platform for creating web based applications by bridging
