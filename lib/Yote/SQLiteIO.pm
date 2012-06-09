@@ -36,11 +36,34 @@ sub database {
     return shift->{DBH};
 }
 
+sub do {
+    my( $self, $query, @params ) = @_;
+#    print STDERR "Do Query : $query\n";
+    return $self->{DBH}->do( $query, {}, @params );
+}
+
+sub selectrow_array {
+    my( $self, $query, @params ) = @_;
+#    print STDERR "Do Query : $query @params\n";
+    return $self->{DBH}->selectrow_array( $query, {}, @params );
+}
+sub selectrow_arrayref {
+    my( $self, $query, @params ) = @_;
+#    print STDERR "Do Query : $query\n";
+    return $self->{DBH}->selectrow_arrayref( $query, {}, @params );
+}
+sub selectall_arrayref {
+    my( $self, $query, @params ) = @_;
+#    print STDERR "Do Query : $query\n";
+    return $self->{DBH}->selectall_arrayref( $query, {}, @params );
+}
+
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
     my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/use/local/yote/data';
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
+    $self->{DBH}->{AutoCommit} = 1;
     $self->{file} = $file;
 } #connect
 
@@ -53,21 +76,20 @@ sub disconnect {
 
 sub start_transaction {
     my $self = shift;
-    $self->{DBH}->do( "BEGIN EXCLUSIVE TRANSACTION" );
+#    $self->do( "BEGIN IMMEDIATE TRANSACTION" );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 sub commit_transaction {
     my $self = shift;
 
-    $self->{DBH}->do( "COMMIT TRANSACTION" );
+#    $self->do( "COMMIT TRANSACTION" );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 
 sub ensure_datastore {
     my $self = shift;
-
     my %definitions = (
         field => q~CREATE TABLE IF NOT EXISTS field (
                    obj_id INTEGER NOT NULL,
@@ -87,7 +109,7 @@ sub ensure_datastore {
         );
     $self->start_transaction();
     for my $table (keys %definitions ) {
-        $self->{DBH}->do( $definitions{$table} );
+        $self->do( $definitions{$table} );
     }
     $self->commit_transaction();
 } #ensure_datastore
@@ -106,14 +128,14 @@ sub xpath_count {
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
 
-        my( $ref ) = $self->{DBH}->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
+        my( $ref ) = $self->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         $next_ref = $ref;
         last unless $next_ref;
     } #each path part
 
-    my( $count ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?", {}, $next_ref );
+    my( $count ) = $self->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $next_ref );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
 
@@ -135,11 +157,11 @@ sub xpath {
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
         undef $final_val;
-        my( $val, $ref ) = $self->{DBH}->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         if( $ref && $val ) {
-            my ( $big_val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref );
+            my ( $big_val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref );
             die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             $final_val = "v$big_val";
@@ -163,7 +185,7 @@ sub xpath {
 #
 sub fetch {
     my( $self, $id ) = @_;
-    my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
+    my( $class ) = $self->selectrow_array( "SELECT class FROM objects WHERE id=?",  $id );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     
 
@@ -172,13 +194,13 @@ sub fetch {
     given( $class ) {
         when('ARRAY') {
             $obj->[DATA] = [];
-            my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
+            my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $id );
             die $self->{DBH}->errstr() if $self->{DBH}->errstr();            
 
             for my $row (@$res) {
                 my( $idx, $ref_id, $value ) = @$row;
                 if( $ref_id && $value ) {
-                    my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
+                    my( $val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref_id );
                     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
                     ( $obj->[DATA][$idx] ) = "v$val";
@@ -189,13 +211,13 @@ sub fetch {
         }
         default {
             $obj->[DATA] = {};
-            my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
+            my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $id );
             die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             for my $row (@$res) {
                 my( $field, $ref_id, $value ) = @$row;
                 if( $ref_id && $value ) {
-                    my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
+                    my( $val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref_id );
                     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
                     ( $obj->[DATA]{$field} ) = "v$val";
@@ -214,7 +236,7 @@ sub fetch {
 sub get_id {
     my( $self, $class ) = @_;
 
-    my $res = $self->{DBH}->do( "INSERT INTO objects (class) VALUES (?)", {}, $class );
+    my $res = $self->do( "INSERT INTO objects (class) VALUES (?)",  $class );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
     return $self->{DBH}->last_insert_id(undef,undef,undef,undef);
@@ -224,7 +246,7 @@ sub apply_updates {
     my( $self, $upds ) = @_;
 
     for my $up (@$upds) {
-	$self->{DBH}->do( @$upds );
+	$self->do( @$upds );
 	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     }
 } #apply_updates
@@ -235,7 +257,7 @@ sub stow {
     my $updates = $self->stow_updates( $id, $class, $data );
 
     for my $upd (@$updates) {
-	$self->{DBH}->do( @$upd );
+	$self->do( @$upd );
 	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     }
     
@@ -251,7 +273,7 @@ sub stow_updates {
 
     given( $class ) {
         when('ARRAY') {
-            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?",  $id ] );
 
 
             for my $i (0..$#$data) {
@@ -259,35 +281,35 @@ sub stow_updates {
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id ] );
-                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')",  $id, $i, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)",  $big_id, substr($val,1) ] );
 
                     } else {
-                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) ] );
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
 
                     }
                 } else {
-                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val ] );
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $i, $val ] );
 
                 }
             }
         }
         default {
-            push( @cmds, ["DELETE FROM field WHERE obj_id=?", {}, $id ] );
+            push( @cmds, ["DELETE FROM field WHERE obj_id=?",  $id ] );
             for my $key (keys %$data) {
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
                     if( length( $val ) > MAX_LENGTH ) {
                         my $big_id = $self->get_id( "BIGTEXT" );
-                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id ] );
-                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) ] );
+                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')",  $id, $key, $big_id ] );
+                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)",  $big_id, substr($val,1) ] );
 
                     } else {
-                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) ] );
+                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
                     }
                 }
                 else {
-                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val ] );
+                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $key, $val ] );
                 }
             } #each key
         }

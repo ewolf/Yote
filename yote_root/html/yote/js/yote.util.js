@@ -284,6 +284,29 @@ $.yote.util = {
 	    logout();
 	}
 
-    } //make_login_box
+    }, //make_login_box
+
+    make_table:function() {
+	return {
+	    html:'<table>',
+	    add_header_row : function( arry ) {
+		this.html = this.html + '<tr>';
+		for( var i=0; i<arry.length; i++ ) {
+		    this.html = this.html + '<th>' + arry[i] + '</th>';
+		}
+		this.html = this.html + '</tr>';
+		return this;
+	    },
+	    add_row : function( arry ) {
+		this.html = this.html + '<tr>';
+		for( var i=0; i<arry.length; i++ ) {
+		    this.html = this.html + '<td>' + arry[i] + '</td>';
+		}
+		this.html = this.html + '</tr>';		
+		return this;
+	    },
+	    get_html : function() { return this.html + '</table>'; }
+	}
+    }, //make_table
 
 }//$.yote.util

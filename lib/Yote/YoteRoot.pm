@@ -1,5 +1,6 @@
 package Yote::YoteRoot;
 
+use Yote::Cron;
 use Yote::Login;
 
 use base 'Yote::AppRoot';
@@ -14,6 +15,7 @@ sub init {
     $self->set_apps({});
     $self->set__handles({});
     $self->set__emails({});
+    $self->set__crond( new Yote::Cron() );
 } #init
 
 sub fetch_app_by_class {

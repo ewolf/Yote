@@ -51,6 +51,11 @@ sub new {
     return $obj;
 } #new
 
+sub is {
+    my( $self, $other ) = @_;
+    return ref( $other ) && $other->isa( 'Yote::Obj' ) && $other->{ID} == $self->{ID};
+}
+
 #
 # Called the very first time this object is created. It is not called
 # when object is loaded from storage.
@@ -65,7 +70,7 @@ sub update {
     my( $self, $data, $account ) = @_;
     my $updated = {};
     for my $fld (keys %$data) {
-        next unless $fld =~ /^[A-Z]/ && defined( $self->{$fld} );
+        next unless $fld =~ /^[A-Z]/ && defined( $self->{DATA}{$fld} );
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
         Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;

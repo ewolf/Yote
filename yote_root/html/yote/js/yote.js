@@ -160,6 +160,11 @@ $.yote = {
 		    return cnt;
 		}
 	    };
+	    if( o.class == 'HASH' ) {
+		o.to_hash = function() {
+		    return this._d;
+		};
+	    }
 
 	    /*
 	      assign methods
@@ -247,8 +252,12 @@ $.yote = {
             }
 
             // resets staged info
-            o.reset = function() {
-                this._stage = {};
+            o.reset = function( field ) {
+		if( field ) {
+		    delete this._stage[ field ];
+		} else {
+                    this._stage = {};
+		}
             }
 
             o.is_dirty = function(field) {
