@@ -309,4 +309,56 @@ $.yote.util = {
 	}
     }, //make_table
 
+	
+    button_actions:function( args ) {
+	var but     = args[ 'button' ];
+	var action  = args[ 'action' ];
+	var texts   = args[ 'texts'  ] || [];
+	var exempt  = args[ 'cleanup_exempt' ] || {};
+
+	function check_ready() {
+	    for( var i=0; i<texts.length; ++i ) {
+		if( ! $( texts[i] ).val().match( /\S/ ) ) {
+	    	    $( but ).attr( 'disabled', 'disabled' );
+		    return false;
+		}
+	    }
+
+	    $( but ).attr( 'disabled', false );
+	    return true;
+	} // check_ready
+
+	for( var i=0; i<texts.length - 1; ++i ) {
+	    $( texts[i] ).keyup( check_ready );
+	    $( texts[i] ).keypress( (function(box) {
+		return function( e ) {
+		    if( e.which == 13 ) {
+			$( box ).focus();
+		    }
+		} } )( texts[i+1] ) );
+	}
+
+	act = (function( c_r, a_f, txts ) { return function() {
+	    if( c_r() ) {
+		a_f();
+		for( var i=0; i<txts.length; ++i ) {
+		    if( ! exempt[ txts[i] ] ) {
+			$( txts[i] ).val( '' );
+		    }
+		}
+	    }
+	} } ) ( check_ready, action, texts );
+
+	$( texts[texts.length - 1] ).keyup( check_ready );
+	$( texts[texts.length - 1] ).keypress( (function(a) { return function( e ) {
+	    if( e.which == 13 ) {
+		a();
+	    } } } )(act) );
+
+	$( but ).click( act );
+
+	check_ready();
+
+    }, // button_actions
+
 }//$.yote.util
