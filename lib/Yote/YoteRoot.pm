@@ -30,6 +30,25 @@ sub fetch_app_by_class {
     return $app;
 } #fetch_app_by_class
 
+#
+# Used to wipe and reset a whole app's data. Use with caution
+# and can only be used by the superuser.
+#
+sub purge_app {
+    my( $self, $data, $account ) = @_;
+    if( $account->get__is_root() ) {
+	$self->_purge_app( $data );
+	return "Purged '$data'";
+    }
+    die "Permissions Error";
+} #purge_app
+
+sub _purge_app {
+    my( $self, $app ) = @_;
+    my $apps = $self->get_apps();
+    return delete $apps->{$app};
+} #_purge_app
+
 sub number_of_accounts {
     return Yote::ObjProvider::xpath_count( "/_handles" );
 } #number_of_accounts
