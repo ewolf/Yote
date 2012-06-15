@@ -10,7 +10,7 @@ $.yote = {
     token:null,
     err:null,
     objs:{},
-    debug:false,
+    debug:true,
 
     init:function() {
 	var root = this.fetch_root();
@@ -353,6 +353,9 @@ $.yote = {
     },
     
     _translate_data:function(data) {
+        if( typeof data === 'undefined' || data == null ) {
+            return undefined;
+        }
         if( typeof data === 'object' ) {
             if( data.id + 0 > 0 && typeof data._d !== 'undefined' ) {
                 return data.id;
@@ -364,9 +367,6 @@ $.yote = {
                 ret[key] = this._translate_data( data[key] );
             }
             return ret;
-        }
-        if( typeof data === 'undefined' ) {
-            return undefined;
         }
         return 'v' + data;
     }, //_translate_data
