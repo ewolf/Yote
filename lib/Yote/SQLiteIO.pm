@@ -61,7 +61,7 @@ sub selectall_arrayref {
 sub connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/use/local/yote/data';
+    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/usr/local/yote/data';
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
     $self->{DBH}->{AutoCommit} = 1;
     $self->{file} = $file;

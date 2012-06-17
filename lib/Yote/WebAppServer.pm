@@ -260,7 +260,7 @@ sub _process_command {
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
         my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
-#	print STDERR Data::Dumper->Dump(["data",$data,$command,$login]);
+	print STDERR Data::Dumper->Dump(["INCOMMING",$data,$command,$login]);
 
 
         my $app_object =Yote::ObjProvider::fetch( $obj_id );
@@ -296,6 +296,7 @@ sub _process_command {
     }
 
     $resp = to_json( $resp );
+    print STDERR Data::Dumper->Dump(["SEND BACK", $resp]);
 
     #
     # Send return value back to the caller if its waiting for it.

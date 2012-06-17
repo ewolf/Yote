@@ -69,7 +69,7 @@ sub check {
     my $data = $self->get__crond();
     $self->{now} ||= DateTime->now();
     my( $min, $hr ) = ( $self->{now}->minute, $self->{now}->hour );
-    print STDERR Data::Dumper->Dump([$data,$min,$hr,"CHK"]);
+#    print STDERR Data::Dumper->Dump([$data,$min,$hr,"CHK"]);
     $self->_activate( $data->{'*'}{'*'}  );
     $self->_activate( $data->{$min}{'*'} );
     $self->_activate( $data->{$min}{$hr} );
@@ -79,7 +79,7 @@ sub check {
 
 sub _activate {
     my( $self, $items ) = @_;
-    print STDERR Data::Dumper->Dump([$items,"ACTI"]);
+#    print STDERR Data::Dumper->Dump([$items,"ACTI"]);
     if( $items && @$items ) {
 	for my $item (@$items) {
 	    my( $obj_id, $method ) = @$item;
