@@ -197,7 +197,7 @@ sub process_http_request {
 	if( -d "<$root/$dest" ) {
 	    $dest .= '/index.html';
 	}
-#	print STDERR Data::Dumper->Dump(["$root/$dest","SERV"]);
+	print STDERR Data::Dumper->Dump(["$root/$dest","SERV"]);
 	if( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /^yote\/js/ ) {
 		print "Content-Type: text/javascript\n\n";
@@ -256,14 +256,14 @@ sub _process_command {
         my $obj_id = $command->{oi};
         my $app_id = $command->{ai};
 
-        my $app        = Yote::ObjProvider::fetch( $app_id );
+        my $app        = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
         my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
-	print STDERR Data::Dumper->Dump(["INCOMMING",$data,$command,$login]);
+	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
 
-        my $app_object =Yote::ObjProvider::fetch( $obj_id );
+        my $app_object =Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
         my $account;
 
