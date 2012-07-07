@@ -74,6 +74,10 @@ while( \@ARGV ) {
 	\$do_start = 0;
         exit;
     }
+    elsif( \$first eq '--version' || \$first eq '-V' ) {
+	print "$Yote::VERSION\n";
+	exit;
+    }
     elsif( \$first eq '--restart' ) {
 	#
 	# kill any old servers hanging around
