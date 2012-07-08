@@ -83,9 +83,8 @@ sub fetch {
 #             returns : { l => login object, t => token }
 #
 sub login {
-    my( $self, $data ) = @_;
+    my( $self, $data, $ip ) = @_;
 
-    my $ip = $data->{_ip};
     if( $data->{h} ) {
         my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
         if( $login && ($login->get__password() eq $self->_encrypt_pass( $data->{p}, $login) ) ) {
@@ -115,9 +114,7 @@ sub flush_credential_cache {
 #             returns : { l => login object, t => token }
 #
 sub create_login {
-    my( $self, $args ) = @_;
-
-    my $ip = $args->{_ip};
+    my( $self, $args, $ip ) = @_;
 
     #
     # validate login args. Needs handle (,email at some point)
@@ -180,9 +177,7 @@ sub create_login {
 #             returns : "deleted account"
 #
 sub remove_login {
-    my( $self, $args, $acct ) = @_;
-
-    my $ip = $args->{_ip};
+    my( $self, $args, $acct, $ip ) = @_;
 
     my $login = $acct->get_login();
 

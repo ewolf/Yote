@@ -259,18 +259,13 @@ sub _process_command {
         my $app        = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login = $app->token_login( { t => $command->{t}, _ip => $command->{p} } );
+        my $login = $app->token_login( $command->{t}, $command->{p} );
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
 
         my $app_object =Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
         my $account;
-
-        # hidden parts of the args
-        if( ref( $data ) eq 'HASH' ) {
-            $data->{_ip} = $command->{p};
-        }
 
         if( $login ) {
             $account = $app->_get_account( $login );
@@ -281,8 +276,7 @@ sub _process_command {
         }
 	Yote::ObjProvider::reset_changed();
 
-#	print STDERR Data::Dumper->Dump(["doing $action on ", $app_object, 'with data',$data,"and account",$account,'and login',$account?$account->get_login():'none'] );
-        my $ret = $app_object->$action( $data, $account );
+        my $ret = $app_object->$action( $data, $account, $command->{p} );
 
 	my $dirty_delta = Yote::ObjProvider::fetch_changed();
 

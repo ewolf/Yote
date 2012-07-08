@@ -35,6 +35,7 @@ BEGIN {
 # -----------------------------------------------------
 
 my( $fh, $name ) = mkstemp( "/tmp/SQLiteTest.XXXX" );
+$fh->close();
 Yote::ObjProvider::init(
     datastore      => 'Yote::SQLiteIO',
     sqlitefile     => $name,
@@ -43,6 +44,8 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 
 done_testing();
+
+unlink( $name );
 
 sub query_line {
     my( $db, $query, @args ) = @_;
@@ -62,12 +65,12 @@ sub test_suite {
 # ----------- simple object tests -----#
 #                                      #
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
-    is( $o_count, 4, "number of objects before save root, since root is initiated automatically" );
+    is( $o_count, 6, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( 1 );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
-    is( $o_count, 4, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts and app_alias underneath it
+    is( $o_count, 6, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts and app_alias underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
     is( $f_count, 0, "number of fields after save root" ); 
 
@@ -89,10 +92,10 @@ sub test_suite {
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 21, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 23, "Number of db rows saved to database with stow all" );
 
     my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
-    is( scalar(@$db_rows), 14, "Number of db rows saved to database" ); #Big counts as obj
+    is( scalar(@$db_rows), 16, "Number of db rows saved to database" ); #Big counts as obj
 
 
     my $root_clone = Yote::ObjProvider::fetch( 1 );
