@@ -314,11 +314,13 @@ $.yote.util = {
 	var but     = args[ 'button' ];
 	var action  = args[ 'action' ];
 	var texts   = args[ 'texts'  ] || [];
+	var req_texts = args[ 'required' ];
 	var exempt  = args[ 'cleanup_exempt' ] || {};
 
 	function check_ready() {
-	    for( var i=0; i<texts.length; ++i ) {
-		if( ! $( texts[i] ).val().match( /\S/ ) ) {
+	    var t = req_texts || texts;
+	    for( var i=0; i<t.length; ++i ) {
+		if( ! $( t[i] ).val().match( /\S/ ) ) {
 	    	    $( but ).attr( 'disabled', 'disabled' );
 		    return false;
 		}
