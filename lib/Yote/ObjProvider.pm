@@ -273,15 +273,6 @@ sub apply_udpates {
 
 } #apply_updates
 
-sub stow_all_updates {
-    my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
-    my( @cmd );
-    for my $obj (@objs) {
-        push( @cmd, @{stow_updates( $obj ) });
-    }
-    return \@cmd;
-} #stow_all_updates
-
 sub stow_all {
     my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
     for my $obj (@objs) {
@@ -429,13 +420,6 @@ sub dirty {
     my $id = shift;
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
     $Yote::ObjProvider::CHANGED->{$id} = $obj;
-}
-
-#
-# Returns ids that are dirty
-#
-sub dirty_ids {
-    return keys %$Yote::ObjProvider::DIRTY;
 }
 
 #

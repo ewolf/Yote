@@ -36,7 +36,7 @@ push( \@INC, "$base/lib" );
 
 \$SIG{ __DIE__ } = sub { Carp::confess( \@_ ) };
 
-my $pidfile = File::Pid->new( { file => "$base/yote.pid" } );
+my \$pidfile = File::Pid->new( { file => "$base/yote.pid" } );
 
 my \$s = new Yote::WebAppServer;
 
@@ -74,6 +74,10 @@ while( \@ARGV ) {
 	\$do_start = 0;
         exit;
     }
+    elsif( \$first eq '--version' || \$first eq '-V' ) {
+	print "$Yote::VERSION\n";
+	exit;
+    }
     elsif( \$first eq '--restart' ) {
 	#
 	# kill any old servers hanging around
@@ -92,10 +96,10 @@ while( \@ARGV ) {
 	\$config{\$1} = shift \@ARGV;
     }
     else {
-	say "yote_server <options>\n".join( "\n\t*", ('--shutdown : stops yote server', '--restart : restarts yote server',
-						      '--port=<port> : assigns the yote server to run on specified port',
-						      '--datastore=<datastore package name> : use data store other than sqlite',
-						      '--sqlitefile=<filename> : specify different sqlite file' ) );
+	say "yote_server <options>\\n".join( "\\n\\t*", ('--shutdown : stops yote server', '--restart : restarts yote server',
+							'--port=<port> : assigns the yote server to run on specified port',
+							'--datastore=<datastore package name> : use data store other than sqlite',
+							'--sqlitefile=<filename> : specify different sqlite file' ) );
 	exit 0;
     }
 } #while args
