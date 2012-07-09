@@ -83,7 +83,7 @@ sub fetch {
 #             returns : { l => login object, t => token }
 #
 sub login {
-    my( $self, $data, $ip ) = @_;
+    my( $self, $data, $dummy, $ip ) = @_;
 
     if( $data->{h} ) {
         my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
