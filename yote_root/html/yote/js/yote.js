@@ -17,7 +17,7 @@ $.yote = {
 
         var t = $.cookie('yoken');
         if( typeof t === 'string' ) {
-            var ret = root.token_login( { t:t } );
+            var ret = root.token_login( t );
 	    if( typeof ret === 'object' ) {
 		this.token     = t;
 		this.login_obj = ret;

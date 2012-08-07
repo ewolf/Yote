@@ -22,7 +22,8 @@ $VERSION = '0.085';
 # Available to all apps. Used for verification and for cookie login.
 #
 sub token_login {
-    my( $self, $t, $ip ) = @_;
+    my( $self, $t, $dummy, $ip ) = @_;
+    $ip ||= $dummy;
     if( $t =~ /(.+)\-(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
         my $login = Yote::ObjProvider::fetch( $uid );
