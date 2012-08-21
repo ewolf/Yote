@@ -116,7 +116,7 @@ if( \$do_start ) {
 #
 # Normal start
 #
-`echo \$\$ > \$pidfile`;
+\$pidfile->write();
 
 \$s->start_server( \%config );
 
