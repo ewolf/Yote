@@ -305,6 +305,17 @@ $.yote.util = {
 		this.html = this.html + '</tr>';		
 		return this;
 	    },
+	    add_param_row : function( arry ) {
+		this.html = this.html + '<tr>';		
+		if( arry.length > 0 ) {
+		    this.html = this.html + '<th>' + arry[0] + '</th>';
+		}
+		for( var i=1; i<arry.length; i++ ) {
+		    this.html = this.html + '<td>' + arry[i] + '</td>';
+		}
+		this.html = this.html + '</tr>';		
+		return this;
+	    },
 	    get_html : function() { return this.html + '</table>'; }
 	}
     }, //make_table
