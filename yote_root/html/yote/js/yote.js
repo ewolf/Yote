@@ -13,9 +13,8 @@ $.yote = {
     debug:true,
 
     init:function() {
-	var root = this.fetch_root();
-
         var t = $.cookie('yoken');
+
         if( typeof t === 'string' ) {
             var ret = root.token_login( { t:t } );
 	    if( typeof ret === 'object' ) {
@@ -23,6 +22,7 @@ $.yote = {
 		this.login_obj = ret;
 	    }
         }
+	var root = this.fetch_root();
     }, //init
 
     fetch_root:function() {
@@ -408,7 +408,6 @@ $.yote = {
         app_id = app_id || '';
         obj_id = obj_id || '';
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
-
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
             t:root.token,
