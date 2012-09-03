@@ -16,6 +16,7 @@ sub init {
     $self->set__handles({});
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
+    $self->set__application_lib_directories( [] );
 } #init
 
 sub fetch_app_by_class {

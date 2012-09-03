@@ -56,6 +56,10 @@ sub start_server {
     my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
     $self->{cron_thread} = $cron_thread;
 
+    # update @INC library list
+    my $paths = $root->get__application_lib_directories();
+    push @INC, @$paths;
+
     # server thread
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;
