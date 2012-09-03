@@ -1,3 +1,5 @@
+#!/usr/bin/env perl
+
 #
 # Must have the yote server shut down to run this maintenance script.
 # Usage : library_application_path_updater <list of paths to include>
