@@ -49,6 +49,9 @@ $.yote = {
 	}
     }, //fetch_app
 
+    fetch_account:function() {
+	return this.fetch_root().account();
+    },
 
     load_direct_descendents:function( app, obj ) {
 	var desc = app.multi_fetch( obj );

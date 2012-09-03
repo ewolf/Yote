@@ -206,7 +206,7 @@ $.yote.util = {
 			  function(data) { //pass
 			      to_logged_in($.yote.login_obj.get('handle'));
 			      // note the following line will work but is not closure safe yet.
-			      if( typeof logged_in_f === 'function' ) { logged_in_f(); }
+			      //if( typeof logged_in_f === 'function' ) { logged_in_f(); }
 			  },
 			  function(data) { //fail
 			      to_login(data);
