@@ -43,7 +43,7 @@ sub new {
         DATA     => {},
     }, $class;
 
-    my $needs_init = ! $obj->{ID};
+    my $needs_init = ! $obj->_id;
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->init() if $needs_init;
@@ -51,9 +51,11 @@ sub new {
     return $obj;
 } #new
 
+sub _id { $_[0]->{ID} } # same as $self->{ID} but faster (this is called a lot)
+
 sub is {
     my( $self, $other ) = @_;
-    return ref( $other ) && $other->isa( 'Yote::Obj' ) && $other->{ID} == $self->{ID};
+    return ref( $other ) && $other->isa( 'Yote::Obj' ) && $other->_id == $self->_id;
 }
 
 #
@@ -72,7 +74,7 @@ sub update {
     for my $fld (keys %$data) {
         next unless $fld =~ /^[A-Z]/ && defined( $self->{DATA}{$fld} );
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-        Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+        Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;
         $updated->{$fld} = $inval;
     }
@@ -190,7 +192,7 @@ sub _absorb {
     my $updated_count = 0;
     for my $fld (keys %$data) {
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-        Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+        Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;
         ++$updated_count;
     } #each field
@@ -261,7 +263,7 @@ sub AUTOLOAD {
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
             my $inval = Yote::ObjProvider::xform_in( $val );
-            Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+            Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval;
         };
         goto &$AUTOLOAD;
@@ -276,7 +278,7 @@ sub AUTOLOAD {
                 if( ref( $init_val ) ) {
                     Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
                 }
-                Yote::ObjProvider::dirty( $self, $self->{ID} );
+                Yote::ObjProvider::dirty( $self, $self->_id );
             }
             return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
