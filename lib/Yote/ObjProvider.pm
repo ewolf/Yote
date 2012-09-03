@@ -224,7 +224,7 @@ sub package_methods {
 
         no strict 'refs';
 
-        my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|add_to_.*|remove_from_.*|init|import|set_.*|get_.*|can|isa|new)$/ } keys %{"${pkg}\::"};
+        my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|add_to_.*|remove_from_.*|init|import|set_.*|[sg]et_.*|can|isa|new)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
         for my $class ( @{"${pkg}\::ISA" } ) {
             my $pm = package_methods( $class );

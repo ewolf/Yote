@@ -14,15 +14,16 @@ $.yote = {
 
     init:function() {
         var t = $.cookie('yoken');
+	$.yote.token = t;
 
+	var root = this.fetch_root();
         if( typeof t === 'string' ) {
-            var ret = root.token_login( { t:t } );
+            var ret = root.token_login( $.yote.token );
 	    if( typeof ret === 'object' ) {
-		this.token     = t;
+		$.yote.token     = t;
 		this.login_obj = ret;
 	    }
         }
-	var root = this.fetch_root();
     }, //init
 
     fetch_root:function() {
@@ -182,7 +183,7 @@ $.yote = {
                                 obj_id:this.id,
 				passhandler:passhandler,
 				wait:true,
-				t:root.token,
+				t:$.yote.token,
 			    } ); //sending message
 			    
 
@@ -410,7 +411,7 @@ $.yote = {
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
-            t:root.token,
+            t:$.yote.token,
             w:wait
         };
 	var resp;
