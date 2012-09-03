@@ -169,7 +169,7 @@ $.yote = {
 		    return this._d;
 		};
 	    }
-	    if( o.class == 'LIST' ) {
+	    if( o.class == 'ARRAY' ) {
 		o.to_list = function() {
 		    var list = [];
 		    for( var i=0; i<o.length(); i++ ) {
