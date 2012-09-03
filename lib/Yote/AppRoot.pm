@@ -9,7 +9,6 @@ use strict;
 use Yote::Obj;
 use Crypt::Passwd;
 use Email::Valid;
-use MIME::Lite;
 use MIME::Base64;
 use Yote::Messenger;
 
