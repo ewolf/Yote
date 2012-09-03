@@ -118,7 +118,14 @@ $().ready(function(){
         $.yote.login( 'unit_test_account', 'ut',
                       pass( "able to log in" ),
                       fail( "able to log in" ) );
-	
+
+        step('login has token');
+	ok( $.yote.token != '', 'login has token', 'token missing from login' );
+	ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
+
+	var token_login = $.yote.fetch_root().token_login( $.yote.token );
+	ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );	
+
         //app that requires login should allow scalar now
         step('scalar called on testappneedslogin to succeed');
         var scalar = login.scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );

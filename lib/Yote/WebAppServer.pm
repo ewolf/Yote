@@ -119,6 +119,8 @@ sub process_http_request {
     my $vars = $CGI->Vars();
 
     my( $uri, $remote_ip, $verb ) = @ENV{'PATH_INFO','REMOTE_ADDR','REQUEST_METHOD'};
+    
+    print STDERR Data::Dumper->Dump(["REQUEST FOR $uri"]);
 
     $uri =~ s/\s+HTTP\S+\s*$//;
 #    print STDERR ")STaRt pid $$ : $verb $uri : ";
@@ -259,14 +261,13 @@ sub _process_command {
         my $app        = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login = $app->token_login( $command->{t}, $command->{p} );
+        my $login = $app->token_login( $command->{t}, undef, $command->{p} );
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
 
         my $app_object =Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
         my $account;
-
         if( $login ) {
             $account = $app->_get_account( $login );
 
