@@ -76,6 +76,13 @@ sub multi_fetch {
 } #multi_fetch
 
 #
+# Override to use different classes for the account objects.
+#
+sub _new_account {
+    return new Yote::Account();
+}
+
+#
 # Returns the account root attached to this AppRoot for the given account.
 #
 sub _get_account {
@@ -83,7 +90,7 @@ sub _get_account {
     my $accts = $self->get__account_roots({});
     my $acct = $accts->{$login->{ID}};
     unless( $acct ) {
-        $acct = new Yote::Messenger();
+        $acct = $self->_new_account();
         $acct->set__allowed_access({});
         $acct->set_login( $login );
 	$acct->set_handle( $login->get_handle() );
