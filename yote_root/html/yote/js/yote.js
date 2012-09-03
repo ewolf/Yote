@@ -169,7 +169,15 @@ $.yote = {
 		    return this._d;
 		};
 	    }
-
+	    if( o.class == 'LIST' ) {
+		o.to_list = function() {
+		    var list = [];
+		    for( var i=0; i<o.length(); i++ ) {
+			list[i] = o.get(i);
+		    }
+		    return list;
+		};
+	    }
 	    /*
 	      assign methods
 	    */
