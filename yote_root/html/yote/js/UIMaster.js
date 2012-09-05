@@ -65,7 +65,7 @@ var UIMaster = {
 	    click:function() {},
 	    accepts:function( item, X, Y ) {},
 	    accept:function( item, control, X, Y ) {},
-	    give:function( item, control, X, Y ) {},
+	    give:function( item, control, X, Y ) {}
 	};
 	return itm;
     }, //make_item

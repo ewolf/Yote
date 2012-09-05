@@ -25,6 +25,6 @@ $.yote.util.system = {
                                          require_root:require_root
                                        } );
         }
-    }, //system_panel
+    } //system_panel
     
 };
