@@ -169,12 +169,12 @@ $.yote.util = {
 			);
 	var message = function( msg ) {
             if( typeof msg === 'string' ) {
-	        $( target + ' #login_msg_span').empty()
-	        $( target + ' #login_msg_span').append( msg )
-	        $( target + ' #login_msg_outerspan').show()	    
+	        $( target + ' #login_msg_span').empty();
+	        $( target + ' #login_msg_span').append( msg );
+	        $( target + ' #login_msg_outerspan').show();    
 	    } else {
-	        $( target + ' #login_msg_span').empty()
-	        $( target + ' #login_msg_outerspan').hide()
+	        $( target + ' #login_msg_span').empty();
+	        $( target + ' #login_msg_outerspan').hide();
             }
 	}
 	var install_function = function( f ) { return function() { f(); } }
@@ -226,7 +226,7 @@ $.yote.util = {
 				     
 				     function(data) { //fail
 					 to_register(data);
-				          }
+				     }
 				   );     
             } else {
                 to_register("password too short");
@@ -372,6 +372,6 @@ $.yote.util = {
 
 	check_ready();
 
-    }, // button_actions
+    } // button_actions
 
 }//$.yote.util

@@ -30,8 +30,7 @@ $.yote = {
 	return this.objs[1] || this._create_obj( this.message( {
             async:false,
             cmd:'fetch_root',
-            verb:'PUT',
-	    wait:true,
+	    wait:true
 	} ).r, 1 );
 	
     }, //fetch_root
@@ -194,7 +193,7 @@ $.yote = {
                                 obj_id:this.id,
 				passhandler:passhandler,
 				wait:true,
-				t:$.yote.token,
+				t:$.yote.token
 			    } ); //sending message
 			    
 
@@ -436,6 +435,7 @@ $.yote = {
 
 	$.ajax( {
 	    async:async,
+	    cache: false,
 	    data:put_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {

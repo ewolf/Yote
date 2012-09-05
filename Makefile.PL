@@ -27,6 +27,9 @@ my $build = $class->new(
         'File::chmod'           => 0.32,
 	'File::Pid'             => 0,
         
+	'CGI'                   => undef,
+	'CGI::Upload'           => undef,
+
         'DBD::SQLite'           => 1.35,
         'JSON'                  => 2.22,
         'MIME::Base64'          => 3.08,
