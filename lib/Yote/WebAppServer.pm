@@ -57,7 +57,7 @@ sub start_server {
     $self->{cron_thread} = $cron_thread;
 
     # update @INC library list
-    my $paths = $root->get__application_lib_directories();
+    my $paths = $root->get__application_lib_directories([]);
     push @INC, @$paths;
 
     # server thread
