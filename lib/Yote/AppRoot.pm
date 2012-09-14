@@ -91,7 +91,6 @@ sub _get_account {
     my $acct = $accts->{$login->{ID}};
     unless( $acct ) {
         $acct = $self->_new_account();
-        $acct->set__allowed_access({});
         $acct->set_login( $login );
 	$acct->set_handle( $login->get_handle() );
         $accts->{$login->{ID}} = $acct;
@@ -112,9 +111,6 @@ sub _init_account {}
 #
 sub _account_can_access {
     return 1;
-#    my( $self, $account, $object ) = @_;
-#    my $o_id = Yote::ObjProvider::get_id( $object );
-#    return $account->get_login()->get__allowed_access()->{ $o_id };
 } #_account_can_access
 
 #

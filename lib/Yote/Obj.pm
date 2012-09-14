@@ -144,9 +144,6 @@ sub _obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
-                if( $acct ) {
-                    $acct->get_login()->get__allowed_access()->{$use_id} = 1;
-                }
                 return $use_id unless $xform_out;
             } else {
                 $d = $self->_transform_data_no_id( $to_convert, $acct );
@@ -157,9 +154,6 @@ sub _obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
-                if( $acct ) {
-                    $acct->get_login()->get__allowed_access()->{$use_id} = 1;
-                }
                 return $use_id unless $xform_out;
             } else {
                 $d = $self->_transform_data_no_id( $to_convert, $acct );
@@ -167,9 +161,6 @@ sub _obj_to_response {
         } 
         else {
             $use_id = Yote::ObjProvider::get_id( $to_convert );
-            if( $acct ) {
-                $acct->get_login()->get__allowed_access()->{$use_id} = 1;
-            }
             return $use_id unless $xform_out;
             $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
 

@@ -161,6 +161,13 @@ $.yote = {
 			++cnt;
 		    }
 		    return cnt;
+		},
+		keys:function() {
+		    var k = []
+		    for( key in this._d ) {
+			k.push( key );
+		    }
+		    return k;
 		}
 	    };
 	    if( o.class == 'HASH' ) {

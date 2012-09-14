@@ -4,11 +4,6 @@ use strict;
 
 use base 'Yote::Obj';
 
-sub init {
-    my $self = shift;
-    $self->set__allowed_access({});
-}
-
 #
 # Can either be reset by logged in account, or by a recovery link.
 #
