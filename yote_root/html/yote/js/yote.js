@@ -172,14 +172,18 @@ $.yote = {
 	    };
 	    if( o.class == 'HASH' ) {
 		o.to_hash = function() {
-		    return this._d;
+		    var hash = {};
+		    for( var key in this._d ) {
+			hash[ key ] = this.get( key );
+		    }
+		    return hash;
 		};
 	    }
 	    if( o.class == 'ARRAY' ) {
 		o.to_list = function() {
 		    var list = [];
-		    for( var i=0; i<o.length(); i++ ) {
-			list[i] = o.get(i);
+		    for( var i=0; i < this.length(); i++ ) {
+			list[i] = this.get(i);
 		    }
 		    return list;
 		};
