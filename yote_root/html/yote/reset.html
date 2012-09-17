@@ -1,14 +1,15 @@
 <html>
   <head>
     <title>Reset Password</title>
-    <script src="/js/jquery-latest.js"></script>
-    <script src="/js/jquery.dumper.js"></script>
-    <script src="/js/jquery.base64.min.js"></script>
-    <script src="/js/json2.js"></script>
-    <script src="/js/yote/yote.js"></script>
-    <script src="/js/yote/yote.util.js"></script>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
     <script>
     $().ready(function(){
+        $.yote.init();
         var parts = window.location.href.split('?');
         var params = parts[1].split('&');
         var token;
@@ -20,7 +21,6 @@
             }
             if( pair[0] == 'p' ) {
                 topage = $.base64.decode(pair[1]);
-                alert( topage + ',' + pair[1] );
             }
         }
         function msg( msg ) {
@@ -29,22 +29,19 @@
         }
         function reset_pw() {
             if( $('#pw1').val() == $('#pw2').val() && $('#pw1').val().length > 2 ) {
-                $.yote.reset_password( token, 
-                                       $('#pw1').val(),
-                                       function(d) { 
-                                           msg( 'password reset' );
-                                           $('#asker').hide();
-                                           if( typeof topage !== 'undefined' ) {
-                                               window.document.href = topage;
-                                           }
-                                       }, //pass
-                                       function(d) { msg(d); } //fail 
-                                     );
+		var res = $.yote.fetch_root().reset_password( { p : $('#pw1').val(), p2 : $('#pw2').val(), t : token },
+							      function(d) {
+								  $( '#asker' ).hide();
+							      },
+							      function( d ) {
+								  msg( d );
+							      });
+		location.href = res;
             } else {
                 msg( 'passwords dont match or are too short' );
             }
         }
-        $('#sub').click( function() { reset_pw() } );
+        $('#reset_b').click( function() { reset_pw() } );
         $('#pw1,#pw2').keypress( function(e) { if(e.which == 13 ) { reset_pw(); } });
 	});
     </script>
@@ -59,7 +56,7 @@
 <div id=asker>
 <table><tr><td>Enter Password</td><td><input type=password id=pw1></td></tr>
   <tr><td>Enter Password</td><td><input type=password id=pw2></td></tr></table>
-<br><input type=submit id=sub value=Reset>
+<br><button type=button id=reset_b>Reset</button>
 </div>
 </body>
 </html>

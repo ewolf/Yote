@@ -2,6 +2,7 @@ package Yote::YoteRoot;
 
 use Yote::Cron;
 use Yote::Login;
+use MIME::Lite;
 
 use base 'Yote::AppRoot';
 
@@ -210,12 +211,13 @@ sub recover_password {
     my $from_url = $args->{u};
     my $to_reset = $args->{t};
 
-    my $login = Yote::ObjProvider::xpath( "/emails/$email" );
+    my $login = Yote::ObjProvider::xpath( "/_emails/$email" );
+
     if( $login ) {
         my $now = time();
         if( $now - $login->get__last_recovery_time() > (60*15) ) { #need to wait 15 mins
             my $rand_token = int( rand 9 x 10 );
-            my $recovery_hash = $self->get_recovery_logins({});
+            my $recovery_hash = $self->get__recovery_logins({});
             my $times = 0;
             while( $recovery_hash->{$rand_token} && ++$times < 100 ) {
                 $rand_token = int( rand 9 x 10 );
@@ -223,22 +225,25 @@ sub recover_password {
             if( $recovery_hash->{$rand_token} ) {
                 die "error recovering password";
             }
-            $login->set__recovery_token( $rand_token );
-            $login->set_recovery_from_url( $from_url );
-            $login->set_last_recovery_time( $now );
-            $login->set_recovery_tries( $login->get_recovery_tries() + 1 );
+            $login->set__recovery_from_url( $from_url );
+            $login->set__last_recovery_time( $now );
+            $login->set__recovery_tries( $login->get_recovery_tries() + 1 );
             $recovery_hash->{$rand_token} = $login;
-            my $link = "$to_reset?t=$rand_token&p=".MIME::Base64::encode($from_url);
-            # email
-            my $msg = MIME::Lite->new(
-                From    => 'yote@127.0.0.1',
-                To      => $email,
-                Subject => 'Password Recovery',
-                Type    => 'text/html',
-                Data    => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
-                );
-            $msg->send();
-        } else {
+            my $link = "$to_reset?t=$rand_token";
+	    use Mail::Sender;
+	    print STDERR Data::Dumper->Dump([\%ENV]);
+	    my $sender = new Mail::Sender( {
+		smtp => 'localhost',
+		from => 'yote@localhost',
+					   } );
+	    $sender->MailMsg( { to => $email,
+				 subject => 'Password Recovery',
+				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
+			       } );
+	    
+		
+        }
+	else {
             die "password recovery attempt failed";
         }
     }
@@ -258,16 +263,14 @@ sub reset_password {
     
     my $rand_token     = $args->{t};
     
-    my $recovery_hash = $self->get_recovery_logins({});
-    my $acct = $recovery_hash->{$rand_token};
-    if( $acct ) {
-        my $login = $acct->get_login();
-        my $now = $acct->get_last_recovery_time();
+    my $recovery_hash = $self->get__recovery_logins({});
+    my $login = $recovery_hash->{$rand_token};
+    if( $login ) {
+        my $now = $login->get__last_recovery_time();
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
             $login->set__password( $self->_encrypt_pass( $newpass, $login ) );
-            $login->set__recovery_token( undef );
-            return "Password Reset";
+            return $login->get__recovery_from_url();
         }
     }
     die "Recovery Link Expired or not valid";

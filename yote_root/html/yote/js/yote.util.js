@@ -233,16 +233,17 @@ $.yote.util = {
             }           
 	}
 	var do_recover = function() {
-	    $.yote.root.recover_password( { e:$( target + ' .recover#email' ).val(), 
-					    u:window.location.href,
-					    t:window.location.href.replace(/[^\/]$/, 'reset.html' )
-					  },
-					  function(d) {
-					      to_login( "sent recovery email" );
-					  },
-					  function(d) {
-					      message(d);
-					  }
+	    $.yote.fetch_root().recover_password( { e : $( target + ' .recover#email' ).val(), 
+						    u : window.location.href,
+						    t : location.protocol + "//" + location.hostname +
+						    (location.port ? ':'+location.port: '') + "/yote/reset.html"
+						  },
+						  function(d) {
+						      to_login( "sent recovery email" );
+						  },
+						  function(d) {
+						      message(d);
+						  }
 					);
 	    if( typeof recover_f === 'function' ) { recover_f(); }
 	}
