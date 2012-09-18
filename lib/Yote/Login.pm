@@ -10,14 +10,17 @@ use base 'Yote::Obj';
 sub reset_password {
     my( $self, $args, $account ) = @_;
 
+    my $oldpass        = $args->{op};
     my $newpass        = $args->{p};
     my $newpass_verify = $args->{p2};
 
-    die "Passwords don't match" unless $newpass eq $newpass_verify;
+    die "Unable to find account" unless $account;
 
-    # logged in an resetting
-    my $login = $account->get_login();
-    $login->set__password( $self->_encrypt_pass($newpass, $login) );
+    die "Passwords do not match" unless $newpass eq $newpass_verify;
+
+    die "Old Password is incorrect" unless $self->get__password() eq $self->_encrypt_pass( $oldpass, $self );
+
+    $self->set__password( $self->_encrypt_pass($newpass, $self) );
     return "Password Reset";
 
 } #reset_password

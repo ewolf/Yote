@@ -158,10 +158,11 @@ $.yote.util = {
 			  // change account
 			  "<div style=display:none id=y_change_account>" + 
 			  "Change Account Settings<BR>" + 
-			  "<table ><tr><td>Email</td><td><input id=change_email></td><td><button type=button id=change_email_b>Update Email</button> " +
+			  "<table><tr><td>Email</td><td><input id=change_email></td><td><button type=button id=change_email_b>Update Email</button> " +
 			  "<tr><td colspan=3><hr></td></tr>" + 
-			  "<tr><td>Password</td><td><input type=password id=change_pw1></td>" +
-			  "<tr><td>Password (again)</td><td><input type=password id=change_pw2></td><td><button type=button id=change_password_b>Update Password</button></td></tr> " +
+			  "<tr><td>Current Password</td><td><input type=password id=old_pw></td>" +
+			  "<tr><td>New Password</td><td><input type=password id=change_pw1></td>" +
+			  "<tr><td>New Password (again)</td><td><input type=password id=change_pw2></td><td><button type=button id=change_password_b>Update Password</button></td></tr> " +
 			  "</table>" + 
 			  "<BR><a href='#' id=change_done>Done</a>" +
 			  "</div>" + 
@@ -306,7 +307,7 @@ $.yote.util = {
 	    $.yote.login_obj.reset_email( $( target + ' #change_email' ).val(),  function(succeed) { message( succeed ) }, function(fail) { message( fail ) } );
 	} );
 	$( target + ' #change_password_b' ).click( function() {
-	    $.yote.login_obj.reset_password( { p : $( target + ' #change_pw1' ).val(), p2 : $( target + ' #change_pw2' ).val() },  function(succeed) { message( succeed ) }, function(fail) { message( fail ) } );
+	    $.yote.login_obj.reset_password( { op : $( target + ' #old_pw' ).val(), p : $( target + ' #change_pw1' ).val(), p2 : $( target + ' #change_pw2' ).val() },  function(succeed) { message( succeed ) }, function(fail) { message( fail ) } );
 	} );
 	$( target + ' #change_done' ).click( function() { if( $.yote.is_logged_in() ) { to_logged_in( $.yote.get_login().get_handle() ) } else { to_login('need to log in')  }  } );
 	if( $.yote.is_logged_in() ) {

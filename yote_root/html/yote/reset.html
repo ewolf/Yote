@@ -29,13 +29,13 @@
         }
         function reset_pw() {
             if( $('#pw1').val() == $('#pw2').val() && $('#pw1').val().length > 2 ) {
-		var res = $.yote.fetch_root().reset_password( { p : $('#pw1').val(), p2 : $('#pw2').val(), t : token },
-							      function(d) {
-								  $( '#asker' ).hide();
-							      },
-							      function( d ) {
-								  msg( d );
-							      });
+		var res = $.yote.fetch_root().recovery_reset_password( { p : $('#pw1').val(), p2 : $('#pw2').val(), t : token },
+							       function(d) {
+								   $( '#asker' ).hide();
+							       },
+								       function( d ) {
+									   msg( d );
+								       });
 		location.href = res;
             } else {
                 msg( 'passwords dont match or are too short' );

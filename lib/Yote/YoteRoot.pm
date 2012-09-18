@@ -251,9 +251,9 @@ sub recover_password {
 } #recover_password
 
 #
-# Can either be reset by logged in account, or by a recovery link.
+# reset by a recovery link.
 #
-sub reset_password {
+sub recovery_reset_password {
     my( $self, $args ) = @_;
 
     my $newpass        = $args->{p};
@@ -275,7 +275,7 @@ sub reset_password {
     }
     die "Recovery Link Expired or not valid";
 
-} #reset_password
+} #recovery_reset_password
 
 
 #
