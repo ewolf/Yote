@@ -7,7 +7,6 @@ package Yote::AppRoot;
 use strict;
 
 use Yote::Obj;
-use Crypt::Passwd;
 use Email::Valid;
 use MIME::Base64;
 use Yote::Account;
@@ -113,13 +112,6 @@ sub _account_can_access {
     return 1;
 } #_account_can_access
 
-#
-# Encrypt the password so its not saved in plain text.
-#
-sub _encrypt_pass {
-    my( $self, $pw, $acct ) = @_;
-    return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
-} #_encrypt_pass
 
 
 1;

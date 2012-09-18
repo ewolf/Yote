@@ -22,6 +22,11 @@ sub reset_password {
 
 } #reset_password
 
+sub reset_email {
+    my( $self, $arg, $account ) = @_;
+    $self->set_email( $arg );
+    return "Updated email";
+} #reset_email
 
 1;
 

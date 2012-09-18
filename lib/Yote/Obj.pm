@@ -30,6 +30,8 @@ use strict;
 
 use Yote::ObjProvider;
 
+use Crypt::Passwd;
+
 use vars qw($VERSION);
 
 $VERSION = '0.01';
@@ -197,6 +199,15 @@ sub _is {
     return ref( $obj ) && ref( $obj ) eq ref( $self ) &&
         Yote::ObjProvider::get_id( $obj ) == Yote::ObjProvider::get_id( $self );
 }
+
+#
+# Encrypt the password so its not saved in plain text.
+#
+sub _encrypt_pass {
+    my( $self, $pw, $acct ) = @_;
+    return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
+} #_encrypt_pass
+
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list

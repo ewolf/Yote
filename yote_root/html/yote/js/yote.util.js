@@ -155,6 +155,17 @@ $.yote.util = {
 			  "  <div id=register_login_link_div><a href='#' id=login_link>Login</a></div>" +
 			  "</div>" +
 
+			  // change account
+			  "<div style=display:none id=y_change_account>" + 
+			  "Change Account Settings<BR>" + 
+			  "<table ><tr><td>Email</td><td><input id=change_email></td><td><button type=button id=change_email_b>Update Email</button> " +
+			  "<tr><td colspan=3><hr></td></tr>" + 
+			  "<tr><td>Password</td><td><input type=password id=change_pw1></td>" +
+			  "<tr><td>Password (again)</td><td><input type=password id=change_pw2></td><td><button type=button id=change_password_b>Update Password</button></td></tr> " +
+			  "</table>" + 
+			  "<BR><a href='#' id=change_done>Done</a>" +
+			  "</div>" + 
+
 			  // recover
 			  "<div style=display:none id=y_recover_account>" +
 			  "Email <input class=recover id=email> " +
@@ -164,7 +175,7 @@ $.yote.util = {
 
 			  // logged in
 			  "<div style=display:none id=y_logged_in>" +
-			  "Logged in as <span class=logged_in id=handle></span><BR> [<a id=logout_link href='#'>logout</a>]" +
+			  "Logged in as <span class=logged_in id=handle></span> [<a id=change_link href='#'>update</a> ]<BR> [<a id=logout_link href='#'>logout</a>]" +
 			  "</div>"
 			);
 	var message = function( msg ) {
@@ -201,6 +212,15 @@ $.yote.util = {
 	    $( target + ' > div#y_logged_in' ).show();                
 	    logged_in_f();
 	}
+
+	var to_change = function() {
+	    $( target + ' > div ' ).hide();
+	    $( target + ' > div#y_change_account ' ).show();
+	    $( target + ' #change_email' ).val( $.yote.login_obj.get('email' ) );
+	    $( target + ' > #change_email' ).attr( 'disabled', false );	
+	    $( target + ' > #change_email' ).prop( 'disabled', false );	
+	}
+
 	var do_login = function() {
 	    $.yote.login( $( target + " .login#login").val(), $(target + " .login#password").val(),
 			  function(data) { //pass
@@ -247,6 +267,7 @@ $.yote.util = {
 					);
 	    if( typeof recover_f === 'function' ) { recover_f(); }
 	}
+
 	var logout = function() {
 	    $( target + ' > div ' ).hide();
             var rootapp = $.yote.fetch_root();
@@ -271,6 +292,7 @@ $.yote.util = {
 	$( target + ' #register_link').click( install_function(to_register || nada) );
 	$( target + ' #logout_link').click( install_function(logout || nada) );
 	$( target + ' #forgot_link').click( install_function(to_recover || nada) );
+	$( target + ' #change_link').click( install_function(to_change || nada) );
 
 	//button actions
 	$( target + ' #login_submit').click( install_function(do_login || nada) );
@@ -279,6 +301,14 @@ $.yote.util = {
 	$( target + ' .register#login,' + target + ' .register#password,' + target + ' .register#email' ).keypress( on_enter(do_register) );
 	$( target + ' .recover#email' ).keypress( on_enter(do_recover) );
 	$( target + ' #recover_submit' ).click( install_function(do_recover || nada) );
+
+	$( target + ' #change_email_b' ).click( function() {
+	    $.yote.login_obj.reset_email( $( target + ' #change_email' ).val(),  function(succeed) { message( succeed ) }, function(fail) { message( fail ) } );
+	} );
+	$( target + ' #change_password_b' ).click( function() {
+	    $.yote.login_obj.reset_password( { p : $( target + ' #change_pw1' ).val(), p2 : $( target + ' #change_pw2' ).val() },  function(succeed) { message( succeed ) }, function(fail) { message( fail ) } );
+	} );
+	$( target + ' #change_done' ).click( function() { if( $.yote.is_logged_in() ) { to_logged_in( $.yote.get_login().get_handle() ) } else { to_login('need to log in')  }  } );
 	if( $.yote.is_logged_in() ) {
             to_logged_in( $.yote.get_login().get_handle() );
 	} else {
