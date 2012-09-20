@@ -28,15 +28,20 @@ $().ready( function() {
     $.yote.util.make_login_box({ target:'#login',
                                  on_in:function() { show_system() },
                                  require_root:1 });
-    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <button type=button id=fileup_b2>Upload</button>' );
+    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button>' );
     var tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
+    tanl_app.reset();
+    $( '#scratch' ).append( '<BR><img src=' + tanl_app.get_File().Url() + "><BR>" );
     $( '#fileup_b2' ).click( function() {
 	tanl_app.Upload( { somevar : 'someval', 
-			   somefile : $.yote.upload( '#fileup2' ) },
+			   somefile : $.yote.upload( '#fileup2' ),
+			   somefile_2 : $.yote.upload( '#fileup3' ),
+			 },
 			 function() {
 			     //refresh the app for now. build in autorefresh later
 			     tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-			     $( '#scratch' ).append( '<img src=' + tanl_app.get_File().Url() + ">" );
+			     files = tanl_app.get_Files();
+			     $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and <img src=' + files.get(1).Url() + '>' );
 			 } );
     } );
 } );

@@ -35,13 +35,14 @@ sub apply_zap {
 sub reset {
     my $self = shift;
     $self->set_zap( undef );
+    $self->set_Files( [] );
 }
 
 sub Upload {
     my( $self, $data, $acct ) = @_;
     print STDERR Data::Dumper->Dump([$data,"TANL"]);
-    $self->set_File( $data->{somefile} );
-    return $self->get_File();
+    $self->add_to_Files( $data->{somefile} );
+    $self->add_to_Files( $data->{somefile_2} );
 }
 
 1;

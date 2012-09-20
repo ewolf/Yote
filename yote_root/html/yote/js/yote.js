@@ -663,7 +663,7 @@ $.yote = {
 			console.log( "Success reported but no response data received" );
                     }
 		} catch(err) {
-		    root._error(a); 
+		    root._error(err); 
 		}
 	    } )
 	} ).submit();
