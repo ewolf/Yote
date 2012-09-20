@@ -26,6 +26,7 @@ my $build = $class->new(
         'File::Path'            => '2.08_01',
         'File::chmod'           => 0.32,
 	'File::Pid'             => 0,
+	'File::UStore'          => undef,
         
 	'CGI'                   => undef,
 	'CGI::Upload'           => undef,

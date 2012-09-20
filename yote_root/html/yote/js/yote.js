@@ -6,6 +6,80 @@
  *
  * Here are the following public yote calls :
  */
+// Production steps of ECMA-262, Edition 5, 15.4.4.19
+// Reference: http://es5.github.com/#x15.4.4.19
+if (!Array.prototype.map) {
+    Array.prototype.map = function(callback, thisArg) {
+	
+	var T, A, k;
+	
+	if (this == null) {
+	    throw new TypeError(" this is null or not defined");
+	}
+	
+	// 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+	var O = Object(this);
+	
+	// 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+	// 3. Let len be ToUint32(lenValue).
+	var len = O.length >>> 0;
+	
+	// 4. If IsCallable(callback) is false, throw a TypeError exception.
+	// See: http://es5.github.com/#x9.11
+	if ({}.toString.call(callback) != "[object Function]") {
+	    throw new TypeError(callback + " is not a function");
+	}
+	
+	// 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+	if (thisArg) {
+	    T = thisArg;
+	}
+	
+	// 6. Let A be a new array created as if by the expression new Array(len) where Array is
+	// the standard built-in constructor with that name and len is the value of len.
+	A = new Array(len);
+	
+	// 7. Let k be 0
+	k = 0;
+	
+	// 8. Repeat, while k < len
+	while(k < len) {
+	    
+	    var kValue, mappedValue;
+	    
+	    // a. Let Pk be ToString(k).
+	    //   This is implicit for LHS operands of the in operator
+	    // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+	    //   This step can be combined with c
+	    // c. If kPresent is true, then
+	    if (k in O) {
+		
+		// i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+		kValue = O[ k ];
+		
+		// ii. Let mappedValue be the result of calling the Call internal method of callback
+		// with T as the this value and argument list containing kValue, k, and O.
+		mappedValue = callback.call(T, kValue, k, O);
+		
+		// iii. Call the DefineOwnProperty internal method of A with arguments
+		// Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
+		// and false.
+		
+		// In browsers that support Object.defineProperty, use the following:
+		// Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+		
+		// For best browser support, use the following:
+		A[ k ] = mappedValue;
+	    }
+	    // d. Increase k by 1.
+	    k++;
+	}
+	
+	// 9. return A
+	return A;
+    };      
+} //map definition
+
 $.yote = {
     token:null,
     err:null,
@@ -374,7 +448,7 @@ $.yote = {
         console.log( msg );
     },
     
-    _translate_data:function(data) {
+    _translate_data:function(data,run_functions) {
         if( typeof data === 'undefined' || data == null ) {
             return undefined;
         }
@@ -386,10 +460,15 @@ $.yote = {
             // that will not get ids.
             var ret = Object();
             for( var key in data ) {
-                ret[key] = this._translate_data( data[key] );
+                ret[key] = this._translate_data( data[key], run_functions );
             }
             return ret;
         }
+	if( typeof data === 'function' ) {
+	    if( run_functions )
+		return data();
+	    return data;
+	}
         return 'v' + data;
     }, //_translate_data
 
@@ -414,6 +493,40 @@ $.yote = {
         $("body").css("cursor", "auto");
     }, //_reenable
 
+    _functions_in:function( thing ) {
+	var to_ret, res;
+	if( typeof thing === 'function' ) return [thing];
+	if( typeof thing === 'object' || typeof thing === 'array' ) {
+	    to_ret = [];
+	    for( x in thing ) {
+		res = this._functions_in( thing[ x ] );
+		for( y in res ) {
+		    to_ret.push( res[ y ] );
+		}
+	    }
+	    return to_ret;
+	}
+	return [];
+    }, //_functions_in
+    
+    upload_count: 0,
+    iframe_count: 0,
+
+    /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
+       which corresponds to the parameter name in the inputs.
+       For example some_yote_obj->do_somehingt( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
+    */
+    upload:function( selector_id ) {
+	var uctxt = 'u' + this.upload_count++;
+	$( selector_id ).attr( 'name', uctxt );
+	return (function(uct, sel_id) { 
+	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input contro
+		if( return_selector_id ) return sel_id;
+		return uctxt;
+	    };
+	} )( uctxt, selector_id );
+    }, //upload
+
     /* general functions */
     message:function( params ) {
         var root   = this;
@@ -427,9 +540,17 @@ $.yote = {
         if( async == 0 ) {
             root._disable();
         }
+	root.upload_count = 0;
+
         app_id = app_id || '';
         obj_id = obj_id || '';
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
+
+	var uploads = root._functions_in( data );
+	if( uploads.length > 0 ) {
+	    return root.upload_message( params, uploads );
+	}
+
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
             t:$.yote.token,
@@ -476,7 +597,79 @@ $.yote = {
             root._reenable();
             return resp;
         }
-    } //message
+    }, //message
+    
+    upload_message:function( params, uploads ) {
+        var root   = this;
+        var data   = root._translate_data( params.data || {}, true );
+        var async  = params.async == true ? 1 : 0;
+	var wait   = params.wait  == true ? 1 : 0;
+        var url    = params.url;
+        var app_id = params.app_id;
+        var cmd    = params.cmd;
+        var obj_id = params.obj_id; //id to act on
+        if( async == 0 ) {
+            root._disable();
+        }
+
+        app_id = app_id || '';
+        obj_id = obj_id || '';
+        var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
+	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
+
+	root.iframe_count++;
+	var iframe_name = 'yote_upload_' + root.iframe_count;
+	var form_id = 'yote_upload_form_' + root.iframe_count;
+	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style=display:none" /> ').appendTo( 'body' );
+	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
+
+	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
+
+	var cb_list = [];
+	$( upload_selector_ids.join(',') ).each(
+	    function( idx, domEl ) {
+		$( this ).prop( 'disabled', false );
+		cb_list.push(  $( 'input:checkbox', this ) );
+	    }
+	);
+	
+	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
+	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
+    
+	for( var i=0; i<cb_list.length; i++ ) {
+	    cb_list[ i ].removeAttr('checked');
+	    cb_list[ i ].attr('checked', true);
+	}
+    
+	var resp;
+	var xx = form_sel.submit(function() {
+	    iframe.load(function() {		
+		var contents = $(this).contents().get(0).body.innerHTML;
+		$( '#' + iframe_name ).remove();
+		try {
+		    resp = JSON.parse( contents );
+		    
+                    if( typeof resp !== 'undefined' ) {
+			if( typeof resp.err === 'undefined' ) {
+		            if( typeof params.passhandler === 'function' ) {
+				params.passhandler(data);
+		            }
+			} else if( typeof params.failhandler === 'function' ) {
+		            params.failhandler(data.err);
+			} //error case. no handler defined 
+                    } else {
+			console.log( "Success reported but no response data received" );
+                    }
+		} catch(err) {
+		    root._error(a); 
+		}
+	    } )
+	} ).submit();
+    } //upload_message
+    
 }; //$.yote
 
 
+1

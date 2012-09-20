@@ -26,8 +26,13 @@ sub reset_password {
 } #reset_password
 
 sub reset_email {
-    my( $self, $arg, $account ) = @_;
-    $self->set_email( $arg );
+    my( $self, $data, $account ) = @_;
+    my $email = $data->{email};
+    my $pw = $data->{pw};
+
+    die "Incorrect Password" unless $self->get__password() eq $self->_encrypt_pass( $pw, $self );
+
+    $self->set_email( $email );
     return "Updated email";
 } #reset_email
 

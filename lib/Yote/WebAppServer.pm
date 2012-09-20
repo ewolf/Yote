@@ -9,13 +9,16 @@ use forks;
 use forks::shared;
 
 use CGI;
+use IO::Handle;
+use CGI::Upload;
+use CGI::FileUpload;
 use Net::Server::HTTP;
 use MIME::Base64;
 use JSON;
-use CGI;
 use Data::Dumper;
 
 use Yote::AppRoot;
+use Yote::FileHelper;
 use Yote::ObjProvider;
 
 use base qw(Net::Server::HTTP);
@@ -42,6 +45,7 @@ sub start_server {
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
     $self->{args} = $args;
     $self->{args}{webroot} ||= '/usr/local/yote/html';
+    $self->{args}{upload} ||= '/usr/local/yote/html/upload';
 
     Yote::ObjProvider::init( %$args );
 
@@ -55,6 +59,17 @@ sub start_server {
     my $cron = $root->get__crond();
     my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
     $self->{cron_thread} = $cron_thread;
+
+    # make sure the filehelper knows where the data directory is
+    $Yote::WebAppServer::YOTE_ROOT_DIR = $self->{args}{root_dir};
+    $Yote::WebAppServer::DATA_DIR      = $self->{args}{data_dir};
+    $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
+    $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
+    $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
+    mkdir( $Yote::WebAppServer::DATA_DIR );
+    mkdir( $Yote::WebAppServer::FILE_DIR );
+    mkdir( $Yote::WebAppServer::WEB_DIR );
+    mkdir( $Yote::WebAppServer::UPLOAD_DIR );
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
@@ -104,6 +119,12 @@ sub init_server {
 sub process_http_request {
     my $self = shift;
 
+    my $content_length = $ENV{CONTENT_LENGTH};
+    if( $content_length > 5_000_000 ) { #make this into a configurable field
+	do404();
+	return;
+    }
+
     #
     # There are two requests :
     #   * web page
@@ -119,17 +140,28 @@ sub process_http_request {
     #   * t  - token for verification
     #   * w  - if true, waits for command to be processed before returning
     #
-    my $CGI  = new CGI;
-    my $vars = $CGI->Vars();
 
-    my( $uri, $remote_ip, $verb ) = @ENV{'PATH_INFO','REMOTE_ADDR','REQUEST_METHOD'};
-    
+    my( $uri, $remote_ip ) = @ENV{'PATH_INFO','REMOTE_ADDR'};
+
     print STDERR Data::Dumper->Dump(["REQUEST FOR $uri"]);
 
     $uri =~ s/\s+HTTP\S+\s*$//;
-#    print STDERR ")STaRt pid $$ : $verb $uri : ";
+
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
-    if( $path[0] eq '_' ) {
+    print STDERR Data::Dumper->Dump(["PATH : '$path[0]'"]);
+    if( $path[0] eq '_' || $path[0] eq '_u' || $path[0] eq '_d' ) { # _ is normal yote io, _u is upload file, _d is download file
+	my( $vars, $return_header );
+
+	if( $path[0] eq '_' ) {
+	    my $CGI  = new CGI;
+	    $vars = $CGI->Vars();
+	    $return_header = "Content-Type: text/json\n\n";
+	}
+	else {
+	    $vars = Yote::FileHelper->_ingest();
+	    print STDERR Data::Dumper->Dump(["FILEHELPERDONE",$vars]);
+	    $return_header = "Content-Type: text/html\n\n";
+	}
 
         my $action = pop( @path );
         my $obj_id = int( pop( @path ) ) || 1;
@@ -187,8 +219,9 @@ sub process_http_request {
                 $result = $prid2result{$procid};
                 delete $prid2result{$procid};
             }
-#            print STDERR "Sending result $result\n";
-            print "Content-Type: text/json\n\n";
+            print STDERR "Sending result $return_header $result\n";
+
+	    print $return_header;
             print "$result";
         }
         else {  #not waiting for an answer, but give an acknowledgement
@@ -265,7 +298,7 @@ sub _process_command {
         my $app        = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login = $app->token_login( $command->{t}, undef, $command->{p} );
+        my $login      = $app->token_login( $command->{t}, undef, $command->{p} );
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
 
@@ -320,8 +353,8 @@ sub _crond {
 	sleep( 60 );
 	{
 	    lock( @commands );
-	    push( @commands, [ { 
-		a  => 'check',	    
+	    push( @commands, [ {
+		a  => 'check',
 		ai => 1,
 		d  => 'eyJkIjoxfQ==',
 		oi => $cron_id,
@@ -332,20 +365,34 @@ sub _crond {
 	    cond_broadcast( @commands );
 	}
     } #infinite loop
-    
+
 } #_crond
 
 #
 # Translates from vValue and reference_id to values and references
 #
 sub _translate_data {
-    my $val = shift;
-
+    my( $val ) = @_;
+    print STDERR Data::Dumper->Dump(["TR",$val]);
     if( ref( $val ) ) { #from javacript object, or hash. no fields starting with underscores accepted
         return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
     }
     return undef unless $val;
-    return index($val,'v') == 0 ? substr( $val, 1 ) : Yote::ObjProvider::fetch( $val );
+    if( index($val,'v') == 0 ) {
+	return substr( $val, 1 );
+    }
+    elsif( index($val,'u') == 0 ) {  #file upload contains an encoded hash
+	my $filestruct   = from_json( substr( $val, 1 ) );
+
+	my $filehelper = new Yote::FileHelper();
+	$filehelper->set_content_type( $filestruct->{content_type} );
+	$filehelper->_accept( $filestruct->{filename} );
+	print STDERR Data::Dumper->Dump(["UUUUUPLOAD",$filestruct,$filehelper]);
+	return $filehelper;
+    }
+    else {
+	return Yote::ObjProvider::fetch( $val );
+    }
 }
 
 sub do404 {

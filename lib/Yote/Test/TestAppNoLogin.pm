@@ -17,20 +17,31 @@ $VERSION = '0.01';
 #
 # need subs to return : scalars, lists, hashes, g-objects
 #
+sub init {
+    my $self = shift;
+    $self->set_File( undef );
+}
 
 sub scalar {
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
     return "BEEP";
 }
 
 sub apply_zap {
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
     $self->set_zap( $data );
 }
 
 sub reset {
     my $self = shift;
     $self->set_zap( undef );
+}
+
+sub Upload {
+    my( $self, $data, $acct ) = @_;
+    print STDERR Data::Dumper->Dump([$data,"TANL"]);
+    $self->set_File( $data->{somefile} );
+    return $self->get_File();
 }
 
 1;
