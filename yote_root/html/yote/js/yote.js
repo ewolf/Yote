@@ -620,7 +620,7 @@ $.yote = {
 	root.iframe_count++;
 	var iframe_name = 'yote_upload_' + root.iframe_count;
 	var form_id = 'yote_upload_form_' + root.iframe_count;
-	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style=display:none" /> ').appendTo( 'body' );
+	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style="position;absolute;top:-9999px;display:none" /> ').appendTo( 'body' );
 	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
 
 	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
