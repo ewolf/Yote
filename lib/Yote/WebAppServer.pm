@@ -238,10 +238,16 @@ sub process_http_request {
 	}
 	print STDERR Data::Dumper->Dump(["$root/$dest","SERV"]);
 	if( open( IN, "<$root/$dest" ) ) {
-	    if( $dest =~ /^yote\/js/ ) {
+	    if( $dest =~ /\.js/i ) {
+		print STDERR Data::Dumper->Dump(["SERVING : $dest, javascript"]);
 		print "Content-Type: text/javascript\n\n";
 	    }
+	    elsif( $dest =~ /\.css/i ) {
+		print STDERR Data::Dumper->Dump(["SERVING : $dest, css"]);
+		print "Content-Type: text/css\n\n";
+	    }
 	    else {
+		print STDERR Data::Dumper->Dump(["SERVING : $dest, html"]);
 		print "Content-Type: text/html\n\n";
 	    }
             while(<IN>) {
@@ -249,6 +255,7 @@ sub process_http_request {
             }
             close( IN );
 	} else {
+	    print STDERR Data::Dumper->Dump(["$dest NOT FOUND"]);
 	    do404();
 	}
 #        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
