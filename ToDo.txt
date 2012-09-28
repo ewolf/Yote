@@ -1,3 +1,7 @@
+* have methods sent just once per class
+* have app objects have a method that gives a hint to yote as to which things to fetch with it
+* use the multi fetch parameter
+
 * add GRU module for searches against tag lists
 * update to not use backticks
 * make sure installer script works universally

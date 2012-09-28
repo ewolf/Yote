@@ -83,7 +83,10 @@ sub update {
     return $updated;
 } #update
 
-sub rekey {
+#
+# Renames a data field in this object.
+#
+sub _rekey {
     my( $self, $data, $account ) = @_;
     my( $from, $to ) = ( $data->{from}, $data->{to} );
     if( $self->{DATA}{$to} ) {
@@ -92,7 +95,7 @@ sub rekey {
     $self->{DATA}{$to} = $self->{DATA}{$from};
     delete $self->{DATA}{$from};
     return 1;
-} #rekey
+} #_rekey
 
 sub load_direct_descendents {
     my( $self, $data, $account ) = @_;

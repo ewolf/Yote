@@ -94,11 +94,7 @@ $.yote.util = {
                 ( function(o,k,id,initial) {
                     return function() {
                         var newid = $(id).val();
-                        if( 0 + newid > 0 ) {
-                            o.stage(k,fetch_obj(newid,obj._app));
-                        } else {
-                            o.stage(k,undefined);
-                        }
+                        o.stage(k,undefined);
                         if( initial != newid || o.is_dirty(k) ) {
                             $(id).css('background-color','lightyellow' );
                         } else {

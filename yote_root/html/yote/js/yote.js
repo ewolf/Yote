@@ -228,7 +228,6 @@ $.yote = {
 		id:x.id,
 		class:x.c,
                 _stage:{},
-		reload:function(){},
 		length:function() {
 		    var cnt = 0;
 		    for( key in this._d ) {
@@ -284,12 +283,20 @@ $.yote = {
 
 			    //dirty objects that may need a refresh
 			    if( typeof ret.d === 'object' ) {
-                                for( var i=0; i<ret.d.length; ++i ) {
-				    var oid = ret.d[i];
-				    if( root._is_in_cache(oid) ) {
-                                        root.objs[oid].reload();
+				for( var oid in ret.d ) {
+				    if( root._is_in_cache( oid ) ) {
+					var cached = root.objs[ oid ];
+					for( fld in cached._d ) {
+					    //take off old getters/setters
+					    delete cached['get_'+fld];
+					}
+					cached._d = ret.d[ oid ];
+					for( fld in cached._d ) {
+					    //add new getters/setters
+					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+					}
 				    }
-                                }
+				}
 			    }
 			    if( typeof ret.r === 'object' ) {
 				return root._create_obj( ret.r, this._app_id );
@@ -299,9 +306,6 @@ $.yote = {
                                         failhandler('no return value');
 				    }
 				    return undefined;
-                                }
-                                if( (0+ret.r) > 0 ) {
-				    return root.fetch_obj(ret.r,this._app_id);
                                 }
 				return ret.r.substring(1);
 			    }
@@ -314,7 +318,7 @@ $.yote = {
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 ) {
-		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val);
+		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
                     if( this._stage[key] == val ) {
                         this._stage[key] = obj;
                     } else {
@@ -421,22 +425,6 @@ $.yote = {
 
 	    if( (0 + x.id ) > 0 ) {
 		root.objs[x.id] = o;
-		o.reload = (function(thid,tapp) {
-		    return function() {
-			root.objs[thid] = null;
-			var replace = $.yote.fetch_root().fetch( thid );
-			replace._app_id = tapp;
-			this._d = replace._d;
-                        for( fld in this._d ) {
-                            if( typeof this['get_' + fld] !== 'function' ) {
-                                this['get_'+fld] = (function(fl) { 
-                                    return function() { return this.get(fl) } } )(fld);
-                            }
-                        }
-			root.objs[thid] = this;
-			return this;
-		    }
-		    } )(x.id,ai);
 	    }
 	    return o;
         } )(data,app_id);

@@ -71,9 +71,13 @@ sub fetch_root {
 #
 sub fetch {
     my( $self, $data, $account ) = @_;
-    my $obj = Yote::ObjProvider::fetch( $data );
-    if( $self->_account_can_access( $account, $obj ) ) {
-        return $obj;
+    if( ref( $data ) eq 'ARRAY' ) {
+	return [grep { $self->_account_can_access( $account, $_ ) } map { Yote::ObjProvider::fetch( $_ ) } @$data ];
+    } else {
+	my $obj = Yote::ObjProvider::fetch( $data );
+	if( $self->_account_can_access( $account, $obj ) ) {
+	    return [$obj];
+	}
     }
     die "Access Error";
 } #fetch
