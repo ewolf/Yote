@@ -10,8 +10,6 @@ use forks::shared;
 
 use CGI;
 use IO::Handle;
-use CGI::Upload;
-use CGI::FileUpload;
 use Net::Server::HTTP;
 use MIME::Base64;
 use JSON;
