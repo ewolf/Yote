@@ -105,6 +105,13 @@ sub _get_account {
 sub _init_account {}
 
 #
+# Called when objects are being fetched. Returns a list of other objects that should be included with this one.
+#
+sub _extra_fetch {
+    return [];
+}
+
+#
 # Returns true if the object was given to the account via the API, as opposed to a random object id
 #   being picked.
 #

@@ -20,6 +20,9 @@ sub init {
     $self->set__application_lib_directories( [] );
 } #init
 
+#
+# Returns a list starting with the app object, followed by objects that the app wants to bring with
+#
 sub fetch_app_by_class {
     my( $self, $data ) = @_;
     my $app = $self->get_apps()->{$data};
@@ -29,7 +32,7 @@ sub fetch_app_by_class {
         $app = $data->new();
         $self->get_apps()->{$data} = $app;
     }
-    return $app;
+    return [$app,@{$app->_extra_fetch()}];
 } #fetch_app_by_class
 
 #

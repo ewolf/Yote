@@ -113,7 +113,11 @@ $.yote = {
     fetch_app:function(appname,passhandler,failhandler) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
-	    var ret = root.fetch_app_by_class( appname );
+	    var res = root.fetch_app_by_class( appname );
+	    ret = res.get(0);
+	    for( var i=0; i < res.length(); i++ ) {
+		res.get( i );
+	    }
 	    ret._app_id = ret.id;
 	    return ret;
 	} else if( typeof failhanlder === 'function' ) {

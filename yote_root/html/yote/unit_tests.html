@@ -225,7 +225,7 @@ $().ready(function(){
         $.yote._dump_cache();
         is( $.yote._cache_size(), 0, "cache now empty" );
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
-        is( $.yote._cache_size(), 2, "cache with loginapp and root" );
+        is( $.yote._cache_size(), 3, "cache with loginapp and root and obj in loginapp" );
         login.load_direct_descendents();
         is( $.yote._cache_size(), 5, "cache with loginapp, root and loginapps threefields (made,yoteobj,obj) " );
 
