@@ -157,7 +157,6 @@ sub process_http_request {
 	}
 	else {
 	    $vars = Yote::FileHelper->_ingest();
-	    print STDERR Data::Dumper->Dump(["FILEHELPERDONE",$vars]);
 	    $return_header = "Content-Type: text/html\n\n";
 	}
 
@@ -234,18 +233,14 @@ sub process_http_request {
 	if( -d "<$root/$dest" ) {
 	    $dest .= '/index.html';
 	}
-	print STDERR Data::Dumper->Dump(["$root/$dest","SERV"]);
 	if( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /\.js/i ) {
-		print STDERR Data::Dumper->Dump(["SERVING : $dest, javascript"]);
 		print "Content-Type: text/javascript\n\n";
 	    }
 	    elsif( $dest =~ /\.css/i ) {
-		print STDERR Data::Dumper->Dump(["SERVING : $dest, css"]);
 		print "Content-Type: text/css\n\n";
 	    }
 	    else {
-		print STDERR Data::Dumper->Dump(["SERVING : $dest, html"]);
 		print "Content-Type: text/html\n\n";
 	    }
             while(<IN>) {
@@ -253,10 +248,8 @@ sub process_http_request {
             }
             close( IN );
 	} else {
-	    print STDERR Data::Dumper->Dump(["$dest NOT FOUND"]);
 	    do404();
 	}
-#        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
 	return;
     } #serve html
 
@@ -291,7 +284,6 @@ sub _poll_commands {
 sub _process_command {
     my $req = shift;
     my( $command, $procid ) = @$req;
-#    print STDERR Data::Dumper->Dump([$command,"CMD"]);
     my $wait = $command->{w};
 
     my $resp;
@@ -393,7 +385,7 @@ sub _crond {
 #
 sub _translate_data {
     my( $val ) = @_;
-    print STDERR Data::Dumper->Dump(["TR",$val]);
+
     if( ref( $val ) ) { #from javacript object, or hash. no fields starting with underscores accepted
         return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
     }
@@ -407,7 +399,7 @@ sub _translate_data {
 	my $filehelper = new Yote::FileHelper();
 	$filehelper->set_content_type( $filestruct->{content_type} );
 	$filehelper->_accept( $filestruct->{filename} );
-	print STDERR Data::Dumper->Dump(["UUUUUPLOAD",$filestruct,$filehelper]);
+
 	return $filehelper;
     }
     else {

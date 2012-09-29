@@ -14,12 +14,10 @@ sub _ingest {
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
     if( $ENV{HTTP_CONTENT_TYPE} =~ /boundary=(.*)/ ) {
 	my $boundary = $1;
-	print STDERR "[[[START OF UPLOAD ($content_length,'$boundary')]]]\n";
 	my $counter = 0;
 	# find boundary parts
 	while($counter < $content_length) {
 	    $_ = <STDIN>;
-	    print STDERR "$counter/$content_length [$finding_headers,$finding_content] '$_'\n";
 	    if( /$boundary/s ) {
 		last if $1;
 		$finding_headers = 1;
@@ -69,12 +67,9 @@ sub _ingest {
 	    $counter += length( $_ );
 
 	} #while
-	print STDERR "[[[END OF UPLOAD]]]\n";
     } #if has a boundary content type
-    print STDERR Data::Dumper->Dump([$Yote::WebAppServer::FILE_DIR,"DDDD",\%file_helpers,\%post_data,MIME::Base64::decode($post_data{d})]);
     # go through the $post_data and translate any values into FileHelper object ids.
     $post_data{d} = MIME::Base64::encode( to_json( _translate( from_json( MIME::Base64::decode($post_data{d}) ), \%file_helpers ) ), '' );
-    print STDERR Data::Dumper->Dump(["XXX"]);
 
     return \%post_data;
 } #_ingest
