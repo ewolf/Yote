@@ -82,6 +82,13 @@ sub fetch {
     die "Access Error";
 } #fetch
 
+#
+# Takes a class and returns a list of methods associated with the class
+#
+sub methods {
+    my( $self, $data, $account ) = @_;
+    return Yote::ObjProvider::package_methods( $data );
+} #methods
 
 #
 # Validates that the given credentials are given

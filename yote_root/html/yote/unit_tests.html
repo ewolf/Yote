@@ -18,6 +18,14 @@
 <script>
     var tests = 0;
 var failed = 0;
+var calls_made = 0;
+$.yote.old_message = $.yote.message;
+$.yote.message = function( params ) {
+    calls_made++;
+    return $.yote.old_message( params );
+}
+
+
 function fail( test ) {
     return function(d) {
         ++failed;
@@ -48,6 +56,7 @@ function ok( result, msg ) {
     }
 }
 function wrap_up() {
+    $( '#results' ).append( "<BR>Calls made " + calls_made + "<BR>" );
     if( failed > 0 ) {
         $('#results').append( "Failed " + failed + " tests out of " + tests );
     } else {

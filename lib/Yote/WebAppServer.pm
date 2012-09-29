@@ -323,19 +323,22 @@ sub _process_command {
 
 	my $dirty_delta = Yote::ObjProvider::fetch_changed();
 
-	my $dirty_data = {};
-	for my $d_id ( @$dirty_delta ) {
-	    my $dobj = Yote::ObjProvider::fetch( $d_id );
-	    if( ref( $dobj ) eq 'ARRAY' ) {
-		$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
-	    } elsif( ref( $dobj ) eq 'HASH' ) {
-		$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
-	    } else {
-		$dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
+	my $dirty_data;
+	if( @$dirty_delta ) {
+	    $dirty_data = {};
+	    for my $d_id ( @$dirty_delta ) {
+		my $dobj = Yote::ObjProvider::fetch( $d_id );
+		if( ref( $dobj ) eq 'ARRAY' ) {
+		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
+		} elsif( ref( $dobj ) eq 'HASH' ) {
+		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
+		} else {
+		    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
+		}
 	    }
 	}
 
-        $resp = { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => $dirty_data };
+        $resp = $dirty_data ? { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => $dirty_data } : { r => $app_object->_obj_to_response( $ret, $account, 1 ) };
     };
     if( $@ ) {
 	my $err = $@;

@@ -84,6 +84,7 @@ $.yote = {
     token:null,
     err:null,
     objs:{},
+    methods:{},
     debug:true,
 
     init:function() {
@@ -252,7 +253,7 @@ $.yote = {
 		    return hash;
 		};
 	    }
-	    if( o.class == 'ARRAY' ) {
+	    else if( o.class == 'ARRAY' ) {
 		o.to_list = function() {
 		    var list = [];
 		    for( var i=0; i < this.length(); i++ ) {
@@ -261,57 +262,119 @@ $.yote = {
 		    return list;
 		};
 	    }
-	    /*
-	      assign methods
-	    */
-	    if( typeof x.m === 'object' ) {
-		for( m in x.m ) {
-		    o[x.m[m]] = (function(key) {
-			return function( params, passhandler, failhandler ) {
-			    var ret = root.message( {
-				async:false,
-				app_id:this._app_id,
-				cmd:key,
-				data:params,
-				failhandler:failhandler,
-                                obj_id:this.id,
-				passhandler:passhandler,
-				wait:true,
-				t:$.yote.token
-			    } ); //sending message
-			    
+	    else {
+		if( typeof x.m === 'object' && x.m !== null ) {
+		    for( m in x.m ) {
+			o[x.m[m]] = (function(key) {
+			    return function( params, passhandler, failhandler ) {
+				var ret = root.message( {
+				    async:false,
+				    app_id:this._app_id,
+				    cmd:key,
+				    data:params,
+				    failhandler:failhandler,
+                                    obj_id:this.id,
+				    passhandler:passhandler,
+				    wait:true,
+				    t:$.yote.token
+				} ); //sending message
+				
 
-			    //dirty objects that may need a refresh
-			    if( typeof ret.d === 'object' ) {
-				for( var oid in ret.d ) {
-				    if( root._is_in_cache( oid ) ) {
-					var cached = root.objs[ oid ];
-					for( fld in cached._d ) {
-					    //take off old getters/setters
-					    delete cached['get_'+fld];
-					}
-					cached._d = ret.d[ oid ];
-					for( fld in cached._d ) {
-					    //add new getters/setters
-					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+				//dirty objects that may need a refresh
+				if( typeof ret.d === 'object' ) {
+				    for( var oid in ret.d ) {
+					if( root._is_in_cache( oid ) ) {
+					    var cached = root.objs[ oid ];
+					    for( fld in cached._d ) {
+						//take off old getters/setters
+						delete cached['get_'+fld];
+					    }
+					    cached._d = ret.d[ oid ];
+					    for( fld in cached._d ) {
+						//add new getters/setters
+						cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+					    }
 					}
 				    }
 				}
-			    }
-			    if( typeof ret.r === 'object' ) {
-				return root._create_obj( ret.r, this._app_id );
-			    } else {
-                                if( typeof ret.r === 'undefined' ) {
-				    if( typeof failhandler === 'function' ) {
-                                        failhandler('no return value');
+				if( typeof ret.r === 'object' ) {
+				    return root._create_obj( ret.r, this._app_id );
+				} else {
+                                    if( typeof ret.r === 'undefined' ) {
+					if( typeof failhandler === 'function' ) {
+                                            failhandler('no return value');
+					}
+					return undefined;
+                                    }
+				    return ret.r.substring(1);
+				}
+			    } } )(x.m[m]);
+		    } //each method
+		} // if methods were included in the return value of the call
+		else {
+		    
+		    // Assign methods
+		    var methods = root.methods[ o.class ];
+		    if( ! methods ) { // this section may be taken out. having a separate call for
+			//methods is not yet fast enough. possibly sending an additional payload
+			//with the fetch_app is the way to go ( e for extra objects, a for extra
+			//methods
+			var rt = root.fetch_root();
+			methods = [];
+			method_msg = rt.methods( o.class );
+			for( var j=0; j < method_msg.length(); j++ ) {
+			    methods.push( method_msg.get( j ) );
+			}			
+			root.methods[ o.class ] = methods;
+		    }
+		    for( var i=0; i < methods.length; i++ ) {
+			o[methods[i]] = (function(key) {
+			    return function( params, passhandler, failhandler ) {
+				var ret = root.message( {
+				    async:false,
+				    app_id:this._app_id,
+				    cmd:key,
+				    data:params,
+				    failhandler:failhandler,
+                                    obj_id:this.id,
+				    passhandler:passhandler,
+				    wait:true,
+				    t:$.yote.token
+				} ); //sending message
+				
+
+				//dirty objects that may need a refresh
+				if( typeof ret.d === 'object' ) {
+				    for( var oid in ret.d ) {
+					if( root._is_in_cache( oid ) ) {
+					    var cached = root.objs[ oid ];
+					    for( fld in cached._d ) {
+						//take off old getters/setters
+						delete cached['get_'+fld];
+					    }
+					    cached._d = ret.d[ oid ];
+					    for( fld in cached._d ) {
+						//add new getters/setters
+						cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+					    }
+					}
 				    }
-				    return undefined;
-                                }
-				return ret.r.substring(1);
-			    }
-			} } )(x.m[m]);
-		} //each method
-	    } //methods
+				}
+				if( typeof ret.r === 'object' ) {
+				    return root._create_obj( ret.r, this._app_id );
+				} else {
+                                    if( typeof ret.r === 'undefined' ) {
+					if( typeof failhandler === 'function' ) {
+                                            failhandler('no return value');
+					}
+					return undefined;
+                                    }
+				    return ret.r.substring(1);
+				}
+			    } } )(methods[i]);
+		    }
+		}
+	    } // if object
 
 	    o.get = function( key ) {
 		var val = this._stage[key] || this._d[key];
@@ -330,16 +393,23 @@ $.yote = {
 	    };
 
 	    // get fields
-	    if( typeof x.d === 'object' ) {
+	    if( typeof x.d === 'object' && x.d !== null ) {
 		for( fld in x.d ) {
 		    var val = x.d[fld];
 		    if( typeof val === 'object' ) {
 			o._d[fld] = (function(xx) { return root._create_obj( xx, o._app_id ); })(val);
-			
-		    } else {
+		    } 
+		    else {
 			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+		}
+	    }
+
+	    // check for extra objects on board
+	    if( typeof x.e === 'object' && x.e !== null ) {
+		for( xid in x.e ) {
+		    
 		}
 	    }
 

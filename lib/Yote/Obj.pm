@@ -143,7 +143,7 @@ sub _obj_to_response {
     my $ref = ref($to_convert);
     my $use_id;
     if( $ref ) {
-        my( $m, $d ) = ([]);
+        my( $m, $d );
         if( $ref eq 'ARRAY' ) {
             my $tied = tied @$to_convert;
             if( $tied ) {
@@ -169,9 +169,13 @@ sub _obj_to_response {
             return $use_id unless $xform_out;
             $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
 
-            $m = Yote::ObjProvider::package_methods( $ref );
+	    if( 1|| $use_id == 1  ) { # todo - may enable this again, if we have
+		# something in fetch_app that carries an additional payload of class - methods
+		# and objects to include right off the bat
+		$m = Yote::ObjProvider::package_methods( $ref );
+	    }
         }
-        return { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m };
+	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert" if $xform_out;
     return $to_convert;
