@@ -69,6 +69,8 @@ sub test_suite {
     my $root = Yote::ObjProvider::fetch( 1 );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 7, "highest id in database is 7" );
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
@@ -80,13 +82,27 @@ sub test_suite {
     $root->get_default( "DEFAULT" );                        # 1
     $root->set_first( "FRIST" );                            # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
-    $root->set_reallybig( "BIG" x 1000);                   # 1
+    $root->set_reallybig( "BIG" x 1000);                    # 0
     $root->set_gross( 12 * 12 );                            # 1
     $root->set_array( ["THIS IS AN ARRAY"] );               # 2
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
-    $root->get_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 2 (6 after stow all)
+    $root->get_cool_hash( { "llamapre" => ["prethis",new Yote::Obj(),{"preArray",new Yote::Obj()}] } );  # 2 (6 after stow all)
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
     Yote::ObjProvider::stow_all();
+
+    # added default_hash, { 'llama', ["this", new yote obj, "Array, and a new yote object bringing the object count to 7 + 6 = 13
+    # the new max id should be 7 + defalt array 1, array 1, defaulthash 1, coolahash 5,hash 1
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 16, "highest id in database is 16 after adding more objects" );
+
+    $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
+
+    my $recycled = Yote::ObjProvider->recycle_objects();
+    is( scalar( @$recycled ), 5, "recycled 5 objects" );
+
+    # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
+    
+
 # 1 from accounts under root (default)
 # 1 from apps under root
 # 1 from alias_apps
@@ -94,8 +110,10 @@ sub test_suite {
 
     BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 24, "Number of db rows saved to database with stow all" );
 
-    my $db_rows = $db->selectall_arrayref("SELECT * FROM objects");
-    is( scalar(@$db_rows), 17, "Number of db rows saved to database" ); #Big counts as obj
+    my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
+    is( scalar(@$db_rows), 16, "Number of db rows saved to database not recycled" ); 
+    my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
+    is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
 
 
     my $root_clone = Yote::ObjProvider::fetch( 1 );

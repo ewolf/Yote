@@ -47,11 +47,7 @@ sub selectrow_array {
 #    print STDERR "Do Query : $query @params\n";
     return $self->{DBH}->selectrow_array( $query, {}, @params );
 }
-sub selectrow_arrayref {
-    my( $self, $query, @params ) = @_;
-#    print STDERR "Do Query : $query\n";
-    return $self->{DBH}->selectrow_arrayref( $query, {}, @params );
-}
+
 sub selectall_arrayref {
     my( $self, $query, @params ) = @_;
 #    print STDERR "Do Query : $query\n";
@@ -98,14 +94,11 @@ sub ensure_datastore {
                    value varchar(1025) DEFAULT NULL );
                    CREATE INDEX obj_id field;
                    CREATE INDEX ref_id field;~,
-        big_text => q~CREATE TABLE IF NOT EXISTS big_text (
-                       obj_id INTEGER NOT NULL,
-                       text text
-                      ); CREATE INDEX obj_id big_text;~,
         objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
-                     class varchar(255) DEFAULT NULL
-                      )~
+                     class varchar(255) DEFAULT NULL,
+                     recycled tinyint DEFAULT 0
+                      ); CREATE INDEX recycled~
         );
     $self->start_transaction();
     for my $table (keys %definitions ) {
@@ -117,6 +110,36 @@ sub ensure_datastore {
 sub reset_datastore {
     my $self = shift;
 } #reset_datastore
+
+#
+# Returns true if the given object traces back to the root.
+#
+sub has_path_to_root {
+    my( $self, $obj_id ) = @_;
+    return 1 if $obj_id == 1;
+    my $res = $self->selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
+    print STDERR Data::Dumper->Dump(["SELECT obj_id FROM field WHERE ref_id=$obj_id"]);
+    for my $row (@$res) {
+	if( $self->has_path_to_root( @$row ) ) {
+	    return 1;
+	}
+    }
+
+    return 0;
+} #has_path_to_root
+
+sub recycle_object {
+    my( $self, $obj_id ) = @_;
+    $self->do( "DELETE FROM field WHERE obj_id=?", $obj_id );
+    $self->do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
+}
+
+# returns the max id
+sub max_id {
+    my $self = shift;
+    my( $highd ) = $self->selectrow_array( "SELECT max(ID) FROM objects" );
+    return $highd;
+}
 
 #
 # Returns the number of entries in the data structure given.
@@ -160,16 +183,11 @@ sub xpath {
         my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
-        if( $ref && $val ) {
-            my ( $big_val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref );
-            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-            $final_val = "v$big_val";
-            last;
-        } elsif( $ref ) {
+        if( $ref ) {
             $next_ref = $ref;
             $final_val = $ref;
-        } else {
+        } 
+	else {
             $final_val = "v$val";
             last;
         }
@@ -199,14 +217,7 @@ sub fetch {
 
             for my $row (@$res) {
                 my( $idx, $ref_id, $value ) = @$row;
-                if( $ref_id && $value ) {
-                    my( $val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref_id );
-                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-                    ( $obj->[DATA][$idx] ) = "v$val";
-                } else {
-                    $obj->[DATA][$idx] = $ref_id || "v$value";
-                }
+		$obj->[DATA][$idx] = $ref_id || "v$value";
             }
         }
         default {
@@ -216,14 +227,7 @@ sub fetch {
 
             for my $row (@$res) {
                 my( $field, $ref_id, $value ) = @$row;
-                if( $ref_id && $value ) {
-                    my( $val ) = $self->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?",  $ref_id );
-                    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-                    ( $obj->[DATA]{$field} ) = "v$val";
-                } else {
-                    $obj->[DATA]{$field} = $ref_id || "v$value";
-                }
+		$obj->[DATA]{$field} = $ref_id || "v$value";
             }
         }
     }
@@ -236,6 +240,11 @@ sub fetch {
 sub get_id {
     my( $self, $class ) = @_;
 
+    my( $recycled_id ) = $self->do( "SELECT id FROM objects WHERE recycled=1 LIMIT 1" );
+    if( int($recycled_id) > 0 ) {
+	$self->do( "UPDATE objects SET recycled=0 WHERE id=?", $recycled_id );
+	return $recycled_id;
+    }
     my $res = $self->do( "INSERT INTO objects (class) VALUES (?)",  $class );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
@@ -279,15 +288,7 @@ sub stow_updates {
             for my $i (0..$#$data) {
                 my $val = $data->[$i];
                 if( index( $val, 'v' ) == 0 ) {
-                    if( length( $val ) > MAX_LENGTH ) {
-                        my $big_id = $self->get_id( "BIGTEXT" );
-                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')",  $id, $i, $big_id ] );
-                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)",  $big_id, substr($val,1) ] );
-
-                    } else {
-                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
-
-                    }
+		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
                 } else {
                     push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $i, $val ] );
 
@@ -299,14 +300,7 @@ sub stow_updates {
             for my $key (keys %$data) {
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
-                    if( length( $val ) > MAX_LENGTH ) {
-                        my $big_id = $self->get_id( "BIGTEXT" );
-                        push( @cmds, ["INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')",  $id, $key, $big_id ] );
-                        push( @cmds, ["INSERT INTO big_text (obj_id,text) VALUES (?,?)",  $big_id, substr($val,1) ] );
-
-                    } else {
-                        push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
-                    }
+		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
                 }
                 else {
                     push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $key, $val ] );
