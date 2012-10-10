@@ -9,7 +9,6 @@
     <script src="/yote/js/json2.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
-    <script src="/yote/js/yote.system.ustil.js"></script>
 <script lang="javascript">
 
 $().ready( function() { 
@@ -27,10 +26,18 @@ $().ready( function() {
     $.yote.util.make_login_box({ target:'#login',
                                  on_in:function() { show_system() },
                                  require_root:1 });
-    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button>' );
+    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button><hr><div id=imgd></div> <input type=file id=fileup4 name=filea>' );
     var tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
     tanl_app.reset();
-    $( '#scratch' ).append( '<BR><img src=' + tanl_app.get_File().Url() + "><BR>" );
+    $( '#fileup4' ).change( function() {
+	tanl_app.UpOne( { somefile_3 : $.yote.upload( '#fileup4' ) },
+			function() {
+			    tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
+			    file = tanl_app.get_File();
+			    $( '#imgd' ).empty().append( '<img src=' + file.Url() + '>' );
+			}
+		      );
+    } );
     $( '#fileup_b2' ).click( function() {
 	tanl_app.Upload( { somevar : 'someval', 
 			   somefile : $.yote.upload( '#fileup2' ),

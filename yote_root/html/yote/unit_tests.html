@@ -89,7 +89,7 @@ $().ready(function(){
         //fetch app that doesn't require login and get scalar
         step('get app testappnologin');
         var nologin = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-        nologin.reset();
+        nologin._reset();
         step('scalar called on testappnologin');
         var scalar = nologin.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
         is( scalar, "BEEP", "value of login scalar" );
@@ -98,7 +98,7 @@ $().ready(function(){
         step('get app testappneedslogin');
 
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
-        login.reset();
+        login._reset();
         step('scalar called on testappneedslogin');
         var scalar = login.scalar( {}, 
                                    fail("required login returned scalar without login"),
@@ -164,19 +164,19 @@ $().ready(function(){
         o3 = login.get_obj();
         is( o3.get_Text(), 'foo', 'correct object 2 text directly' );
 
-        o3.stage( 'Text', 'baz' );
+        o3._stage( 'Text', 'baz' );
         is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
-        o3.reset();
+        o3._reset();
         is( o3.get_Text(), 'foo', 'correct object 2 text directly' );
 
-        o3.stage( 'Text', 'baz' );
+        o3._stage( 'Text', 'baz' );
         is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
-        o3.send_update();
+        o3._send_update();
         is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
 	//Text is writable, zap doesn't exist and so it not, and bext is not writeable
-        o3.send_update({Text:'baf',bext:'Again',zip:'zap'}); 
+        o3._send_update({Text:'baf',bext:'Again',zip:'zap'}); 
         is( o3.get_Text(), 'baf', 'correct object 2 text directly' );
         is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
         is( o3.get('zip'), false, 'correct object 2 text directly' );

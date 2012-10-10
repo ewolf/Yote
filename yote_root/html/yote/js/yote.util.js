@@ -11,8 +11,8 @@ $.yote.util = {
         $( '#'+idname ).keyup( (function (o,k,id,initial) {
             return function(e) {
                 var newval = $(id).val();
-                o.stage(k,newval);
-                if( initial != newval || o.is_dirty(k)) {
+                o._stage(k,newval);
+                if( initial != newval || o._is_dirty(k)) {
                     $(id).css('background-color','lightyellow' );
                 } else {
                     $(id).css('background-color','white' );
@@ -48,7 +48,7 @@ $.yote.util = {
             return function(e) {
                 var newval = $(id).attr('value');
 
-                if( initial != newval || o.is_dirty(k)) {
+                if( initial != newval || o._is_dirty(k)) {
                     $(id).css('background-color','lightyellow' );
                 } else {
                     $(id).css('background-color','white' );
@@ -57,11 +57,11 @@ $.yote.util = {
                 if( as_list == true ) {
                     newval = newval.split( /\r\n|\r|\n/ );
                     for( var nk in newval ) {
-                        o.stage( nk, newval[nk] );
+                        o._stage( nk, newval[nk] );
                     }
                 }
                 else {
-                    o.stage(k,newval);
+                    o._stage(k,newval);
                 }
             }
         } )(yoteobj,fieldname,'#'+idname,val) );
@@ -94,8 +94,8 @@ $.yote.util = {
                 ( function(o,k,id,initial) {
                     return function() {
                         var newid = $(id).val();
-                        o.stage(k,undefined);
-                        if( initial != newid || o.is_dirty(k) ) {
+                        o._stage(k,undefined);
+                        if( initial != newid || o._is_dirty(k) ) {
                             $(id).css('background-color','lightyellow' );
                         } else {
                             $(id).css('background-color','white' );
@@ -121,6 +121,7 @@ $.yote.util = {
 	var created_f = args['on_register']  || args['on_in'];
 	var recover_f = args['on_recover']   || args['on_in'];
 	var logged_out_f = args['on_logout'];
+	var app       = args['for_app']
 
 	$(target).empty();
 	$(target).append( "<span id=login_msg_outerspan style=display:none><span id=login_msg_span class=warning></span><BR></span>" +
