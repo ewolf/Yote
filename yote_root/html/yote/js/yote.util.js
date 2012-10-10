@@ -116,65 +116,67 @@ $.yote.util = {
 	return $( '#' + idname );
     },
     make_login_box:function(args) {
-	var target = args['target'];
-	var logged_in_f = args['on_login']   || args['on_in'];
-	var created_f = args['on_register']  || args['on_in'];
-	var recover_f = args['on_recover']   || args['on_in'];
+	var target       = args['target'];
+	var logged_in_f  = args['on_login']    || args['on_in'];
+	var created_f    = args['on_register'] || args['on_in'];
+	var recover_f    = args['on_recover']  || args['on_in'];
 	var logged_out_f = args['on_logout'];
 
+	var do_login = args[ 'login_box' ] || "<div style=display:none id=y_login_div>" +
+	    "<table><tr><td>Handle</td><td><input class=login id=login type=text></td>" +
+	    "</tr><tr><td>Password</td><td><input class=login id=password type=password>" +
+	    "</td></tr></table><br>" +
+	    "<input class=login id=login_submit type=submit value=Login>" +
+	    " <a href='#' id=register_link>Register</a>" +
+	    " <a href='#' id=forgot_link>Forgot</a>" +
+	    "</div>";
+
+	var not_logged_in = args[ 'notloggedin_box' ] || "<div style=display:none id=y_not_loggedin>" +
+	    "Not logged in. <a href='#' id=login_link>Login</a> &nbsp;" +
+	    "<a href='#' id=register_link>Register</a>" +
+	    "</div>";
+
+	var register = args[ 'register_box' ] || "<div style=display:none id=y_register_account>" +
+	    "<table><tr><td>Handle</td><td><input class=register id=login type=text></td>" +
+	    "</tr><tr><td>Email</td><td><input class=register id=email type=text>" +
+	    "</tr><tr><td>Password</td><td><input class=register id=password type=password>" +
+	    "</td></tr></table>" + 
+	    "<input id=register_submit type=submit value=Register> " +
+	    "  <div id=register_login_link_div><a href='#' id=login_link>Login</a></div>" +
+	    "</div>"
+
+	var change_account = args[ 'change_box' ] || "<div style=display:none id=y_change_account>" + 
+	    "Change Account Settings<BR>" + 
+	    "<table>" + 
+	    "<tr><td>Current Password</td><td><input type=password id=old_pw></td>" +
+	    "<tr><td>Email</td><td><input id=change_email></td><td><button type=button id=change_email_b>Update Email</button> " +
+	    "<tr><td colspan=3><hr></td></tr>" + 
+	    "<tr><td>New Password</td><td><input type=password id=change_pw1></td>" +
+	    "<tr><td>New Password (again)</td><td><input type=password id=change_pw2></td><td><button type=button id=change_password_b>Update Password</button></td></tr> " +
+	    "</table>" + 
+	    "<BR><a href='#' id=change_done>Done</a>" +
+	    "</div>";
+
+	var recover = args[ 'recover_box' ] || "<div style=display:none id=y_recover_account>" +
+	    "Email <input class=recover id=email> " +
+	    "<input id=recover_submit type=submit value=Recover>" +
+            "<a href='#' id=login_link>Login</a>" + 
+	    "</div>";
+
+	var logged_in = args[ 'loggedin_box' ] || "<div style=display:none id=y_logged_in>" +
+	    "Logged in as <span class=logged_in id=handle></span> [<a id=change_link href='#'>update</a> ]<BR>" +
+	    "[<a id=logout_link href='#'>logout</a>]" +
+	    "</div>"
+
 	$(target).empty();
-	$(target).append( "<span id=login_msg_outerspan style=display:none><span id=login_msg_span class=warning></span><BR></span>" +
-
-			  // do login
-			  "<div style=display:none id=y_login_div>" +
-			  "<table><tr><td>Handle</td><td><input class=login id=login type=text></td>" +
-			  "</tr><tr><td>Password</td><td><input class=login id=password type=password>" +
-			  "</td></tr></table><br>" +
-			  "<input class=login id=login_submit type=submit value=Login>" +
-			  " <a href='#' id=register_link>Register</a>" +
-			  " <a href='#' id=forgot_link>Forgot</a>" +
-			  "</div>" +
-
-			  // not logged in
-			  "<div style=display:none id=y_not_loggedin>" +
-			  "Not logged in. <a href='#' id=login_link>Login</a> &nbsp;" +
-			  "<a href='#' id=register_link>Register</a>" +
-			  "</div>" +
-
-			  // register account
-			  "<div style=display:none id=y_register_account>" +
-			  "<table><tr><td>Handle</td><td><input class=register id=login type=text></td>" +
-			  "</tr><tr><td>Email</td><td><input class=register id=email type=text>" +
-			  "</tr><tr><td>Password</td><td><input class=register id=password type=password>" +
-			  "</td></tr></table>" + 
-			  "<input id=register_submit type=submit value=Register> " +
-			  "  <div id=register_login_link_div><a href='#' id=login_link>Login</a></div>" +
-			  "</div>" +
-
-			  // change account
-			  "<div style=display:none id=y_change_account>" + 
-			  "Change Account Settings<BR>" + 
-			  "<table>" + 
-			  "<tr><td>Current Password</td><td><input type=password id=old_pw></td>" +
-			  "<tr><td>Email</td><td><input id=change_email></td><td><button type=button id=change_email_b>Update Email</button> " +
-			  "<tr><td colspan=3><hr></td></tr>" + 
-			  "<tr><td>New Password</td><td><input type=password id=change_pw1></td>" +
-			  "<tr><td>New Password (again)</td><td><input type=password id=change_pw2></td><td><button type=button id=change_password_b>Update Password</button></td></tr> " +
-			  "</table>" + 
-			  "<BR><a href='#' id=change_done>Done</a>" +
-			  "</div>" + 
-
-			  // recover
-			  "<div style=display:none id=y_recover_account>" +
-			  "Email <input class=recover id=email> " +
-			  "<input id=recover_submit type=submit value=Recover>" +
-                          "<a href='#' id=login_link>Login</a>" + 
-			  "</div>" +
-
-			  // logged in
-			  "<div style=display:none id=y_logged_in>" +
-			  "Logged in as <span class=logged_in id=handle></span> [<a id=change_link href='#'>update</a> ]<BR> [<a id=logout_link href='#'>logout</a>]" +
-			  "</div>"
+	$(target).append( "<span id=login_msg_outerspan style=display:none><span id=login_msg_span class=warning></span>" +
+			  "<BR></span>" +
+			  do_login + 
+			  not_logged_in +
+			  register +
+			  change_account +
+			  recover +
+			  logged_in			  
 			);
 	var message = function( msg ) {
             if( typeof msg === 'string' ) {
@@ -357,18 +359,18 @@ $.yote.util = {
 	var req_texts = args[ 'required' ];
 	var exempt  = args[ 'cleanup_exempt' ] || {};
 
-	function check_ready() {
-	    var t = req_texts || texts;
+	check_ready = (function(rt,te) { return function() {
+	    var t = rt || te;
 	    for( var i=0; i<t.length; ++i ) {
 		if( ! $( t[i] ).val().match( /\S/ ) ) {
 	    	    $( but ).attr( 'disabled', 'disabled' );
 		    return false;
 		}
 	    }
-
+	    
 	    $( but ).attr( 'disabled', false );
 	    return true;
-	} // check_ready
+	} } )( req_texts, texts ) // check_ready
 
 	for( var i=0; i<texts.length - 1; ++i ) {
 	    $( texts[i] ).keyup( check_ready );
