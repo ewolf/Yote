@@ -234,11 +234,14 @@ sub process_http_request {
 	    $dest .= '/index.html';
 	}
 	if( open( IN, "<$root/$dest" ) ) {
-	    if( $dest =~ /\.js/i ) {
+	    if( $dest =~ /\.js$/i ) {
 		print "Content-Type: text/javascript\n\n";
 	    }
-	    elsif( $dest =~ /\.css/i ) {
+	    elsif( $dest =~ /\.css$/i ) {
 		print "Content-Type: text/css\n\n";
+	    }
+	    elsif( $dest =~ /\.(jpg|gif|png|jpeg)$/i ) {
+		print "Content-Type: image/$1\n\n";
 	    }
 	    else {
 		print "Content-Type: text/html\n\n";

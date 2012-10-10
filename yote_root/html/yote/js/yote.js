@@ -711,9 +711,25 @@ $.yote = {
 		$( '#' + iframe_name ).remove();
 		try {
 		    resp = JSON.parse( contents );
-		    
                     if( typeof resp !== 'undefined' ) {
 			if( typeof resp.err === 'undefined' ) {
+			    //dirty objects that may need a refresh
+			    if( typeof resp.d === 'object' ) {
+				for( var oid in resp.d ) {
+				    if( root._is_in_cache( oid ) ) {
+					var cached = root.objs[ oid ];
+					for( fld in cached._d ) {
+					    //take off old getters/setters
+					    delete cached['get_'+fld];
+					}
+					cached._d = resp.d[ oid ];
+					for( fld in cached._d ) {
+					    //add new getters/setters
+					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+					}
+				    }
+				}
+			    }			    
 		            if( typeof params.passhandler === 'function' ) {
 				params.passhandler(data);
 		            }

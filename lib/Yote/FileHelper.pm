@@ -93,6 +93,7 @@ sub _accept {
 
     my $store = File::UStore->new( path => $Yote::WebAppServer::UPLOAD_DIR, prefix => "yote_", depth => 5 );
     my $store_id = $store->add( $filename );
+    $self->set_filename( $filename );
     $self->set_store_id( $store_id );
 
     unlink $filename;
