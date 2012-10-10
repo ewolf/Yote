@@ -421,6 +421,48 @@ sub dirty {
     $Yote::ObjProvider::CHANGED->{$id} = $obj;
 }
 
+
+#
+# Finds objects not connected to the root and recycles them.
+#
+sub recycle_objects {
+    my( $self, $start_id, $end_id ) = @_;
+    $start_id ||= 2;
+    $end_id   ||= $self->max_id();
+
+    my @recycled;
+    
+    for( my $id=$start_id; $id <= $end_id; $id++ ) {
+	my $obj = fetch( $id );
+	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
+	    $self->recycle_object( $id );
+	    push @recycled, $id;
+	}
+    }
+    return \@recycled;
+} #recycle_objects
+
+sub max_id {
+    my $self = shift;
+    return $DATASTORE->max_id();
+}
+
+#
+# Returns true if object connects to root
+#
+sub has_path_to_root {
+    my( $self, $obj_id ) = @_;
+    return $DATASTORE->has_path_to_root( $obj_id );
+} #path_to_root
+
+sub recycle_object {
+    my( $self, $obj_id ) = @_;
+    return $DATASTORE->recycle_object( $obj_id );
+}
+
+
+    
+
 #
 # 'private' methods ----------------------
 #
