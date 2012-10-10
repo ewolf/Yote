@@ -232,7 +232,7 @@ $.yote = {
 		_d:{},
 		id:x.id,
 		class:x.c,
-                _stage:{},
+                _staged:{},
 		length:function() {
 		    var cnt = 0;
 		    for( key in this._d ) {
@@ -282,7 +282,9 @@ $.yote = {
 				    wait:true,
 				    t:$.yote.token
 				} ); //sending message
-				
+				if( ! ret ) {
+				    return null;
+				}
 
 				//dirty objects that may need a refresh
 				if( typeof ret.d === 'object' ) {
@@ -345,7 +347,10 @@ $.yote = {
 				    wait:true,
 				    t:$.yote.token
 				} ); //sending message
-				
+
+				if( ! ret ) {
+				    return null;
+				}
 
 				//dirty objects that may need a refresh
 				if( typeof ret.d === 'object' ) {
@@ -381,13 +386,13 @@ $.yote = {
 	    } // if object
 
 	    o.get = function( key ) {
-		var val = this._stage[key] || this._d[key];
+		var val = this._staged[key] || this._d[key];
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 ) {
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
-                    if( this._stage[key] == val ) {
-                        this._stage[key] = obj;
+                    if( this._staged[key] == val ) {
+                        this._staged[key] = obj;
                     } else {
                         this._d[key] = obj;
                     }
@@ -418,39 +423,39 @@ $.yote = {
 	    }
 
             // stages functions for updates
-            o.stage = function( key, val ) {
-                if( this._stage[key] !== root._translate_data( val ) ) {
-                    this._stage[key] = root._translate_data( val );
+            o._stage = function( key, val ) {
+                if( this._staged[key] !== root._translate_data( val ) ) {
+                    this._staged[key] = root._translate_data( val );
                     this._dirty = true;
                 }
             }
 
             // resets staged info
-            o.reset = function( field ) {
+            o._reset = function( field ) {
 		if( field ) {
-		    delete this._stage[ field ];
+		    delete this._staged[ field ];
 		} else {
-                    this._stage = {};
+                    this._staged = {};
 		}
             }
 
-            o.is_dirty = function(field) {
-                return typeof field === 'undefined' ? this._dirty : this._stage[field] !== this._d[field] ;
+            o._is_dirty = function(field) {
+                return typeof field === 'undefined' ? this._dirty : this._staged[field] !== this._d[field] ;
             }
 
             // sends data structure as an update, or uses staged values if no data
-            o.send_update = function(data,failhandler,passhandler) {
+            o._send_update = function(data,failhandler,passhandler) {
                 var to_send = {};
                 if( this.c === 'Array' ) {                        
                     to_send = Array();
                 }
                 if( typeof data === 'undefined' ) {
-                    for( var key in this._stage ) {
+                    for( var key in this._staged ) {
                         if( key.match(/^[A-Z]/) ) {
                             if( this.c === 'Array' ) {
-                                to_send.push( root._untranslate_data(this._stage[key]) );
+                                to_send.push( root._untranslate_data(this._staged[key]) );
                             } else {
-                                to_send[key] = root._untranslate_data(this._stage[key]);
+                                to_send[key] = root._untranslate_data(this._staged[key]);
                             }
                         }
                     }
@@ -487,7 +492,7 @@ $.yote = {
                             for( var key in td ) {
                                 o._d[key] = root._translate_data(td[key]);
                             }
-                            o._stage = {};
+                            o._staged = {};
                             if( typeof passhandler === 'function' ) {
                                 passhandler();
                             }
@@ -599,9 +604,7 @@ $.yote = {
         var app_id = params.app_id;
         var cmd    = params.cmd;
         var obj_id = params.obj_id; //id to act on
-        if( async == 0 ) {
-            root._disable();
-        }
+
 	root.upload_count = 0;
 
         app_id = app_id || '';
@@ -609,9 +612,13 @@ $.yote = {
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
 	var uploads = root._functions_in( data );
+
 	if( uploads.length > 0 ) {
 	    return root.upload_message( params, uploads );
 	}
+        if( async == 0 ) {
+            root._disable();
+        }
 
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
@@ -664,16 +671,11 @@ $.yote = {
     upload_message:function( params, uploads ) {
         var root   = this;
         var data   = root._translate_data( params.data || {}, true );
-        var async  = params.async == true ? 1 : 0;
 	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
         var app_id = params.app_id;
         var cmd    = params.cmd;
         var obj_id = params.obj_id; //id to act on
-        if( async == 0 ) {
-            root._disable();
-        }
-
         app_id = app_id || '';
         obj_id = obj_id || '';
         var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
@@ -686,7 +688,6 @@ $.yote = {
 	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
 
 	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
-
 	var cb_list = [];
 	$( upload_selector_ids.join(',') ).each(
 	    function( idx, domEl ) {
@@ -694,7 +695,6 @@ $.yote = {
 		cb_list.push(  $( 'input:checkbox', this ) );
 	    }
 	);
-	
 	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
 	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
@@ -704,7 +704,6 @@ $.yote = {
 	    cb_list[ i ].removeAttr('checked');
 	    cb_list[ i ].attr('checked', true);
 	}
-    
 	var resp;
 	var xx = form_sel.submit(function() {
 	    iframe.load(function() {		
