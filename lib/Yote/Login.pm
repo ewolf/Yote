@@ -36,6 +36,16 @@ sub reset_email {
     return "Updated email";
 } #reset_email
 
+sub UploadAvatar {
+    my( $self, $data ) = @_;
+    $self->set_avatar( $data->{avatar} );
+}
+
+sub Avatar {
+    my $self = shift;
+    return $self->get_avatar();
+}
+
 1;
 
 __END__

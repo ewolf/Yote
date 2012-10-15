@@ -25,11 +25,10 @@ use vars qw($VERSION);
 $VERSION = '0.081';
 
 
-my( @commands, %prid2wait, %prid2result, $singleton, @saves );
+my( @commands, %prid2wait, %prid2result, $singleton );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
-share( @saves );
 
 sub new {
     my $pkg = shift;
