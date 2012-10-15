@@ -130,7 +130,7 @@ sub flush_credential_cache {
 #             returns : { l => login object, t => token }
 #
 sub create_login {
-    my( $self, $args, $ip ) = @_;
+    my( $self, $args, $dummy, $ip ) = @_;
 
     #
     # validate login args. Needs handle (,email at some point)
