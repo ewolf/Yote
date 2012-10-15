@@ -91,14 +91,14 @@ sub ensure_datastore {
                    obj_id INTEGER NOT NULL,
                    field varchar(300) DEFAULT NULL,
                    ref_id INTEGER DEFAULT NULL,
-                   value varchar(1025) DEFAULT NULL );
-                   CREATE INDEX obj_id field;
-                   CREATE INDEX ref_id field;~,
+                   value varchar(1025) DEFAULT NULL );~,
+	uniq_idx => q~CREATE UNIQUE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
+	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
         objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
                      class varchar(255) DEFAULT NULL,
                      recycled tinyint DEFAULT 0
-                      ); CREATE INDEX recycled~
+                      ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~
         );
     $self->start_transaction();
     for my $table (keys %definitions ) {
@@ -118,7 +118,6 @@ sub has_path_to_root {
     my( $self, $obj_id ) = @_;
     return 1 if $obj_id == 1;
     my $res = $self->selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
-    print STDERR Data::Dumper->Dump(["SELECT obj_id FROM field WHERE ref_id=$obj_id"]);
     for my $row (@$res) {
 	if( $self->has_path_to_root( @$row ) ) {
 	    return 1;
@@ -186,7 +185,7 @@ sub xpath {
         if( $ref ) {
             $next_ref = $ref;
             $final_val = $ref;
-        } 
+        }
 	else {
             $final_val = "v$val";
             last;
@@ -199,13 +198,42 @@ sub xpath {
 } #xpath
 
 #
+# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+#
+sub xpath_insert {
+    my( $self, $path, $item_to_insert ) = @_;
+
+    my( @list ) = split( /\//, $path );
+    my $next_ref = 1;
+    for my $l (@list) {
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+        if( $ref ) {
+            $next_ref = $ref;
+        }
+        else {
+	    die "Unable to find xpath location for insert";
+        }
+    } #each path part
+
+    #find the object type to see if this is an array to append to, or a hash to insert to
+    
+
+} #xpath_insert
+
+
+
+#
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.
 #
 sub fetch {
     my( $self, $id ) = @_;
     my( $class ) = $self->selectrow_array( "SELECT class FROM objects WHERE id=?",  $id );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-    
+
 
     return undef unless $class;
     my $obj = [$id,$class];
@@ -213,7 +241,7 @@ sub fetch {
         when('ARRAY') {
             $obj->[DATA] = [];
             my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $id );
-            die $self->{DBH}->errstr() if $self->{DBH}->errstr();            
+            die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             for my $row (@$res) {
                 my( $idx, $ref_id, $value ) = @$row;
@@ -269,7 +297,7 @@ sub stow {
 	$self->do( @$upd );
 	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     }
-    
+
 } #stow
 
 #
