@@ -241,7 +241,7 @@ sub recover_password {
             }
             $login->set__recovery_from_url( $from_url );
             $login->set__last_recovery_time( $now );
-            $login->set__recovery_tries( $login->get_recovery_tries() + 1 );
+            $login->set__recovery_tries( $login->get__recovery_tries() + 1 );
             $recovery_hash->{$rand_token} = $login;
             my $link = "$to_reset?t=$rand_token";
 	    use Mail::Sender;
