@@ -143,8 +143,8 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    root.create_login( { h:handle, p:password, e:email }, 
 			       function(res) {
-				   $.yote.token = res.r.d.t.substring(1);
-				   $.yote.login_obj = $.yote._create_obj(res.r.d.l);
+				   $.yote.token = res.get( 't' );
+				   $.yote.login_obj = res.get( 'l' );
 				   $.cookie( 'yoken', $.yote.token );
 				   passhandler(res);
 			       },
@@ -162,8 +162,8 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    root.login( { h:handle, p:password }, 
 			function(res) {
-			    $.yote.token = res.r.d.t.substring(1);
-			    $.yote.login_obj = $.yote._create_obj(res.r.d.l);
+			    $.yote.token = res.get( 't' );
+			    $.yote.login_obj = res.get( 'l' );
 			    $.cookie( 'yoken', $.yote.token );
 			    passhandler(res);
 			},
@@ -177,6 +177,7 @@ $.yote = {
     }, //login
     
     logout:function() {
+	$.yote.fetch_root().logout();	
 	$.yote.login_obj = undefined;
 	$.yote.token = undefined;
 	$.cookie( 'yoken', '' );
@@ -650,7 +651,13 @@ $.yote = {
 		    resp = data; //for returning synchronous
 		    if( typeof data.err === 'undefined' ) {
 		        if( typeof params.passhandler === 'function' ) {
-			    params.passhandler(data);
+			    if( typeof data.r === 'object' ) {
+				params.passhandler( root._create_obj( data.r, this._app_id ) );
+			    } else if( typeof data.r === 'undefined' ) {
+				params.passhandler();
+			    } else {
+				params.passhandler( data.r.substring( 1 ) );
+			    }
 		        }
 		    } else if( typeof params.failhandler === 'function' ) {
 		        params.failhandler(data.err);
@@ -711,6 +718,7 @@ $.yote = {
 		$( '#' + iframe_name ).remove();
 		try {
 		    resp = JSON.parse( contents );
+		    console.log( [ 'uploaded', resp ] );
                     if( typeof resp !== 'undefined' ) {
 			if( typeof resp.err === 'undefined' ) {
 			    //dirty objects that may need a refresh
@@ -731,10 +739,16 @@ $.yote = {
 				}
 			    }			    
 		            if( typeof params.passhandler === 'function' ) {
-				params.passhandler(data);
+				if( typeof resp.r === 'object' ) {
+				    params.passhandler( root._create_obj( ret.r, this._app_id ) );
+				} else if( typeof resp.r === 'undefined' ) {
+				    params.passhandler();
+				} else {
+				    params.passhandler( resp.r.substring( 1 ) );
+				}
 		            }
 			} else if( typeof params.failhandler === 'function' ) {
-		            params.failhandler(data.err);
+		            params.failhandler(resp.err);
 			} //error case. no handler defined 
                     } else {
 			console.log( "Success reported but no response data received" );

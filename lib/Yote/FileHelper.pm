@@ -12,7 +12,8 @@ sub _ingest {
 
     my $content_length = $ENV{CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
-    if( $ENV{HTTP_CONTENT_TYPE} =~ /boundary=(.*)/ ) {
+    my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{CONTENT_TYPE};
+    if( $boundary_header =~ /boundary=(.*)/ ) {
 	my $boundary = $1;
 	my $counter = 0;
 	# find boundary parts

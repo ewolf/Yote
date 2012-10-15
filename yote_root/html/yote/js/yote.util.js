@@ -195,28 +195,33 @@ $.yote.util = {
 	    message( msg );
 	    $( target + ' > div ' ).hide();
 	    $( target + ' > div#y_login_div' ).show();
+	    $( target + ' > div#y_login_div :input' ).removeAttr('disabled');
 	}
 	var to_recover = function() {
 	    $( target + ' > div ' ).hide();
 	    $( target + ' > div#y_recover_account' ).show();
+	    $( target + ' > div#y_recover_account :input' ).removeAttr('disabled');
 	}
 	var to_register = function(msg) {
 	    message( msg );
 	    $( target + ' > div ' ).hide();
 	    $( target + ' > div#y_register_account' ).show();
+	    $( target + ' > div#y_register_account :input' ).removeAttr('disabled');
 	}
 	var to_logged_in = function(name,msg) {
             message(msg);
 	    $( target + ' > div ' ).hide();
 	    $( target + ' .logged_in#handle' ).empty();
 	    $( target + ' .logged_in#handle' ).append(name);
-	    $( target + ' > div#y_logged_in' ).show();                
+	    $( target + ' > div#y_logged_in' ).show();      
+	    $( target + ' > div#y_logged_in :input' ).removeAttr('disabled');          
 	    logged_in_f();
 	}
 
 	var to_change = function() {
 	    $( target + ' > div ' ).hide();
 	    $( target + ' > div#y_change_account ' ).show();
+	    $( target + ' > div#y_change_account :input' ).removeAttr('disabled');          
 	    $( target + ' #change_email' ).val( $.yote.login_obj.get('email' ) );
 	    $( target + ' > #change_email' ).attr( 'disabled', false );	
 	    $( target + ' > #change_email' ).prop( 'disabled', false );	
@@ -275,9 +280,11 @@ $.yote.util = {
 
             if( rootapp.number_of_accounts() > 0 ) {
 		$( target + ' > div#y_not_loggedin' ).show();
+		$( target + ' > div#y_not_loggedin :input' ).removeAttr('disabled'); 
 		$( target + ' #register_login_link_div' ).show();
             } else {
                 $( target + ' > div#y_register_account' ).show();
+		$( target + ' > div#y_register_account :input' ).removeAttr('disabled'); 
 		$( target + ' #register_login_link_div' ).hide();
                 message( "Create Initial Root Account" );
             }
