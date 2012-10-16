@@ -86,23 +86,25 @@ sub commit_transaction {
 
 sub ensure_datastore {
     my $self = shift;
-    my %definitions = (
+    my %table_definitions = (
         field => q~CREATE TABLE IF NOT EXISTS field (
                    obj_id INTEGER NOT NULL,
                    field varchar(300) DEFAULT NULL,
                    ref_id INTEGER DEFAULT NULL,
                    value varchar(1025) DEFAULT NULL );~,
-	uniq_idx => q~CREATE UNIQUE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
-	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
         objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
                      class varchar(255) DEFAULT NULL,
                      recycled tinyint DEFAULT 0
                       ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~
         );
+    my %index_definitions = (
+	uniq_idx => q~CREATE UNIQUE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
+	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
+        );
     $self->start_transaction();
-    for my $table (keys %definitions ) {
-        $self->do( $definitions{$table} );
+    for my $value ((values %table_definitions), (values %index_definitions )) {
+        $self->do( $value );
     }
     $self->commit_transaction();
 } #ensure_datastore

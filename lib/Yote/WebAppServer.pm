@@ -76,7 +76,7 @@ sub start_server {
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;
 
-    _poll_commands();
+    $self->_poll_commands();
 
     $server_thread->join;
 
@@ -261,6 +261,7 @@ sub process_http_request {
 # Run by a thread that constantly polls for commands.
 #
 sub _poll_commands {
+    my $self = shift;
     while(1) {
         my $cmd;
         {
@@ -268,7 +269,7 @@ sub _poll_commands {
             $cmd = shift @commands;
         }
         if( $cmd ) {
-            _process_command( $cmd );
+            $self->_process_command( $cmd );
         }
         unless( @commands ) {
             lock( @commands );
@@ -284,7 +285,7 @@ sub _poll_commands {
 } #_poll_commands
 
 sub _process_command {
-    my $req = shift;
+    my( $self, $req ) = @_;
     my( $command, $procid ) = @$req;
     my $wait = $command->{w};
 
@@ -315,24 +316,34 @@ sub _process_command {
 
         my $ret = $app_object->$action( $data, $account, $command->{p} );
 
-	my $dirty_delta = Yote::ObjProvider::fetch_changed();
-
-	my $dirty_data;
-	if( @$dirty_delta ) {
-	    $dirty_data = {};
-	    for my $d_id ( @$dirty_delta ) {
-		my $dobj = Yote::ObjProvider::fetch( $d_id );
-		if( ref( $dobj ) eq 'ARRAY' ) {
-		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
-		} elsif( ref( $dobj ) eq 'HASH' ) {
-		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
-		} else {
-		    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
+	my( $dirty_delta, $dirty_data );
+	if( $login && $self->{ login_objects }{ $login->{ID} } ) {
+	    $dirty_delta = Yote::ObjProvider::fetch_changed();
+	    if( @$dirty_delta ) {
+		$dirty_data = {};
+		for my $d_id ( grep { $self->{ login_objects }{ $login->{ID} }{ $_ } } @$dirty_delta ) {
+		    my $dobj = Yote::ObjProvider::fetch( $d_id );
+		    if( ref( $dobj ) eq 'ARRAY' ) {
+			$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
+		    } elsif( ref( $dobj ) eq 'HASH' ) {
+			$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
+		    } else {
+			$dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
+		    }
 		}
 	    }
-	}
+	} # if login to collect dirty objects
 
         $resp = $dirty_data ? { r => $app_object->_obj_to_response( $ret, $account, 1 ), d => $dirty_data } : { r => $app_object->_obj_to_response( $ret, $account, 1 ) };
+	
+	# note which objects are known to the login
+	if( $login ) {
+	    $self->{ login_objects }{ $login->{ID} }{ $app_object->{ID} } = 1;
+	    my $ids_in_response = $app_object->_find_ids_in_response( $resp->{r} );
+	    for my $id ( @$ids_in_response ) {
+		$self->{ login_objects }{ $login->{ID} }{ $id } = 1;
+	    }
+	}
     };
     if( $@ ) {
 	my $err = $@;

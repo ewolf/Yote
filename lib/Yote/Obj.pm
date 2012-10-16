@@ -181,6 +181,26 @@ sub _obj_to_response {
     return $to_convert;
 } #_obj_to_response
 
+sub _find_ids_in_response {
+    my( $self, $o ) = @_;
+    if( ref( $o ) ) {
+	my $ret = $o->{id} ? [ $o->{id} ] : [];
+	my $next_obj = $o->{d};
+	if( ref( $next_obj ) eq 'ARRAY' ) {
+	    for my $arr_item (@$next_obj) {
+		my $r = $self->_find_ids_in_response( $arr_item );
+		push @$ret, @$r;
+	    }
+	} else {
+	    for my $item ( values %{$o->{d}} ) {
+		my $r = $self->_find_ids_in_response( $item );
+		push @$ret, @$r;
+	    }
+	}
+	return $ret;
+    }
+    return [];
+} #_find_ids_in_response
 
 #
 # Takes the entire key/value pairs of data as field/value pairs attached to this.
