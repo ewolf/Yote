@@ -112,20 +112,20 @@ sub load_direct_descendents {
 # Transforms data structure but does not assign ids to non tied references.
 #
 sub _transform_data_no_id {
-    my( $self, $item, $acct ) = @_;
+    my( $self, $item, $login ) = @_;
     if( ref( $item ) eq 'ARRAY' ) {
         my $tied = tied @$item;
         if( $tied ) {
             return Yote::ObjProvider::get_id( $item ); 
         }
-        return [map { $self->_obj_to_response( $_, $acct, 1 ) } @$item];
+        return [map { $self->_obj_to_response( $_, $login, 1 ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
         my $tied = tied %$item;
         if( $tied ) {
             return Yote::ObjProvider::get_id( $item ); 
         }
-        return { map { $_ => $self->_obj_to_response( $item->{$_}, $acct, 1 ) } keys %$item };
+        return { map { $_ => $self->_obj_to_response( $item->{$_}, $login, 1 ) } keys %$item };
     }
     elsif( ref( $item ) ) {
         return  Yote::ObjProvider::get_id( $item ); 
@@ -139,7 +139,7 @@ sub _transform_data_no_id {
 # Converts scalar, yote object, hash or array to data for returning.
 #
 sub _obj_to_response {
-    my( $self, $to_convert, $acct, $xform_out ) = @_;
+    my( $self, $to_convert, $login, $xform_out ) = @_;
     my $ref = ref($to_convert);
     my $use_id;
     if( $ref ) {
@@ -151,7 +151,7 @@ sub _obj_to_response {
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
                 return $use_id unless $xform_out;
             } else {
-                $d = $self->_transform_data_no_id( $to_convert, $acct );
+                $d = $self->_transform_data_no_id( $to_convert, $login );
             }
         } 
         elsif( $ref eq 'HASH' ) {
@@ -161,7 +161,7 @@ sub _obj_to_response {
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
                 return $use_id unless $xform_out;
             } else {
-                $d = $self->_transform_data_no_id( $to_convert, $acct );
+                $d = $self->_transform_data_no_id( $to_convert, $login );
             }
         } 
         else {
@@ -175,32 +175,14 @@ sub _obj_to_response {
 		$m = Yote::ObjProvider::package_methods( $ref );
 	    }
         }
+	if( $login && $use_id ) {
+	    $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $use_id } = 1;
+	}
 	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert" if $xform_out;
     return $to_convert;
 } #_obj_to_response
-
-sub _find_ids_in_response {
-    my( $self, $o ) = @_;
-    if( ref( $o ) ) {
-	my $ret = $o->{id} ? [ $o->{id} ] : [];
-	my $next_obj = $o->{d};
-	if( ref( $next_obj ) eq 'ARRAY' ) {
-	    for my $arr_item (@$next_obj) {
-		my $r = $self->_find_ids_in_response( $arr_item );
-		push @$ret, @$r;
-	    }
-	} else {
-	    for my $item ( values %{$o->{d}} ) {
-		my $r = $self->_find_ids_in_response( $item );
-		push @$ret, @$r;
-	    }
-	}
-	return $ret;
-    }
-    return [];
-} #_find_ids_in_response
 
 #
 # Takes the entire key/value pairs of data as field/value pairs attached to this.
