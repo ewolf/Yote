@@ -99,7 +99,7 @@ sub ensure_datastore {
                       ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~
         );
     my %index_definitions = (
-	uniq_idx => q~CREATE UNIQUE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
+	uniq_idx => q~CREATE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
 	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
         );
     $self->start_transaction();
@@ -206,6 +206,7 @@ sub xpath_insert {
     my( $self, $path, $item_to_insert ) = @_;
 
     my( @list ) = split( /\//, $path );
+    my $field = pop @list;
     my $next_ref = 1;
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
@@ -222,7 +223,11 @@ sub xpath_insert {
     } #each path part
 
     #find the object type to see if this is an array to append to, or a hash to insert to
-    
+    if( index( $item_to_insert, 'v' ) == 0 ) {
+	$self->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
+    } else {
+	$self->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+    }
 
 } #xpath_insert
 

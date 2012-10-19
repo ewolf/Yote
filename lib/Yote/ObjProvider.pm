@@ -61,6 +61,12 @@ sub xpath_count {
     return $DATASTORE->xpath_count( $path );
 }
 
+sub xpath_insert {
+    my $path = shift;
+    my $item = shift;
+    return $DATASTORE->xpath_insert( $path, _raw_data( $item ) || $item );
+}
+
 #
 # Deep clone this object. This will clone any yote object that is not an AppRoot.
 #
