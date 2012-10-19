@@ -336,9 +336,9 @@ $.yote = {
 		    }
 		    for( var i=0; i < methods.length; i++ ) {
 			o[methods[i]] = (function(key) {
-			    return function( params, passhandler, failhandler ) {
+			    return function( params, passhandler, failhandler, use_async ) {
 				var ret = root.message( {
-				    async:false,
+				    async:use_async,
 				    app_id:this._app_id,
 				    cmd:key,
 				    data:params,
