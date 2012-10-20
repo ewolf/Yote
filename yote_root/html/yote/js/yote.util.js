@@ -361,14 +361,17 @@ $.yote.util = {
 
 	
     button_actions:function( args ) {
-	var but     = args[ 'button' ];
-	var action  = args[ 'action' ];
-	var texts   = args[ 'texts'  ] || [];
-	var req_texts = args[ 'required' ];
-	var exempt  = args[ 'cleanup_exempt' ] || {};
+	var but         = args[ 'button' ];
+	var action      = args[ 'action' ] || function(){};
+	var on_escape   = args[ 'on_escape' ] || function(){};
+	var texts       = args[ 'texts'  ] || [];
+	var req_texts   = args[ 'required' ];
+	var exempt      = args[ 'cleanup_exempt' ] || {};
+	var extra_check = args[ 'extra_check' ] || function() { return true; }
 
-	check_ready = (function(rt,te) { return function() {
+	check_ready = (function(rt,te,ec) { return function() {
 	    var t = rt || te;
+	    ec();
 	    for( var i=0; i<t.length; ++i ) {
 		if( ! $( t[i] ).val().match( /\S/ ) ) {
 	    	    $( but ).attr( 'disabled', 'disabled' );
@@ -377,17 +380,19 @@ $.yote.util = {
 	    }
 	    
 	    $( but ).attr( 'disabled', false );
-	    return true;
-	} } )( req_texts, texts ) // check_ready
+	    return ec();
+	} } )( req_texts, texts, extra_check ) // check_ready
 
 	for( var i=0; i<texts.length - 1; ++i ) {
-	    $( texts[i] ).keyup( check_ready );
-	    $( texts[i] ).keypress( (function(box) {
+	    $( texts[i] ).keyup( function() { check_ready(); return true; } );
+	    $( texts[i] ).keypress( (function(box,oe) {
 		return function( e ) {
 		    if( e.which == 13 ) {
 			$( box ).focus();
-		    }
-		} } )( texts[i+1] ) );
+		    } else if( e.which == 27 ) {
+			oe();
+		    }		   
+		} } )( texts[i+1], on_escape ) );
 	}
 
 	act = (function( c_r, a_f, txts ) { return function() {
@@ -401,11 +406,13 @@ $.yote.util = {
 	    }
 	} } ) ( check_ready, action, texts );
 
-	$( texts[texts.length - 1] ).keyup( check_ready );
-	$( texts[texts.length - 1] ).keypress( (function(a) { return function( e ) {
+	$( texts[texts.length - 1] ).keyup( function() { check_ready(); return true; } );
+	$( texts[texts.length - 1] ).keypress( (function(a,oe) { return function( e ) {
 	    if( e.which == 13 ) {
 		a();
-	    } } } )(act) );
+	    } else if( e.which == 27 ) {
+		eo();
+	    } } } )(act,on_escape) );
 
 	$( but ).click( act );
 
