@@ -223,6 +223,7 @@ sub xpath_insert {
     } #each path part
 
     #find the object type to see if this is an array to append to, or a hash to insert to
+    $self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
     if( index( $item_to_insert, 'v' ) == 0 ) {
 	$self->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
     } else {

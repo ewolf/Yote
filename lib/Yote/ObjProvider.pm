@@ -64,7 +64,8 @@ sub xpath_count {
 sub xpath_insert {
     my $path = shift;
     my $item = shift;
-    return $DATASTORE->xpath_insert( $path, _raw_data( $item ) || $item );
+    my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
+    return $DATASTORE->xpath_insert( $path, $stow_val );
 }
 
 #
