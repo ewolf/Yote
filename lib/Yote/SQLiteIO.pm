@@ -129,6 +129,23 @@ sub has_path_to_root {
     return 0;
 } #has_path_to_root
 
+#
+# Return the path to root that this object has, if any.
+#
+sub path_to_root {
+    my( $self, $obj_id ) = @_;
+    return '' if $obj_id == 1;
+    my $res = $self->selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
+    for my $row (@$res) {
+	my( $new_obj_id, $field ) = @$row;
+	if( $self->has_path_to_root( $new_obj_id ) ) {
+	    return $self->path_to_root( $new_obj_id ) . "/$field";
+	}
+    }
+
+    return undef;
+} #path_to_root
+
 sub recycle_object {
     my( $self, $obj_id ) = @_;
     $self->do( "DELETE FROM field WHERE obj_id=?", $obj_id );
@@ -231,7 +248,6 @@ sub xpath_insert {
     }
 
 } #xpath_insert
-
 
 
 #

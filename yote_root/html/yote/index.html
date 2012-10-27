@@ -1,6 +1,6 @@
 <HTML>
-<HEAD>
- <TITLE>Yote System</TITLE>
+  <HEAD>
+    <TITLE>Yote System</TITLE>
 
     <script src="/yote/js/jquery-latest.js"></script>
     <script src="/yote/js/jquery.dumper.js"></script>
@@ -9,7 +9,7 @@
     <script src="/yote/js/json2.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
-    <script src="/yote/js/yote.system.ustil.js"></script>
+    <script src="/yote/js/yote.system.util.js"></script>
     <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
@@ -18,60 +18,38 @@
     <script lang="javascript">
 
 $().ready( function() { 
-    function show_system() {
-        $('#apps').empty();
-        if( $.yote.is_logged_in() == false ) {
-            $('#login').append( "Error logging in" );
-            return;
-        }
-        $('#apps').append('<div id=installed_apps></div>' +
-                             '<button type=button id=install_button>Install App</button>' +
-                             '' );
-    } //show system
 
-    $.yote.util.make_login_box({ target:'#login',
-                                 on_in:function() { show_system() },
-                                 require_root:1 });
-    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button><hr><div id=imgd></div> <input type=file id=fileup4 name=filea>' );
-    var tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-    tanl_app.reset();
-    $( '#fileup4' ).change( function() {
-	tanl_app.UpOne( { somefile_3 : $.yote.upload( '#fileup4' ) },
-			function() {
-			    tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-			    file = tanl_app.get_File();
-			    $( '#imgd' ).empty().append( '<img src=' + file.Url() + '>' );
-			}
-		      );
-    } );
-    $( '#fileup_b2' ).click( function() {
-	tanl_app.Upload( { somevar : 'someval', 
-			   somefile : $.yote.upload( '#fileup2' ),
-			   somefile_2 : $.yote.upload( '#fileup3' ),
-			 },
-			 function() {
-			     //refresh the app for now. build in autorefresh later
-			     tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-			     files = tanl_app.get_Files();
-			     $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and <img src=' + files.get(1).Url() + '>' );
-			 } );
-    } );
+    function logout() {
+	$.yote.logout();
+	check_login_state();
+    } //logout 
 
+    function check_login_state() {
+	var my_login = $.yote.get_login();
+	if( my_login ) {
+	    $( '#main_panel_div' ).empty().append( $.yote.util.container_div( 
+		[
+		    [ [ $.yote.util.container_div( 
+			[
+			    [ [ $.yote.util.make_button( 'logout_b', 'Log Out', 'btn btn-link' ), 'span12' ] ]
+			], true ), 'span3' ], [ '<div id=main_div></div>', 'span9' ] ]
+		]
+	    ) );
+	    $( '#logout_b' ).click( logout );
+	} else {
+	    $.yote.util.login( '#login_modal', check_login_state );
+	}	
+    } //check_login_state
+    check_login_state();
 } );
-</script>
 
-</HEAD>
-<BODY>
-<H1>Yote Admin</H1>
-<div class=maindiv>
- <div id=login>
- </div>
- <div id=apps>  
- </div>
-</div>
+    </script>
 
- <div id=scratch>
- </div>
-    <script src="/js/bootstrap.js"></script>
-</BODY>
+  </HEAD>
+  <BODY>
+    <H1>Yote Admin</H1>
+      <div style="position:fixed;top:350px;left:350px;" id="login_modal"></div>
+      <div id="main_panel_div"></div>
+      <script src="/js/bootstrap.js"></script>
+  </BODY>
 </HTML>

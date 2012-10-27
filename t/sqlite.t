@@ -438,6 +438,8 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
 
+    is( Yote::ObjProvider::path_to_root( $hello_app ), '/apps/Yote::Test::Hello', 'path to root works' );
+
     is( Yote::ObjProvider::xpath("/foo/1"), "array", "xpath with array" );
     is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
 

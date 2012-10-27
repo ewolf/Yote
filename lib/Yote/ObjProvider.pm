@@ -460,7 +460,14 @@ sub max_id {
 sub has_path_to_root {
     my( $self, $obj_id ) = @_;
     return $DATASTORE->has_path_to_root( $obj_id );
+} #has_path_to_root
+
+sub path_to_root {
+    my( $obj ) = @_;
+    return $DATASTORE->path_to_root( get_id($obj) );
 } #path_to_root
+
+
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;

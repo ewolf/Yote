@@ -177,10 +177,6 @@ sub create_login {
 
 	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login );
 	Yote::ObjProvider::xpath_insert( "/_handles/$handle", $new_login );
-#        my $logins = $self->get__handles();
-#        $logins->{ $handle } = $new_login;
-#        my $emails = $self->get__emails();
-#        $emails->{ $email } = $new_login;
 	
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
     } #if handle
