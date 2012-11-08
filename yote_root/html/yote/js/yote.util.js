@@ -465,7 +465,7 @@ $.yote.util = {
 				    } );
     }, //login
     
-    edit_account: function( modal_attach_point ) {
+    edit_account: function( modal_attach_point, app ) {
 	$.yote.util.prep_login_modal_div( modal_attach_point );	
 	// function to use when the file is selected. it both resets the file selector and shows the avatar image
 	function file_change_func() {
@@ -487,10 +487,20 @@ $.yote.util = {
 	} //edit_account -> file_change_func
 	
 	// find avatar image if any
-	var account = tvp_app.account();
-	var ava_img = 'Upload Avatar';
-	if( account.get( 'avatar' ) ) {
-	    ava_img = '<img height=70 width=70 src="' + account.get_avatar().Url() + '">';
+	var account, ava_img = 'Upload Avatar';
+	if( app ) {
+	    account = app.account();
+	    console.log( [ 'acct', account, app ] );
+	    if( account.get( 'avatar' ) ) {
+		ava_img = '<img height=70 width=70 src="' + account.get_avatar().Url() + '">';
+	    }
+	} else {
+	    var login = $.yote.get_login();
+	    if( login ) {
+		if( login.get( 'avatar' ) ) {
+		    ava_img = '<img height=70 width=70 src="' + login.get_avatar().Url() + '">';
+		}
+	    }
 	}
 	
 	// basic layout of modal container
