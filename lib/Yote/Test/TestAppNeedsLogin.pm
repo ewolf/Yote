@@ -78,6 +78,8 @@ sub array {
     return [ 'A', { inner => [ 'Juan', { peanut => 'Butter', ego => $self->get_yote_obj() }] }, $self->get_yote_obj()  ];
 }
 
+
+# @TODO - should not have a sub starting with get_. refactor test
 sub get_hash {
     my( $self, $data, $acct_root, $acct ) = @_;
     die "Need account" unless $acct;

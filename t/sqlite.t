@@ -420,11 +420,13 @@ sub test_suite {
 
     my $aaa = $ta->array( '', $t );
 
+
     is( $aaa->[0], 'A', 'first el' );
     is( ref( $aaa->[1] ), 'HASH', 'second el hash' );
     my $ina = $aaa->[1]{inner};
     is( $ina->[0], "Juan", "inner array el" );
     my $inh = $ina->[1];
+
     is( ref( $inh ), 'HASH', 'inner hash' );
     is( $inh->{peanut}, 'Butter', "scalar in inner hash" );
     my $ino = $inh->{ego};
@@ -436,7 +438,16 @@ sub test_suite {
     my $hf = $root->get_hashfoo( {} );
     $hf->{zort} = 'zot';
 
+    $ta->give_obj( [ "Fooo obj" ], $acct );
+
     Yote::ObjProvider::stow_all();
+
+    my $app_o = Yote::ObjProvider::app_for_object( $ta->get_obj(), $acct );
+    ok( ! $ta->_is( $ta->get_obj() ), "getting object  is not the app itself" );
+    print STDERR Data::Dumper->Dump([$ta, $app_o]);
+    ok( $ta->_is( $app_o ), "app for object worked" );
+    ok( ! Yote::ObjProvider::app_for_object( $root ), "root object does not have an app" );
+    
 
     is( Yote::ObjProvider::path_to_root( $hello_app ), '/apps/Yote::Test::Hello', 'path to root works' );
 

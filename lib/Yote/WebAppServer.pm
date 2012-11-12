@@ -118,7 +118,7 @@ sub process_http_request {
 
     my $content_length = $ENV{CONTENT_LENGTH};
     if( $content_length > 5_000_000 ) { #make this into a configurable field
-	do404();
+	$self->do404();
 	return;
     }
 
@@ -250,7 +250,7 @@ sub process_http_request {
             }
             close( IN );
 	} else {
-	    do404();
+	    $self->do404();
 	}
 	return;
     } #serve html
@@ -416,6 +416,8 @@ sub _translate_data {
 }
 
 sub do404 {
+    my $self = shift;
+    $self->send_status( "404 Not Found" );
     print "Content-Type: text/html\n\nERROR : 404\n";
 }
 

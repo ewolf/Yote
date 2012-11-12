@@ -467,6 +467,18 @@ sub path_to_root {
     return $DATASTORE->path_to_root( get_id($obj) );
 } #path_to_root
 
+# returns the app that the given object belongs to, if any
+sub app_for_object {
+    my $obj = shift;
+    my( @xpath ) = split( /\//, Yote::ObjProvider::path_to_root( $obj ) );
+    if( @xpath == 2 ) {
+	return $obj; # this is the app itself
+    }
+    if( @xpath > 3 ) {
+	return Yote::ObjProvider::xpath( join( '/', @xpath[0..2] ) );
+    }
+    
+} #_get_my_app
 
 
 sub recycle_object {
