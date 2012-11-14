@@ -330,6 +330,34 @@ sub xpath_insert {
 
 } #xpath_insert
 
+#
+# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+#
+sub xpath_delete {
+    my( $self, $path ) = @_;
+
+    my( @list ) = split( /\//, $path );
+    my $field = pop @list;
+    my $next_ref = 1;
+    for my $l (@list) {
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+        if( $ref ) {
+            $next_ref = $ref;
+        }
+        else {
+	    die "Unable to find xpath location for insert";
+        }
+    } #each path part
+
+    #find the object type to see if this is an array to append to, or a hash to insert to
+    $self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+
+} #xpath_delete
+
 
 #
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.

@@ -217,6 +217,13 @@ sub _encrypt_pass {
     return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
 } #_encrypt_pass
 
+# 
+# Returns the xpath for this object.
+#
+sub _path_to_root {
+    my $self = shift;
+    return Yote::ObjProvider::path_to_root( $self );
+}
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list

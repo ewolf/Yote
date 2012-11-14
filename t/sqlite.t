@@ -483,7 +483,12 @@ sub test_suite {
     $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 4, 2 );
     is_deeply( $res, { 4 => 'E' }, 'just the last of the xpath limit' );
     
-
+    Yote::ObjProvider::xpath_delete( '/apps/Yote::Test::TestAppNeedsLogin/azzy/2' );
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct after xpath_delete' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, [ qw/A B D E/ ], 'xpath list without limits correct after xpath_delete' );
+    
 
 } #test suite
 

@@ -72,6 +72,11 @@ sub xpath_insert {
     return $DATASTORE->xpath_insert( $path, $stow_val );
 }
 
+sub xpath_delete {
+    my $path = shift;
+    return $DATASTORE->xpath_delete( $path );
+}
+
 #
 # Returns a hash of paginated items that belong to the xpath.
 #
