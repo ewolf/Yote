@@ -61,12 +61,36 @@ sub xpath_count {
     return $DATASTORE->xpath_count( $path );
 }
 
+
+#
+# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+#
 sub xpath_insert {
     my $path = shift;
     my $item = shift;
     my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
     return $DATASTORE->xpath_insert( $path, $stow_val );
 }
+
+#
+# Returns a hash of paginated items that belong to the xpath.
+#
+sub paginate_xpath {
+    my( $path, $paginate_start, $paginate_length ) = @_;
+    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
+    return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
+} #paginate_xpath
+
+#
+# Returns a hash of paginated items that belong to the xpath. Note that this 
+# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
+#   rather than [ undef, undef, undef, 'val1', 'val2' ]
+#
+sub paginate_xpath_list {
+    my( $path, $paginate_start, $paginate_length ) = @_;
+    my $list = $DATASTORE->paginate_xpath_list( $path, $paginate_start, $paginate_length );
+    return [ map { xform_out( $_ ) } @$list ];
+} #paginate_xpath_list
 
 #
 # Deep clone this object. This will clone any yote object that is not an AppRoot.

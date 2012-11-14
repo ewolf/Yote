@@ -152,7 +152,7 @@ sub recycle_object {
     $self->do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
 
-# returns the max id
+# returns the max id (mostly used for diagnostics)
 sub max_id {
     my $self = shift;
     my( $highd ) = $self->selectrow_array( "SELECT max(ID) FROM objects" );
@@ -215,6 +215,87 @@ sub xpath {
 
     return $final_val;
 } #xpath
+
+#
+# Returns a hash of paginated items that belong to the xpath.
+#
+sub paginate_xpath {
+    my( $self, $path, $paginate_start, $paginate_length ) = @_;
+
+    my( @list ) = split( /\//, $path );
+    my $next_ref = 1;
+    for my $l (@list) {
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+
+        if( $ref ) {
+            $next_ref = $ref;
+        }
+        else {
+	    die "Unable to find xpath location for pagination";
+        }
+    } #each path part
+
+    my $PAG = '';
+    if( defined( $paginate_start ) ) {
+	$PAG = "LIMIT $paginate_start";
+	if( $paginate_length ) {
+	    $PAG .= ",$paginate_length"
+	}
+    }    
+
+    my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? $PAG", $next_ref );
+    my %ret;
+    for my $row (@$res) {
+	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
+    }
+    return \%ret
+} #paginate_xpath
+
+#
+# Returns a hash of paginated items that belong to the xpath. Note that this 
+# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
+#   rather than [ undef, undef, undef, 'val1', 'val2' ]
+#
+sub paginate_xpath_list {
+    my( $self, $path, $paginate_start, $paginate_length ) = @_;
+
+    my( @list ) = split( /\//, $path );
+    my $next_ref = 1;
+    for my $l (@list) {
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+
+        if( $ref ) {
+            $next_ref = $ref;
+        }
+        else {
+	    die "Unable to find xpath location for pagination";
+        }
+    } #each path part
+
+    my $PAG = '';
+    if( defined( $paginate_start ) ) {
+	$PAG = "LIMIT $paginate_start";
+	if( $paginate_length ) {
+	    $PAG .= ",$paginate_length"
+	}
+    }    
+
+    my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
+
+    my @ret;
+    for my $row (@$res) {
+	push @ret, $row->[1] || "v$row->[2]";
+    }
+    return \@ret
+} #paginate_xpath_list
 
 #
 # Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.

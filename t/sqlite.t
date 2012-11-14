@@ -444,7 +444,6 @@ sub test_suite {
 
     my $app_o = Yote::ObjProvider::app_for_object( $ta->get_obj(), $acct );
     ok( ! $ta->_is( $ta->get_obj() ), "getting object  is not the app itself" );
-    print STDERR Data::Dumper->Dump([$ta, $app_o]);
     ok( $ta->_is( $app_o ), "app for object worked" );
     ok( ! Yote::ObjProvider::app_for_object( $root ), "root object does not have an app" );
     
@@ -461,6 +460,30 @@ sub test_suite {
     ok( ref( $app ) eq 'Yote::Test::TestAppNeedsLogin', "xpath gets AppObj" );
     is(  Yote::ObjProvider::xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy/2' ), 'C', "xpath from AppRoot object" );
     is(  Yote::ObjProvider::xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy/0' ), 'A', "xpath from AppRoot object" );
+
+    # test xpath insert, paginate_xpath
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, [ qw/A B C D/ ], 'xpath list without limits correct' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 0, 2 );
+    is_deeply( $res, [ qw/A B/ ], 'xpath limits from 0 with 2 are correct' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 1, 2 );
+    is_deeply( $res, [ qw/B C/  ], 'xpath limits from 1 with 2 are correct' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 4, 2 );
+    is_deeply( $res, [ ], 'xpath limits beyond last index are empty' );
+    Yote::ObjProvider::xpath_insert( '/apps/Yote::Test::TestAppNeedsLogin/azzy/4', 'E' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, [ qw/A B C D E/ ], 'xpath list without limits correct' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 4, 2 );
+    is_deeply( $res, [ 'E' ], 'just the last of the xpath limit' );
+    
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct' );
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 0, 2 );
+    is_deeply( $res, { 0 => 'A', 1 => 'B' }, 'xpath list limits from 0 with 2 are correct' );
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 4, 2 );
+    is_deeply( $res, { 4 => 'E' }, 'just the last of the xpath limit' );
+    
+
 
 } #test suite
 
