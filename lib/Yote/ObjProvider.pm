@@ -309,8 +309,11 @@ sub apply_udpates {
 } #apply_updates
 
 sub stow_all {
-    my( @objs ) = values %{$Yote::ObjProvider::DIRTY};
-    for my $obj (@objs) {
+    my( %objs ) = values %{$Yote::ObjProvider::DIRTY};
+    for my $id (keys  %{$Yote::ObjProvider::WEAK_REFS} ) {
+	$objs{ $id } = $Yote::ObjProvider::WEAK_REFS->{$id};
+    }
+    for my $obj (values %objs) {
         stow( $obj );
     }
 } #stow_all
@@ -365,7 +368,8 @@ sub stow {
             }
         }
     } #given
-
+    delete $Yote::ObjProvider::WEAK_REFS->{$id};
+    
 } #stow
 
 sub stow_updates {
@@ -562,7 +566,6 @@ sub _raw_data {
 
 sub _store_weak {
     my( $id, $ref ) = @_;
-    die "SW" if ref($ref) eq 'Yote::Hash';
     my $weak = $ref;
     weaken( $weak );
     $Yote::ObjProvider::WEAK_REFS->{$id} = $weak;

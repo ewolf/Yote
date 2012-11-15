@@ -159,12 +159,33 @@ sub max_id {
     return $highd;
 }
 
+sub _xpath_to_list {
+    my $path = shift;
+    my( @path ) = split( //, $path );
+    my( $working, $escaped, @res ) = '';
+    for my $ch (@path) {
+	if( $ch eq '/' && ! $escaped ) {
+	    push( @res, $working );
+	    $working = '';
+	    $escaped = 0;
+	} 
+	elsif( $ch eq '\\' ) {
+	    $escaped = 1;
+	}
+	else {
+	    $working .= $ch;
+	}
+    }
+    push( @res, $working ) if defined( $working );
+    return @res;
+} #_xpath_to_list
+
 #
 # Returns the number of entries in the data structure given.
 #
 sub xpath_count {
     my( $self, $path ) = @_;
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
@@ -192,7 +213,7 @@ sub xpath_count {
 #
 sub xpath {
     my( $self, $path ) = @_;
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
     my $final_val;
     for my $l (@list) {
@@ -222,7 +243,7 @@ sub xpath {
 sub paginate_xpath {
     my( $self, $path, $paginate_start, $paginate_length ) = @_;
 
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
@@ -263,7 +284,7 @@ sub paginate_xpath {
 sub paginate_xpath_list {
     my( $self, $path, $paginate_start, $paginate_length ) = @_;
 
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
@@ -289,7 +310,6 @@ sub paginate_xpath_list {
     }    
 
     my $res = $self->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
-
     my @ret;
     for my $row (@$res) {
 	push @ret, $row->[1] || "v$row->[2]";
@@ -303,7 +323,7 @@ sub paginate_xpath_list {
 sub xpath_insert {
     my( $self, $path, $item_to_insert ) = @_;
 
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $field = pop @list;
     my $next_ref = 1;
     for my $l (@list) {
@@ -321,7 +341,11 @@ sub xpath_insert {
     } #each path part
 
     #find the object type to see if this is an array to append to, or a hash to insert to
-    $self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+    if( ref( $item_to_insert ) eq 'ARRAY' ) {
+	$self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+    } else {
+	$self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+    }
     if( index( $item_to_insert, 'v' ) == 0 ) {
 	$self->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
     } else {
@@ -336,7 +360,7 @@ sub xpath_insert {
 sub xpath_delete {
     my( $self, $path ) = @_;
 
-    my( @list ) = split( /\//, $path );
+    my( @list ) = _xpath_to_list( $path );
     my $field = pop @list;
     my $next_ref = 1;
     for my $l (@list) {
@@ -349,7 +373,7 @@ sub xpath_delete {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for insert";
+	    die "Unable to find xpath location for delete";
         }
     } #each path part
 
@@ -447,6 +471,7 @@ sub stow_updates {
 
 
             for my $i (0..$#$data) {
+		next unless defined $data->[$i];
                 my $val = $data->[$i];
                 if( index( $val, 'v' ) == 0 ) {
 		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );

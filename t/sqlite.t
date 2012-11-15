@@ -488,7 +488,27 @@ sub test_suite {
     is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct after xpath_delete' );
     $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
     is_deeply( $res, [ qw/A B D E/ ], 'xpath list without limits correct after xpath_delete' );
+
+    Yote::ObjProvider::xpath_insert( '/apps/Yote::Test::TestAppNeedsLogin/azzy/5', 'foo/bar' );
+    $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
+
+    Yote::ObjProvider::stow_all();    
+
+    my $hash = $app->get_hsh( {} );
+    $hash->{'baz/bof'} = "FOOME";
+    $hash->{Bingo} = "BARFO";
+    Yote::ObjProvider::stow_all();
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/hsh' );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, 'xpath paginate for hash, with one key having a slash in its name' );
     
+    # delete with key that has slash in the name
+    Yote::ObjProvider::xpath_delete( '/apps/Yote::Test::TestAppNeedsLogin/hsh/baz\\/bof' );    
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/hsh' );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, 'xpath delete with key having a slash in its name' );
+    Yote::ObjProvider::xpath_insert( '/apps/Yote::Test::TestAppNeedsLogin/hsh/\\/yakk\\/zakk\\/bakk', 'gotta slashy for it' );
+    $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/hsh' );
+    is_deeply( $res, { 'Bingo' => "BARFO", '/yakk/zakk/bakk' => 'gotta slashy for it' }, 'xpath paginate for hash, with one key having a slash in its name' );
 
 } #test suite
 
