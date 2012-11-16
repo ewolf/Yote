@@ -75,7 +75,9 @@ sub nologin_obj {
 sub array {
     my( $self, $data, $acct ) = @_;
     die "Need account" unless $acct;
-    return [ 'A', { inner => [ 'Juan', { peanut => 'Butter', ego => $self->get_yote_obj() }] }, $self->get_yote_obj()  ];
+    return [ 'A', { inner => [ 'Juan', { peanut => 'Butter', ego => $self->get_yote_obj() }] }, $self->get_yote_obj(),
+	     [ qw/ b a d e f c / ]
+	];
 }
 
 

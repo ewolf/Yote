@@ -340,12 +340,8 @@ sub xpath_insert {
         }
     } #each path part
 
-    #find the object type to see if this is an array to append to, or a hash to insert to
-    if( ref( $item_to_insert ) eq 'ARRAY' ) {
-	$self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
-    } else {
-	$self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
-    }
+    $self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+
     if( index( $item_to_insert, 'v' ) == 0 ) {
 	$self->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
     } else {
@@ -353,6 +349,40 @@ sub xpath_insert {
     }
 
 } #xpath_insert
+
+#
+# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+#
+sub xpath_list_insert {
+    my( $self, $path, $item_to_insert ) = @_;
+
+    my( @list ) = _xpath_to_list( $path );
+    my $next_ref = 1;
+    for my $l (@list) {
+        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+        my( $val, $ref ) = $self->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+        if( $ref ) {
+            $next_ref = $ref;
+        }
+        else {
+	    die "Unable to find xpath location for insert";
+        }
+    } #each path part
+
+    my( $field ) = $self->selectrow_array( "SELECT max(field) + 1 FROM field WHERE obj_id=?", $next_ref );
+
+    $self->do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+    if( index( $item_to_insert, 'v' ) == 0 ) {
+	$self->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
+    } else {
+	$self->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+    }
+
+} #xpath_list_insert
+
 
 #
 # Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.

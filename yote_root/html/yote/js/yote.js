@@ -247,7 +247,16 @@ $.yote = {
 			k.push( key );
 		    }
 		    return k;
-		}
+		},
+		values:function() {
+		    var thing = this;
+		    return this.keys().map(function(a) { return thing.get(a); } );
+		},
+		sort:function(sortfun) {
+		    var res = this.values().sort( sortfun );
+		    console.log( [ 'SORTY', res ] );
+		    return res;
+		}		
 	    };
 	    if( o.class == 'HASH' ) {
 		o.to_hash = function() {

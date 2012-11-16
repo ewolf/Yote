@@ -489,7 +489,7 @@ sub test_suite {
     $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
     is_deeply( $res, [ qw/A B D E/ ], 'xpath list without limits correct after xpath_delete' );
 
-    Yote::ObjProvider::xpath_insert( '/apps/Yote::Test::TestAppNeedsLogin/azzy/5', 'foo/bar' );
+    Yote::ObjProvider::xpath_list_insert( '/apps/Yote::Test::TestAppNeedsLogin/azzy', 'foo/bar' );
     $res = Yote::ObjProvider::paginate_xpath_list( '/apps/Yote::Test::TestAppNeedsLogin/azzy' );
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 

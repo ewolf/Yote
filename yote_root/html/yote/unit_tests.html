@@ -192,9 +192,23 @@ $().ready(function(){
         // have yote array returned
         step('array called on testappneedslogin to succeed');
         var arry = login.array();
-        is( arry.length(), 3, 'length of array returned' );
+        is( arry.length(), 4, 'length of array returned' );
         is( arry.get(0), 'A', 'element 0 correct' );
 
+	// test sorting functions
+	step( 'testing sorting function' );
+	var tosortarry = arry.get( 3 );
+	is( tosortarry.length(), 6, 'length of sorting array' );
+	is( tosortarry.get(0), 'b', 'first el' );
+	is( tosortarry.get(5), 'c', 'last el' );
+	var sortedarry = tosortarry.sort();
+	is( sortedarry.length, 6, 'sorted array length' );
+	is( sortedarry[0], 'a', 'first el sorted array' );
+	is( sortedarry[5], 'f', 'last el sorted array' );
+	sortedarry = tosortarry.sort(function( a,b ) { console.log( [ "COMPARE",a,b,a<b,b<a]);if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
+	is( sortedarry[5], 'a', 'last el rev sorted array' );
+	is( sortedarry[0], 'f', 'first el rev sorted array' );
+	
 
         //check if el 2 is object
         var inobj = arry.get(2);

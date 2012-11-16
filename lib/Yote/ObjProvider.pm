@@ -51,6 +51,12 @@ sub commit_transaction {
     return $DATASTORE->commit_transaction();
 }
 
+sub escape_for_xpath {
+    my $str = shift;
+    $str =~ s!/!\\/!g;
+    return $str;
+}
+
 sub xpath {
     my $path = shift;
     return xform_out( $DATASTORE->xpath( $path ) );
@@ -70,6 +76,16 @@ sub xpath_insert {
     my $item = shift;
     my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
     return $DATASTORE->xpath_insert( $path, $stow_val );
+}
+
+#
+# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+#
+sub xpath_list_insert {
+    my $path = shift;
+    my $item = shift;
+    my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
+    return $DATASTORE->xpath_list_insert( $path, $stow_val );
 }
 
 sub xpath_delete {
