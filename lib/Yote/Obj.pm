@@ -37,13 +37,22 @@ use vars qw($VERSION);
 $VERSION = '0.01';
 
 sub new {
-    my( $pkg, $id ) = @_;
+    my( $pkg, $id_or_data ) = @_;
     my $class = ref($pkg) || $pkg;
 
-    my $obj = bless {
-        ID       => $id,
-        DATA     => {},
-    }, $class;
+    my $obj;
+
+    if( ref( $id_or_data ) eq 'HASH' ) {
+	$obj = bless {
+	    DATA     => $id_or_data,
+	}, $class;
+    } 
+    else {
+	$obj = bless {
+	    ID       => $id_or_data,
+	    DATA     => {},
+	}, $class;
+    }
 
     my $needs_init = ! $obj->_id;
 

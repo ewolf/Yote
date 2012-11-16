@@ -225,6 +225,9 @@ $.yote.util = {
 	var cls = args[ 'classes' ] || '';
 	var type = args[ 'use_type' ] || 'text'
 	var extra = args[ 'extra' ] || '';
+	if( val ) {
+	    extra = extra + ' value="' + val.replace( '"', '&quot;' ) + '"';
+	}
 	if( cls ) {
 	    return '<input type="' + type + '" id="' + id + '" ' + extra + ' class="' + cls + '">';
 	} else {
@@ -271,24 +274,24 @@ $.yote.util = {
     }, //container_div
 
 
-    login_modal_div: false,
+    modal_main_divs: {},
 
-    prep_login_modal_div: function( div_id ) {
-	if( $.yote.util.login_modal_div ) 
+    prep_modal_div: function( div_id, main_div_id ) {
+	if( $.yote.util.modal_main_divs[ main_div_id ] ) 
 	    return true;
-	$.yote.util.login_modal_div = true;
+	$.yote.util.modal_main_divs[ main_div_id] = true;
 	$( div_id ).empty().append( '<div class="modal-header">' +
 				    ' <button type="button" class="close" id="close_modal_b" data-dismiss="modal" aria-hidden="true">&times;</button>' +
 				    '<h3 id="login_label"></h3>' +
 				    '</div>' +
-				    '<div class="modal-body" id="modal_div"></div>' )
+				    '<div class="modal-body" id="' + main_div_id + '"></div>' )
 	    .addClass( 'modal' ).addClass( 'hide' ).addClass( 'fade' )
 	    .attr( 'role', 'dialog' ).attr( 'aria-labelledby', "login_label" ).attr( 'aria-hidden', 'true' );
 	
-    }, //prep_login_modal_div
+    }, //prep_modal_div
 
     forgot_password: function( modal_attach_point, login_function ) {
-	$.yote.util.prep_login_modal_div( modal_attach_point );
+	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	var input_div_txt = $.yote.util.container_div(
 	    [
 		[ [ '<div id="forgot_email_row_div">Email ' + $.yote.util.make_text( 'email_t' ) + '</div>', 'span3' ] ],
@@ -307,16 +310,16 @@ $.yote.util = {
 		[ [ input_div_txt, 'span4' ], [ actions_panel_div, 'span2' ] ]
 	    ]
 	);
-	$( '#modal_div' ).empty().append( div_txt );
-	$( '#modal_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
+	$( '#modal_main_div' ).empty().append( div_txt );
+	$( '#modal_main_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
 	
 	$( '#login_label' ).empty().append( 'Recover Account' );
 	$( '#login_b' ).click( (function( attachpoint) { return function() { $.yote.util.login( attachpoint, login_function ); } })( modal_attach_point ) );
 	$( '#register_b' ).click( (function( attachpoint) { return function() { $.yote.util.register_account( attachpoint, login_function ); } })( modal_attach_point ) );
-	$( '#login_modal' ).on( 'shown', function() {
+	$( modal_attach_point ).on( 'shown', function() {
 	    $( '#email_t' ).focus();
 	} );
-	$( '#login_modal' ).modal();
+	$( modal_attach_point ).modal();
 	$( '#email_t' ).focus();
 	$.yote.util.button_actions( { button : '#forgot_b',
 				      texts  : [ '#email_t' ],
@@ -333,7 +336,7 @@ $.yote.util = {
 										    $( '#forgot_b' ).empty().append( 'Close' );
 										    $( '#forgot_b' ).unbind( 'click' );
 										    $( '#forgot_b' ).click( function() {
-											$( '#login_modal' ).modal( 'toggle' );
+											$( modal_attach_point ).modal( 'toggle' );
 										    } );
 										},
 										function( data ) { //fail
@@ -342,14 +345,14 @@ $.yote.util = {
 									      );
 				      },
 				      on_escape: function() {
-					  $( '#login_modal' ).modal( 'toggle' );
+					  $( modal_attach_point ).modal( 'toggle' );
 				      }
 				    } );
 	
     }, //forgot_password
     
     register_account:function( modal_attach_point, login_function ) {
-	$.yote.util.prep_login_modal_div( modal_attach_point );
+	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	var input_div_txt = $.yote.util.container_div(
 	    [
 		[ 'Handle', $.yote.util.make_text( 'handle_t' ) ],
@@ -370,17 +373,17 @@ $.yote.util = {
 		[ [ input_div_txt, 'span4' ], [ actions_panel_div, 'span2' ] ]
 	    ]
 	);
-	$( '#modal_div' ).empty().append( div_txt );
-	$( '#modal_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
+	$( '#modal_main_div' ).empty().append( div_txt );
+	$( '#modal_main_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
 	
 	/// for the login below, maybe move the create and forgot buttons to a new column on the right side?
 	$( '#login_label' ).empty().append( 'Create Account' );
 	$( '#login_b' ).click( (function( attachpoint) { return function() { $.yote.util.login( attachpoint, login_function ); } })( modal_attach_point ) );
 	$( '#forgot_b' ).click( (function( attachpoint) { return function() { $.yote.util.forgot_password( attachpoint, login_function ); } })( modal_attach_point ) );
-	$( '#login_modal' ).on( 'shown', function() {
+	$( modal_attach_point ).on( 'shown', function() {
 	    $( '#handle_t' ).focus();
 	} );
-	$( '#login_modal' ).modal();
+	$( modal_attach_point ).modal();
 	$( '#handle_t' ).focus();
 	
 	$.yote.util.button_actions( { button : '#register_b',
@@ -390,7 +393,7 @@ $.yote.util = {
 							       $( '#pw_t' ).val(),
 							       $( '#email_t' ).val(),
 							       function( data ) { //pass
-								   $( '#login_modal' ).modal( 'toggle' );
+								   $( modal_attach_point ).modal( 'toggle' );
 								   login_function();
 							       },
 							       function( data ) { //fail
@@ -407,13 +410,13 @@ $.yote.util = {
 					  }
 					  return ans;
 				      },
-				      on_escape : function() { $( '#login_modal' ).modal( 'toggle' ); }
+				      on_escape : function() { $( modal_attach_point ).modal( 'toggle' ); }
 				    } );
 	
     }, //register_account
 
     login: function( modal_attach_point, login_function ) {
-	$.yote.util.prep_login_modal_div( modal_attach_point );
+	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	var input_div_txt = $.yote.util.container_div(
 	    [
 		[ 'Handle', $.yote.util.make_text( 'login_t' ) ],
@@ -432,19 +435,19 @@ $.yote.util = {
 		[ [ input_div_txt, 'span4' ], [ actions_panel_div, 'span2' ] ]
 	    ]
 	);
-	$( '#modal_div' ).empty().append( div_txt );
-	$( '#modal_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
+	$( '#modal_main_div' ).empty().append( div_txt );
+	$( '#modal_main_div' ).css( 'overflow', 'hidden' ); //disable scrolling within the modal
 	
 	// set title of modal
 	$( '#login_label' ).empty().append( 'Log In' );
 	
 	// when opened, put the focus on the handle input
- 	$( '#login_modal' ).on( 'shown', function() {
+ 	$( modal_attach_point ).on( 'shown', function() {
 	    $( '#login_t' ).focus();
 	} );
 	
 	// turn on the modal, put the focus on the handle input
-	$( '#login_modal' ).modal();
+	$( modal_attach_point ).modal();
 	$( '#login_t' ).focus();
 	
 	// set up button actions
@@ -455,7 +458,7 @@ $.yote.util = {
 				      action : function() {
 					  $.yote.login( $( '#login_t' ).val(), $( '#pw_t' ).val(),
 							function( data ) { //pass
-							    $( '#login_modal' ).modal( 'toggle' );
+							    $( modal_attach_point ).modal( 'toggle' );
 							    login_function();
 							},
 							function( data ) { //fail
@@ -466,7 +469,7 @@ $.yote.util = {
     }, //login
     
     edit_account: function( modal_attach_point, app ) {
-	$.yote.util.prep_login_modal_div( modal_attach_point );	
+	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	// function to use when the file is selected. it both resets the file selector and shows the avatar image
 	function file_change_func() {
 	    account.upload_avatar( { avatar_file : $.yote.upload( '#fileup' ),
@@ -518,7 +521,7 @@ $.yote.util = {
 		  '<div id="ch_file_div"><input type="file" id="fileup" name="file"></div>' ],
 		[ [ '<div id="change_msg_div"></div>', 'span3' ] ]
 	    ] );
-	$( '#modal_div' ).empty().append( div_txt );
+	$( '#modal_main_div' ).empty().append( div_txt );
 	
 	// set the title of the modal
 	$( '#login_label' ).empty().append( 'Edit Account' );
@@ -550,11 +553,11 @@ $.yote.util = {
 	} ); //update_email_b
 	
 	// show the modal and focus the default input
-	$( '#login_modal' ).on( 'shown', function() {
+	$( modal_attach_point ).on( 'shown', function() {
 	    $( '#cur_pw_t' ).focus();
 	    $( '#close_modal_b' ).attr( 'disabled', false );
 	} );
-	$( '#login_modal' ).modal();
+	$( modal_attach_point ).modal();
 	$( '#cur_pw_t' ).focus();
     } //edit_account
 
