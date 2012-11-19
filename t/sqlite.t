@@ -82,23 +82,46 @@ sub test_suite {
     $root->get_default( "DEFAULT" );                        # 1
     $root->set_first( "FRIST" );                            # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
-    $root->set_reallybig( "BIG" x 1000);                    # 0
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 8, "highest id in database 8" );
+    $root->set_reallybig( "BIG" x 1.000);                    # 0
     $root->set_gross( 12 * 12 );                            # 1
     $root->set_array( ["THIS IS AN ARRAY"] );               # 2
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 9, "highest id in database 9" );
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
-    $root->get_cool_hash( { "llamapre" => ["prethis",new Yote::Obj(),{"preArray",new Yote::Obj()}] } );  # 2 (6 after stow all)
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 10, "highest id in database 10" );
+    
+    
+
+    my $newo = new Yote::Obj();
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 11, "highest id in database 11" );
+    my $somehash = {"preArray",$newo};
+    $newo->set_somehash( $somehash ); #testing for recursion
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 12, "highest id in database 12" );
+    $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 14, "highest id in database 14" );
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 15, "highest id in database 15" );
     Yote::ObjProvider::stow_all();
+    my $max_id = Yote::ObjProvider::max_id();
+    is( $max_id, 15, "highest id in database still 15" );
 
     # added default_hash, { 'llama', ["this", new yote obj, "Array, and a new yote object bringing the object count to 7 + 6 = 13
-    # the new max id should be 7 + defalt array 1, array 1, defaulthash 1, coolahash 5,hash 1
+    # the new max id should be 7 (root) + defalt_array 1,  array 1, default_hash 1, newobj 1, somehash 1, coolahash 1, arryincoolhash 1, hash 1
     my $max_id = Yote::ObjProvider::max_id();
-    is( $max_id, 16, "highest id in database is 16 after adding more objects" );
+    is( $max_id, 15, "highest id in database is 15 after adding more objects" );
 
+    # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
 
     my $recycled = Yote::ObjProvider->recycle_objects();
-    is( scalar( @$recycled ), 5, "recycled 5 objects" );
+    is( $recycled, 5, "recycled 5 objects" );
 
     # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
     
@@ -108,10 +131,10 @@ sub test_suite {
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 24, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 25, "Number of db rows saved to database with stow all" );
 
     my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
-    is( scalar(@$db_rows), 16, "Number of db rows saved to database not recycled" ); 
+    is( scalar(@$db_rows), 15, "Number of db rows saved to database not recycled" ); 
     my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
     is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
 
@@ -132,7 +155,7 @@ sub test_suite {
     ok( $root_clone->{ID} == 1, "Reloaded Root has id of 1" );
     is( $root_clone->get_default(), "DEFAULT", "get scalar with default" );
     is( $root_clone->get_first(), "FRIST", "simple scalar" );
-    is( length($root_clone->get_reallybig()), length("BIG" x 1000), "Big String" );
+    is( length($root_clone->get_reallybig()), length("BIG" x 1.000), "Big String" );
     is( $root_clone->get_gross(), 144, "simple number" );
     is_deeply( $root_clone->get_default_array(), ["DEFAULT ARRAY"], "Simple default array" );
     is_deeply( $root_clone->get_array(), ["THIS IS AN ARRAY"], "Simple array" );
@@ -323,7 +346,7 @@ sub test_suite {
     $deep_cloner->set_array( [ "array", { of => "Awsome" } ] );
     $deep_cloner->set_hash( { "woot" => "Biza" } );
     $deep_cloner->set_txt_value( "This is text" );
-    $deep_cloner->set_big_txt_value( "BIG" x 1000 );
+    $deep_cloner->set_big_txt_value( "BIG" x 1.000 );
     $target_obj->set_deep_cloner( $deep_cloner );
     my $shallow_cloner = new Yote::Test::TestNoDeepCloner();    
     $target_obj->set_shallow_cloner( $shallow_cloner );
@@ -434,13 +457,14 @@ sub test_suite {
     is( $aaa->[2], $ino, "3rd element outer array" );
 
 
-    $root->add_to_foo( "an", "array", "test" );
+    $root->add_to_rogers( "an", "array", "test" );
     my $hf = $root->get_hashfoo( {} );
     $hf->{zort} = 'zot';
 
     $ta->give_obj( [ "Fooo obj" ], $acct );
 
     Yote::ObjProvider::stow_all();
+    
 
     my $app_o = Yote::ObjProvider::app_for_object( $ta->get_obj(), $acct );
     ok( ! $ta->_is( $ta->get_obj() ), "getting object  is not the app itself" );
@@ -450,7 +474,7 @@ sub test_suite {
 
     is( Yote::ObjProvider::path_to_root( $hello_app ), '/apps/Yote::Test::Hello', 'path to root works' );
 
-    is( Yote::ObjProvider::xpath("/foo/1"), "array", "xpath with array" );
+    is( Yote::ObjProvider::xpath("/rogers/1"), "array", "xpath with array" );
     is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
 
     Yote::ObjProvider::stow_all();
@@ -509,6 +533,12 @@ sub test_suite {
     Yote::ObjProvider::xpath_insert( '/apps/Yote::Test::TestAppNeedsLogin/hsh/\\/yakk\\/zakk\\/bakk', 'gotta slashy for it' );
     $res = Yote::ObjProvider::paginate_xpath( '/apps/Yote::Test::TestAppNeedsLogin/hsh' );
     is_deeply( $res, { 'Bingo' => "BARFO", '/yakk/zakk/bakk' => 'gotta slashy for it' }, 'xpath paginate for hash, with one key having a slash in its name' );
+
+    # test hash argument to new obj :
+    my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
+    is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
+    is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
+    
 
 } #test suite
 

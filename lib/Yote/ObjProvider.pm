@@ -325,7 +325,7 @@ sub apply_udpates {
 } #apply_updates
 
 sub stow_all {
-    my( %objs ) = values %{$Yote::ObjProvider::DIRTY};
+    my( %objs ) = %{$Yote::ObjProvider::DIRTY};
     for my $id (keys  %{$Yote::ObjProvider::WEAK_REFS} ) {
 	$objs{ $id } = $Yote::ObjProvider::WEAK_REFS->{$id};
     }
@@ -486,16 +486,17 @@ sub recycle_objects {
     $start_id ||= 2;
     $end_id   ||= $self->max_id();
 
-    my @recycled;
+    my $recycled;
     
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
 	my $obj = fetch( $id );
 	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
 	    $self->recycle_object( $id );
-	    push @recycled, $id;
+	    ++$recycled;
 	}
     }
-    return \@recycled;
+    #print STDERR "RECYCLED $recycled objects\n";
+    return $recycled;
 } #recycle_objects
 
 sub max_id {

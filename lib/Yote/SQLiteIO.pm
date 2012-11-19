@@ -117,11 +117,13 @@ sub reset_datastore {
 # Returns true if the given object traces back to the root.
 #
 sub has_path_to_root {
-    my( $self, $obj_id ) = @_;
+    my( $self, $obj_id, $seen ) = @_;
     return 1 if $obj_id == 1;
+    $seen ||= { $obj_id => 1 };
     my $res = $self->selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
-    for my $row (@$res) {
-	if( $self->has_path_to_root( @$row ) ) {
+    for my $o_id (map { $_->[0] } @$res) {
+	next if $seen->{ $o_id }++;
+	if( $self->has_path_to_root( $o_id, $seen ) ) {
 	    return 1;
 	}
     }

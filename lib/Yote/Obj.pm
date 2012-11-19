@@ -37,19 +37,20 @@ use vars qw($VERSION);
 $VERSION = '0.01';
 
 sub new {
-    my( $pkg, $id_or_data ) = @_;
+    my( $pkg, $id_or_hash ) = @_;
     my $class = ref($pkg) || $pkg;
 
     my $obj;
 
-    if( ref( $id_or_data ) eq 'HASH' ) {
+    if( ref( $id_or_hash ) eq 'HASH' ) {
 	$obj = bless {
-	    DATA     => $id_or_data,
+	    ID       => undef,
+	    DATA     => {},
 	}, $class;
     } 
     else {
 	$obj = bless {
-	    ID       => $id_or_data,
+	    ID       => $id_or_hash,
 	    DATA     => {},
 	}, $class;
     }
@@ -58,6 +59,13 @@ sub new {
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->init() if $needs_init;
+    
+    if( ref( $id_or_hash ) eq 'HASH' ) {
+	for my $key ( %$id_or_hash ) {
+	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
+	}
+    }
+
 
     return $obj;
 } #new
