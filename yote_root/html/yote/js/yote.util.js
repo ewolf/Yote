@@ -242,15 +242,16 @@ $.yote.util = {
 	$( root ).empty().append( '<div class="' + classes + '">' + text + '</div>' );
     }, // info_div
 
-    container_div: function( rows, is_fluid ) {
-	var container_class = 'container';
+    container_div: function( rows, arg ) {
+	var args = arg || {};
+	var container_class = args[ 'class' ] ||  'container';
+	var div_id = args[ 'div_id' ] ? ' id="' + args[ 'div_id' ] + '"' : '';
 	var row_class = 'row';
-	if( is_fluid ) {
-	    container_class = 'container-fluid';
+	if( container_class == 'container-fluid' ) {
 	    row_class = 'row-fluid';
 	}
 	
-	var txt = '<div class="' + container_class + '">';
+	var txt = '<div class="' + container_class + '" ' + div_id + '>';
 	for( var i=0; i < rows.length; i++ ) {
 	    var row = rows[ i ];
 	    if( typeof row === 'object' ) {
@@ -289,6 +290,84 @@ $.yote.util = {
 	    .attr( 'role', 'dialog' ).attr( 'aria-labelledby', "login_label" ).attr( 'aria-hidden', 'true' );
 	
     }, //prep_modal_div
+
+
+    make_login_bar:function( args ) {
+	/*
+	  This builds a login bar with the simple ( so far ) format of a header bar like :   [ { brand icon/html }           { login menu } ]
+	*/
+
+	var cls_f = (function(arg) {
+	    return function( cls ) {
+		var brand_html             = arg[ 'brand_html' ];
+		var app                    = arg[ 'app' ];
+		var logged_in_function     = arg[ 'logged_in_function' ] || function( login ) {};
+		var not_logged_in_function = arg[ 'not_logged_in_function' ] || function() {};
+		var container_id           = arg[ 'container_id' ];
+
+		var my_login = $.yote.get_login();
+		var avatar_img = '';
+		var side_txt = '';
+		
+		var side_array = [];
+		
+		if( my_login ) {
+		    $( container_id ).empty().append( brand_html + 
+						      '<ul class="nav" role="navigation">' +
+						      // other navigation options go here
+						      '</ul>' +
+						      '<ul class="nav pull-right" role="navigation">' +
+						      '<li class="dropdown">' +
+						      '<a id="login-label" href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">' +
+						      'logged in as <b>' + my_login.get_handle() + '</b>' +
+						      '<b class="caret"></b>' +
+						      '</a>' +
+						      '<ul class="dropdown-menu" role="menu" aria-labelledby="login-label">' +
+						      '<li><a id="accountsettings" tabindex="-1" href="#">Account Settings</a></li>' +
+						      '<li><a id="changelogin" tabindex="-1" href="#">Sign In as other user</a></li>' +
+						      '<li><a id="logout" tabindex="-1" href="#">Log Out</a></li>' +
+						      '</ul>'+
+						      '</li>' );
+		    $( '#accountsettings' ).click(function() { $.yote.util.edit_account( '#modal_div', app ); });
+
+		    var logout = function() {
+			$.yote.logout();
+			cls();
+		    } //logout
+
+		    $( '#changelogin' ).click(function() {
+			logout();
+			$.yote.util.login( '#modal_div', cls );
+		    });
+		    $( '#logout' ).click(logout);
+		    
+		    logged_in_function( my_login );
+		}
+		else {
+		    $( container_id ).empty().append( '<a class="brand" href="./index.html">Comic Caddy</a>' +
+						      '<ul class="nav" role="navigation">' +
+						      // other navigation options go here
+						      '</ul>' +
+						      '<ul class="nav pull-right" role="navigation">' +
+						      '<li class="dropdown">' +
+						      '<a id="login" href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">' +
+						      'Log In' +
+						      '</a>' +
+						      '</li>' );
+		    $( '#login' ).click(function() {
+			$.yote.util.login( '#modal_div', cls );
+		    } );
+
+		}
+	    } } )( args ); //cls_f
+
+	// invoke the call initially
+	(function(clsf){
+	    clsf( clsf );		
+	})( cls_f );
+	
+    }, //make_login_bar
+
 
     forgot_password: function( modal_attach_point, login_function ) {
 	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );

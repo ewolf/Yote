@@ -258,7 +258,7 @@ sub paginate_xpath {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for pagination";
+	    die "Unable to find xpath location '$path' for pagination";
         }
     } #each path part
 
@@ -299,7 +299,7 @@ sub paginate_xpath_list {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for pagination";
+	    die "Unable to find xpath location '$path' for pagination";
         }
     } #each path part
 
@@ -338,7 +338,7 @@ sub xpath_insert {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for insert";
+	    die "Unable to find xpath location '$path' for insert";
         }
     } #each path part
 
@@ -370,7 +370,7 @@ sub xpath_list_insert {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for insert";
+	    die "Unable to find xpath location '$path' for insert";
         }
     } #each path part
 
@@ -405,7 +405,7 @@ sub xpath_delete {
             $next_ref = $ref;
         }
         else {
-	    die "Unable to find xpath location for delete";
+	    die "Unable to find xpath location '$path' for delete";
         }
     } #each path part
 

@@ -204,6 +204,7 @@ sub fetch {
             }
             default {
                 eval("require $class");
+		print STDERR Data::Dumper->Dump([$!,$@]) if $! || $@;
                 my $obj = $class->new( $id_or_xpath );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id_or_xpath;
