@@ -10,7 +10,7 @@ use vars qw($VERSION);
 
 $VERSION = '0.01';
 
-sub init {
+sub _init {
     my $self = shift;
     #when the hello is created for the first time, install a counter to track how many times it is called
     my $counter = $self->get_counter( new Yote::Obj() );

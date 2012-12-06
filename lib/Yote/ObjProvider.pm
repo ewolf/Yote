@@ -204,7 +204,7 @@ sub fetch {
             }
             default {
                 eval("require $class");
-		print STDERR Data::Dumper->Dump([$!,$@]) if $! || $@;
+		print STDERR Data::Dumper->Dump([$class,$!,$@]) if $@;
                 my $obj = $class->new( $id_or_xpath );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id_or_xpath;
@@ -276,7 +276,7 @@ sub package_methods {
     unless( $methods ) {
 
         no strict 'refs';
-	my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|unix_std_crypt|is|add_to_.*|remove_from_.*|init|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
+	my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|unix_std_crypt|is|add_to_.*|remove_from_.*|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
         for my $class ( @{"${pkg}\::ISA" } ) {
             my $pm = package_methods( $class );

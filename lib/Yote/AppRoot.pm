@@ -172,7 +172,7 @@ Returns the root object. This is always object 1 for the App Server.
 
 =over 4
 
-=item init - called the first time this root is created. Initializes account root.
+=item _init - called the first time this root is created. Initializes account root.
 
 =back
 

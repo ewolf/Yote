@@ -10,10 +10,10 @@ use base 'Yote::Obj';
 # The Cron object stores.
 #
 
-sub init {
+sub _init {
     my $self = shift;
     $self->set__crond( {} );
-} #init
+} #_init
 
 sub add {
     my( $self, $data, $acct ) = @_;

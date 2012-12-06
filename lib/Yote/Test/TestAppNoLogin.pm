@@ -17,7 +17,7 @@ $VERSION = '0.01';
 #
 # need subs to return : scalars, lists, hashes, g-objects
 #
-sub init {
+sub _init {
     my $self = shift;
     $self->set_File( undef );
 }

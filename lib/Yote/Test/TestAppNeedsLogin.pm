@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 $VERSION = '0.01';
 
-sub init {
+sub _init {
     my $self = shift;
     $self->set_yote_obj( new Yote::Test::TestAppNoLogin() );
     $self->get_yote_obj()->set_name( "INITY" );

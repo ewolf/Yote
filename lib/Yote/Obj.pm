@@ -58,7 +58,7 @@ sub new {
     my $needs_init = ! $obj->_id;
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
-    $obj->init() if $needs_init;
+    $obj->_init() if $needs_init;
     
     if( ref( $id_or_hash ) eq 'HASH' ) {
 	for my $key ( %$id_or_hash ) {
@@ -81,7 +81,7 @@ sub is {
 # Called the very first time this object is created. It is not called
 # when object is loaded from storage.
 # 
-sub init {}
+sub _init {}
 
 #
 # Updates the object but only for capitolized keys that already exist.
@@ -347,7 +347,7 @@ Yote::Obj is a container class with hooks into the persistance engine. It has fe
 
 The new method takes no arguments. Any object created with new automatically gets assigned an ID and init is called only once before the object is saved in the data store.
 
-=item init
+=item _init
 
 This is a stub method meant to be overridden by subclasses.
 

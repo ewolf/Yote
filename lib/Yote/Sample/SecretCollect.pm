@@ -13,14 +13,14 @@ use base 'Yote::AppRoot';
 #    set_riddle_count. Calling it here will mean that it starts with an empty
 #    riddles list.
 #
-sub init {
+sub _init {
 
     my $self = shift;
 
     $self->set_riddles( [] );
     $self->set_riddle_count( 0 );
 
-} #init
+} #_init
 
 sub _init_account {
     my( $self, $acct ) = @_;

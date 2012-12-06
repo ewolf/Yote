@@ -11,14 +11,14 @@ our $EMAIL_CACHE = {};
 
 use strict;
 
-sub init {
+sub _init {
     my $self = shift;
     $self->set_apps({});
     $self->set__handles({});
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
-} #init
+} #_init
 
 #
 # Returns a list starting with the app object, followed by objects that the app wants to bring with
@@ -53,10 +53,6 @@ sub _purge_app {
     my $apps = $self->get_apps();
     return delete $apps->{$app};
 } #_purge_app
-
-sub number_of_accounts {
-    return Yote::ObjProvider::xpath_count( "/_handles" );
-} #number_of_accounts
 
 #
 # Returns this root object.
