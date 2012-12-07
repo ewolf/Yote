@@ -1,3 +1,34 @@
+0.092
+
+In this update, I'm cleaning up and documenting the code, getting it ready for the major alpha release.
+
+I've disabled Cron and Caching for now. There are some big to-dos before the alpha launch.
+
+NEW FEATURES :
+
+  * UPLOAD AND SERVER FILES : as part of the javascript/yote IO.
+  * ISSUES GUEST tokens to track the objects that are used by those not logged in.
+
+BUG FIXES :
+
+  * SAVE ON SHUTDOWN : there was a bug where it would not save the very last command issued.
+
+TODO ( before the alpha release )
+
+  * Enable caching that pays
+  * Enable Cron
+  * Make guest tokens required for running any non-root app command.
+  * Create yote admin page for
+        - viewing apps
+        - viewing user login objects
+        - cron admin
+  * Create guest page to be hosted at madyote.com
+  * Make installer work for the common case of user having root.
+
+#---------------------
+#
+#---------------------
+
 April 18, 2012.
 
 I skipped a few versions here and a lot has happened.
