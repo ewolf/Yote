@@ -81,6 +81,7 @@ if (!Array.prototype.map) {
 } //map definition
 
 $.yote = {
+    guest_token:null,
     token:null,
     err:null,
     objs:{},
@@ -99,6 +100,9 @@ $.yote = {
 		this.login_obj = ret;
 	    }
         }
+
+	$.yote.guest_token = root.guest_token();
+
     }, //init
 
     fetch_root:function() {
@@ -289,8 +293,7 @@ $.yote = {
 				    failhandler:failhandler,
                                     obj_id:this.id,
 				    passhandler:passhandler,
-				    wait:true,
-				    t:$.yote.token
+				    wait:true
 				} ); //sending message
 				if( ! ret ) {
 				    return null;
@@ -354,8 +357,7 @@ $.yote = {
 				    failhandler:failhandler,
                                     obj_id:this.id,
 				    passhandler:passhandler,
-				    wait:true,
-				    t:$.yote.token
+				    wait:true
 				} ); //sending message
 
 				if( ! ret ) {
@@ -633,6 +635,7 @@ $.yote = {
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
             t:$.yote.token,
+	    gt:$.yote.guest_token,
             w:wait
         };
 	var resp;
@@ -714,6 +717,7 @@ $.yote = {
 	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
 	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
     
 	for( var i=0; i<cb_list.length; i++ ) {

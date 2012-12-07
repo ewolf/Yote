@@ -70,15 +70,14 @@ sub fetch_root {
 #
 sub fetch {
     my( $self, $data, $account ) = @_;
+    die "Access Error" unless $account;
+
     if( ref( $data ) eq 'ARRAY' ) {
-	return [grep { $self->_account_can_access( $account, $_ ) } map { Yote::ObjProvider::fetch( $_ ) } @$data ];
-    } else {
-	my $obj = Yote::ObjProvider::fetch( $data );
-	if( $self->_account_can_access( $account, $obj ) ) {
-	    return [$obj];
-	}
-    }
-    die "Access Error";
+	my $login = $account->get_login();
+	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];
+    } 
+    return [ Yote::ObjProvider::fetch( $data ) ];
+
 } #fetch
 
 #
@@ -99,7 +98,7 @@ sub login {
 
     if( $data->{h} ) {
         my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
-        if( $login && ($login->get__password() eq $self->_encrypt_pass( $data->{p}, $login) ) ) {
+        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
             return { l => $login, t => $self->_create_token( $login, $ip ) };
         }
     }
@@ -169,7 +168,7 @@ sub create_login {
 
         $new_login->set__time_created( time() );
 
-        $new_login->set__password( $self->_encrypt_pass($password, $new_login) );
+        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login) );
 
 	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login );
 	Yote::ObjProvider::xpath_insert( "/_handles/$handle", $new_login );
@@ -182,6 +181,20 @@ sub create_login {
 } #create_login
 
 #
+# Returns a token for non-logging in use.
+#
+sub guest_token {
+    my $ip = shift;
+    my $token = int( rand 9 x 10 );
+    $Yote::ObjProvider::IP_TO_GUEST_TOKEN->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
+    $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{$token} = {};  #memory leak? @todo - test this
+
+    # @TODO write a Cache class to hold onto objects, with an interface like fetch( obj_id, login, guest_token )
+
+    return $token;
+} #guest_token
+
+#
 # Removes a login. Need not only to be logged in, but present all credentials
 #   (client side) use : remove_login({h:'handle',e:'email',p:'password'});
 #             returns : "deleted account"
@@ -192,7 +205,7 @@ sub remove_login {
     my $login = $acct->get_login();
 
     if( $login && 
-        $self->_encrypt_pass($args->{p}, $login) eq $login->get__password() &&
+        Yote::ObjProvider::encrypt_pass($args->{p}, $login) eq $login->get__password() &&
         $args->{h} eq $login->get_handle() &&
         $args->{e} eq $login->get_email() &&
         ! $login->get_is__first_login() ) 
@@ -277,7 +290,7 @@ sub recovery_reset_password {
         my $now = $login->get__last_recovery_time();
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
-            $login->set__password( $self->_encrypt_pass( $newpass, $login ) );
+            $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login ) );
             return $login->get__recovery_from_url();
         }
     }

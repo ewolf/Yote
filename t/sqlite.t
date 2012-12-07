@@ -314,8 +314,13 @@ sub test_suite {
     my $new_obj = new Yote::Obj;
     $new_obj->set_cow( "FIRSTY" );
     $root->set_obj( $new_obj );
+    $root->add_once_to_array( "MORE STUFF", "MORE STUFF", "MORE STUFF" );
+
+    $simple_array = $root->get_array();
+    is( scalar(@$simple_array), 3, "add_once_to test array count" );
+
     $root->add_to_array( "MORE STUFF" );
-    $root->add_to_array( "MORE STUFF" );
+    $root->add_to_array( "MORE STUFF", "MORE STUFF" );
     Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
@@ -324,16 +329,32 @@ sub test_suite {
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
-    is( scalar(@$simple_array), 4, "add_to test array count" );
+    is( scalar(@$simple_array), 6, "add_to test array count" );
 
     is_deeply( $root_3->get_array(), $simple_array, "add to test" );
 
     $root->remove_from_array( "MORE STUFF" );
     Yote::ObjProvider::stow_all();
-    is( scalar(@$simple_array), 2, "add_to test array count after remove" );
+    is( scalar(@$simple_array), 5, "add_to test array count after remove" );
     $root->remove_from_array( "MOREO STUFF" );
     $simple_array = $root_3->get_array();
-    is( scalar(@$simple_array), 2, "add_to test array count after second remove" );
+    Yote::ObjProvider::stow_all();
+    is( scalar(@$simple_array), 5, "add_to test array count after second remove" );
+    $root->remove_all_from_array( "MORE STUFF" );
+    Yote::ObjProvider::stow_all();
+    $simple_array = $root_3->get_array();
+    is_deeply( $root_3->get_array(), $simple_array, "add to test" );
+    is( scalar(@$simple_array), 2, "add_to test array count after remove all" );
+
+    $root->add_once_to_array( "MORE STUFF", "MORE STUFF 2", "MORE STUFF 3" );
+    Yote::ObjProvider::stow_all();
+    $simple_array = $root_3->get_array();
+    is( scalar(@$simple_array), 5, "add_to test array count after remove all" );
+
+    $root->remove_from_array( "MORE STUFF 3", "MORE STUFF", "MORE STUFF 2" );
+    Yote::ObjProvider::stow_all();
+    $simple_array = $root_3->get_array();
+    is( scalar(@$simple_array), 2, "add_to test array count after remove all" );
 
     my $root_4 = Yote::ObjProvider::fetch( 1 );
 

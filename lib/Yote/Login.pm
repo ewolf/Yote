@@ -18,9 +18,9 @@ sub reset_password {
 
     die "Passwords do not match" unless $newpass eq $newpass_verify;
 
-    die "Old Password is incorrect" unless $self->get__password() eq $self->_encrypt_pass( $oldpass, $self );
+    die "Old Password is incorrect" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $oldpass, $self );
 
-    $self->set__password( $self->_encrypt_pass($newpass, $self) );
+    $self->set__password( Yote::ObjProvider::encrypt_pass($newpass, $self) );
     return "Password Reset";
 
 } #reset_password
@@ -30,7 +30,7 @@ sub reset_email {
     my $email = $data->{email};
     my $pw = $data->{pw};
 
-    die "Incorrect Password" unless $self->get__password() eq $self->_encrypt_pass( $pw, $self );
+    die "Incorrect Password" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $pw, $self );
 
     $self->set_email( $email );
     return "Updated email";

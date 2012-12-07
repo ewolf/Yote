@@ -64,7 +64,7 @@ sub read_messages {
 	    $all_messages = [ grep {  $_->get_message()->get_from()->get_handle() =~ /$data->{filter}{from}/i  } @$all_messages ];
 	}
 	if( $data->{filter}{from} ) {
-	    $all_messages = [ grep { $data->{filter}{from}->is( $_->get_message()->get_from() )  } @$all_messages ];
+	    $all_messages = [ grep { $data->{filter}{from}->_is( $_->get_message()->get_from() )  } @$all_messages ];
 	}
 	if( $data->{filter}{subject} ) {
 	    $all_messages = [ grep { $_->get_message()->get_subject() =~ /$data->{filter}{subject}/i } @$all_messages ];

@@ -16,6 +16,62 @@ use base 'Yote::Obj';
 use vars qw($VERSION);
 $VERSION = '0.085';
 
+# ------------------------------------------------------------------------------------------
+#      * INITIALIZATION *
+# ------------------------------------------------------------------------------------------
+
+
+#
+# Called when objects are being fetched. Returns a list of other objects that should be included with this one.
+#
+sub _extra_fetch {
+    return [];
+}
+
+
+#
+# Returns the account root attached to this AppRoot for the given account.
+#
+sub _get_account {
+    my( $self, $login ) = @_;
+    my $accts = $self->get__account_roots({});
+    my $acct = $accts->{$login->{ID}};
+    unless( $acct ) {
+        $acct = $self->_new_account();
+        $acct->set_login( $login );
+	$acct->set_handle( $login->get_handle() );
+        $accts->{$login->{ID}} = $acct;
+	$self->_init_account( $acct );
+    }
+    return $acct;
+
+} #_get_account
+
+#
+# Intializes the account object passed in.
+#
+sub _init_account {}
+
+#
+# Override to use different classes for the account objects.
+#
+sub _new_account {
+    return new Yote::Account();
+}
+
+# ------------------------------------------------------------------------------------------
+#      * INITIALIZATION *
+# ------------------------------------------------------------------------------------------
+
+
+#
+# Return the account object for this app.
+#
+sub account {
+    my( $self, $data, $account ) = @_;
+    return $account;
+} #account
+
 #
 # Available to all apps. Used for verification and for cookie login.
 #
@@ -31,14 +87,6 @@ sub token_login {
     }
     return 0;
 } #token_login
-
-#
-# Return the account object for this app.
-#
-sub account {
-    my( $self, $data, $account ) = @_;
-    return $account;
-} #account
 
 #
 # Returns the direct descendents of the object passed in.
@@ -74,51 +122,6 @@ sub multi_fetch {
     return \@ret;
 } #multi_fetch
 
-#
-# Override to use different classes for the account objects.
-#
-sub _new_account {
-    return new Yote::Account();
-}
-
-#
-# Returns the account root attached to this AppRoot for the given account.
-#
-sub _get_account {
-    my( $self, $login ) = @_;
-    my $accts = $self->get__account_roots({});
-    my $acct = $accts->{$login->{ID}};
-    unless( $acct ) {
-        $acct = $self->_new_account();
-        $acct->set_login( $login );
-	$acct->set_handle( $login->get_handle() );
-        $accts->{$login->{ID}} = $acct;
-	$self->_init_account( $acct );
-    }
-    return $acct;
-
-} #_get_account
-
-#
-# Intializes the account object passed in.
-#
-sub _init_account {}
-
-#
-# Called when objects are being fetched. Returns a list of other objects that should be included with this one.
-#
-sub _extra_fetch {
-    return [];
-}
-
-#
-# Returns true if the object was given to the account via the API, as opposed to a random object id
-#   being picked.
-#
-sub _account_can_access {
-    return 1;
-} #_account_can_access
-
 
 
 1;
@@ -133,10 +136,10 @@ Yote::AppRoot - Application Server Base Objects
 
 Extend this class to make an application, and fill it with methods that you want for your application.
 
-
 =head1 DESCRIPTION
 
-Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
+Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. 
+A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
 
 =head2 Client Methods
 

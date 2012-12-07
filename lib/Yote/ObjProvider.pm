@@ -10,12 +10,15 @@ use Yote::Obj;
 use Yote::YoteRoot;
 use Yote::SQLiteIO;
 
+use Crypt::Passwd;
 use WeakRef;
 
 $Yote::ObjProvider::DIRTY = {};
 $Yote::ObjProvider::CHANGED = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
+$Yote::ObjProvider::LOGIN_OBJECTS = {};
+$Yote::ObjProvider::GUEST_TOKEN_OBJECTS = {};
 
 our $DATASTORE;
 
@@ -42,6 +45,14 @@ sub init {
 sub disconnect {
     return $DATASTORE->disconnect();
 }
+
+#
+# Encrypt the password so its not saved in plain text.
+#
+sub encrypt_pass {
+    my( $pw, $acct ) = @_;
+    return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
+} #encrypt_pass
 
 sub start_transaction {
     return $DATASTORE->start_transaction();

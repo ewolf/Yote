@@ -241,7 +241,7 @@ sub xpath {
 
 #
 # Returns a hash of paginated items that belong to the xpath.
-#
+# @TODO - maybe get rid of this, since hash is not a good order dependent thing
 sub paginate_xpath {
     my( $self, $path, $paginate_start, $paginate_length ) = @_;
 

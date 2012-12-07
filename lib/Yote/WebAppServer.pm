@@ -134,7 +134,8 @@ sub process_http_request {
     #   * d  - data
     #   * oi - object id to invoke command on
     #   * p  - ip address
-    #   * t  - token for verification
+    #   * t  - login token for verification
+    #   * at - app (non-login) token for verification
     #   * w  - if true, waits for command to be processed before returning
     #
 
@@ -146,7 +147,7 @@ sub process_http_request {
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     print STDERR Data::Dumper->Dump(["PATH : '$path[0]'"]);
-    if( $path[0] eq '_' || $path[0] eq '_u' || $path[0] eq '_d' ) { # _ is normal yote io, _u is upload file, _d is download file
+    if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
 	my( $vars, $return_header );
 
 	if( $path[0] eq '_' ) {
@@ -171,6 +172,7 @@ sub process_http_request {
             oi => $obj_id,
             p  => $remote_ip,
             t  => $vars->{t},
+	    at => $vars->{at},
             w  => $wait,
         };
 
@@ -294,46 +296,49 @@ sub _process_command {
         my $obj_id = $command->{oi};
         my $app_id = $command->{ai};
 
-        my $app        = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
+        my $app         = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
-        my $data       = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login      = $app->token_login( $command->{t}, undef, $command->{p} );
+        my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
+        my $login       = $app->token_login( $command->{t}, undef, $command->{p} );
+	my $guest_token = $command->{gt};
+
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
 
-        my $app_object =Yote::ObjProvider::fetch( $obj_id ) || $app;
+        my $app_object = Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
         my $account;
         if( $login ) {
             $account = $app->_get_account( $login );
-
-            if( ! $app->_account_can_access( $account, $app_object ) ) {
-                die "Access Error";
-            }
         }
 	Yote::ObjProvider::reset_changed();
 
         my $ret = $app_object->$action( $data, $account, $command->{p} );
 
-	my( $dirty_delta, $dirty_data );
-	if( $login && $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} } ) {
-	    $dirty_delta = Yote::ObjProvider::fetch_changed();
-	    if( @$dirty_delta ) {
-		$dirty_data = {};
-		for my $d_id ( grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$dirty_delta ) {
-		    my $dobj = Yote::ObjProvider::fetch( $d_id );
-		    if( ref( $dobj ) eq 'ARRAY' ) {
-			$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
-		    } elsif( ref( $dobj ) eq 'HASH' ) {
-			$dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
-		    } else {
-			$dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
-		    }
+	my $dirty_delta = Yote::ObjProvider::fetch_changed();
+
+	my( $dirty_data );
+	if( @$dirty_delta ) {
+	    $dirty_data = {};
+	    my( @allowed_dirty );
+	    if( $login && $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} } ) {
+		@allowed_dirty = grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$dirty_delta;
+	    } else {
+		@allowed_dirty = grep { $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{ $guest_token }{ $_ } } @$dirty_delta;
+	    }
+	    for my $d_id ( @allowed_dirty) {
+		my $dobj = Yote::ObjProvider::fetch( $d_id );
+		if( ref( $dobj ) eq 'ARRAY' ) {
+		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
+		} elsif( ref( $dobj ) eq 'HASH' ) {
+		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
+		} else {
+		    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
 		}
 	    }
-	} # if login to collect dirty objects
+	} #if there was a dirty delta
 
-        $resp = $dirty_data ? { r => $app_object->_obj_to_response( $ret, $login, 1 ), d => $dirty_data } : { r => $app_object->_obj_to_response( $ret, $login, 1 ) };
+        $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ), d => $dirty_data } : { r => $app_object->_obj_to_response( $ret, $login, 1, $guest_token ) };
 
 	if( $login ) {
 	    $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $app_object->{ID} } = 1;
