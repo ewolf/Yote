@@ -15,44 +15,97 @@
     <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
 
+    <STYLE>
+      section { padding-top : 20px; margin : 3px; }
+    </STYLE>
+
     <script lang="javascript">
 
-$().ready( function() { 
+$().ready( function() {
 
-    function logout() {
-	$.yote.logout();
-	check_login_state();
-    } //logout 
+    function make_side_menu( arry ) {
+	$( '#side_menu' ).empty();
+	for( var i=0; i < arry.length; i++ ) {
+	    var menu_item = arry[i];
+	    var m_id = "to_" + menu_item.toLowerCase().replace( " ", "_" );
+	    $( '#side_menu' ).append( '<li class="active"><a href="#" id="' + m_id + '">' + menu_item + "</a></li>" );
+	    (function ( item ) {
+		$( '#' + item ).click( function() { eval( item + '()' ); } );
+	    } )( m_id );
+	}
+    } //make_side_menu
 
-    function check_login_state() {
-	var my_login = $.yote.get_login();
-	if( my_login ) {
-	    $( '#main_panel_div' ).empty().append( $.yote.util.container_div( 
-		[
-		    [ [ $.yote.util.container_div( 
-			[
-			    [ [ $.yote.util.make_button( 'logout_b', 'Log Out', 'btn btn-link' ), 'span12' ] ]
-			], true ), 'span3' ], [ '<div id=main_div></div>', 'span9' ] ]
-		]
-	    ) );
-	    $( '#logout_b' ).click( logout );
-	} else {
-	    $.yote.util.login( '#login_modal', check_login_state );
-	}	
+
+    function to_accounts() {
+	$( '#main_panel_div' ).empty().append( "Accounts go here " );
+	
+    }
+
+    function to_news() {
+	$( '#main_panel_div' ).empty().append( "News goes here. lets remember to talk about xpaths " );
+    }
+
+    function to_edit_news() {
+	$( '#main_panel_div' ).empty().append( "Editing news is here " );
+    }
+
+
+    function on_login( login ) {
+	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News' ] );
     } //check_login_state
-    check_login_state();
+
+    function not_logged_in() {
+	make_side_menu( [ 'About', 'Documentation', 'Download' ] );
+	$( '#underbar' ).empty().append( '<section id="News"><P>News Goes Here, actually</P></section>' );
+    }
+
+    $.yote.util.make_login_bar( { brand_html         : '<a class="brand" href="./index.html">Yote</a>',
+				  container_id       : '#nav-container',
+				  logged_in_function : on_login,
+				  not_logged_in_function : not_logged_in,
+				  modal_div          : '#modal_div'
+				} );
+
 } );
 
     </script>
 
   </HEAD>
-  <BODY>
-    <H1>Yote Admin</H1>
 
-      <div style="position:fixed;top:350px;left:350px;" id="login_modal"></div>
+   <body data-spy="scroll" data-target=".side-control" data-twttr-rendered="true">
 
-      <div id="main_panel_div"></div>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+	<div id="nav-container" class="container" style="width: auto">
+	</div>
+      </div>
+    </div>
 
-      <script src="/js/bootstrap.js"></script>
+    <div class="topbar">
+      <div class="container hero-unit">
+	<H1>Yote Admin</H1>
+
+	<div style="position:fixed;top:350px;left:350px;" id="modal_div"></div>
+
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="span2" id="menu_div">
+	<ul class="nav nav-list" id="side_menu">
+	  <li class="active"><a href="#" id="to_logins">Logins</a></li>
+	</ul>
+        <div id="underbar">
+	</div>
+      </div>
+
+      <div class="span10" id="main_panel_div">
+	Stuff goes here!
+      </div>
+    </div>
+
+    <script src="/js/bootstrap.js"></script>
+
+    <!-- Yote News....scratch....other things...probably want a cms too, I suppose. talk about what yote is, too -->
   </BODY>
 </HTML>
