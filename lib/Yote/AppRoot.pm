@@ -28,25 +28,6 @@ sub _extra_fetch {
     return [];
 }
 
-
-#
-# Returns the account root attached to this AppRoot for the given account.
-#
-sub _get_account {
-    my( $self, $login ) = @_;
-    my $accts = $self->get__account_roots({});
-    my $acct = $accts->{$login->{ID}};
-    unless( $acct ) {
-        $acct = $self->_new_account();
-        $acct->set_login( $login );
-	$acct->set_handle( $login->get_handle() );
-        $accts->{$login->{ID}} = $acct;
-	$self->_init_account( $acct );
-    }
-    return $acct;
-
-} #_get_account
-
 #
 # Intializes the account object passed in.
 #
@@ -60,7 +41,7 @@ sub _new_account {
 }
 
 # ------------------------------------------------------------------------------------------
-#      * INITIALIZATION *
+#      * PUBLIC API Methods *
 # ------------------------------------------------------------------------------------------
 
 
@@ -71,22 +52,6 @@ sub account {
     my( $self, $data, $account ) = @_;
     return $account;
 } #account
-
-#
-# Available to all apps. Used for verification and for cookie login.
-#
-sub token_login {
-    my( $self, $t, undef, $ip ) = @_;
-    if( $t =~ /(.+)\-(.+)/ ) {
-        my( $uid, $token ) = ( $1, $2 );
-        my $login = Yote::ObjProvider::fetch( $uid );
-        if( ref( $login ) && ref( $login ) ne 'HASH' && ref( $login ) ne 'ARRAY'
-	    && $login->get__token() eq "${token}x$ip" ) {
-	    return $login;
-	}
-    }
-    return 0;
-} #token_login
 
 #
 # Returns the direct descendents of the object passed in.
@@ -123,6 +88,43 @@ sub multi_fetch {
 } #multi_fetch
 
 
+#
+# Available to all apps. Used for verification and for cookie login.
+#
+sub token_login {
+    my( $self, $t, undef, $ip ) = @_;
+    if( $t =~ /(.+)\-(.+)/ ) {
+        my( $uid, $token ) = ( $1, $2 );
+        my $login = Yote::ObjProvider::fetch( $uid );
+        if( ref( $login ) && ref( $login ) ne 'HASH' && ref( $login ) ne 'ARRAY'
+	    && $login->get__token() eq "${token}x$ip" ) {
+	    return $login;
+	}
+    }
+    return 0;
+} #token_login
+
+# ------------------------------------------------------------------------------------------
+#      * Private Methods *
+# ------------------------------------------------------------------------------------------
+
+#
+# Returns the account root attached to this AppRoot for the given account.
+#
+sub __get_account {
+    my( $self, $login ) = @_;
+    my $accts = $self->get__account_roots({});
+    my $acct = $accts->{$login->{ID}};
+    unless( $acct ) {
+        $acct = $self->_new_account();
+        $acct->set_login( $login );
+	$acct->set_handle( $login->get_handle() );
+        $accts->{$login->{ID}} = $acct;
+	$self->_init_account( $acct );
+    }
+    return $acct;
+
+} #__get_account
 
 1;
 
@@ -132,64 +134,49 @@ __END__
 
 Yote::AppRoot - Application Server Base Objects
 
-=head1 SYNOPSIS
-
-Extend this class to make an application, and fill it with methods that you want for your application.
-
 =head1 DESCRIPTION
+
+This is the root class for all Yote Apps. Extend it to create an App Object.
 
 Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. 
 A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
 
-=head2 Client Methods
 
-Clients automatically call the following methods on an application or the Yote Root application /
-
-=over 4
-
-=item create_account
-
-=item login
-
-=item verify_token
-
-=item remove_account
-
-=item reset_password
-
-=back
-
-=head2 CLASS METHODS
+=head1 PUBLIC API METHODS
 
 =over 4
 
-=item _fetch_root - returns the master root object.
 
-The master root object contains all web application roots. It is an AppRoot object.
-
-Returns the root object. This is always object 1 for the App Server.
 
 =back
 
-=head2 STUB METHODS
+=head1 PUBLIC DATA FIELDS
 
 =over 4
 
-=item _init - called the first time this root is created. Initializes account root.
+=item apps
+
+This is a hash of app name to app object.
 
 =back
 
-=head3 INSTANCE METHODS
+=head1 PRIVATE DATA FIELDS
 
 =over 4
 
-=item _account_root( login ) - Returns an account object associated with a login object.
+=item _handles
+
+A hash of handle to Yote::Login object for that user.
+
+=item _emails
+
+A hash of email address to Yote::Login object for that user.
+
+=item _application_lib_directories
+
+A list containing names of directories on the server that should be searched for Yote app classes and libraries.
 
 =back
-
-The account root is there to store information specific to the account in question. It could include 
-documents specific to the account or games the account is participating in. This is distinct from the
-login object itself, though there is a one to one mapping between the account root and the login.
 
 =head1 AUTHOR
 

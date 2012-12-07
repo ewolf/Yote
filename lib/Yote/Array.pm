@@ -90,8 +90,9 @@ Yote::Array - All arrays in the Yote system get tied to this class.
 
 =head1 DESCRIPTION
 
+This module is essentially a private module and its methods will not be called directly by programs.
 Yote::Array extends Tie::Array and is used by the Yote system for array persistance.
-
+This is used transparently and this can be considered a private class.
 
 =head1 AUTHOR
 

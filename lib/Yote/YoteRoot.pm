@@ -1,6 +1,5 @@
 package Yote::YoteRoot;
 
-use Yote::Cron;
 use Yote::Login;
 use MIME::Lite;
 
@@ -11,112 +10,22 @@ our $EMAIL_CACHE = {};
 
 use strict;
 
+
+# ------------------------------------------------------------------------------------------
+#      * INIT METHODS *
+# ------------------------------------------------------------------------------------------
 sub _init {
     my $self = shift;
     $self->set_apps({});
     $self->set__handles({});
     $self->set__emails({});
-    $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
 } #_init
 
-#
-# Returns a list starting with the app object, followed by objects that the app wants to bring with
-#
-sub fetch_app_by_class {
-    my( $self, $data ) = @_;
-    my $app = $self->get_apps()->{$data};
-    unless( $app ) {
-        eval("use $data");
-        die $@ if $@;
-        $app = $data->new();
-        $self->get_apps()->{$data} = $app;
-    }
-    return [$app,@{$app->_extra_fetch()}];
-} #fetch_app_by_class
 
-#
-# Used to wipe and reset a whole app's data. Use with caution
-# and can only be used by the superuser.
-#
-sub purge_app {
-    my( $self, $data, $account ) = @_;
-    if( $account->get__is_root() ) {
-	$self->_purge_app( $data );
-	return "Purged '$data'";
-    }
-    die "Permissions Error";
-} #purge_app
-
-sub _purge_app {
-    my( $self, $app ) = @_;
-    my $apps = $self->get_apps();
-    return delete $apps->{$app};
-} #_purge_app
-
-#
-# Returns this root object.
-#
-sub fetch_root {
-    my $root = Yote::ObjProvider::fetch( 1 );
-    unless( $root ) {
-	$root = new Yote::YoteRoot();
-    }
-    return $root;
-}
-
-#
-# Fetches object by id
-#
-sub fetch {
-    my( $self, $data, $account ) = @_;
-    die "Access Error" unless $account;
-
-    if( ref( $data ) eq 'ARRAY' ) {
-	my $login = $account->get_login();
-	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];
-    } 
-    return [ Yote::ObjProvider::fetch( $data ) ];
-
-} #fetch
-
-#
-# Takes a class and returns a list of methods associated with the class
-#
-sub methods {
-    my( $self, $data, $account ) = @_;
-    return Yote::ObjProvider::package_methods( $data );
-} #methods
-
-#
-# Validates that the given credentials are given
-#   (client side) use : login({h:'handle',p:'password'});
-#             returns : { l => login object, t => token }
-#
-sub login {
-    my( $self, $data, $dummy, $ip ) = @_;
-
-    if( $data->{h} ) {
-        my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
-        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
-            return { l => $login, t => $self->_create_token( $login, $ip ) };
-        }
-    }
-    die "incorrect login";
-} #login
-
-sub logout {
-    my( $self, $data, $acct ) = @_;
-    if( $acct ) {
-	my $login = $acct->get_login();
-	$login->set__token();
-    }
-} #logout
-
-sub flush_credential_cache {
-    $EMAIL_CACHE = {};
-    $HANDLE_CACHE = {};
-} #flush_credential_cache
+# ------------------------------------------------------------------------------------------
+#      * PUBLIC METHODS *
+# ------------------------------------------------------------------------------------------
 
 
 #
@@ -179,6 +88,51 @@ sub create_login {
     die "no handle given";
 
 } #create_login
+#
+# Fetches object by id
+#
+sub fetch {
+    my( $self, $data, $account ) = @_;
+    die "Access Error" unless $account;
+
+    if( ref( $data ) eq 'ARRAY' ) {
+	my $login = $account->get_login();
+	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];
+    } 
+    return [ Yote::ObjProvider::fetch( $data ) ];
+
+} #fetch
+#
+# Returns a list starting with the app object, followed by objects that the app wants to bring with
+#
+sub fetch_app_by_class {
+    my( $self, $data ) = @_;
+    my $app = $self->get_apps()->{$data};
+    unless( $app ) {
+        eval("use $data");
+        die $@ if $@;
+        $app = $data->new();
+        $self->get_apps()->{$data} = $app;
+    }
+    return [$app,@{$app->_extra_fetch()}];
+} #fetch_app_by_class
+
+
+#
+# Returns this root object.
+#
+sub fetch_root {
+    my $root = Yote::ObjProvider::fetch( 1 );
+    unless( $root ) {
+	$root = new Yote::YoteRoot();
+    }
+    return $root;
+}
+
+sub flush_credential_cache {
+    $EMAIL_CACHE = {};
+    $HANDLE_CACHE = {};
+} #flush_credential_cache
 
 #
 # Returns a token for non-logging in use.
@@ -195,31 +149,43 @@ sub guest_token {
 } #guest_token
 
 #
-# Removes a login. Need not only to be logged in, but present all credentials
-#   (client side) use : remove_login({h:'handle',e:'email',p:'password'});
-#             returns : "deleted account"
+# Validates that the given credentials are given
+#   (client side) use : login({h:'handle',p:'password'});
+#             returns : { l => login object, t => token }
 #
-sub remove_login {
-    my( $self, $args, $acct, $ip ) = @_;
+sub login {
+    my( $self, $data, $dummy, $ip ) = @_;
 
-    my $login = $acct->get_login();
+    if( $data->{h} ) {
+        my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
+        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
+            return { l => $login, t => $self->_create_token( $login, $ip ) };
+        }
+    }
+    die "incorrect login";
+} #login
 
-    if( $login && 
-        Yote::ObjProvider::encrypt_pass($args->{p}, $login) eq $login->get__password() &&
-        $args->{h} eq $login->get_handle() &&
-        $args->{e} eq $login->get_email() &&
-        ! $login->get_is__first_login() ) 
-    {
-        delete $self->get__handles()->{$args->{h}};
-        delete $self->get__emails()->{$args->{e}};
-	delete $HANDLE_CACHE->{$args->{h}};
-	delete $EMAIL_CACHE->{$args->{e}};
-        $self->add_to__removed_logins( $login );
-        return "deleted account";
-    } 
-    die "unable to remove account";
-    
-} #remove_login
+sub logout {
+    my( $self, $data, $acct ) = @_;
+    if( $acct ) {
+	my $login = $acct->get_login();
+	$login->set__token();
+    }
+} #logout
+#
+# Used to wipe and reset a whole app's data. Use with caution
+# and can only be used by the superuser.
+#
+sub purge_app {
+    my( $self, $data, $account ) = @_;
+    if( $account->get__is_root() ) {
+	$self->_purge_app( $data );
+	return "Purged '$data'";
+    }
+    die "Permissions Error";
+} #purge_app
+
+
 
 
 #
@@ -252,7 +218,6 @@ sub recover_password {
             $recovery_hash->{$rand_token} = $login;
             my $link = "$to_reset?t=$rand_token";
 	    use Mail::Sender;
-	    print STDERR Data::Dumper->Dump([\%ENV]);
 	    my $sender = new Mail::Sender( {
 		smtp => 'localhost',
 		from => 'yote@localhost',
@@ -300,6 +265,38 @@ sub recovery_reset_password {
 
 
 #
+# Removes a login. Need not only to be logged in, but present all credentials
+#   (client side) use : remove_login({h:'handle',e:'email',p:'password'});
+#             returns : "deleted account"
+#
+sub remove_login {
+    my( $self, $args, $acct, $ip ) = @_;
+
+    my $login = $acct->get_login();
+
+
+    if( $login && 
+        Yote::ObjProvider::encrypt_pass($args->{p}, $login) eq $login->get__password() &&
+        $args->{h} eq $login->get_handle() &&
+        $args->{e} eq $login->get_email() &&
+        ! $login->get_is__first_login() ) 
+    {
+        delete $self->get__handles()->{$args->{h}};
+        delete $self->get__emails()->{$args->{e}};
+	delete $HANDLE_CACHE->{$args->{h}};
+	delete $EMAIL_CACHE->{$args->{e}};
+        $self->add_to__removed_logins( $login );
+        return "deleted account";
+    } 
+    die "unable to remove account";
+    
+} #remove_login
+
+# ------------------------------------------------------------------------------------------
+#      * PRIVATE METHODS *
+# ------------------------------------------------------------------------------------------
+
+#
 # Create token and store with the account and return it.
 #
 sub _create_token {
@@ -309,4 +306,58 @@ sub _create_token {
     return $login->{ID}.'-'.$token;
 }
 
+sub _purge_app {
+    my( $self, $app ) = @_;
+    my $apps = $self->get_apps();
+    return delete $apps->{$app};
+} #_purge_app
+
+
 1;
+
+__END__
+
+=head1 NAME
+
+Yote::YoteRoot
+
+=head1 DESCRIPTION
+
+The yote root is the main app of the class. It is also always object id 1 and sits at the head of the yote data tree. Yote::YoteRoot is a subclass of Yote::AppRoot.
+
+=head1 DATA 
+
+=head1 INIT METHODS
+
+=over 4
+
+=item new 
+
+=item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
+
+=back
+
+=head1 PUBLIC API METHODS
+
+=over 4
+
+=item create_login( args )
+
+Create a login with the given client supplied args : h => handle, e => email, p => password.
+This checks to make sure handle and email address are not already taken. 
+This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2012 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

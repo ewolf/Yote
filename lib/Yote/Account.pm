@@ -22,13 +22,14 @@ Yote::Account
 
 =head1 DESCRIPTION 
 
+This module is essentially meant to be used as is or extended.
 Yote::Account is a base class for account objects. A user has different account object for each different app. 
 The distinction between a Login and an account is that a user has exactly one system-wide Yote::Login but
 a different Yote::Account object per application.
 
 The Yote::Account object is a container intended to store any data that is relevant to a user for a particular app.
 
-=head2 PUBLIC API METHODS
+=head1 PUBLIC API METHODS
 
 =over 4
 

@@ -47,6 +47,21 @@ my \$s = new Yote::WebAppServer;
     exit;
 };
 
+\$SIG{INT} = sub { 
+    \$s->shutdown();
+    print STDERR "Shutting down due to term
+";
+    \$pidfile->remove();
+    exit;
+};
+
+\$SIG{CHLD} = sub { 
+    #this is important. I may be able to handle the occasional crashing of the web server process right here!
+};
+
+\$SIG{PIPE} = sub {};
+
+
 
 
 #

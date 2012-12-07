@@ -77,7 +77,9 @@ Yote::Hash - All hashes in the Yote system get tied to this class.
 
 =head1 DESCRIPTION
 
+This module is essentially a private module and its methods will not be called directly by programs.
 Yote::Hash extends Tie::Hash and is used by the Yote for hash persistance.
+This is used transparently and this can be considered a private class.
 
 =head1 AUTHOR
 

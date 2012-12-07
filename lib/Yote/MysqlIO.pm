@@ -355,9 +355,11 @@ __END__
 
 =head1 NAME
 
-Yote::MysqlIO - A mysql persistance engine for Yote.
+Yote::MysqlIO - A mysql persistance engine for Yote. 
 
 =head1 DESCRIPTION
+
+This is deprecated and has not been further developed. It may be brought up to par with ObjProvider.
 
 This can be installed as a singleton of Yote::ObjProvider and does the actual storage and retreival of Yote objects.
 

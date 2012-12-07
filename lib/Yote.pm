@@ -1,7 +1,7 @@
 package Yote;
 
 use vars qw($VERSION);
-$VERSION = '0.090';
+$VERSION = '0.091';
 
 1;
 

@@ -8,7 +8,25 @@ use JSON;
 use File::Temp qw/tempfile tempdir/;
 use File::UStore;
 
-sub _ingest {
+
+# ------------------------------------------------------------------------------------------
+#      * PUBLIC API Methods *
+# ------------------------------------------------------------------------------------------
+
+sub Url {
+    my $self = shift;
+    my $store = File::UStore->new( path => $Yote::WebAppServer::UPLOAD_DIR, prefix => "yote_", depth => 5 );
+    my $file_path = $store->getPath( $self->get_store_id() );
+    return substr( $file_path, length( $Yote::WebAppServer::WEB_DIR ) )
+} #Url
+
+
+# ------------------------------------------------------------------------------------------
+#      * Private Methods *
+# ------------------------------------------------------------------------------------------
+
+
+sub __ingest {
 
     my $content_length = $ENV{CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
@@ -70,26 +88,26 @@ sub _ingest {
 	} #while
     } #if has a boundary content type
     # go through the $post_data and translate any values into FileHelper object ids.
-    $post_data{d} = MIME::Base64::encode( to_json( _translate( from_json( MIME::Base64::decode($post_data{d}) ), \%file_helpers ) ), '' );
+    $post_data{d} = MIME::Base64::encode( to_json( __translate( from_json( MIME::Base64::decode($post_data{d}) ), \%file_helpers ) ), '' );
 
     return \%post_data;
-} #_ingest
+} #__ingest
 
-sub _translate {
+sub __translate {
     my( $structure, $file_helpers ) = @_;
     my $ref = ref( $structure );
     if( $ref eq 'HASH' ) {
-	return { map { $_ => _translate( $structure->{$_}, $file_helpers ) } keys %$structure };
+	return { map { $_ => __translate( $structure->{$_}, $file_helpers ) } keys %$structure };
     } 
     elsif( $ref eq 'ARRAY' ) {
-	return [ map { _translate( $_, $file_helpers ) } @$structure ];
+	return [ map { __translate( $_, $file_helpers ) } @$structure ];
     }
     else {
 	return index( $structure, 'u' ) == 0 ? 'u' . to_json( $file_helpers->{ $structure } ) : $structure;
     }
-} #_translate
+} #__translate
 
-sub _accept {
+sub __accept {
     my( $self, $filename ) = @_;
 
     my $store = File::UStore->new( path => $Yote::WebAppServer::UPLOAD_DIR, prefix => "yote_", depth => 5 );
@@ -99,14 +117,42 @@ sub _accept {
 
     unlink $filename;
 
-} #_accept
-
-sub Url {
-    my $self = shift;
-    my $store = File::UStore->new( path => $Yote::WebAppServer::UPLOAD_DIR, prefix => "yote_", depth => 5 );
-    my $file_path = $store->getPath( $self->get_store_id() );
-    return substr( $file_path, length( $Yote::WebAppServer::WEB_DIR ) )
-    
-}
+} #__accept
 
 1;
+
+__END__
+
+=head1 NAME
+
+Yote::FileHelper
+
+=head1 DESCRIPTION
+
+This module is essentially a private module and its methods will not be called directly by programs.
+The Yote::FileHelper is automatically invoked by Yote::WebAppServer to injest uploaded files into the yote system.
+The Yote::FileHelper then is used as a yote object that exposes the url where the file exists.
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item Url
+
+Returns a url on the yote system where the file can be accessed.
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
+

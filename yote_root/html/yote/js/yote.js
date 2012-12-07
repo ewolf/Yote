@@ -105,43 +105,6 @@ $.yote = {
 
     }, //init
 
-    fetch_root:function() {
-	return this.objs[1] || this._create_obj( this.message( {
-            async:false,
-            cmd:'fetch_root',
-	    wait:true
-	} ).r, 1 );
-	
-    }, //fetch_root
-
-    fetch_app:function(appname,passhandler,failhandler) {
-	var root = this.fetch_root();
-	if( typeof root === 'object' ) {
-	    var res = root.fetch_app_by_class( appname );
-	    ret = res.get(0);
-	    for( var i=0; i < res.length(); i++ ) {
-		res.get( i );
-	    }
-	    ret._app_id = ret.id;
-	    return ret;
-	} else if( typeof failhanlder === 'function' ) {
-	    failhandler('lost connection to yote server');
-	} else {
-	    _error('lost connection to yote server');
-	}
-    }, //fetch_app
-
-    fetch_account:function() {
-	return this.fetch_root().account();
-    },
-
-    load_direct_descendents:function( app, obj ) {
-	var desc = app.multi_fetch( obj );
-	for( var i=0; i<desc.length(); i++ ) {
-	    desc.get(i);
-	}
-    }, //load_direct_descendents
-
     create_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
@@ -160,6 +123,53 @@ $.yote = {
 	    _error('lost connection to yote server');
 	}
     }, //create_login
+
+
+    fetch_account:function() {
+	return this.fetch_root().account();
+    },
+
+    fetch_app:function(appname,passhandler,failhandler) {
+	var root = this.fetch_root();
+	if( typeof root === 'object' ) {
+	    var res = root.fetch_app_by_class( appname );
+	    ret = res.get(0);
+	    for( var i=0; i < res.length(); i++ ) {
+		res.get( i );
+	    }
+	    ret._app_id = ret.id;
+	    return ret;
+	} else if( typeof failhanlder === 'function' ) {
+	    failhandler('lost connection to yote server');
+	} else {
+	    _error('lost connection to yote server');
+	}
+    }, //fetch_app
+
+    fetch_root:function() {
+	return this.objs[1] || this._create_obj( this.message( {
+            async:false,
+            cmd:'fetch_root',
+	    wait:true
+	} ).r, 1 );
+	
+    }, //fetch_root
+
+
+    get_login:function() {
+	return this.login_obj;
+    }, //get_login
+
+    is_logged_in:function() {
+	return typeof this.login_obj === 'object';
+    }, //is_logged_in
+
+    load_direct_descendents:function( app, obj ) {
+	var desc = app.multi_fetch( obj );
+	for( var i=0; i<desc.length(); i++ ) {
+	    desc.get(i);
+	}
+    }, //load_direct_descendents
 
     login:function( handle, password, passhandler, failhandler ) {
 	var root = this.fetch_root();
@@ -187,6 +197,87 @@ $.yote = {
 	$.cookie( 'yoken', '' );
     }, //logout
 
+    /* general functions */
+    message:function( params ) {
+        var root   = this;
+        var data   = root._translate_data( params.data || {} );
+        var async  = params.async == true ? 1 : 0;
+	var wait   = params.wait  == true ? 1 : 0;
+        var url    = params.url;
+        var app_id = params.app_id;
+        var cmd    = params.cmd;
+        var obj_id = params.obj_id; //id to act on
+
+	root.upload_count = 0;
+
+        app_id = app_id || '';
+        obj_id = obj_id || '';
+        var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
+
+	var uploads = root._functions_in( data );
+
+	if( uploads.length > 0 ) {
+	    return root.upload_message( params, uploads );
+	}
+        if( async == 0 ) {
+            root._disable();
+        }
+
+        var put_data = {
+            d:$.base64.encode(JSON.stringify( {d:data} ) ),
+            t:$.yote.token,
+	    gt:$.yote.guest_token,
+            w:wait
+        };
+	var resp;
+
+        if( $.yote.debug == true ) {
+	    console.log('outgoing ' + url );  
+	    console.log( data );
+	    console.log( JSON.stringify( {d:data} ) );
+	    console.log( put_data ); 
+	}
+
+	$.ajax( {
+	    async:async,
+	    cache: false,
+	    data:put_data,
+	    dataFilter:function(a,b) {
+		if( $.yote.debug == true ) {
+		    console.log('incoming '); console.log( a );
+		}
+		return a; 
+	    },
+	    error:function(a,b,c) { root._error(a); },
+	    success:function( data ) {
+                if( typeof data !== 'undefined' ) {
+		    resp = data; //for returning synchronous
+		    if( typeof data.err === 'undefined' ) {
+		        if( typeof params.passhandler === 'function' ) {
+			    if( typeof data.r === 'object' ) {
+				params.passhandler( root._create_obj( data.r, this._app_id ) );
+			    } else if( typeof data.r === 'undefined' ) {
+				params.passhandler();
+			    } else {
+				params.passhandler( data.r.substring( 1 ) );
+			    }
+		        }
+		    } else if( typeof params.failhandler === 'function' ) {
+		        params.failhandler(data.err);
+                    } //error case. no handler defined 
+                } else {
+                    console.log( "Success reported but no response data received" );
+                }
+	    },
+	    type:'POST',
+	    url:url
+	} );
+        if( async == 0 ) {
+            root._reenable();
+            return resp;
+        }
+    }, //message
+    
     remove_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
@@ -204,21 +295,106 @@ $.yote = {
 	}
     }, //remove_login
 
-    get_login:function() {
-	return this.login_obj;
-    }, //get_login
+    /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
+       which corresponds to the parameter name in the inputs.
+       For example some_yote_obj->do_somehingt( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
+    */
+    upload:function( selector_id ) {
+	var uctxt = 'u' + this.upload_count++;
+	$( selector_id ).attr( 'name', uctxt );
+	return (function(uct, sel_id) { 
+	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input contro
+		if( return_selector_id ) return sel_id;
+		return uctxt;
+	    };
+	} )( uctxt, selector_id );
+    }, //upload
 
-    is_logged_in:function() {
-	return typeof this.login_obj === 'object';
-    }, //is_logged_in
+    upload_message:function( params, uploads ) {
+        var root   = this;
+        var data   = root._translate_data( params.data || {}, true );
+	var wait   = params.wait  == true ? 1 : 0;
+        var url    = params.url;
+        var app_id = params.app_id;
+        var cmd    = params.cmd;
+        var obj_id = params.obj_id; //id to act on
+        app_id = app_id || '';
+        obj_id = obj_id || '';
+        var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
+	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
 
-    _dump_cache:function() {
-        this.objs = {};
-    },
+	root.iframe_count++;
+	var iframe_name = 'yote_upload_' + root.iframe_count;
+	var form_id = 'yote_upload_form_' + root.iframe_count;
+	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style="position;absolute;top:-9999px;display:none" /> ').appendTo( 'body' );
+	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
 
-    _is_in_cache:function(id) {
-        return typeof this.objs[id] === 'object' && this.objs[id] != null;
-    },
+	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
+	var cb_list = [];
+	$( upload_selector_ids.join(',') ).each(
+	    function( idx, domEl ) {
+		$( this ).prop( 'disabled', false );
+		cb_list.push(  $( 'input:checkbox', this ) );
+	    }
+	);
+	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
+	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
+	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
+    
+	for( var i=0; i<cb_list.length; i++ ) {
+	    cb_list[ i ].removeAttr('checked');
+	    cb_list[ i ].attr('checked', true);
+	}
+	var resp;
+	var xx = form_sel.submit(function() {
+	    iframe.load(function() {		
+		var contents = $(this).contents().get(0).body.innerHTML;
+		$( '#' + iframe_name ).remove();
+		try {
+		    resp = JSON.parse( contents );
+		    console.log( [ 'uploaded', resp ] );
+                    if( typeof resp !== 'undefined' ) {
+			if( typeof resp.err === 'undefined' ) {
+			    //dirty objects that may need a refresh
+			    if( typeof resp.d === 'object' ) {
+				for( var oid in resp.d ) {
+				    if( root._is_in_cache( oid ) ) {
+					var cached = root.objs[ oid ];
+					for( fld in cached._d ) {
+					    //take off old getters/setters
+					    delete cached['get_'+fld];
+					}
+					cached._d = resp.d[ oid ];
+					for( fld in cached._d ) {
+					    //add new getters/setters
+					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+					}
+				    }
+				}
+			    }			    
+		            if( typeof params.passhandler === 'function' ) {
+				if( typeof resp.r === 'object' ) {
+				    params.passhandler( root._create_obj( ret.r, this._app_id ) );
+				} else if( typeof resp.r === 'undefined' ) {
+				    params.passhandler();
+				} else {
+				    params.passhandler( resp.r.substring( 1 ) );
+				}
+		            }
+			} else if( typeof params.failhandler === 'function' ) {
+		            params.failhandler(resp.err);
+			} //error case. no handler defined 
+                    } else {
+			console.log( "Success reported but no response data received" );
+                    }
+		} catch(err) {
+		    root._error(err); 
+		}
+	    } )
+	} ).submit();
+    }, //upload_message
 
     _cache_size:function() {
         var i = 0;
@@ -331,21 +507,6 @@ $.yote = {
 		    } //each method
 		} // if methods were included in the return value of the call
 		else {
-		    
-		    // Assign methods
-		    var methods = root.methods[ o.class ];
-		    if( ! methods ) { // this section may be taken out. having a separate call for
-			//methods is not yet fast enough. possibly sending an additional payload
-			//with the fetch_app is the way to go ( e for extra objects, a for extra
-			//methods
-			var rt = root.fetch_root();
-			methods = [];
-			method_msg = rt.methods( o.class );
-			for( var j=0; j < method_msg.length(); j++ ) {
-			    methods.push( method_msg.get( j ) );
-			}			
-			root.methods[ o.class ] = methods;
-		    }
 		    for( var i=0; i < methods.length; i++ ) {
 			o[methods[i]] = (function(key) {
 			    return function( params, passhandler, failhandler, use_async ) {
@@ -521,12 +682,47 @@ $.yote = {
         } )(data,app_id);
     }, //_create_obj
 
+    _disable:function() {
+        this.enabled = $(':enabled');
+	$.each( this.enabled, function(idx,val) { val.disabled = true; } );
+        $("body").css("cursor", "wait");
+    }, //_disable
+    
+    _dump_cache:function() {
+        this.objs = {};
+    },
+
     // generic server type error
     _error:function(msg) {
         console.log( "a server side error has occurred" );
         console.log( msg );
     },
-    
+
+    _functions_in:function( thing ) {
+	var to_ret, res;
+	if( typeof thing === 'function' ) return [thing];
+	if( typeof thing === 'object' || typeof thing === 'array' ) {
+	    to_ret = [];
+	    for( x in thing ) {
+		res = this._functions_in( thing[ x ] );
+		for( y in res ) {
+		    to_ret.push( res[ y ] );
+		}
+	    }
+	    return to_ret;
+	}
+	return [];
+    }, //_functions_in
+        
+    _is_in_cache:function(id) {
+        return typeof this.objs[id] === 'object' && this.objs[id] != null;
+    },
+
+    _reenable:function() {
+        $.each( this.enabled, function(idx,val) { val.disabled = false } );
+        $("body").css("cursor", "auto");
+    }, //_reenable
+
     _translate_data:function(data,run_functions) {
         if( typeof data === 'undefined' || data == null ) {
             return undefined;
@@ -561,217 +757,8 @@ $.yote = {
         console.log( "Don't know how to translate " + data);
     }, //_untranslate_data
 
-    _disable:function() {
-        this.enabled = $(':enabled');
-	$.each( this.enabled, function(idx,val) { val.disabled = true; } );
-        $("body").css("cursor", "wait");
-    }, //_disable
-    
-    _reenable:function() {
-        $.each( this.enabled, function(idx,val) { val.disabled = false } );
-        $("body").css("cursor", "auto");
-    }, //_reenable
-
-    _functions_in:function( thing ) {
-	var to_ret, res;
-	if( typeof thing === 'function' ) return [thing];
-	if( typeof thing === 'object' || typeof thing === 'array' ) {
-	    to_ret = [];
-	    for( x in thing ) {
-		res = this._functions_in( thing[ x ] );
-		for( y in res ) {
-		    to_ret.push( res[ y ] );
-		}
-	    }
-	    return to_ret;
-	}
-	return [];
-    }, //_functions_in
-    
     upload_count: 0,
-    iframe_count: 0,
-
-    /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
-       which corresponds to the parameter name in the inputs.
-       For example some_yote_obj->do_somehingt( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
-    */
-    upload:function( selector_id ) {
-	var uctxt = 'u' + this.upload_count++;
-	$( selector_id ).attr( 'name', uctxt );
-	return (function(uct, sel_id) { 
-	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input contro
-		if( return_selector_id ) return sel_id;
-		return uctxt;
-	    };
-	} )( uctxt, selector_id );
-    }, //upload
-
-    /* general functions */
-    message:function( params ) {
-        var root   = this;
-        var data   = root._translate_data( params.data || {} );
-        var async  = params.async == true ? 1 : 0;
-	var wait   = params.wait  == true ? 1 : 0;
-        var url    = params.url;
-        var app_id = params.app_id;
-        var cmd    = params.cmd;
-        var obj_id = params.obj_id; //id to act on
-
-	root.upload_count = 0;
-
-        app_id = app_id || '';
-        obj_id = obj_id || '';
-        var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
-
-	var uploads = root._functions_in( data );
-
-	if( uploads.length > 0 ) {
-	    return root.upload_message( params, uploads );
-	}
-        if( async == 0 ) {
-            root._disable();
-        }
-
-        var put_data = {
-            d:$.base64.encode(JSON.stringify( {d:data} ) ),
-            t:$.yote.token,
-	    gt:$.yote.guest_token,
-            w:wait
-        };
-	var resp;
-
-        if( $.yote.debug == true ) {
-	    console.log('outgoing ' + url );  
-	    console.log( data );
-	    console.log( JSON.stringify( {d:data} ) );
-	    console.log( put_data ); 
-	}
-
-	$.ajax( {
-	    async:async,
-	    cache: false,
-	    data:put_data,
-	    dataFilter:function(a,b) {
-		if( $.yote.debug == true ) {
-		    console.log('incoming '); console.log( a );
-		}
-		return a; 
-	    },
-	    error:function(a,b,c) { root._error(a); },
-	    success:function( data ) {
-                if( typeof data !== 'undefined' ) {
-		    resp = data; //for returning synchronous
-		    if( typeof data.err === 'undefined' ) {
-		        if( typeof params.passhandler === 'function' ) {
-			    if( typeof data.r === 'object' ) {
-				params.passhandler( root._create_obj( data.r, this._app_id ) );
-			    } else if( typeof data.r === 'undefined' ) {
-				params.passhandler();
-			    } else {
-				params.passhandler( data.r.substring( 1 ) );
-			    }
-		        }
-		    } else if( typeof params.failhandler === 'function' ) {
-		        params.failhandler(data.err);
-                    } //error case. no handler defined 
-                } else {
-                    console.log( "Success reported but no response data received" );
-                }
-	    },
-	    type:'POST',
-	    url:url
-	} );
-        if( async == 0 ) {
-            root._reenable();
-            return resp;
-        }
-    }, //message
-    
-    upload_message:function( params, uploads ) {
-        var root   = this;
-        var data   = root._translate_data( params.data || {}, true );
-	var wait   = params.wait  == true ? 1 : 0;
-        var url    = params.url;
-        var app_id = params.app_id;
-        var cmd    = params.cmd;
-        var obj_id = params.obj_id; //id to act on
-        app_id = app_id || '';
-        obj_id = obj_id || '';
-        var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
-	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
-
-	root.iframe_count++;
-	var iframe_name = 'yote_upload_' + root.iframe_count;
-	var form_id = 'yote_upload_form_' + root.iframe_count;
-	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style="position;absolute;top:-9999px;display:none" /> ').appendTo( 'body' );
-	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
-
-	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
-	var cb_list = [];
-	$( upload_selector_ids.join(',') ).each(
-	    function( idx, domEl ) {
-		$( this ).prop( 'disabled', false );
-		cb_list.push(  $( 'input:checkbox', this ) );
-	    }
-	);
-	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
-	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
-    
-	for( var i=0; i<cb_list.length; i++ ) {
-	    cb_list[ i ].removeAttr('checked');
-	    cb_list[ i ].attr('checked', true);
-	}
-	var resp;
-	var xx = form_sel.submit(function() {
-	    iframe.load(function() {		
-		var contents = $(this).contents().get(0).body.innerHTML;
-		$( '#' + iframe_name ).remove();
-		try {
-		    resp = JSON.parse( contents );
-		    console.log( [ 'uploaded', resp ] );
-                    if( typeof resp !== 'undefined' ) {
-			if( typeof resp.err === 'undefined' ) {
-			    //dirty objects that may need a refresh
-			    if( typeof resp.d === 'object' ) {
-				for( var oid in resp.d ) {
-				    if( root._is_in_cache( oid ) ) {
-					var cached = root.objs[ oid ];
-					for( fld in cached._d ) {
-					    //take off old getters/setters
-					    delete cached['get_'+fld];
-					}
-					cached._d = resp.d[ oid ];
-					for( fld in cached._d ) {
-					    //add new getters/setters
-					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-					}
-				    }
-				}
-			    }			    
-		            if( typeof params.passhandler === 'function' ) {
-				if( typeof resp.r === 'object' ) {
-				    params.passhandler( root._create_obj( ret.r, this._app_id ) );
-				} else if( typeof resp.r === 'undefined' ) {
-				    params.passhandler();
-				} else {
-				    params.passhandler( resp.r.substring( 1 ) );
-				}
-		            }
-			} else if( typeof params.failhandler === 'function' ) {
-		            params.failhandler(resp.err);
-			} //error case. no handler defined 
-                    } else {
-			console.log( "Success reported but no response data received" );
-                    }
-		} catch(err) {
-		    root._error(err); 
-		}
-	    } )
-	} ).submit();
-    } //upload_message
+    iframe_count: 0
     
 }; //$.yote
 

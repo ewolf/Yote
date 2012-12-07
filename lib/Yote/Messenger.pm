@@ -5,41 +5,6 @@ use Yote::Obj;
 use base 'Yote::Obj';
 
 #
-# Data is :
-#    recipients - list of receivers to send to
-#    subject 
-#    message
-#
-sub send_message {
-    my( $self, $data, $acct ) = @_;
-    
-    my $recips = $data->{recipients};
-    unless( $recips && @$recips ) {
-	die "No Recipients given";
-    }
-
-    my $msg = new Yote::Obj();
-    $msg->set_message( $data->{message} );
-    $msg->set_subject( $data->{subject} );
-    $msg->set_recipients( $recips );
-    $msg->set_sent( time() );
-    $msg->set_from( $self );
-
-    for my $recip (@$recips) {
-	my $envelope = {
-	    message => $msg,
-	    # read_time
-	    # replied_time
-	    # replies
-	};
-
-	# messages is private mostly because it can contain lots of data
-	$recips->add_to__messages( $envelope );
-    }
-
-} #send_message
-
-#
 # Data is used for filtering messages
 #    limit_start - for pagination
 #    limit - max how many messages to return
@@ -107,6 +72,109 @@ sub read_messages {
 
 } #read_messages
 
+
+#
+# Data is :
+#    recipients - list of receivers to send to
+#    subject 
+#    message
+#
+sub send_message {
+    my( $self, $data, $acct ) = @_;
+    
+    my $recips = $data->{recipients};
+    unless( $recips && @$recips ) {
+	die "No Recipients given";
+    }
+
+    my $msg = new Yote::Obj();
+    $msg->set_message( $data->{message} );
+    $msg->set_subject( $data->{subject} );
+    $msg->set_recipients( $recips );
+    $msg->set_sent( time() );
+    $msg->set_from( $self );
+
+    for my $recip (@$recips) {
+	my $envelope = {
+	    message => $msg,
+	    # read_time
+	    # replied_time
+	    # replies
+	};
+
+	# messages is private mostly because it can contain lots of data
+	$recips->add_to__messages( $envelope );
+    }
+
+} #send_message
+
 1;
 
 __END__
+
+=head1 NAME
+
+Yote::Messenger
+
+=head1 DESCRIPTION
+
+A Yote::Messenger object is one that can send a message to an other object.
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item read_messages
+
+Returns a list of messages. Takes a hash with the following fields
+
+* filter - a hash with the following parameters
+
+** subject
+
+** from
+
+** older_than
+
+** newer_than
+
+** from_name
+
+* limit_start
+
+* limit
+
+* sort
+
+* sort_asc
+
+* sort_desc
+
+* filter
+
+=item send_message
+
+Send a message to a number of recipients. Takes the following fields
+
+* message
+
+* recipients - list of recipient objects
+
+* subject
+
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
+

@@ -165,11 +165,7 @@ sub __obj_to_response {
             return $use_id unless $xform_out;
             $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
 
-	    if( 1|| $use_id == 1  ) { # todo - may enable this again, if we have
-		# something in fetch_app that carries an additional payload of class - methods
-		# and objects to include right off the bat
-		$m = Yote::ObjProvider::package_methods( $ref );
-	    }
+	    $m = Yote::ObjProvider::package_methods( $ref );
         }
 	if( $login && $use_id ) {
 	    #maybe replace LOGIN_OBJECTS with a token rather than id
@@ -229,7 +225,9 @@ sub load_direct_descendents {
 sub paginate {
     my( $self, $data, $account ) = @_;
     
-    
+    my( $list_name, $number, $start ) = @$data;
+
+    return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start );
 
 } #paginate
 

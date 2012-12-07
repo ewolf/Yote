@@ -1,8 +1,5 @@
 package Yote::WebAppServer;
 
-#
-# Proof of concept server with main loop.
-#
 use strict;
 
 use forks;
@@ -30,69 +27,17 @@ share( @commands );
 share( %prid2wait );
 share( %prid2result );
 
+
+# ------------------------------------------------------------------------------------------
+#      * INIT METHODS *
+# ------------------------------------------------------------------------------------------
+
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;
     $singleton = bless {}, $class;
     return $singleton;
 }
-
-sub start_server {
-    my( $self, @args ) = @_;
-    my $args = scalar(@args) == 1 ? $args[0] : { @args };
-    $self->{args} = $args;
-    $self->{args}{webroot} ||= '/usr/local/yote/html';
-    $self->{args}{upload} ||= '/usr/local/yote/html/upload';
-
-    Yote::ObjProvider::init( %$args );
-
-    # fork out for three starting threads
-    #   - one a multi forking server (parent class)
-    #   - one for a cron daemon inside of Yote.
-    #   - and the parent thread an event loop.
-
-    # cron thread
-    my $root = Yote::YoteRoot::fetch_root();
-    my $cron = $root->get__crond();
-    my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
-    $self->{cron_thread} = $cron_thread;
-
-    # make sure the filehelper knows where the data directory is
-    $Yote::WebAppServer::YOTE_ROOT_DIR = $self->{args}{root_dir};
-    $Yote::WebAppServer::DATA_DIR      = $self->{args}{data_dir};
-    $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
-    $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
-    $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
-    mkdir( $Yote::WebAppServer::DATA_DIR );
-    mkdir( $Yote::WebAppServer::FILE_DIR );
-    mkdir( $Yote::WebAppServer::WEB_DIR );
-    mkdir( $Yote::WebAppServer::UPLOAD_DIR );
-
-    # update @INC library list
-    my $paths = $root->get__application_lib_directories([]);
-    push @INC, @$paths;
-
-    # server thread
-    my $server_thread = threads->new( sub { $self->run( %$args ); } );
-    $self->{server_thread} = $server_thread;
-
-    _poll_commands();
-
-    $server_thread->join;
-
-   Yote::ObjProvider::disconnect();
-
-} #start_server
-
-sub shutdown {
-    my $self = shift;
-    print STDERR "Shutting down yote server \n";
-    Yote::ObjProvider::stow_all();
-    print STDERR "Killing threads \n";
-    $self->{server_thread}->detach();
-    $self->{saving_thread}->detach();
-    print STDERR "Shut down server thread.\n";
-} #shutdown
 
 #
 # Sets up Initial database server and tables.
@@ -102,6 +47,16 @@ sub init_server {
    Yote::ObjProvider::init_datastore( @args );
 } #init_server
 
+# ------------------------------------------------------------------------------------------
+#      * PUBLIC METHODS *
+# ------------------------------------------------------------------------------------------
+
+
+sub do404 {
+    my $self = shift;
+    $self->send_status( "404 Not Found" );
+    print "Content-Type: text/html\n\nERROR : 404\n";
+}
 
 #
 # Called when a request is made. This does an initial parsing and
@@ -156,7 +111,7 @@ sub process_http_request {
 	    $return_header = "Content-Type: text/json\n\n";
 	}
 	else {
-	    $vars = Yote::FileHelper->_ingest();
+	    $vars = Yote::FileHelper->__ingest();
 	    $return_header = "Content-Type: text/html\n\n";
 	}
 
@@ -259,6 +214,95 @@ sub process_http_request {
 
 } #process_request
 
+
+sub shutdown {
+    my $self = shift;
+    print STDERR "Shutting down yote server \n";
+    Yote::ObjProvider::stow_all();
+    print STDERR "Killing threads \n";
+    $self->{server_thread}->detach();
+    $self->{saving_thread}->detach();
+    print STDERR "Shut down server thread.\n";
+} #shutdown
+
+sub start_server {
+    my( $self, @args ) = @_;
+    my $args = scalar(@args) == 1 ? $args[0] : { @args };
+    $self->{args} = $args;
+    $self->{args}{webroot} ||= '/usr/local/yote/html';
+    $self->{args}{upload} ||= '/usr/local/yote/html/upload';
+
+    Yote::ObjProvider::init( %$args );
+
+    # fork out for three starting threads
+    #   - one a multi forking server (parent class)
+    #   - one for a cron daemon inside of Yote. (PENDING)
+    #   - and the parent thread an event loop.
+
+    my $root = Yote::YoteRoot::fetch_root();
+
+    # @TODO - finish the cron and uncomment this
+    # cron thread
+    #my $cron = $root->get__crond();
+    #my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
+    #$self->{cron_thread} = $cron_thread;
+
+    # make sure the filehelper knows where the data directory is
+    $Yote::WebAppServer::YOTE_ROOT_DIR = $self->{args}{root_dir};
+    $Yote::WebAppServer::DATA_DIR      = $self->{args}{data_dir};
+    $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
+    $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
+    $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
+    mkdir( $Yote::WebAppServer::DATA_DIR );
+    mkdir( $Yote::WebAppServer::FILE_DIR );
+    mkdir( $Yote::WebAppServer::WEB_DIR );
+    mkdir( $Yote::WebAppServer::UPLOAD_DIR );
+
+    # update @INC library list
+    my $paths = $root->get__application_lib_directories([]);
+    push @INC, @$paths;
+
+    # server thread
+    my $server_thread = threads->new( sub { $self->run( %$args ); } );
+    $self->{server_thread} = $server_thread;
+
+    _poll_commands();
+
+    $server_thread->join;
+
+   Yote::ObjProvider::disconnect();
+
+} #start_server
+
+
+
+# ------------------------------------------------------------------------------------------
+#      * PRIVATE METHODS *
+# ------------------------------------------------------------------------------------------
+
+
+sub _crond {
+    my( $self, $cron_id ) = @_;
+
+    while( 1 ) {
+	sleep( 60 );
+	{
+	    lock( @commands );
+	    push( @commands, [ {
+		a  => 'check',
+		ai => 1,
+		d  => 'eyJkIjoxfQ==',
+		oi => $cron_id,
+		p  => undef,
+		t  => undef,
+		w  => 0,
+			       }, $$] );
+	    cond_broadcast( @commands );
+	}
+    } #infinite loop
+
+} #_crond
+
 #
 # Run by a thread that constantly polls for commands.
 #
@@ -309,13 +353,13 @@ sub _process_command {
         my $action     = $command->{a};
         my $account;
         if( $login ) {
-            $account = $app->_get_account( $login );
+            $account = $app->__get_account( $login );
         }
 	Yote::ObjProvider::reset_changed();
 
         my $ret = $app_object->$action( $data, $account, $command->{p} );
 
-	my $dirty_delta = Yote::ObjProvider::fetch_changed();
+	my $dirty_delta = Yote::ObjProvider::__fetch_changed();
 
 	my( $dirty_data );
 	if( @$dirty_delta ) {
@@ -338,7 +382,7 @@ sub _process_command {
 	    }
 	} #if there was a dirty delta
 
-        $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ), d => $dirty_data } : { r => $app_object->_obj_to_response( $ret, $login, 1, $guest_token ) };
+        $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ) };
 
 	if( $login ) {
 	    $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $app_object->{ID} } = 1;
@@ -371,28 +415,6 @@ sub _process_command {
 
 } #_process_command
 
-sub _crond {
-    my( $self, $cron_id ) = @_;
-
-    while( 1 ) {
-	sleep( 60 );
-	{
-	    lock( @commands );
-	    push( @commands, [ {
-		a  => 'check',
-		ai => 1,
-		d  => 'eyJkIjoxfQ==',
-		oi => $cron_id,
-		p  => undef,
-		t  => undef,
-		w  => 0,
-			       }, $$] );
-	    cond_broadcast( @commands );
-	}
-    } #infinite loop
-
-} #_crond
-
 #
 # Translates from vValue and reference_id to values and references
 #
@@ -411,19 +433,13 @@ sub _translate_data {
 
 	my $filehelper = new Yote::FileHelper();
 	$filehelper->set_content_type( $filestruct->{content_type} );
-	$filehelper->_accept( $filestruct->{filename} );
+	$filehelper->__accept( $filestruct->{filename} );
 
 	return $filehelper;
     }
     else {
 	return Yote::ObjProvider::fetch( $val );
     }
-}
-
-sub do404 {
-    my $self = shift;
-    $self->send_status( "404 Not Found" );
-    print "Content-Type: text/html\n\nERROR : 404\n";
 }
 
 1;
@@ -449,9 +465,32 @@ Additional parameters are passed to the datastore.
 
 The server set up uses Net::Server::Fork receiving and sending messages on multiple threads. These threads queue up the messages for a single threaded event loop to make things thread safe. Incomming requests can either wait for their message to be processed or return immediately.
 
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item do404
+
+Return a 404 not found page and exit.
+
+=item process_http_request( )
+
+This implements Net::Server::HTTP and is called automatically for each incomming request.
+
+=item shutdown( )
+
+Shuts down the yote server, saving all unsaved items.
+
+=item start_server( )
+
+=back
+
 =head1 BUGS
 
-There are likely bugs to be discovered. This is alpha software
+There are likely bugs to be discovered. This is alpha software.
+
+More important than bugs are the incompletions, such as the cron not being taken offline
+for now, and the Cache not completed. These are top todo at the time of writing.
 
 =head1 AUTHOR
 
