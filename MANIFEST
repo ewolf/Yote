@@ -3,7 +3,6 @@ bin/library_application_path_updater.pl
 bin/yote_server
 Build.PL
 install
-lib/.DS_Store
 lib/Yote/AccessControl.pm~
 lib/Yote/Account.pm
 lib/Yote/AppRoot.pm

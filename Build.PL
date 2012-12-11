@@ -17,26 +17,19 @@ if( -w '/usr/local/' ) {
 sub copy_dir {
     my( $dir, $dest ) = @_;
     mkdir "$dest" unless -d "$dest";
-    print STDERR "CREATE $dir to $dest ($!)<\n";
     opendir( my $DIN, $dir );
     while( my $fn = readdir $DIN ) {
-	print STDERR ">loking at $dir/$fn ($!)<\n";
 	next if $fn =~ /^\.+$/;
 	if( -d "$dir/$fn" ) {
-	    print STDERR "Copying $! DIR ( $dir/$fn to $dest/$fn )\n";
 	    copy_dir( "$dir/$fn", "$dest/$fn" );
 	} 
 	else {	    
 	    copy( "$dir/$fn", "$dest/$fn" );
-	    print STDERR "Copying FILE : $dir/$fn to $dest/$fn ($!)\n";
 	}
     }
 }
 
 copy_dir( 'yote_root', $yote_base_dir );
-exit;
-
-
 
 my $yote_var_dir = '/var/yote';
 if( -w '/var/' ) {
