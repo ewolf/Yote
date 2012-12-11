@@ -5,7 +5,6 @@ package Yote::MysqlIO;
 #
 
 use strict;
-use feature ':5.10';
 
 use Data::Dumper;
 use DBI;

@@ -10,15 +10,15 @@ use Yote::Obj;
 use Yote::YoteRoot;
 use Yote::SQLiteIO;
 
-use Crypt::Passwd;
+use Crypt::Passwd::XS;
 use WeakRef;
 
 $Yote::ObjProvider::DIRTY = {};
 $Yote::ObjProvider::CHANGED = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
-$Yote::ObjProvider::LOGIN_OBJECTS = {};
-$Yote::ObjProvider::GUEST_TOKEN_OBJECTS = {};
+#$Yote::ObjProvider::LOGIN_OBJECTS = {};
+#$Yote::ObjProvider::GUEST_TOKEN_OBJECTS = {};
 
 our $DATASTORE;
 
@@ -72,7 +72,7 @@ sub disconnect {
 #
 sub encrypt_pass {
     my( $pw, $acct ) = @_;
-    return $acct ? unix_std_crypt( $pw, $acct->get_handle() ) : undef;
+    return $acct ? Crypt::Passwd::XS::crypt( $pw, $acct->get_handle() ) : undef;
 } #encrypt_pass
 
 sub fetch {

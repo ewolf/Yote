@@ -1,5 +1,8 @@
 package Yote::YoteRoot;
 
+use strict;
+
+use Yote::Cron;
 use Yote::Login;
 use MIME::Lite;
 
@@ -7,8 +10,6 @@ use base 'Yote::AppRoot';
 
 our $HANDLE_CACHE = {};
 our $EMAIL_CACHE = {};
-
-use strict;
 
 
 # ------------------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ sub _init {
     $self->set_apps({});
     $self->set__handles({});
     $self->set__emails({});
+    $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
 } #_init
 

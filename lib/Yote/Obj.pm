@@ -28,6 +28,7 @@ package Yote::Obj;
 
 use strict;
 
+use Yote::ObjManager;
 use Yote::ObjProvider;
 
 use vars qw($VERSION);
@@ -167,12 +168,14 @@ sub __obj_to_response {
 
 	    $m = Yote::ObjProvider::package_methods( $ref );
         }
-	if( $login && $use_id ) {
-	    #maybe replace LOGIN_OBJECTS with a token rather than id
-	    $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $use_id } = 1;
-	} elsif( $use_id && $guest_token ) {
-	    $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{ $guest_token }{ $use_id } = 1;
-	}
+
+	Yote::ObjManager::register_object( $use_id, $login, $guest_token );
+	# if( $login && $use_id ) {
+	#     #maybe replace LOGIN_OBJECTS with a token rather than id
+	#     $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $use_id } = 1;
+	# } elsif( $use_id && $guest_token ) {
+	#     $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{ $guest_token }{ $use_id } = 1;
+	# }
 	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert" if $xform_out;
