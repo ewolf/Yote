@@ -8,12 +8,10 @@ use Module::Build;
 
 # check to see where the database can be kept
 my $yote_base_dir = '/usr/local/yote';
-if( -w '/usr/local/' ) {
-    mkdir $yote_base_dir unless -e $yote_base_dir;
-} else {
-    $yote_base_dir = '~/.yote';
+unless( -w '/usr/local' ) {
+    $yote_base_dir = "$ENV{HOME}/.yote";
 }
-
+mkdir $yote_base_dir unless -d $yote_base_dir;
 sub copy_dir {
     my( $dir, $dest ) = @_;
     mkdir "$dest" unless -d "$dest";
@@ -32,18 +30,14 @@ sub copy_dir {
 copy_dir( 'yote_root', $yote_base_dir );
 
 my $yote_var_dir = '/var/yote';
-if( -w '/var/' ) {
-    unless( -d $yote_var_dir ) {
-	mkdir $yote_var_dir;
-    }
-} else {
-    $yote_var_dir = '~/.yote';
-    mkdir $yote_var_dir;
+unless( -w '/var/' ) {
+    $yote_var_dir = "$ENV{HOME}/.yote";
 }
+mkdir $yote_var_dir unless -d $yote_var_dir;
 
 my $yote_run_dir = '/var/run';
 unless( -w $yote_run_dir ) {
-    $yote_run_dir = '~/.yote';
+    $yote_run_dir = "$ENV{HOME}/.yote";
     mkdir $yote_run_dir unless -d $yote_run_dir;
 }
 
