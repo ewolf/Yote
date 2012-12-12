@@ -369,13 +369,7 @@ sub _process_command {
 	my( $dirty_data );
 	if( @$dirty_delta ) {
 	    $dirty_data = {};
-	    my $allowed_dirty = Yote::ObjManager::knows_dirty( $dirty_delta, $login, $guest_token );
-	    # my( @allowed_dirty );
-	    # if( $login && $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} } ) {
-	    # 	@allowed_dirty = grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$dirty_delta;
-	    # } else {
-	    # 	@allowed_dirty = grep { $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{ $guest_token }{ $_ } } @$dirty_delta;
-	    # }
+	    my $allowed_dirty = Yote::ObjManager::knows_dirty( $dirty_delta, $app_object, $login, $guest_token );
 	    for my $d_id ( @$allowed_dirty ) {
 		my $dobj = Yote::ObjProvider::fetch( $d_id );
 		if( ref( $dobj ) eq 'ARRAY' ) {

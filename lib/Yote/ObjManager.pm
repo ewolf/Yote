@@ -24,12 +24,9 @@ sub allows_access {
 } #allows_access
 
 sub knows_dirty {
-    my( $dirty_delta, $login, $guest_token ) = @_;
+    my( $dirty_delta, $app, $login, $guest_token ) = @_;
 
-    if( $login ) {
-	return [ grep { $Yote::ObjManager::LOGIN_OBJS->{ $login->{ID} }{ $_ } } @$dirty_delta ];
-    }
-    return [ grep { $Yote::ObjManager::GUEST_OBJS->{ $guest_token }{ $_ } } @$dirty_delta ];
+    return [ grep { allows_access( $_, $app, $login, $guest_token ) } @$dirty_delta ];
 } #knows_dirty
 
 sub register_object {
