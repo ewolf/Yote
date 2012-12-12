@@ -62,7 +62,7 @@ my( %config ) = ( port       => $port,
 my $do_start = 1;
 while( @ARGV ) {
     my $first = shift @ARGV;
-    if($first eq '--shutdown') {
+    if($first eq '--shutdown' || $first eq 'shutdown' || $first eq 'stop' ) {
 	if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
 	    $pidfile->pid->kill();
 	}
@@ -74,7 +74,7 @@ while( @ARGV ) {
 	print "$Yote::VERSIONn";
 	exit;
     }
-    elsif( $first eq '--restart' ) {
+    elsif( $first eq '--restart' || $first eq 'restart' ) {
 	#
 	# kill any old servers hanging around
 	#
@@ -84,6 +84,8 @@ while( @ARGV ) {
 	$pidfile->write();
 	$do_start = 0;
 	last;
+    }
+    elsif( $first eq '--start' || $first eq 'start' ) {
     }
     elsif( $first =~ /^--([^=]+)=(.*)/ ) {
 	$config{$1} = $2;
