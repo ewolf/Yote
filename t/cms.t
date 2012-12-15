@@ -83,4 +83,18 @@ sub test_suite {
     $d_fetch   = $cms->fetch_content_node( { path => "foo", region => 'north america', starts => $d_test_late } );
     is( $d_fetch->get_content(), 'My Foo in North America', "date specific test late" );
 
+    # test interpolation
+    my $x_node = $cms->attach_content( { path => "bar", content => "And Fred Said '<<baz>>'"} );
+    my $bar_node = $cms->fetch_content_node( { path => "bar" } );
+    is( $bar_node->get_content(), "And Fred Said '<<baz>>'", 'node without interpolation' );
+
+    $cms->attach_content( { path => "baz", content => "The Banjo Man sang /<<barf>>/"} );
+    $cms->attach_content( { path => "barf", content => "BLEAGH"} );
+    
+    is( $cms->content( { path => "bar" } ), "And Fred Said 'The Banjo Man sang /BLEAGH/'", "Interpolations" );
+    my $y_node = $cms->attach_content( { path => "bar", content => "And Fred Said '<<bar>>'"} );
+    is( $x_node, $y_node, "same node for same path to attach content to" );
+    is( $cms->content( { path => "bar" } ), "And Fred Said ''", 'no recursion test' );
+    
+
 } #test_suite

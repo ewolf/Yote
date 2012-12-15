@@ -6,6 +6,48 @@ use base 'Yote::Obj';
 
 use Time::Piece;
 
+sub _init {
+    my $self = shift;
+    $self->set_is_template( 1 ); # is a CMS template if on by default.
+    $self->set_root( $self );
+    # to set the root node. Nodes created beyond this one will have their 
+    #root set to this root
+}
+
+sub _is_root {
+    my $self = shift;
+    return $self->_is( $self->get_root() );
+}
+
+#
+# Return the content for a node. If the node has the template flag, then <<path>> will be replaced with CMS content.
+#
+sub content {
+    my( $self, $data, $acct, $seen ) = @_;
+    $seen ||= {};
+    my $working_node = $self->fetch_content_node( $data, $acct );
+    return '' if $seen->{ $working_node->{ID} }; # no recursive templating
+    $seen->{ $working_node->{ID} } = 1;
+    my $content = $working_node->get_content();
+    return $content unless $working_node->get_is_template();
+    my $start_idx = index( $content, "<<" );
+    while( $start_idx != -1 ) {
+	my $e_idx = index( $content, ">>" );
+	return $content if $e_idx == -1; #unclosed <<, so just return out
+	my $path = substr( $content, 2 + $start_idx, $e_idx - ( 2 + $start_idx ) );
+	my $val = $working_node->get_root()->content( {
+	    path => $path,
+	    lang => $data->{lang},
+	    starts => $data->{starts},
+	    ends => $data->{ends},
+	    region => $data->{region},
+						      }, $acct, $seen );
+	$content = substr( $content, 0, $start_idx ) . $val  . substr( $content, $e_idx + 2 );
+	$start_idx = index( $content, "<<" );	
+    }
+    return $content;
+} #content
+
 sub fetch_specific_content_node {
     my( $self, $data, $acct ) = @_;
 
@@ -78,7 +120,7 @@ sub fetch_content_node {
 	my $res = $region_node->fetch_content_node( $data, $acct );
 	return $res if $res;
     }
-    return $self;
+    return $working_node;
 
 } #fetch_content_node
 
@@ -98,6 +140,7 @@ sub attach_content {
 	my $path_node = $self->get__path_nodes( {} )->{ $path };
 	unless( $path_node ) {
 	    $path_node = new Yote::Util::CMS();
+	    $path_node->set_root( $self->get_root() );
 	    $self->get__path_nodes()->{ $path } = $path_node;
 	}
 	return $path_node->attach_content( { starts => $starts,
@@ -115,6 +158,7 @@ sub attach_content {
 	my( $date_node ) = grep { $_->get_start_time() eq $starts } @$date_nodes;
 	unless( $date_node ) {
 	    $date_node = new Yote::Util::CMS();
+	    $date_node->set_root( $self->get_root() );
 	    $date_node->set_start_time( $starts );
 	    $date_node->set_end_time( $ends ) if $ends;
 	    unshift @$date_nodes, $date_node;
@@ -130,6 +174,7 @@ sub attach_content {
 	my $lang_node = $self->get__lang_nodes( {} )->{ $lang };
 	unless( $lang_node ) {
 	    $lang_node = new Yote::Util::CMS();
+	    $lang_node->set_root( $self->get_root() );
 	    $self->get__lang_nodes()->{ $lang } = $lang_node;
 	}
 	return $lang_node->attach_content( { region => $region, 
@@ -141,6 +186,7 @@ sub attach_content {
 	my $region_node = $self->get__region_nodes( { } )->{ $region };
 	unless( $region_node ) {
 	    $region_node = new Yote::Util::CMS();
+	    $region_node->set_root( $self->get_root() );
 	    $self->get__region_nodes()->{ $region } = $region_node;
 	}
 	return $region_node->attach_content( { content => $content,
