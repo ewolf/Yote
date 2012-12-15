@@ -62,14 +62,12 @@ sub new {
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->_init() if $needs_init;
-    $obj->_load();
     
     if( ref( $id_or_hash ) eq 'HASH' ) {
 	for my $key ( %$id_or_hash ) {
 	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
 	}
     }
-
 
     return $obj;
 } #new

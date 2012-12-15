@@ -316,16 +316,14 @@ sub _poll_commands {
         }
         if( $cmd ) {
             _process_command( $cmd );
+	    Yote::ObjProvider::start_transaction();
+	    Yote::ObjProvider::stow_all();
+	    Yote::ObjProvider::commit_transaction();
         }
         unless( @commands ) {
             lock( @commands );
             cond_wait( @commands );
         }
-	if( $cmd ) {
-	    Yote::ObjProvider::start_transaction();
-	    Yote::ObjProvider::stow_all();
-	    Yote::ObjProvider::commit_transaction();
-	}
     }
 
 } #_poll_commands

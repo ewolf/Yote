@@ -8,9 +8,11 @@ FOR ALPHA
         - viewing user login objects
         - cron admin
   * Create guest page to be hosted at madyote.com
-  * Make installer work for the common case of user having root.
+  * Make installer work for the common case of user having root. [ done, needs testing ]
   * Have server respond to javascript permissions requests.
-
+  * Fix page counter
+  * Make simple WIKI for updating Yote News
+  * installer so that other scripts work (rename them to yote_ )
 
 BEYOND
 

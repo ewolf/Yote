@@ -14,7 +14,6 @@ sub TIEHASH {
     my( $class, $id, %hash ) = @_;
     my $storage = {};
     my $obj = bless [ $id, $storage ], $class;
-
     for my $key (keys %hash) {
         $storage->{$key} = $hash{$key};
     }
@@ -62,9 +61,6 @@ sub CLEAR {
     my $self = shift;
     Yote::ObjProvider::dirty( $self->[2], $self->[0] );
     %{$self->[1]} = ();
-#    for my $key (%{$self->[1]}) {
-#        delete $self->[1]{$key};
-#    }
 }
 
 1;

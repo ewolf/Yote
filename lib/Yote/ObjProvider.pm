@@ -59,7 +59,7 @@ sub dirty {
     my $obj = shift;
     my $id = shift;
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
-    $Yote::ObjProvider::CHANGED->{$id} = $obj;
+    $Yote::ObjProvider::CHANGED->{$id} = 1;
 } #dirty
 
 
@@ -114,6 +114,7 @@ sub fetch {
                 my $obj = $class->new( $id_or_xpath );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id_or_xpath;
+		$obj->_load();		
                 __store_weak( $id_or_xpath, $obj );
                 return $obj;
             }

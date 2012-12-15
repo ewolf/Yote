@@ -18,9 +18,6 @@ use Test::More;
 use Test::Pod;
 
 
-use vars qw($VERSION);
-$VERSION = '0.01';
-
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
