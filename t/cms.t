@@ -43,9 +43,6 @@ sub test_suite {
     my $no_node = $cms->fetch_content_node( { path =>  "foo" } );
     is( $no_node, $root_node, "root node returned when path has not been set up" );
 
-    my $node = $cms->fetch_specific_content_node( { path =>  "" } );
-    is( $node->get_content(), undef, "no specific content from the start" );
-
     $cms->attach_content( { content => "This is CMS"} );
     is( $cms->get_content(), "This is CMS", "content attached to root node" );
     is( $no_node->get_content(), "This is CMS", "content attached to root node" );
@@ -67,8 +64,6 @@ sub test_suite {
     my $na_g_node = $cms->attach_content( { path => "foo", lang => 'german', content => "Mein Foo"} );
     my $g_node   = $cms->fetch_content_node( { path => "foo", lang => 'german', region => 'Rhein' } );
     is( $g_node->get_content(), "Mein Foo", "got a german things" );
-    my $fr_node   = $cms->fetch_specific_content_node( { path => "foo", region => 'north america', lang => 'french', content => "My Foo in North America"} );
-    is( $fr_node, undef, "specific french node not found" );
     my $close_node = $cms->fetch_content_node( { path => "foo", region => 'north america', lang => 'french', content => "My Foo in North America"} );
     is( $close_node, $na_node, "but general node found for french request" );
     is( $na_node->get_content(), "My Foo in North America", "Requested french but defaulted to english" );

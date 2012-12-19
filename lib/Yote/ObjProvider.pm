@@ -17,8 +17,6 @@ $Yote::ObjProvider::DIRTY = {};
 $Yote::ObjProvider::CHANGED = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
-#$Yote::ObjProvider::LOGIN_OBJECTS = {};
-#$Yote::ObjProvider::GUEST_TOKEN_OBJECTS = {};
 
 our $DATASTORE;
 
@@ -381,9 +379,6 @@ sub stow {
 
 sub stow_all {
     my( %objs ) = %{$Yote::ObjProvider::DIRTY};
-    for my $id (keys  %{$Yote::ObjProvider::WEAK_REFS} ) {
-	$objs{ $id } = $Yote::ObjProvider::WEAK_REFS->{$id};
-    }
     for my $obj (values %objs) {
         stow( $obj );
     }

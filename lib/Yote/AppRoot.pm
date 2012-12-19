@@ -92,7 +92,8 @@ sub multi_fetch {
 # Available to all apps. Used for verification and for cookie login.
 #
 sub token_login {
-    my( $self, $t, undef, $ip ) = @_;
+    my( $self, $t, undef, $env ) = @_;
+    my $ip = $env->{ REMOTE_ADDR };
     if( $t =~ /(.+)\-(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
         my $login = Yote::ObjProvider::fetch( $uid );

@@ -22,7 +22,7 @@
     <script lang="javascript">
 
 $().ready( function() {
-
+    $.yote.init();
     function make_side_menu( arry ) {
 	$( '#side_menu' ).empty();
 	for( var i=0; i < arry.length; i++ ) {
@@ -39,6 +39,10 @@ $().ready( function() {
     function to_accounts() {
 	$( '#main_panel_div' ).empty().append( "Accounts go here " );
 	
+    }
+
+    function to_installed_apps() {
+	$( '#main_panel_div' ).empty().append( "Installed Apps go here " );
     }
 
     function to_news() {
@@ -90,17 +94,19 @@ $().ready( function() {
       </div>
     </div>
 
-    <div class="container-fluid">
-      <div class="span2" id="menu_div">
-	<ul class="nav nav-list" id="side_menu">
-	  <li class="active"><a href="#" id="to_logins">Logins</a></li>
-	</ul>
-        <div id="underbar">
+    <div class="container">
+      <div class="row">
+	<div class="span2" id="menu_div">
+	  <ul class="nav nav-list" id="side_menu">
+	    <li class="active"><a href="#" id="to_logins">Logins</a></li>
+	  </ul>
+          <div id="underbar">
+	  </div>
 	</div>
-      </div>
-
-      <div class="span10" id="main_panel_div">
-	Stuff goes here!
+	
+	<div class="span10" id="main_panel_div">
+	  Stuff goes here!
+	</div>
       </div>
     </div>
 

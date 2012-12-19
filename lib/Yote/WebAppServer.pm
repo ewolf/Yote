@@ -88,14 +88,15 @@ sub process_http_request {
     #   * a  - action
     #   * ai - app id to invoke command on
     #   * d  - data
+    #   * e  - environment
+    #   * gt - guest token
     #   * oi - object id to invoke command on
-    #   * p  - ip address
     #   * t  - login token for verification
     #   * at - app (non-login) token for verification
     #   * w  - if true, waits for command to be processed before returning
     #
 
-    my( $uri, $remote_ip ) = @ENV{'PATH_INFO','REMOTE_ADDR'};
+    my $uri = $ENV{'PATH_INFO'};
 
     print STDERR Data::Dumper->Dump(["REQUEST FOR $uri"]);
 
@@ -125,8 +126,8 @@ sub process_http_request {
             a  => $action,
             ai => $app_id,
             d  => $vars->{d},
+	    e  => {%ENV},
             oi => $obj_id,
-            p  => $remote_ip,
             t  => $vars->{t},
 	    at => $vars->{at},
             w  => $wait,
@@ -293,8 +294,8 @@ sub _crond {
 		a  => 'check',
 		ai => 1,
 		d  => 'eyJkIjoxfQ==',
+		e  => {%ENV},
 		oi => $cron_id,
-		p  => undef,
 		t  => undef,
 		w  => 0,
 			       }, $$] );
@@ -342,7 +343,7 @@ sub _process_command {
         my $app         = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-        my $login       = $app->token_login( $command->{t}, undef, $command->{p} );
+        my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
 
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
@@ -360,7 +361,7 @@ sub _process_command {
         }
 	Yote::ObjProvider::reset_changed();
 
-        my $ret = $app_object->$action( $data, $account, $command->{p} );
+        my $ret = $app_object->$action( $data, $account, $command->{e} );
 
 	my $dirty_delta = Yote::ObjProvider::__fetch_changed();
 
@@ -382,10 +383,6 @@ sub _process_command {
 
         $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ) };
 
-#	if( $login ) {
-#	    $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $app_object->{ID} } = 1;
-#	}
-	
     };
     if( $@ ) {
 	my $err = $@;
