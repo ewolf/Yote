@@ -2,8 +2,8 @@ bin/dummy_server_for_debug.pl
 bin/yote_classpath_updater.pl
 bin/yote_server
 Build.PL
-MYMETA.json
-MYMETA.yml
+META.json
+META.yml
 install
 lib/Yote/Account.pm
 lib/Yote/AppRoot.pm

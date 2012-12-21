@@ -1,0 +1,120 @@
+---
+abstract: 'Code server side, use client side.'
+author:
+  - 'Eric Wolf (coyocanid@gmail.com)'
+build_requires:
+  Test::More: 0
+dynamic_config: 0
+generated_by: 'Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Yote
+provides:
+  Yote:
+    file: lib/Yote.pm
+    version: 0.094
+  Yote::Account:
+    file: lib/Yote/Account.pm
+    version: 0
+  Yote::AppRoot:
+    file: lib/Yote/AppRoot.pm
+    version: 0.085
+  Yote::Array:
+    file: lib/Yote/Array.pm
+    version: 0.01
+  Yote::Cache:
+    file: lib/Yote/Cache.pm
+    version: 0
+  Yote::Census:
+    file: lib/Yote/Util/Census.pm
+    version: 0
+  Yote::Cron:
+    file: lib/Yote/Cron.pm
+    version: 0
+  Yote::FileHelper:
+    file: lib/Yote/FileHelper.pm
+    version: 0
+  Yote::Hash:
+    file: lib/Yote/Hash.pm
+    version: 0.01
+  Yote::Login:
+    file: lib/Yote/Login.pm
+    version: 0
+  Yote::Messenger:
+    file: lib/Yote/Messenger.pm
+    version: 0
+  Yote::MysqlIO:
+    file: lib/Yote/MysqlIO.pm
+    version: 0.01
+  Yote::Obj:
+    file: lib/Yote/Obj.pm
+    version: 0.011
+  Yote::ObjManager:
+    file: lib/Yote/ObjManager.pm
+    version: 0
+  Yote::ObjProvider:
+    file: lib/Yote/ObjProvider.pm
+    version: 0.01
+  Yote::SQLiteIO:
+    file: lib/Yote/SQLiteIO.pm
+    version: 0.01
+  Yote::Sample::Census:
+    file: lib/Yote/Sample/Census.pm
+    version: 0
+  Yote::Sample::SecretCollect:
+    file: lib/Yote/Sample/SecretCollect.pm
+    version: 0
+  Yote::Test::Hello:
+    file: lib/Yote/Test/Hello.pm
+    version: 0.01
+  Yote::Test::TestAppNeedsLogin:
+    file: lib/Yote/Test/TestAppNeedsLogin.pm
+    version: 0.01
+  Yote::Test::TestAppNoLogin:
+    file: lib/Yote/Test/TestAppNoLogin.pm
+    version: 0.01
+  Yote::Test::TestDeepCloner:
+    file: lib/Yote/Test/TestDeepCloner.pm
+    version: 0
+  Yote::Test::TestNoDeepCloner:
+    file: lib/Yote/Test/TestNoDeepCloner.pm
+    version: 0
+  Yote::Util::CMS:
+    file: lib/Yote/Util/CMS.pm
+    version: 0
+  Yote::Util::Counter:
+    file: lib/Yote/Util/Counter.pm
+    version: 0
+  Yote::Util::MessageBoard:
+    file: lib/Yote/Util/MessageBoard.pm
+    version: 0
+  Yote::Util::Tag:
+    file: lib/Yote/Util/Tag.pm
+    version: 0
+  Yote::Util::Wiki:
+    file: lib/Yote/Util/Wiki.pm
+    version: 0
+  Yote::WebAppServer:
+    file: lib/Yote/WebAppServer.pm
+    version: 0.081
+  Yote::YoteRoot:
+    file: lib/Yote/YoteRoot.pm
+    version: 0
+requires:
+  Crypt::Passwd::XS: 0.601
+  DBD::SQLite: 1.35
+  DBI: 0
+  DateTime: 0.77
+  Email::Valid: 0.19
+  File::UStore: 0.12
+  JSON: 0
+  MIME::Lite: 3.029
+  Mail::Sender: 0
+  Net::Server::HTTP: 0
+  WeakRef: 0.01
+  forks: 0.34
+resources:
+  license: http://dev.perl.org/licenses/
+version: 0.094
