@@ -95,9 +95,8 @@ sub create_login {
 # Fetches object by id
 #
 sub fetch {
-    my( $self, $data, $account ) = @_;
-    die "Access Error" unless $account;
-
+    my( $self, $data, $account, $env ) = @_;
+    die "Access Error" unless Yote::ObjManager::knows_dirty( ref( $data ) ? $data : [ $data ], undef, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
     if( ref( $data ) eq 'ARRAY' ) {
 	my $login = $account->get_login();
 	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];

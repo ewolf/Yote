@@ -23,6 +23,10 @@
 
 $().ready( function() {
     $.yote.init();
+
+    var admin_app = $.yote.fetch_app( 'Yote::Util::Admin' );
+    var cms = admin_app.get_cms();
+
     function make_side_menu( arry ) {
 	$( '#side_menu' ).empty();
 	for( var i=0; i < arry.length; i++ ) {
@@ -50,9 +54,12 @@ $().ready( function() {
     }
 
     function to_edit_news() {
-	$( '#main_panel_div' ).empty().append( "Editing news is here " );
+	$( '#main_panel_div' ).empty().append( "<textarea id=edit_news></textarea><BR><button type=button id=edit_news_b>Apply</button>" );
+	$( '#edit_news_b' ).click( function() {
+	    cms.attach_content( { path : 'news', content : $( '#edit_news' ).val() } );
+	    $( '#News' ).empty().append( cms.content( { path : 'news' } ) );
+	} );
     }
-
 
     function on_login( login ) {
 	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News' ] );
@@ -101,6 +108,7 @@ $().ready( function() {
 	    <li class="active"><a href="#" id="to_logins">Logins</a></li>
 	  </ul>
           <div id="underbar">
+              <section id="News"><P>News Goes Here, actually</P></section>
 	  </div>
 	</div>
 	

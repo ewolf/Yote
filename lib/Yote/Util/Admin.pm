@@ -4,6 +4,8 @@ package Yote::Util::Admin;
 
 use strict;
 
+use base 'Yote::AppRoot';
+
 use Yote::Util::CMS;
 
 sub _init {
@@ -11,4 +13,7 @@ sub _init {
     $self->set_cms( new Yote::Util::CMS() );
 } #_init
 
+1;
+
+__END__
 

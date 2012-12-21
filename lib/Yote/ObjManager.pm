@@ -7,9 +7,9 @@ $Yote::ObjManager::GUEST_OBJS = {};
 
 sub allows_access {
     my( $obj_id, $app, $login, $guest_token ) = @_;
-
+    print STDERR Data::Dumper->Dump([\@_,"ALLOWZ"]);
     unless( $obj_id ) {
-	return $app->isa( 'Yote::AppRoot' );
+	return $app && $app->isa( 'Yote::AppRoot' );
     }
 
     return 1 if $obj_id == 1;

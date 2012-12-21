@@ -345,6 +345,7 @@ sub _process_command {
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
+	$command->{e}{GUEST_TOKEN} = $guest_token;
 
 	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
 
@@ -381,7 +382,7 @@ sub _process_command {
 	    }
 	} #if there was a dirty delta
 
-        $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, 1, $guest_token ) };
+        $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, $guest_token ) };
 
     };
     if( $@ ) {

@@ -134,7 +134,7 @@ sub _path_to_root {
 # Converts scalar, yote object, hash or array to data for returning.
 #
 sub __obj_to_response {
-    my( $self, $to_convert, $login, $xform_out, $guest_token ) = @_;
+    my( $self, $to_convert, $login, $guest_token ) = @_;
     my $ref = ref($to_convert);
     my $use_id;
     if( $ref ) {
@@ -144,7 +144,6 @@ sub __obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
-                return $use_id unless $xform_out;
             } else {
                 $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
             }
@@ -154,14 +153,12 @@ sub __obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
-                return $use_id unless $xform_out;
             } else {
                 $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
             }
         } 
         else {
             $use_id = Yote::ObjProvider::get_id( $to_convert );
-            return $use_id unless $xform_out;
             $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
 
 	    $m = Yote::ObjProvider::package_methods( $ref );
@@ -170,8 +167,7 @@ sub __obj_to_response {
 	Yote::ObjManager::register_object( $use_id, $login, $guest_token );
 	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
-    return "v$to_convert" if $xform_out;
-    return $to_convert;
+    return "v$to_convert";
 } #__obj_to_response
 
 #
@@ -184,14 +180,14 @@ sub __transform_data_no_id {
         if( $tied ) {
             return Yote::ObjProvider::get_id( $item ); 
         }
-        return [map { $self->__obj_to_response( $_, $login, 1, $guest_token ) } @$item];
+        return [map { $self->__obj_to_response( $_, $login, $guest_token ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
         my $tied = tied %$item;
         if( $tied ) {
             return Yote::ObjProvider::get_id( $item ); 
         }
-        return { map { $_ => $self->__obj_to_response( $item->{$_}, $login, 1, $guest_token ) } keys %$item };
+        return { map { $_ => $self->__obj_to_response( $item->{$_}, $login, $guest_token ) } keys %$item };
     }
     elsif( ref( $item ) ) {
         return  Yote::ObjProvider::get_id( $item ); 

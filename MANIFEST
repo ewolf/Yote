@@ -2,6 +2,8 @@ bin/dummy_server_for_debug.pl
 bin/yote_classpath_updater.pl
 bin/yote_server
 Build.PL
+MYMETA.json
+MYMETA.yml
 install
 lib/Yote/Account.pm
 lib/Yote/AppRoot.pm
@@ -24,6 +26,7 @@ lib/Yote/Test/TestAppNeedsLogin.pm
 lib/Yote/Test/TestAppNoLogin.pm
 lib/Yote/Test/TestDeepCloner.pm
 lib/Yote/Test/TestNoDeepCloner.pm
+lib/Yote/Util/Admin.pm
 lib/Yote/Util/Census.pm
 lib/Yote/Util/CMS.pm
 lib/Yote/Util/Counter.pm
@@ -37,7 +40,6 @@ README
 t/cms.t
 t/docs.t
 t/sqlite.t
-t/{
 tasklog
 ToDo.txt
 VERSIONS
