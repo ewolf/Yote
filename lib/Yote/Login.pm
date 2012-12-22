@@ -37,6 +37,11 @@ sub reset_password {
 
 } #reset_password
 
+sub is_root {
+    my $self = shift;
+    return $self->get__is_root();
+} #is_root
+
 sub UploadAvatar {
     my( $self, $data ) = @_;
     $self->set_avatar( $data->{avatar} );

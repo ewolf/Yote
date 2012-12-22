@@ -191,7 +191,7 @@ sub paginate_xpath {
 	}
     }    
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? $PAG", $next_ref );
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
     my %ret;
     for my $row (@$res) {
 	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
@@ -233,7 +233,7 @@ sub paginate_xpath_list {
 	}
     }    
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int ) $PAG", $next_ref );
     my @ret;
     for my $row (@$res) {
 	push @ret, $row->[1] || "v$row->[2]";
