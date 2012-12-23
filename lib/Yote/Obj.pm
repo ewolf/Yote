@@ -190,7 +190,9 @@ sub __transform_data_no_id {
         return { map { $_ => $self->__obj_to_response( $item->{$_}, $login, $guest_token ) } keys %$item };
     }
     elsif( ref( $item ) ) {
-        return  Yote::ObjProvider::get_id( $item ); 
+        my $id = Yote::ObjProvider::get_id( $item ); 
+	Yote::ObjManager::register_object( $id, $login, $guest_token );
+	return $id;
     }
     else {
         return "v$item"; #scalar case
@@ -221,6 +223,18 @@ sub paginate {
     return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start );
 
 } #paginate
+
+sub paginate_hash {
+    my( $self, $data, $account ) = @_;
+    my( $list_name, $number, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::paginate_xpath( $self->_path_to_root() . "/$list_name", $number, $start );
+
+} #paginate_hash
 
 #
 # Updates the object but only for capitolized keys that already exist.

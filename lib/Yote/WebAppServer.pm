@@ -417,8 +417,11 @@ sub _process_command {
 sub _translate_data {
     my( $val ) = @_;
 
-    if( ref( $val ) ) { #from javacript object, or hash. no fields starting with underscores accepted
+    if( ref( $val ) eq 'HASH' ) { #from javacript object, or hash. no fields starting with underscores accepted
         return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
+    }
+    elsif( ref( $val ) eq 'ARRAY' ) { #from javacript object, or hash. no fields starting with underscores accepted
+        return [ map {  _translate_data( $_ ) } @$val ]; 
     }
     return undef unless $val;
     if( index($val,'v') == 0 ) {

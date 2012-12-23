@@ -222,7 +222,6 @@ $.yote = {
         if( async == 0 ) {
             root._disable();
         }
-
         var put_data = {
             d:$.base64.encode(JSON.stringify( {d:data} ) ),
             t:$.yote.token,
@@ -733,7 +732,12 @@ $.yote = {
             }
             // this case is for paramers being sent thru message
             // that will not get ids.
-            var ret = Object();
+            var ret;
+	    if (data instanceof Array) {
+		ret = [];
+	    } else {
+		ret = Object();
+	    }
             for( var key in data ) {
                 ret[key] = this._translate_data( data[key], run_functions );
             }

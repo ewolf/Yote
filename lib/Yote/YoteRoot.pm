@@ -17,7 +17,7 @@ our $EMAIL_CACHE = {};
 # ------------------------------------------------------------------------------------------
 sub _init {
     my $self = shift;
-    $self->set_apps({});
+    $self->set__apps({});
     $self->set__handles({});
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
@@ -109,12 +109,12 @@ sub fetch {
 #
 sub fetch_app_by_class {
     my( $self, $data ) = @_;
-    my $app = $self->get_apps()->{$data};
+    my $app = $self->get__apps({})->{$data};
     unless( $app ) {
         eval("use $data");
         die $@ if $@;
         $app = $data->new();
-        $self->get_apps()->{$data} = $app;
+        $self->get__apps()->{$data} = $app;
     }
     return [$app,@{$app->_extra_fetch()}];
 } #fetch_app_by_class
@@ -310,7 +310,7 @@ sub _create_token {
 
 sub _purge_app {
     my( $self, $app ) = @_;
-    my $apps = $self->get_apps();
+    my $apps = $self->get__apps();
     return delete $apps->{$app};
 } #_purge_app
 
