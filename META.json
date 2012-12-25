@@ -158,7 +158,7 @@
          "version" : 0
       }
    },
-   "release_status" : "stable",
+   "release_status" : "alpha",
    "resources" : {
       "license" : [
          "http://dev.perl.org/licenses/"
