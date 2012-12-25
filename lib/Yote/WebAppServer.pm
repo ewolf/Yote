@@ -55,7 +55,7 @@ sub init_server {
 
 sub do404 {
     my $self = shift;
-    $self->send_status( "404 Not Found" );
+    $self->send_status( "404" );
     print "Content-Type: text/html\n\nERROR : 404\n";
 }
 
@@ -188,7 +188,7 @@ sub process_http_request {
     else { #serve up a web page
 	my $root = $self->{args}{webroot};
 	my $dest = join('/',@path);
-	if( -d "<$root/$dest" ) {
+	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
 	    $dest .= '/index.html';
 	}
 	if( open( IN, "<$root/$dest" ) ) {

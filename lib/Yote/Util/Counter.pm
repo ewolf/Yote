@@ -8,7 +8,8 @@ sub _init {
 }
 
 sub increment {
-    my( $self, $data, $account ) = @_;
+    my( $self, $data, $account, $env ) = @_;
+    my $ip = $env->{ REMOTE_ADDR };
     my $count = $self->get__counts()->{$data} + 1; 
     $self->get__counts()->{$data} = $count; 
     return $count;
