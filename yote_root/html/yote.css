@@ -1,0 +1,13 @@
+section { margin:10px; }
+p { margin-left:10px; }
+.emp { font-family:"Lucida Console",monospace;  }
+.page-header {
+    padding-bottom: 9px;
+    margin: 20px 0 30px;
+    border-bottom: 3px solid #0E7;
+}
+footer{
+    margin : 7px;
+    padding : 3px;
+    border :  5px ridge #98bf21;
+}

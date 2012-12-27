@@ -1,0 +1,82 @@
+<html>
+  <head>
+    <title>Yote</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+    <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
+
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
+    <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <script>
+    $().ready(function(){
+    var $window = $(window);
+	$.yote.init();
+	var news_app = $.yote.fetch_app('Yote::Util::Admin');
+	var cms = news_app.get_cms();
+	$( '#news' ).empty().append( cms.content( { path : 'news' } ) );
+        var hello_app = $.yote.fetch_app('Yote::Test::Hello');
+        function hello() {
+            var result = hello_app.hello({ name:$('#txt').val() } );
+            alert( result );
+
+	    }
+        $('#button').click( function() {
+	        hello();
+        } );
+        $('#txt').keypress( function(e) {
+            if(e.which == 13 ) {
+	            hello();
+	        }
+        } );
+
+	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+	var count = page_counter.increment( 'Program Page' );
+	$('#counter').empty().append( count );
+    });
+    </script>
+  </head>
+
+  <BODY style="background-color: #BEB;"	data-spy="scroll" data-target="#navcol" >
+    <DIV class="navbar navbar-fixed-top navbar-inverse">
+      <DIV class="navbar-inner">
+	<A class="brand"><img src="yotelogo.png"></A>
+	<UL class="nav">
+	  <LI><a href="index.html">About</a></LI>
+	  <LI class="active"><A href="install.html">Install</A></LI>
+	  <LI><A href="samples.html">Samples</A></LI>
+	  <LI><A href="program.html">Program</A></LI>
+	</UL>      
+      </DIV>
+    </DIV>
+
+    <HEADER class="jumbotron subhead" style="height:70px">
+      &nbsp;
+    </HEADER>
+
+    <SECTION>
+      <DIV class="page-header">
+	<H1>Yote Concepts</H1>
+      </DIV>
+      This is still very much under construction
+      <DL>
+	<DT></DT>
+	<DD>
+	</DD>
+      
+	</DL>
+    </SECTION>
+    
+    <footer>
+      This page has been viewed <span id="counter"></span> times.
+    </footer>
+    
+    <script src="/js/bootstrap.js"></script>
+  </body>
+</html>

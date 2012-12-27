@@ -1,0 +1,129 @@
+<html>
+  <head>
+    <title>Yote</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+    <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
+
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
+    <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <script>
+    $().ready(function(){
+    var $window = $(window);
+	$.yote.init();
+	var news_app = $.yote.fetch_app('Yote::Util::Admin');
+	var cms = news_app.get_cms();
+	$( '#news' ).empty().append( cms.content( { path : 'news' } ) );
+        var hello_app = $.yote.fetch_app('Yote::Test::Hello');
+        function hello() {
+            var result = hello_app.hello({ name:$('#txt').val() } );
+            alert( result );
+
+	    }
+        $('#button').click( function() {
+	        hello();
+        } );
+        $('#txt').keypress( function(e) {
+            if(e.which == 13 ) {
+	            hello();
+	        }
+        } );
+
+	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+	var count = page_counter.increment( 'Install Page' );
+	$('#counter').empty().append( count );
+    });
+    </script>
+  </head>
+
+  <BODY style="background-color: #BEB;"	data-spy="scroll" data-target="#navcol" >
+    <DIV class="navbar navbar-fixed-top navbar-inverse">
+      <DIV class="navbar-inner">
+	<A class="brand"><img src="yotelogo.png"></A>
+	<UL class="nav">
+	  <LI><a href="index.html">About</a></LI>
+	  <LI class="active"><A href="install.html">Install</A></LI>
+	  <LI><A href="samples.html">Samples</A></LI>
+<!--	  <LI><A href="program.html">Program</A></LI> -->
+	</UL>      
+      </DIV>
+    </DIV>
+
+    <HEADER class="jumbotron subhead" style="height:70px">
+      &nbsp;
+    </HEADER>
+
+    <SECTION>
+      <DIV class="page-header">
+	<H1>Installing Yote</H1>
+      </DIV>
+      You can install Yote using either CPAN or Github.
+      <DL>
+	<DT>CPAN</DT>
+	<DD>
+	  <code>
+	    $ sudo CPAN Yote
+	  </code>
+	</DD>
+      
+	<DT>Github</DT>
+	<DD>
+	  Get Yote  on github : <a href="https://github.com/ewolf/Yote">https://github.com/ewolf/Yote</a><BR>
+	  <code>
+	    $ perl Build.PL<BR>
+	    $ ./Build installdeps<BR>
+	    $ ./Build test<BR>
+	    $ sudo ./Build install<BR>
+	  </code>
+	</DD>
+      </DL>
+    </SECTION>
+    
+    <SECTION>
+      <DIV class="page-header">
+	<H1>Running Yote</H1>
+      </DIV>
+      <P>
+      Yote can be run on any available port. The yote_server script starts, stops or restarts yote.<BR>
+      <code>
+	$ yote_server --port=80 start|stop|restart
+      </code>
+      </P>
+      <P>
+      Yote will create a datastore if none exists, and use yote_root for any html it may serve.
+      </P>
+    </SECTION>
+    
+    <SECTION id="configure">
+      <DIV class="page-header">
+	<H1>Configuring Yote</H1>
+      </DIV>
+      When Yote is started, the first account created is the root account.
+      Open up your browser to http://localhost:<i>yote port</i>/yote/index.html
+      and click 'Log in' on the upper right side. Then click the 'create account' button and create an account.
+      This account will then be the root account and have root privileges.
+      <BR>
+      If you wish to add to the classpath that Yote uses to discover app packages you write,
+      use the yote_classpath_updater.pl script while the yote server is not running.
+      Running it without arguments displays the current classpath being used.
+      Running it with space separated directories will add those directories into the classpath
+      that Yote uses to look for Yote packages and apps.
+      <BR>
+      Once you have your root account created, you can run the browser unit tests by opening up
+      http://localhost:<i>yote port</i>/yote/unit_test.html
+    </SECTION>
+    
+    <footer>
+      This page has been viewed <span id="counter"></span> times.
+    </footer>
+    
+    <script src="/js/bootstrap.js"></script>
+  </body>
+</html>
