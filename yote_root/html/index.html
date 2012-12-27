@@ -21,20 +21,6 @@
 	var news_app = $.yote.fetch_app('Yote::Util::Admin');
 	var cms = news_app.get_cms();
 	$( '#news' ).empty().append( cms.content( { path : 'news' } ) );
-        var hello_app = $.yote.fetch_app('Yote::Test::Hello');
-        function hello() {
-            var result = hello_app.hello({ name:$('#txt').val() } );
-            alert( result );
-
-	    }
-        $('#button').click( function() {
-	        hello();
-        } );
-        $('#txt').keypress( function(e) {
-            if(e.which == 13 ) {
-	            hello();
-	        }
-        } );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	var count = page_counter.increment( 'Main Page' );
