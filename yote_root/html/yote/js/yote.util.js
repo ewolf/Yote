@@ -318,22 +318,23 @@ $.yote.util = {
 		var side_array = [];
 		
 		if( my_login ) {
-		    $( container_id ).empty().append( brand_html + 
-						      '<ul class="nav" role="navigation">' +
-						      // other navigation options go here
-						      '</ul>' +
-						      '<ul class="nav pull-right" role="navigation">' +
-						      '<li class="dropdown">' +
-						      '<a id="_yote_login-label" href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">' +
-						      'logged in as <b>' + my_login.get_handle() + '</b>' +
-						      '<b class="caret"></b>' +
-						      '</a>' +
-						      '<ul class="dropdown-menu" role="menu" aria-labelledby="login-label">' +
-						      '<li><a id="_yote_accountsettings" tabindex="-1" href="#">Account Settings</a></li>' +
-						      '<li><a id="_yote_changelogin" tabindex="-1" href="#">Sign In as other user</a></li>' +
-						      '<li><a id="_yote_logout" tabindex="-1" href="#">Log Out</a></li>' +
-						      '</ul>'+
-						      '</li>' );
+		    $( container_id ).empty()
+			.append( brand_html + 
+//				 '<ul class="nav" role="navigation">' +
+				 // other navigation options go here
+//				 '</ul>' +
+				 '<ul class="nav pull-right" role="navigation">' +
+				 '<li class="dropdown">' +
+				 '<a id="_yote_login-label" href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">' +
+				 'logged in as <b>' + my_login.get_handle() + '</b>' +
+				 '<b class="caret"></b>' +
+				 '</a>' +
+				 '<ul class="dropdown-menu" role="menu" aria-labelledby="login-label">' +
+				 '<li><a id="_yote_accountsettings" tabindex="-1" href="#">Account Settings</a></li>' +
+				 '<li><a id="_yote_changelogin" tabindex="-1" href="#">Sign In as other user</a></li>' +
+				 '<li><a id="_yote_logout" tabindex="-1" href="#">Log Out</a></li>' +
+				 '</ul>'+
+				 '</li>' );
 		    $( '#_yote_accountsettings' ).click(function() { $.yote.util.edit_account( modal_div, app ); });
 
 		    var logout = function() {
@@ -350,16 +351,10 @@ $.yote.util = {
 		    logged_in_function( my_login, my_account );
 		}
 		else {
-		    $( container_id ).empty().append( '<a class="brand" href="./index.html">' + brand_html + '</a>' +
-						      '<ul class="nav" role="navigation">' +
-						      // other navigation options go here
-						      '</ul>' +
-						      '<ul class="nav pull-right" role="navigation">' +
-						      '<li class="dropdown">' +
-						      '<a id="_yote_login" href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">' +
+		    $( container_id ).empty().append( brand_html +
+						      '<a id="_yote_login" href="#" role="button" class="pull-right" STYLE="margin-right:15px;margin-top:10px">' +
 						      'Log In' +
-						      '</a>' +
-						      '</li>' );
+						      '</a>' );
 		    $( '#_yote_login' ).click(function() {
 			$.yote.util.login( modal_div, cls );
 		    } );

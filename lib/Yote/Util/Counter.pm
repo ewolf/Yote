@@ -15,6 +15,16 @@ sub increment {
     return $count;
 }
 
+sub pages {
+    my( $self,$data, $account, $env ) = @_;
+    return [ keys %{$self->get__counts()} ];
+}
+
+sub count {
+    my( $self,$data, $account, $env ) = @_;
+    return $self->get__counts()->{$data};    
+}
+
 1;
 
 __END__

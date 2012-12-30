@@ -14,6 +14,7 @@
     <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
 
     <STYLE>
       section { padding-top : 20px; margin : 3px; }
@@ -33,7 +34,7 @@ $().ready( function() {
 	for( var i=0; i < arry.length; i++ ) {
 	    var menu_item = arry[i];
 	    var m_id = "to_" + menu_item.toLowerCase().replace( / /g, "_" );
-	    $( '#side_menu' ).append( '<li class="active"><a href="#" id="' + m_id + '">' + menu_item + "</a></li>" );
+	    $( '#side_menu' ).append( '<li><a href="#" id="' + m_id + '">' + menu_item + "</a></li>" );
 	    (function ( item ) {
 		$( '#' + item ).click( function() { eval( item + '()' ); } );
 	    } )( m_id );
@@ -82,8 +83,19 @@ $().ready( function() {
 	} );
     }
 
+    function to_stats() {
+	var count_app = $.yote.fetch_app('Yote::Util::Counter');
+	var pages = count_app.pages();
+	var tab = $.yote.util.make_table();
+	tab.add_header_row( [ 'page', 'hits' ] );
+	for( var i=0; i < pages.length(); i++ ) {
+	    tab.add_row( [ pages.get(i), count_app.count( pages.get(i) ) ] );
+	}
+	$( '#main_panel_div' ).empty().append( '<h3>Page Views</h3>' + tab.get_html() ); //good place for pagination
+    }
+
     function on_login( login ) {
-	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News', 'Edit To Do' ] );
+	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News', 'Edit To Do', 'Stats' ] );
 	var news = cms.content( { path : 'news' } );
 	$( '#News' ).empty().append( news );
 	$( '#ToDo' ).empty().append( cms.content( { path : 'to_do' } ) );
@@ -97,7 +109,7 @@ $().ready( function() {
 	$( '#ToDo' ).empty().append( cms.content( { path : 'to_do' } ) );
     }
 
-    $.yote.util.make_login_bar( { brand_html         : '<a class="brand" href="./index.html">Yote</a>',
+    $.yote.util.make_login_bar( { brand_html         : '<a class="brand"><IMG src="../yotelogo.png"> <huge>Yote Admin</huge></a>',
 				  container_id       : '#nav-container',
 				  logged_in_function : on_login,
 				  not_logged_in_function : not_logged_in,
@@ -110,26 +122,19 @@ $().ready( function() {
 
   </HEAD>
 
-   <body data-spy="scroll" data-target=".side-control" data-twttr-rendered="true">
+   <body style="background-color: #FDA;">
 
-    <div class="navbar navbar-fixed-top">
-      <div class="navbar-inner">
-	<div id="nav-container" class="container" style="width: auto">
-	</div>
-      </div>
+    <div STYLE="background-color:#181818;vertical-align:middle">
+	<div id="nav-container" class="container" style="width: auto"></div>
     </div>
 
-    <div class="topbar">
-      <div class="container hero-unit">
-	<H1>Yote Admin</H1>
+    <HEADER class="jumbotron subhead" style="height:70px">
+      &nbsp;
+      <div style="position:fixed;top:350px;left:350px;" id="modal_div"></div>
+    </HEADER>
 
-	<div style="position:fixed;top:350px;left:350px;" id="modal_div"></div>
-
-      </div>
-    </div>
-
-    <div class="container">
-      <div class="row">
+    <div class="container-fluid">
+      <div class="row-fluid">
 	<div class="span2" id="menu_div">
 	  <ul class="nav nav-list" id="side_menu">
 	    <li class="active"><a href="#" id="to_logins">Logins</a></li>
