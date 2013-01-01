@@ -83,22 +83,38 @@ $().ready( function() {
 	} );
     }
 
-    function to_stats( start ) {
+    function to_stats( start_pos ) {
+	var start = start_pos ? start_pos : 0;
 	var count_app = $.yote.fetch_app('Yote::Util::Counter');
 
-	var size = 2;
+	var size = 10;
 
-	var page_data = count_app.paginate_hash( [ '_counts', size + 1, start ? start : 0 ] );
-	var pages = page_data.keys();
-	console.log( [ 'PD', page_data ] );
+	var page_data = count_app.paginate_hash( [ '_counts', size + 1, start ] );
 	var tab = $.yote.util.make_table(' BORDER=1 ' );
 	tab.add_header_row( [ 'page', 'hits' ] );
-	var max = pages.length < size ? pages.length : size;
+	var max = page_data.length() < size ? page_data.length() : size;
 	for( var i=0; i < max; i++ ) {
-	    tab.add_row( [ pages[ i ], page_data.get( pages[ i ] ) ], null, ['','style="text-align:right"'] );
+	    var pair = page_data.get( i );
+	    tab.add_row( [ pair.get(0), pair.get(1) ], null, ['','style="text-align:right"'] );
 	}
 	$( '#main_panel_div' ).empty().append( '<h3>Page Views</h3>' + tab.get_html() ); //good place for pagination
-	
+	if( start > 0 ) {
+	    $( '#main_panel_div' ).append(  '<span id="back" class="btn"><i class="icon-fast-backward"></i></span>' );
+	    $( '#back' ).click(function(){
+		var x = start - size;
+		to_stats( x > 0 ? x : 0 );
+	    });
+	} else {
+	    $( '#main_panel_div' ).append(  '<span class="btn"><i class="icon-fast-backward icon-white"></i></span>' );
+	}
+	if( page_data.length() > max ) {
+	    $( '#main_panel_div' ).append(  '<span id="forward" class="btn"><i class="icon-fast-forward"></i></span>' );
+	    $( '#forward' ).click(function(){
+		to_stats( start + size );
+	    });
+	} else {
+	    $( '#main_panel_div' ).append(  '<span class="btn"><i class="icon-fast-forward icon-white"></i></span>' );
+	}
     }
 
     function on_login( login ) {
