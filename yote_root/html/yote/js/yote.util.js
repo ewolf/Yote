@@ -115,21 +115,29 @@ $.yote.util = {
 	}
 	return $( '#' + idname );
     },
-    make_table:function() {
+    make_table:function(extra) {
+	var xtr = extra ? extra : '';
 	return {
-	    html:'<table>',
-	    add_header_row : function( arry ) {
-		this.html = this.html + '<tr>';
+	    html:'<table ' + xtr + '>',
+	    add_header_row : function( arry, extra_row, extra_headers ) {
+		var xtr_row = extra_row ? extra_row : '';
+		var xtr_headers = extra_headers ? extra_headers : '';
+		this.html = this.html + '<tr ' + xtr_row + '>';
 		for( var i=0; i<arry.length; i++ ) {
-		    this.html = this.html + '<th>' + arry[i] + '</th>';
+		    this.html = this.html + '<th ' + xtr_headers + '>' + arry[i] + '</th>';
 		}
 		this.html = this.html + '</tr>';
 		return this;
 	    },
-	    add_row : function( arry ) {
-		this.html = this.html + '<tr>';
+	    add_row : function( arry, extra_row, extra_headers ) {
+		var xtr_row = extra_row ? extra_row : '';
+		this.html = this.html + '<tr ' + xtr_row + '>';
 		for( var i=0; i<arry.length; i++ ) {
-		    this.html = this.html + '<td>' + arry[i] + '</td>';
+		    if( extra_headers ) {
+			this.html = this.html + '<td ' + extra_headers[i] + '>' + arry[i] + '</td>';
+		    } else {
+			this.html = this.html + '<td>' + arry[i] + '</td>';
+		    }
 		}
 		this.html = this.html + '</tr>';		
 		return this;
@@ -351,10 +359,10 @@ $.yote.util = {
 		    logged_in_function( my_login, my_account );
 		}
 		else {
-		    $( container_id ).empty().append( brand_html +
-						      '<a id="_yote_login" href="#" role="button" class="pull-right" STYLE="margin-right:15px;margin-top:10px">' +
+		    $( container_id ).empty().append( '<div>' + brand_html +
+						      '<a id="_yote_login" href="#" role="button" aclass="pull-right" STYLE="margin-right:15px;height:auto;float:right;display:inline">' +
 						      'Log In' +
-						      '</a>' );
+						      '</a></div>' );
 		    $( '#_yote_login' ).click(function() {
 			$.yote.util.login( modal_div, cls );
 		    } );
@@ -368,7 +376,7 @@ $.yote.util = {
 	})( cls_f );
 	
     }, //make_login_bar
-
+//rgba(47, 139, 34, 0.59)
 
     forgot_password: function( modal_attach_point, login_function ) {
 	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );

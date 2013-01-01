@@ -83,15 +83,22 @@ $().ready( function() {
 	} );
     }
 
-    function to_stats() {
+    function to_stats( start ) {
 	var count_app = $.yote.fetch_app('Yote::Util::Counter');
-	var pages = count_app.pages();
-	var tab = $.yote.util.make_table();
+
+	var size = 2;
+
+	var page_data = count_app.paginate_hash( [ '_counts', size + 1, start ? start : 0 ] );
+	var pages = page_data.keys();
+	console.log( [ 'PD', page_data ] );
+	var tab = $.yote.util.make_table(' BORDER=1 ' );
 	tab.add_header_row( [ 'page', 'hits' ] );
-	for( var i=0; i < pages.length(); i++ ) {
-	    tab.add_row( [ pages.get(i), count_app.count( pages.get(i) ) ] );
+	var max = pages.length < size ? pages.length : size;
+	for( var i=0; i < max; i++ ) {
+	    tab.add_row( [ pages[ i ], page_data.get( pages[ i ] ) ], null, ['','style="text-align:right"'] );
 	}
 	$( '#main_panel_div' ).empty().append( '<h3>Page Views</h3>' + tab.get_html() ); //good place for pagination
+	
     }
 
     function on_login( login ) {
