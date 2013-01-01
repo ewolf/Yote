@@ -18,6 +18,7 @@ my $var_dir = Yote::ConfigData->config( 'yote_var_dir' );
 my $base_dir = Yote::ConfigData->config( 'yote_base_dir' );
 my $run_dir = Yote::ConfigData->config( 'yote_run_dir' );
 my $port = Yote::ConfigData->config( 'port' );
+my %config;
 
 push( @INC, "$base_dir/lib" );
 
@@ -44,6 +45,7 @@ $SIG{INT} = sub {
 
 $SIG{CHLD} = sub { 
     #this is important. I may be able to handle the occasional crashing of the web server process right here!
+    print STDERR Data::Dumper->Dump(["GOT SIG CHLD", \%config]);
 };
 
 $SIG{PIPE} = sub {};
@@ -54,10 +56,10 @@ unless( -e $sqlitefile ) {
     my $sqlite = new Yote::SQLiteIO( sqlitefile => $sqlitefile );
     $sqlite->ensure_datastore();
 }
-my( %config ) = ( port       => $port, 
-		  webroot    => $webroot,
-		  datastore  => 'Yote::SQLiteIO', 
-		  sqlitefile => $sqlitefile );
+( %config ) = ( port       => $port, 
+		webroot    => $webroot,
+		datastore  => 'Yote::SQLiteIO', 
+		sqlitefile => $sqlitefile );
 
 my $do_start = 1;
 while( @ARGV ) {
