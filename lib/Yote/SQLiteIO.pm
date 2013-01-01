@@ -192,11 +192,13 @@ sub paginate_xpath {
     }    
 
     my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
-    my %ret;
-    for my $row (@$res) {
-	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
-    }
-    return \%ret
+    return [ map { [ $_->[0], $_->[1] || 'v' . $_->[2] ] } @$res ];
+#    my %ret;
+#    print STDERR Data::Dumper->Dump(["BEEPBEEPBEEP","SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref, $res]);
+#    for my $row (@$res) {
+#	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
+#    }
+#    return \%ret
 } #paginate_xpath
 
 #
