@@ -157,7 +157,95 @@ $.yote.util = {
 	}
     }, //make_table
 
+    make_paginatehash_table:function( arg ) {
+	return (function( args ){
+	    
+	    var ptab = {
+		obj       : args[ 'obj' ],
+		list_name : args[ 'list_name' ],
+		size      : args[ 'size' ] || 100,
+		col_names : args[ 'col_names' ],
+		title     : args[ 'title' ] || '',
+		col_funs  : args[ 'col_functions' ],
+		attach_point : args[ 'attach_point' ]
+	    };
+
+	    ptab[ 'show' ] = function( start_pos ) {
+		if( ptab[ 'attach_point' ] ) {
+		    $( ptab[ 'attach_point' ] ).empty().append( ptab.build_html( start_pos ) );
+		    $( '#forward_' + ptab.obj.id ).click(function(){
+			ptab.show( start_pos + ptab.size );
+		    });
+		    $( '#back_' + ptab.obj.id ).click(function(){
+			var x = start_pos - ptab.size;
+			ptab.show( x > 0 ? x : 0 );
+		    });
+
+		}
+	    };
+
+	    ptab[ 'build_html' ] = function(start_pos) {
+		var start = start_pos ? start_pos : 0;
+		var tab = $.yote.util.make_table();
+		if( ptab.col_names ) {
+		    tab.add_header_row( ptab.col_names );
+		}
+		var list = ptab.obj[ 'paginate_hash' ]( [ ptab.list_name, ptab.size + 1, start ] );
+
+		var max = list.length() < ptab.size ? list.length() : ptab.size;
+		for( var i=0; i < max ; i++ ) {
+		    var pair = list.get( i );
+		    var key = pair.get( 0 );
+		    var val = pair.get( 1 );
+		    if( ptab.col_funs ) {
+			var arry = [];
+			for( var j=0; j < ptab.col_funs.length; j++ ) {
+			    var fun = ptab.col_funs[ j ];
+			    arry.push( fun( key, val ) );
+			}
+			tab.add_row( arry );
+		    } 
+		    else {
+			tab.add_row( [ key, val ] );
+		    }
+		}
+		
+		var buf = ptab.title + tab.get_html();
+		
+		if( start > 0 ) {
+		    buf = buf + '<span id="back_' + ptab.obj.id + '" class="btn"><i class="icon-fast-backward"></i></span>';
+		    if( list.length() > max ) {
+			buf = buf + '<span id="forward_' + ptab.obj.id + '" class="btn"><i class="icon-fast-forward"></i></span>';
+		    }
+		    else {
+			buf = buf + '<span class="btn"><i class="icon-fast-forward icon-white"></i></span>';
+		    }
+		} 
+		else {
+		    if( list.length() > max ) {
+			buf = buf + '<span class="btn"><i class="icon-fast-backward icon-white"></i></span>';
+			buf = buf + '<span id="forward_' + ptab.obj.id + '" class="btn"><i class="icon-fast-forward"></i></span>';
+		    } else {
+			//nothing to do
+		    }
+		}
+		return buf;
+	    };
+	    
+	    ptab[ 'attach_to' ] = function( attach_point ) {
+		ptab[ 'attach_point' ] = attach_point;
+		ptab.show( 0 );
+	    };
+
+	    if( ptab[ 'attach_point' ] ) {
+		ptab.show( 0 );
+	    }
+
+	    return ptab;
+	})( arg );
+    }, //make_paginatehash_table
     
+
     button_actions:function( args ) {
 	var but         = args[ 'button' ];
 	var action      = args[ 'action' ] || function(){};
