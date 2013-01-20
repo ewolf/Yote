@@ -85,7 +85,6 @@ $.yote = {
     token:null,
     err:null,
     objs:{},
-    methods:{},
     debug:true,
 
     init:function() {
@@ -147,12 +146,13 @@ $.yote = {
     }, //fetch_app
 
     fetch_root:function() {
-	return this.objs[1] || this._create_obj( this.message( {
+	var r =this.objs[1] || this.message( {
             async:false,
             cmd:'fetch_root',
-	    wait:true
-	} ).r, 1 );
-	
+	    wait:true,
+	    app_id:1
+	} );
+	return r;
     }, //fetch_root
 
 
@@ -204,14 +204,12 @@ $.yote = {
         var async  = params.async == true ? 1 : 0;
 	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
-        var app_id = params.app_id;
+        var app_id = params.app_id || '';
         var cmd    = params.cmd;
-        var obj_id = params.obj_id; //id to act on
+        var obj_id = params.obj_id || ''; //id to act on
 
 	root.upload_count = 0;
 
-        app_id = app_id || '';
-        obj_id = obj_id || '';
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
 	var uploads = root._functions_in( data );
@@ -231,7 +229,7 @@ $.yote = {
 	var resp;
 
         if( $.yote.debug == true ) {
-	    console.log('outgoing ' + url );  
+	    console.log('outgoing ' + url + '-------------------------' );  
 	    console.log( data );
 	    console.log( JSON.stringify( {d:data} ) );
 	    console.log( put_data ); 
@@ -250,15 +248,40 @@ $.yote = {
 	    error:function(a,b,c) { root._error(a); },
 	    success:function( data ) {
                 if( typeof data !== 'undefined' ) {
-		    resp = data; //for returning synchronous
+		    resp = ''; //for returning synchronous
+
+		    //dirty objects that may need a refresh
+		    if( typeof data.d === 'object' ) {
+			for( var oid in data.d ) {
+			    if( root._is_in_cache( oid ) ) {
+				var cached = root.objs[ oid ];
+				for( fld in cached._d ) {
+				    //take off old getters/setters
+				    delete cached['get_'+fld];
+				}
+				cached._d = data.d[ oid ];
+				for( fld in cached._d ) {
+				    //add new getters/setters
+				    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+				}
+			    }
+			} //each dirty
+		    } //if dirty
+
 		    if( typeof data.err === 'undefined' ) {
-		        if( typeof params.passhandler === 'function' ) {
-			    if( typeof data.r === 'object' ) {
-				params.passhandler( root._create_obj( data.r, this._app_id ) );
-			    } else if( typeof data.r === 'undefined' ) {
+			if( typeof data.r === 'object' ) {
+			    resp = root._create_obj( data.r, app_id );
+		            if( typeof params.passhandler === 'function' ) {
+				params.passhandler( resp );
+			    }
+			} else if( typeof data.r === 'undefined' ) {
+		            if( typeof params.passhandler === 'function' ) {
 				params.passhandler();
-			    } else {
-				params.passhandler( data.r.substring( 1 ) );
+			    }
+			} else {
+			    resp = data.r.substring( 1 );
+		            if( typeof params.passhandler === 'function' ) {
+				params.passhandler( resp );
 			    }
 		        }
 		    } else if( typeof params.failhandler === 'function' ) {
@@ -271,7 +294,7 @@ $.yote = {
 	    type:'POST',
 	    url:url
 	} );
-        if( async == 0 ) {
+        if( ! async ) {
             root._reenable();
             return resp;
         }
@@ -314,11 +337,10 @@ $.yote = {
         var data   = root._translate_data( params.data || {}, true );
 	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
-        var app_id = params.app_id;
+        var app_id = params.app_id || '';
         var cmd    = params.cmd;
-        var obj_id = params.obj_id; //id to act on
-        app_id = app_id || '';
-        obj_id = obj_id || '';
+        var obj_id = params.obj_id || ''; //id to act on
+
         var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
 	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
 
@@ -353,7 +375,6 @@ $.yote = {
 		$( '#' + iframe_name ).remove();
 		try {
 		    resp = JSON.parse( contents );
-		    console.log( [ 'uploaded', resp ] );
                     if( typeof resp !== 'undefined' ) {
 			if( typeof resp.err === 'undefined' ) {
 			    //dirty objects that may need a refresh
@@ -405,7 +426,7 @@ $.yote = {
 
     _create_obj:function(data,app_id) {
 	var root = this;
-	return (function(x,ai) {
+	var retty = (function(x,ai) {
 	    var o = {
 		_app_id:ai,
                 _dirty:false,
@@ -458,9 +479,9 @@ $.yote = {
 	    else {
 		if( typeof x.m === 'object' && x.m !== null ) {
 		    for( m in x.m ) {
-			o[x.m[m]] = (function(key) {
+			o[x.m[m]] = (function(key,thobj) {
 			    return function( params, passhandler, failhandler ) {
-				var ret = root.message( {
+				return root.message( {
 				    async:false,
 				    app_id:this._app_id,
 				    cmd:key,
@@ -470,91 +491,9 @@ $.yote = {
 				    passhandler:passhandler,
 				    wait:true
 				} ); //sending message
-				if( ! ret ) {
-				    return null;
-				}
-
-				//dirty objects that may need a refresh
-				if( typeof ret.d === 'object' ) {
-				    for( var oid in ret.d ) {
-					if( root._is_in_cache( oid ) ) {
-					    var cached = root.objs[ oid ];
-					    for( fld in cached._d ) {
-						//take off old getters/setters
-						delete cached['get_'+fld];
-					    }
-					    cached._d = ret.d[ oid ];
-					    for( fld in cached._d ) {
-						//add new getters/setters
-						cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-					    }
-					}
-				    }
-				}
-				if( typeof ret.r === 'object' ) {
-				    return root._create_obj( ret.r, this._app_id );
-				} else {
-                                    if( typeof ret.r === 'undefined' ) {
-					if( typeof failhandler === 'function' ) {
-                                            failhandler('no return value');
-					}
-					return undefined;
-                                    }
-				    return ret.r.substring(1);
-				}
-			    } } )(x.m[m]);
+			    } } )(x.m[m],x);
 		    } //each method
 		} // if methods were included in the return value of the call
-		else {
-		    for( var i=0; i < methods.length; i++ ) {
-			o[methods[i]] = (function(key) {
-			    return function( params, passhandler, failhandler, use_async ) {
-				var ret = root.message( {
-				    async:use_async,
-				    app_id:this._app_id,
-				    cmd:key,
-				    data:params,
-				    failhandler:failhandler,
-                                    obj_id:this.id,
-				    passhandler:passhandler,
-				    wait:true
-				} ); //sending message
-
-				if( ! ret ) {
-				    return null;
-				}
-
-				//dirty objects that may need a refresh
-				if( typeof ret.d === 'object' ) {
-				    for( var oid in ret.d ) {
-					if( root._is_in_cache( oid ) ) {
-					    var cached = root.objs[ oid ];
-					    for( fld in cached._d ) {
-						//take off old getters/setters
-						delete cached['get_'+fld];
-					    }
-					    cached._d = ret.d[ oid ];
-					    for( fld in cached._d ) {
-						//add new getters/setters
-						cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-					    }
-					}
-				    }
-				}
-				if( typeof ret.r === 'object' ) {
-				    return root._create_obj( ret.r, this._app_id );
-				} else {
-                                    if( typeof ret.r === 'undefined' ) {
-					if( typeof failhandler === 'function' ) {
-                                            failhandler('no return value');
-					}
-					return undefined;
-                                    }
-				    return ret.r.substring(1);
-				}
-			    } } )(methods[i]);
-		    }
-		}
 	    } // if object
 
 	    o.get = function( key ) {
@@ -563,6 +502,7 @@ $.yote = {
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 ) {
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
+		    obj._app_id = this._app_id;
                     if( this._staged[key] == val ) {
                         this._staged[key] = obj;
                     } else {
@@ -578,7 +518,7 @@ $.yote = {
 		for( fld in x.d ) {
 		    var val = x.d[fld];
 		    if( typeof val === 'object' ) {
-			o._d[fld] = (function(xx) { return root._create_obj( xx, o._app_id ); })(val);
+			o._d[fld] = (function(xx) { return root._create_obj( xx, app_id ); })(val);
 		    } 
 		    else {
 			o._d[fld] = (function(xx) { return xx; })(val);
@@ -648,7 +588,7 @@ $.yote = {
                 }
                 if( needs == 0 ) { return; }
                 
-                root.message( {
+                root.message( { //for send update
                     app_id:this._app_id,
                     async:false,
                     data:to_send,
@@ -679,6 +619,7 @@ $.yote = {
 	    }
 	    return o;
         } )(data,app_id);
+	return retty;
     }, //_create_obj
 
     _disable:function() {

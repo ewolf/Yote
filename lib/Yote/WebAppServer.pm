@@ -351,6 +351,7 @@ sub _process_command {
 
 	# security check
 	unless( Yote::ObjManager::allows_access( $obj_id, $app, $login, $guest_token ) ) {
+	    print STDERR Data::Dumper->Dump(["TRIES TO ACCCESS $obj_id",$app,$login,$guest_token,$Yote::ObjManager::LOGIN_OBJS,$Yote::ObjManager::GUEST_OBJS]);
 	    die "Access Error";
 	}
 

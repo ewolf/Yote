@@ -190,6 +190,46 @@ $.yote.util = {
 		if( ptab.col_names ) {
 		    tab.add_header_row( ptab.col_names );
 		}
+		var hash = ptab.obj[ 'paginate_hash' ]( [ ptab.list_name, ptab.size + 1, start ] );
+
+		var max = hash.length() < ptab.size ? hash.length() : ptab.size;
+		var keys = hash.keys();
+		for( var i=0; i < max ; i++ ) {
+		    var key = keys[ i ];
+		    var val = hash.get( key );
+		    if( ptab.col_funs ) {
+			var arry = [];
+			for( var j=0; j < ptab.col_funs.length; j++ ) {
+			    var fun = ptab.col_funs[ j ];
+			    arry.push( fun( key, val ) );
+			}
+			tab.add_row( arry );
+		    } 
+		    else {
+			tab.add_row( [ key, val ] );
+		    }
+		}
+		
+		var buf = ptab.title + tab.get_html();
+		
+		if( start > 0 ) {
+		    buf = buf + '<span id="back_' + ptab.obj.id + '" class="btn"><i class="icon-fast-backward"></i></span>';
+		    if( hash.length() > max ) {
+			buf = buf + '<span id="forward_' + ptab.obj.id + '" class="btn"><i class="icon-fast-forward"></i></span>';
+		    }
+		    else {
+			buf = buf + '<span class="btn"><i class="icon-fast-forward icon-white"></i></span>';
+		    }
+		} 
+		else {
+		    if( hash.length() > max ) {
+			buf = buf + '<span class="btn"><i class="icon-fast-backward icon-white"></i></span>';
+			buf = buf + '<span id="forward_' + ptab.obj.id + '" class="btn"><i class="icon-fast-forward"></i></span>';
+		    } else {
+			//nothing to do
+		    }
+		}
+/*
 		var list = ptab.obj[ 'paginate_hash' ]( [ ptab.list_name, ptab.size + 1, start ] );
 
 		var max = list.length() < ptab.size ? list.length() : ptab.size;
@@ -229,6 +269,7 @@ $.yote.util = {
 			//nothing to do
 		    }
 		}
+		*/
 		return buf;
 	    };
 	    
@@ -407,7 +448,7 @@ $.yote.util = {
 		if( app ) {
 		    my_account = app.account();
 		}
-		
+
 		var avatar_img = '';
 		var side_txt = '';
 		
@@ -443,7 +484,6 @@ $.yote.util = {
 			$.yote.util.login( modal_div, cls );
 		    });
 		    $( '#_yote_logout' ).click(logout);
-		    
 		    logged_in_function( my_login, my_account );
 		}
 		else {

@@ -206,6 +206,7 @@ The node may have subnodes which are accessed by rules, such as language and a d
 Incoming data may be :
   * language
   * region
+  * any other fields known to this
 
 There is a master node with the following set up
 
@@ -257,3 +258,7 @@ Yote::Util::CMS - a simple CMS
 =head2 DESCRIPTION
 
 This is a simple CMS with regionalization and scheduling.
+
+=head2 TODO
+
+Use the regional or language settings passed through in the environment.
