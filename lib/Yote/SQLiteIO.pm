@@ -192,13 +192,12 @@ sub paginate_xpath {
     }    
 
     my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
-    return [ map { [ $_->[0], $_->[1] || 'v' . $_->[2] ] } @$res ];
-#    my %ret;
-#    print STDERR Data::Dumper->Dump(["BEEPBEEPBEEP","SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref, $res]);
-#    for my $row (@$res) {
-#	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
-#    }
-#    return \%ret
+#    return [ map { [ $_->[0], $_->[1] || 'v' . $_->[2] ] } @$res ];
+    my %ret;
+    for my $row (@$res) {
+	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
+    }
+    return \%ret
 } #paginate_xpath
 
 #
@@ -244,7 +243,7 @@ sub paginate_xpath_list {
 } #paginate_xpath_list
 
 #
-# Return the path to root that this object has, if any.
+# Return a path to root that this object has (specified by id), if any.
 #
 sub path_to_root {
     my( $self, $obj_id ) = @_;
@@ -259,6 +258,28 @@ sub path_to_root {
 
     return undef;
 } #path_to_root
+
+#
+# Return all paths to root that this object (specified by id) has, if any.
+#
+sub paths_to_root {
+    my( $self, $obj_id, $seen ) = @_;
+    $seen ||= {};
+    return [''] if $obj_id == 1;
+    my $ret = [];
+    my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
+    for my $row (@$res) {
+	my( $new_obj_id, $field ) = @$row;
+	if( $self->has_path_to_root( $new_obj_id ) && ! $seen->{$new_obj_id} ) {
+	    $seen->{$new_obj_id} = 1;
+	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
+	    push @$ret, map { $_. "/$field" } @$paths;
+	}
+    }
+    
+    return $ret;
+} #paths_to_root
+
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;

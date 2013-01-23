@@ -196,7 +196,7 @@ sub package_methods {
     unless( $methods ) {
 
         no strict 'refs';
-	my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|unix_std_crypt|is|add_to_.*|remove_from_.*|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
+	my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|unix_std_crypt|is|add_(once_)?to_.*|remove_(all_)?from_.*|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
         for my $class ( @{"${pkg}\::ISA" } ) {
             my $pm = package_methods( $class );
@@ -215,14 +215,14 @@ sub package_methods {
 sub paginate_xpath {
     my( $path, $paginate_start, $paginate_length ) = @_;
     my $list = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
-    my $ret;
-    for my $pair (@$list) {
-	push @$ret, [ $pair->[0], xform_out( $pair->[1] ) ];
-    }
-    return $ret;
+#    my $ret;
+#    for my $pair (@$list) {
+#	push @$ret, [ $pair->[0], xform_out( $pair->[1] ) ];
+#    }
+#    return $ret;
 
-#    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
-#    return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
+    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
+    return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
 } #paginate_xpath
 
 #
@@ -235,6 +235,16 @@ sub paginate_xpath_list {
     my $list = $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start );
     return [ map { xform_out( $_ ) } @$list ];
 } #paginate_xpath_list
+
+sub paths_to_root {
+    my( $obj ) = @_;
+    return $DATASTORE->paths_to_root( get_id($obj) );
+}
+
+sub info {
+    my( $obj ) = @_;
+    return [ get_id($obj), ref($obj), paths_to_root($obj), $obj ];
+}
 
 sub path_to_root {
     my( $obj ) = @_;
@@ -381,7 +391,7 @@ sub stow {
         }
     } #given
     delete $Yote::ObjProvider::WEAK_REFS->{$id};
-    
+
 } #stow
 
 sub stow_all {

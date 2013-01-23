@@ -115,6 +115,14 @@ sub _is {
 }
 
 # 
+# Returns all xpaths for this object.
+#
+sub _path_to_root {
+    my $self = shift;
+    return Yote::ObjProvider::paths_to_root( $self );
+}
+
+# 
 # Returns the xpath for this object.
 #
 sub _path_to_root {
@@ -236,6 +244,11 @@ sub paginate_hash {
 
 } #paginate_hash
 
+sub _allows_update {
+    my( $self, $field, $account ) = @_;
+    return $field =~ /^[A-Z]/ || ( $account && $account->get_login()->get__is_root() );
+}
+
 #
 # Updates the object but only for capitolized keys that already exist.
 # public client method.
@@ -244,7 +257,7 @@ sub update {
     my( $self, $data, $account ) = @_;
     my $updated = {};
     for my $fld (keys %$data) {
-        next unless $fld =~ /^[A-Z]/ && defined( $self->{DATA}{$fld} );
+        next unless $self->_allows_update( $fld, $account ) && defined( $self->{DATA}{$fld} );
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
         Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;
@@ -281,7 +294,7 @@ sub AUTOLOAD {
             my $arry = $self->$get([]); # init array if need be
 	    for my $val ( @vals ) {
 		unless( grep { $val eq $_ } @$arry ) {
-		    push( @$arry, $val ) unless grep { $val eq $_ } @$arry;
+		    push @$arry, $val;
 		}
 	    }
 	};

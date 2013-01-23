@@ -69,7 +69,7 @@ $().ready( function() {
     function to_edit_news() {
 	var news = cms.content( { path : 'news' } );
 	$( '#News' ).empty().append( news );
-	$( '#main_panel_div' ).empty().append( "<textarea id=edit_news>" + news + "</textarea><BR><button type=button id=edit_news_b>Apply</button>" );
+	$( '#main_panel_div' ).empty().append( '<textarea id="edit_news">' + news + '</textarea><BR><button type="button" id="edit_news_b">Apply</button>' );
 	$( '#edit_news_b' ).click( function() {
 	    cms.attach_content( { path : 'news', content : $( '#edit_news' ).val() } );
 	    $( '#News' ).empty().append( $( '#edit_news' ).val() );	    
@@ -101,7 +101,7 @@ $().ready( function() {
 	} );	
     } //to_stats
 
-    function on_login( login ) {
+    function on_login( login, acct ) {
 	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News', 'Edit To Do', 'Stats' ] );
 	var news = cms.content( { path : 'news' } );
 	$( '#News' ).empty().append( news );
