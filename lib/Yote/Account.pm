@@ -1,5 +1,8 @@
 package Yote::Account;
 
+use strict;
+use warnings;
+
 use base 'Yote::Messenger';
 
 sub upload_avatar {

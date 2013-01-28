@@ -1,6 +1,8 @@
 package Yote::YoteRoot;
 
 use strict;
+use warnings;
+no warnings 'uninitialized';
 
 use Yote::Cron;
 use Yote::Login;

@@ -1,6 +1,7 @@
 package Yote::Cron;
 
 use strict;
+use warnings;
 
 use DateTime;
 

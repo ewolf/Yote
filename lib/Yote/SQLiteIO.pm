@@ -5,6 +5,9 @@ package Yote::SQLiteIO;
 #
 
 use strict;
+use warnings;
+no warnings 'uninitialized';
+no warnings 'recursion';
 use feature ':5.10';
 
 use Data::Dumper;
@@ -87,7 +90,7 @@ sub ensure_datastore {
 #
 sub fetch {
     my( $self, $id ) = @_;
-    my( $class ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?",  $id );
+    my( $class ) = $self->_selectrow_array( "SELECT class FROM objects WHERE recycled=0 AND id=?",  $id );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
 

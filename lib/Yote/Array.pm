@@ -1,6 +1,7 @@
 package Yote::Array;
 
 use strict;
+use warnings;
 
 use Tie::Array;
 

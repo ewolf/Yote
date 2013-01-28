@@ -1,5 +1,7 @@
 package Yote::Test::TestDeepCloner;
 
+use strict;
+
 use base 'Yote::Obj';
 
 

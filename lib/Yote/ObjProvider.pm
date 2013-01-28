@@ -1,7 +1,10 @@
 package Yote::ObjProvider;
 
 use strict;
-
+use warnings;
+no warnings 'numeric';
+no warnings 'uninitialized';
+no warnings 'recursion';
 use feature ':5.10';
 
 use Yote::Array;
@@ -139,7 +142,7 @@ sub get_id {
             my( @data ) = @$ref;
             my $id = $DATASTORE->get_id( $class );
             tie @$ref, 'Yote::Array', $id;
-            my $tied = tied @$ref; $tied->[2] = $ref;
+	    $tied = tied @$ref; $tied->[2] = $ref;
             push( @$ref, @data );
             dirty( $ref, $id );
             __store_weak( $id, $ref );
@@ -160,7 +163,7 @@ sub get_id {
             my $id = $DATASTORE->get_id( $class );
             my( %vals ) = %$ref;
             tie %$ref, 'Yote::Hash', $id;
-            my $tied = tied %$ref; $tied->[2] = $ref;
+	    $tied = tied %$ref; $tied->[2] = $ref;
             for my $key (keys %vals) {
                 $ref->{$key} = $vals{$key};
             }
@@ -259,28 +262,33 @@ sub power_clone {
     my $class = ref( $item );
     return $item unless $class;
 
-    my $at_start = 0;
     unless( $replacements ) {
-        $at_start = 1;
         $replacements ||= {};
     }
     my $id = get_id( $item );
     return $replacements->{$id} if $replacements->{$id};
 
     if( $class eq 'ARRAY' ) {
-        my $arry_clone = [ map { power_clone( $_, $replacements ) } @$item ];
-        my $c_id = get_id( $arry_clone );
-        $replacements->{$id} = $c_id;
-        return $arry_clone;
+	my $clone_arry = [];
+        my $c_id = get_id( $clone_arry );
+        $replacements->{ $id } = $c_id;
+	for my $it ( @$item ) {
+	    push @$clone_arry, power_clone( $it, $replacements );
+	}
+        return $clone_arry;
     }
     elsif( $class eq 'HASH' ) {
-        my $hash_clone = { map { $_ => power_clone( $item->{$_}, $replacements ) } keys %$item };
-        my $c_id = get_id( $hash_clone );
-        $replacements->{$id} = $c_id;
-        return $hash_clone;
+	my $clone_hash = {};
+        my $c_id = get_id( $clone_hash );
+        $replacements->{ $id } = $c_id;
+	for my $key (keys %$item) {
+	    $clone_hash->{ $key } = power_clone( $item->{ $key }, $replacements );
+	}
+
+        return $clone_hash;
     }
     else {
-        return $item if $item->isa( 'Yote::AppRoot' ) && (! $at_start);
+        return $item if $item->isa( 'Yote::Account' ) || $item->isa( 'Yote::AppRoot' );
     }
 
     my $clone = $class->new;
@@ -293,14 +301,6 @@ sub power_clone {
         } else {
             $clone->{DATA}{$field} = $id_or_val;
         }
-    }
-
-    if( $at_start ) {
-	my( @cloned ) = map { fetch($_)  } keys %$replacements;
-	my( %cloned );
-	for my $obj (@cloned) {
-	    $cloned{ ref( $obj ) }++;
-	}
     }
 
     return $clone;
@@ -330,7 +330,7 @@ sub recycle_objects {
 	    ++$recycled;
 	}
     }
-    #print STDERR "RECYCLED $recycled objects\n";
+    print STDERR "RECYCLED $recycled objects\n";
     return $recycled;
 } #recycle_objects
 

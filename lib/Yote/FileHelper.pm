@@ -1,6 +1,7 @@
 package Yote::FileHelper;
 
 use strict;
+use warnings;
 
 use base 'Yote::Obj';
 

@@ -1,5 +1,7 @@
 package Yote::Util::Counter;
 
+use strict;
+
 use base 'Yote::AppRoot';
 
 sub _init {

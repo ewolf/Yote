@@ -1,6 +1,7 @@
 package Yote::ObjManager;
 
 use strict;
+use warnings;
 
 $Yote::ObjManager::LOGIN_OBJS = {};
 $Yote::ObjManager::GUEST_OBJS = {};
@@ -35,6 +36,7 @@ sub knows_dirty {
 sub register_object {
     my( $obj_id, $login, $guest_token ) = @_;
     print STDERR Data::Dumper->Dump(["REGISTER <<$obj_id>>"]);
+    die unless $obj_id;
     my $t = time();
     if( $login ) {
 	$Yote::ObjManager::LOGIN_OBJS->{ $login->{ID} }{ $obj_id } = $t;

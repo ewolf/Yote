@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
+use warnings;
 
 use Yote::WebAppServer;
 
@@ -68,7 +69,7 @@ sub test_suite {
     ok( $root->{ID} == 1, "Root has id of 1" );
     my $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 7, "highest id in database is 7" );
-    my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
+    ( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
     is( $f_count, 0, "number of fields after save root" ); 
@@ -79,39 +80,39 @@ sub test_suite {
     $root->get_default( "DEFAULT" );                        # 1
     $root->set_first( "FRIST" );                            # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 8, "highest id in database 8" );
     $root->set_reallybig( "BIG" x 1.000);                    # 0
     $root->set_gross( 12 * 12 );                            # 1
     $root->set_array( ["THIS IS AN ARRAY"] );               # 2
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 9, "highest id in database 9" );
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 10, "highest id in database 10" );
     
     
 
     my $newo = new Yote::Obj();
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 11, "highest id in database 11" );
     my $somehash = {"preArray",$newo};
     $newo->set_somehash( $somehash ); #testing for recursion
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 12, "highest id in database 12" );
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 14, "highest id in database 14" );
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 15, "highest id in database 15" );
     Yote::ObjProvider::stow_all();
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 15, "highest id in database still 15" );
 
     # added default_hash, { 'llama', ["this", new yote obj, "Array, and a new yote object bringing the object count to 7 + 6 = 13
     # the new max id should be 7 (root) + defalt_array 1,  array 1, default_hash 1, newobj 1, somehash 1, coolahash 1, arryincoolhash 1, hash 1
-    my $max_id = Yote::ObjProvider::max_id();
+    $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 15, "highest id in database is 15 after adding more objects" );
 
     # this resets the cool hash, overwriting what is there. 
@@ -130,9 +131,9 @@ sub test_suite {
 
     BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 25, "Number of db rows saved to database with stow all" );
 
-    my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
+    $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
     is( scalar(@$db_rows), 15, "Number of db rows saved to database not recycled" ); 
-    my $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
+    $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
     is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
 
 
@@ -290,7 +291,7 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
 
     my $root_2 = Yote::ObjProvider::fetch( 1 );
-    my( %simple_hash ) = %{$root_2->get_hash()};
+    ( %simple_hash ) = %{$root_2->get_hash()};
     delete $simple_hash{__ID__};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE","FOO" => "bar", BZAZ => [ "woof", "bOOf" ]}, "Simple hash after reload" );
 
@@ -395,7 +396,7 @@ sub test_suite {
 # ------------- app serv tests ------------#
 #
 #                                          #
-    my $root = Yote::ObjProvider::fetch( 1 );
+    $root = Yote::ObjProvider::fetch( 1 );
     Yote::ObjProvider::stow_all();
     eval { 
         $root->create_login();
@@ -432,7 +433,7 @@ sub test_suite {
         fail( "Able to create login with same email" );
     };
     like( $@, qr/email already taken/i, "email already taken" );
-    my $res = $root->create_login( { h => 'toot', p => 'toor', e => 'baz@bar.com' } );
+    $res = $root->create_login( { h => 'toot', p => 'toor', e => 'baz@bar.com' } );
     is( $res->{l}->get_handle(), 'toot', "second account created" );
     ok( $res->{t}, "second account created with token" );
     Yote::ObjProvider::stow_all();

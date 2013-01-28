@@ -1,7 +1,11 @@
 package Yote::Obj;
 
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
 #
-# This is base Yote Object class. 
+# This is base class for all Yote objects. 
 #
 # It is a container class with fields and methods.
 #
@@ -26,7 +30,6 @@ package Yote::Obj;
 #   data may be written to if it starts with a capitol letter
 #
 
-use strict;
 
 use Yote::ObjManager;
 use Yote::ObjProvider;
@@ -117,7 +120,7 @@ sub _is {
 # 
 # Returns all xpaths for this object.
 #
-sub _path_to_root {
+sub _paths_to_root {
     my $self = shift;
     return Yote::ObjProvider::paths_to_root( $self );
 }
@@ -172,7 +175,7 @@ sub __obj_to_response {
 	    $m = Yote::ObjProvider::package_methods( $ref );
         }
 
-	Yote::ObjManager::register_object( $use_id, $login, $guest_token );
+	Yote::ObjManager::register_object( $use_id, $login, $guest_token ) if $use_id;
 	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert";

@@ -1,6 +1,7 @@
 package Yote::Login;
 
 use strict;
+use warnings;
 
 use base 'Yote::Obj';
 

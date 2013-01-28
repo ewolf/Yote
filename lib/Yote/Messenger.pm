@@ -1,5 +1,8 @@
 package Yote::Messenger;
 
+use strict;
+use warnings;
+
 use Yote::Obj;
 
 use base 'Yote::Obj';
@@ -37,21 +40,21 @@ sub read_messages {
     } #filters
     
     if( $data->{sort} eq 'date' ) {
-	if( $sort_asc ) {
+	if( $data->{sort_asc} ) {
 	    $all_messages = [ sort { $a->get_sent() <=> $b->get_sent()  } @$all_messages ];
 	} else {
 	    $all_messages = [ sort { $b->get_sent() <=> $a->get_sent()  } @$all_messages ];
 	}
     }
     elsif( $data->{sort} eq 'name' ) {
-	if( $sort_desc ) {
+	if( $data->{sort_desc} ) {
 	    $all_messages = [ sort { $b->get_from()->get_handle() cmp $a->get_from()->get_handle()  } @$all_messages ];
 	} else {
 	    $all_messages = [ sort { $a->get_from()->get_handle() cmp $b->get_from()->get_handle()  } @$all_messages ];
 	}	
     }
     elsif( $data->{sort} eq 'subject' ) {
-	if( $sort_desc ) {
+	if( $data->{sort_desc} ) {
 	    $all_messages = [ sort { $b->get_subject() cmp $a->get_subject()  } @$all_messages ];
 	} else {
 	    $all_messages = [ sort { $a->get_subject() cmp $b->get_subject()  } @$all_messages ];
