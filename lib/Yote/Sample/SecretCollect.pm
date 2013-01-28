@@ -1,5 +1,7 @@
 package Yote::Sample::SecretCollect;
 
+use strict;
+
 use base 'Yote::AppRoot';
 
 

@@ -1,0 +1,8 @@
+2013-01-27  Eric Wolf  <coyocanid@gmail.com>
+
+	* CHANGELOG:
+	* Added 'use strict' and 'use warnings' to all perl modules.
+	* added 'equals' method for javascript objects
+	* fixed bug where the javascript library interprets a null return as an object rather than null value
+	* upped Yote version to 0.0971
+

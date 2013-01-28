@@ -5,7 +5,7 @@ package Yote::Cache;
 #
 
 use strict;
-
+use warnings;
 
 
 1;

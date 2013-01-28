@@ -5,6 +5,7 @@ package Yote::AppRoot;
 #
 
 use strict;
+use warnings;
 
 use Yote::Obj;
 use Email::Valid;

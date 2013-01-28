@@ -260,6 +260,7 @@ $.yote = {
 				    delete cached['get_'+fld];
 				}
 				cached._d = data.d[ oid ];
+				
 				for( fld in cached._d ) {
 				    //add new getters/setters
 				    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
@@ -441,6 +442,9 @@ $.yote = {
 		    }
 		    return cnt;
 		},
+		equals:function(oth) {
+		    return typeof oth === 'object' && oth.id > 0 && oth.id == this.id;
+		},
 		keys:function() {
 		    var k = []
 		    for( key in this._d ) {
@@ -517,7 +521,7 @@ $.yote = {
 	    if( typeof x.d === 'object' && x.d !== null ) {
 		for( fld in x.d ) {
 		    var val = x.d[fld];
-		    if( typeof val === 'object' ) {
+		    if( typeof val === 'object' && val != null ) {
 			o._d[fld] = (function(xx) { return root._create_obj( xx, app_id ); })(val);
 		    } 
 		    else {

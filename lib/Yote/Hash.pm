@@ -1,6 +1,7 @@
 package Yote::Hash;
 
 use strict;
+use warnings;
 
 use Tie::Hash;
 

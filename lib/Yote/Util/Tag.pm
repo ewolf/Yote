@@ -1,5 +1,5 @@
 package Yote::Util::Tag;
-
+use strict;
 #
 # The tagging represents a namespace of tags to items.
 #

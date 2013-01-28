@@ -1,6 +1,8 @@
 package Yote::WebAppServer;
 
 use strict;
+use warnings;
+no warnings 'uninitialized';
 
 use forks;
 use forks::shared;
@@ -103,7 +105,6 @@ sub process_http_request {
     $uri =~ s/\s+HTTP\S+\s*$//;
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
-    print STDERR Data::Dumper->Dump(["PATH : '$path[0]'"]);
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
 	my( $vars, $return_header );
 
@@ -209,6 +210,7 @@ sub process_http_request {
             }
             close( IN );
 	} else {
+	    print STDERR Data::Dumper->Dump(["404",$@,$!,"<$root/$dest"]);
 	    $self->do404();
 	}
 	return;

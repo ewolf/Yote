@@ -1,5 +1,7 @@
 package Yote::Sample::Census;
 
+use strict;
+
 use base 'Yote::AppRoot';
 
 

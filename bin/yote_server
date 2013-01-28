@@ -6,6 +6,7 @@
 
 
 use strict;
+use warnings;
 
 use Carp;
 
@@ -73,7 +74,7 @@ while( @ARGV ) {
         exit;
     }
     elsif( $first eq '--version' || $first eq '-V' ) {
-	print "$Yote::VERSIONn";
+	print "$Yote::VERSION\n";
 	exit;
     }
     elsif( $first eq '--restart' || $first eq 'restart' ) {
@@ -96,7 +97,9 @@ while( @ARGV ) {
 	$config{$1} = shift @ARGV;
     }
     else {
-       print  "yote_server <options>n".join( "\n\t*", ('--shutdown : stops yote server', '--restart : restarts yote server',
+       print  "yote_server <options>n".join( "\n\t*", ('--shutdown : stops yote server',
+						       '--restart : restarts yote server',
+						       '--version : print yote version',
 							'--port=<port> : assigns the yote server to run on specified port',
 							'--datastore=<datastore package name> : use data store other than sqlite',
 							'--sqlitefile=<filename> : specify different sqlite file' ) )."\n";
