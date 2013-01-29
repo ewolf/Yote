@@ -286,7 +286,7 @@ sub paths_to_root {
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
-    $self->_do( "DELETE FROM field WHERE obj_id=?", $obj_id );
+    $self->_do( "DELETE FROM field WHERE obj_id=? or ref_id=?", $obj_id, $obj_id );
     $self->_do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
 
@@ -296,16 +296,50 @@ sub start_transaction {
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
-sub stow {
+sub reset_queries {
+    my $self = shift;
+    $self->{QUERIES} = [[],[]];
+}
+
+sub stow_now {
     my( $self, $id, $class, $data ) = @_;
-
-    my $updates = $self->__stow_updates( $id, $class, $data );
-
+    my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );    
     for my $upd (@$updates) {
 	$self->_do( @$upd );
 	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     }
+    my $first_data = shift @$udata;
+    if( $first_data ) {
+	$self->_do( qq~INSERT INTO field
+                       SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
+		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
+		    map { @$_ } $first_data, @$udata );
+    }
+} #stow_now
 
+sub stow {
+    my( $self, $id, $class, $data ) = @_;
+
+    my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
+    push( @{$self->{QUERIES}[0]}, @$updates );
+    push( @{$self->{QUERIES}[1]}, @$udata );
+}
+
+sub engage_queries {
+    my $self = shift;
+    my( $updates, $udata ) = @{ $self->{QUERIES} };
+    for my $upd (@$updates) {
+	$self->_do( @$upd );
+	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    }
+    my $first_data = shift @$udata;
+    if( $first_data ) {
+	$self->_do( qq~INSERT INTO field
+                       SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
+		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
+		    map { @$_ } $first_data, @$udata );
+    }
+    $self->{QUERIES} = [[],[]];
 } #stow
 
 
@@ -476,7 +510,7 @@ sub _connect {
 
 sub _do {
     my( $self, $query, @params ) = @_;
-#    print STDERR "Do Query : $query\n";
+#    print STDERR "Do Query : $query @params\n";
     return $self->{DBH}->do( $query, {}, @params );
 } #_do
 
@@ -488,7 +522,7 @@ sub _selectrow_array {
 
 sub _selectall_arrayref {
     my( $self, $query, @params ) = @_;
-#    print STDERR "Do Query : $query\n";
+#    print STDERR "Do Query : $query @params\n";
     return $self->{DBH}->selectall_arrayref( $query, {}, @params );
 } #_selectall_arrayref
 
@@ -520,7 +554,7 @@ sub _xpath_to_list {
 sub __stow_updates {
     my( $self, $id, $class, $data ) = @_;
 
-    my( @cmds );
+    my( @cmds, @cdata );
 
     given( $class ) {
         when('ARRAY') {
@@ -531,10 +565,11 @@ sub __stow_updates {
 		next unless defined $data->[$i];
                 my $val = $data->[$i];
                 if( index( $val, 'v' ) == 0 ) {
-		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
+#		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
+		    push( @cdata, [$id, $i, '', substr($val,1) ] );
                 } else {
-                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $i, $val ] );
-
+#                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $i, $val ] );
+		    push( @cdata, [$id, $i, $val, '' ] );
                 }
             }
         }
@@ -543,15 +578,17 @@ sub __stow_updates {
             for my $key (keys %$data) {
                 my $val = $data->{$key};
                 if( index( $val, 'v' ) == 0 ) {
-		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
+#		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
+		    push( @cdata, [$id, $key, '', substr($val,1) ] );
                 }
                 else {
-                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $key, $val ] );
+#                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $key, $val ] );
+		    push( @cdata, [$id, $key, $val, '' ] );
                 }
             } #each key
         }
     }
-    return \@cmds;
+    return \@cmds,\@cdata;
 } # __stow_updates
 
 

@@ -117,7 +117,6 @@ sub test_suite {
 
     # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
-
     my $recycled = Yote::ObjProvider->recycle_objects();
     is( $recycled, 5, "recycled 5 objects" );
 
@@ -176,7 +175,7 @@ sub test_suite {
     my $fetched_hash = Yote::ObjProvider::fetch( $hid );
     is_deeply( $fetched_hash, { fooh => 'barh', KEY => 'VALUE' }, "hash after put" );
     is( $fetched_hash->{fooh}, 'barh', "changed hash works" );
-    Yote::ObjProvider::stow( $fetched_hash );
+    Yote::ObjProvider::stow_now( $fetched_hash );
     ok( !Yote::ObjProvider::__is_dirty( $clone_hash ), "hash not dirty after change and save" );
     # -- delete
     delete $clone_hash->{fooh};
@@ -184,14 +183,14 @@ sub test_suite {
     $fetched_hash = Yote::ObjProvider::fetch( $hid );
     is_deeply( $fetched_hash, { KEY => 'VALUE' }, " hash after delete" );
     is( $fetched_hash->{fooh}, undef, " hash after deletion works" );
-    Yote::ObjProvider::stow( $fetched_hash );
+    Yote::ObjProvider::stow_now( $fetched_hash );
     ok( !Yote::ObjProvider::__is_dirty( $clone_hash ), "hash not dirty after delete and save" );
     # -- clear
     %$clone_hash = (); 
     ok( Yote::ObjProvider::__is_dirty( $clone_hash ), "Hash dirty after clear" );
     $fetched_hash = Yote::ObjProvider::fetch( $hid );
     is_deeply( $fetched_hash, {}, "Hash other reference also clear" );
-    Yote::ObjProvider::stow( $fetched_hash );
+    Yote::ObjProvider::stow_now( $fetched_hash );
     ok( !Yote::ObjProvider::__is_dirty( $clone_hash ), "Hash dirty after clear and save" );
     # -- reset simple hash
     $clone_hash->{KEY} = 'VALUE';
@@ -211,7 +210,7 @@ sub test_suite {
     my $fetched_arry = Yote::ObjProvider::fetch( $aid );
     is_deeply( $fetched_arry, ['DEFAULT ARRAY',(map { undef } (1..11)),'zoog','booya'], "array after store" );
     is( $fetched_arry->[12], 'zoog', 'changed array works after store');
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after store and save" );
     # - delete
     delete $def_arry->[12];
@@ -219,7 +218,7 @@ sub test_suite {
     is_deeply( $fetched_arry, ['DEFAULT ARRAY',(map { undef } (1..12)),'booya'], "array after delete" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after delete" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after delete" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after delete and save" );
     # - clear
     @{$def_arry} = ();
@@ -227,7 +226,7 @@ sub test_suite {
     is_deeply( $fetched_arry,[], "array after clear" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after clear" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after clear" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after clear and save" );
     # - push 
     push @$def_arry, "one", "two", "tree";
@@ -235,7 +234,7 @@ sub test_suite {
     is_deeply( $fetched_arry, ["one", "two", "tree"], "array after push" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after push" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after push" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after push and save" );    
     # - pop
     is( pop @$def_arry, "tree", "pop array value" );
@@ -243,7 +242,7 @@ sub test_suite {
     is_deeply( $fetched_arry, ["one", "two"], "array after pop" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after pop" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after pop" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after pop and save" );    
     # - shift
     is( shift @$def_arry, "one", "shifted array value" );
@@ -251,7 +250,7 @@ sub test_suite {
     is_deeply( $fetched_arry, ["two"], "array after shift" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after shift" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after shift" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after shift and save" );    
     # - unshift
     unshift @$def_arry, "newguy", "orange", "Lemon", "tango";
@@ -259,7 +258,7 @@ sub test_suite {
     is_deeply( $fetched_arry, ["newguy", "orange", "Lemon", "tango", "two"], "array after unshift" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after unshift" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after unshift" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after unshift and save" );    
     # - splice
     my( @slice ) = splice @$def_arry, 1, 2, "Booga", "Boo", "Bobby";
@@ -268,13 +267,13 @@ sub test_suite {
     is_deeply( $fetched_arry, ["newguy", "Booga", "Boo", "Bobby", "tango","two"], "array after splice" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after splice" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after splice" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after splice and save" );    
     # - set in place
     my $last_set = $fetched_arry;
     @{$fetched_arry} = ("This Is","new");
     ok( Yote::ObjProvider::__is_dirty( $last_set ), "array dirty after set in place" );
-    Yote::ObjProvider::stow( $fetched_arry );
+    Yote::ObjProvider::stow_now( $fetched_arry );
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
     is_deeply( $fetched_arry, ["This Is","new"], "array after set in place" );
     
