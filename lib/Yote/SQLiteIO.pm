@@ -298,7 +298,7 @@ sub start_transaction {
 
 sub reset_queries {
     my $self = shift;
-    $self->{QUERIES} = [[],[]];
+    $self->{QUERIES} = [[[]],[[]]];
 }
 
 sub stow_now {
@@ -320,26 +320,39 @@ sub stow_now {
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
-    my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
-    push( @{$self->{QUERIES}[0]}, @$updates );
-    push( @{$self->{QUERIES}[1]}, @$udata );
+    my( $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
+    my $ups = $self->{QUERIES}[0];
+    my $uds = $self->{QUERIES}[1];
+    my $llist = $ups->[$#$ups];
+    if( scalar( @$llist ) > 50 ) {
+	$llist = [];
+	push( @$ups, $llist );
+	push( @$uds, [] );
+    }
+    my $uus = $uds->[$#$uds];
+    push( @$llist, @$updates );
+    push( @$uus,   @$udata   );
 }
 
 sub engage_queries {
     my $self = shift;
-    my( $updates, $udata ) = @{ $self->{QUERIES} };
-    for my $upd (@$updates) {
-	$self->_do( @$upd );
-	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-    }
-    my $first_data = shift @$udata;
-    if( $first_data ) {
-	$self->_do( qq~INSERT INTO field
+    my( $upds, $uds ) = @{ $self->{QUERIES} };
+    for( my $i=0; $i < scalar( @$upds ); $i++ ) {
+	my $updates = $upds->[ $i ];
+	my $udata   = $uds->[ $i ];
+	for my $upd (@$updates) {
+	    $self->_do( @$upd );
+	    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+	}
+	my $first_data = shift @$udata;
+	if( $first_data ) {
+	    $self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
-		    map { @$_ } $first_data, @$udata );
+			join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
+			map { @$_ } $first_data, @$udata );
+	}
     }
-    $self->{QUERIES} = [[],[]];
+    $self->{QUERIES} = [[[]],[[]]];
 } #stow
 
 
