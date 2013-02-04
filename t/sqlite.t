@@ -74,52 +74,39 @@ sub test_suite {
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
     is( $f_count, 0, "number of fields after save root" ); 
 
-    # root has automatically _application_lib_directories,
-    #          _apps, _crond, _emails, _handles, and _crond also has _crond
-    Yote::ObjProvider::stow_all();
-    my( $fieldcount ) = $db->selectall_arrayref("SELECT count( * ) FROM field");
-    is( $fieldcount->[0][0], 6, "6 ids in field" );
-
-
 #
 # Save key value fields for simple scalars, arrays and hashes.
 #                                                       # rows in fields total 
-    $root->get_default( "DEFAULT" );                        # 0
-    $root->set_first( "FRIST" );                            # 0
-    $root->get_default_array( ["DEFAULT ARRAY"] );          # 7
+    $root->get_default( "DEFAULT" );                        # 1
+    $root->set_first( "FRIST" );                            # 1
+    $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 8, "highest id in database 8" );
-    $root->set_reallybig( "BIG" x 1.000);                   # 0
-    $root->set_gross( 12 * 12 );                            # 0
-    $root->set_array( ["THIS IS AN ARRAY"] );               # 8
+    $root->set_reallybig( "BIG" x 1.000);                    # 0
+    $root->set_gross( 12 * 12 );                            # 1
+    $root->set_array( ["THIS IS AN ARRAY"] );               # 2
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 9, "highest id in database 9" );
-    $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 9
+    $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 10, "highest id in database 10" );
     
-    Yote::ObjProvider::stow_all();
-    ( $fieldcount ) = $db->selectall_arrayref("SELECT count( * ) FROM field");
-    is( $fieldcount->[0][0], 9, "9 ids in field" );    
+    
 
     my $newo = new Yote::Obj();
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 11, "highest id in database 11" );
     my $somehash = {"preArray",$newo};
-    $newo->set_somehash( $somehash ); #testing for recursion    #11 ( obj + hash
+    $newo->set_somehash( $somehash ); #testing for recursion
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 12, "highest id in database 12" );
-    $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  #15 ( hash plus arry plus obj plus somehash
+    $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 14, "highest id in database 14" );
-    $root->set_hash( { "KEY" => "VALUE" } );                # 16
+    $root->set_hash( { "KEY" => "VALUE" } );                # 2
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 15, "highest id in database 15" );
-
     Yote::ObjProvider::stow_all();
-    ( $fieldcount ) = $db->selectall_arrayref("SELECT count( * ) FROM field");
-    is( $fieldcount->[0][0], 16, "16 ids in field" );
-
     $max_id = Yote::ObjProvider::max_id();
     is( $max_id, 15, "highest id in database still 15" );
 
@@ -129,29 +116,24 @@ sub test_suite {
     is( $max_id, 15, "highest id in database is 15 after adding more objects" );
 
     # this resets the cool hash, overwriting what is there. 
-    $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects  ( # 20 ) not 21 because cool hash was changed, not added again
-
-    Yote::ObjProvider::stow_all();
-    ( $fieldcount ) = $db->selectall_arrayref("SELECT count( * ) FROM field");
-    is( $fieldcount->[0][0], 20, "20 ids in field" );
-
+    $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
     my $recycled = Yote::ObjProvider->recycle_objects();
-    is( $recycled, 4, "recycled 4 objects" ); # original cool hash, array inside, newobj and somehash
-    # original coolhash had 1 entry and its array 2 in the fields table and 1 in the hash of that table
-    #  and one in the newo back to the hash
-    #       ( so 20 - 5 ) = 15.  
+    is( $recycled, 5, "recycled 5 objects" );
+
+    # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
+    
 
 # 1 from accounts under root (default)
 # 1 from apps under root
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 15, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 25, "Number of db rows saved to database with stow all" );
 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
-    is( scalar(@$db_rows), 16, "Number of db rows saved to database not recycled" ); 
+    is( scalar(@$db_rows), 15, "Number of db rows saved to database not recycled" ); 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
-    is( scalar(@$db_rows), 4, "Number of db rows recycled" ); 
+    is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
 
 
     my $root_clone = Yote::ObjProvider::fetch( 1 );
@@ -344,17 +326,9 @@ sub test_suite {
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
-    $root_3->set_paginated_list( [ new Yote::Obj( { name => "alpha", } ),
-				   new Yote::Obj( { name => "beta", } ),
-				   new Yote::Obj( { name => "gamma", } ),
-				   new Yote::Obj( { name => "eta", } ),
-				   new Yote::Obj( { name => "zeta", } ),
-				   new Yote::Obj( { name => "iota", } ),
-				   new Yote::Obj( { name => "delta", } ) ] );
-    Yote::ObjProvider::stow_all();    
-    is_deeply( [map { $_->get_name() } @{$root_3->paginate( [ 'paginated_list', 3 ] )} ], [ qw/alpha beta gamma/ ], 'paginate with one argument' );
-    is_deeply( [map { $_->get_name() } @{$root_3->paginate( [ 'paginated_list', 1, 2 ] )} ], [ qw/gamma/ ], 'paginate with one argument' );
-    is_deeply( [map { $_->get_name() } @{$root_3->paginate( [ 'paginated_list', 3, 4 ] )} ], [ qw/zeta iota delta/ ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate( [ 'array', 3 ] ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate( [ 'array', 1, 2 ] ), [ 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate( [ 'array', 3, 4 ] ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with one argument' );
 
     is( scalar(@$simple_array), 6, "add_to test array count" );
 
@@ -542,13 +516,12 @@ sub test_suite {
     
     Yote::ObjProvider::xpath_delete( '/_apps/Yote::Test::TestAppNeedsLogin/azzy/2' );
     $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'D', 3 => 'E' }, 'xpath hash without limits correct after xpath_delete' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct after xpath_delete' );
     $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
     is_deeply( $res, [ qw/A B D E/ ], 'xpath list without limits correct after xpath_delete' );
 
     Yote::ObjProvider::xpath_list_insert( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 'foo/bar' );
     $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    print STDERR Data::Dumper->Dump([$res]);
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
     Yote::ObjProvider::stow_all();    
