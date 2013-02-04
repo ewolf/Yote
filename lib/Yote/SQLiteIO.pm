@@ -9,6 +9,7 @@ use warnings;
 no warnings 'uninitialized';
 no warnings 'recursion';
 use feature ':5.10';
+use JSON;
 
 use Data::Dumper;
 use DBI;
@@ -65,18 +66,19 @@ sub ensure_datastore {
     my %table_definitions = (
         field => q~CREATE TABLE IF NOT EXISTS field (
                    obj_id INTEGER NOT NULL,
-                   field varchar(300) DEFAULT NULL,
-                   ref_id INTEGER DEFAULT NULL,
-                   value varchar(1025) DEFAULT NULL );~,
+                   field TEXT NOT NULL,
+                   ref_id INTEGER NOT NULL
+                   );~,
         objects => q~CREATE TABLE IF NOT EXISTS objects (
                      id INTEGER PRIMARY KEY,
-                     class varchar(255) DEFAULT NULL,
-                     recycled tinyint DEFAULT 0
-                      ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~
+                     class TEXT DEFAULT NULL,
+                     recycled tinyint DEFAULT 0,
+                     json TEXT
+                      ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~,
         );
     my %index_definitions = (
-	uniq_idx => q~CREATE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
-	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
+	uniq_idx => q~CREATE INDEX IF NOT EXISTS obj_id_field ON field( obj_id );~,
+	fld_idx  => q~CREATE INDEX IF NOT EXISTS fld_ref      ON field( ref_id );~,
         );
     $self->start_transaction();
     for my $value ((values %table_definitions), (values %index_definitions )) {
@@ -89,17 +91,22 @@ sub ensure_datastore {
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.
 #
 sub fetch {
-    my( $self, $id ) = @_;
-    my( $class ) = $self->_selectrow_array( "SELECT class FROM objects WHERE recycled=0 AND id=?",  $id );
+    my( $self ) = @_;
+    my( $class, $json ) = $self->_selectrow_array( "SELECT class,json FROM objects WHERE recycled=0 AND id=?",  $_[1] );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
-
     return undef unless $class;
-    my $obj = [$id,$class];
+
+    my $obj = [$_[1],$class];
+
+    $obj->[DATA] = from_json( $json );
+
+    return $obj;
+
     given( $class ) {
         when('ARRAY') {
             $obj->[DATA] = [];
-            my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $id );
+            my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $_[1] );
             die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             for my $row (@$res) {
@@ -109,7 +116,7 @@ sub fetch {
         }
         default {
             $obj->[DATA] = {};
-            my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $id );
+            my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?",  $_[1] );
             die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
             for my $row (@$res) {
@@ -174,9 +181,9 @@ sub paginate_xpath {
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
 
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        my( $ref ) = $self->_selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?",  
+					      $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
 
         if( $ref ) {
             $next_ref = $ref;
@@ -186,21 +193,40 @@ sub paginate_xpath {
         }
     } #each path part
 
-    my $PAG = '';
-    if( defined( $paginate_start ) ) {
-	$PAG = "LIMIT $paginate_start";
-	if( $paginate_length ) {
-	    $PAG .= ",$paginate_length"
-	}
-    }    
+    my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $next_ref );
+    my $data = from_json( $json );
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
-#    return [ map { [ $_->[0], $_->[1] || 'v' . $_->[2] ] } @$res ];
-    my %ret;
-    for my $row (@$res) {
-	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
+    if( ref( $data ) eq 'ARRAY' ) {
+	if( defined( $paginate_length ) ) {
+	    my( $return_data );
+	    if( $paginate_start ) {
+		$return_data = @$data > $paginate_start ?
+		    @$data > ($paginate_start+$paginate_length) ?
+		    [@$data[$paginate_start..($paginate_start+$paginate_length-1)]] : [@$data[$paginate_start..$#$data]] :
+		    [];
+		return { map { ( $paginate_start + $_ ) => $return_data->[$_] } (0..$#$return_data) };
+	    } 
+	    $return_data = @$data ? [@$data[0..($paginate_length-1)]] : [];
+	    return { map { $_ => $return_data->[$_] } (0..$#$return_data) };
+	}    
+	return { map { $_ => $data->[$_] } (0..$#$data) };
     }
-    return \%ret
+
+    if( defined( $paginate_length ) ) {	
+	my( @keys ) = sort keys %$data;
+	my( @use_keys );
+	if( $paginate_start ) {
+	    @use_keys = @keys > $paginate_start ?
+		@keys > ($paginate_start+$paginate_length) ?
+		[@keys[$paginate_start..($paginate_start+$paginate_length-1)]] : [@keys[$paginate_start..$#keys]] :
+		[];
+	} else {
+	    @use_keys = @keys ? [@keys[0..($paginate_length-1)]] : [];
+	}
+	return { map { $_ => $data->{$_} } @use_keys };
+    }    
+    
+    return $data;
 } #paginate_xpath
 
 #
@@ -210,16 +236,13 @@ sub paginate_xpath {
 #
 sub paginate_xpath_list {
     my( $self, $path, $paginate_length, $paginate_start ) = @_;
-
     my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
     for my $l (@list) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
 
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        my( $ref ) = $self->_selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-
         if( $ref ) {
             $next_ref = $ref;
         }
@@ -228,21 +251,20 @@ sub paginate_xpath_list {
         }
     } #each path part
 
-    my $PAG = '';
+    my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $next_ref );
+    my $data = from_json( $json );
+
     if( defined( $paginate_length ) ) {
 	if( $paginate_start ) {
-	    $PAG = "LIMIT $paginate_start,$paginate_length";
+	    return @$data > $paginate_start ?
+		@$data > ($paginate_start+$paginate_length) ?
+		[@$data[$paginate_start..($paginate_start+$paginate_length-1)]] : [@$data[$paginate_start..$#$data]] :
+		[];
 	} else {
-	    $PAG = "LIMIT $paginate_length";
+	    return @$data ? [@$data[0..($paginate_length-1)]] : [];
 	}
     }    
-
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int ) $PAG", $next_ref );
-    my @ret;
-    for my $row (@$res) {
-	push @ret, $row->[1] || "v$row->[2]";
-    }
-    return \@ret
+    return $data;
 } #paginate_xpath_list
 
 #
@@ -311,8 +333,8 @@ sub stow_now {
     my $first_data = shift @$udata;
     if( $first_data ) {
 	$self->_do( qq~INSERT INTO field
-                       SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
+                       SELECT ? AS obj_id, ? AS field, ? as ref_id ~.
+		    join( ' ', map { ' UNION SELECT ?, ?, ? ' } @$udata ),
 		    map { @$_ } $first_data, @$udata );
     }
 } #stow_now
@@ -347,8 +369,8 @@ sub engage_queries {
 	my $first_data = shift @$udata;
 	if( $first_data ) {
 	    $self->_do( qq~INSERT INTO field
-                       SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-			join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
+                       SELECT ? AS obj_id, ? AS field, ? as ref_id ~.
+			join( ' ', map { ' UNION SELECT ?, ?, ? ' } @$udata ),
 			map { @$_ } $first_data, @$udata );
 	}
     }
@@ -366,26 +388,30 @@ sub xpath {
     my( $self, $path ) = @_;
     my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
-    my $final_val;
-    for my $l (@list) {
+    for( my $i=0; $i<$#list; ++$i ) {
+	my $l = $list[ $i ];
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-        undef $final_val;
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        my( $ref ) = $self->_selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         if( $ref ) {
             $next_ref = $ref;
-            $final_val = $ref;
         }
 	else {
-            $final_val = "v$val";
             last;
         }
     } #each path part
 
-    # @TODO: log bad xpath if final_value not defined
-
-    return $final_val;
+    if( $next_ref ) {
+	my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $next_ref );
+	my $data = from_json( $json );
+	if( ref( $data ) eq 'HASH' ) {
+	    return $data->{ $list[ $#list ] };
+	} elsif( ref( $data ) eq 'ARRAY' ) {
+	    return $data->[ $list[ $#list ] ];
+	}
+    }
+    
 } #xpath
 
 #
@@ -423,10 +449,11 @@ sub xpath_delete {
     my( @list ) = _xpath_to_list( $path );
     my $field = pop @list;
     my $next_ref = 1;
-    for my $l (@list) {
+
+    for my $l (@list ) {
         next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
 
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+        my( $ref ) = $self->_selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
         die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
         if( $ref ) {
@@ -437,7 +464,16 @@ sub xpath_delete {
         }
     } #each path part
 
+
     #find the object type to see if this is an array to append to, or a hash to insert to
+    my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $next_ref );
+    my $data = from_json( $json );
+    if( ref( $data ) eq 'HASH' ) {
+	delete $data->{ $field };
+    } elsif( ref( $data ) eq 'ARRAY' ) {
+	splice @$data, $field, 1;
+    }
+    $self->_do( "UPDATE objects SET json=? WHERE id=?", to_json( $data ), $next_ref );
     $self->_do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
 
 } #xpath_delete
@@ -450,28 +486,43 @@ sub xpath_insert {
 
     my( @list ) = _xpath_to_list( $path );
     my $field = pop @list;
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+    my $obj = $self->xpath( join( '/', @list ) );
 
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for insert";
-        }
-    } #each path part
-
-    $self->_do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
-
-    if( index( $item_to_insert, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
-    } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+    my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $obj );
+    my $data = from_json( $json );
+    if( ref( $data ) eq 'HASH' ) {
+	$data->{ $field } = $item_to_insert;
+    } elsif( ref( $data ) eq 'ARRAY' ) {
+	splice @$data, $field, 0, $item_to_insert;
     }
+    $self->_do( "UPDATE objects SET json=? WHERE id=?", to_json( $data ), $obj );
+    if( index( $item_to_insert, 'v' ) == -1 ) { #reference
+	$self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $obj, $field );
+	$self->_do( "INSERT INTO field ( obj_id, field, ref_id ) VALUES( ?, ?, ? )", $obj, $field, $item_to_insert );
+    }
+    # return;
+    # my $next_ref = 1;
+    # for my $l (@list) {
+    #     next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+    #     my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+    #     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+    #     if( $ref ) {
+    #         $next_ref = $ref;
+    #     }
+    #     else {
+    # 	    die "Unable to find xpath location '$path' for insert";
+    #     }
+    # } #each path part
+
+    # $self->_do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
+
+    # if( index( $item_to_insert, 'v' ) == 0 ) {
+    # 	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
+    # } else {
+    # 	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+    # }
 
 } #xpath_insert
 
@@ -481,29 +532,49 @@ sub xpath_insert {
 sub xpath_list_insert {
     my( $self, $path, $item_to_insert ) = @_;
 
-    my( @list ) = _xpath_to_list( $path );
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+    my $obj = $self->xpath( $path );
 
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for insert";
-        }
-    } #each path part
-
-    my( $field ) = $self->_selectrow_array( "SELECT max(field) + 1 FROM field WHERE obj_id=?", $next_ref );
-
-   if( index( $item_to_insert, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
-    } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+    my( $json ) = $self->_selectrow_array( "SELECT json FROM objects WHERE id=?", $obj );
+    my $data = from_json( $json );
+    if( ref( $data ) eq 'HASH' ) {
+	die "Cannot insert into nonlist";
+    } elsif( ref( $data ) eq 'ARRAY' ) {
+	push @$data, $item_to_insert;
+    } elsif( ref( $data ) ) {
+	die "Cannot insert into nonlist";
+    } else { #create new list here with that name
+	die "List not found here";
     }
+    $self->_do( "UPDATE objects SET json=? WHERE id=?", to_json( $data ), $obj );
+    if( index( $item_to_insert, 'v' ) == -1 ) { #reference
+	$self->_do( "INSERT INTO field ( obj_id, field, ref_id ) VALUES( ?, ?, ? )", $obj, $#$data, $item_to_insert );
+    }
+
+   #  my( $self, $path, $item_to_insert ) = @_;
+
+   #  my( @list ) = _xpath_to_list( $path );
+   #  my $next_ref = 1;
+   #  for my $l (@list) {
+   #      next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
+
+   #      my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
+   #      die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+
+   #      if( $ref ) {
+   #          $next_ref = $ref;
+   #      }
+   #      else {
+   # 	    die "Unable to find xpath location '$path' for insert";
+   #      }
+   #  } #each path part
+
+   #  my( $field ) = $self->_selectrow_array( "SELECT max(field) + 1 FROM field WHERE obj_id=?", $next_ref );
+
+   # if( index( $item_to_insert, 'v' ) == 0 ) {
+   # 	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
+   #  } else {
+   # 	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
+   #  }
 
 } #xpath_list_insert
 
@@ -573,30 +644,38 @@ sub __stow_updates {
         when('ARRAY') {
             push( @cmds, ["DELETE FROM field WHERE obj_id=?",  $id ] );
 
+	    push( @cmds, [ "UPDATE objects SET json=? WHERE id=?", to_json( $data ), $id ] );
 
             for my $i (0..$#$data) {
 		next unless defined $data->[$i];
                 my $val = $data->[$i];
-                if( index( $val, 'v' ) == 0 ) {
+                if( index( $val, 'v' ) == -1 ) {
+#                if( index( $val, 'v' ) == 0 ) {
 #		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $i, substr($val,1) ] );
-		    push( @cdata, [$id, $i, '', substr($val,1) ] );
-                } else {
+#		    push( @cdata, [$id, $i, '', substr($val,1) ] );
+#                } else {
 #                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $i, $val ] );
-		    push( @cdata, [$id, $i, $val, '' ] );
+		    push( @cdata, [$id, $i, $val ] );
                 }
             }
         }
         default {
+
+	    push( @cmds, ["UPDATE objects SET json=? WHERE id=?", to_json( $data ), $id ] );
+
             push( @cmds, ["DELETE FROM field WHERE obj_id=?",  $id ] );
+
+
             for my $key (keys %$data) {
                 my $val = $data->{$key};
-                if( index( $val, 'v' ) == 0 ) {
+                if( index( $val, 'v' ) == -1 ) {
+#                if( index( $val, 'v' ) == 0 ) {
 #		    push( @cmds, ["INSERT INTO field (obj_id,field,value) VALUES (?,?,?)",  $id, $key, substr($val,1) ] );
-		    push( @cdata, [$id, $key, '', substr($val,1) ] );
-                }
-                else {
+#		    push( @cdata, [$id, $key, '', substr($val,1) ] );
+#                }
+#                else {
 #                    push( @cmds, ["INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)",  $id, $key, $val ] );
-		    push( @cdata, [$id, $key, $val, '' ] );
+		    push( @cdata, [$id, $key, $val ] );
                 }
             } #each key
         }
