@@ -129,7 +129,7 @@ sub get_id {
 
     my( $recycled_id ) = $self->_do( "SELECT id FROM objects WHERE recycled=1 LIMIT 1" );
     if( int($recycled_id) > 0 ) {
-	$self->_do( "UPDATE objects SET recycled=0 WHERE id=?", $recycled_id );
+	$self->_do( "UPDATE objects SET recycled=0, class=? WHERE id=?", $class, $recycled_id );
 	return $recycled_id;
     }
     my $res = $self->_do( "INSERT INTO objects (class) VALUES (?)",  $class );
