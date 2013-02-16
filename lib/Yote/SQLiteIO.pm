@@ -324,11 +324,6 @@ sub start_transaction {
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
-sub reset_queries {
-    my $self = shift;
-    $self->{QUERIES} = [[[]],[[]]];
-}
-
 sub stow_now {
     my( $self, $id, $class, $data ) = @_;
     my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );    
@@ -345,9 +340,24 @@ sub stow_now {
     }
 } #stow_now
 
+sub stow_all {
+    my( $self, $objs ) = @_;
+    $self->{QUERIES} = [[[]],[[]]];
+    $self->{STOW_LATER} = 1;
+    for my $objd ( @$objs ) {
+	$self->stow( @$objd );
+    }
+    $self->engage_queries();
+    $self->{STOW_LATER} = 0;
+    $self->{QUERIES} = [[[]],[[]]];
+} #stow_all
+
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
+    unless( $self->{STOW_LATER} ) {
+	return $self->stow_now( $id, $class, $data );
+    }
     my( $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
     my $ups = $self->{QUERIES}[0];
     my $uds = $self->{QUERIES}[1];
@@ -360,7 +370,7 @@ sub stow {
     my $uus = $uds->[$#$uds];
     push( @$llist, @$updates );
     push( @$uus,   @$udata   );
-}
+} #stow
 
 sub engage_queries {
     my $self = shift;
@@ -380,8 +390,7 @@ sub engage_queries {
 			map { @$_ } $first_data, @$udata );
 	}
     }
-    $self->{QUERIES} = [[[]],[[]]];
-} #stow
+} #engage_queries
 
 
 #

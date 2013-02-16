@@ -25,7 +25,6 @@ $Yote::ObjProvider::WEAK_REFS = {};
 our $DATASTORE;
 our $CACHE;
 
-
 use vars qw($VERSION);
 
 $VERSION = '0.01';
@@ -352,6 +351,7 @@ sub start_transaction {
 }
 sub stow {
     my( $obj ) = @_;
+
     my $class = ref( $obj );
     return unless $class;
     my $id = get_id( $obj );
@@ -404,66 +404,22 @@ sub stow {
 } #stow
 
 sub stow_all {
-    my( %objs ) = %{$Yote::ObjProvider::DIRTY};
-    $DATASTORE->reset_queries();
-    for my $obj (values %objs) {
-        stow( $obj );
+    my @odata;
+    for my $obj (values %{$Yote::ObjProvider::DIRTY} ) {
+	my $cls;
+	my $ref = ref( $obj );
+	if( $ref eq 'ARRAY' || $ref eq 'Yote::Array' ) {
+	    $cls = 'ARRAY';
+	} elsif( $ref eq 'HASH' || $ref eq 'Yote::Hash' ) {
+	    $cls = 'HASH';
+	} else {
+	    $cls = $ref;
+	}
+	push( @odata, [ get_id( $obj ), $cls, __raw_data( $obj ) ] );
     }
-    $DATASTORE->engage_queries();
+    $DATASTORE->stow_all( \@odata );
+    $Yote::ObjProvider::DIRTY = {};
 } #stow_all
-
-sub stow_now {
-    my( $obj ) = @_;
-    my $class = ref( $obj );
-    return unless $class;
-    my $id = get_id( $obj );
-    die unless $id;
-    my $data = __raw_data( $obj );
-    given( $class ) {
-        when('ARRAY') {
-            $DATASTORE->stow_now( $id,'ARRAY', $data );
-            __clean( $id );
-        }
-        when('HASH') {
-            $DATASTORE->stow_now( $id,'HASH',$data );
-            __clean( $id );
-        }
-        when('Yote::Array') {
-            if( __is_dirty( $id ) ) {
-                $DATASTORE->stow_now( $id,'ARRAY',$data );
-                __clean( $id );
-            }
-            for my $child (@$data) {
-                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
-                    stow_now( $Yote::ObjProvider::DIRTY->{$child} );
-                }
-            }
-        }
-        when('Yote::Hash') {
-            if( __is_dirty( $id ) ) {
-                $DATASTORE->stow_now( $id, 'HASH', $data );
-            }
-            __clean( $id );
-            for my $child (values %$data) {
-                if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
-                    stow_now( $Yote::ObjProvider::DIRTY->{$child} );
-                }
-            }
-        }
-        default {
-            if( __is_dirty( $id ) ) {
-                $DATASTORE->stow_now( $id, $class, $data );
-                __clean( $id );
-            }
-            for my $val (values %$data) {
-                if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
-                    stow_now( $Yote::ObjProvider::DIRTY->{$val} );
-                }
-            }
-        }
-    } #given
-
-} #stow_now
 
 sub xform_in {
     my $val = shift;
