@@ -11,6 +11,7 @@ use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
 use Yote::YoteRoot;
+use Yote::SimpleLRUCache;
 use Yote::SQLiteIO;
 
 use Crypt::Passwd::XS;
@@ -22,6 +23,8 @@ $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
+our $CACHE;
+
 
 use vars qw($VERSION);
 
@@ -41,6 +44,7 @@ sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
     $DATASTORE = new Yote::SQLiteIO( $args );
     $DATASTORE->ensure_datastore();
+    $CACHE = new Yote::SimpleLRUCache();
     fetch(1) || new Yote::YoteRoot(); #ensure that there is the singleton root object.
 } #init
 
@@ -76,6 +80,14 @@ sub encrypt_pass {
     return $acct ? Crypt::Passwd::XS::crypt( $pw, $acct->get_handle() ) : undef;
 } #encrypt_pass
 
+
+#
+# Returns the first ID that is associated with the root YoteRoot object
+#
+sub first_id {
+    return $DATASTORE->first_id();
+}
+
 sub fetch {
     my( $id_or_xpath ) = @_;
 
@@ -87,7 +99,7 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id_or_xpath} || $Yote::ObjProvider::WEAK_REFS->{$id_or_xpath};
+    my $ref = $Yote::ObjProvider::DIRTY->{$id_or_xpath} || $Yote::ObjProvider::WEAK_REFS->{$id_or_xpath} || $CACHE->fetch( $id_or_xpath );
     return $ref if $ref;
 
     my $obj_arry = $DATASTORE->fetch( $id_or_xpath );
@@ -100,6 +112,7 @@ sub fetch {
                 tie @arry, 'Yote::Array', $id_or_xpath, @$data;
                 my $tied = tied @arry; $tied->[2] = \@arry;
                 __store_weak( $id_or_xpath, \@arry );
+		$CACHE->stow( $id_or_xpath, \@arry );
                 return \@arry;
             }
             when('HASH') {
@@ -107,6 +120,7 @@ sub fetch {
                 tie %hash, 'Yote::Hash', $id_or_xpath, map { $_ => $data->{$_} } keys %$data;
                 my $tied = tied %hash; $tied->[2] = \%hash;
                 __store_weak( $id_or_xpath, \%hash );
+		$CACHE->stow( $id_or_xpath, \%hash );
                 return \%hash;
             }
             default {
@@ -117,6 +131,7 @@ sub fetch {
                 $obj->{ID} = $id_or_xpath;
 		$obj->_load();		
                 __store_weak( $id_or_xpath, $obj );
+		$CACHE->stow( $id_or_xpath, $obj );
                 return $obj;
             }
         }
@@ -186,12 +201,6 @@ sub has_path_to_root {
     my( $self, $obj_id ) = @_;
     return $DATASTORE->has_path_to_root( $obj_id );
 } #has_path_to_root
-
-
-sub max_id {
-    my $self = shift;
-    return $DATASTORE->max_id();
-}
 
 sub package_methods {
     my $pkg = shift;
@@ -315,6 +324,7 @@ sub recycle_object {
 
 #
 # Finds objects not connected to the root and recycles them.
+# This interface would be broken with the MongDB implementation.
 #
 sub recycle_objects {
     my( $self, $start_id, $end_id ) = @_;
@@ -390,7 +400,6 @@ sub stow {
             }
         }
     } #given
-    delete $Yote::ObjProvider::WEAK_REFS->{$id};
 
 } #stow
 
@@ -453,9 +462,8 @@ sub stow_now {
             }
         }
     } #given
-    delete $Yote::ObjProvider::WEAK_REFS->{$id};
 
-}
+} #stow_now
 
 sub xform_in {
     my $val = shift;
@@ -631,10 +639,6 @@ if none had been assigned to it.
 Returns true if the argument ( which can be an array ref, hash ref or yote object ) can
 trace a path back to the root Yote::YoteRoot object ( id 1 ). This is used to detect if the
 object is dead and should be recycled.
-
-=item max_id( )
-
-Returns the max id of all objects in the data store. This is used by test programs.
 
 =item package_methods( package_name )
 

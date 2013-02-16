@@ -86,6 +86,13 @@ sub ensure_datastore {
 } #ensure_datastore
 
 #
+# Returns the first ID that is associated with the root YoteRoot object
+#
+sub first_id {
+    return 1;
+} #first_id
+
+#
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.
 #
 sub fetch {
@@ -283,6 +290,27 @@ sub paths_to_root {
     return $ret;
 } #paths_to_root
 
+#
+# Finds objects not connected to the root and recycles them.
+# This interface would be broken with the MongDB implementation.
+#
+sub recycle_objects {
+    my( $self, $start_id, $end_id ) = @_;
+    $start_id ||= 2;
+    $end_id   ||= $self->max_id();
+
+    my $recycled;
+    
+    for( my $id=$start_id; $id <= $end_id; $id++ ) {
+	my $obj = $self->fetch( $id );
+	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
+	    $self->recycle_object( $id );
+	    ++$recycled;
+	}
+    }
+    #print STDERR "RECYCLED $recycled objects\n";
+    return $recycled;
+} #recycle_objects
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;

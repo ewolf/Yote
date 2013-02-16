@@ -67,7 +67,7 @@ sub test_suite {
     my $root = Yote::ObjProvider::fetch( 1 );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
-    my $max_id = Yote::ObjProvider::max_id();
+    my $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 7, "highest id in database is 7" );
     ( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
@@ -80,44 +80,44 @@ sub test_suite {
     $root->get_default( "DEFAULT" );                        # 1
     $root->set_first( "FRIST" );                            # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 8, "highest id in database 8" );
     $root->set_reallybig( "BIG" x 1.000);                    # 0
     $root->set_gross( 12 * 12 );                            # 1
     $root->set_array( ["THIS IS AN ARRAY"] );               # 2
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 9, "highest id in database 9" );
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 10, "highest id in database 10" );
     
     
 
     my $newo = new Yote::Obj();
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 11, "highest id in database 11" );
     my $somehash = {"preArray",$newo};
     $newo->set_somehash( $somehash ); #testing for recursion
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 12, "highest id in database 12" );
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 14, "highest id in database 14" );
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 15, "highest id in database 15" );
     Yote::ObjProvider::stow_all();
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 15, "highest id in database still 15" );
 
     # added default_hash, { 'llama', ["this", new yote obj, "Array, and a new yote object bringing the object count to 7 + 6 = 13
     # the new max id should be 7 (root) + defalt_array 1,  array 1, default_hash 1, newobj 1, somehash 1, coolahash 1, arryincoolhash 1, hash 1
-    $max_id = Yote::ObjProvider::max_id();
+    $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 15, "highest id in database is 15 after adding more objects" );
 
     # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
-    my $recycled = Yote::ObjProvider->recycle_objects();
+    my $recycled = $Yote::ObjProvider::DATASTORE->recycle_objects();
     is( $recycled, 5, "recycled 5 objects" );
 
     # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
@@ -318,6 +318,7 @@ sub test_suite {
 
     $root->add_to_array( "MORE STUFF" );
     $root->add_to_array( "MORE STUFF", "MORE STUFF" );
+
     Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
