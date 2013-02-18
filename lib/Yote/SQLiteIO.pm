@@ -75,7 +75,7 @@ sub ensure_datastore {
                       ); CREATE INDEX IF NOT EXISTS rec ON objects( recycled );~
         );
     my %index_definitions = (
-	uniq_idx => q~CREATE INDEX IF NOT EXISTS obj_id_field ON field(obj_id,field);~,
+	uniq_idx => q~CREATE INDEX IF NOT EXISTS obj_id ON field(obj_id);~,
 	ref_idx => q~CREATE INDEX IF NOT EXISTS ref ON field ( ref_id );~,
         );
     $self->start_transaction();

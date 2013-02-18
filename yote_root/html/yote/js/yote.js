@@ -83,11 +83,13 @@ if (!Array.prototype.map) {
 $.yote = {
     guest_token:null,
     token:null,
+    port:null,
     err:null,
     objs:{},
     debug:true,
 
-    init:function() {
+    init:function(use_port) {
+	$.yote.port = use_port || location.port;
         var t = $.cookie('yoken');
 	$.yote.token = t;
 
@@ -342,7 +344,7 @@ $.yote = {
         var cmd    = params.cmd;
         var obj_id = params.obj_id || ''; //id to act on
 
-        var url = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + 
+        var url = location.protocol + '//' + location.hostname + ':' + $.yote.port +
 	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
 
 	root.iframe_count++;
