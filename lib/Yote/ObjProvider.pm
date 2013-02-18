@@ -12,7 +12,6 @@ use Yote::Hash;
 use Yote::Obj;
 use Yote::YoteRoot;
 use Yote::SimpleLRUCache;
-use Yote::SQLiteIO;
 
 use Crypt::Passwd::XS;
 use WeakRef;
@@ -41,10 +40,14 @@ sub new {
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    $DATASTORE = new Yote::SQLiteIO( $args );
+    my $datapkg = $args->{datastore} || 'Yote::SQLiteIO';
+    eval( "require $datapkg" );
+    $DATASTORE = $datapkg->new( $args );
     $DATASTORE->ensure_datastore();
     $CACHE = new Yote::SimpleLRUCache();
-    fetch(1) || new Yote::YoteRoot(); #ensure that there is the singleton root object.
+    unless( fetch( $DATASTORE->first_id() ) ) {
+	my $root = new Yote::YoteRoot();
+    }
 } #init
 
 
@@ -88,49 +91,44 @@ sub first_id {
 }
 
 sub fetch {
-    my( $id_or_xpath ) = @_;
-
-    if( $id_or_xpath && $id_or_xpath == 0 ) {
-	#assume xpath
-	return xpath( $id_or_xpath );
-    }
+    my( $id ) = @_;
 
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id_or_xpath} || $Yote::ObjProvider::WEAK_REFS->{$id_or_xpath} || $CACHE->fetch( $id_or_xpath );
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch( $id );
     return $ref if $ref;
 
-    my $obj_arry = $DATASTORE->fetch( $id_or_xpath );
+    my $obj_arry = $DATASTORE->fetch( $id );
 
     if( $obj_arry ) {
-        my( $id_or_xpath, $class, $data ) = @$obj_arry;
+        my( $id, $class, $data ) = @$obj_arry;
         given( $class ) {
             when('ARRAY') {
                 my( @arry );
-                tie @arry, 'Yote::Array', $id_or_xpath, @$data;
+                tie @arry, 'Yote::Array', $id, @$data;
                 my $tied = tied @arry; $tied->[2] = \@arry;
-                __store_weak( $id_or_xpath, \@arry );
-		$CACHE->stow( $id_or_xpath, \@arry );
+                __store_weak( $id, \@arry );
+		$CACHE->stow( $id, \@arry );
                 return \@arry;
             }
             when('HASH') {
                 my( %hash );
-                tie %hash, 'Yote::Hash', $id_or_xpath, map { $_ => $data->{$_} } keys %$data;
+                tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
                 my $tied = tied %hash; $tied->[2] = \%hash;
-                __store_weak( $id_or_xpath, \%hash );
-		$CACHE->stow( $id_or_xpath, \%hash );
+                __store_weak( $id, \%hash );
+		$CACHE->stow( $id, \%hash );
                 return \%hash;
             }
             default {
                 eval("require $class");
 		print STDERR Data::Dumper->Dump([$class,$!,$@]) if $@;
-                my $obj = $class->new( $id_or_xpath );
+                my $obj = $class->new( $id );
                 $obj->{DATA} = $data;
-                $obj->{ID} = $id_or_xpath;
+                $obj->{ID} = $id;
 		$obj->_load();		
-                __store_weak( $id_or_xpath, $obj );
-		$CACHE->stow( $id_or_xpath, $obj );
+                __store_weak( $id, $obj );
+		$CACHE->stow( $id, $obj );
                 return $obj;
             }
         }
@@ -186,7 +184,11 @@ sub get_id {
             return $id;
         }
         default {
-            $ref->{ID} ||= $DATASTORE->get_id( $class );
+	    if( $class eq 'Yote::YoteRoot' ) {
+		$ref->{ID} = $DATASTORE->first_id( $class );
+	    } else {
+		$ref->{ID} ||= $DATASTORE->get_id( $class );
+	    }
             __store_weak( $ref->{ID}, $ref );
             return $ref->{ID};
         }
@@ -326,21 +328,7 @@ sub recycle_object {
 # This interface would be broken with the MongDB implementation.
 #
 sub recycle_objects {
-    my( $self, $start_id, $end_id ) = @_;
-    $start_id ||= 2;
-    $end_id   ||= $self->max_id();
-
-    my $recycled;
-    
-    for( my $id=$start_id; $id <= $end_id; $id++ ) {
-	my $obj = fetch( $id );
-	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
-	    $self->recycle_object( $id );
-	    ++$recycled;
-	}
-    }
-    #print STDERR "RECYCLED $recycled objects\n";
-    return $recycled;
+    return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
 
 sub reset_changed {
@@ -581,7 +569,7 @@ Requests the data store used disconnect.
 
 Returns a string of the argument encrypted.
 
-=item fetch( id_or_xpath )
+=item fetch( id )
 
 Returns the array ref, hash ref or yote object specified by the numeric id or hash path.
 

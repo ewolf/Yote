@@ -89,6 +89,10 @@ sub ensure_datastore {
 # Returns the first ID that is associated with the root YoteRoot object
 #
 sub first_id {
+    my( $self, $class ) = @_;
+    if( $class ) {
+	$self->_do( "INSERT OR IGNORE INTO objects (id,class) VALUES (?,?)",  1, $class );
+    }
     return 1;
 } #first_id
 
@@ -280,7 +284,7 @@ sub paths_to_root {
     my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
     for my $row (@$res) {
 	my( $new_obj_id, $field ) = @$row;
-	if( $self->has_path_to_root( $new_obj_id ) && ! $seen->{$new_obj_id} ) {
+	if(  ! $seen->{$new_obj_id} && $self->has_path_to_root( $new_obj_id ) ) {
 	    $seen->{$new_obj_id} = 1;
 	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
 	    push @$ret, map { $_. "/$field" } @$paths;

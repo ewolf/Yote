@@ -114,7 +114,7 @@ sub _absorb {
 sub _is {
     my( $self, $obj ) = @_;
     return ref( $obj ) && ref( $obj ) eq ref( $self ) &&
-        Yote::ObjProvider::get_id( $obj ) == Yote::ObjProvider::get_id( $self );
+        Yote::ObjProvider::get_id( $obj ) eq Yote::ObjProvider::get_id( $self );
 }
 
 # 

@@ -72,7 +72,7 @@ sub test_suite {
     ( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
-    is( $f_count, 0, "number of fields after save root" ); 
+    is( $f_count, 0, "number of fields after save root before stow all was called" );
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
@@ -90,13 +90,10 @@ sub test_suite {
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 10, "highest id in database 10" );
-    
-    
-
     my $newo = new Yote::Obj();
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 11, "highest id in database 11" );
-    my $somehash = {"preArray",$newo};
+    my $somehash = {"preArray" => $newo};
     $newo->set_somehash( $somehash ); #testing for recursion
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 12, "highest id in database 12" );
