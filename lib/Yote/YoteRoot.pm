@@ -126,7 +126,7 @@ sub fetch_app_by_class {
 # Returns this root object.
 #
 sub fetch_root {
-    my $root = Yote::ObjProvider::fetch( 1 );
+    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     unless( $root ) {
 	$root = new Yote::YoteRoot();
     }

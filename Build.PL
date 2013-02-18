@@ -66,6 +66,7 @@ my $builder = Module::Build->new(
 	'MIME::Lite'            => 3.029,
 	'Net::Server::HTTP'     => 0,
 	'WeakRef'               => 0.01,
+	'MongoDB'               => 0,
     },
     );
 

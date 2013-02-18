@@ -86,6 +86,17 @@ sub ensure_datastore {
 } #ensure_datastore
 
 #
+# Returns the first ID that is associated with the root YoteRoot object
+#
+sub first_id {
+    my( $self, $class ) = @_;
+    if( $class ) {
+	$self->_do( "INSERT OR IGNORE INTO objects (id,class) VALUES (?,?)",  1, $class );
+    }
+    return 1;
+} #first_id
+
+#
 # Returns a single object specified by the id. The object is returned as a hash ref with id,class,data.
 #
 sub fetch {
@@ -129,7 +140,7 @@ sub get_id {
 
     my( $recycled_id ) = $self->_do( "SELECT id FROM objects WHERE recycled=1 LIMIT 1" );
     if( int($recycled_id) > 0 ) {
-	$self->_do( "UPDATE objects SET recycled=0 WHERE id=?", $recycled_id );
+	$self->_do( "UPDATE objects SET recycled=0, class=? WHERE id=?", $class, $recycled_id );
 	return $recycled_id;
     }
     my $res = $self->_do( "INSERT INTO objects (class) VALUES (?)",  $class );
@@ -273,7 +284,7 @@ sub paths_to_root {
     my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
     for my $row (@$res) {
 	my( $new_obj_id, $field ) = @$row;
-	if( $self->has_path_to_root( $new_obj_id ) && ! $seen->{$new_obj_id} ) {
+	if(  ! $seen->{$new_obj_id} && $self->has_path_to_root( $new_obj_id ) ) {
 	    $seen->{$new_obj_id} = 1;
 	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
 	    push @$ret, map { $_. "/$field" } @$paths;
@@ -283,6 +294,27 @@ sub paths_to_root {
     return $ret;
 } #paths_to_root
 
+#
+# Finds objects not connected to the root and recycles them.
+# This interface would be broken with the MongDB implementation.
+#
+sub recycle_objects {
+    my( $self, $start_id, $end_id ) = @_;
+    $start_id ||= 2;
+    $end_id   ||= $self->max_id();
+
+    my $recycled;
+    
+    for( my $id=$start_id; $id <= $end_id; $id++ ) {
+	my $obj = $self->fetch( $id );
+	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
+	    $self->recycle_object( $id );
+	    ++$recycled;
+	}
+    }
+    #print STDERR "RECYCLED $recycled objects\n";
+    return $recycled;
+} #recycle_objects
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
@@ -294,11 +326,6 @@ sub start_transaction {
     my $self = shift;
 #    $self->_do( "BEGIN IMMEDIATE TRANSACTION" );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-}
-
-sub reset_queries {
-    my $self = shift;
-    $self->{QUERIES} = [[[]],[[]]];
 }
 
 sub stow_now {
@@ -317,9 +344,24 @@ sub stow_now {
     }
 } #stow_now
 
+sub stow_all {
+    my( $self, $objs ) = @_;
+    $self->{QUERIES} = [[[]],[[]]];
+    $self->{STOW_LATER} = 1;
+    for my $objd ( @$objs ) {
+	$self->stow( @$objd );
+    }
+    $self->engage_queries();
+    $self->{STOW_LATER} = 0;
+    $self->{QUERIES} = [[[]],[[]]];
+} #stow_all
+
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
+    unless( $self->{STOW_LATER} ) {
+	return $self->stow_now( $id, $class, $data );
+    }
     my( $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
     my $ups = $self->{QUERIES}[0];
     my $uds = $self->{QUERIES}[1];
@@ -332,7 +374,7 @@ sub stow {
     my $uus = $uds->[$#$uds];
     push( @$llist, @$updates );
     push( @$uus,   @$udata   );
-}
+} #stow
 
 sub engage_queries {
     my $self = shift;
@@ -352,8 +394,7 @@ sub engage_queries {
 			map { @$_ } $first_data, @$udata );
 	}
     }
-    $self->{QUERIES} = [[[]],[[]]];
-} #stow
+} #engage_queries
 
 
 #
