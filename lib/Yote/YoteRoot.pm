@@ -129,6 +129,7 @@ sub fetch_root {
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     unless( $root ) {
 	$root = new Yote::YoteRoot();
+	Yote::ObjProvider::stow( $root );
     }
     return $root;
 }

@@ -148,12 +148,15 @@ $.yote = {
     }, //fetch_app
 
     fetch_root:function() {
-	var r =this.objs[1] || this.message( {
-            async:false,
-            cmd:'fetch_root',
-	    wait:true,
-	    app_id:1
-	} );
+	var r =this.objs['root'];
+	if( ! r ) {
+	    r = this.message( {
+		async:false,
+		cmd:'fetch_root',
+		wait:true
+	    } );
+	    this.objs['root'] = r;
+	}
 	return r;
     }, //fetch_root
 
@@ -445,7 +448,7 @@ $.yote = {
 		    return cnt;
 		},
 		equals:function(oth) {
-		    return typeof oth === 'object' && oth.id > 0 && oth.id == this.id;
+		    return typeof oth === 'object' && oth.id && oth.id == this.id;
 		},
 		keys:function() {
 		    var k = []
@@ -460,7 +463,6 @@ $.yote = {
 		},
 		sort:function(sortfun) {
 		    var res = this.values().sort( sortfun );
-		    console.log( [ 'SORTY', res ] );
 		    return res;
 		}		
 	    };
@@ -506,7 +508,7 @@ $.yote = {
 		var val = this._staged[key] || this._d[key];
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
-		if( (0+val) > 0 ) {
+		if( (0+val) > 0 || val.substring(0,1) != 'v' ) {
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;
                     if( this._staged[key] == val ) {
@@ -620,7 +622,7 @@ $.yote = {
                 } );
             };
 
-	    if( (0 + x.id ) > 0 ) {
+	    if( x.id && x.id.substring(0,1) != 'v' ) {
 		root.objs[x.id] = o;
 	    }
 	    return o;
@@ -674,7 +676,7 @@ $.yote = {
             return undefined;
         }
         if( typeof data === 'object' ) {
-            if( data.id + 0 > 0 && typeof data._d !== 'undefined' ) {
+            if( data.id  && typeof data._d !== 'undefined' && data.id.substring(0,1) != 'v' ) {
                 return data.id;
             }
             // this case is for paramers being sent thru message
@@ -713,5 +715,3 @@ $.yote = {
     
 }; //$.yote
 
-
-1

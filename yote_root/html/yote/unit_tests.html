@@ -143,10 +143,10 @@ $().ready(function(){
         ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
         // have a Yote object returned
         step('yote_obj get called on testappneedslogin to succeed');
-
+    
         var obj = login.get_yote_obj();
         if( typeof obj !== 'object' ) {
-            fail( "yote_obj not returned" );
+            fail( "yote_obj not returned" )();
             return;      
         }
 

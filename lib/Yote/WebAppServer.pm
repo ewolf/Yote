@@ -106,9 +106,10 @@ sub process_http_request {
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
+	my $path_start = shift @path;
 	my( $vars, $return_header );
 
-	if( $path[0] eq '_' ) {
+	if( $path_start eq '_' ) {
 	    my $CGI  = new CGI;
 	    $vars = $CGI->Vars();
 	    $return_header = "Content-Type: text/json\n\n";
@@ -119,8 +120,8 @@ sub process_http_request {
 	}
 
         my $action = pop( @path );
-        my $obj_id = int( pop( @path ) ) || 1;
-        my $app_id = int( pop( @path ) ) || 1;
+        my $obj_id = pop( @path );
+        my $app_id = pop( @path ) || Yote::ObjProvider::first_id();
         my $wait = $vars->{w};
 
         my $command = {

@@ -6,6 +6,7 @@ use warnings;
 use Yote::WebAppServer;
 
 use Yote::AppRoot;
+use Yote::YoteRoot;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -62,6 +63,7 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
+    Yote::YoteRoot->fetch_root();
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( 1 );
@@ -72,7 +74,7 @@ sub test_suite {
     ( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 7, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
     my( $f_count ) = query_line( $db, "SELECT count(*) FROM field" );
-    is( $f_count, 0, "number of fields after save root before stow all was called" );
+    is( $f_count, 6, "number of fields after yoteroot is called" );
 
 #
 # Save key value fields for simple scalars, arrays and hashes.

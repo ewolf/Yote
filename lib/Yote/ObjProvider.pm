@@ -45,9 +45,6 @@ sub init {
     $DATASTORE = $datapkg->new( $args );
     $DATASTORE->ensure_datastore();
     $CACHE = new Yote::SimpleLRUCache();
-    unless( fetch( $DATASTORE->first_id() ) ) {
-	my $root = new Yote::YoteRoot();
-    }
 } #init
 
 
@@ -93,12 +90,12 @@ sub first_id {
 sub fetch {
     my( $id ) = @_;
 
+    return undef unless $id;
     #
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch( $id );
     return $ref if $ref;
-
     my $obj_arry = $DATASTORE->fetch( $id );
 
     if( $obj_arry ) {

@@ -13,10 +13,9 @@ sub allows_access {
 	return 1 if $app && $app->isa( 'Yote::AppRoot' );
     }
 
-    return 1 if $obj_id == 1 || ( $app && $obj_id == $app->{ID} ) || ( $login && $obj_id == $login->{ID} );
+    return 1 if $obj_id eq Yote::ObjProvider::first_id() || ( $app && $obj_id eq $app->{ID} ) || ( $login && $obj_id eq $login->{ID} );
 
     my $obj = Yote::ObjProvider::fetch( $obj_id );
-    #print STDERR Data::Dumper->Dump(["OBJMAN",$obj_id,$obj, '-000000000--------------------']);
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
 
     if( $login ) {
@@ -35,7 +34,6 @@ sub knows_dirty {
 
 sub register_object {
     my( $obj_id, $login, $guest_token ) = @_;
-    print STDERR Data::Dumper->Dump(["REGISTER <<$obj_id>>"]);
     die unless $obj_id;
     my $t = time();
     if( $login ) {

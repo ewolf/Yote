@@ -95,7 +95,17 @@ sub fetch {
     my( $self, $id ) = @_;
     my $data = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $id ) } );
     return undef unless $data;
-    return [ $id, $data->{ c }, $data->{d} ];
+    if( $data->{ c } eq 'ARRAY' ) {
+	return [ $id, $data->{ c }, $data->{d} ];
+    } else {
+	my $unescaped_data = {};
+	for my $key ( keys %{$data->{d}} ) {
+	    my $val = $data->{d}{$key};
+	    $key =~ s/\\/\./g;
+	    $unescaped_data->{$key} = $val;
+	}
+	return [ $id, $data->{ c }, $unescaped_data ];
+    }
 } #fetch
 
 #
@@ -328,6 +338,13 @@ sub stow {
 	@refs = grep { index( $_, 'v' ) != 0 } @$data;
     } else {
 	@refs = grep { index( $_, 'v' ) != 0 } values %$data;	
+	my $escaped_data = {};
+	for my $key (keys %$data ) {
+	    my $val = $data->{$key};
+	    $key =~ s/\./\\/g;
+	    $escaped_data->{$key} = $val;
+	}
+	$data = $escaped_data;
     }
 
     my $mid = MongoDB::OID->new( value => $id );
@@ -491,8 +508,8 @@ sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
     $self->{MONGO_CLIENT} = MongoDB::MongoClient->new(
-	host=> $args->{ datahost },
-	port=> $args->{ dataport }
+	host=> $args->{ datahost } || 'localhost',
+	port=> $args->{ dataport } || 27017,
 	);
     $self->{DB} = $self->{MONGO_CLIENT}->get_database( $args->{ databasename } || 'yote' );
 } #_connect
@@ -503,6 +520,7 @@ sub _xpath_to_list {
     my( $working, $escaped, @res ) = '';
     for my $ch (@path) {
 	if( $ch eq '/' && ! $escaped ) {
+	    $working =~ s/\./\\/g;
 	    push( @res, $working );
 	    $working = '';
 	    $escaped = 0;
@@ -514,6 +532,7 @@ sub _xpath_to_list {
 	    $working .= $ch;
 	}
     }
+    $working =~ s/\./\\/g;
     push( @res, $working ) if defined( $working );
     return @res;
 } #_xpath_to_list

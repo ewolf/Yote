@@ -6,6 +6,7 @@ use warnings;
 use Yote::WebAppServer;
 
 use Yote::AppRoot;
+use Yote::YoteRoot;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -56,7 +57,8 @@ done_testing();
 sub test_suite {
     my $db = shift;
     my $objcol = $db->get_collection( "objects" );
-
+    
+    Yote::YoteRoot->fetch_root();
 # -----------------------------------------------------
 #               start of yote tests
 # -----------------------------------------------------
@@ -65,7 +67,7 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    is( $objcol->count(), 0, "number of objects after creation of root, though save has not yet been called." );
+    is( $objcol->count(), 7, "number of objects after fetchroot" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     Yote::ObjProvider::stow_all();
@@ -91,7 +93,7 @@ sub test_suite {
     is( $objcol->count(), 15, "number of objects after adding a bunch" );
 
     # this resets the cool hash, overwriting what is there, which was a hash, array, a new obj and a hash ( 4 things )
-    $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
+    $root->set_cool_hash( { "ll.ama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
     Yote::ObjProvider::stow_all();
     my $recycled = Yote::ObjProvider->recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
@@ -99,13 +101,13 @@ sub test_suite {
     is( $objcol->count(), 14, "number of objects after recycling" );
 
     my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
-    is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
-    is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
-    is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
+    is( ref( $root_clone->get_cool_hash()->{'ll.ama'} ), 'ARRAY', '2nd level array object. Also tests escape of dot (.) in yote.' );
+    is( ref( $root_clone->get_cool_hash()->{'ll.ama'}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
+    is( ref( $root_clone->get_cool_hash()->{'ll.ama'}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
 
-    is( ref( $root->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object (original root after save)' );
-    is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
-    is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
+    is( ref( $root->get_cool_hash()->{'ll.ama'} ), 'ARRAY', '2nd level array object (original root after save)' );
+    is( ref( $root->get_cool_hash()->{'ll.ama'}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
+    is( ref( $root->get_cool_hash()->{'ll.ama'}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 
 
     is_deeply( $root_clone, $root, "CLONE to ROOT");
