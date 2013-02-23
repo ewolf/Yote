@@ -148,7 +148,7 @@ $.yote = {
     }, //fetch_app
 
     fetch_root:function() {
-	var r =this.objs['root'];
+	var r = this.objs['root'];
 	if( ! r ) {
 	    r = this.message( {
 		async:false,
@@ -509,6 +509,7 @@ $.yote = {
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 || val.substring(0,1) != 'v' ) {
+		    if( ! root.objs[ val ] ) { console.log( ["FETCH " + key, this, this._d[key],typeof this._d[key]] ) }
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;
                     if( this._staged[key] == val ) {
@@ -519,6 +520,11 @@ $.yote = {
                     return obj;
 		}
 		return val.substring(1);
+	    };
+
+	    o.set = function( key, val, failh, passh ) {
+		this._stage( key, val );
+		this._send_update( undefined, failh, passh );
 	    };
 
 	    // get fields
@@ -532,6 +538,9 @@ $.yote = {
 			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+                    if( fld.match(/^[A-Z]/) ) {
+			o['set_'+fld] = (function(fl,fh,ph) { return function(val) { return this.set(fl,val,fh,ph) } } )(fld);
+		    }
 		}
 	    }
 
@@ -622,8 +631,8 @@ $.yote = {
                 } );
             };
 
-	    if( x.id && x.id.substring(0,1) != 'v' ) {
-		root.objs[x.id] = o;
+	    if( o.id && o.id.substring(0,1) != 'v' ) {
+		root.objs[o.id] = o;
 	    }
 	    return o;
         } )(data,app_id);
