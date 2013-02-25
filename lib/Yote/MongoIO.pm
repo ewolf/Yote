@@ -140,7 +140,7 @@ sub has_path_to_root {
 # Returns a hash of paginated items that belong to the xpath. The xpath must end in a hash.
 # 
 sub paginate_xpath {
-    my( $self, $path, $paginate_start, $paginate_length ) = @_;
+    my( $self, $path, $paginate_length, $paginate_start ) = @_;
 
     my $obj_id = $self->xpath( $path );
     die "Unable to find xpath location '$path' for pagination" unless $obj_id;
@@ -174,7 +174,7 @@ sub paginate_xpath {
 	    my @keys = sort keys %$result_data;
 	    if( $paginate_start ) {
 		if( $paginate_start > $#keys ) {
-		    return [];
+		    return {};
 		}
 		if( ( $paginate_start + $paginate_length ) > @keys ) {
 		    $paginate_length = scalar( @keys ) - $paginate_start;

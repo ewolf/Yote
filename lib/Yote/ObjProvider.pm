@@ -223,15 +223,8 @@ sub package_methods {
 # Returns a hash of paginated items that belong to the xpath.
 #
 sub paginate_xpath {
-    my( $path, $paginate_start, $paginate_length ) = @_;
-    my $list = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
-#    my $ret;
-#    for my $pair (@$list) {
-#	push @$ret, [ $pair->[0], xform_out( $pair->[1] ) ];
-#    }
-#    return $ret;
-
-    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_start, $paginate_length );
+    my( $path, $paginate_length, $paginate_start ) = @_;
+    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_length, $paginate_start );
     return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
 } #paginate_xpath
 
