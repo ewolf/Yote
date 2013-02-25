@@ -16,6 +16,7 @@ sub allows_access {
     return 1 if $obj_id eq Yote::ObjProvider::first_id() || ( $app && $obj_id eq $app->{ID} ) || ( $login && $obj_id eq $login->{ID} );
 
     my $obj = Yote::ObjProvider::fetch( $obj_id );
+    return 1 unless $obj;
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
 
     if( $login ) {

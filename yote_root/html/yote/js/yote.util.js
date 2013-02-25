@@ -191,7 +191,6 @@ $.yote.util = {
 		    tab.add_header_row( ptab.col_names );
 		}
 		var hash = ptab.obj[ 'paginate_hash' ]( [ ptab.list_name, ptab.size + 1, start ] );
-
 		var max = hash.length() < ptab.size ? hash.length() : ptab.size;
 		var keys = hash.keys();
 		for( var i=0; i < max ; i++ ) {
@@ -510,7 +509,7 @@ $.yote.util = {
 	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	var input_div_txt = $.yote.util.container_div(
 	    [
-		[ [ '<div id="_yote_forgot_email_row_div">Email ' + $.yote.util.make_text( 'email_t' ) + '</div>', 'span3' ] ],
+		[ [ '<div id="_yote_forgot_email_row_div">Email ' + $.yote.util.make_text( '_yote_email_t' ) + '</div>', 'span3' ] ],
 		[ [ '<div id="_yote_forgot_msg"></div>', 'span3' ] ],
 		[ [ $.yote.util.make_button( '_yote_forgot_b', 'Recover' ), 'span2' ] ]
 	    ]

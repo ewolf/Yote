@@ -186,7 +186,8 @@ sub paginate_xpath {
 	    }
 	    return { map { $_ => $result_data->{ $_ } } @keys[0..($paginate_length-1)] };
 	}
-	return $result_data;
+	my @keys = sort keys %$result_data;
+	return { map { $_ => $result_data->{ $_ } } @keys };
     }
 } #paginate_xpath
 

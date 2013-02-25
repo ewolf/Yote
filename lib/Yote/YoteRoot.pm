@@ -206,6 +206,8 @@ sub recover_password {
 
     my $login = Yote::ObjProvider::xpath( "/_emails/$email" );
 
+    print STDERR Data::Dumper->Dump(["RECOVERY FOR $email",$login]);
+
     if( $login ) {
         my $now = time();
         if( $now - $login->get__last_recovery_time() > (60*15) ) { #need to wait 15 mins
@@ -228,6 +230,7 @@ sub recover_password {
 		smtp => 'localhost',
 		from => 'yote@localhost',
 					   } );
+	    print STDERR Data::Dumper->Dump(["RECOVERY LINK $link"]);
 	    $sender->MailMsg( { to => $email,
 				 subject => 'Password Recovery',
 				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",

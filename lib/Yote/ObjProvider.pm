@@ -242,8 +242,7 @@ sub paginate_xpath {
 #
 sub paginate_xpath_list {
     my( $path, $paginate_length, $paginate_start ) = @_;
-    my $list = $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start );
-    return [ map { xform_out( $_ ) } @$list ];
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start ) } ];
 } #paginate_xpath_list
 
 sub paths_to_root {
