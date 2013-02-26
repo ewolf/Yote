@@ -1,5 +1,10 @@
 2013-02-26  Eric Wolf  <coyocanid@gmail.com>
 
+	* fixed a bug in the test : parameter order was wrong for paginate there.
+	* updated javascript method calls to make sync the default but permit async
+
+2013-02-26  Eric Wolf  <coyocanid@gmail.com>
+
 	* Added Mongo driver
 	* fixed a bug in 'forgot password' javascript
 

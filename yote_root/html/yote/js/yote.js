@@ -488,9 +488,9 @@ $.yote = {
 		if( typeof x.m === 'object' && x.m !== null ) {
 		    for( m in x.m ) {
 			o[x.m[m]] = (function(key,thobj) {
-			    return function( params, passhandler, failhandler ) {
+			    return function( params, passhandler, failhandler, use_async ) {
 				return root.message( {
-				    async:false,
+				    async: use_async ? true : false,
 				    app_id:this._app_id,
 				    cmd:key,
 				    data:params,
