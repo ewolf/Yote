@@ -1,3 +1,8 @@
+2013-02-26  Eric Wolf  <coyocanid@gmail.com>
+
+	* Added Mongo driver
+	* fixed a bug in 'forgot password' javascript
+
 2013-01-27  Eric Wolf  <coyocanid@gmail.com>
 
 	* CHANGELOG:
