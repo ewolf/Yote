@@ -186,7 +186,9 @@ $.yote = {
 			    $.yote.token = res.get( 't' );
 			    $.yote.login_obj = res.get( 'l' );
 			    $.cookie( 'yoken', $.yote.token );
-			    passhandler(res);
+			    if( typeof passhandler === 'function' ) {
+				passhandler(res);
+			    }
 			},
 			failhandler );
 	    return $.yote.login_obj;
