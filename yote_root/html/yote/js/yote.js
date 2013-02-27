@@ -171,6 +171,7 @@ $.yote = {
 	return typeof this.login_obj === 'object';
     }, //is_logged_in
 
+    /* DEPRECATE THIS */
     load_direct_descendents:function( app, obj ) {
 	var desc = app.multi_fetch( obj );
 	for( var i=0; i<desc.length(); i++ ) {
@@ -329,7 +330,7 @@ $.yote = {
 
     /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
        which corresponds to the parameter name in the inputs.
-       For example some_yote_obj->do_somehingt( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
+       For example some_yote_obj->do_something( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
     */
     upload:function( selector_id ) {
 	var uctxt = 'u' + this.upload_count++;
@@ -341,7 +342,10 @@ $.yote = {
 	    };
 	} )( uctxt, selector_id );
     }, //upload
-
+    
+    /*
+      This is called automatically by message if there is an upload involved. It is not meant to be invoked directly.
+     */
     upload_message:function( params, uploads ) {
         var root   = this;
         var data   = root._translate_data( params.data || {}, true );
