@@ -32,6 +32,7 @@
 	<UL class="nav">
 	  <LI><a href="index.html">About</a></LI>
 	  <LI class="active"><A href="install.html">Install</A></LI>
+<!--	  <LI><A href="docs.html">Documentation</A></LI> -->
 	  <LI><A href="samples.html">Samples</A></LI>
 <!--	  <LI><A href="program.html">Program</A></LI> -->
 	</UL>      
@@ -87,19 +88,29 @@
       <DIV class="page-header">
 	<H1>Configuring Yote</H1>
       </DIV>
-      When Yote is started, the first account created is the root account.
-      Open up your browser to http://localhost:<i>yote port</i>/yote/index.html
-      and click 'Log in' on the upper right side. Then click the 'create account' button and create an account.
-      This account will then be the root account and have root privileges.
-      <BR>
-      If you wish to add to the classpath that Yote uses to discover app packages you write,
-      use the yote_classpath_updater.pl script while the yote server is not running.
-      Running it without arguments displays the current classpath being used.
-      Running it with space separated directories will add those directories into the classpath
-      that Yote uses to look for Yote packages and apps.
-      <BR>
-      Once you have your root account created, you can run the browser unit tests by opening up
-      http://localhost:<i>yote port</i>/yote/unit_test.html
+      <UL>
+	<LI>Create Root Account</LI>
+	<UL>
+	  <LI>When Yote is started, the first account created is the root account.</LI>
+	  <LI>Open up your browser to http://localhost:<i>yote port</i>/yote/index.html</LI>
+	  <LI>click 'Log in' on the upper right side</LI>
+	  <LI>Then click the 'create account' button</LI>
+	  <LI>Fill out the form to create the account</LI>
+	  <LI>This account will then be the root account and have root privileges.</LI>
+	</UL>
+	<LI>Adding Classpaths</LI>
+	<UL>
+	  <LI>Stop the server useing $ yote_server stop</LI>
+	  <LI>Run $ yote_classpath_updater.pl <I>space separated directories</I></LI>
+	  <LI>Yote will now be able to load apps contained in those directories</LI>
+	  <LI>Restart the server useing $ yote_server --port=80 start</LI>
+	</UL>
+	<LI>Run the javascript unit tests</LI>
+	<UL>
+	  <LI>Open up http://localhost:<i>yote port</i>/yote/unit_test.html</LI>
+	  <LI>Confirm that the tests pass successfully</LI>
+	</UL>
+      </UL>
     </SECTION>
     
     <footer>
