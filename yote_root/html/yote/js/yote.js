@@ -520,11 +520,6 @@ $.yote = {
 		    if( ! root.objs[ val ] ) { console.log( ["FETCH " + key, this, this._d[key],typeof this._d[key]] ) }
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;
-                    if( this._staged[key] == val ) {
-                        this._staged[key] = obj;
-                    } else {
-                        this._d[key] = obj;
-                    }
                     return obj;
 		}
 		return val.substring(1);
@@ -546,9 +541,7 @@ $.yote = {
 			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-                    if( fld.match(/^[A-Z]/) ) {
-			o['set_'+fld] = (function(fl,fh,ph) { return function(val) { return this.set(fl,val,fh,ph) } } )(fld);
-		    }
+		    o['set_'+fld] = (function(fl,fh,ph) { return function(val) { return this.set(fl,val,fh,ph) } } )(fld);
 		}
 	    }
 

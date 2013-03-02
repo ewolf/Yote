@@ -106,6 +106,19 @@ $.yote.util = {
         }
     }, //stage_object_select
 
+    build_select_txt:function( args ) {
+	var items = args[ 'items' ], text = args[ 'text' ], val = args[ 'val' ], id = args[ 'id' ];
+	var dflt = args[ 'default' ];
+	if( items.length() == 0 ) { return dflt; }
+	var buf = '<SELECT id="' + id + '" ' + args[ 'extra' ] + '>';
+	if( args[ 'include_none' ] ) { buf += '<OPTION value="">None</OPTION>'; }
+	for( var i=0; i < items.length(); i++ ) {
+	    var item = items.get( i );
+	    buf += '<OPTION value="' + val( item, i ) + '">' + text( item ) + '</OPTION>';
+	}
+	return buf + '</SELECT>';
+    }, //build_select_txt
+
     make_select:function(attachpoint,list,list_fieldname) {
 	var idname = this.next_id();
         attachpoint.append( '<select id="'+idname+'"></select>' );

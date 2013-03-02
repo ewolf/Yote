@@ -100,7 +100,7 @@ sub __build_cron_list {
 
 sub __activate {
     my( $self, $items ) = @_;
-#    print STDERR Data::Dumper->Dump([$items,"ACTI"]);
+    ### CRON activate with $items
     if( $items && @$items ) {
 	for my $item (@$items) {
 	    my( $obj_id, $method ) = @$item;
