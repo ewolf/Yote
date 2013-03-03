@@ -59,6 +59,7 @@ my $builder = Module::Build->new(
 	'Email::Valid'          => 0.190,
 	'File::UStore'          => 0.12,
 	'JSON'                  => 0,
+	'Logger::Simple'        => 0,
 	'Mail::Sender'          => 0,
 	'MIME::Lite'            => 3.029,
 	'Net::Server::HTTP'     => 0,

@@ -9,6 +9,7 @@ use forks::shared;
 
 use CGI;
 use IO::Handle;
+use Logger::Simple;
 use Net::Server::HTTP;
 use MIME::Base64;
 use JSON;
@@ -29,6 +30,7 @@ my( @commands, %prid2wait, %prid2result, $singleton );
 share( @commands );
 share( %prid2wait );
 share( %prid2result );
+
 
 
 # ------------------------------------------------------------------------------------------
@@ -59,6 +61,20 @@ sub do404 {
     my $self = shift;
     $self->send_status( "404" );
     print "Content-Type: text/html\n\nERROR : 404\n";
+}
+
+sub errlog {
+    my( $msg ) = @_;
+    return accesslog( $msg );
+}
+
+sub accesslog {
+    my( $msg ) = @_;
+    if( $Yote::WebAppServer::ACCESS_LOG ) {
+	$Yote::WebAppServer::ACCESS_LOG->write( $msg );
+    } else {
+	print STDERR Data::Dumper->Dump([$msg]);
+    }
 }
 
 #
@@ -100,7 +116,7 @@ sub process_http_request {
 
     my $uri = $ENV{'PATH_INFO'};
 
-    print STDERR Data::Dumper->Dump(["REQUEST FOR $uri"]);
+    accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
 
     $uri =~ s/\s+HTTP\S+\s*$//;
 
@@ -176,15 +192,12 @@ sub process_http_request {
                 $result = $prid2result{$procid};
                 delete $prid2result{$procid};
             }
-            print STDERR "Sending result $return_header $result\n";
-
 	    print $return_header;
             print "$result";
         }
         else {  #not waiting for an answer, but give an acknowledgement
             print "{\"msg\":\"Added command\"}";
         }
-#        print STDERR "<END---------------- PROC REQ $$ ------------------>\n";
     } #if a command on an object
 
     else { #serve up a web page
@@ -211,7 +224,7 @@ sub process_http_request {
             }
             close( IN );
 	} else {
-	    print STDERR Data::Dumper->Dump(["404",$@,$!,"<$root/$dest"]);
+	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
 	    $self->do404();
 	}
 	return;
@@ -222,12 +235,12 @@ sub process_http_request {
 
 sub shutdown {
     my $self = shift;
-    print STDERR "Shutting down yote server \n";
+    accesslog( "Shutting down yote server" );
     Yote::ObjProvider::stow_all();
-    print STDERR "Killing threads \n";
+    accesslog(  "Killing threads" );
     $self->{server_thread}->detach();
     $self->{saving_thread}->detach();
-    print STDERR "Shut down server thread.\n";
+    accesslog( "Shut down server thread" );
 } #shutdown
 
 sub start_server {
@@ -235,7 +248,8 @@ sub start_server {
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
     $self->{args} = $args;
     $self->{args}{webroot} ||= '/usr/local/yote/html';
-    $self->{args}{upload} ||= '/usr/local/yote/html/upload';
+    $self->{args}{upload}  ||= '/usr/local/yote/html/upload';
+    $self->{args}{log_dir} ||= '/var/log/yote';
 
     Yote::ObjProvider::init( %$args );
 
@@ -254,6 +268,7 @@ sub start_server {
 
     # make sure the filehelper knows where the data directory is
     $Yote::WebAppServer::YOTE_ROOT_DIR = $self->{args}{root_dir};
+    $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
     $Yote::WebAppServer::DATA_DIR      = $self->{args}{data_dir};
     $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
     $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
@@ -262,6 +277,8 @@ sub start_server {
     mkdir( $Yote::WebAppServer::FILE_DIR );
     mkdir( $Yote::WebAppServer::WEB_DIR );
     mkdir( $Yote::WebAppServer::UPLOAD_DIR );
+    mkdir( $Yote::WebAppServer::LOG_DIR );
+    $Yote::WebAppServer::ACCESS_LOG = Logger::Simple->new( LOG => "$Yote::WebAppServer::LOG_DIR/access.log" );
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
@@ -350,11 +367,9 @@ sub _process_command {
 	my $guest_token = $command->{gt};
 	$command->{e}{GUEST_TOKEN} = $guest_token;
 
-	print STDERR Data::Dumper->Dump(["INCOMING",$data,$command,$login]);
-
 	# security check
 	unless( Yote::ObjManager::allows_access( $obj_id, $app, $login, $guest_token ) ) {
-	    print STDERR Data::Dumper->Dump(["TRIES TO ACCCESS $obj_id",$app,$login,$guest_token,$Yote::ObjManager::LOGIN_OBJS,$Yote::ObjManager::GUEST_OBJS]);
+	    accesslog( "INVALID ACCCESS ATTEMPT for $obj_id from $command->{e}{ REMOTE_ADDR }" );
 	    die "Access Error";
 	}
 
@@ -392,12 +407,13 @@ sub _process_command {
     if( $@ ) {
 	my $err = $@;
 	$err =~ s/at \/\S+\.pm.*//s;
-        print STDERR Data::Dumper->Dump( ["ERROR",$@] );
+        accesslog( "ERROR : $@" );
         $resp = { err => $err, r => '' };
     }
 
     $resp = to_json( $resp );
-    print STDERR Data::Dumper->Dump(["SEND BACK", $resp]);
+
+    ### SEND BACK $resp
 
     #
     # Send return value back to the caller if its waiting for it.

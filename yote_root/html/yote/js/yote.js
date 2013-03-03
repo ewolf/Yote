@@ -493,7 +493,7 @@ $.yote = {
 		};
 	    }
 	    else {
-		if( typeof x.m === 'object' && x.m !== null ) {
+		if( typeof x.m === 'object' && x.m !== null ) { // set methods
 		    for( m in x.m ) {
 			o[x.m[m]] = (function(key,thobj) {
 			    return function( params, passhandler, failhandler, use_async ) {
