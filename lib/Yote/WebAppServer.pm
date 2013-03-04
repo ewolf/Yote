@@ -11,6 +11,7 @@ use CGI;
 use IO::Handle;
 use Logger::Simple;
 use Net::Server::HTTP;
+use Net::Server::PreForkSimple;
 use MIME::Base64;
 use JSON;
 use Data::Dumper;
@@ -292,6 +293,10 @@ sub start_server {
     push @INC, @$paths;
 
     # server thread
+    $args->{ server_type } = [ 'PreForkSimple' ];
+    $args->{ max_servers }  = 50;
+    $args->{ max_requests } = 100; # how many requests the server makes before its replaced.
+
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;
 
