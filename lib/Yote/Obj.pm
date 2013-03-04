@@ -161,6 +161,12 @@ sub __obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
+		for my $entry (@$d) {
+		    next unless $entry;
+		    if( index( $entry, 'v' ) != 0 ) {
+			Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
+		    }
+		}
             } else {
                 $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
             }
@@ -170,6 +176,12 @@ sub __obj_to_response {
             if( $tied ) {
                 $d = $tied->[1];
                 $use_id = Yote::ObjProvider::get_id( $to_convert );
+		for my $entry (values %$d) {
+		    next unless $entry;
+		    if( index( $entry, 'v' ) != 0 ) {
+			Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
+		    }
+		}
             } else {
                 $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
             }
@@ -186,7 +198,7 @@ sub __obj_to_response {
         }
 
 	Yote::ObjManager::register_object( $use_id, $login ? $login->{ID} : $guest_token ) if $use_id;
-	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
+	return $m ? { c => $ref, id => $use_id, d => $d, 'm' => $m } : { c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert";
 } #__obj_to_response

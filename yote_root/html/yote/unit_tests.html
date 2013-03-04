@@ -148,6 +148,7 @@ $().ready(function(){
             fail( "yote_obj not returned" )();
             return;      
         }
+	is( login.list().length(), 3, " list properly returned " );
 
         // try passing in a javascript proxy object as a data parameter
         var o1 = login.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );

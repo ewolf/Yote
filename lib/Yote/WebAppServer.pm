@@ -207,7 +207,11 @@ sub process_http_request {
 	my $dest = join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
 	    $self->send_status( "301" );
-	    print "Location: /$dest/index.html\n\n";
+	    if( $dest ) {
+		print "Location: $dest/index.html\n\n";
+	    } else {
+		print "Location: /index.html\n\n";
+	    }
 	} elsif( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /\.js$/i ) {
 		print "Content-Type: text/javascript\n\n";
@@ -401,7 +405,6 @@ sub _process_command {
 	    }
 	} #if there was a dirty delta
         $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, $guest_token ) };
-
     };
     if( $@ ) {
 	my $err = $@;
