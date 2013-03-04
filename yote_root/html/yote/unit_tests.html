@@ -126,8 +126,7 @@ $().ready(function(){
         step('login with correct password');
         $.yote.login( 'unit_test_account', 'ut',
                       pass( "able to log in" ),
-                      fail( "able to log in" ) );
-
+                      fail( "unable to log in" ) );
         step('login has token');
 	ok( $.yote.token != '', 'login has token', 'token missing from login' );
 	ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
@@ -157,9 +156,8 @@ $().ready(function(){
         is( o1.get_Text(), 'foo', 'correct object 1 text directly a' );
         is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
         login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
-        is( login.obj_text(), 'bar', 'correct object 1 text' );
-
-        var o3 = login.get_obj();
+        is( login.obj_text(), 'bar', 'correct object 1 text' ); //should have dirty sent back
+        var o3 = login.get_obj(); //<--- STILL FAIL
         is( o3.get_Text(), 'bar', 'correct object 1 text directly' );
 
         login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
@@ -242,9 +240,8 @@ $().ready(function(){
         $.yote._dump_cache();
         is( $.yote._cache_size(), 0, "cache now empty" );
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+	console.log( [ 'YOTE CACHE', $.yote.objs ] );
         is( $.yote._cache_size(), 4, "cache with loginapp and root and obj in loginapp ( root gets two entries )" );
-        login.load_direct_descendents();
-        is( $.yote._cache_size(), 6, "cache with loginapp, root and loginapps threefields (made,yoteobj,obj) " );
 
         wrap_up();
     }

@@ -451,6 +451,7 @@ $.yote.util = {
 		var brand_html             = arg[ 'brand_html' ];
 		var app                    = arg[ 'app' ];
 		var logged_in_function     = arg[ 'logged_in_function' ] || function( login ) {};
+		var logged_out_function    = arg[ 'logged_out_function' ] || function() {};
 		var not_logged_in_function = arg[ 'not_logged_in_function' ] || function() {};
 		var container_id           = arg[ 'container_id' ];
 		var modal_div              = args[ 'modal_div' ] || '#modal_div';
@@ -488,6 +489,7 @@ $.yote.util = {
 
 		    var logout = function() {
 			$.yote.logout();
+			logged_out_function();
 			cls( cls );
 		    } //logout
 

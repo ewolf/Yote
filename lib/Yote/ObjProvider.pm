@@ -62,8 +62,8 @@ sub commit_transaction {
 sub dirty {
     my $obj = shift;
     my $id = shift;
+    Yote::ObjManager::mark_dirty( $id );
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
-    $Yote::ObjProvider::CHANGED->{$id} = 1;
 } #dirty
 
 
@@ -320,9 +320,6 @@ sub recycle_objects {
     return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
 
-sub reset_changed {
-    $Yote::ObjProvider::CHANGED = {};
-}
 sub start_transaction {
     return $DATASTORE->start_transaction();
 }
@@ -458,10 +455,6 @@ sub __clean {
     my $id = shift;
     delete $Yote::ObjProvider::DIRTY->{$id};
 } #__clean
-
-sub __fetch_changed {
-    return [keys %{$Yote::ObjProvider::CHANGED}];
-}
 
 sub __is_dirty {
     my $obj = shift;

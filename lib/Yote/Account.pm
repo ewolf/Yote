@@ -5,6 +5,11 @@ use warnings;
 
 use base 'Yote::Messenger';
 
+#
+# This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
+#
+sub sync_all {}
+
 sub upload_avatar {
     my( $self, $data, $acct ) = @_;
     my $login = $acct->get_login();

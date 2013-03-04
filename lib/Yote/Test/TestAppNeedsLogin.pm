@@ -21,11 +21,6 @@ sub _init {
     $self->get_yote_obj()->set_name( "INITY" );
 }
 
-sub _extra_fetch {
-    my $self = shift;
-    return [$self->get_yote_obj()];	
-}
-
 sub _allows {
     my( $app, $command, $data, $acct, $obj ) = @_;
     return defined( $acct );

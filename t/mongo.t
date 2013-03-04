@@ -409,13 +409,13 @@ sub test_suite {
     is( $t->{l}->get_handle(), 'toot', "logged in with login object with correct handle" );
     is( $t->{l}->get_email(), 'baz@bar.com', "logged in with login object with correct handle" );
     ok( $t->{t}, "logged in with token $t->{t}" );
-    my( $hello_app ) = @{ $root->fetch_app_by_class( 'Yote::Test::Hello' ) };
+    my $hello_app = $root->fetch_app_by_class( 'Yote::Test::Hello' );
     is( $hello_app->hello( { name => 'toot' } ), "hello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
     my $as = new Yote::WebAppServer();
     ok( $as, "Yote::WebAppServer compiles" );
 
 
-    my( $ta ) = @{ $root->fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' ) };
+    my $ta  = $root->fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' );
     ok( $ta->get_yote_obj(), "test app created yote object automatically" );
 
     my $aaa = $ta->array( '', $t );

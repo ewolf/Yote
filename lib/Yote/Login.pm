@@ -43,6 +43,11 @@ sub is_root {
     return $self->get__is_root();
 } #is_root
 
+#
+# This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
+#
+sub sync_all {}
+
 sub UploadAvatar {
     my( $self, $data ) = @_;
     $self->set_avatar( $data->{avatar} );

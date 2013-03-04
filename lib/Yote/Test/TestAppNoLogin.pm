@@ -46,7 +46,6 @@ sub UpOne {
 
 sub Upload {
     my( $self, $data, $acct ) = @_;
-    print STDERR Data::Dumper->Dump([$data,"TANL"]);
     $self->add_to_Files( $data->{somefile} );
     $self->add_to_Files( $data->{somefile_2} );
 }

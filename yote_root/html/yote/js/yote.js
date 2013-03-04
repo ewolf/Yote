@@ -135,11 +135,7 @@ $.yote = {
     fetch_app:function(appname,passhandler,failhandler) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
-	    var res = root.fetch_app_by_class( appname );
-	    ret = res.get(0);
-	    for( var i=0; i < res.length(); i++ ) {
-		res.get( i );
-	    }
+	    var ret = root.fetch_app_by_class( appname );
 	    ret._app_id = ret.id;
 	    return ret;
 	} else if( typeof failhanlder === 'function' ) {
@@ -170,14 +166,6 @@ $.yote = {
     is_logged_in:function() {
 	return typeof this.login_obj === 'object';
     }, //is_logged_in
-
-    /* DEPRECATE THIS */
-    load_direct_descendents:function( app, obj ) {
-	var desc = app.multi_fetch( obj );
-	for( var i=0; i<desc.length(); i++ ) {
-	    desc.get(i);
-	}
-    }, //load_direct_descendents
 
     login:function( handle, password, passhandler, failhandler ) {
 	var root = this.fetch_root();
@@ -239,7 +227,7 @@ $.yote = {
 	var resp;
 
         if( $.yote.debug == true ) {
-	    console.log('outgoing ' + url + '-------------------------' );  
+	    console.log("\noutgoing " + url + '-------------------------' );  
 	    console.log( data );
 	    console.log( JSON.stringify( {d:data} ) );
 	    console.log( put_data ); 
@@ -542,13 +530,6 @@ $.yote = {
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
 		    o['set_'+fld] = (function(fl,fh,ph) { return function(val) { return this.set(fl,val,fh,ph) } } )(fld);
-		}
-	    }
-
-	    // check for extra objects on board
-	    if( typeof x.e === 'object' && x.e !== null ) {
-		for( xid in x.e ) {
-		    
 		}
 	    }
 

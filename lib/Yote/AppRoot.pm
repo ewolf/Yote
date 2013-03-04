@@ -23,13 +23,6 @@ $VERSION = '0.085';
 
 
 #
-# Called when objects are being fetched. Returns a list of other objects that should be included with this one.
-#
-sub _extra_fetch {
-    return [];
-}
-
-#
 # Intializes the account object passed in.
 #
 sub _init_account {}

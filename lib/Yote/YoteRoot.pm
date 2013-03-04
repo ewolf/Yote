@@ -98,7 +98,7 @@ sub create_login {
 #
 sub fetch {
     my( $self, $data, $account, $env ) = @_;
-    die "Access Error" unless Yote::ObjManager::knows_dirty( ref( $data ) ? $data : [ $data ], undef, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
+    die "Access Error" unless Yote::ObjManager::allows_access( $data, $self, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
     if( ref( $data ) eq 'ARRAY' ) {
 	my $login = $account->get_login();
 	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];
@@ -118,7 +118,7 @@ sub fetch_app_by_class {
         $app = $data->new();
         $self->get__apps()->{$data} = $app;
     }
-    return [$app,@{$app->_extra_fetch()}];
+    return $app;
 } #fetch_app_by_class
 
 
@@ -165,6 +165,7 @@ sub login {
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
+	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
         }
     }

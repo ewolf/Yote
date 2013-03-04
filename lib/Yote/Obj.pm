@@ -141,6 +141,12 @@ sub _path_to_root {
 # These methods are not part of the public API
 #
 
+
+sub _allows_update {
+    my( $self, $field, $account ) = @_;
+    return $field =~ /^[A-Z]/ || ( $account && $account->get_login()->get__is_root() );
+}
+
 #
 # Converts scalar, yote object, hash or array to data for returning.
 #
@@ -171,11 +177,15 @@ sub __obj_to_response {
         else {
             $use_id = Yote::ObjProvider::get_id( $to_convert );
             $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
-
+	    for my $vl (values %$d) {
+		if( index( $vl, 'v' ) != 0 ) {
+		    Yote::ObjManager::register_object( $vl, $login ? $login->{ID} : $guest_token );
+		}
+	    }
 	    $m = Yote::ObjProvider::package_methods( $ref );
         }
 
-	Yote::ObjManager::register_object( $use_id, $login, $guest_token ) if $use_id;
+	Yote::ObjManager::register_object( $use_id, $login ? $login->{ID} : $guest_token ) if $use_id;
 	return $m ? { a => ref( $self ), c => $ref, id => $use_id, d => $d, 'm' => $m } : { a => ref( $self ), c => $ref, id => $use_id, d => $d };
     } # if a reference
     return "v$to_convert";
@@ -189,20 +199,24 @@ sub __transform_data_no_id {
     if( ref( $item ) eq 'ARRAY' ) {
         my $tied = tied @$item;
         if( $tied ) {
-            return Yote::ObjProvider::get_id( $item ); 
+	    my $id =  Yote::ObjProvider::get_id( $item ); 
+	    Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
+            return $id;
         }
         return [map { $self->__obj_to_response( $_, $login, $guest_token ) } @$item];
     }
     elsif( ref( $item ) eq 'HASH' ) {
         my $tied = tied %$item;
         if( $tied ) {
-            return Yote::ObjProvider::get_id( $item ); 
+	    my $id =  Yote::ObjProvider::get_id( $item ); 
+	    Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
+            return $id;
         }
         return { map { $_ => $self->__obj_to_response( $item->{$_}, $login, $guest_token ) } keys %$item };
     }
     elsif( ref( $item ) ) {
         my $id = Yote::ObjProvider::get_id( $item ); 
-	Yote::ObjManager::register_object( $id, $login, $guest_token );
+	Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
 	return $id;
     }
     else {
@@ -214,17 +228,6 @@ sub __transform_data_no_id {
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
-
-sub load_direct_descendents {
-    my( $self, $data, $account ) = @_;
-    my @ret;
-    for my $fld (grep { $_ !~ /^_/ } keys %{$self->{DATA}}) {
-        my $val = $self->{DATA}{$fld};
-        next unless $val > 0;
-        push( @ret, Yote::ObjProvider::xform_out( $val ) );
-    }
-    return \@ret;
-} #load_direct_descendents 
 
 sub paginate {
     my( $self, $data, $account ) = @_;
@@ -247,10 +250,6 @@ sub paginate_hash {
 
 } #paginate_hash
 
-sub _allows_update {
-    my( $self, $field, $account ) = @_;
-    return $field =~ /^[A-Z]/ || ( $account && $account->get_login()->get__is_root() );
-}
 
 #
 # Updates the object but only for capitolized keys that already exist.
@@ -525,11 +524,6 @@ This method is called each time an object is loaded from the data store.
 =head2 PUBLIC API METHODS
 
 =over 4
-
-=item load_direct_descendents
-
-This method takes no arguments and does not need an account to function. This method
-returns a list of objects that are directly attached to this one.
 
 =item paginate
 

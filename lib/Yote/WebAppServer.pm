@@ -110,15 +110,17 @@ sub process_http_request {
     #   * gt - guest token
     #   * oi - object id to invoke command on
     #   * t  - login token for verification
-    #   * at - app (non-login) token for verification
+    #   * gt - app (non-login) guest token for verification
     #   * w  - if true, waits for command to be processed before returning
     #
 
-    my $uri = $ENV{'PATH_INFO'};
+    my $uri = $ENV{PATH_INFO};
 
     accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
 
     $uri =~ s/\s+HTTP\S+\s*$//;
+    
+    ### ******* $uri **********
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
@@ -147,7 +149,7 @@ sub process_http_request {
 	    e  => {%ENV},
             oi => $obj_id,
             t  => $vars->{t},
-	    at => $vars->{at},
+	    gt => $vars->{gt},
             w  => $wait,
         };
 
@@ -204,9 +206,9 @@ sub process_http_request {
 	my $root = $self->{args}{webroot};
 	my $dest = join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    $dest .= '/index.html';
-	}
-	if( open( IN, "<$root/$dest" ) ) {
+	    $self->send_status( "301" );
+	    print "Location: /$dest/index.html\n\n";
+	} elsif( open( IN, "<$root/$dest" ) ) {
 	    if( $dest =~ /\.js$/i ) {
 		print "Content-Type: text/javascript\n\n";
 	    }
@@ -223,6 +225,7 @@ sub process_http_request {
                 print $_;
             }
             close( IN );
+	    accesslog( "200 : $root/$dest");
 	} else {
 	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
 	    $self->do404();
@@ -379,17 +382,14 @@ sub _process_command {
         if( $login ) {
             $account = $app->__get_account( $login );
         }
-	Yote::ObjProvider::reset_changed();
 
         my $ret = $app_object->$action( $data, $account, $command->{e} );
 
-	my $dirty_delta = Yote::ObjProvider::__fetch_changed();
-
+	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
 	my( $dirty_data );
 	if( @$dirty_delta ) {
 	    $dirty_data = {};
-	    my $allowed_dirty = Yote::ObjManager::knows_dirty( $dirty_delta, $app_object, $login, $guest_token );
-	    for my $d_id ( @$allowed_dirty ) {
+	    for my $d_id ( @$dirty_delta ) {
 		my $dobj = Yote::ObjProvider::fetch( $d_id );
 		if( ref( $dobj ) eq 'ARRAY' ) {
 		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
@@ -400,7 +400,6 @@ sub _process_command {
 		}
 	    }
 	} #if there was a dirty delta
-
         $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, $guest_token ) };
 
     };

@@ -1,3 +1,13 @@
+2013-03-04  Eric Wolf  <coyocanid@gmail.com>
+
+	* added sync_all method to Account. It's a no op that refreshes all changed objects
+	* refresh improvements for clients. If client A acts, then client B acts and changes data that client A sees, client A will have that data refreshed on next contact with the server.
+	* removed _extra fetch_method from app root as there are simpler and better ways to have the targetted data returned.
+	* removed load_direct_descends  as there are simpler and better ways to have the targetted data returned.
+	* fixed bug where guest token as not being read by the server
+	* added 301 redirect for index.html when accessing directories with an index.html
+	* added logged_out_function parameter to javascript util's make_login_bar convenience function
+
 2013-02-26  Eric Wolf  <coyocanid@gmail.com>
 
 	* fixed a bug in the test : parameter order was wrong for paginate there.

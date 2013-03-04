@@ -3,8 +3,8 @@ package Yote::SimpleLRUCache;
 sub new {
     my( $pkg, $size, $boxes ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    $size ||= 50;
-    $boxes || 5;
+    $size ||= 500;
+    $boxes || 50;
     my $self = {
 	size  => $size,
 	boxes => [map { {} } (1..$boxes)]
@@ -28,7 +28,6 @@ sub stow {
     if( scalar( keys %{ $self->{ boxes }[0] } ) > $self->{ size } ) {
 	pop @{ $self->{ boxes } };
 	unshift @{ $self->{ boxes } }, {};
-	print STDERR "POPPING BOX\n";
     }
     $self->{ boxes }[ 0 ]{ $id } = $val;
 } #stow
