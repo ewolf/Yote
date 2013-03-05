@@ -117,8 +117,6 @@ sub process_http_request {
 
     my $uri = $ENV{PATH_INFO};
 
-    accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
-
     $uri =~ s/\s+HTTP\S+\s*$//;
     
     ### ******* $uri **********
@@ -130,7 +128,9 @@ sub process_http_request {
 
 	if( $path_start eq '_' ) {
 	    my $CGI  = new CGI;
-	    $vars = $CGI->Vars();
+	    $vars = from_json( MIME::Base64::decode( pop( @path ) ) );
+	    print STDERR Data::Dumper->Dump([$vars]);
+	    print STDERR Data::Dumper->Dump([ MIME::Base64::decode($vars->{d}) ]);
 	    $return_header = "Content-Type: text/json\n\n";
 	}
 	else {
@@ -141,7 +141,11 @@ sub process_http_request {
         my $action = pop( @path );
         my $obj_id = pop( @path );
         my $app_id = pop( @path ) || Yote::ObjProvider::first_id();
+
+	
         my $wait = $vars->{w};
+
+	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ]" );
 
         my $command = {
             a  => $action,
@@ -204,6 +208,7 @@ sub process_http_request {
     } #if a command on an object
 
     else { #serve up a web page
+	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
 	my $root = $self->{args}{webroot};
 	my $dest = join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {

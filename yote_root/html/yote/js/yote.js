@@ -218,25 +218,27 @@ $.yote = {
         if( async == 0 ) {
             root._disable();
         }
-        var put_data = {
-            d:$.base64.encode(JSON.stringify( {d:data} ) ),
-            t:$.yote.token,
-	    gt:$.yote.guest_token,
-            w:wait
-        };
+        var put_data = $.base64.encode( JSON.stringify( 
+	    {
+		d:$.base64.encode( JSON.stringify( { d : data } ) ),
+		t:$.yote.token,
+		gt:$.yote.guest_token,
+		w:wait
+            } 
+	) );
 	var resp;
 
         if( $.yote.debug == true ) {
 	    console.log("\noutgoing " + url + '-------------------------' );  
 	    console.log( data );
-	    console.log( JSON.stringify( {d:data} ) );
-	    console.log( put_data ); 
+//	    console.log( JSON.stringify( {d:data} ) );
+//	    console.log( put_data ); 
 	}
 
 	$.ajax( {
 	    async:async,
 	    cache: false,
-	    data:put_data,
+//	    data:put_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
 		    console.log('incoming '); console.log( a );
@@ -290,8 +292,8 @@ $.yote = {
                     console.log( "Success reported but no response data received" );
                 }
 	    },
-	    type:'POST',
-	    url:url
+	    type:'GET',
+	    url:url + '/' + put_data
 	} );
         if( ! async ) {
             root._reenable();
