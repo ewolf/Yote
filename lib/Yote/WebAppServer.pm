@@ -126,35 +126,37 @@ sub process_http_request {
 	my $path_start = shift @path;
 	my( $vars, $return_header );
 
+	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
+
 	if( $path_start eq '_' ) {
 	    my $CGI  = new CGI;
-	    $vars = from_json( MIME::Base64::decode( pop( @path ) ) );
-	    print STDERR Data::Dumper->Dump([$vars]);
-	    print STDERR Data::Dumper->Dump([ MIME::Base64::decode($vars->{d}) ]);
+	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
+	    $app_id ||= Yote::ObjProvider::first_id();
 	    $return_header = "Content-Type: text/json\n\n";
 	}
 	else {
-	    $vars = Yote::FileHelper->__ingest();
+	    my $vars = Yote::FileHelper->__ingest();
+	    $data        = $vars->{d};
+	    $token       = $vars->{t};
+	    $guest_token = $vars->{gt};
+	    $wait        = $vars->{w};
+	    $action      = pop( @path );
+	    $obj_id      = pop( @path );
+	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
 	    $return_header = "Content-Type: text/html\n\n";
 	}
 
-        my $action = pop( @path );
-        my $obj_id = pop( @path );
-        my $app_id = pop( @path ) || Yote::ObjProvider::first_id();
-
 	
-        my $wait = $vars->{w};
-
 	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ]" );
 
         my $command = {
             a  => $action,
             ai => $app_id,
-            d  => $vars->{d},
+            d  => $data,
 	    e  => {%ENV},
             oi => $obj_id,
-            t  => $vars->{t},
-	    gt => $vars->{gt},
+            t  => $token,
+	    gt => $guest_token,
             w  => $wait,
         };
 

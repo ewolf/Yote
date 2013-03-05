@@ -81,8 +81,8 @@ if (!Array.prototype.map) {
 } //map definition
 
 $.yote = {
-    guest_token:null,
-    token:null,
+    guest_token:0,
+    token:0,
     port:null,
     err:null,
     objs:{},
@@ -91,7 +91,7 @@ $.yote = {
     init:function(use_port) {
 	$.yote.port = use_port || location.port;
         var t = $.cookie('yoken');
-	$.yote.token = t;
+	$.yote.token = t || 0;
 
 	var root = this.fetch_root();
         if( typeof t === 'string' ) {
@@ -111,7 +111,7 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    root.create_login( { h:handle, p:password, e:email }, 
 			       function(res) {
-				   $.yote.token = res.get( 't' );
+				   $.yote.token = res.get( 't' ) || 0;
 				   $.yote.login_obj = res.get( 'l' );
 				   $.cookie( 'yoken', $.yote.token );
 				   if( typeof passhandler === 'function' ) {
@@ -172,7 +172,7 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    root.login( { h:handle, p:password }, 
 			function(res) {
-			    $.yote.token = res.get( 't' );
+			    $.yote.token = res.get( 't' ) || 0;
 			    $.yote.login_obj = res.get( 'l' );
 			    $.cookie( 'yoken', $.yote.token );
 			    if( typeof passhandler === 'function' ) {
@@ -191,7 +191,7 @@ $.yote = {
     logout:function() {
 	$.yote.fetch_root().logout();	
 	$.yote.login_obj = undefined;
-	$.yote.token = undefined;
+	$.yote.token = 0;
 	$.cookie( 'yoken', '' );
     }, //logout
 
@@ -208,6 +208,9 @@ $.yote = {
 
 	root.upload_count = 0;
 
+	if( ! app_id ) app_id = 0;
+	if( ! obj_id ) obj_id = 0;
+
         var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
 	var uploads = root._functions_in( data );
@@ -218,27 +221,18 @@ $.yote = {
         if( async == 0 ) {
             root._disable();
         }
-        var put_data = $.base64.encode( JSON.stringify( 
-	    {
-		d:$.base64.encode( JSON.stringify( { d : data } ) ),
-		t:$.yote.token,
-		gt:$.yote.guest_token,
-		w:wait
-            } 
-	) );
+        var get_data = $.yote.token + "/" + $.yote.guest_token + "/" + wait + "/" + $.base64.encode( JSON.stringify( { d : data } ) );
 	var resp;
 
         if( $.yote.debug == true ) {
 	    console.log("\noutgoing " + url + '-------------------------' );  
 	    console.log( data );
 //	    console.log( JSON.stringify( {d:data} ) );
-//	    console.log( put_data ); 
 	}
 
 	$.ajax( {
 	    async:async,
 	    cache: false,
-//	    data:put_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
 		    console.log('incoming '); console.log( a );
@@ -293,7 +287,7 @@ $.yote = {
                 }
 	    },
 	    type:'GET',
-	    url:url + '/' + put_data
+	    url:url + '/' + get_data
 	} );
         if( ! async ) {
             root._reenable();
@@ -306,7 +300,7 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    root.remove_login( { h:handle, p:password, e:email }, 
 			       function(res) {
-				   $.yote.token = undefined;
+				   $.yote.token = 0;
 				   $.yote.login_obj = undefined;
 				   passhandler(res);
 			       },
