@@ -12,20 +12,33 @@ $VERSION = '0.01';
 
 sub _init {
     my $self = shift;
-    #when the hello is created for the first time, install a counter to track how many times it is called
-    my $counter = $self->get_counter( new Yote::Obj() );
+
     $self->set_testfield(int(rand(10)));
-    $self->get_list( [ 1, "Bagel", $counter ] );
-    $self->get_hash( { one=>1, food => "Bagel", thing => $counter } );
+    $self->get_list( [ 1, "Bagel" ] );
+    $self->get_hash( { one=>1, food => "Bagel" } );
 }
 
 sub hello {
     my( $self, $data, $acct_root, $acct ) = @_;
-    my $name = $data->{name};
-    $self->set_testfield(int(rand(10))); # set this to a random value each time
-    my $counter = $self->get_counter(); # this could be counted with a field, but I wanted to demo how easy it is to send objects across.
-    $counter->set_count( $counter->get_count() + 1 ); #increment the value in the counter
-    return "hello there '$name'. I have said hello ".$counter->get_count()." times.";
+    $self->set_count( $self->get_count( 0 ) + 1 );
+    $self->set_my_hash( {  foo    => "BAR",
+			   llamas => [ "Like", "To", "Play", "With", "Twigs" ],
+			   store  => { AnObject => new Yote::Obj(),
+				       ANumber  => 22,
+			   },
+			} );
+    $self->get_my_hash()->{ store }->{ AnObject }->set_flavor( "blueberry" );
+    return "hello there";
+}
+
+sub hash {
+    my( $self, $hash ) = @_;
+    return $hash->{foo};
+}
+
+sub list {
+    my( $self, $list ) = @_;
+    return scalar( @{ $list } );
 }
 
 1;
