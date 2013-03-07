@@ -414,6 +414,11 @@ sub _process_command {
 		} else {
 		    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
 		}
+		for my $val (values %{ $dirty_data->{$d_id} } ) {
+		    if( index( $val, 'v' ) != 0 ) {
+			Yote::ObjManager::register_object( $val, $login ? $login->{ID} : $guest_token );
+		    }
+		}
 	    }
 	} #if there was a dirty delta
         $resp = $dirty_data ? { r => $app_object->__obj_to_response( $ret, $login, $guest_token ), d => $dirty_data } : { r => $app_object->__obj_to_response( $ret, $login, $guest_token ) };
