@@ -41,4 +41,17 @@ sub list {
     return scalar( @{ $list } );
 }
 
+
+sub hello_scalar {
+  return "Hello"
+}
+sub hello_array {
+    return [ "A", "B", 33 ];
+}
+sub hello_hash {
+    return { Foo => "BAR", 
+	     Baz => "BAF" }
+}
+sub hello_nothing {}
+
 1;

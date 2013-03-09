@@ -9,14 +9,18 @@
     <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
 
+    <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
     <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
     <script>
     $().ready(function(){
-    var $window = $(window);
+
+	make_menus( '#top_nav' );
+
 	$.yote.init();
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	var count = page_counter.increment( 'Install Page' );
@@ -25,28 +29,21 @@
     </script>
   </head>
 
-  <BODY data-spy="scroll" data-target="#navcol" >
-    <DIV class="navbar navbar-fixed-top navbar-inverse">
+  <BODY>
+
+    <DIV class="navbar navbar-fixed-top navbar-inverse" style="position:fixed; height:70px;">
       <DIV class="navbar-inner">
 	<A class="brand"><img src="yotelogo.png"></A>
-	<UL class="nav">
-	  <LI><a href="index.html">About</a></LI>
-	  <LI class="active"><A href="install.html">Install</A></LI>
-<!--	  <LI><A href="docs.html">Documentation</A></LI> -->
-	  <LI><A href="samples.html">Samples</A></LI>
-<!--	  <LI><A href="program.html">Program</A></LI> -->
-	</UL>      
+	<UL id="top_nav" class="nav">
+	</UL>
       </DIV>
     </DIV>
-
-    <HEADER class="jumbotron subhead" style="height:70px">
-      &nbsp;
-    </HEADER>
 
     <SECTION>
       <DIV class="page-header">
 	<H1>Installing Yote</H1>
       </DIV>
+      <p>
       You can install Yote using either CPAN or Github.
       <DL>
 	<DT>CPAN</DT>
@@ -67,6 +64,7 @@
 	  </code>
 	</DD>
       </DL>
+      </p>
     </SECTION>
     
     <SECTION>

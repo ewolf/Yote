@@ -9,14 +9,18 @@
     <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
 
+    <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
     <link rel="stylesheet" href="/yote/css/jquery.mobile.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
     <script>
     $().ready(function(){
-    var $window = $(window);
+	
+	make_menus( '#top_nav' );
+
 	$.yote.init();
 	var news_app = $.yote.fetch_app('Yote::Util::Admin');
 	var cms = news_app.get_cms();
@@ -30,27 +34,19 @@
   </head>
 
   <BODY>
-    <DIV class="navbar navbar-fixed-top navbar-inverse">
+
+    <DIV class="navbar navbar-fixed-top navbar-inverse" style="position:fixed; height:70px;">
       <DIV class="navbar-inner">
 	<A class="brand"><img src="yotelogo.png"></A>
-	<UL class="nav">
-	  <LI class="active"><a href="index.html">About</a></LI>
-	  <LI><A href="install.html">Install</A></LI>
-<!--	  <LI><A href="docs.html">Documentation</A></LI> -->
-	  <LI><A href="samples.html">Samples</A></LI>
-<!--	  <LI><A href="program.html">Program</A></LI> -->
-	</UL>      
+	<UL id="top_nav" class="nav">
+	</UL>
       </DIV>
     </DIV>
-
-    <HEADER class="jumbotron subhead" style="height:70px">
-      &nbsp;
-    </HEADER>
 
     <SECTION>
       <DIV class="page-header">
 	<H1>What is Yote</H1>
-      </DIV>	    
+      </DIV>
       <P>Yote is a web application server written in perl and javascript. It is
 	designed for the rapid development of web applications. 
       </P>
@@ -101,9 +97,9 @@
       </p>
     </SECTION>	  
     
-    <script src="/js/bootstrap.js"></script>
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
+    <script src="/js/bootstrap.js"></script>
   </body> 
 </html>
