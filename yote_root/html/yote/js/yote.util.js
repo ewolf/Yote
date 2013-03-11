@@ -1,9 +1,11 @@
 $.yote.util = {
     ids:0,
+
     next_id:function() {
         return 'yidx_'+this.ids++;
     },
-    stage_text_field:function(attachpoint,yoteobj,fieldname) {
+ 
+   stage_text_field:function(attachpoint,yoteobj,fieldname) {
         var val = yoteobj.get(fieldname);
         var idname = this.next_id();
         attachpoint.append( '<input type="text" id="' + idname + '">' );
@@ -132,36 +134,71 @@ $.yote.util = {
 	var xtr = extra ? extra : '';
 	return {
 	    html:'<table ' + xtr + '>',
+	    next_row_class:'class="even-row" ',
 	    add_header_row : function( arry, extra_row, extra_headers ) {
 		var xtr_row = extra_row ? extra_row : '';
 		var xtr_headers = extra_headers ? extra_headers : '';
-		this.html = this.html + '<tr ' + xtr_row + '>';
+		this.html = this.html + '<tr ' + this.next_row_class + xtr_row + '>';
+		if( this.next_row_class == 'class="even-row" ' ) {
+		    this.next_row_class = 'class="odd-row" ';
+		} else {
+		    this.next_row_class = 'class="even-row" ';		    
+		}
+		var cls = 'class="even-col" ';
 		for( var i=0; i<arry.length; i++ ) {
-		    this.html = this.html + '<th ' + xtr_headers + '>' + arry[i] + '</th>';
+		    this.html = this.html + '<th ' + cls + xtr_headers + '>' + arry[i] + '</th>';
+		    if( cls == 'class="even-col" ' ) {
+			cls = 'class="odd-col" ';
+		    } else {
+			cls = 'class="even-col" ';
+		    }
 		}
 		this.html = this.html + '</tr>';
 		return this;
 	    },
 	    add_row : function( arry, extra_row, extra_headers ) {
 		var xtr_row = extra_row ? extra_row : '';
-		this.html = this.html + '<tr ' + xtr_row + '>';
+		this.html = this.html + '<tr ' + this.next_row_class + xtr_row + '>';
+		if( this.next_row_class == 'class="even-row" ' ) {
+		    this.next_row_class = 'class="odd-row" ';
+		} else {
+		    this.next_row_class = 'class="even-row" ';		    
+		}
+
+		var cls = 'class="even-col" ';
 		for( var i=0; i<arry.length; i++ ) {
 		    if( extra_headers ) {
-			this.html = this.html + '<td ' + extra_headers[i] + '>' + arry[i] + '</td>';
+			this.html = this.html + '<td ' + cls + extra_headers[i] + '>' + arry[i] + '</td>';
 		    } else {
-			this.html = this.html + '<td>' + arry[i] + '</td>';
+			this.html = this.html + '<td ' + cls + '>' + arry[i] + '</td>';
+		    }
+		    if( cls == 'class="even-col" ' ) {
+			cls = 'class="odd-col" ';
+		    } else {
+			cls = 'class="even-col" ';
 		    }
 		}
 		this.html = this.html + '</tr>';		
 		return this;
 	    },
 	    add_param_row : function( arry ) {
-		this.html = this.html + '<tr>';		
-		if( arry.length > 0 ) {
-		    this.html = this.html + '<th>' + arry[0] + '</th>';
+		this.html = this.html + '<tr ' + this.next_row_class + '>';		
+		if( this.next_row_class == 'class="even-row" ' ) {
+		    this.next_row_class = 'class="odd-row" ';
+		} else {
+		    this.next_row_class = 'class="even-row" ';		    
 		}
+		if( arry.length > 0 ) {
+		    this.html = this.html + '<th class="even-col">' + arry[0] + '</th>';
+		}
+		var cls = 'class="odd-col" ';
 		for( var i=1; i<arry.length; i++ ) {
-		    this.html = this.html + '<td>' + arry[i] + '</td>';
+		    this.html = this.html + '<td ' + cls + '>' +  arry[i] + '</td>';		    
+		    if( cls == 'class="even-col" ' ) {
+			cls = 'class="odd-col" ';
+		    } else {
+			cls = 'class="even-col" ';
+		    }
 		}
 		this.html = this.html + '</tr>';		
 		return this;
