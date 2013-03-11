@@ -301,8 +301,8 @@ sub start_server {
 
     # server thread
     $args->{ server_type } = [ 'PreForkSimple' ];
-    $args->{ max_servers }  = 50;
-    $args->{ max_requests } = 100; # how many requests the server makes before its replaced.
+    $args->{ max_servers }  = 100;
+    $args->{ max_requests } = 1; # how many requests the server makes before its replaced.
 
     my $server_thread = threads->new( sub { $self->run( %$args ); } );
     $self->{server_thread} = $server_thread;

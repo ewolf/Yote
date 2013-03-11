@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.dumper.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <script src="/yote/js/yote.system.util.js"></script>
+  </head>
+  <body>
+    <h1>Yote</h1>
+    <script>
+
+    $.yote.init();
+
+$.yote.create_login( 
+       "Wolf",
+       "isEncryptedOnServer",                              
+       "coyocanid@gmail.com" );
+
+  $.yote.login(
+       "Wolf",
+       "isEncryptedOnServer" );                             
+               
+  var foo_app = 
+        $.yote.fetch_app( 'Foo' );
+
+  alert( foo_app.hello( "hi" ) );
+
+    </script>
+  </body>
+</html>
