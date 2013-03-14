@@ -215,7 +215,7 @@ sub process_http_request {
 	my $dest = '/' . join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
 	    $self->send_status( "301" );
-	    if( $dest ) {
+	    if($dest &&  $dest ne '/' ) {
 		print "Location: $dest/index.html\n\n";
 	    } else {
 		print "Location: /index.html\n\n";

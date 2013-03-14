@@ -165,9 +165,31 @@ sub hash_keycount {\n\
 		title             : 'Hello Variables',
 		summary           : 'Show how variables set on the server side are immediately visible to the client side',
 		client            : '\
+$.yote.init();\n\
+var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+hello_app.push( "a" );\n\
+hello_app.push( { "HASH" : "VALUE" } );\n\
+hello_app.push( [ "LIST", "WITH", "STUFF" ] );\n\
+hello_app.hash( [ "key", "value" ] );\n\
+hello_app.call_set( "SomeValueHere" );\n\
 ',
 		server            : '\
-',
+package Hello;\n\
+use base \'Yote::AppRoot\';\n\
+\n\
+sub push {\n\
+  my( $self, $val ) = @_;\n\
+  $self->add_to_myarray( $val );\n\
+  return $self->get_my_array();\n\
+}\n\
+sub hash {\n\
+   my( $self, $key_val_pair ) = @_;\n\
+   $self->get_somehash( {} )->{ $key_val_pair->[ 0 ] } = $key_val_pair->[ 1 ];\n\
+}\n\
+sub call_set {\n\
+   my( $self, $val ) = @_;\n\
+   $self->set_foo( $val );\n\
+}',
 		discussion        : 'There are several types of automatic accessors on the server side : ' + 
 		    '<UL><LI><STRONG>set_</STRONG><I>foo</I><STRONG>(</STRONG><I> value </I><STRONG>)</STRONG> : sets the value of <I>foo</I></LI>' + 
 		    '<LI><STRONG>add_to_</STRONG><I>bar</I><STRONG>(</STRONG><I> list of values </I><STRONG>)</STRONG> : Ads the values to list <I>bar</I></LI>' + 
