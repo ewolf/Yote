@@ -1,5 +1,5 @@
 body { background-color: rgba(47, 139, 34, 0.59); margin-left:5px; }
-section > p, section > ul { margin:10px; margin-left:50px; }
+section > p, section > ul, section > dl { margin:10px; margin-left:50px; }
 p { margin-left:10px; }
 .emp { font-family:"Lucida Console",monospace;  }
 .page-header {

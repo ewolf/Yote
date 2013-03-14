@@ -212,7 +212,7 @@ sub process_http_request {
     else { #serve up a web page
 	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
 	my $root = $self->{args}{webroot};
-	my $dest = join('/',@path);
+	my $dest = '/' . join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
 	    $self->send_status( "301" );
 	    if( $dest ) {
@@ -433,6 +433,7 @@ sub _process_command {
     $resp = to_json( $resp );
 
     ### SEND BACK $resp
+    accesslog( "SEND BACK : $resp" );
 
     #
     # Send return value back to the caller if its waiting for it.

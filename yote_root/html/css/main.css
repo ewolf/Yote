@@ -1,3 +1,19 @@
-body { width : 900px; margin-top:90px }
-.lesson { width : 768px; border: 0; }
-#lesson td { width : 354px; height: auto; vertical-align:middle; }
+body { min-width:600px; margin-top:90px }
+
+.header { position:fixed; 
+	  top:0px; 
+	  left:0px; 
+	  height:70px; 
+	  margin:auto; 
+	  width:100%; 
+	  //color:0586D1; 
+	  color:#AAAAAA;
+	  background-color:black; 
+	  vertical-align:middle; }
+.header ul  { padding-top:15px; }
+.header li  { display: inline-block; float: left; padding-left: 15px; padding-right: 15px; }
+.header a   { display: inline-block; vertical-align: bottom; text-decoration: none; }
+.header a:visited, .header a:link { color:#AAAAAA }
+.header a:hover   { color:#DADADA }
+a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
+.header img { float: left; }

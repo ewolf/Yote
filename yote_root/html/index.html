@@ -6,8 +6,6 @@
     <script src="/yote/js/jquery.cookie.js"></script>
     <script src="/yote/js/jquery.base64.min.js"></script>
     <script src="/yote/js/json2.js"></script>
-    <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" media="all" />
-    <link href="/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" media="all" />
 
     <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
@@ -16,11 +14,14 @@
     <link rel="stylesheet" href="/yote/css/ui-lightness/jquery-ui-1.8.23.custom.css" type="text/css" media="all" />
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <STYLE>
+    </STYLE>
+
     <script>
     $().ready(function(){
 	
 	make_menus( '#top_nav' );
-
 	$.yote.init();
 	var news_app = $.yote.fetch_app('Yote::Util::Admin');
 	var cms = news_app.get_cms();
@@ -35,12 +36,9 @@
 
   <BODY>
 
-    <DIV class="navbar navbar-fixed-top navbar-inverse" style="position:fixed; height:70px;">
-      <DIV class="navbar-inner">
-	<A class="brand"><img src="yotelogo.png"></A>
-	<UL id="top_nav" class="nav">
-	</UL>
-      </DIV>
+    <DIV class="header">
+	<img src="yotelogo.png">
+	<UL id="top_nav" class="nav"/>
     </DIV>
 
     <SECTION>
@@ -64,12 +62,12 @@
 
     <SECTION>
       <DIV class="page-header">
-	<H2>It's for those who are </H2>
+	<H2>It's for those who</H2>
       </DIV>	    
       <UL>
-	<LI>too Lazy to use schemas</LI>
-	<LI>Rushed and just want to code business logic</LI>
-	<LI>Confident they can keep up with fickle design changes</LI>
+	<LI>Don't have the time to use schemas</LI>
+	<LI>Want to just code the business logic</LI>
+	<LI>Have to keep pace with fickle design changes</LI>
       </UL>
     </section>
 
@@ -78,9 +76,9 @@
 	<H2>Why Yote makes you more productive</H2>
       </DIV>
       <ul>
-	<LI><strong>MVC :</strong> the model is no longer visible in code</LI>
-	<LI><strong>Schema gone :</strong> you change data structures on the fly and on a case by case basis</LI>
-	<LI><strong>Synchronous :</strong> the javascript calls are synchronous by default</LI>
+	<LI><strong>MVC :</strong> the model is created transparently and has much less an overt footprint in the code. This means you mainly focus on the controller and model.</LI>
+	<LI><strong>Schema gone :</strong> you change data structures on the fly and on a case by case basis.</LI>
+	<LI><strong>Synchronous :</strong> the javascript calls are synchronous by default, but can be called asynchronous as well. The code then flows from one statement to the next without needing to chain lots of asycnronous calls.</LI>
       </ul>
     </SECTION>
     
@@ -100,7 +98,6 @@
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
-    <script src="/js/bootstrap.js"></script>
     <script src="/js/local.js"></script>
   </body> 
 </html>

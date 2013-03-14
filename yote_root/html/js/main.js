@@ -11,7 +11,7 @@ function make_menus( attach_point ) {
     var buf = '';
     for( var i=0; i<menu_list.length; i++ ) {
 	if( current_page == menu_list[ i ][ 1 ] ) {
-	    buf += '<LI class="active"><A HREF="' + menu_list[ i ][ 1 ] + '">' + menu_list[ i ][ 0 ] + '</A></LI>';
+	    buf += '<LI><A class="active" HREF="' + menu_list[ i ][ 1 ] + '">' + menu_list[ i ][ 0 ] + '</A></LI>';
 	} else {
 	    buf += '<LI><A HREF="' + menu_list[ i ][ 1 ] + '">' + menu_list[ i ][ 0 ] + '</A></LI>';
 	}
