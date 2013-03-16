@@ -45,7 +45,8 @@ sub create_login {
     #
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
     if( $handle ) {
-        if( $HANDLE_CACHE->{$handle} || Yote::ObjProvider::xpath("/_handles/$handle") ) {
+	my $lc_handle = lc( $handle );
+        if( $HANDLE_CACHE->{$lc_handle} || Yote::ObjProvider::xpath("/_handles/$lc_handle") ) {
             die "handle already taken";
         }
         if( $email ) {
@@ -61,7 +62,7 @@ sub create_login {
         }
 
 	$EMAIL_CACHE->{$email}   = 1;
-	$HANDLE_CACHE->{$handle} = 1;
+	$HANDLE_CACHE->{$lc_handle} = 1;
 
         my $new_login = new Yote::Login();
 
@@ -85,7 +86,7 @@ sub create_login {
         $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login) );
 
 	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login );
-	Yote::ObjProvider::xpath_insert( "/_handles/$handle", $new_login );
+	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $new_login );
 	
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
     } #if handle
