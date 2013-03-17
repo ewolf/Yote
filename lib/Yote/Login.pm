@@ -48,7 +48,7 @@ sub is_root {
 #
 sub sync_all {}
 
-sub UploadAvatar {
+sub upload_avatar {
     my( $self, $data ) = @_;
     $self->set_avatar( $data->{avatar} );
 }

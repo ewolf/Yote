@@ -19,7 +19,7 @@ sub _init {
 }
 
 sub hello {
-    my( $self, $data, $acct_root, $acct ) = @_;
+    my( $self, $data, $acct ) = @_;
     $self->set_count( $self->get_count( 0 ) + 1 );
     $self->set_my_hash( {  foo    => "BAR",
 			   llamas => [ "Like", "To", "Play", "With", "Twigs" ],
@@ -28,7 +28,7 @@ sub hello {
 			   },
 			} );
     $self->get_my_hash()->{ store }->{ AnObject }->set_flavor( "blueberry" );
-    return "hello there";
+    return "hello there '".$acct->get_handle()."'. I have said hello ".$self->get_count()." times.";
 }
 
 sub hash {

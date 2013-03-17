@@ -739,13 +739,13 @@ $.yote.util = {
 	$.yote.util.prep_modal_div( modal_attach_point, 'modal_main_div' );
 	// function to use when the file is selected. it both resets the file selector and shows the avatar image
 	function file_change_func() {
-	    account.upload_avatar( { avatar_file : $.yote.upload( '#_yote__yote_fileup' ),
+	    uploader.upload_avatar( { avatar_file : $.yote.upload( '#_yote__yote_fileup' ),
 				     p : $( '#_yote_cur_pw_t ' ).val()
 				   },
 				   function( data ) { //success
 				       $( '#_yote_ch_ava_div' ).empty()
-					   .append( '<img src=' + account.get_avatar().Url() + '>' );
-				       $( '#_yote_ava_div' ).empty().append( '<img height=70 width=70 src="' + account.get_avatar().Url() + '">' )
+					   .append( '<img src=' + uploader.get_avatar().Url() + '>' );
+				       $( '#_yote_ava_div' ).empty().append( '<img height=70 width=70 src="' + uploader.get_avatar().Url() + '">' )
 				       $.yote.util.info_div( '#_yote_change_msg_div', data, 'alert alert-success well' );
 				   },
 				   function( data ) { //fail
@@ -757,18 +757,18 @@ $.yote.util = {
 	} //edit_account -> file_change_func
 	
 	// find avatar image if any
-	var account, ava_img = 'Upload Avatar';
+	var uploader, ava_img = 'Upload Avatar';
 	if( app ) {
-	    account = app.account();
+	    uploader = app.account();
 	    console.log( [ 'acct', account, app ] );
-	    if( account.get( 'avatar' ) ) {
-		ava_img = '<img height=70 width=70 src="' + account.get_avatar().Url() + '">';
+	    if( uploader.get( 'avatar' ) ) {
+		ava_img = '<img height=70 width=70 src="' + uploader.get_avatar().Url() + '">';
 	    }
 	} else {
-	    var login = $.yote.get_login();
-	    if( login ) {
-		if( login.get( 'avatar' ) ) {
-		    ava_img = '<img height=70 width=70 src="' + login.get_avatar().Url() + '">';
+	    var uploader = $.yote.get_login();
+	    if( uploader ) {
+		if( uploader.get( 'avatar' ) ) {
+		    ava_img = '<img height=70 width=70 src="' + uploader.get_avatar().Url() + '">';
 		}
 	    }
 	}

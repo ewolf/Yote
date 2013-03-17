@@ -163,8 +163,9 @@ sub login {
     my( $self, $data, $dummy, $env ) = @_;
 
     if( $data->{h} ) {
+	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
-        my $login = Yote::ObjProvider::xpath("/_handles/$data->{h}");
+        my $login = Yote::ObjProvider::xpath("/_handles/$lc_h");
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };

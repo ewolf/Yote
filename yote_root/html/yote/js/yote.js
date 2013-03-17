@@ -501,7 +501,6 @@ $.yote = {
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( (0+val) > 0 || val.substring(0,1) != 'v' ) {
-		    if( ! root.objs[ val ] ) { console.log( ["FETCH " + key, this, this._d[key],typeof this._d[key]] ) }
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;
                     return obj;

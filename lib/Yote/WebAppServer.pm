@@ -147,7 +147,7 @@ sub process_http_request {
 	}
 
 	
-	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ]" );
+	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
 
         my $command = {
             a  => $action,
@@ -237,7 +237,7 @@ sub process_http_request {
                 print $_;
             }
             close( IN );
-	    accesslog( "200 : $root/$dest");
+	    accesslog( "200 : $dest");
 	} else {
 	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
 	    $self->do404();
