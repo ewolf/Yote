@@ -20,15 +20,8 @@ sub _init {
 
 sub hello {
     my( $self, $data, $acct ) = @_;
-    $self->set_count( $self->get_count( 0 ) + 1 );
-    $self->set_my_hash( {  foo    => "BAR",
-			   llamas => [ "Like", "To", "Play", "With", "Twigs" ],
-			   store  => { AnObject => new Yote::Obj(),
-				       ANumber  => 22,
-			   },
-			} );
-    $self->get_my_hash()->{ store }->{ AnObject }->set_flavor( "blueberry" );
-    return "hello there '".$acct->get_handle()."'. I have said hello ".$self->get_count()." times.";
+    $self->set_count( 1 + $self->get_count( 0 ) );
+    return "hello there '".$data->{name}."'. I have said hello ".$self->get_count()." times.";
 }
 
 sub hash {
