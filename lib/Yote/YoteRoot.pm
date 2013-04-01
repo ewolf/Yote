@@ -54,7 +54,7 @@ sub create_login {
                 die "email already taken";
             }
             unless( Email::Valid->address( $email ) ) {
-                die "invalid email";
+                die "invalid email '$email'";
             }
         }
         unless( $password ) {

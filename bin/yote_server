@@ -78,9 +78,10 @@ while( @ARGV ) {
     if($first eq '--shutdown' || $first eq 'shutdown' || $first eq 'stop' ) {
 	if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
 	    $pidfile->pid->kill();
+	    print STDERR "Killing pid $! $@\n";
 	}
 	$pidfile->remove();
-	$do_start = 0;
+	$do_start = 0;	
         exit;
     }
     elsif( $first eq '--version' || $first eq '-V' ) {

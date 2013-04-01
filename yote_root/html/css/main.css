@@ -1,4 +1,4 @@
-body { min-width:600px; margin-top:90px }
+body { min-width:600px; margin-top:70px }
 
 .header { position:fixed; 
 	  top:0px; 
@@ -9,7 +9,9 @@ body { min-width:600px; margin-top:90px }
 	  //color:0586D1; 
 	  color:#AAAAAA;
 	  background-color:black; 
+	  text-align:center;
 	  vertical-align:middle; }
+
 .header ul  { padding-top:15px; }
 .header li  { display: inline-block; float: left; padding-left: 15px; padding-right: 15px; }
 .header a   { display: inline-block; vertical-align: bottom; text-decoration: none; }
@@ -17,3 +19,21 @@ body { min-width:600px; margin-top:90px }
 .header a:hover   { color:#DADADA }
 a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
 .header img { float: left; }
+
+
+.sidenav li {
+    list-style-type: none;
+}
+
+.sidenav li:hover {
+    color:#DADADA;
+}
+
+.centered {
+    text-align:center;
+}
+
+.debug {
+    border : solid 1px black;
+}
+

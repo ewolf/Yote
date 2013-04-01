@@ -345,7 +345,7 @@ $.yote.util = {
 	var exempt      = args[ 'cleanup_exempt' ] || {};
 	var extra_check = args[ 'extra_check' ] || function() { return true; }
 
-	check_ready = (function(rt,te,ec) { return function() {
+	var check_ready = (function(rt,te,ec) { return function() {
 	    var t = rt || te;
 	    var ecval = ec();
 	    for( var i=0; i<t.length; ++i ) {
@@ -760,7 +760,6 @@ $.yote.util = {
 	var uploader, ava_img = 'Upload Avatar';
 	if( app ) {
 	    uploader = app.account();
-	    console.log( [ 'acct', account, app ] );
 	    if( uploader.get( 'avatar' ) ) {
 		ava_img = '<img height=70 width=70 src="' + uploader.get_avatar().Url() + '">';
 	    }
