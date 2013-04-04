@@ -8,10 +8,11 @@ use forks;
 use forks::shared;
 
 use CGI;
+
 use IO::Handle;
+use IO::Socket;
+
 use Logger::Simple;
-use Net::Server::HTTP;
-use Net::Server::PreForkSimple;
 use MIME::Base64;
 use JSON;
 use Data::Dumper;
@@ -21,17 +22,17 @@ use Yote::ObjManager;
 use Yote::FileHelper;
 use Yote::ObjProvider;
 
-use base qw(Net::Server::HTTP);
 use vars qw($VERSION);
 
 $VERSION = '0.081';
 
 
-my( @commands, %prid2wait, %prid2result, $singleton );
-share( @commands );
-share( %prid2wait );
+my( %prid2result, $singleton );
 share( %prid2result );
 
+use Thread::Queue;
+
+my $cmd_queue = Thread::Queue->new();
 
 
 # ------------------------------------------------------------------------------------------
@@ -60,8 +61,7 @@ sub init_server {
 
 sub do404 {
     my $self = shift;
-    $self->send_status( "404" );
-    print "Content-Type: text/html\n\nERROR : 404\n";
+    print "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
 }
 
 sub errlog {
@@ -89,7 +89,18 @@ sub accesslog {
 #
 #sub process_request {
 sub process_http_request {
-    my $self = shift;
+    my( $self, $soc ) = @_;
+
+    my $uri = <$soc>;
+
+    while( my $hdr = <$soc> ) {
+	$hdr =~ s/\s*$//s;
+	my( $key, $val ) = split /:\s*/, $hdr;
+	$ENV{ "HTTP_" . uc( $key ) } = $val;
+	last unless $hdr =~ /\S/;
+    }
+
+    accesslog( "GOT URI '$uri'" );
 
     my $content_length = $ENV{CONTENT_LENGTH};
     if( $content_length > 5_000_000 ) { #make this into a configurable field
@@ -115,14 +126,17 @@ sub process_http_request {
     #   * w  - if true, waits for command to be processed before returning
     #
 
-    my $uri = $ENV{PATH_INFO};
 
     $uri =~ s/\s+HTTP\S+\s*$//;
+    $uri =~ s/GET //;
+
+    $ENV{PATH_INFO} = $uri;
     
     ### ******* $uri **********
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
+    
 	my $path_start = shift @path;
 	my( $vars, $return_header );
 
@@ -161,51 +175,37 @@ sub process_http_request {
         };
 
         my $procid = $$;
-        if( $wait ) {
-            lock( %prid2wait );
-            $prid2wait{$procid} = $wait;
-        }
 
         #
         # Queue up the command for processing in a separate thread.
         #
-        {
-            lock( @commands );
-            push( @commands, [$command, $procid] );
-            cond_broadcast( @commands );
-        }
+	$cmd_queue->enqueue( [$command, $procid ] );
 
         #
         # If the connection is waiting for an answer, give it
         #
         if( $wait ) {
+	    my $result;
             while( 1 ) {
-                my $wait;
-                {
-                    lock( %prid2wait );
-                    $wait = $prid2wait{$procid};
-                }
-                if( $wait ) {
-                    lock( %prid2wait );
-                    if( $prid2wait{$procid} ) {
-                        cond_wait( %prid2wait );
-                    }
-                    last unless $prid2wait{$procid};
-                } else {
-                    last;
-                }
-            }
-            my $result;
-            if( $wait ) {
                 lock( %prid2result );
                 $result = $prid2result{$procid};
-                delete $prid2result{$procid};
+		if( defined( $result ) ) {
+		    delete $prid2result{$procid};
+		    last;
+		} 
+		else {
+		    cond_wait( %prid2result );
+		}
+		sleep 0.001;
             }
-	    print $return_header;
-            print "$result";
+	    print $soc "HTTP/1.0 200 OK\015\012";
+	    print $soc $return_header;
+            print $soc "$result";
         }
         else {  #not waiting for an answer, but give an acknowledgement
-            print "{\"msg\":\"Added command\"}";
+	    print $soc "HTTP/1.0 200 OK\015\012";
+	    print $soc "Content-Type: text/json\n\n";
+            print $soc "{\"msg\":\"Added command\"}";
         }
     } #if a command on an object
 
@@ -214,27 +214,28 @@ sub process_http_request {
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    $self->send_status( "301" );
+	    print $soc "HTTP/1.0 391 REDIRECT\015\012";
 	    if($dest &&  $dest ne '/' ) {
-		print "Location: $dest/index.html\n\n";
+		print $soc "Location: $dest/index.html\n\n";
 	    } else {
-		print "Location: /index.html\n\n";
+		print $soc "Location: /index.html\n\n";
 	    }
 	} elsif( open( IN, "<$root/$dest" ) ) {
+	    print $soc "HTTP/1.0 200 OK\015\012";
 	    if( $dest =~ /\.js$/i ) {
-		print "Content-Type: text/javascript\n\n";
+		print $soc "Content-Type: text/javascript\n\n";
 	    }
 	    elsif( $dest =~ /\.css$/i ) {
-		print "Content-Type: text/css\n\n";
+		print $soc "Content-Type: text/css\n\n";
 	    }
 	    elsif( $dest =~ /\.(jpg|gif|png|jpeg)$/i ) {
-		print "Content-Type: image/$1\n\n";
+		print $soc "Content-Type: image/$1\n\n";
 	    }
 	    else {
-		print "Content-Type: text/html\n\n";
+		print $soc "Content-Type: text/html\n\n";
 	    }
             while(<IN>) {
-                print $_;
+                print $soc $_;
             }
             close( IN );
 	    accesslog( "200 : $dest");
@@ -253,8 +254,6 @@ sub shutdown {
     accesslog( "Shutting down yote server" );
     Yote::ObjProvider::stow_all();
     accesslog(  "Killing threads" );
-    $self->{server_thread}->detach();
-    $self->{saving_thread}->detach();
     accesslog( "Shut down server thread" );
 } #shutdown
 
@@ -299,17 +298,27 @@ sub start_server {
     my $paths = $root->get__application_lib_directories([]);
     push @INC, @$paths;
 
-    # server thread
-    $args->{ server_type } = [ 'PreForkSimple' ];
-    $args->{ max_servers }  = 100;
-    $args->{ max_requests } = 1; # how many requests the server makes before its replaced.
+    my $lsn = new IO::Socket::INET(Listen => 10, LocalPort => 80);
 
-    my $server_thread = threads->new( sub { $self->run( %$args ); } );
-    $self->{server_thread} = $server_thread;
+    my( @threads );
+
+    for( 1 .. 5 ) {
+	push( @threads, threads->new( 
+		  sub {
+		      while( my $fh = $lsn->accept ) {
+			  $ENV{ REMOTE_ADDR } = $fh->peerhost;
+			  $self->process_http_request( $fh );
+			  $fh->close();
+		      } #main loop
+		  } ) #new thread
+	    );	
+    } #creating 5 threads
 
     _poll_commands();
-
-    $server_thread->join;
+    
+    for my $thread (@threads) {
+	$thread->join();
+    }
 
    Yote::ObjProvider::disconnect();
 
@@ -321,6 +330,14 @@ sub start_server {
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
 
+sub _start_worker {
+    my $self = shift;
+    $self->{worker_thread} = threads->new( 
+	sub {
+
+	} );
+}
+
 
 sub _crond {
     my( $self, $cron_id ) = @_;
@@ -328,8 +345,7 @@ sub _crond {
     while( 1 ) {
 	sleep( 60 );
 	{
-	    lock( @commands );
-	    push( @commands, [ {
+	    $cmd_queue->enqueue( [ {
 		a  => 'check',
 		ai => 1,
 		d  => 'eyJkIjoxfQ==',
@@ -337,8 +353,8 @@ sub _crond {
 		oi => $cron_id,
 		t  => undef,
 		w  => 0,
-			       }, $$] );
-	    cond_broadcast( @commands );
+				   }, $$] 
+		);
 	}
     } #infinite loop
 
@@ -348,23 +364,13 @@ sub _crond {
 # Run by a thread that constantly polls for commands.
 #
 sub _poll_commands {
+
     while(1) {
-        my $cmd;
-        {
-            lock( @commands );
-            $cmd = shift @commands;
-        }
-        if( $cmd ) {
-            _process_command( $cmd );
-	    Yote::ObjProvider::start_transaction();
-	    Yote::ObjProvider::stow_all();
-	    Yote::ObjProvider::commit_transaction();
-        }
-        unless( @commands ) {
-            lock( @commands );
-            cond_wait( @commands );
-        }
-    }
+	_process_command( $cmd_queue->dequeue() );
+	Yote::ObjProvider::start_transaction();
+	Yote::ObjProvider::stow_all();
+	Yote::ObjProvider::commit_transaction();	
+    } #endlees loop
 
 } #_poll_commands
 
@@ -439,15 +445,11 @@ sub _process_command {
     # Send return value back to the caller if its waiting for it.
     #
     if( $wait ) {
-        lock( %prid2wait );
-        {
-            lock( %prid2result );
-            $prid2result{$procid} = $resp;
-        }
-        delete $prid2wait{$procid};
-        cond_broadcast( %prid2wait );
+	lock( %prid2result );
+	$prid2result{$procid} = $resp;
+        cond_signal( %prid2result );
     }
-
+    
 
 } #_process_command
 
@@ -479,7 +481,7 @@ sub _translate_data {
     else {
 	return Yote::ObjProvider::fetch( $val );
     }
-}
+} #_translate_data
 
 1;
 

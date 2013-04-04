@@ -62,7 +62,13 @@ function wrap_up() {
     } else {
         $('#results').append( "Passed all " + tests + " tests" );
     }
-}
+    var d = new Date();
+    var t2 = d.getTime();
+    $.yote.remove_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com', 
+			 pass( "remove login" ), fail( "remove login" ) );
+    var d2 = new Date();
+    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+} //wrap_up
 var step_count = 0;
 function step( msg ) {
     console.log( "step " + step_count + ':' + msg  );
@@ -183,7 +189,7 @@ $().ready(function(){
         is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
         is( o3.get('zip'), false, 'correct object 2 text directly' );
 
-        pass( "no login returns yote obj" );      
+        pass( "no login returns yote obj" )();      
         step('name get called on testappneedslogin to succeed');
         var initval = obj.get_name();
         is( initval, 'INITY', "yote object inited on server side" );
@@ -247,19 +253,28 @@ $().ready(function(){
 	var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
 	hello_app.hello();
 	is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
+	//timing tests
+
+	var needs = 4;
+
+	function meets() {
+	    needs--;
+	    if( needs == 0 ) {
+		wrap_up();
+	    }
+	}
 	
 
-        wrap_up();
+	login.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
+	login.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
+	login.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
+	login.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
+
     }
 
-    //    try {
-    var d = new Date();
-    var t2 = d.getTime();
     do_tests();
-    $.yote.remove_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com', 
-			 pass( "remove login" ), fail( "remove login" ) );
-    var d2 = new Date();
-    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+
+    //    try {
     /*
       }
       catch( err ) {

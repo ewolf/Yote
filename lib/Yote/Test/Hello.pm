@@ -16,6 +16,13 @@ sub _init {
     $self->set_testfield(int(rand(10)));
     $self->get_list( [ 1, "Bagel" ] );
     $self->get_hash( { one=>1, food => "Bagel" } );
+    $self->get_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
+}
+
+sub _load {
+    my $self = shift;
+    $self->set_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
+    Yote::ObjProvider::stow_all();
 }
 
 sub hello {

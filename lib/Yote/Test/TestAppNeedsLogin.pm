@@ -105,6 +105,18 @@ sub reset {
 
 }
 
+sub long_time {
+    sleep( 5 );
+    return "Long";
+}
+sub short_time {
+    return "short";
+}
+sub medium_time {
+    sleep( 2 );
+    return "Med";
+}
+
 1;
 
 __END__
