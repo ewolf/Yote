@@ -91,7 +91,7 @@ sub accesslog {
 sub process_http_request {
     my( $self, $soc ) = @_;
 
-    my $uri = <$soc>;
+    my $req = <$soc>;
 
     while( my $hdr = <$soc> ) {
 	$hdr =~ s/\s*$//s;
@@ -99,8 +99,6 @@ sub process_http_request {
 	$ENV{ "HTTP_" . uc( $key ) } = $val;
 	last unless $hdr =~ /\S/;
     }
-
-    accesslog( "GOT URI '$uri'" );
 
     my $content_length = $ENV{CONTENT_LENGTH};
     if( $content_length > 5_000_000 ) { #make this into a configurable field
@@ -126,11 +124,15 @@ sub process_http_request {
     #   * w  - if true, waits for command to be processed before returning
     #
 
-
-    $uri =~ s/\s+HTTP\S+\s*$//;
-    $uri =~ s/GET //;
+    my( $verb, $uri, $proto ) = split( /\s+/, $req );
+    
+    $uri ||= '/index.html';
 
     $ENV{PATH_INFO} = $uri;
+    $ENV{REQUEST_METHOD} = $verb;
+
+    accesslog( "GOT URI '$uri'" );
+
     
     ### ******* $uri **********
 
@@ -214,7 +216,7 @@ sub process_http_request {
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    print $soc "HTTP/1.0 391 REDIRECT\015\012";
+	    print $soc "HTTP/1.0 301 REDIRECT\015\012";
 	    if($dest &&  $dest ne '/' ) {
 		print $soc "Location: $dest/index.html\n\n";
 	    } else {
