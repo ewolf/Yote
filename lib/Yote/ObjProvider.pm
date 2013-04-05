@@ -234,8 +234,8 @@ sub paginate_xpath {
 #   rather than [ undef, undef, undef, 'val1', 'val2' ]
 #
 sub paginate_xpath_list {
-    my( $path, $paginate_length, $paginate_start ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start ) } ];
+    my( $path, $paginate_length, $paginate_start, $reverse ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start, $reverse ) } ];
 } #paginate_xpath_list
 
 sub paths_to_root {

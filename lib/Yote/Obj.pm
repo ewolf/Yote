@@ -252,6 +252,15 @@ sub paginate {
 
 } #paginate
 
+sub paginate_rev {
+    my( $self, $data, $account ) = @_;
+    
+    my( $list_name, $number, $start ) = @$data;
+
+    return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start, 1 );
+
+} #paginate_rev
+
 sub paginate_hash {
     my( $self, $data, $account ) = @_;
     my( $list_name, $number, $start ) = @$data;

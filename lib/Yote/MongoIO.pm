@@ -197,7 +197,7 @@ sub paginate_xpath {
 #   rather than [ undef, undef, undef, 'val1', 'val2' ]
 #
 sub paginate_xpath_list {
-    my( $self, $path, $paginate_length, $paginate_start ) = @_;
+    my( $self, $path, $paginate_length, $paginate_start, $reverse ) = @_;
     my $obj_id = $self->xpath( $path );
     die "Unable to find xpath location '$path' for pagination" unless $obj_id;
 
@@ -205,7 +205,7 @@ sub paginate_xpath_list {
     die "Unable to find xpath location '$path' for pagination" unless $obj;
     die "xpath list pagination must be called for array" if $obj->{ c } ne 'ARRAY';
 
-    my $result_data = $obj->{ d };
+    my $result_data = $reverse ? [reverse @{$obj->{ d }}] : $obj->{ d };
 
     if( defined( $paginate_length ) ) {
 	if( $paginate_start ) {
