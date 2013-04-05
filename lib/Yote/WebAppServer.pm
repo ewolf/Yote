@@ -151,7 +151,7 @@ sub process_http_request {
 	    $return_header = "Content-Type: text/json\n\n";
 	}
 	else {
-	    my $vars = Yote::FileHelper->__ingest();
+	    my $vars = Yote::FileHelper::__ingest( $soc );
 	    $data        = $vars->{d};
 	    $token       = $vars->{t};
 	    $guest_token = $vars->{gt};
@@ -256,6 +256,7 @@ sub shutdown {
     accesslog( "Shutting down yote server" );
     Yote::ObjProvider::stow_all();
     accesslog(  "Killing threads" );
+    $self->_stop_threads();
     accesslog( "Shut down server thread" );
 } #shutdown
 
@@ -300,27 +301,30 @@ sub start_server {
     my $paths = $root->get__application_lib_directories([]);
     push @INC, @$paths;
 
-    my $lsn = new IO::Socket::INET(Listen => 10, LocalPort => 80);
+    $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => 80) or die $@;
 
-    my( @threads );
+    $self->{threadcount} = 5;
 
-    for( 1 .. 5 ) {
-	push( @threads, threads->new( 
-		  sub {
-		      while( my $fh = $lsn->accept ) {
-			  $ENV{ REMOTE_ADDR } = $fh->peerhost;
-			  $self->process_http_request( $fh );
-			  $fh->close();
-		      } #main loop
-		  } ) #new thread
-	    );	
+    $self->{threads} = [];
+
+    for( 1 .. $self->{threadcount} ) {
+	$self->_start_server_thread;
     } #creating 5 threads
 
+    $self->{watchdog_thread} = threads->new( 
+	sub {
+	    while( 1 ) {
+		sleep( 5 );
+		$self->{threads} = [ grep { $_->is_running } @{$self->{threads}}];
+		while( @{$self->{threads}} < $self->{threadcount} ) {
+		    $self->_start_server_thread;
+		}
+	    }
+	} );
+    
     _poll_commands();
     
-    for my $thread (@threads) {
-	$thread->join();
-    }
+    _stop_threads();
 
    Yote::ObjProvider::disconnect();
 
@@ -332,13 +336,30 @@ sub start_server {
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
 
-sub _start_worker {
+sub _stop_threads {
     my $self = shift;
-    $self->{worker_thread} = threads->new( 
-	sub {
-
-	} );
+    $self->{watchdog_thread}->kill if $self->{watchdog_thread} && $self->{watchdog_thread}->is_running;
+    for my $thread (@{$self->{threads}}) {
+	$thread->kill if $thread && $thread->is_running;
+    }
 }
+
+sub _start_server_thread {
+    my $self = shift;
+    push( @{ $self->{threads} }, 
+	  threads->new( 
+	      sub {
+		  unless( $self->{lsn} ) {
+		      threads->exit();
+		  }
+		  while( my $fh = $self->{lsn}->accept ) {
+		      $ENV{ REMOTE_ADDR } = $fh->peerhost;
+		      $self->process_http_request( $fh );
+		      $fh->close();
+		  } #main loop
+	      } ) #new thread
+	);	
+} #_start_server_thread
 
 
 sub _crond {

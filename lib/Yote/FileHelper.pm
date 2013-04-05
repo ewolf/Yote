@@ -28,7 +28,7 @@ sub Url {
 
 
 sub __ingest {
-
+    my $soc = shift;
     my $content_length = $ENV{CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
     my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{CONTENT_TYPE};
@@ -37,7 +37,7 @@ sub __ingest {
 	my $counter = 0;
 	# find boundary parts
 	while($counter < $content_length) {
-	    $_ = <STDIN>;
+	    $_ = <$soc>;
 	    if( /$boundary/s ) {
 		last if $1;
 		$finding_headers = 1;
