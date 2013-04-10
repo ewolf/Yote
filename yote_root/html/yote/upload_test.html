@@ -9,28 +9,20 @@
     <script src="/yote/js/json2.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
-    <script src="/yote/js/yote.system.ustil.js"></script>
 <script lang="javascript">
 
 $().ready( function() { 
-    function show_system() {
-        $('#apps').empty();
-        if( $.yote.is_logged_in() == false ) {
-            $('#login').append( "Error logging in" );
-            return;
-        }
-        $('#apps').append('<div id=installed_apps></div>' +
-                             '<button type=button id=install_button>Install App</button>' +
-                             '' );
-    } //show system
 
-    $.yote.util.make_login_box({ target:'#login',
-                                 on_in:function() { show_system() },
-                                 require_root:1 });
-    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button>' );
+    $.yote.debug = true;
+    $.yote.init();
+
+    var tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
     var tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
     tanl_app.reset();
-    $( '#scratch' ).append( '<BR><img src=' + tanl_app.get_File().Url() + "><BR>" );
+    var files = tanl_app.get_Files();
+
+    $( '#scratch' ).append( '<HR><input type=file id="fileup2" name="file"> <input type=file id="fileup3" name="file"><button type=button id=fileup_b2>Upload</button><BR>' );
+    
     $( '#fileup_b2' ).click( function() {
 	tanl_app.Upload( { somevar : 'someval', 
 			   somefile : $.yote.upload( '#fileup2' ),
@@ -38,9 +30,15 @@ $().ready( function() {
 			 },
 			 function() {
 			     //refresh the app for now. build in autorefresh later
-			     tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-			     files = tanl_app.get_Files();
-			     $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and <img src=' + files.get(1).Url() + '>' );
+			     //tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
+			     if( files.length() == 0 ) {
+				 alert( 'uploads failed' );
+			     }
+			     if( files.length() == 2 ) {
+				 $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and <img src=' + files.get(1).Url() + '>' );
+			     } else if( files.length() == 1 ) {
+				 $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and none' );
+			     }
 			 } );
     } );
 } );
@@ -48,16 +46,16 @@ $().ready( function() {
 
 </HEAD>
 <BODY>
-<H1>Yote Admin</H1>
-<div class=maindiv>
- <div id=login>
- </div>
- <div id=apps>  
- </div>
-</div>
-
- <div id=scratch>
- </div>
-
+  <H1>Yote Admin</H1>
+  <div class=maindiv>
+    <div id=login>
+    </div>
+    <div id=apps>  
+    </div>
+  </div>
+  
+  <div id=scratch>
+  </div>
+  
 </BODY>
 </HTML>
