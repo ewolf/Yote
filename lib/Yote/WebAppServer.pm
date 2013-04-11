@@ -266,6 +266,7 @@ sub start_server {
     $self->{args}{webroot} ||= '/usr/local/yote/html';
     $self->{args}{upload}  ||= '/usr/local/yote/html/upload';
     $self->{args}{log_dir} ||= '/var/log/yote';
+    $self->{args}{port}    ||= 80;
 
     Yote::ObjProvider::init( %$args );
 
@@ -300,7 +301,7 @@ sub start_server {
     my $paths = $root->get__application_lib_directories([]);
     push @INC, @$paths;
 
-    $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => 80) or die $@;
+    $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port}) or die $@;
 
     $self->{threadcount} = 5;
 

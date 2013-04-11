@@ -2,7 +2,7 @@
 <html>
   <head>
     <title>Yote Quickstart</title>
-    <script src="/yote/js/jquery-1.8.0.min.js"></script>
+    <script src="/yote/js/jquery-latest.js"></script>
     <script src="/yote/js/jquery.cookie.js"></script>
     <script src="/yote/js/jquery.base64.min.js"></script>
     <script src="/yote/js/json2.js"></script>
@@ -84,7 +84,7 @@ sub hello {\n\
 
 	    // ******************* HELLO OUTPUTS *****************
 	    {
-		title             : 'Hello Outputs',
+		title             : 'Server Outputs',
 		summary           : 'Show four of the five output types that the server can emit to the client.',
 		client            : '\
 $.yote.init();\n\
@@ -124,7 +124,7 @@ sub hello_nothing {}',
 
 	    // ******************* HELLO INPUTS *****************
 	    {
-		title   : 'Hello Inputs',
+		title   : 'Server Inputs',
 		summary : 'Discover three out of four of the input types the client can pass to the server',
 		client  : '\
 $.yote.init();\n\
@@ -158,7 +158,7 @@ sub hash_keycount {\n\
 
 	    // ******************* HELLO VARIABLES **************
 	    {
-		title             : 'Hello Variables',
+		title             : 'Variables',
 		summary           : 'Show how variables set on the server side are immediately visible to the client side',
 		client            : '\
 $.yote.init();\n\
@@ -251,7 +251,7 @@ sub _init {\n\
 1;',
 		discussion        : '',
 		server_discussion : 'Init is called only first time a Yote object is instantiated. Note that both the Fruitcase object and the Hello app both have an _init method defined.',
-		client_discussion : ''
+		client_discussion : 'Init on the client makes the initial handshake between client and server.'
 	    },
 
 	    // ******************* HELLO ACCOUNT *****************
@@ -344,8 +344,8 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
 
 	function show_lesson( lesson_idx ) {
 	    var lesson = lessons[ lesson_idx ];
-	    $( '#navcol li' ).removeClass( 'active' );
-	    $( '#li_' + lesson_idx ).addClass( 'active' );
+	    $( '#navcol a' ).removeClass( 'active' );
+	    $( '#li_' + lesson_idx + ' a' ).addClass( 'active' );
 	    if( ! lesson ) {
 		return;
 	    }
@@ -368,11 +368,11 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
 	    buf += '<div style="padding:0 300px 0 300px;display:inline">';
 	    if( lesson_idx > 0 ) {
 		// can move backwards
-		buf += '<a id="back" href="#">BACK</a>';
+		buf += '<a id="back" href="#">Previous</a>';
 	    }
 	    if( lesson_idx < (lessons.length-1) ) {
 		// can move forwards
-		buf += '<a id="ahead" href="#" style="float:right">AHEAD</a>';
+		buf += '<a id="ahead" href="#" style="float:right">Next</a>';
 	    }
 	    buf += '</div>';
 
@@ -409,7 +409,7 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
 
     <DIV class="overlesson">
       <DIV class="sidebar">
-	<UL id="navcol" class="nav nav-list"/>
+	<UL id="navcol" class="navlink"/>
       </DIV>
 
       <DIV class="mainpanel">

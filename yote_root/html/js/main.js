@@ -1,6 +1,6 @@
 var menu_list = [ [ 'About',      'index.html' ],
-		  [ 'Install',    'install.html' ],
 		  [ 'Quickstart', 'quickstart.html' ],
+		  [ 'Install',    'install.html' ],
 		  [ 'Docs',       'docs.html' ],
 		  [ 'Samples',    'samples.html' ]
 		];

@@ -15,17 +15,18 @@ body { min-width:600px; margin-top:70px }
 .header ul  { padding-top:15px; }
 .header li  { display: inline-block; float: left; padding-left: 15px; padding-right: 15px; }
 .header a   { display: inline-block; vertical-align: bottom; text-decoration: none; }
-.header a:visited, .header a:link { color:#AAAAAA }
+.header a:visited, .header a:link { color:#AAAAAA; text-decoration: none; }
+.navlink a:visited, .navlink a:link { color:#222;text-decoration: none; }
 .header a:hover   { color:#DADADA }
 a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
 .header img { float: left; }
 
 
-.sidenav li {
+.sidenav ul, .navlink li {
     list-style-type: none;
 }
 
-.sidenav li:hover {
+.sidenav li:hover, .navlink a:hover {
     color:#DADADA;
 }
 
