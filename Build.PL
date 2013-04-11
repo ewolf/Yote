@@ -52,19 +52,18 @@ my $builder = Module::Build->new(
     script_files       => [ 'bin/yote_server' ],
     requires => {
 	'Crypt::Passwd::XS'     => 0.601,
-	'forks'                 => 0.34,
+	'DBI'                   => 0,
 	'DateTime'              => 0.77,
 	'DBD::SQLite'           => 1.35,
-	'DBI'                   => 0,
 	'Email::Valid'          => 0.190,
 	'File::UStore'          => 0.12,
+	'forks'                 => 0.34,
+	'forks::shared'         => 0.34,
 	'JSON'                  => 0,
 	'Logger::Simple'        => 0,
-	'Mail::Sender'          => 0,
 	'MIME::Lite'            => 3.029,
-	'Net::Server::HTTP'     => 0,
-	'WeakRef'               => 0.01,
 	'MongoDB'               => 0,
+	'WeakRef'               => 0.01,
     },
     );
 

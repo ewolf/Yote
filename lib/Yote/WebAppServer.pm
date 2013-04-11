@@ -7,8 +7,6 @@ no warnings 'uninitialized';
 use forks;
 use forks::shared;
 
-use CGI;
-
 use IO::Handle;
 use IO::Socket;
 
@@ -125,7 +123,7 @@ sub process_http_request {
     #
 
     my( $verb, $uri, $proto ) = split( /\s+/, $req );
-    
+
     $uri ||= '/index.html';
 
     $ENV{PATH_INFO} = $uri;
@@ -133,19 +131,18 @@ sub process_http_request {
 
     accesslog( "GOT URI '$uri'" );
 
-    
+
     ### ******* $uri **********
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
-    
+
 	my $path_start = shift @path;
 	my( $vars, $return_header );
 
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
 	if( $path_start eq '_' ) {
-	    my $CGI  = new CGI;
 	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
 	    $return_header = "Content-Type: text/json\n\n";
@@ -162,7 +159,7 @@ sub process_http_request {
 	    $return_header = "Content-Type: text/html\n\n";
 	}
 
-	
+
 	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
 
         my $command = {
@@ -194,7 +191,7 @@ sub process_http_request {
 		if( defined( $result ) ) {
 		    delete $prid2result{$procid};
 		    last;
-		} 
+		}
 		else {
 		    cond_wait( %prid2result );
 		}
@@ -254,7 +251,9 @@ sub process_http_request {
 sub shutdown {
     my $self = shift;
     accesslog( "Shutting down yote server" );
+    Yote::ObjProvider::start_transaction();
     Yote::ObjProvider::stow_all();
+    Yote::ObjProvider::commit_transaction();
     accesslog(  "Killing threads" );
     $self->_stop_threads();
     accesslog( "Shut down server thread" );
@@ -311,7 +310,7 @@ sub start_server {
 	$self->_start_server_thread;
     } #creating 5 threads
 
-    $self->{watchdog_thread} = threads->new( 
+    $self->{watchdog_thread} = threads->new(
 	sub {
 	    while( 1 ) {
 		sleep( 5 );
@@ -321,9 +320,9 @@ sub start_server {
 		}
 	    }
 	} );
-    
+
     _poll_commands();
-    
+
     _stop_threads();
 
    Yote::ObjProvider::disconnect();
@@ -346,8 +345,8 @@ sub _stop_threads {
 
 sub _start_server_thread {
     my $self = shift;
-    push( @{ $self->{threads} }, 
-	  threads->new( 
+    push( @{ $self->{threads} },
+	  threads->new(
 	      sub {
 		  unless( $self->{lsn} ) {
 		      threads->exit();
@@ -358,7 +357,7 @@ sub _start_server_thread {
 		      $fh->close();
 		  } #main loop
 	      } ) #new thread
-	);	
+	);
 } #_start_server_thread
 
 
@@ -376,7 +375,7 @@ sub _crond {
 		oi => $cron_id,
 		t  => undef,
 		w  => 0,
-				   }, $$] 
+				   }, $$]
 		);
 	}
     } #infinite loop
@@ -392,7 +391,7 @@ sub _poll_commands {
 	_process_command( $cmd_queue->dequeue() );
 	Yote::ObjProvider::start_transaction();
 	Yote::ObjProvider::stow_all();
-	Yote::ObjProvider::commit_transaction();	
+	Yote::ObjProvider::commit_transaction();
     } #endlees loop
 
 } #_poll_commands
@@ -472,7 +471,7 @@ sub _process_command {
 	$prid2result{$procid} = $resp;
         cond_signal( %prid2result );
     }
-    
+
 
 } #_process_command
 
@@ -486,7 +485,7 @@ sub _translate_data {
         return { map {  $_ => _translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
     }
     elsif( ref( $val ) eq 'ARRAY' ) { #from javacript object, or hash. no fields starting with underscores accepted
-        return [ map {  _translate_data( $_ ) } @$val ]; 
+        return [ map {  _translate_data( $_ ) } @$val ];
     }
     return undef unless $val;
     if( index($val,'v') == 0 ) {

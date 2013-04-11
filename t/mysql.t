@@ -1,40 +1,47 @@
+#!/usr/bin/perl
+
 use strict;
 use warnings;
 
-#use Yote::WebAppServer;
+use Yote::WebAppServer;
 
 use Yote::AppRoot;
 use Yote::YoteRoot;
 use Yote::MysqlIO;
+use Yote::Test::TestAppNoLogin;
+use Yote::Test::TestAppNeedsLogin;
+use Yote::Test::TestDeepCloner;
+use Yote::Test::TestNoDeepCloner;
 
 use Data::Dumper;
 use DBI;
 use Test::More;
 use Test::Pod;
 
-print STDERR Data::Dumper->Dump(["XX"]);
+use Carp;
+$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
-#use Carp;
-#$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
-
-#BEGIN {
-#    for my $class (qw/Obj Hash MysqlIO/) {
-#        use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
-#    }
-#}
+BEGIN {
+    for my $class (qw/Obj Hash MysqlIO/) {
+        use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
+    }
+}
 
 # -----------------------------------------------------
 #               init
 # -----------------------------------------------------
 
-my( $uname, $pword ) = ( `whoami`, '' );
+#my( $uname, $pword ) = ( `whoami`, '' );
 my $dbh = DBI->connect( "DBI:mysql:information_schema" ); #, $uname, $pword );
 my $x = $dbh->selectrow_arrayref( "SELECT user()" );
 
 $dbh->do( "DROP DATABASE yote_test" );
 $dbh->do( "CREATE DATABASE yote_test" );
 
-if( 0 ) {
+Yote::ObjProvider::init(
+    datastore      => 'Yote::MysqlIO',
+    database       => 'yote_test',
+    );
 
 my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
@@ -407,6 +414,7 @@ sub test_suite {
     is( $res->{l}->get_email(), 'foo@bar.com', "handle for created root account" );
     Yote::ObjProvider::stow_all();
     my $root_acct = Yote::ObjProvider::xpath("/_handles/root");
+    Yote::ObjProvider::commit_transaction();
     unless( $root_acct ) {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
@@ -441,13 +449,13 @@ sub test_suite {
     is( $t->{l}->get_handle(), 'toot', "logged in with login object with correct handle" );
     is( $t->{l}->get_email(), 'baz@bar.com', "logged in with login object with correct handle" );
     ok( $t->{t}, "logged in with token $t->{t}" );
-    my( $hello_app ) = @{ $root->fetch_app_by_class( 'Yote::Test::Hello' ) };
+    my( $hello_app ) = $root->fetch_app_by_class( 'Yote::Test::Hello' );
     is( $hello_app->hello( { name => 'toot' } ), "hello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
     my $as = new Yote::WebAppServer();
     ok( $as, "Yote::WebAppServer compiles" );
 
 
-    my( $ta ) = @{ $root->fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' ) };
+    my( $ta ) = $root->fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' );
     ok( $ta->get_yote_obj(), "test app created yote object automatically" );
 
     my $aaa = $ta->array( '', $t );
@@ -543,5 +551,5 @@ sub test_suite {
     
 
 } #test suite
-}
+
 __END__

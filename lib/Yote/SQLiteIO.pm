@@ -10,6 +10,7 @@ no warnings 'uninitialized';
 no warnings 'recursion';
 
 use Data::Dumper;
+use DBD::SQLite;
 use DBI;
 
 use vars qw($VERSION);
@@ -173,7 +174,7 @@ sub max_id {
 
 #
 # Returns a hash of paginated items that belong to the xpath.
-# @TODO - maybe get rid of this, since hash is not a good order dependent thing
+# 
 sub paginate_xpath {
     my( $self, $path, $paginate_length, $paginate_start ) = @_;
 
@@ -453,7 +454,7 @@ sub xpath_count {
 
 
 #
-# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
+# Deletes a value from the given xpath. /foo/bar/baz.
 #
 sub xpath_delete {
     my( $self, $path ) = @_;
