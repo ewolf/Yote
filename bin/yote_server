@@ -52,26 +52,15 @@ $SIG{PIPE} = sub {};
 
 my $webroot = "$base_dir/html";
 
-if( 0 ) {
-    my $var_dir = Yote::ConfigData->config( 'yote_var_dir' ) || '/tmp';
-    my $sqlitefile = "$var_dir/SQLite.yote.db";
-    unless( -e $sqlitefile ) {
-	my $sqlite = new Yote::SQLiteIO( sqlitefile => $sqlitefile );
-	$sqlite->ensure_datastore();
-    }
-    ( %config ) = ( port       => $port, 
-		    webroot    => $webroot,
-		    datastore  => 'Yote::SQLiteIO', 
-		    sqlitefile => $sqlitefile );
-} else {
-    ( %config ) = ( port         => $port, 
-		    webroot      => $webroot,
-		    datastore    => 'Yote::MongoIO', 
-		    datahost     => 'localhost',
-		    databasename => 'yote',
-		    dataport     => 27017,
-	);
-}
+
+( %config ) = ( port         => $port, 
+		webroot      => $webroot,
+		datastore    => 'Yote::MongoIO', 
+		datahost     => 'localhost',
+		databasename => 'yote',
+		dataport     => 27017,
+    );
+
 my $do_start = 1;
 while( @ARGV ) {
     my $first = shift @ARGV;
