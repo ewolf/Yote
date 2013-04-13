@@ -1,3 +1,15 @@
+2013-04-13  Eric Wolf  <coyocanid@gmail.com>
+
+	* fixed _load bug where it was being called too early.
+	* upped version to 0.0974
+
+2013-04-11  Eric Wolf  <coyocanid@gmail.com>
+
+	* Big list of changes. Purged a lot of old crud.
+	* Paired down the library and removed the Net::Server:: family, replacing it with IO::Socket::INET
+	* Fixed big error where two close consecutive hits would crash the system
+	* Updated the web unit test to test for close consecutive hits
+
 2013-03-04  Eric Wolf  <coyocanid@gmail.com>
 
 	* added sync_all method to Account. It's a no op that refreshes all changed objects

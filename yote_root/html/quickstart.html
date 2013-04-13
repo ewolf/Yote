@@ -198,9 +198,8 @@ sub call_set {\n\
 	    },
 
 	    // ******************* HELLO OBJECTS **************
-/*
 	    {
-		title             : 'Hello Objects',
+		title             : 'Objects',
 		summary           : '',
 		client            : '',
 		server            : '',
@@ -208,11 +207,10 @@ sub call_set {\n\
 		server_discussion : '',
 		client_discussion : ''
 	    },
-*/
 
 	    // ******************* HELLO INIT *****************
 	    {
-		title             : 'Hello Init',
+		title             : 'Init',
 		summary           : 'Shows how data can be initialized for an app or other Yote object.',
 		client            : '\
 $.yote.init();\n\
@@ -281,12 +279,12 @@ sub hello {\n\
 1;',
 		discussion        : 'An account is just a bundle of data associated with a user and an app. The same user will have an account for each different app on the system.',
 		server_discussion : 'The account object is always passed as the third parameter to any yote method if a user is logged in.',
-		client_discussion : 'Methods for logging in and creating accounts are provided.'
+		client_discussion : 'Methods for logging in and creating accounts are provided as part of the $.yote package object.'
 	    },
 
 	    // ******************* HELLO ENVIRONMENT *****************
 	    {
-		title             : 'Hello Environment',
+		title             : 'Environment Variables',
 		summary           : 'Show how environment variables are passed into Yote',
 		client            : '\
 $.yote.init();\n\
