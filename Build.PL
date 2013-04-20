@@ -3,14 +3,17 @@ use warnings;
 use File::Copy;
 use Module::Build;
 
-# check to find the root directory for yote using a list of common candidates
-for my $yote_root (grep { -e && -r } 
-		   map { "$_/yote.confg" } ( '/opt',
-					     '/var',
-					     '/usr/local',
-					     $ENV{HOME} ) );
+use strict;
+use warnings;
 
-die "Unable to write yote root directory" unless -w $yote_root;
+# check to find the root directory for yote using a list of common candidates
+my( $yote_root_parent ) = grep { -e && -r && -w } ( '/opt',
+						    '/var',
+						    '/usr/local',
+						    $ENV{HOME} );
+
+die "Unable to write yote root directory" unless -w $yote_root_parent;
+my $yote_root = "$yote_root_parent/yote";
 
 mkdir $yote_root unless -d $yote_root;
 
@@ -21,6 +24,7 @@ mkdir "$yote_root/html";
 mkdir "$yote_root/html/uploads";
 mkdir "$yote_root/data";
 mkdir "$yote_root/log";
+mkdir "$yote_root/daemon";
 
 # fill the root directory
 sub copy_dir {
@@ -50,14 +54,14 @@ my $builder = Module::Build->new(
     dist_version_from  => 'lib/Yote.pm',
     license            => 'perl',
     module_name        => 'Yote',
-    release_status     => 'beta',
+    release_status     => 'testing',
     script_files       => [ 'bin/yote_server' ],
     requires => {
 	'Crypt::Passwd::XS'     => 0.601,
 	'DBI'                   => 1.625,
 	'DateTime'              => 0.77,
 	'DBD::SQLite'           => 1.35,
-	'DBD::MySQL'            => 4.022,
+	'DBD::MySQL'            => 0,
 	'Email::Valid'          => 0.190,
 	'File::UStore'          => 0.12,
 	'forks'                 => 0.34,

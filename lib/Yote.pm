@@ -8,9 +8,6 @@ $VERSION = '0.0975';
 
 use Carp;
 
-use Proc::Daemon;
-use Proc::PID::File;
-
 use Yote::ConfigData;
 use Yote::SQLiteIO;
 use Yote::WebAppServer;
@@ -29,6 +26,7 @@ yote_server --engine=sqlite|mongo|mysql --user=engine-username --password=engine
 
 sub _log {
     my $foo = shift;
+    print STDERR Data::Dumper->Dump([$foo]);
 }
 
 sub _soft_exit {
@@ -71,10 +69,10 @@ sub _ask {
 
 sub _create_configuration {
     my $yote_root_dir = shift;
-
-    open( OUT, ">$yote_root_dir/yote.conf" ) or die $@;
     
     my $newconfig = _get_configuration();
+
+    open( OUT, ">$yote_root_dir/yote.conf" ) or die $@;
     print OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
     close( OUT );
 
@@ -115,8 +113,8 @@ mongo db is the fastest, but sqlite will always work.',
     return \%newconfig;
 } #_get_configuration
 
-sub run {
 
+sub get_args {
     # -------- run data ---------------------------
 
     my %commands = (
@@ -136,7 +134,7 @@ sub run {
 	r  => 'root',
 	);
     my %argnames = map { $_ => 1 } values %argmap;
-    my %required = map { $_ => 1 } qw/engine store root/;
+    my %required = map { $_ => 1 } qw/engine store yote_root/;
 
     # ---------  run variables  -----------------
 
@@ -160,15 +158,17 @@ sub run {
 	}
     } # each argument
 
-    _soft_exit( "Missing command" ) unless $cmd;
-
     # --------- find yote root directory and configuration file ---------
     my $yote_root_dir = Yote::ConfigData->config( 'yote_root' );
     $config{ yote_root } = $yote_root_dir;
 
     _log "using root directory '$yote_root_dir'";
 
+    _log "Looking for '$yote_root_dir/yote.conf'";
+
     if ( -r "$yote_root_dir/yote.conf" ) {
+	_soft_exit( "Missing command" ) unless $cmd;
+
 	open( IN, "<$yote_root_dir/yote.conf" ) or die $@;
 	while ( <IN> ) {
 	    s/\#.*//;
@@ -181,7 +181,6 @@ sub run {
 	    }
 	}
 	close( IN );
-
 	if( grep { ! $config{ $_ } } keys %required ) {
 	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
 	    my $newconfig = _create_configuration( $yote_root_dir );
@@ -197,7 +196,18 @@ sub run {
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ key };
 	}	
+	_soft_exit( "Config Written. Exiting" ) unless $cmd;
+
     } #had to write first config file
+
+    return \%config;
+} #get_args
+
+sub run {
+    my %config = @_;
+    print STDERR Data::Dumper->Dump(["RUN",%config]);
+
+    my $yote_root_dir = $config{ yote_root };
 
     push( @INC, "$yote_root_dir/lib" );
 
@@ -225,12 +235,7 @@ sub run {
 
     $SIG{PIPE} = sub {};
 
-    eval { Proc::Daemon::Init; };
-    if ($@) {
-	_soft_exit "Unable to start daemon:  $@";
-    }
-
-    _soft_exit "Already running!" if hold_pid_file( "$yote_root_dir/yote.pid" );
+    print STDERR Data::Dumper->Dump(["READY TO RUN",\%config]);
 
     $s->start_server( %config );
 
