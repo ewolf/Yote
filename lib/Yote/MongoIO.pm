@@ -508,10 +508,14 @@ sub xpath_list_insert {
 sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    $self->{MONGO_CLIENT} = MongoDB::MongoClient->new(
-	host=> $args->{ datahost } || 'localhost',
-	port=> $args->{ dataport } || 27017,
+    my $host = $args->{ host } || 'localhost';
+    $host .= ':' . ($args->{ port } || 27017);
+    my %mongo_args = (
+	host => $host,
 	);
+    $mongo_args{ password } = $args->{ password } if $args->{ password };
+    $mongo_args{ username } = $args->{ user } if $args->{ user };
+    $self->{MONGO_CLIENT} = MongoDB::MongoClient->new( %mongo_args );
     $self->{DB} = $self->{MONGO_CLIENT}->get_database( $args->{ databasename } || 'yote' );
 } #_connect
 

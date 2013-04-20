@@ -3,12 +3,26 @@ use warnings;
 use File::Copy;
 use Module::Build;
 
-# check to see where the database can be kept
-my $yote_base_dir = '/usr/local/yote';
-unless( -w '/usr/local' ) {
-    $yote_base_dir = "$ENV{HOME}/.yote";
-}
-mkdir $yote_base_dir unless -d $yote_base_dir;
+# check to find the root directory for yote using a list of common candidates
+for my $yote_root (grep { -e && -r } 
+		   map { "$_/yote.confg" } ( '/opt',
+					     '/var',
+					     '/usr/local',
+					     $ENV{HOME} ) );
+
+die "Unable to write yote root directory" unless -w $yote_root;
+
+mkdir $yote_root unless -d $yote_root;
+
+die "Unable to create root directory" unless -w $yote_root;
+
+mkdir "$yote_root/holding";
+mkdir "$yote_root/html";
+mkdir "$yote_root/html/uploads";
+mkdir "$yote_root/data";
+mkdir "$yote_root/log";
+
+# fill the root directory
 sub copy_dir {
     my( $dir, $dest ) = @_;
     mkdir "$dest" unless -d "$dest";
@@ -22,33 +36,21 @@ sub copy_dir {
 	    copy( "$dir/$fn", "$dest/$fn" );
 	}
     }
-}
-
-copy_dir( 'yote_root', $yote_base_dir );
-
-my $yote_var_dir = '/var/yote';
-unless( -w '/var/' ) {
-    $yote_var_dir = "$ENV{HOME}/.yote";
-}
-mkdir $yote_var_dir unless -d $yote_var_dir;
-
-my $yote_run_dir = '/var/run';
-unless( -w $yote_run_dir ) {
-    $yote_run_dir = "$ENV{HOME}/.yote";
-    mkdir $yote_run_dir unless -d $yote_run_dir;
-}
+} #copy_dir
+copy_dir( 'yote_root', $yote_root );
 
 my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Yote-*' ],
     build_requires => {
         'Test::More' => 0,
+	'Test::Pod'  => 0,
     },
     create_makefile_pl => 'traditional',
     dist_author        => q{Eric Wolf (coyocanid@gmail.com)},
     dist_version_from  => 'lib/Yote.pm',
     license            => 'perl',
     module_name        => 'Yote',
-    release_status     => 'alpha',
+    release_status     => 'beta',
     script_files       => [ 'bin/yote_server' ],
     requires => {
 	'Crypt::Passwd::XS'     => 0.601,
@@ -68,9 +70,6 @@ my $builder = Module::Build->new(
     },
     );
 
-$builder->config_data( 'yote_var_dir' => $yote_var_dir );
-$builder->config_data( 'yote_run_dir' => $yote_run_dir );
-$builder->config_data( 'yote_base_dir' => $yote_base_dir );
-$builder->config_data( 'port'         => 8008 );
+$builder->config_data( 'yote_root' => $yote_root );
 
 $builder->create_build_script();

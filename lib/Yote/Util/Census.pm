@@ -1,6 +1,10 @@
 package Yote::Census;
 
 use strict;
+use warnings;
+
+use vars qw($VERSION);
+$VERSION = '0.01';
 
 use base 'Yote::AppRoot';
 

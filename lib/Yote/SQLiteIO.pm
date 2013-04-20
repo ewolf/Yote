@@ -554,7 +554,7 @@ sub xpath_list_insert {
 sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $file  = $args->{sqlitefile} || $self->{args}{sqlitefile} || '/usr/local/yote/data/SQLite.yote.db';
+    my $file  = $args->{ store };
     $self->{DBH} = DBI->connect( "DBI:SQLite:db=$file" );
     $self->{DBH}->{AutoCommit} = 1;
     $self->{file} = $file;

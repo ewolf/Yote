@@ -1,5 +1,10 @@
 package Yote::Util::Tag;
 use strict;
+use warnings;
+
+use vars qw($VERSION);
+$VERSION = '0.01';
+
 #
 # The tagging represents a namespace of tags to items.
 #

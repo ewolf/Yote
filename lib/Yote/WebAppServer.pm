@@ -262,11 +262,12 @@ sub shutdown {
 sub start_server {
     my( $self, @args ) = @_;
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
-    $self->{args} = $args;
-    $self->{args}{webroot} ||= '/usr/local/yote/html';
-    $self->{args}{upload}  ||= '/usr/local/yote/html/upload';
-    $self->{args}{log_dir} ||= '/var/log/yote';
-    $self->{args}{port}    ||= 80;
+
+    $self->{ args } = $args;
+    $self->{ args }{ webroot } ||= $self->{ args }{ yote_root } . '/html';
+    $self->{ args }{ upload }  ||= $self->{ args }{ webroot }   . '/upload';
+    $self->{ args }{ log_dir } ||= $self->{ args }{ yote_root } . '/log';
+    $self->{ args }{ port }    ||= 80;
 
     Yote::ObjProvider::init( %$args );
 
@@ -284,13 +285,10 @@ sub start_server {
     #$self->{cron_thread} = $cron_thread;
 
     # make sure the filehelper knows where the data directory is
-    $Yote::WebAppServer::YOTE_ROOT_DIR = $self->{args}{root_dir};
     $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
-    $Yote::WebAppServer::DATA_DIR      = $self->{args}{data_dir};
     $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
     $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
     $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
-    mkdir( $Yote::WebAppServer::DATA_DIR );
     mkdir( $Yote::WebAppServer::FILE_DIR );
     mkdir( $Yote::WebAppServer::WEB_DIR );
     mkdir( $Yote::WebAppServer::UPLOAD_DIR );
@@ -329,8 +327,6 @@ sub start_server {
    Yote::ObjProvider::disconnect();
 
 } #start_server
-
-
 
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *

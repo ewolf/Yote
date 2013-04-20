@@ -36,10 +36,15 @@ sub new {
 sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db    = $args->{database} || $self->{args}{database};
-    my $uname = $args->{uname} || $self->{args}{uname};
-    my $pword = $args->{pword} || $self->{args}{pword};
-    $self->{DBH} = DBI->connect( "DBI:mysql:$db", $uname, $pword );
+    my $db    = $args->{ store };
+    my $uname = $args->{ user };
+    my $pword = $args->{ password };
+    my $host  = $args->{ host };
+    my $port  = $args->{ port };
+    my $connect = "DBI:mysql:$db";
+    $connect .= "host=$host" if $host;
+    $connect .= "port=$port" if $port;
+    $self->{DBH} = DBI->connect( $connect, $uname, $pword );
 } #_connect
 
 sub database {

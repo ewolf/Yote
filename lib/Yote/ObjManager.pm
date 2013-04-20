@@ -3,6 +3,11 @@ package Yote::ObjManager;
 use strict;
 use warnings;
 
+use vars qw($VERSION);
+$VERSION = '0.01';
+
+no warnings 'uninitialized';
+
 $Yote::ObjManager::ALLOWS = {}; # obj_id  --> ( login id || guest token ) --> time
 $Yote::ObjManager::DIRTY  = {}; # ( login id || guest token ) --> obj_id --> 1
 

@@ -2,6 +2,10 @@ package Yote::YoteRoot;
 
 use strict;
 use warnings;
+
+use vars qw($VERSION);
+$VERSION = '0.01';
+
 no warnings 'uninitialized';
 
 use Yote::Cron;

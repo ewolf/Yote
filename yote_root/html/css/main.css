@@ -38,3 +38,10 @@ a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
     border : solid 1px black;
 }
 
+div.hover {
+    display: block;
+    position: absolute;
+}
+div.hover_hide {
+    display: none
+}

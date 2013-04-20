@@ -3,125 +3,13 @@
 #
 # start_server.pl - start,stop,restart
 #
-
-
 use strict;
 use warnings;
 
-use Carp;
+use Yote;
 
-use Yote::WebAppServer;
-use Yote::SQLiteIO;
-use File::Pid;
-use Yote::ConfigData;
-
-my $base_dir = Yote::ConfigData->config( 'yote_base_dir' );
-my $run_dir = Yote::ConfigData->config( 'yote_run_dir' );
-my $port = Yote::ConfigData->config( 'port' );
-my %config;
-
-push( @INC, "$base_dir/lib" );
-
-$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
-
-my $pidfile = File::Pid->new( { file => "$run_dir/yote.pid" } );
-
-my $s = new Yote::WebAppServer;
-
-$SIG{TERM} = sub { 
-    $s->shutdown();
-    print STDERR "Shutting down due to term\n";
-    $pidfile->remove();
-    exit;
-};
-
-$SIG{INT} = sub { 
-    $s->shutdown();
-    print STDERR "Shutting down due to int\n";
-    $pidfile->remove();
-    exit;
-};
-
-$SIG{CHLD} = sub { 
-    print STDERR "Got CHLD\n";
-    #this is important. I may be able to handle the occasional crashing of the web server process right here!
-    print STDERR Data::Dumper->Dump(["GOT SIG CHLD", \%config]);
-};
-
-$SIG{PIPE} = sub {};
-
-my $webroot = "$base_dir/html";
-
-
-( %config ) = ( port         => $port, 
-		webroot      => $webroot,
-		datastore    => 'Yote::MongoIO', 
-		datahost     => 'localhost',
-		databasename => 'yote',
-		dataport     => 27017,
-    );
-
-my $do_start = 1;
-while( @ARGV ) {
-    my $first = shift @ARGV;
-    if($first eq '--shutdown' || $first eq 'shutdown' || $first eq 'stop' ) {
-	if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
-	    $pidfile->pid->kill();
-	    print STDERR "Killing pid $! $@\n";
-	}
-	$pidfile->remove();
-	$do_start = 0;	
-        exit;
-    }
-    elsif( $first eq '--version' || $first eq '-V' ) {
-	print "$Yote::VERSION\n";
-	exit;
-    }
-    elsif( $first eq '--restart' || $first eq 'restart' ) {
-	#
-	# kill any old servers hanging around
-	#
-	if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
-	    $pidfile->pid->kill();
-	}
-	$pidfile->write();
-	$do_start = 0;
-	last;
-    }
-    elsif( $first eq '--start' || $first eq 'start' ) {
-    }
-    elsif( $first =~ /^--([^=]+)=(.*)/ ) {
-	$config{$1} = $2;
-    }
-    elsif( $first =~ /^-([^-].*)/ ) {
-	$config{$1} = shift @ARGV;
-    }
-    else {
-       print  "yote_server <options>n".join( "\n\t*", ('--shutdown : stops yote server',
-						       '--restart : restarts yote server',
-						       '--version : print yote version',
-							'--port=<port> : assigns the yote server to run on specified port',
-							'--datastore=<datastore package name> : use data store other than sqlite',
-							'--sqlitefile=<filename> : specify different sqlite file' ) )."\n";
-	exit 0;
-    }
-} #while args
-
-#
-# Check to make sure no processes are still hanging around.
-#
-if( $do_start ) {
-    if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
-        $pidfile->pid->kill();
-    }
-}
-
-#
-# Normal start
-#
-$pidfile->write();
-
-$s->start_server( %config );
+my $ret = Yote->run( @ARGV );
+exit( $ret || 0 )
 
 __END__
 
