@@ -15,18 +15,18 @@ use Yote::WebAppServer;
 
 
 sub _print_use {
-    print '\
+    print '
 Usage : 
 yote_server --engine=sqlite|mongo|mysql --user=engine-username --password=engine-password \\
-            --store=filename|mongo-db|mysq-db --host=mongo-or-mysql-host --engine_port=port-mongo-or-mysql-use\\
+            --store=filename|mongo-db|mysq-db --host=mongo-or-mysql-host --engine_port=port-mongo-or-mysql-use \\
             --port=yote-server-port \\
-            START|STOP|RESTART
+            START|STOP|RESTART|STATUS
 ';
 }
 
 sub _log {
     my $foo = shift;
-    print STDERR Data::Dumper->Dump([$foo]);
+    print STDERR "$foo\n";
 }
 
 sub _soft_exit {
@@ -120,6 +120,7 @@ sub get_args {
     my %commands = (
 	'start'    => 'start',
 	'restart'  => 'restart',
+	'status'   => 'status',
 	'stop'     => 'stop',
 	'halt'     => 'stop',
 	'shutdown' => 'stop',
@@ -167,8 +168,6 @@ sub get_args {
     _log "Looking for '$yote_root_dir/yote.conf'";
 
     if ( -r "$yote_root_dir/yote.conf" ) {
-	_soft_exit( "Missing command" ) unless $cmd;
-
 	open( IN, "<$yote_root_dir/yote.conf" ) or die $@;
 	while ( <IN> ) {
 	    s/\#.*//;
@@ -196,22 +195,27 @@ sub get_args {
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ key };
 	}	
-	_soft_exit( "Config Written. Exiting" ) unless $cmd;
-
     } #had to write first config file
 
-    return \%config;
+    $cmd ||= 'start';
+
+    _log "Returning arguments";
+
+    return { config => \%config, command => $cmd };
 } #get_args
 
 sub run {
     my %config = @_;
-    print STDERR Data::Dumper->Dump(["RUN",%config]);
+
+    _log "Running";
 
     my $yote_root_dir = $config{ yote_root };
 
     push( @INC, "$yote_root_dir/lib" );
 
-    $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+    $SIG{ __DIE__ } = sub { 
+	Carp::confess( @_ );
+    };
 
     my $s = new Yote::WebAppServer;
 
@@ -235,7 +239,8 @@ sub run {
 
     $SIG{PIPE} = sub {};
 
-    print STDERR Data::Dumper->Dump(["READY TO RUN",\%config]);
+    _log "Starting Server";
+    my $args = Data::Dumper->Dump([\%config]);
 
     $s->start_server( %config );
 

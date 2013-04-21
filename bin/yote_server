@@ -8,27 +8,15 @@ use warnings;
 
 use Yote;
 
-use Proc::Daemon;
+my $args = Yote::get_args();
+my $config = $args->{ config };
+my $cmd    = $args->{ command };
 
-my $config = Yote::get_args();
-
-my @args;
-for my $key ( keys %$config ) {
-    my $val = $config->{ $key };
-    $val =~ s/'/\\'/g;
-    push @args, "$key => '$config->{$key}'";
-}
-print STDERR Data::Dumper->Dump([\@args,"WOOF",'perl -e "use Yote; Yote::run('.join(",", @args).')"']);
 my $yote_root_dir = $config->{ yote_root };
 
-my $daemon = Proc::Daemon->new(
-    work_dir     => "$yote_root_dir/daemon",
-    child_STDOUT => "$yote_root_dir/log/daemon.out",
-    child_STDERR => "$yote_root_dir/log/daemon.err",
-    pid_file     => 'yote.pid.txt',
-    exec_command => 'perl -e "use Yote; Yote::run('.join(",", @args).')"',
+my $s = Yote::run(
+    %$config
     );
-
 
 __END__
 

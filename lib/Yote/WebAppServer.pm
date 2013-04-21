@@ -293,6 +293,7 @@ sub start_server {
     mkdir( $Yote::WebAppServer::WEB_DIR );
     mkdir( $Yote::WebAppServer::UPLOAD_DIR );
     mkdir( $Yote::WebAppServer::LOG_DIR );
+
     $Yote::WebAppServer::ACCESS_LOG = Logger::Simple->new( LOG => "$Yote::WebAppServer::LOG_DIR/access.log" );
 
     # update @INC library list
