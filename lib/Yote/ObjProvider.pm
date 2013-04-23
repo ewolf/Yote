@@ -40,7 +40,13 @@ sub new {
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $datapkg = $args->{datastore} || 'Yote::SQLiteIO';
+    my $datapkg = 'Yote::SQLiteIO';
+    if( $args->{engine} eq 'mongo' ) {
+	$datapkg = 'Yote::MongoIO';
+    }
+    elsif( $args->{engine} eq 'mysql' ) {
+	$datapkg = 'Yote::MysqlIO';
+    }
     eval( "require $datapkg" );
     $DATASTORE = $datapkg->new( $args );
     $DATASTORE->ensure_datastore();

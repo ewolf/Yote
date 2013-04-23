@@ -241,6 +241,7 @@ sub run {
 
     _log "Starting Server";
     my $args = Data::Dumper->Dump([\%config]);
+    _log $args;
 
     $s->start_server( %config );
 

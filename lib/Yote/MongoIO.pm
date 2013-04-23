@@ -509,7 +509,7 @@ sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
     my $host = $args->{ host } || 'localhost';
-    $host .= ':' . ($args->{ port } || 27017);
+    $host .= ':' . ($args->{ engine_port } || 27017);
     my %mongo_args = (
 	host => $host,
 	);

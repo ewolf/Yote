@@ -40,7 +40,7 @@ sub _connect {
     my $uname = $args->{ user };
     my $pword = $args->{ password };
     my $host  = $args->{ host };
-    my $port  = $args->{ port };
+    my $port  = $args->{ engine_port };
     my $connect = "DBI:mysql:$db";
     $connect .= "host=$host" if $host;
     $connect .= "port=$port" if $port;
