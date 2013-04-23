@@ -61,7 +61,6 @@ my $builder = Module::Build->new(
 	'DBI'                   => 1.625,
 	'DateTime'              => 0.77,
 	'DBD::SQLite'           => 1.35,
-	'DBD::MySQL'            => 0,
 	'Email::Valid'          => 0.190,
 	'File::UStore'          => 0.12,
 	'forks'                 => 0.34,
