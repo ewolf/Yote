@@ -429,7 +429,7 @@ $.yote = {
 		_app_id:ai,
                 _dirty:false,
 		_d:{},
-		id:x.id,
+		id:x.id+'',
 		class:x.c,
                 _staged:{},
 		length:function() {
@@ -607,7 +607,7 @@ $.yote = {
                     wait:true 
                 } );
             };
-
+	    
 	    if( o.id && o.id.substring(0,1) != 'v' ) {
 		root.objs[o.id] = o;
 	    }
