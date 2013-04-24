@@ -33,20 +33,66 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-my( $host, $port ) = ( 'localhost', 27017 );
+my( $host, $port, $store, $un, $pw ) = ( 'localhost', 27017, 'yote_test' );
+print "Test Yote against mongo database up and running on $host : $port not requiring a username? ( Yes | No | Change Setup ) : ";
+my $ans = <STDIN>;
 
-my $client = MongoDB::MongoClient->new(
+
+if( $ans =~ /^\s*c/i ) {
+    print "host [ $host ] : ";
+    $ans = <STDIN>;
+    chomp( $ans );
+    $host ||= $ans;
+    print "port [ $port ] : ";
+    $ans = <STDIN>;
+    chomp( $ans );
+    $port ||= $ans;
+    print "databasename [ $store ] : ";
+    $ans = <STDIN>;
+    chomp( $ans );
+    $store ||= $ans;
+    print "username : ";
+    $ans = <STDIN>;
+    chomp( $ans );
+    if( $ans ) {
+	$un = $ans;
+	print "password : ";
+	$ans = <STDIN>;
+	chomp( $ans );
+	$pw = $ans;
+    }
+}
+elsif( $ans =~ /^\s*n/i ) {
+    done_testing();    
+    exit(0);
+}
+
+my %client_args = (
     host=> $host,
     port=> $port,
+    );
+my %yote_args = ( 
+    engine => 'mongo',
+    host   => $host,
+    engine_port => $port,
+    store  => $store,
+    );
+if( $un ) {
+    $client_args{ username } = $un;
+    $client_args{ password } = $pw;
+    $yote_args{ user }       = $un;
+    $yote_args{ password }   = $pw;
+}
+
+
+my $client = MongoDB::MongoClient->new(
+    %client_args
     );
 my $db = $client->get_database( 'yote_test' );
 $db->drop();
 
 Yote::ObjProvider::init(
-    engine       => 'mongo',
-    host         => $host,
-    engine_port  => $port,
-    store        => 'yote_test',
+    %yote_args
     );
 
 $db = $Yote::ObjProvider::DATASTORE->database();

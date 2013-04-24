@@ -42,8 +42,8 @@ sub _connect {
     my $host  = $args->{ host };
     my $port  = $args->{ engine_port };
     my $connect = "DBI:mysql:$db";
-    $connect .= "host=$host" if $host;
-    $connect .= "port=$port" if $port;
+    $connect .= ":host=$host" if $host;
+    $connect .= ":port=$port" if $port;
     $self->{DBH} = DBI->connect( $connect, $uname, $pword );
 } #_connect
 
