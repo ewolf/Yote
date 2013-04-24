@@ -3,6 +3,7 @@ package Yote::Array;
 use strict;
 use warnings;
 
+no warnings 'uninitialized';
 use Tie::Array;
 
 use vars qw($VERSION);

@@ -516,7 +516,7 @@ sub _connect {
     $mongo_args{ password } = $args->{ password } if $args->{ password };
     $mongo_args{ username } = $args->{ user } if $args->{ user };
     $self->{MONGO_CLIENT} = MongoDB::MongoClient->new( %mongo_args );
-    $self->{DB} = $self->{MONGO_CLIENT}->get_database( $args->{ databasename } || 'yote' );
+    $self->{DB} = $self->{MONGO_CLIENT}->get_database( $args->{ store } || 'yote' );
 } #_connect
 
 sub _xpath_to_list {
@@ -541,6 +541,7 @@ sub _xpath_to_list {
     push( @res, $working ) if defined( $working );
     return @res;
 } #_xpath_to_list
+
 1;
 __END__
 

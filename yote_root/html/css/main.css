@@ -41,6 +41,7 @@ a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
 div.hover {
     display: block;
     position: absolute;
+    background-color:lightgreen;
 }
 div.hover_hide {
     display: none

@@ -43,10 +43,10 @@ my $db = $client->get_database( 'yote_test' );
 $db->drop();
 
 Yote::ObjProvider::init(
-    datastore      => 'Yote::MongoIO',
-    datahost       => $host,
-    dataport       => $port,
-    databasename   => 'yote_test',
+    engine       => 'mongo',
+    host         => $host,
+    engine_port  => $port,
+    store        => 'yote_test',
     );
 
 $db = $Yote::ObjProvider::DATASTORE->database();

@@ -3,6 +3,8 @@ package Yote::Hash;
 use strict;
 use warnings;
 
+no warnings 'uninitialized';
+
 use Tie::Hash;
 
 use Yote::ObjProvider;

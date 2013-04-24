@@ -43,6 +43,9 @@
 \.#
 \.rej$
 
+#avoid distributions
+Yote.*\.gz$
+
 # Avoid OS-specific files/dirs
 # Mac OSX metadata
 \B\.DS_Store

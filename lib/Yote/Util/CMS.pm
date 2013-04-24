@@ -3,6 +3,8 @@ package Yote::Util::CMS;
 use strict;
 use warnings;
 
+no warnings 'uninitialized';
+
 use vars qw($VERSION);
 $VERSION = '0.01';
 
