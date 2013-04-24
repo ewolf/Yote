@@ -56,6 +56,7 @@ my $builder = Module::Build->new(
     module_name        => 'Yote',
     release_status     => 'stable',
     script_files       => [ 'bin/yote_server' ],
+    test_files         => [ 't/sqlite.t', 't/cms.t', 't/docs.t' ],
     requires => {
 	'Crypt::Passwd::XS'     => 0.601,
 	'DBI'                   => 1.625,
