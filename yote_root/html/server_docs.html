@@ -18,7 +18,7 @@
 
 	$.yote.init();
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	var count = page_counter.increment( 'Document Page' );
+	var count = page_counter.increment( 'Server Document Page' );
 	$('#counter').empty().append( count );
     });
     </script>
@@ -31,206 +31,154 @@
 	<UL id="top_nav" class="nav"/>
     </DIV>
 
+    <H1>Server Side Documentation</H1>
+    <P>
+      This document explains Yote server side programming. 
+      Server side programming is done using simple object oriented perl. There are no tables or schemas to deal with.
+      There are a few simple concepts to grasp and conventions to keep.
+    </P>
+
     <SECTION>
       <DIV class="page-header">
-	<H1>Documentation</H1>
+	<h2>Yote Objects</h2>
       </DIV>
-
       <P>
-	This documentation describes how Yote programs are written, and what idioms are used.
+	Yote objects are organized in a heirarcical data structure. Each Yote object finds one or more paths to the
+	YoteRoot at the base of the graph. Yote Objects are basically containers of key value pairs where the values 
+	may be other Yote objects, hashes, lists and scalars. All Yote objects are descendents of Yote::Obj. 
+	Yote::Obj provides some automatic getters and setters as well as some other convenience methods.
       </P>
-
+      <P>
+	Yote objects are loaded as needed. If one Yote object is attached to an other, it will not be loaded from
+	the database until the get_obj method returns it. This allows there to be a huge cohesive data tree that does
+	not have to be loaded into memory all at once.
+      </P>
+      <h3>Creating</h3>
+      <P>
+	Creating a new Yote object is as easy as <code>my $obj = new Yote::Obj();</code>. Once created it can be
+	attached anywhere in the tree and will persist. If it goes out of reference when it is not in the tree, it
+	is lost forever.
+      </P>
+      <h3>Getters and Setters</h3>
+      <P>
+	Yote uses get_ and set_ explicitly for getters and setters. This makes it clear what is happenening, and allows
+	yote to understand what is being asked of it. The <code><i>foo</i></code> in the cases below is a field of the 
+	Yote object. 
+      </P>
+      <ul>
+	<li><code>set_<i>foo</i>( <i>newvalue</i> )</code></li>
+	<li><code>get_<i>foo</i>( <i>defaultvalue</i> )</code></li>
+	<li><code>add_to_<i>foo</i>( <i>list of items</i> )</code></li>
+	<li><code>remove_from_<i>foo</i>( <i>list of items</i> )</code></li>
+	<li><code>add_once_to_<i>foo</i>( <i>list of items</i> )</code></li>
+	<li><code>remove_all_from_<i>foo</i>( <i>list of items</i> )</code></li>
+      </ul>
+      <p>
+	These are exposed to the client side in most cases. A client object will have get_foo and set_Foo methods
+	attached with these rules :
+	<ul>
+	  <li>Properties may not start with an underscore. Those that do are considered private to the server side.</li>
+	  <li>Only capitolized properties may be set from the client. The convention is that capitolized 
+	    field names are publically alterable for any object the client is allowed to see.</li>
+	</ul>
+      </p>
+      <h3>Public Methods</h3>
+      <P>
+	Yote Objects provide a stock of other methods. If a subclass of Yote::Obj is created, any methods 
+	that do not begin with an underscore are considered to be public, and automatically exposed to the
+	client javascript.
+      </P>
+      <ul>
+	<li><code>new</code> - creates a new Yote object, automatically assinging it an ID. This method does not 
+	attach the object to the tree.</li>
+	<li><code>paginate( [ $listname, $limit, $start ] )</code> returns a paginated part of a list that is attached to this object.</li>
+	<li><code>paginate_rev( [ $listname, $limit, $start ] )</code> returns a paginated part of a reversed list that is attached to this object.</li>
+	<li><code>paginate_hash( [ $hashname, $limit, $start ] )</code> returns a slice of a hash attached to this object. The keys are sorted so the order is guaranteed.</li>
+	<li><code>update( $hash_ref )</code> allows the client to update the writeable data in this object.</li>
+      </ul>
+      <h3>Method Signature</h3>
+      <P>
+	All public methods have the same signature. This is required so that the client and server can connect to
+	each other. The method signature is 
+      </P>
+      <blockquote>
+	<code>
+	  <pre>
+$yote_obj->mymethod( $data_scalar_or_reference, $user_account, $environment );
+	  </pre>
+	</code>
+      </blockquote>
+      <P>
+      These parameters are passed in automatically by the app server as the client invokes them. All arguments are 
+      optional.
+      </P>
       <SECTION>
 	<DIV class="page-header">
-	  <h2>Client Side</h2>
+	  <h2>Apps</h2>
 	</DIV>
-	<h2>Getting Started</h2>
-	  <h3>Includes</h3>
-	  <p>
-	    The following scripts should be included in any yote page. Yote relies on jquery and the javascript is not yet minified at the
-	    time of this writing.
-	  </P>
-
-	  <blockquote>
-	    <code>
-	      <pre>
-&lt;script src="/yote/js/jquery-latest.js"&gt;&lt;/script&gt;
-&lt;script src="/yote/js/jquery.cookie.js"&gt;&lt;/script&gt;
-&lt;script src="/yote/js/jquery.base64.min.js"&gt;&lt;/script&gt;
-&lt;script src="/yote/js/json2.js"&gt;&lt;/script&gt;
-&lt;script src="/yote/js/yote.js"&gt;&lt;/script&gt;
-	      </pre>
-	    </code>
-	  </blockquote>
-	  <P>
-	    Including these provides $.yote which contains the methods needed to interact 
-	    with the server.
-	  </P>
-	  <h3>Connecting Yote</h3>
-	  <p>
-	    To get started using a yote app, simply invoke init, then get the 
-	    app singleton object. Each app has a singleton that provides methods for the app
-	    and stores information specific to it. Putting all yote code inside the jquery <code>$().ready</code> function is recommended.
-	  </P>
-	  <blockquote>
-	    <code>
-	      <pre>
-$.yote.init(); //connects the front end objects to the backend
-
-//returns the singleton app object.
-var app = $.yote.fetch_app( 'MyApp' );
-	      </pre>
-	    </code>
-	  </blockquote>
-
-	  <h3>Logins</h3>
-	  <p>
-	    Some apps do not need to store information on a per user basis, but some do.
-	    Yote provides methods to create and manage user accounts and logins. There are 
-	    four different login related methods attached to the $.yote.
-	    <BR>
-	    <BR>
-	    <strong>Note:</strong> All the handlers below are optional.
-	  </p>
-	  <blockquote>
-	    <code>
-	      <pre>
-var login = $.yote.login( 'handle', 'password', pass_handler, fail_handler );
-var login = $.yote.create_login( 'handle', 'password', 'email', pass_handler, fail_handler );
-$.yote.remove_login( 'handle', 'password', 'email', pass_handler, fail_handler );
-$.yote.logout();
-	      </pre>
-	    </code>
-	  </blockquote>
-
-	  <h3>Invoking Methods</h3>
-	  <p>
-	    All methods on yote objects have the same method signature and take four optional arguments.
-	  </p>
-	  <blockquote>
-            <code>
-              <pre>
-var return_value = yote_obj.some_method( 
-   parameter,    // this can be undefined, a scalar, a yote object, an array or an object ( hash )
-   passhandler,  // this is a function that is invoked upon completion and given the return value as an argument
-   failhandler,  // this is a function that is invoked upon error and is passed the error message as an argument
-   use_async     // when true, this method is called asyncronously
-                                       );
-	      </pre>
-	    </code>
-	  </blockquote>
-	  
-
-	<h2>Basic Concepts</h2>
-	<P>
-	  Yote core javascript has four main tasks that will be covered in detail in this document. Much of the client
-	  side mirrors the server side, so both the server side documentation and the client side documentation will have necessary overlap.
-	  <ul>
-	    <li>System Initialization.</li>
-	    <li>User authentication and creation.</li>
-	    <li>Providing access to server side objects and their methods.</li>
-	    <li>Automatically coordinating object state with the yote server.</li>
-	  </ul>
+	<p>
+	  Yote has defined a number of classes for apps and provides specific behavior and handling of them.
+	  The App objects that a developer will use directly.
 	</P>
+	<h3>Yote::Login</h3>
 	<p>
-	  Yote javascript objects are provided with methods that mirror server side methods.
-	  Each method attached to a javascript yote object has the same parameter list and all
-	  parameters are optional. The methods are called syncronously be default but any may be
-	  called asyncronously.
+	  Credentials for a user associates the user with a Login. The Login is global across the whole Yote system 
+	  and have several accounts associated with it. Just as a member of a bank may have several account for one
+	  person, a Yote user will have an account for each app. 
+	  <BR>
+	  The Login the following automatic methods defined for it:
+	  <ul>
+	    <li><code><b>reset_password</b>( { op =&gt; old-password, p =&gt; newpassword, p2 =&gt; newpassconfirm } )</code></li>
+	    <li><code><b>is_root</b></code> : returns true if root.</li>
+	    <li><code><b>sync_all</b></code> : updates the client object cache.</li>
+	    <li><code><b>upload_avatar</b>( { avatar =&gt; avatar-file } )</code></li>
+	    <li><code><b>Avatar</b></code> : returns Yote::FileHelper object associated with avatar.</li>
+	  </ul>
 	</p>
+	<h3>Yote::Account</h3>
 	<p>
-	  There are a few types of server side objects that always may exist for the system. These objects
-	  have special methods that return them. Think of these as the primary building blocks of a yote app.
-	  <dl>
-	    <dt>The Root</dt><dd>The system has a singleton instance of Yote::YoteRoot that serves as the base root. The methods on this object provide all other objects. Every object in the Yote tree trace back to this primary object. Apps and user logins are directly attached here. The root will rarely be interacted with directly; convenience methods are used instead.</dd>
-	    <dt>User Logins</dt><dd>Uniquely identify one person by their email and handle. Credentials are kept here and passwords are hashed.</dd>
-	    <dt>User Accounts</dt><dd>One Login has a different account per app just as one person may have an account in different banks. 
-	      The account holds on to user data that relates to the app in question.</dd>
-	    <dt>App Objects</dt><dd>The root objects for one app. These objects store user accounts and anything else as devised by the app developer. All public methods of the app on the server side are automatically attached to the javascript object counterpart.</dd>
-	  </dl>
+	  Accounts are automatically and transparently created the first time a logged in user uses an app.
+	  Accounts are just bundles of data specific to the app and user. Accounts are also messengers, with 
+	  convenience methods for sending and receiving messages from other users of the app.
+	  <ul>
+	    <li><code><b>read_messages</b>( { sort =&gt; sortby, sort_desc =&gt; reverse-sort-flag, 
+		filter =&gt { newer_than =&gt time, older_than =&gt time, from =&gt; account, 
+		from_name =&gt; part-of-name, subject =&gt part-of-subject
+		} )</code></li>
+	    <li><code><b>send_message</b>( { recipients =&gt; list-of-accounts, message =&gt msg, subject =&gt; subj } )</code></li>
+	    <li><code><b>upload_avatar</b>( { avatar =&gt; avatar-file } )</code></li>
+	  </ul>
 	</p>
-	<h3>Primary Javascript Methods</h3>
-	<dl>
-	  <dt>$.yote.init()</dt>
-	  <dd>
-	    This method must be called before any other. It attempts to log into the system based on tokens stored on cookies, 
-	    and returns a login object if successfull.
-	  </dd>
-	  
-	  <dt>$.yote.fetch_app( 'perl package name of app' )</dt>
-	  <dd>
-	    This returns a singleton app object that contains all the methods defined on the server side for that app.
-	  </dd>
-	  
-	  <dt>$.yote.create_login( handle, password, email, passhandler, failhandler )</dt>
-	  <dd>
-	    Tries to create a login with the credentials supplied. It returns the login created. A pass or fail handler function are optionally 
-	    passed in. This method sets login token cookies on success.
-	  </dd>
-
-	  <dt>$.yote.login( handle, password, passhandler, failhandler )</dt>
-	  <dd>
-	    Tries to log in with the credentials supplied. It returns the login object upon success. A pass or fail handler function are optionally 
-	    passed in. This method sets login token cookies on success.
-	  </dd>
-
-	  <dt>$.yote.logout()</dt>
-	  <dd>
-	    Invalidates any login tokens on both the client and server side.
-	  </dd>
-
-	  <dt>$.yote.remove_login( handle, password, email, passhandler, failhandler )</dt>
-	  <dd>
-	    Destroys the login objects. This method requires valid credentials in order to work.  A pass or fail handler function are optionally 
-	    passed in. This method clears server side login token cookies.
-	  </dd>
-
+	<h3>Yote::AppRoot</h3>
 	  <p>
-	    A yote login is composed of credentials that uniquely identify a user. A yote
-	    login is global across all apps. Each app, however, has a different account for
-	    every login. The account is a bundle of data that is specific to an app and a user.
-	    This distinction is important.
-	  </P>
-
-	  <p>
-	    Emails and handles are unique for logins. Login objects are like any other Yote
-	    object and any sort of data can be stored in them. There are a number of methods
-	    that are attached to the yote objects.
+	    Objects that are AppRoot objects are singletons which hold onto user account data in addition to
+	    other data. They are requested on the client side by calling <code>$.yote.fetch_app( 'package name' )</code>.
+	    If the package is visible to the Yote server by being in the perl path or the lib directory under the server
+	    root, the singleton will be created and returned to the client.
 	  </p>
-
-
-	  <blockquote>
-	    <code>
-	      <pre>
-var login = $.yote.create_login( handle, password, email, passhandler, failhandler );
-  // handle, password and email are required
-  //  passhandler and failhandler are optional functions that are run if
-  //  the login creation succeeds or fails.
-
-var login = $.yote.login( handle, password, email, passhandler, failhandler );
-  // handle, password and email are required
-  //  passhandler and failhandler are optional functions that are run if
-  //  the login creation succeeds or fails.
-	      </pre>
-	    </code>
-	  </blockquote>
-
-	  <blockquote>
-	    <code>
-	      <pre>
- login.reset_password( { op =&gt; oldpassword, p =&gt; newpass, p2 =&gt; newpassverify } );
-	      </pre>
-	    </code>
-	  </blockquote>
-
+	  <p>
+	    All objects relevant to the App can trace a path back to this root object. Any App Root resides inside the
+	    YoteRoot.
+	  </p>
+	<h3>Yote::FileHelper</h3>
+	  <p>
+	    Yote provides a mechanism to upload files. These files, once uploaded, are stored on a the filesystem 
+	    and have a FileHelper object that provides access. This has a single public method : Url which returns
+	    a url to the actual file to the client.
+	  </p>
+	  
       </SECTION>
       
       <SECTION>
 	<DIV class="page-header">
-	  <h2>Server Side</h2>
+	  <h2>Non App Programming</h2>
 	</DIV>
+	<p>
+	  Yote can be useful for programs that do not connect to a client. The ability to create complex and 
+	  fluid datastructures on the fly is a powerful prototyping capability. 
+	</p>
       </SECTION>
-    
+          
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>

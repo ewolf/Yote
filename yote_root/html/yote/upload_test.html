@@ -27,7 +27,7 @@ $().ready( function() {
 			   somefile : $.yote.upload( '#fileup2' ),
 			   somefile_2 : $.yote.upload( '#fileup3' ),
 			 },
-			 function() {
+			 function(x) {
 			     //refresh the app for now. build in autorefresh later
 			     //tanl_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
 			     if( files.length() == 0 ) {
@@ -38,7 +38,8 @@ $().ready( function() {
 			     } else if( files.length() == 1 ) {
 				 $( '#scratch' ).append( '<img src=' + files.get(0).Url() + '> and none' );
 			     }
-			 } );
+			 },
+		       function(e) { alert( "Got error " + e ); });
     } );
 } );
 </script>

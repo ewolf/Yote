@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.081';
+$VERSION = '0.082';
 
 
 my( %prid2result, $singleton );
@@ -141,10 +141,10 @@ sub process_http_request {
 
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
+	push( @return_headers, "Content-Type: text/json");
 	if( $path_start eq '_' ) {
 	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
-	    push( @return_headers, "Content-Type: text/json");
 	}
 	else {
 	    my $vars = Yote::FileHelper::__ingest( $soc );
@@ -155,7 +155,6 @@ sub process_http_request {
 	    $action      = pop( @path );
 	    $obj_id      = pop( @path );
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
-	    push( @return_headers, "Content-Type: text/html");
 	}
 
 
@@ -501,7 +500,6 @@ sub _translate_data {
     }
     elsif( index($val,'u') == 0 ) {  #file upload contains an encoded hash
 	my $filestruct   = from_json( substr( $val, 1 ) );
-
 	my $filehelper = new Yote::FileHelper();
 	$filehelper->set_content_type( $filestruct->{content_type} );
 	$filehelper->__accept( $filestruct->{filename} );

@@ -18,7 +18,7 @@
 
 	$.yote.init();
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	var count = page_counter.increment( 'Document Page' );
+	var count = page_counter.increment( 'Client Document Page' );
 	$('#counter').empty().append( count );
     });
     </script>
@@ -113,7 +113,7 @@ var return_value = yote_obj.some_method(
    parameter,    // this can be undefined, a scalar, a yote object, an array or an object ( hash )
    passhandler,  // this is a function that is invoked upon completion and given the return value as an argument
    failhandler,  // this is a function that is invoked upon error and is passed the error message as an argument
-   use_async     // when true, this method is called asyncronously
+   use_async     // when true, this method is called asyncronously. This must be set true if there are files as parameters
                                        );
 	      </pre>
 	    </code>
@@ -132,6 +132,7 @@ var return_value = yote_obj.some_method(
 	<p>
 	  Method calls are made synchronously by default. This allows for a more natural programming feel. Method calls
 	  can be made asyncronously as well, for the case where the order of communication flows is not related.
+	  If the method call takes a file upload as a parameter, the call is automatically made asycnronously.
 	</P>	  
 	<p>
 	  The general style of programming is to obtain an app object and invoke methods on that app object. 
@@ -202,6 +203,28 @@ var return_value = yote_obj.some_method(
 	    Destroys the login objects. This method requires valid credentials in order to work.  A pass or fail handler function are optionally 
 	    passed in. This method clears server side login token cookies.
 	  </dd>
+	  <dt>$.yote.upload( selector_string_for_single_file_control )</dt>
+	  <dd>
+	    This method does nothing on its own but prep a file_control input for an upload. This method is used
+	    as a parameter to a method attached to some Yote object. Using this as a parameter to a yote method
+	    call will automatically make that call asyncronous. The server side will see the parameter as a 
+	    Yote::FileHelper object.
+	    <BR>Example : Have the user select two file uploads from controls fileup2 and fileup3. An Upload
+	    method has been defined for the upload_app in this case.
+	    <code>
+	      <pre>
+	      	upload_app.Upload( 
+                   { somevar : 'someval', 
+		     somefile : $.yote.upload( '#fileup2' ),
+		     somefile_2 : $.yote.upload( '#fileup3' ),
+		   },
+		   function( msg ) { alert( "Upload successfull : " + msg ); },
+                   function( err ) { alert( "Upload failed : " + err ); }
+		               );
+	      </pre>
+	    </code>
+	  </dd>
+	  </dl>
 
 	  <p>
 	    A yote login is composed of credentials that uniquely identify a user. A yote

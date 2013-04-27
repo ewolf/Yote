@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Here are the following public yote calls :
+ * Version 0.099
  */
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19
@@ -89,7 +89,6 @@ var index = scripts.length - 1;
 var myScriptUrl = scripts[index].src;
 var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 var yote_scr_url = ma && ma.length > 1 ? ma[ 1 ] : '';
-
 $.yote = {
     url:yote_scr_url,
     guest_token:0,
@@ -225,7 +224,6 @@ $.yote = {
         var url = $.yote.url + '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
 	var uploads = root._functions_in( data );
-
 	if( uploads.length > 0 ) {
 	    return root.upload_message( params, uploads );
 	}
@@ -350,15 +348,13 @@ $.yote = {
         var cmd    = params.cmd;
         var obj_id = params.obj_id || ''; //id to act on
 
-        var url = location.protocol + '//' + location.hostname + ':' + $.yote.port +
-	    '/_u/' + app_id + '/' + obj_id + '/' + cmd;
+        var url = $.yote.url + '/_u/' + app_id + '/' + obj_id + '/' + cmd;
 
 	root.iframe_count++;
 	var iframe_name = 'yote_upload_' + root.iframe_count;
 	var form_id = 'yote_upload_form_' + root.iframe_count;
 	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style="position;absolute;top:-9999px;display:none" /> ').appendTo( 'body' );
 	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
-
 	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
 	var cb_list = [];
 	$( upload_selector_ids.join(',') ).each(
@@ -378,9 +374,14 @@ $.yote = {
 	    cb_list[ i ].attr('checked', true);
 	}
 	var resp;
+
 	var xx = form_sel.submit(function() {
 	    iframe.load(function() {		
 		var contents = $(this).contents().get(0).body.innerHTML;
+		while( contents.match( /^\s*</ ) ) { 
+		    contents = contents.replace( /^\s*<\/?[^\>]*>/, '' );
+		    contents = contents.replace( /<\/?[^\>]*>\s*$/, '' );
+		}
 		$( '#' + iframe_name ).remove();
 		try {
 		    resp = JSON.parse( contents );

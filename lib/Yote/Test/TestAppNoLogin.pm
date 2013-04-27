@@ -48,6 +48,7 @@ sub Upload {
     my( $self, $data, $acct ) = @_;
     $self->add_to_Files( $data->{somefile} );
     $self->add_to_Files( $data->{somefile_2} );
+    return '';
 }
 
 1;

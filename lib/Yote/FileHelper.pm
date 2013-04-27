@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.011';
 
 use base 'Yote::Obj';
 
@@ -32,7 +32,6 @@ sub Url {
 
 sub __ingest {
     my $soc = shift;
-    print STDERR Data::Dumper->Dump([\%ENV]);
     my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
     my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{'HTTP_CONTENT-TYPE'} || $ENV{CONTENT_TYPE};
