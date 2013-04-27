@@ -554,6 +554,24 @@ field name and attached to this object.
 
 This will throw an error if the value of the field name is defined as something other than a list.
 
+=item paginate_hash
+
+This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+The starting point is optional and defaults to 0. Returns a slice of the hash that is specified by the
+field name and attached to this object. The keys are sorted before the return so that the order can
+be guaranteed between subsequent calls.
+
+This will throw an error if the value of the field name is defined as something other than a list.
+
+=item paginate_rev
+
+This method is just like paginate except it works on the list in reverse order.
+This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
+field name and attached to this object.
+
+This will throw an error if the value of the field name is defined as something other than a list.
+
 =item update
 
 This method is called automatically by a client javascript objet when its _send_update method is called.

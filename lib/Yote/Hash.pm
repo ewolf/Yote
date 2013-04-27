@@ -23,11 +23,6 @@ sub TIEHASH {
     return $obj;
 }
 
-sub keycount {
-    my $self = shift;
-    return scalar keys %{$self->[1]};
-}
-
 sub STORE {
     my( $self, $key, $val ) = @_;
     Yote::ObjProvider::dirty( $self->[2], $self->[0] );

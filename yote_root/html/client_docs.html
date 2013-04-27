@@ -31,20 +31,19 @@
 	<UL id="top_nav" class="nav"/>
     </DIV>
 
-    <SECTION>
-      <DIV class="page-header">
-	<H1>Documentation</H1>
-      </DIV>
-
-      <P>
-	This documentation describes how Yote programs are written, and what idioms are used.
-      </P>
-
+    <H1>Client Side Documentation</H1>
+    <P>
+      This document explains Yote client side programming. 
+      The client side programming experience is meant to have the flavor of object oriented scripting.
+      Javascript
+ote was written for simplicity of app construction and prototyping.
+      The flavor of client side programming is meant to be the same flavor 
+    </P>
+    <BR>
       <SECTION>
 	<DIV class="page-header">
-	  <h2>Client Side</h2>
+	  <h2>Getting Started</h2>
 	</DIV>
-	<h2>Getting Started</h2>
 	  <h3>Includes</h3>
 	  <p>
 	    The following scripts should be included in any yote page. Yote relies on jquery and the javascript is not yet minified at the
@@ -119,9 +118,28 @@ var return_value = yote_obj.some_method(
 	      </pre>
 	    </code>
 	  </blockquote>
-	  
+      </SECTION>
 
-	<h2>Basic Concepts</h2>
+      <SECTION>
+	<DIV class="page-header">
+	  <h2>Programming</h2>
+	</DIV>
+	<h3>How it's done</h3>
+	<p>
+	  Client side Yote is programmed in a functional style rather than a templating one. Forms are not used
+	  in favor of sending data back to the server using method calls.
+	</P>	  
+	<p>
+	  Method calls are made synchronously by default. This allows for a more natural programming feel. Method calls
+	  can be made asyncronously as well, for the case where the order of communication flows is not related.
+	</P>	  
+	<p>
+	  The general style of programming is to obtain an app object and invoke methods on that app object. 
+	  Use jquery to listen for UI events and invoke methods as a consequence of those events.
+	  The app object will always return the current state of items on the server.
+	</P>
+
+	<h3>Basic Concepts</h3>
 	<P>
 	  Yote core javascript has four main tasks that will be covered in detail in this document. Much of the client
 	  side mirrors the server side, so both the server side documentation and the client side documentation will have necessary overlap.
@@ -224,13 +242,7 @@ var login = $.yote.login( handle, password, email, passhandler, failhandler );
 	  </blockquote>
 
       </SECTION>
-      
-      <SECTION>
-	<DIV class="page-header">
-	  <h2>Server Side</h2>
-	</DIV>
-      </SECTION>
-    
+          
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>

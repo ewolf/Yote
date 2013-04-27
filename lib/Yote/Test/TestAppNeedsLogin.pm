@@ -120,3 +120,49 @@ sub medium_time {
 1;
 
 __END__
+
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item scalar
+
+=item make_obj
+
+=item obj_text
+
+=item give_obj
+
+=item nologin_obj
+
+=item list
+
+=item hash
+
+=item array
+
+=item get_hash
+
+=item reset
+
+=item long_time
+
+=item short_time
+
+=item medium_time
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

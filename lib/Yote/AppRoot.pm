@@ -48,41 +48,6 @@ sub account {
 } #account
 
 #
-# Returns the direct descendents of the object passed in.
-#
-sub multi_fetch {
-    my( $self, $obj, $account ) = @_;
-
-    my( @ret );
-
-    my $ref = ref( $obj );
-    if( $ref eq 'ARRAY' ) {
-	for my $item (@$obj) {
-	    if( ref( $item ) ) {
-		push( @ret, Yote::ObjProvider::xform_out( $item ) );
-	    }
-	}
-    } 
-    elsif( $ref eq 'HASH' ) {
-	for my $item (values %$obj) {
-	    if( ref( $item ) ) {
-		push( @ret, Yote::ObjProvider::xform_out( $item ) );
-	    }
-	}
-    }
-    elsif( $ref ) {
-	for my $item (map { $obj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$obj->{DATA}}) {
-	    if( ref( $item ) ) {
-		push( @ret, Yote::ObjProvider::xform_out( $item ) );
-	    }
-	}
-    }
-
-    return \@ret;
-} #multi_fetch
-
-
-#
 # Available to all apps. Used for verification and for cookie login.
 #
 sub token_login {
@@ -141,7 +106,13 @@ A Yote::AppRoot extends Yote::Obj and provides some class methods and the follow
 
 =over 4
 
+=item account()
 
+Returns the currently logged in account using this app.
+
+=item token_login()
+
+Returns a token that is used by the client and server to sync up data for the case of a user not being logged in.
 
 =back
 

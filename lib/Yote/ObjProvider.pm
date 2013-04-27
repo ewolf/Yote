@@ -249,11 +249,6 @@ sub paths_to_root {
     return $DATASTORE->paths_to_root( get_id($obj) );
 }
 
-sub info {
-    my( $obj ) = @_;
-    return [ get_id($obj), ref($obj), paths_to_root($obj), $obj ];
-}
-
 sub path_to_root {
     my( $obj ) = @_;
     return $DATASTORE->path_to_root( get_id($obj) );
@@ -561,6 +556,10 @@ Returns a string of the argument encrypted.
 
 Returns the array ref, hash ref or yote object specified by the numeric id or hash path.
 
+=item first_id( id )
+
+Returns the id of the first object in the system, the YoteRoot.
+
 =item get_id( obj )
 
 Returns the id assigned to the array ref, hash ref or yote object. This method assigns that id 
@@ -578,11 +577,19 @@ This method returns a list of the public API methods attached to the given packa
 
 =item paginate_xpath( xpath, start, length )
 
+This method returns a paginated slice of a hash that is attached to the xpath given. The slice order is sorted so that subsequent calls have a guaranteed order.
+
+=item paginate_xpath_list( xpath, start, length )
+
 This method returns a paginated portion of a list that is attached to the xpath given.
 
 =item path_to_root( object )
 
 Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
+
+=item paths_to_root( object )
+
+Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
 
 =item power_clone( item )
 

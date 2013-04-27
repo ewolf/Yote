@@ -20,7 +20,7 @@ Usage :
 yote_server --engine=sqlite|mongo|mysql --user=engine-username --password=engine-password \\
             --store=filename|mongo-db|mysq-db --host=mongo-or-mysql-host --engine_port=port-mongo-or-mysql-use \\
             --port=yote-server-port \\
-            START|STOP|RESTART|STATUS
+            START|STOP|RESTART
 ';
 }
 
@@ -120,7 +120,6 @@ sub get_args {
     my %commands = (
 	'start'    => 'start',
 	'restart'  => 'restart',
-	'status'   => 'status',
 	'stop'     => 'stop',
 	'halt'     => 'stop',
 	'shutdown' => 'stop',
@@ -257,6 +256,8 @@ Yote - Code server side, use client side.
 
 =head1 SYNOPSIS
 
+$ yote_server start
+
 Yote is a platform that
 
 =over 4
@@ -308,5 +309,32 @@ I had chance to use SOAP and XMLHttpdRequest calls. SOAP I found too
 slow, and at the time had seen it only for php, jsp and other server
 side web languages.
 
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item get_args
+
+Calling this returns an array ref of configuration arguments as  that have been passed in through the @ARGV
+array or that are saved in the yote configuration.
+If no configuration has been saved, this program prompts the user for configuration values and saves them if able.
+
+=item run( %args )
+
+This method activates starts the Yote server with configuration values that have been passed in. It does not 
+return until the yote server has shut down.
+
+=back
+
+=head1 BUGS
+
+There are likely bugs to be discovered. This is alpha software.
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
 
 =cut

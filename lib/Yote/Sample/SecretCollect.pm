@@ -138,3 +138,31 @@ sub guess_riddle {
 1;
 
 __END__
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item guess_riddle
+
+=item add_riddle
+
+=item random_riddle
+
+=item can_start
+
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

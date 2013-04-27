@@ -131,21 +131,20 @@ sub process_http_request {
 
     accesslog( "GOT URI '$uri'" );
 
-
     ### ******* $uri **********
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
+    my( @return_headers );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
 
 	my $path_start = shift @path;
-	my( $vars, $return_header );
 
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
 	if( $path_start eq '_' ) {
 	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
-	    $return_header = "Content-Type: text/json\n\n";
+	    push( @return_headers, "Content-Type: text/json");
 	}
 	else {
 	    my $vars = Yote::FileHelper::__ingest( $soc );
@@ -156,7 +155,7 @@ sub process_http_request {
 	    $action      = pop( @path );
 	    $obj_id      = pop( @path );
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
-	    $return_header = "Content-Type: text/html\n\n";
+	    push( @return_headers, "Content-Type: text/html");
 	}
 
 
@@ -198,12 +197,16 @@ sub process_http_request {
 		sleep 0.001;
             }
 	    print $soc "HTTP/1.0 200 OK\015\012";
-	    print $soc $return_header;
+	    push( @return_headers, "Content-Type: text/json" );
+	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
+	    print $soc join( "\n", @return_headers )."\n\n";
             print $soc "$result";
         }
         else {  #not waiting for an answer, but give an acknowledgement
 	    print $soc "HTTP/1.0 200 OK\015\012";
-	    print $soc "Content-Type: text/json\n\n";
+	    push( @return_headers, "Content-Type: text/json" );
+	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
+	    print $soc join( "\n", @return_headers )."\n\n";
             print $soc "{\"msg\":\"Added command\"}";
         }
     } #if a command on an object
@@ -212,6 +215,7 @@ sub process_http_request {
 	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
+
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
 	    print $soc "HTTP/1.0 301 REDIRECT\015\012";
 	    if($dest &&  $dest ne '/' ) {
@@ -222,17 +226,23 @@ sub process_http_request {
 	} elsif( open( IN, "<$root/$dest" ) ) {
 	    print $soc "HTTP/1.0 200 OK\015\012";
 	    if( $dest =~ /\.js$/i ) {
-		print $soc "Content-Type: text/javascript\n\n";
+		push( @return_headers, "Content-Type: text/javascript" );
 	    }
 	    elsif( $dest =~ /\.css$/i ) {
-		print $soc "Content-Type: text/css\n\n";
+		push( @return_headers, "Content-Type: text/css" );
 	    }
 	    elsif( $dest =~ /\.(jpg|gif|png|jpeg)$/i ) {
-		print $soc "Content-Type: image/$1\n\n";
+		push( @return_headers, "Content-Type: image/$1" );
 	    }
 	    else {
-		print $soc "Content-Type: text/html\n\n";
+		push( @return_headers, "Content-Type: text/html" );
 	    }
+
+	    print $soc join( "\n", @return_headers )."\n\n";
+
+	    my $size = -s "<$root/$dest";
+	    push( @return_headers, "Content-length: $size" );
+	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
             while(<IN>) {
                 print $soc $_;
             }
@@ -530,9 +540,25 @@ The server set up uses Net::Server::Fork receiving and sending messages on multi
 
 =over 4
 
+=item accesslog( msg )
+
+Write the message to the access log
+
 =item do404
 
 Return a 404 not found page and exit.
+
+=item errlog( msg )
+
+Write the message to the error log
+
+=item init_server
+
+=item new
+
+Returns a new WebAppServer.
+
+Sets up Initial database server and tables.
 
 =item process_http_request( )
 
@@ -545,10 +571,6 @@ Shuts down the yote server, saving all unsaved items.
 =item start_server( )
 
 =back
-
-=head1 BUGS
-
-There are likely bugs to be discovered. This is alpha software.
 
 =head1 AUTHOR
 

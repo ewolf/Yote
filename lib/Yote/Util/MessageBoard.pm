@@ -104,3 +104,31 @@ sub read {
 1;
 
 __END__
+
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item post( { message => msg, subject => subj, from => login or account } )
+
+Post a message on the board.
+
+=item read( { filter => { newer_than => somdate, older_than => somedate, from_name => name, from => login, subject => subj } } )
+
+Returns messages on the board that meet the optinal filter criteria.
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

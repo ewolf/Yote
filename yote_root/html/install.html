@@ -36,7 +36,15 @@
 	<H1>Installing Yote</H1>
       </DIV>
       <p>
-      You can install Yote using either CPAN or Github.
+      You can install Yote using either CPAN or Github. This will install the libraries and the yote_server program and create
+      a base directory in the first of the following places that is writeable to the account doing the installation :
+      <ul>
+	<li>/opt/yote</li>
+	<li>/var/yote</li>
+	<li>/usr/local/yote</li>
+	<li>~/yote</li>
+      </ul>
+
       <DL>
 	<DT>CPAN</DT>
 	<DD>
@@ -64,13 +72,14 @@
 	<H1>Running Yote</H1>
       </DIV>
       <P>
-      Yote can be run on any available port. The yote_server script starts, stops or restarts yote.<BR>
-      <code>
-	$ yote_server --port=80 start|stop|restart
-      </code>
-      </P>
-      <P>
-      Yote will create a datastore if none exists, and use yote_root for any html it may serve.
+      Yote can be run on any available port using the <code>yote_server</code> command. As of this writing, <code>yote_server</code> is not yet daemonized. The first time <code>yote_server</code> is run, it will prompt for some configuration information.
+      <blockquote>
+	<code>
+	  <pre>
+$ yote_server --port=80
+	  </pre>
+	</code>
+      </blockquote>
       </P>
     </SECTION>
     
@@ -78,29 +87,42 @@
       <DIV class="page-header">
 	<H1>Configuring Yote</H1>
       </DIV>
-      <UL>
-	<LI>Create Root Account</LI>
-	<UL>
-	  <LI>When Yote is started, the first account created is the root account.</LI>
-	  <LI>Open up your browser to http://localhost:<i>yote port</i>/yote/index.html</LI>
-	  <LI>click 'Log in' on the upper right side</LI>
-	  <LI>Then click the 'create account' button</LI>
-	  <LI>Fill out the form to create the account</LI>
-	  <LI>This account will then be the root account and have root privileges.</LI>
-	</UL>
-	<LI>Adding Classpaths</LI>
-	<UL>
-	  <LI>Stop the server useing $ yote_server stop</LI>
-	  <LI>Run $ yote_classpath_updater.pl <I>space separated directories</I></LI>
-	  <LI>Yote will now be able to load apps contained in those directories</LI>
-	  <LI>Restart the server useing $ yote_server --port=80 start</LI>
-	</UL>
-	<LI>Run the javascript unit tests</LI>
-	<UL>
-	  <LI>Open up http://localhost:<i>yote port</i>/yote/unit_test.html</LI>
-	  <LI>Confirm that the tests pass successfully</LI>
-	</UL>
-      </UL>
+
+      <P>
+	When Yote is run for the first time, it asks what port the server should be run on and what sort of datastore engine should be set up.
+	Yote can always use a Sqlite database as a store. 
+      </P>
+      <P>
+	The available engines are :
+	<ul>
+	  <li>mongoDB ( preferred )</li>
+	  <li>Sqlite</li>
+	  <li>MySQL</li>
+	</ul>
+      </P>
+
+      <h3>Accounts</h3>
+      <P>
+	Once started, the first user login account created with Yote is the root account. The account can be created by calling 
+	<code>$.yote.create_login( 'handle', 'password', 'email' )</code>
+      </P>
+
+      <h3>Unit Tests</h3>
+      <p>
+	There are additional unit tests that cannot be performed by the installer. These are tests that make sure the javascript
+	can connect correctly to the back end. To run the unit tests, start Yote and open up a browser to 
+	<code>http://localhost/yote/unit_tests.html</code>
+	<BR><BR>
+	The last few tests take a few seconds, so wait until the browser reports 'passed all tests'.
+      </p>
+
+      <h3>App Visibility</h3>
+      <P>
+	App libraries are visible to Yote if they are in the perl classpath or are in the <code>lib</code> directory off of the yote base directory.
+	<br>
+	HTML pages are visible to Yote if they are in the <code>html</code> directory off of the yote base directory.
+      </P>
+
     </SECTION>
     
     <footer>

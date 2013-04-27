@@ -46,3 +46,8 @@ div.hover {
 div.hover_hide {
     display: none
 }
+.login  { float:right; margin-right:15px; padding-right:15px; display:inline-block; vertical-align:middle; height:100%; }
+.logged_in {
+    float:right;
+    color:blue;
+}

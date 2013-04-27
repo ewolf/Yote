@@ -558,21 +558,6 @@ sub recycle_object {
     $self->_do( "DELETE FROM field WHERE obj_id=? or ref_id=?", $obj_id, $obj_id );
     $self->_do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
-sub stow_now {
-    my( $self, $id, $class, $data ) = @_;
-    my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );    
-    for my $upd (@$updates) {
-	$self->_do( @$upd );
-	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-    }
-    my $first_data = shift @$udata;
-    if( $first_data ) {
-	$self->_do( qq~INSERT INTO field
-                       SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
-		    map { @$_ } $first_data, @$udata );
-    }
-} #stow_now
 
 sub stow_all {
     my( $self, $objs ) = @_;
@@ -581,7 +566,7 @@ sub stow_all {
     for my $objd ( @$objs ) {
 	$self->stow( @$objd );
     }
-    $self->engage_queries();
+    $self->_engage_queries();
     $self->{STOW_LATER} = 0;
     $self->{QUERIES} = [[[]],[[]]];
 } #stow_all
@@ -649,7 +634,7 @@ sub stow {
 } #stow
 
 
-sub engage_queries {
+sub _engage_queries {
     my $self = shift;
     my( $upds, $uds ) = @{ $self->{QUERIES} };
     for( my $i=0; $i < scalar( @$upds ); $i++ ) {
@@ -667,7 +652,7 @@ sub engage_queries {
 			map { @$_ } $first_data, @$udata );
 	}
     }
-} #engage_queries
+} #_engage_queries
 
 1;
 __END__
@@ -688,6 +673,99 @@ The package name is used as an argument to the Yote::ObjProvider package which a
 
 Yote::ObjProvider::init( datastore => 'Yote::MysqlIO', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
 
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item commit_transaction( )
+
+=item database( )
+
+Provides a database handle. Used only in testing.
+
+=item disconnect( )
+
+=item ensure_datastore( )
+
+Makes sure that the datastore has the correct table structure set up and in place.
+
+=item fetch( id )
+
+Returns a hash representation of a yote object, hash ref or array ref by id. The values of the object are in an internal storage format and used by Yote::ObjProvider to build the object.
+
+=item first_id( id )
+
+Returns the id of the first object in the system, the YoteRoot.
+
+=item get_id( obj )
+
+Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
+
+=item has_path_to_root( obj_id )
+
+Returns true if the object specified by the id can trace a path back to the root yote object.
+
+=item max_id( ) 
+
+Returns the max ID in the yote system. Used for testing.
+
+=item new
+
+=item paginate_xpath( path, start, length )
+
+This method returns a paginated portion of an object that is attached to the xpath given, as internal yote values.
+
+=item paginate_xpath_list( parth, start, length )
+
+This method returns a paginated portion of a list that is attached to the xpath given.
+
+=item path_to_root( object )
+
+Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
+
+=item paths_to_root( object )
+
+Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+
+=item recycle_object( obj_id )
+
+Sets the available for recycle mark on the object entry in the database by object id and removes its data.
+
+=item recycle_objects( start_id, end_id )
+
+Recycles all objects in the range given if they cannot trace back a path to root.
+
+=item start_transaction( )
+
+=item stow( id, class, data )
+
+Stores the object of class class encoded in the internal data format into the data store.
+
+=item stow_all( )
+
+Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
+
+=item xpath( path )
+
+Given a path designator, returns the object data at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
+
+=item xpath_count( path )
+
+Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
+
+=item xpath_delete( path )
+
+Deletes the entry specified by the path.
+
+=item xpath_insert( path, item )
+
+Inserts the item at the given xpath, overwriting anything that had existed previously.
+
+=item xpath_list_insert( path, item )
+
+Appends the item to the list located at the given xpath.
+
+=back
 
 =head1 AUTHOR
 

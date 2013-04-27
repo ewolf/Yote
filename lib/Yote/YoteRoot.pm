@@ -10,6 +10,7 @@ no warnings 'uninitialized';
 
 use Yote::Cron;
 use Yote::Login;
+use Mail::Sender;
 use MIME::Lite;
 
 use base 'Yote::AppRoot';
@@ -99,7 +100,7 @@ sub create_login {
 
 } #create_login
 #
-# Fetches object by id
+# Fetches objects by id list
 #
 sub fetch {
     my( $self, $data, $account, $env ) = @_;
@@ -138,11 +139,6 @@ sub fetch_root {
     }
     return $root;
 }
-
-sub flush_credential_cache {
-    $EMAIL_CACHE = {};
-    $HANDLE_CACHE = {};
-} #flush_credential_cache
 
 #
 # Returns a token for non-logging in use.
@@ -232,7 +228,6 @@ sub recover_password {
             $login->set__recovery_tries( $login->get__recovery_tries() + 1 );
             $recovery_hash->{$rand_token} = $login;
             my $link = "$to_reset?t=$rand_token";
-	    use Mail::Sender;
 	    my $sender = new Mail::Sender( {
 		smtp => 'localhost',
 		from => 'yote@localhost',
@@ -342,19 +337,55 @@ The yote root is the main app of the class. It is also always object id 1 and si
 
 =head1 DATA 
 
-=head1 INIT METHODS
+=head1 PUBLIC API METHODS
 
 =over 4
+
+=item fetch( id_list )
+
+Returns the list of the objects to the client provided the client is authroized to receive them.
+
+=item fetch_app_by_class( package_name )
+
+Returns the app object singleton of the given package name.
+
+=item fetch_root( package_name )
+
+Returns the singleton root object. It creates it if it has not been created.
+
+=item guest_token
+
+Creates and returns a guest token, associating it with the calling IP address.
+
+=item login( { h: handle, p : password } )
+
+Attempts to log the account in with the given credentials. Returns a data structre with 
+the login token and the login object.
+
+=item logout
+
+Invalidates the tokens of the currently logged in user.
 
 =item new 
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
-=back
+=item purge_app
 
-=head1 PUBLIC API METHODS
+This method may only be invoked by a login with the root bit set. This clears out the app entirely.
 
-=over 4
+=item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
+
+Causes an email with a recovery link sent to the email in question, if it is associated with an account.
+
+=item recovery_reset_password( { p : newpassword, p2 : newpasswordverify, t : recovery_token } )
+
+Resets the password ( kepts hashed in the database ) for the account that the recovery token belongs to.
+Returns the url_the_person_requested_recovery that was given in the recover_password call.
+
+=item remove_login( { h : handle, e : email, p : password } )
+
+Purges the login account from the system if its credentials are verified. It moves the account to a special removed logins hidden field under the yote root.
 
 =item create_login( args )
 

@@ -326,7 +326,7 @@ sub start_transaction {
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
-sub stow_now {
+sub _stow_now {
     my( $self, $id, $class, $data ) = @_;
     my(  $updates, $udata ) = $self->__stow_updates( $id, $class, $data );    
     for my $upd (@$updates) {
@@ -340,7 +340,7 @@ sub stow_now {
 		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
 		    map { @$_ } $first_data, @$udata );
     }
-} #stow_now
+} #_stow_now
 
 sub stow_all {
     my( $self, $objs ) = @_;
@@ -349,7 +349,7 @@ sub stow_all {
     for my $objd ( @$objs ) {
 	$self->stow( @$objd );
     }
-    $self->engage_queries();
+    $self->_engage_queries();
     $self->{STOW_LATER} = 0;
     $self->{QUERIES} = [[[]],[[]]];
 } #stow_all
@@ -358,7 +358,7 @@ sub stow {
     my( $self, $id, $class, $data ) = @_;
 
     unless( $self->{STOW_LATER} ) {
-	return $self->stow_now( $id, $class, $data );
+	return $self->_stow_now( $id, $class, $data );
     }
     my( $updates, $udata ) = $self->__stow_updates( $id, $class, $data );
     my $ups = $self->{QUERIES}[0];
@@ -374,7 +374,7 @@ sub stow {
     push( @$uus,   @$udata   );
 } #stow
 
-sub engage_queries {
+sub _engage_queries {
     my $self = shift;
     my( $upds, $uds ) = @{ $self->{QUERIES} };
     for( my $i=0; $i < scalar( @$upds ); $i++ ) {
@@ -392,7 +392,7 @@ sub engage_queries {
 			map { @$_ } $first_data, @$udata );
 	}
     }
-} #engage_queries
+} #_engage_queries
 
 
 #
@@ -681,6 +681,10 @@ Makes sure that the datastore has the correct table structure set up and in plac
 
 Returns a hash representation of a yote object, hash ref or array ref by id. The values of the object are in an internal storage format and used by Yote::ObjProvider to build the object.
 
+=item first_id( id )
+
+Returns the id of the first object in the system, the YoteRoot.
+
 =item get_id( obj )
 
 Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
@@ -692,6 +696,8 @@ Returns true if the object specified by the id can trace a path back to the root
 =item max_id( ) 
 
 Returns the max ID in the yote system. Used for testing.
+
+=item new
 
 =item paginate_xpath( path, start, length )
 
@@ -705,15 +711,27 @@ This method returns a paginated portion of a list that is attached to the xpath 
 
 Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
 
+=item paths_to_root( object )
+
+Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+
 =item recycle_object( obj_id )
 
 Sets the available for recycle mark on the object entry in the database by object id and removes its data.
+
+=item recycle_objects( start_id, end_id )
+
+Recycles all objects in the range given if they cannot trace back a path to root.
 
 =item start_transaction( )
 
 =item stow( id, class, data )
 
 Stores the object of class class encoded in the internal data format into the data store.
+
+=item stow_all( )
+
+Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
 
 =item xpath( path )
 

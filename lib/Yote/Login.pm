@@ -8,18 +8,6 @@ $VERSION = '0.01';
 
 use base 'Yote::Obj';
 
-
-sub reset_email {
-    my( $self, $data, $account ) = @_;
-    my $email = $data->{email};
-    my $pw = $data->{pw};
-
-    die "Incorrect Password" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $pw, $self );
-
-    $self->set_email( $email );
-    return "Updated email";
-} #reset_email
-
 #
 # Can either be reset by logged in account, or by a recovery link.
 #
@@ -78,17 +66,20 @@ container objects that store state data for the users.
 
 =over 4
 
-=item reset_email
+=item is_root
 
-Resets the email for this login taking a hash reference as an argument with the keys 'email' for the email,
-'pw' for password. Returns 'Updated email'.
+Returns trus if the account has root privileges.
 
 =item reset_password
 
 Resets the password for this login taking a hash reference as an argument with the keys 'op' for old password, 
 'p' for password and 'p2' for password verification. Returns 'Password Reset'.
 
-=item UploadAvatar
+=item sync_all
+
+This method is actually a no-op, but has the effect of syncing the state of client and server.
+
+=item upload_avatar
 
 Create a Yote::FileHelper object representing the avatar image. 
 The file control name is 'avatar' that uploads the avatar image.

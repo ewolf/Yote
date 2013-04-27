@@ -319,8 +319,6 @@ sub recycle_objects {
 
 sub start_transaction {}
 
-sub reset_queries {}
-
 sub stow_all {
     my( $self, $objs ) = @_;
     for my $objd ( @$objs ) {
@@ -565,6 +563,10 @@ Yote::ObjProvider::init( datastore => 'Yote::SQLiteIO', db => 'yote_db', uname =
 
 =over 4
 
+=item client
+
+Return the mongo client object
+
 =item commit_transaction( )
 
 =item database( )
@@ -581,6 +583,10 @@ Makes sure that the datastore has the correct table structure set up and in plac
 
 Returns a hash representation of a yote object, hash ref or array ref by id. The values of the object are in an internal storage format and used by Yote::ObjProvider to build the object.
 
+=item first_id( id )
+
+Returns the id of the first object in the system, the YoteRoot.
+
 =item get_id( obj )
 
 Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
@@ -592,6 +598,8 @@ Returns true if the object specified by the id can trace a path back to the root
 =item max_id( ) 
 
 Returns the max ID in the yote system. Used for testing.
+
+=item new 
 
 =item paginate_xpath( path, start, length )
 
@@ -605,15 +613,27 @@ This method returns a paginated portion of a list that is attached to the xpath 
 
 Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
 
+=item paths_to_root( object )
+
+Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+
 =item recycle_object( obj_id )
 
 Sets the available for recycle mark on the object entry in the database by object id and removes its data.
+
+=item recycle_objects( start_id, end_id )
+
+Recycles all objects in the range given if they cannot trace back a path to root.
 
 =item start_transaction( )
 
 =item stow( id, class, data )
 
 Stores the object of class class encoded in the internal data format into the data store.
+
+=item stow_all( )
+
+Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
 
 =item xpath( path )
 

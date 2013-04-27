@@ -1,8 +1,10 @@
 var menu_list = [ [ 'About',      'index.html' ],
 		  [ 'Quickstart', 'quickstart.html' ],
 		  [ 'Install',    'install.html' ],
-		  [ 'Docs',       'docs.html' ],
-		  [ 'Samples',    'samples.html' ]
+		  [ 'Client',       'client_docs.html' ],
+		  [ 'Server',       'server_docs.html' ],
+		  [ 'Samples',    'samples.html' ],
+		  [ 'Wishlist',   'Todo.html' ]
 		];
 
 function make_menus( attach_point ) {

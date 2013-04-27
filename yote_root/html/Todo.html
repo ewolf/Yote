@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Yote</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+    <script>
+    $().ready(function(){
+
+	make_menus( '#top_nav' );
+
+	$.yote.init();
+	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+	var count = page_counter.increment( 'ToDo Page' );
+	$('#counter').empty().append( count );
+    });
+    </script>
+  </head>
+
+  <BODY>
+
+    <DIV class="header">
+	<img src="yotelogo.png">
+	<UL id="top_nav" class="nav"/>
+    </DIV>
+
+    <SECTION>
+           <DIV class="page-header">
+	<H1>ToDo List</H1>
+      </DIV>
+      <p>
+	The following is a wish list of things to do including bug fixes and new features
+      </p>
+      <ul>
+	<li>Automatically create the root user login account and have its password be a configuration option.</li>
+	<li>Daemonize the yote_server script. The initial attempts failed due to threading issues, but it can be done.</li>
+	<li>Create an account management</li>
+	<li>Create an object browsing page</li>
+	<li>Create an object browsing shell</li>
+      </ul>
+    </SECTION>
+    
+    <footer>
+      This page has been viewed <span id="counter"></span> times.
+    </footer>
+    <script src="/js/local.js"></script>
+  </body>
+</html>
+	

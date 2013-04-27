@@ -48,6 +48,10 @@ The Yote::Account object is a container intended to store any data that is relev
 
 This is called with a file uploaded POST where the file input name is 'avatar_file'.
 
+=item sync_all
+
+This method is actually a no-op, but has the effect of syncing the state of client and server.
+
 =back
 
 =head1 AUTHOR

@@ -55,3 +55,38 @@ sub hello_hash {
 sub hello_nothing {}
 
 1;
+
+__END__
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item hello
+
+=item hash
+
+=item list
+
+=item hello_scalar
+
+=item hello_array
+
+=item hello_hash
+
+=item hello_nothing
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

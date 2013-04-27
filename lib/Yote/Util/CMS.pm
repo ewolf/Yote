@@ -47,10 +47,10 @@ sub content {
 	return $content if $e_idx == -1; #unclosed <<, so just return out
 	my $path = substr( $content, 2 + $start_idx, $e_idx - ( 2 + $start_idx ) );
 	my $val = $working_node->get__root()->content( {
-	    path => $path,
-	    lang => $data->{lang},
+	    path   => $path,
+	    lang   => $data->{lang},
 	    starts => $data->{starts},
-	    ends => $data->{ends},
+	    ends   => $data->{ends},
 	    region => $data->{region},
 						      }, $acct, $env, $seen );
 	$content = substr( $content, 0, $start_idx ) . $val  . substr( $content, $e_idx + 2 );
@@ -265,6 +265,36 @@ Yote::Util::CMS - a simple CMS
 
 This is a simple CMS with regionalization and scheduling.
 
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item attach_content()
+
+=item content()
+
+=item fetch_content_node()
+
+=item fetch_specific_content_node()
+
+Returns the content
+
+
+=back
+
 =head2 TODO
 
 Use the regional or language settings passed through in the environment.
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

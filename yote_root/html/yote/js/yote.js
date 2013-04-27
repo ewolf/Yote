@@ -80,7 +80,18 @@ if (!Array.prototype.map) {
     };      
 } //map definition
 
+
+/*
+  Upon script load, find the port that the script came from, if any.
+ */
+var scripts = document.getElementsByTagName('script');
+var index = scripts.length - 1;
+var myScriptUrl = scripts[index].src;
+var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+)))\// );
+var yote_scr_url = ma[ 1 ];
+
 $.yote = {
+    url:yote_scr_url,
     guest_token:0,
     token:0,
     port:null,
@@ -88,8 +99,7 @@ $.yote = {
     objs:{},
     debug:true,
 
-    init:function(use_port) {
-	$.yote.port = use_port || location.port;
+    init:function() {
         var t = $.cookie('yoken');
 	$.yote.token = t || 0;
 
@@ -104,6 +114,7 @@ $.yote = {
 
 	$.yote.guest_token = root.guest_token();
 
+	return ret;
     }, //init
 
     create_login:function( handle, password, email, passhandler, failhandler ) {
@@ -211,7 +222,7 @@ $.yote = {
 	if( ! app_id ) app_id = 0;
 	if( ! obj_id ) obj_id = 0;
 
-        var url = '/_/' + app_id + '/' + obj_id + '/' + cmd;
+        var url = $.yote.url + '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
 	var uploads = root._functions_in( data );
 

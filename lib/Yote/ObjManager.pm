@@ -95,4 +95,48 @@ Yote::AccessControl
 
 =head1 DESCRIPTION
 
-This pays attention to which objects have been given to which users or guests. 
+This module is the gatekeeper that decides which objects may returned to clients from
+their calls by paying attention to what the server explicitly pushed out to the client.
+
+The ObjManager class is not publically visible to the client.
+
+=head2 PUBLIC API METHODS
+
+=over 4
+
+=item allows_access( $object_id, $app_object, $login_object, $guest_token )
+
+This returns true for the following cases : The login object has the root bit set, 
+the login was passed the object id in question, the app is an AppRoot, or the user is 
+not logged in but has a guest token that may have been given access to that object_id.
+
+=item clear_login( $login, $guest_token )
+
+This method removes all information the ObjManager has about the passed in login ( if any ) and guest token.
+
+=item fetch_dirty( $login, $guest_token )
+
+Returns a list of object ids that need to be refreshed for the client of the login or guest token
+
+=item mark_dirty( $obj_id )
+
+Notes the object is dirty and checks to see if the object is registered with any logins or guest tokens so it can inform them.
+
+=item register_object( $obj_id, $recipient_id )
+
+Registers the object id with the passed in login id or guest token.
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

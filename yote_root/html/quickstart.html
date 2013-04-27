@@ -64,7 +64,7 @@
 	    // ******************* HELLO WORLD *****************
 	    {
 		title   : 'Hello World',
-		summary : 'Connect client to server',
+		summary : 'Connect client to server and show how methods on the server are automatically on the client.',
 		client  : '\
 $.yote.init();\n\
 \n\
@@ -89,7 +89,7 @@ sub hello {\n\
 	    // ******************* HELLO OUTPUTS *****************
 	    {
 		title             : 'Server Outputs',
-		summary           : 'Show four of the five output types that the server can emit to the client.',
+		summary           : 'Show how data from the server gets to the client.',
 		client            : '\
 $.yote.init();\n\
 var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
@@ -138,13 +138,13 @@ sub hello_nothing {}\n\
 1;',
 		discussion        : 'This kata shows how scalar, array and hash outputs are passed from the client to the server. It\'s very important to note that arrays and hashes returned are not javascript arrays and hashes, but are array and has like objects.',
 		server_discussion : 'The server can pass back undef, scalars, arrays, hashes and yote objects.  Yote objects are not seen here. They will be covered in a later lesson',
-		client_discussion : 'It\'s very important to note that hashes and arrays are returned to the client as javascript objects that are not hash nor array. The array has a length() <strong>method</strong> rather than a length <i>property</i>. Items are extracted from these javascript objects using <strong>get( index or key )</strong>.'
+		client_discussion : 'It\'s very important to note that hashes and arrays are returned to the client as javascript objects. The array analog has a length() <strong>method</strong> that <i>must</i> be used rather than a length <i>property</i>. Items are extracted from these javascript objects using <code>get( index or key )</code>.'
 	    },
 
 	    // ******************* HELLO INPUTS *****************
 	    {
 		title   : 'Server Inputs',
-		summary : 'Discover three out of four of the input types the client can pass to the server',
+		summary : 'Show how data from the client gets to the server',
 		client  : '\
 $.yote.init();\n\
 \n\
@@ -258,7 +258,17 @@ sub call_set {\n\
 	    {
 		title             : 'Objects',
 		summary           : 'Show how yote objects are created on the server side.',
-		client            : '',
+		client            : '\n\
+$.yote.init();\n\
+\n\
+var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+\n\
+hello_app.store_object("fred");\n\
+hello_app.store_object("barney");\n\
+\n\
+alert( hello_app.get_objects().get( 1 ) );\n\
+  // outputs "barney"\n\
+',
 		server            : 'package Hello;\n\
 use base \'Yote::AppRoot\';\n\
 \n\
@@ -280,7 +290,7 @@ sub store_object {\n\
 	    // ******************* HELLO INIT *****************
 	    {
 		title             : 'Init',
-		summary           : 'Shows how data can be initialized for an app or other Yote object.',
+		summary           : 'Show how objects can be automatically intiated on the server side.',
 		client            : '\
 $.yote.init();\n\
 \n\
@@ -329,7 +339,7 @@ sub _init {\n\
 	    // ******************* HELLO ACCOUNT *****************
 	    {
 		title             : 'Hello Account',
-		summary           : 'Create and use an account',
+		summary           : 'Show how an account is created and sent to to the server as the third argument in a call.',
 		client            : '\
 $.yote.init();\n\
 \n\
@@ -345,7 +355,7 @@ $.yote.login(\n\
 var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 alert( hello_app.hello(&quot;Hi there&quot;) );\n\
- // outputs "Hi there programmer"',
+ // outputs "Hi there Programmer"',
 		server            : '\
 package Hello;\n\
 use base \'Yote::AppRoot\';\n\
@@ -364,7 +374,7 @@ sub hello {\n\
 	    // ******************* HELLO ENVIRONMENT *****************
 	    {
 		title             : 'Environment Variables',
-		summary           : 'Show how environment variables are passed into Yote',
+		summary           : 'Show that environment variables are passed as the third argument to any yote call.',
 		client            : '\
 $.yote.init();\n\
 \n\
@@ -487,7 +497,6 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
     <SECTION>
       <h1>Quickstart</h1>
       <p>These excersizes are designed to show one concept at a time in order to learn the ins and outs of programming Yote. For the server side examples, the package is expected to be in the classpath used by Yote. For the client side examples, the appropriate javascript files are expected to be included. <BR>
-	For these cases, <code>&lt;script src="/yote/js/yote.js"&gt;&lt;/script&gt;</code> must be included.</p>
     </SECTION>
 
     <DIV class="overlesson">

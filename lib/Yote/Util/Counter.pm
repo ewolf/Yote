@@ -34,3 +34,34 @@ sub count {
 1;
 
 __END__
+
+=head1 PUBLIC METHODS
+
+=over 4
+
+=item count( page )
+
+Returns the count that ws set for the page.
+
+=item increment( page )
+
+Increments the value associated with the count and returns the incremented value.
+
+=item pages()
+
+Returns a list of pages that the Counter has been given.
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
