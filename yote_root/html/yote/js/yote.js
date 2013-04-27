@@ -87,8 +87,8 @@ if (!Array.prototype.map) {
 var scripts = document.getElementsByTagName('script');
 var index = scripts.length - 1;
 var myScriptUrl = scripts[index].src;
-var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+)))\// );
-var yote_scr_url = ma[ 1 ];
+var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
+var yote_scr_url = ma && ma.length > 1 ? ma[ 1 ] : '';
 
 $.yote = {
     url:yote_scr_url,
