@@ -68,7 +68,7 @@
 		client  : '\
 $.yote.init();\n\
 \n\
-var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 alert( hello_app.hello() );\n\
  // outputs "Hello World"',
@@ -92,7 +92,7 @@ sub hello {\n\
 		summary           : 'Show how data from the server gets to the client.',
 		client            : '\
 $.yote.init();\n\
-var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 alert( hello_app.hello_scalar() );\n\
  // outputs "Hello"\n\
@@ -148,7 +148,7 @@ sub hello_nothing {}\n\
 		client  : '\
 $.yote.init();\n\
 \n\
-var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 alert( hello_app.hello(\'Bob\') );\n\
  // outputs "Hello \'Bob\'"\n\
@@ -192,7 +192,7 @@ sub hash_keycount {\n\
 		client            : '\
 $.yote.init();\n\
 \n\
-var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 hello_app.push( "a" );\n\
 \n\
@@ -261,7 +261,7 @@ sub call_set {\n\
 		client            : '\n\
 $.yote.init();\n\
 \n\
-var hello_app = $.yote.fetch_app(\'Yote::Hello\');\n\
+var hello_app = $.yote.fetch_app(\'Hello\');\n\
 \n\
 hello_app.store_object("fred");\n\
 hello_app.store_object("barney");\n\
