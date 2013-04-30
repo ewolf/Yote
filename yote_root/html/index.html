@@ -25,8 +25,13 @@
 	$( '#news' ).empty().append( cms.content( { path : 'news' } ) );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	var count = page_counter.increment( 'Main Page' );
-	$('#counter').empty().append( count );
+	page_counter.increment( 'Main Page',
+				function( count ) { 
+				    $('#counter').empty().append( count );
+				},
+				function( err ) {},
+				1
+			      );
     });
     </script>
   </head>
