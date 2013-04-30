@@ -17,12 +17,13 @@ sub _init {
     $self->get_list( [ 1, "Bagel" ] );
     $self->get_hash( { one=>1, food => "Bagel" } );
     $self->get_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
+    $self->set_foo_array( [ "A".."Z" ] );
 }
 
 sub _load {
     my $self = shift;
     $self->set_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
-    Yote::ObjProvider::stow_all();
+    $self->set_foo_array( [ "A".."Z" ] );
 }
 
 sub hello {

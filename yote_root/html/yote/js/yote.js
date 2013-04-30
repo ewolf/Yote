@@ -10,74 +10,74 @@
 // Reference: http://es5.github.com/#x15.4.4.19
 if (!Array.prototype.map) {
     Array.prototype.map = function(callback, thisArg) {
-	
+
 	var T, A, k;
-	
+
 	if (this == null) {
 	    throw new TypeError(" this is null or not defined");
 	}
-	
+
 	// 1. Let O be the result of calling ToObject passing the |this| value as the argument.
 	var O = Object(this);
-	
+
 	// 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
 	// 3. Let len be ToUint32(lenValue).
 	var len = O.length >>> 0;
-	
+
 	// 4. If IsCallable(callback) is false, throw a TypeError exception.
 	// See: http://es5.github.com/#x9.11
 	if ({}.toString.call(callback) != "[object Function]") {
 	    throw new TypeError(callback + " is not a function");
 	}
-	
+
 	// 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
 	if (thisArg) {
 	    T = thisArg;
 	}
-	
+
 	// 6. Let A be a new array created as if by the expression new Array(len) where Array is
 	// the standard built-in constructor with that name and len is the value of len.
 	A = new Array(len);
-	
+
 	// 7. Let k be 0
 	k = 0;
-	
+
 	// 8. Repeat, while k < len
 	while(k < len) {
-	    
+
 	    var kValue, mappedValue;
-	    
+
 	    // a. Let Pk be ToString(k).
 	    //   This is implicit for LHS operands of the in operator
 	    // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
 	    //   This step can be combined with c
 	    // c. If kPresent is true, then
 	    if (k in O) {
-		
+
 		// i. Let kValue be the result of calling the Get internal method of O with argument Pk.
 		kValue = O[ k ];
-		
+
 		// ii. Let mappedValue be the result of calling the Call internal method of callback
 		// with T as the this value and argument list containing kValue, k, and O.
 		mappedValue = callback.call(T, kValue, k, O);
-		
+
 		// iii. Call the DefineOwnProperty internal method of A with arguments
 		// Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
 		// and false.
-		
+
 		// In browsers that support Object.defineProperty, use the following:
 		// Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
-		
+
 		// For best browser support, use the following:
 		A[ k ] = mappedValue;
 	    }
 	    // d. Increase k by 1.
 	    k++;
 	}
-	
+
 	// 9. return A
 	return A;
-    };      
+    };
 } //map definition
 
 
@@ -119,7 +119,7 @@ $.yote = {
     create_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
-	    root.create_login( { h:handle, p:password, e:email }, 
+	    root.create_login( { h:handle, p:password, e:email },
 			       function(res) {
 				   $.yote.token = res.get( 't' ) || 0;
 				   $.yote.login_obj = res.get( 'l' );
@@ -180,7 +180,7 @@ $.yote = {
     login:function( handle, password, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
-	    root.login( { h:handle, p:password }, 
+	    root.login( { h:handle, p:password },
 			function(res) {
 			    $.yote.token = res.get( 't' ) || 0;
 			    $.yote.login_obj = res.get( 'l' );
@@ -197,9 +197,9 @@ $.yote = {
 	    _error('lost connection to yote server');
 	}
     }, //login
-    
+
     logout:function() {
-	$.yote.fetch_root().logout();	
+	$.yote.fetch_root().logout();
 	$.yote.login_obj = undefined;
 	$.yote.token = 0;
 	$.cookie( 'yoken', '' );
@@ -234,7 +234,7 @@ $.yote = {
 	var resp;
 
         if( $.yote.debug == true ) {
-	    console.log("\noutgoing " + url + '-------------------------' );  
+	    console.log("\noutgoing " + url + '-------------------------' );
 	    console.log( data );
 //	    console.log( JSON.stringify( {d:data} ) );
 	}
@@ -246,7 +246,7 @@ $.yote = {
 		if( $.yote.debug == true ) {
 		    console.log('incoming '); console.log( a );
 		}
-		return a; 
+		return a;
 	    },
 	    error:function(a,b,c) { root._error(a); },
 	    success:function( data ) {
@@ -263,7 +263,7 @@ $.yote = {
 				    delete cached['get_'+fld];
 				}
 				cached._d = data.d[ oid ];
-				
+
 				for( fld in cached._d ) {
 				    //add new getters/setters
 				    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
@@ -290,7 +290,7 @@ $.yote = {
 		        }
 		    } else if( typeof params.failhandler === 'function' ) {
 		        params.failhandler(data.err);
-                    } //error case. no handler defined 
+                    } //error case. no handler defined
                 } else {
                     console.log( "Success reported but no response data received" );
                 }
@@ -303,11 +303,11 @@ $.yote = {
             return resp;
         }
     }, //message
-    
+
     remove_login:function( handle, password, email, passhandler, failhandler ) {
 	var root = this.fetch_root();
 	if( typeof root === 'object' ) {
-	    root.remove_login( { h:handle, p:password, e:email }, 
+	    root.remove_login( { h:handle, p:password, e:email },
 			       function(res) {
 				   $.yote.token = 0;
 				   $.yote.login_obj = undefined;
@@ -328,14 +328,14 @@ $.yote = {
     upload:function( selector_id ) {
 	var uctxt = 'u' + this.upload_count++;
 	$( selector_id ).attr( 'name', uctxt );
-	return (function(uct, sel_id) { 
+	return (function(uct, sel_id) {
 	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input contro
 		if( return_selector_id ) return sel_id;
 		return uctxt;
 	    };
 	} )( uctxt, selector_id );
     }, //upload
-    
+
     /*
       This is called automatically by message if there is an upload involved. It is not meant to be invoked directly.
      */
@@ -368,7 +368,7 @@ $.yote = {
 	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
-    
+
 	for( var i=0; i<cb_list.length; i++ ) {
 	    cb_list[ i ].removeAttr('checked');
 	    cb_list[ i ].attr('checked', true);
@@ -376,9 +376,9 @@ $.yote = {
 	var resp;
 
 	var xx = form_sel.submit(function() {
-	    iframe.load(function() {		
+	    iframe.load(function() {
 		var contents = $(this).contents().get(0).body.innerHTML;
-		while( contents.match( /^\s*</ ) ) { 
+		while( contents.match( /^\s*</ ) ) {
 		    contents = contents.replace( /^\s*<\/?[^\>]*>/, '' );
 		    contents = contents.replace( /<\/?[^\>]*>\s*$/, '' );
 		}
@@ -403,7 +403,7 @@ $.yote = {
 					}
 				    }
 				}
-			    }			    
+			    }
 		            if( typeof params.passhandler === 'function' ) {
 				if( typeof resp.r === 'object' ) {
 				    params.passhandler( root._create_obj( ret.r, this._app_id ) );
@@ -415,12 +415,12 @@ $.yote = {
 		            }
 			} else if( typeof params.failhandler === 'function' ) {
 		            params.failhandler(resp.err);
-			} //error case. no handler defined 
+			} //error case. no handler defined
                     } else {
 			console.log( "Success reported but no response data received" );
                     }
 		} catch(err) {
-		    root._error(err); 
+		    root._error(err);
 		}
 	    } )
 	} ).submit();
@@ -468,7 +468,55 @@ $.yote = {
 		sort:function(sortfun) {
 		    var res = this.values().sort( sortfun );
 		    return res;
-		}		
+		},
+		paginator:function( listorhash, size, start ) {
+		    var obj = this;
+		    var st = start || 0;
+		    var pag = {
+			field      : listorhash,
+			full_size  : 1 * obj.count( listorhash ),
+			page_size  : size,
+			start      : st,
+			contents   : [],
+			get : function( idx ) {
+			    return this.contents[ idx ];
+			},
+			page_count : function() {
+			    return this.contents.length;
+			},
+			seek : function( idx ) {
+			    var res = obj.paginate( [ this.field, this.page_size, idx ] );
+			    console.log( res );
+			    this.contents = [];
+			    for( var i=0; i < res.length(); i++ ) {
+				this.contents.push( res.get( i ) );
+			    }
+			    this.start = idx;
+			},
+			rewind : function() {
+			    if( this.start > 0 ) {
+				var to = this.start - this.page_size;
+				if( to < 0 ) { to = 0 };
+				this.seek( to );
+			    }
+			},
+			fast_forward : function() {
+			    var to = this.start + this.page_size;
+			    if( to > this.full_size - this.page_size) {
+				to = this.full_size - this.page_size;
+			    }
+			    this.seek( to );
+			},
+			to_end: function() {
+			    this.seek( this.full_size - this.page_size );
+			},
+			to_beginning : function() { 
+			    this.seek( 0 );
+			}
+		    };
+		    pag.seek( st );
+		    return pag;
+		}
 	    };
 	    if( o.class == 'HASH' ) {
 		o.to_hash = function() {
@@ -531,7 +579,7 @@ $.yote = {
 		    var val = x.d[fld];
 		    if( typeof val === 'object' && val != null ) {
 			o._d[fld] = (function(xx) { return root._create_obj( xx, app_id ); })(val);
-		    } 
+		    }
 		    else {
 			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
@@ -564,7 +612,7 @@ $.yote = {
             // sends data structure as an update, or uses staged values if no data
             o._send_update = function(data,failhandler,passhandler) {
                 var to_send = {};
-                if( this.c === 'Array' ) {                        
+                if( this.c === 'Array' ) {
                     to_send = Array();
                 }
                 if( typeof data === 'undefined' ) {
@@ -589,11 +637,11 @@ $.yote = {
                     }
                 }
                 var needs = 0;
-                for( var key in to_send ) { 
+                for( var key in to_send ) {
                     needs = 1;
                 }
                 if( needs == 0 ) { return; }
-                
+
                 root.message( { //for send update
                     app_id:this._app_id,
                     async:false,
@@ -603,7 +651,7 @@ $.yote = {
                         if( typeof failhandler === 'function' ) {
                             failhandler();
                         }
-                    },        
+                    },
                     obj_id:this.id,
                     passhandler:(function(td) {
                         return function() {
@@ -616,10 +664,10 @@ $.yote = {
                             }
                         }
                     } )(to_send),
-                    wait:true 
+                    wait:true
                 } );
             };
-	    
+
 	    if( o.id && o.id.substring(0,1) != 'v' ) {
 		root.objs[o.id] = o;
 	    }
@@ -633,7 +681,7 @@ $.yote = {
 	$.each( this.enabled, function(idx,val) { val.disabled = true; } );
         $("body").css("cursor", "wait");
     }, //_disable
-    
+
     _dump_cache:function() {
         this.objs = {};
     },
@@ -659,7 +707,7 @@ $.yote = {
 	}
 	return [];
     }, //_functions_in
-        
+
     _is_in_cache:function(id) {
         return typeof this.objs[id] === 'object' && this.objs[id] != null;
     },
@@ -710,6 +758,5 @@ $.yote = {
 
     upload_count: 0,
     iframe_count: 0
-    
-}; //$.yote
 
+}; //$.yote
