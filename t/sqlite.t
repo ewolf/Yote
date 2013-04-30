@@ -326,9 +326,13 @@ sub test_suite {
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
+    is( $root_3->count( 'array' ), 6, 'Array has 6 with count' );
     is_deeply( $root_3->paginate( [ 'array', 3 ] ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate_rev( [ 'array', 3 ] ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse with one argument' );
     is_deeply( $root_3->paginate( [ 'array', 1, 2 ] ), [ 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate_rev( [ 'array', 1, 4 ] ), [ 'With more than one thing' ], 'paginate with one argument' );
     is_deeply( $root_3->paginate( [ 'array', 3, 4 ] ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->paginate_rev( [ 'array', 3, 4 ] ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate with one argument' );
 
     is( scalar(@$simple_array), 6, "add_to test array count" );
 

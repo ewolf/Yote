@@ -241,6 +241,12 @@ sub __transform_data_no_id {
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
 
+sub count {
+    my( $self, $data ) = @_;
+
+    return Yote::ObjProvider::xpath_count( $self->_path_to_root() . "/$data" );
+} #count
+
 sub paginate {
     my( $self, $data, $account ) = @_;
     

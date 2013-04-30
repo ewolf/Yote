@@ -443,7 +443,7 @@ sub paginate_xpath {
 #   rather than [ undef, undef, undef, 'val1', 'val2' ]
 #
 sub paginate_xpath_list {
-    my( $self, $path, $paginate_length, $paginate_start ) = @_;
+    my( $self, $path, $paginate_length, $paginate_start, $reverse ) = @_;
 
     my( @list ) = _xpath_to_list( $path );
     my $next_ref = 1;
@@ -470,8 +470,7 @@ sub paginate_xpath_list {
 	    $PAG = "LIMIT $paginate_length";
 	}
     }    
-
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field " . ( $reverse ? 'DESC ' : '' ) . " $PAG", $next_ref );
     my @ret;
     for my $row (@$res) {
 	push @ret, $row->[1] || "v$row->[2]";
