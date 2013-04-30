@@ -21,6 +21,9 @@ body { min-width:600px; margin-top:70px }
 a:link.active,a:visited.active     { color:#FFFFFF; font-size:large; }
 .header img { float: left; }
 
+.nav {
+    margin:auto;
+}
 
 .sidenav ul, .navlink li {
     list-style-type: none;
@@ -46,7 +49,7 @@ div.hover {
 div.hover_hide {
     display: none
 }
-.login  { float:right; margin-right:15px; padding-right:15px; display:inline-block; vertical-align:middle; height:100%; }
+.login  { float:right; margin-right:15px; padding-right:15px; display:inline-block; vertical-align:middle; }
 .logged_in {
     float:right;
     color:blue;
