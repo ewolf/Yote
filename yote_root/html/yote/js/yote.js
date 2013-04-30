@@ -80,6 +80,14 @@ if (!Array.prototype.map) {
     };
 } //map definition
 
+Object.size = function(obj) {
+    var size = 0, key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) size++;
+    }
+    return size;
+};
+
 
 /*
   Upon script load, find the port that the script came from, if any.
@@ -469,29 +477,40 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
-		paginator:function( listorhash, size, start ) {
+		paginator:function( fieldname, is_hash, size, start ) {
 		    var obj = this;
 		    var st = start || 0;
 		    var pag = {
-			field      : listorhash,
-			full_size  : 1 * obj.count( listorhash ),
+			field      : fieldname,
+			full_size  : 1 * obj.count( fieldname ),
 			page_size  : size,
 			start      : st,
 			contents   : [],
+			is_hash    : is_hash,
 			get : function( idx ) {
 			    return this.contents[ idx ];
 			},
 			page_count : function() {
-			    return this.contents.length;
+			    if( this.is_hash ) {
+				return Object.size( this.contents );
+			    } else {
+				return this.contents.length;
+			    }
 			},
-			seek : function( idx ) {
-			    var res = obj.paginate( [ this.field, this.page_size, idx ] );
-			    console.log( res );
-			    this.contents = [];
-			    for( var i=0; i < res.length(); i++ ) {
-				this.contents.push( res.get( i ) );
+			seek : function( idx ) {			    
+			    if( this.is_hash ) { 
+				this.contents = obj.paginate_hash( [ this.field, this.page_size, idx ] ).to_hash();
+			    } else {
+				var res = obj.paginate( [ this.field, this.page_size, idx ] );
+				this.contents = [];
+				for( var i=0; i < res.length(); i++ ) {
+				    this.contents.push( res.get( i ) );
+				}			
 			    }
 			    this.start = idx;
+			},
+			can_rewind : function() {
+			    return this.start > 0;
 			},
 			rewind : function() {
 			    if( this.start > 0 ) {
@@ -500,12 +519,14 @@ $.yote = {
 				this.seek( to );
 			    }
 			},
+			can_fast_forward : function() {
+			    return this.start + this.page_size < this.full_size;
+			},
 			fast_forward : function() {
 			    var to = this.start + this.page_size;
-			    if( to > this.full_size - this.page_size) {
-				to = this.full_size - this.page_size;
+			    if( to < this.full_size ) {
+				this.seek( to );
 			    }
-			    this.seek( to );
 			},
 			to_end: function() {
 			    this.seek( this.full_size - this.page_size );
@@ -516,7 +537,14 @@ $.yote = {
 		    };
 		    pag.seek( st );
 		    return pag;
+		},
+		list_paginator:function( listname, size, start ) {
+		    return this.paginator( listname, false, size, start );
+		},
+		hash_paginator:function( hashname, size, start ) {
+		    return this.paginator( hashname, true, size, start );
 		}
+
 	    };
 	    if( o.class == 'HASH' ) {
 		o.to_hash = function() {

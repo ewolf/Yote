@@ -209,7 +209,7 @@ $().ready(function(){
 	is( sortedarry.length, 6, 'sorted array length' );
 	is( sortedarry[0], 'a', 'first el sorted array' );
 	is( sortedarry[5], 'f', 'last el sorted array' );
-	sortedarry = tosortarry.sort(function( a,b ) { console.log( [ "COMPARE",a,b,a<b,b<a]);if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
+	sortedarry = tosortarry.sort(function( a,b ) { if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
 	is( sortedarry[5], 'a', 'last el rev sorted array' );
 	is( sortedarry[0], 'f', 'first el rev sorted array' );
 	
@@ -246,7 +246,6 @@ $().ready(function(){
         $.yote._dump_cache();
         is( $.yote._cache_size(), 0, "cache now empty" );
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
-	console.log( [ 'YOTE CACHE', $.yote.objs ] );
         is( $.yote._cache_size(), 3, "cache with loginapp and root and obj in loginapp" );
 
 	var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
@@ -254,7 +253,7 @@ $().ready(function(){
 	is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
 	// testing pagination
-	var pag = hello_app.paginator( 'foo_array', 5 );
+	var pag = hello_app.list_paginator( 'foo_array', 5 );
 	is( pag.full_size, 26, "26 letters of the alphabet" );
 	is( pag.get( 0 ), "A", "first letter" );
 	is( pag.page_size, 5, "Size of 5" );
@@ -279,11 +278,33 @@ $().ready(function(){
 	pag.to_beginning();
 	is( pag.page_count(), 5, "Page count after to beginning" );
 	is( pag.get( 0 ), "A", "Back to A" );
-	is( pag.get( 4 ), "E", "Back to A" );
-	
+	is( pag.get( 4 ), "E", "Back to E" );
+
+	var bar_hash = hello_app.get_bar_hash().to_hash();
+	var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
+	is( hpag.full_size, 26, "26 letters of the alphabet" );
+	is( hpag.page_size, 10, "Page Size of 10" );
+	is( hpag.page_count(), 10, "10 in buffer" );
+
+	//go through them all and see if there is a-z but no more than that.
+	var pag_ok = true;
+	var rounds = 0;
+	while( pag_ok && hpag.can_fast_forward() ) {
+	    if( rounds > 0 ) {hpag.fast_forward(); }
+	    for( var k in hpag.contents ) {
+		bar_hash[ k ]++;
+		pag_ok = pag_ok && bar_hash[ k ] == 2;
+	    }
+	    ++rounds;
+	}
+	for( var k in bar_hash ) {
+	    pag_ok = pag_ok && bar_hash[ k ] == 2;
+	}
+	is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
+	ok( pag_ok, "all letters are present and there are no extra ones" );
 
 	//timing tests
-
+	
 	var needs = 4;
 
 	function meets() {
