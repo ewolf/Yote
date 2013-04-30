@@ -18,8 +18,12 @@
 
 	$.yote.init();
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	var count = page_counter.increment( 'Install Page' );
-	$('#counter').empty().append( count );
+	page_counter.increment( 'Install Page',
+				function( count ) {
+				    $('#counter').empty().append( count );
+				},
+				function( err ) { },
+				1 );
     });
     </script>
   </head>
