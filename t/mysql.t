@@ -470,7 +470,7 @@ sub test_suite {
     is( $root_acct->get_handle(), 'root', 'handle set' );
     is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
     isnt( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
-    ok( $root_acct->get__is_root(), 'first account is root' );
+    ok( ! $root_acct->get__is_root(), 'first account is not root anyore' );
 
     eval {
         $root->create_login( { h => 'root', p => 'toor', e => 'baz@bar.com' } );
@@ -488,6 +488,16 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
     my $acct = Yote::ObjProvider::xpath("/_handles/toot");
     ok( ! $acct->get__is_root(), 'second account not root' );
+
+    my $rpass = Yote::ObjProvider::encrypt_pass( "realpass", 'realroot' );
+    isnt( $rpass, "realpass", "password was encrypted" );
+    $res = $root->_check_root( 'realroot', $rpass );
+    eval {
+	my $rrl = $root->login( { h => 'realroot', p => 'wrongpass' } );
+    };
+    like( $@, qr/incorrect login/i, "Wrong log in" );
+    my $rrl = $root->login( { h => 'realroot', p => 'realpass' } );
+    ok( $rrl->{t}, "Logged in got token" );
 
 # ------ hello app test -----
     my $t = $root->login( { h => 'toot', p => 'toor' } );

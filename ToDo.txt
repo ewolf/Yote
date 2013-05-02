@@ -1,3 +1,21 @@
+
+
+FOR Stable Alpha
+
+  * Enable Cron
+  * Create admin pages
+  * Unify unit tests for different stores
+  * Create program to reset root password
+  * Create program to reset whole config
+  * More yote tools
+  * Better way to set variables from the client rather than relying on uppercase
+
+
+#----------- Pre Aril 2013 ----
+# 
+# the following list may contain items done
+#
+
 FOR ALPHA
 
   * Enable caching that pays attention to who has what.

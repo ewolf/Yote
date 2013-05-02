@@ -1,3 +1,14 @@
+2013-05-01  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0981
+	* first account created by user is no longer automatically root
+	* root account is part of the configuration, which saves a hashed password
+	* root account is created automatically and its password aligned with what is in the configuration file.
+	* sync_all is now attached to the Yote::Obj base class and is thus available to all
+	* encrypt_pass second argument is now a handle strong, not a Yote::Login object
+	* Server return header set to 'Yote'
+	* Serves rather than referrs index.html pages.
+
 2013-04-27  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0980

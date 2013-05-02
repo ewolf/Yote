@@ -50,7 +50,18 @@ div.hover_hide {
     display: none
 }
 .login  { float:right; margin-right:15px; padding-right:15px; display:inline-block; vertical-align:middle; }
+
 .logged_in {
     float:right;
-    color:blue;
+    color:rgb(198, 194, 236);
+}
+a.hotlink:visited, a.hotlink:hover, a.hotlink, .hotlink {
+    color:rgb(198, 194, 236);
+}
+.error {
+    color: orange;
+}
+.info {
+    color: purple;
+
 }

@@ -4,11 +4,12 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0980';
+$VERSION = '0.0981';
 
 use Carp;
 
 use Yote::ConfigData;
+use Yote::ObjProvider;
 use Yote::SQLiteIO;
 use Yote::WebAppServer;
 
@@ -110,6 +111,11 @@ mongo db is the fastest, but sqlite will always work.',
 	    $newconfig{ password } = _ask( "MysqlDB user acccount name" );
 	}
     }
+
+    # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
+    $newconfig{ root_account  } = _ask( "Root Account name", undef, 'root' );
+    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password" ), $newconfig{ root_account } );
+
     return \%newconfig;
 } #_get_configuration
 
@@ -134,7 +140,7 @@ sub get_args {
 	r  => 'root',
 	);
     my %argnames = map { $_ => 1 } values %argmap;
-    my %required = map { $_ => 1 } qw/engine store yote_root/;
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password/;
 
     # ---------  run variables  -----------------
 

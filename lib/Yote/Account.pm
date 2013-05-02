@@ -4,19 +4,14 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use base 'Yote::Messenger';
-
-#
-# This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
-#
-sub sync_all {}
 
 sub upload_avatar {
     my( $self, $data, $acct ) = @_;
     my $login = $acct->get_login();
-    if( $login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login ) ) {
+    if( $login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle() ) ) {
 	$self->set_avatar( $data->{avatar_file} );
 	return "set avatar";
     }
@@ -47,10 +42,6 @@ The Yote::Account object is a container intended to store any data that is relev
 =item upload_avatar
 
 This is called with a file uploaded POST where the file input name is 'avatar_file'.
-
-=item sync_all
-
-This method is actually a no-op, but has the effect of syncing the state of client and server.
 
 =back
 

@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.082';
+$VERSION = '0.083';
 
 
 my( %prid2result, $singleton );
@@ -142,6 +142,7 @@ sub process_http_request {
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
 	push( @return_headers, "Content-Type: text/json");
+	push( @return_headers, "Server: Yote" );
 	if( $path_start eq '_' ) {
 	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
@@ -216,13 +217,13 @@ sub process_http_request {
 	my $dest = '/' . join('/',@path);
 
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    print $soc "HTTP/1.0 301 REDIRECT\015\012";
-	    if($dest &&  $dest ne '/' ) {
-		print $soc "Location: $dest/index.html\n\n";
+	    if( $dest eq '/' ) {
+		$dest = '/index.html';
 	    } else {
-		print $soc "Location: /index.html\n\n";
+		$dest = "$dest/index.html";
 	    }
-	} elsif( open( IN, "<$root/$dest" ) ) {
+	} 
+	if( open( IN, "<$root/$dest" ) ) {
 	    print $soc "HTTP/1.0 200 OK\015\012";
 	    if( $dest =~ /\.js$/i ) {
 		push( @return_headers, "Content-Type: text/javascript" );
@@ -236,7 +237,7 @@ sub process_http_request {
 	    else {
 		push( @return_headers, "Content-Type: text/html" );
 	    }
-
+	    push( @return_headers, "Server: Yote" );
 	    print $soc join( "\n", @return_headers )."\n\n";
 
 	    my $size = -s "<$root/$dest";
@@ -286,6 +287,9 @@ sub start_server {
     #   - and the parent thread an event loop.
 
     my $root = Yote::YoteRoot::fetch_root();
+
+    # check for default account and set its password from the config.
+    $root->_check_root( $args->{ root_account }, $args->{ root_password } );
 
     # @TODO - finish the cron and uncomment this
     # cron thread

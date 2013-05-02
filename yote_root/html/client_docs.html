@@ -9,6 +9,7 @@
 
     <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
     <script>
@@ -25,6 +26,10 @@
 				function( err ) {},
 				1
 			      );
+	attach_login( {
+	    attachpoint         : '#logged_in_status',
+	    message_attachpoint : '#msg_div' 
+	} );
     });
     </script>
   </head>
@@ -33,7 +38,9 @@
 
     <DIV class="header">
 	<img src="yotelogo.png">
-	<UL id="top_nav" class="nav"/>
+	<UL id="top_nav" class="nav"></UL>
+        <DIV class="login logged_in" id="logged_in_status"></DIV>
+        <DIV id="msg_div"></DIV>
     </DIV>
 
     <H1>Client Side Documentation</H1>

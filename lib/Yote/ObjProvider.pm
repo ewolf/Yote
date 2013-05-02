@@ -26,7 +26,7 @@ our $CACHE;
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 
 # ------------------------------------------------------------------------------------------
@@ -81,8 +81,8 @@ sub disconnect {
 # Encrypt the password so its not saved in plain text.
 #
 sub encrypt_pass {
-    my( $pw, $acct ) = @_;
-    return $acct ? Crypt::Passwd::XS::crypt( $pw, $acct->get_handle() ) : undef;
+    my( $pw, $handle ) = @_;
+    return $handle ? Crypt::Passwd::XS::crypt( $pw, $handle ) : undef;
 } #encrypt_pass
 
 

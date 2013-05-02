@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 no warnings 'uninitialized';
 
@@ -71,16 +71,7 @@ sub create_login {
 
         my $new_login = new Yote::Login();
 
-        #
-        # check to see how many logins there are. If there are none,
-        # give the first root access.
-        #
-        if( Yote::ObjProvider::xpath_count( "/_handles" ) == 0 ) {
-            $new_login->set__is_root( 1 );
-            $new_login->set__is_first_login( 1 );
-        } else {
-            $new_login->set__is_root( 0 );
-        }
+	$new_login->set__is_root( 0 );
         $new_login->set_handle( $handle );
         $new_login->set_email( $email );
 	my $ip = $env->{REMOTE_ADDR};
@@ -88,7 +79,7 @@ sub create_login {
 
         $new_login->set__time_created( time() );
 
-        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login) );
+        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
 
 	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login );
 	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $new_login );
@@ -166,7 +157,7 @@ sub login {
 	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = Yote::ObjProvider::xpath("/_handles/$lc_h");
-        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login) ) ) {
+        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
         }
@@ -266,7 +257,7 @@ sub recovery_reset_password {
         my $now = $login->get__last_recovery_time();
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
-            $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login ) );
+            $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
             return $login->get__recovery_from_url();
         }
     }
@@ -286,7 +277,7 @@ sub remove_login {
 
 
     if( $login && 
-        Yote::ObjProvider::encrypt_pass($args->{p}, $login) eq $login->get__password() &&
+        Yote::ObjProvider::encrypt_pass($args->{p}, $login->get_handle()) eq $login->get__password() &&
         $args->{h} eq $login->get_handle() &&
         $args->{e} eq $login->get_email() &&
         ! $login->get_is__first_login() ) 
@@ -305,6 +296,30 @@ sub remove_login {
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
+
+#
+# Makes sure there is a root account with the given credentials.
+#
+sub _check_root {
+    my( $self, $root_name, $encr_passwd ) = @_;
+    
+    my $lc_handle = lc( $root_name );
+
+    my $root_login = Yote::ObjProvider::xpath("/_handles/$lc_handle" );
+    
+    unless( $root_login ) {
+	$root_login = new Yote::Login();
+	$root_login->set_handle( $root_name );
+	$root_login->set__is_root( 1 );
+
+        $root_login->set__time_created( time() );
+
+	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $root_login );	
+    }
+
+    $root_login->set__password( $encr_passwd );
+    
+} #_create_root
 
 #
 # Create token and store with the account and return it.

@@ -207,16 +207,17 @@ $.yote.util = {
 	}
     }, //make_table
 
+    // builds a table that paginates through a list
     make_paginatehash_table:function( arg ) {
 	return (function( args ){
 	    
 	    var ptab = {
-		obj       : args[ 'obj' ],
-		list_name : args[ 'list_name' ],
-		size      : args[ 'size' ] || 100,
-		col_names : args[ 'col_names' ],
-		title     : args[ 'title' ] || '',
-		col_funs  : args[ 'col_functions' ],
+		obj          : args[ 'obj' ],
+		list_name    : args[ 'list_name' ],
+		size         : args[ 'size' ] || 100,
+		col_names    : args[ 'col_names' ],
+		title        : args[ 'title' ] || '',
+		col_funs     : args[ 'col_functions' ],
 		attach_point : args[ 'attach_point' ]
 	    };
 
@@ -355,5 +356,112 @@ $.yote.util = {
 	return check_ready;
 
     }, // button_actions
+
+    login_control:function( args ) {
+	var lc = {
+	    attachpoint      : args[ 'attachpoint' ],
+	    msg_function     : args[ 'msg_function' ]        || function(m,c){}, 
+	    log_in_status    : args[ 'log_in_status' ]       || '#logged_in_status',
+	    after_login_fun  : args[ 'after_login_function' ],
+	    after_logout_fun : args[ 'after_logout_function' ],
+
+	    on_login:function() {
+		var thislc = this;
+		$( thislc.attachpoint ).empty();
+		$( thislc.log_in_status ).empty().append( 
+		    'Logged in as ' + $.yote.get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
+		);
+		$( '#logout' ).click( function() {
+		    thislc.msg_function( 'logged out' );
+		    $.yote.logout();
+		    $( thislc.log_in_status ).empty();	   
+		    thislc.on_logout_fun();
+		    thislc.after_logout_fun();
+		} );
+	    }, //on_login
+
+	    needs_login:function() {
+		var thislc = this;
+		$( thislc.attachpoint ).empty().append( 
+		    '<A class="hotlink" HREF="#" id="go_to_login_b">Log In</A>'
+		);
+		$( '#go_to_login_b' ).click( function() {
+		    thislc.make_login();
+		} );
+	    }, //needs_login
+	    
+	    make_login:function() {
+		var thislc = this;
+		$( thislc.attachpoint ).empty().append( 
+		    '<div class="panel core" id="create_acct_div">' +
+			'Log In' + 
+			'<input type="text" id="username" placeholder="Name" size="6">' + 
+			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON></P> ' +
+			'<A id="create_account_b" class="hotlink" href="#">Create an Account</A> <A id="cancel_b" href="#">[X]</A>' + 
+			'</div>'
+		);
+		$( '#username' ).focus();
+
+		$( '#cancel_b' ).click( function() {
+		    thislc.msg_function( '' );
+		    thislc.needs_login();
+		} );
+
+		$.yote.util.button_actions( {
+		    button :  '#log_in_b',
+		    texts  : [ '#username', '#pw' ],
+		    action : function() {
+			thislc.msg_function('');
+			$.yote.login( $( '#username' ).val(), 
+				      $( '#pw' ).val(),
+				      function( msg ) {
+					  thislc.on_login_fun();
+					  thislc.after_login_fun();
+				      },
+				      function( err ) {
+					  thislc.msg_function( err, 'error' );
+				      } );
+		    }
+		} );
+	
+		$( '#create_account_b' ).click( function() { 
+		    thislc.msg_function('');
+		    $( thislc.attachpoint ).empty().append( 
+			'<div class="panel core" id="create_acct_div">' +
+			    '<P><input type="text" id="username" placeholder="Name" size="6">' + 
+			    '<input type="email" placeholder="Email" id="em" size="6">' +
+			    '<input type="password" placeholder="Password" id="pw" size="6">' +
+			    '<A id="create_account_b" class="hotlink" href="#">Create</A> <A HREF="#" id="cancel_b">[X]</A>' + 
+			    '</div>'
+		    );
+		    $( '#username' ).focus();
+		    $( '#cancel_b' ).click( function() {
+			thislc.msg_function('');
+			thislc.needs_login();
+		    } );
+
+		    $.yote.util.button_actions( {
+			button : '#create_account_b',
+			texts  : [ '#username', '#em', '#pw' ],
+			action : function() {
+			    $.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
+						 function( msg ) { 
+						     thislc.msg_function( msg ); //"Welcome '" + $( '#username' ).val() + "'" 
+						     thislc.on_login_fun();
+						     thislc.after_login_fun();
+						 },
+						 function( err ) {
+						     thislc.msg_function( err, 'error' );
+						 }  );
+			}
+		    } );
+		    
+		} );
+	    } //make_login
+	};
+	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
+	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
+	return lc
+    } //login_control
 
 }//$.yote.util

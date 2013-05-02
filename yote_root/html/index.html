@@ -9,15 +9,28 @@
 
     <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
     <STYLE>
+      .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
+      .mainpanel { top:0px; width:900px; display:inline-block; }
+      .c_name    { font-style: italic }
+      .c_time    { font-family: monospace; text-size: smaller; }
+      .c_message { }
     </STYLE>
+
+<!--
+there is a beauty that we experience as kids that only leaves tiny hints of itself when we are older.
+it hides in smells and in the whispered wind.
+if we are our experiences then we are both sides of them.
+
+-->
 
     <script>
     $().ready(function(){
-	
+
 	make_menus( '#top_nav' );
 	$.yote.init();
 	var news_app = $.yote.fetch_app('Yote::Util::Admin');
@@ -26,12 +39,92 @@
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Main Page',
-				function( count ) { 
+				function( count ) {
 				    $('#counter').empty().append( count );
 				},
 				function( err ) {},
 				1
 			      );
+
+	function yote_chat( post_box, chatter_box ) {
+	    var chat = $.yote.fetch_app('Yote::Util::MadYote').get_chat_board();
+	    return {
+		last_logged_in : false,
+		post     : function( msg ) {
+		    chat.post( msg );
+		    this.refresh();
+		},
+		draw_post_box : function() {
+		    var me = this;
+		    if( $.yote.is_logged_in() ) {
+			$( post_box ).empty().append(
+			    '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message">' +
+				'<BUTTON type="BUTTON" id="send_msg">Send</BUTTON>'
+			);
+			$.yote.util.button_actions( {
+			    button : '#send_msg',
+			    texts  : [ '#post_out' ],
+			    action : function() {
+				me.post( $( '#post_out' ).val() );
+			    }
+			} );
+		    }
+		    else {
+			$( post_box ).empty().append(
+			    '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message"> ' +
+				'<INPUT TYPE="text" id="post_name" size="8" placeholder="Name">' +
+				'<BUTTON type="BUTTON" id="send_msg">Send</BUTTON>'
+			);
+			$.yote.util.button_actions( {
+			    button : '#send_msg',
+			    texts  : [ '#post_out', '#post_name' ],
+			    cleanup_exempt : { '#post_name' : 1 },
+			    action : function() {
+				me.post( [ $( '#post_out' ).val(), $( '#post_name' ).val() ] );
+			    }
+			} );
+		    }
+		    me.last_logged_in = $.yote.is_logged_in();
+		    me.refresh();
+		},
+		refresh  : function() {
+		    chat.sync_all();
+		    if( this.last_logged_in != $.yote.is_logged_in() ) {
+			this.draw_post_box();
+		    }
+		    var posts = chat.get_posts();
+		    $( chatter_box ).empty();
+		    var now = new Date();
+		    var max = posts.length() > 10 ? 10 : posts.length();
+		    for( var i=0; i < max; i++ ) {
+			var post = posts.get( i );
+			var when = new Date( 1000 * post.get( 2 ) );
+			var showtime = when.toLocaleDateString() == now.toLocaleDateString() ? when.toLocaleTimeString() : when.toLocaleString();
+			$( chatter_box ).append(
+			    '<div class="c_msg_div">'  +
+				'<span class="c_name">'    + post.get( 0 ) + ' : </span>' +
+				'<span class="c_message">' + post.get( 1 ) + '</span><BR>' +
+				'<span class="c_time">'    + showtime + '</span>' +
+				'</div>'
+			);
+		    }
+		}
+	    };
+	} //yote_chat
+
+	var chat = yote_chat( '#post_box', '#chatter' );
+
+
+	attach_login( {
+	    attachpoint         : '#logged_in_status',
+	    message_attachpoint : '#msg_div',
+	    after_login : function() {
+		chat.draw_post_box();
+	    },
+	    after_logout : function () {
+		chat.draw_post_box();
+	    }
+	} );
     });
     </script>
   </head>
@@ -40,69 +133,85 @@
 
     <DIV class="header">
 	<img src="yotelogo.png">
-	<UL id="top_nav" class="nav"/>
+	<UL id="top_nav" class="nav"></UL>
+        <DIV class="login logged_in" id="logged_in_status"></DIV>
+        <DIV id="msg_div"></DIV>
     </DIV>
 
-    <SECTION>
-      <DIV class="page-header">
-	<H1>What is Yote</H1>
-      </DIV>
-      <P>Yote is a web application server written in perl and javascript. It is
-	designed for the rapid development of web applications. 
-      </P>
-      <p>
-	Yote manages persistant objects in a graph structure containing a root node. It can also be used as a web server itself.
-	The objects are automatically saved and cached. The datastore can be one of Mongo, SQLite and MySQL. Mongo is the 
-	favored and fastest data store for Yote.
-      </P>
-      <p>
-	Yote has just entered its alpha release phase, meaning it's in feature freeze. It also means that 
-	the installer kinks need to be worked out post haste and a big bughunt begins.
-	This website is dogfooding Yote, meaning that all pages and apps on the site are run from a Yote server. 
-      </P>
-      <P>
-	An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
-      </P>
-    </SECTION>
+    <DIV class="overlesson">
 
-    <SECTION>
-      <DIV class="page-header">
-	<H2>It's for those who</H2>
-      </DIV>	    
-      <UL>
-	<LI>Don't have the time to use schemas</LI>
-	<LI>Want to just code the business logic</LI>
-	<LI>Have to keep pace with fickle design changes</LI>
-      </UL>
-    </section>
+      <DIV class="mainpanel">
 
-    <SECTION>
-      <DIV class="page-header">
-	<H2>Why Yote makes you more productive</H2>
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>What is Yote</H1>
+	  </DIV>
+	  <P>Yote is a web application server written in perl and javascript. It is
+	    designed for the rapid development of web applications.
+	  </P>
+	  <p>
+	    Yote manages persistant objects in a graph structure containing a root node. It can also be used as a web server itself.
+	    The objects are automatically saved and cached. The datastore can be one of Mongo, SQLite and MySQL. Mongo is the
+	    favored and fastest data store for Yote so far.
+	  </P>
+	  <p>
+	    Yote has just entered its alpha release phase, meaning it's in feature freeze.
+	    This website is dogfooding Yote, meaning that all pages and apps on the site are run from a Yote server.
+	  </P>
+	  <P>
+	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
+	  </P>
+	</SECTION>
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H2>It's for those who</H2>
+	  </DIV>
+	  <UL>
+	    <LI>Don't have the time to use schemas</LI>
+	    <LI>Want to just code the business logic</LI>
+	    <LI>Have to keep pace with fickle design changes</LI>
+	  </UL>
+	</section>
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H2>Why Yote makes you more productive</H2>
+	  </DIV>
+	  <ul>
+	    <LI><strong>MVC :</strong> the model is created transparently and has much less an overt footprint in the code. This means you mainly focus on the controller and model.</LI>
+	    <LI><strong>Schema gone :</strong> you change data structures on the fly and on a case by case basis.</LI>
+	    <LI><strong>Synchronous :</strong> the javascript calls are synchronous by default, but can be called asynchronous as well. The code then flows from one statement to the next without needing to chain lots of asycnronous calls.</LI>
+	  </ul>
+	</SECTION>
+
+	<SECTION id="contact">
+	  <DIV class="page-header">
+	    <H1>Contacting the programmer</H1>
+	  </DIV>
+	  <p>
+	    My name is Eric Wolf and I've been working on Yote for a good three years, on and off, when I have time.
+	  </p><p>
+	    I can be reached at <a href="mailto:coyocanid@gmail.com">coyocanid@gmail.com</a>.
+	  </p><p>
+	    Yes, I will help with any questions or installation issues.
+	  </p>
+	</SECTION>
       </DIV>
-      <ul>
-	<LI><strong>MVC :</strong> the model is created transparently and has much less an overt footprint in the code. This means you mainly focus on the controller and model.</LI>
-	<LI><strong>Schema gone :</strong> you change data structures on the fly and on a case by case basis.</LI>
-	<LI><strong>Synchronous :</strong> the javascript calls are synchronous by default, but can be called asynchronous as well. The code then flows from one statement to the next without needing to chain lots of asycnronous calls.</LI>
-      </ul>
-    </SECTION>
-    
-    <SECTION id="contact">
-      <DIV class="page-header">
-	<H1>Contacting the programmer</H1>
+
+      <DIV class="chatbar">
+	Yote Chat
+	<DIV id="post_box"></DIV>
+	<DIV id="chatter"></DIV>
+        <BR>News
+        <DIV id="news"></DIV>
       </DIV>
-      <p>
-      My name is Eric Wolf and I've been working on Yote for a good three years, on and off, when I have time. 
-      </p><p>
-      I can be reached at <a href="mailto:coyocanid@gmail.com">coyocanid@gmail.com</a>.
-      </p><p>
-      Yes, I will help with any questions or installation issues.
-      </p>
-    </SECTION>	  
-    
+
+    </DIV>
+
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
-  </body> 
+  </body>
 </html>

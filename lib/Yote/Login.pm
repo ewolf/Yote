@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use base 'Yote::Obj';
 
@@ -22,9 +22,9 @@ sub reset_password {
 
     die "Passwords do not match" unless $newpass eq $newpass_verify;
 
-    die "Old Password is incorrect" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $oldpass, $self );
+    die "Old Password is incorrect" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $oldpass, $self->get_handle() );
 
-    $self->set__password( Yote::ObjProvider::encrypt_pass($newpass, $self) );
+    $self->set__password( Yote::ObjProvider::encrypt_pass($newpass, $self->get_handle()) );
     return "Password Reset";
 
 } #reset_password
@@ -33,11 +33,6 @@ sub is_root {
     my $self = shift;
     return $self->get__is_root();
 } #is_root
-
-#
-# This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
-#
-sub sync_all {}
 
 sub upload_avatar {
     my( $self, $data ) = @_;
@@ -74,10 +69,6 @@ Returns trus if the account has root privileges.
 
 Resets the password for this login taking a hash reference as an argument with the keys 'op' for old password, 
 'p' for password and 'p2' for password verification. Returns 'Password Reset'.
-
-=item sync_all
-
-This method is actually a no-op, but has the effect of syncing the state of client and server.
 
 =item upload_avatar
 
