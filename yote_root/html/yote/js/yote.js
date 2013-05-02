@@ -705,9 +705,11 @@ $.yote = {
     }, //_create_obj
 
     _disable:function() {
-        this.enabled = $(':enabled');
-	$.each( this.enabled, function(idx,val) { val.disabled = true; } );
-        $("body").css("cursor", "wait");
+	if( $( 'body' ).css("cursor") !== "wait" ) {
+            this.enabled = $(':enabled');
+	    $.each( this.enabled, function(idx,val) { val.disabled = true; } );
+            $("body").css("cursor", "wait");
+	}
     }, //_disable
 
     _dump_cache:function() {

@@ -446,7 +446,7 @@ $.yote.util = {
 			action : function() {
 			    $.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
 						 function( msg ) { 
-						     thislc.msg_function( msg ); //"Welcome '" + $( '#username' ).val() + "'" 
+						     thislc.msg_function( msg );
 						     thislc.on_login_fun();
 						     thislc.after_login_fun();
 						 },

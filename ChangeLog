@@ -1,3 +1,8 @@
+2013-05-02  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0982
+	* fixed javascript bug where disabled fields were not being reenabled after call.
+
 2013-05-01  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0981
