@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0981';
+$VERSION = '0.0982';
 
 use Carp;
 
@@ -218,31 +218,7 @@ sub run {
 
     push( @INC, "$yote_root_dir/lib" );
 
-    $SIG{ __DIE__ } = sub { 
-	Carp::confess( @_ );
-    };
-
     my $s = new Yote::WebAppServer;
-
-    $SIG{TERM} = sub {
-	$s->shutdown();
-	print STDERR "Shutting down due to term\n";
-	exit;
-    };
-
-    $SIG{INT} = sub {
-	$s->shutdown();
-	print STDERR "Shutting down due to int\n";
-	exit;
-    };
-
-    $SIG{CHLD} = sub {
-	print STDERR "Got CHLD\n";
-	#this is important. I may be able to handle the occasional crashing of the web server process right here!
-	print STDERR Data::Dumper->Dump(["GOT SIG CHLD", \%config]);
-    };
-
-    $SIG{PIPE} = sub {};
 
     _log "Starting Server";
     my $args = Data::Dumper->Dump([\%config]);

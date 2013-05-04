@@ -103,6 +103,7 @@ $().ready(function(){
         step('get app testappneedslogin');
 
         var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+	login.purge_app();
         login._reset();
         step('scalar called on testappneedslogin');
         var scalar = login.scalar( {}, 
@@ -182,9 +183,16 @@ $().ready(function(){
         o3._send_update();
         is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
-	//Text is writable, zap doesn't exist and so it not, and bext is not writeable
-        o3._send_update({Text:'baf',bext:'Again',zip:'zap'}); 
-        is( o3.get_Text(), 'baf', 'correct object 2 text directly' );
+	//Text is writable, zap doesn't exist and so it not, and bext is not writeable\
+	is( login.get_Text(), 'inity', "TANL initied text" );
+	is( login.get_zap(), 'zappy', "TANL initied zap" );
+	ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );
+	ok( typeof o3[ 'set_bext' ] !== undefined, "bext is there" );
+	is( o3[ 'set_zap' ], undefined, "zap is not there" );
+        login._send_update({Text:'baf',bext:'Again',zip:'zap'});
+	is( login.get_Text(), 'baf', "TANL changed text" ); 
+	is( login.get_zap(), 'zappy', "TANL unchnaged zap" );
+        is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
         is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
         is( o3.get('zip'), false, 'correct object 2 text directly' );
 

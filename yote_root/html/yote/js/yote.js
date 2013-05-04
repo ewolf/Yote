@@ -645,22 +645,18 @@ $.yote = {
                 }
                 if( typeof data === 'undefined' ) {
                     for( var key in this._staged ) {
-                        if( key.match(/^[A-Z]/) ) {
-                            if( this.c === 'Array' ) {
-                                to_send.push( root._untranslate_data(this._staged[key]) );
-                            } else {
-                                to_send[key] = root._untranslate_data(this._staged[key]);
-                            }
+                        if( this.c === 'Array' ) {
+                            to_send.push( root._untranslate_data(this._staged[key]) );
+                        } else {
+                            to_send[key] = root._untranslate_data(this._staged[key]);
                         }
                     }
                 } else {
                     for( var key in data ) {
-                        if( key.match(/^[A-Z]/) ) {
-                            if( this.c === 'Array' ) {
-                                to_send.push( data[key] );
-                            } else {
-                                to_send[key] = data[key];
-                            }
+                        if( this.c === 'Array' ) {
+                            to_send.push( data[key] );
+                        } else {
+                            to_send[key] = data[key];
                         }
                     }
                 }

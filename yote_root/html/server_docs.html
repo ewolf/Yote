@@ -14,10 +14,11 @@
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
     <script>
     $().ready(function(){
+
+	$.yote.init();
 	
 	make_menus( '#top_nav' );
 
-	$.yote.init();
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Server Document Page',
 				function( count ) { 

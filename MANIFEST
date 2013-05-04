@@ -54,6 +54,7 @@ t/sqlite.t
 tasklog
 ToDo.txt
 VERSIONS
+yote_root/html/admin.html
 yote_root/html/client_docs.html
 yote_root/html/css/main.css
 yote_root/html/docs.html

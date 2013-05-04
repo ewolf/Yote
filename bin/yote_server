@@ -14,9 +14,40 @@ my $cmd    = $args->{ command };
 
 my $yote_root_dir = $config->{ yote_root };
 
-my $s = Yote::run(
-    %$config
-    );
+$SIG{ __DIE__ } = sub { 
+    Carp::confess( @_ );
+};
+
+$SIG{TERM} = sub {
+    $s->shutdown();
+    print STDERR "Shutting down due to term\n";
+    exit;
+};
+
+$SIG{INT} = sub {
+    $s->shutdown();
+    print STDERR "Shutting down due to int\n";
+    exit;
+};
+
+$SIG{CHLD} = sub {
+    print STDERR "Got CHLD\n";
+    #this is important. I may be able to handle the occasional crashing of the web server process right here!
+    print STDERR Data::Dumper->Dump(["GOT SIG CHLD", \%config]);
+};
+
+$SIG{PIPE} = sub {};
+
+
+
+eval {
+    my $s = Yote::run(
+	%$config
+	);
+};
+if( $@ ) {
+    print STDERR Data::Dumper->Dump([$@,"ERR"]);
+}
 
 __END__
 

@@ -26,9 +26,10 @@
     <script>
     $().ready(function(){
 
-	make_menus( '#top_nav' );
 
 	$.yote.init();
+
+	make_menus( '#top_nav' );
 
 	if( false ) {
 	    var hello_app = $.yote.fetch_app('Yote::Test::Hello');
@@ -83,8 +84,8 @@ sub hello {\n\
 \n\
 1;',
 		discussion : 'This kata shows how perl app methods can be invoked from the client side.',
-		server_discussion : 'All Apps inherit from Yote::AppRoot and have a singleton object associated with them.',
-		client_discussion : 'Once yote is initialized, an app singleton object is obtained by calling fetch_app.'
+		server_discussion : 'All Apps inherit from Yote::AppRoot and have a singleton object associated with them. When the client requests an app using fetch_app, the Yote server loads the singleton, creating it if it is the first time its been loaded.',
+		client_discussion : 'Once yote is initialized, an app singleton object is obtained by calling fetch_app. Public methods from the server object are automatically attached to the client object, and data from the server object is automatically transferred over.'
 	    },
 
 	    // ******************* HELLO OUTPUTS *****************

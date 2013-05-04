@@ -61,7 +61,29 @@ a.hotlink:visited, a.hotlink:hover, a.hotlink, .hotlink {
 .error {
     color: orange;
 }
+div.err {
+    color: rgb(189, 105, 14);
+    font-size:larger;
+    background-color: rgba(2, 1, 1, 0.6);
+    border: 1px solid black;
+    padding: 10px;
+    margin: 10px;
+}
 .info {
     color: purple;
 
 }
+
+.input_div {
+    background-color: rgba( 0,0,0,.3 );
+    border: 2px green groove;
+    padding: 3px;
+    margin : 3px;
+    min-width:15px; 
+    min-height:15px;
+    cursor:pointer;
+    display:inline-block;
+}
+.edit_ready { border : 4px black  groove; background-color: lightgrey }
+.in_edit_same { border : 1px black solid; background-color: lightgrey }
+.in_edit_changed { border : 1px black solid; background-color: #FEE }

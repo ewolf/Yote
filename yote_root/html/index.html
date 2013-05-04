@@ -15,10 +15,12 @@
 
     <STYLE>
       .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
-      .mainpanel { top:0px; width:900px; display:inline-block; }
+      .mainpanel { top:0px; min-width:500px; max-width:900px; display:inline-block; }
       .c_name    { font-style: italic }
       .c_time    { font-family: monospace; text-size: smaller; }
       .c_message { }
+      .motd      { padding : 5px; margin : 5px; border solid 1 px black }
+      body       { min-width:1200px; margin-top:70px }
     </STYLE>
 
 <!--
@@ -30,12 +32,18 @@ if we are our experiences then we are both sides of them.
 
     <script>
     $().ready(function(){
+	$( '#motd_sec' ).hide();
 
-	make_menus( '#top_nav' );
 	$.yote.init();
-	var news_app = $.yote.fetch_app('Yote::Util::Admin');
-	var cms = news_app.get_cms();
-	$( '#news' ).empty().append( cms.content( { path : 'news' } ) );
+	make_menus( '#top_nav' );
+	var yote_app = $.yote.fetch_app('Yote::Util::MadYote');
+
+	var motd = yote_app.get_MOTD();
+	if( motd ) {
+	    $( '#motd' ).empty().append( motd );
+	    $( '#motd_sec' ).show();
+	}
+
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Main Page',
@@ -47,9 +55,9 @@ if we are our experiences then we are both sides of them.
 			      );
 
 	function yote_chat( post_box, chatter_box ) {
-	    var chat = $.yote.fetch_app('Yote::Util::MadYote').get_chat_board();
+	    var chat = yote_app.get_chat_board();
 	    return {
-		last_logged_in : false,
+		last_logged_in : undefined,
 		post     : function( msg ) {
 		    chat.post( msg );
 		    this.refresh();
@@ -85,13 +93,15 @@ if we are our experiences then we are both sides of them.
 			} );
 		    }
 		    me.last_logged_in = $.yote.is_logged_in();
-		    me.refresh();
 		},
 		refresh  : function() {
-		    chat.sync_all();
-		    if( this.last_logged_in != $.yote.is_logged_in() ) {
+		    if( this.last_logged_in != $.yote.is_logged_in() || typeof this.last_logged_in === 'undefined' ) {
 			this.draw_post_box();
 		    }
+		    console.log( 'BSA :: ' + $( '#username' ).attr( 'disabled' ) );
+		    chat.sync_all();
+
+		    console.log( 'ASA :: ' + $( '#username' ).attr( 'disabled' ) );
 		    var posts = chat.get_posts();
 		    $( chatter_box ).empty();
 		    var now = new Date();
@@ -119,10 +129,10 @@ if we are our experiences then we are both sides of them.
 	    attachpoint         : '#logged_in_status',
 	    message_attachpoint : '#msg_div',
 	    after_login : function() {
-		chat.draw_post_box();
+		chat.refresh();
 	    },
 	    after_logout : function () {
-		chat.draw_post_box();
+		chat.refresh();
 	    }
 	} );
     });
@@ -141,6 +151,13 @@ if we are our experiences then we are both sides of them.
     <DIV class="overlesson">
 
       <DIV class="mainpanel">
+
+        <SECTION id="motd_sec">
+	  <DIV class="page-header">
+	    <H1>Currently Ongoing</H1>
+	  </DIV>
+	  <p id="motd"></p>
+        </SECTION>
 
 	<SECTION>
 	  <DIV class="page-header">
@@ -203,8 +220,6 @@ if we are our experiences then we are both sides of them.
 	Yote Chat
 	<DIV id="post_box"></DIV>
 	<DIV id="chatter"></DIV>
-        <BR>News
-        <DIV id="news"></DIV>
       </DIV>
 
     </DIV>

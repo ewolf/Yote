@@ -141,12 +141,6 @@ sub _path_to_root {
 # These methods are not part of the public API
 #
 
-
-sub _allows_update {
-    my( $self, $field, $account ) = @_;
-    return $field =~ /^[A-Z]/ || ( $account && $account->get_login()->get__is_root() );
-}
-
 #
 # Converts scalar, yote object, hash or array to data for returning.
 #
@@ -288,17 +282,27 @@ sub sync_all {}
 # public client method.
 #
 sub update {
-    my( $self, $data, $account ) = @_;
-    my $updated = {};
-    for my $fld (keys %$data) {
-        next unless $self->_allows_update( $fld, $account ) && defined( $self->{DATA}{$fld} );
-        my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-        Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
-        $self->{DATA}{$fld} = $inval;
-        $updated->{$fld} = $inval;
-    }
-    return $updated;
+    die "Disallows update";
 } #update
+
+#
+# Private method to update the hash give. Returns if things were made dirty.
+# Takes a list of fields to try to extract from the hash.
+#
+sub _update {
+    my( $self, $datahash, @fieldlist ) = @_;
+
+    my $dirty;
+    for my $fld ( @fieldlist ) {
+	my $set = "set_$fld";
+	my $get = "get_$fld";
+	if( defined( $datahash->{ $fld } ) ) {
+	    $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
+	    $self->$set( $datahash->{ $fld });
+	}
+    }
+    return $dirty;
+} #_update
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list

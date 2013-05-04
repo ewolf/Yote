@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Yote Admin</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <STYLE>
+      .mainpanel { top:0px; width:900px; display:inline-block; }
+    </STYLE>
+
+<!--
+there is a beauty that we experience as kids that only leaves tiny hints of itself when we are older.
+it hides in smells and in the whispered wind.
+if we are our experiences then we are both sides of them.
+
+-->
+
+    <script>
+    $().ready(function(){
+
+	$.yote.init();
+	make_menus( '#top_nav' );
+
+	var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
+
+	$( '#motd_div' ).empty().append( $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
+
+	$.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
+	
+	var blog = madyote_app.get_news_blog();
+
+	// 
+	//  make the thing below then wrap it in an other easier layer just for the blog.
+	//  this sort of indicates that there are server / client matchups
+	//  maybe an infrastructure that automatically wraps a server side object in a UI or something
+	//  based on a pattern. Something like
+	//     ctrl = $.yote.get_control( obj );
+
+	//
+	//  work backwards and generalize with each step of the way.
+	//
+
+	//
+	// get existing posts, add a control to delete or edit them.
+	$.yote.util.control_table( {
+	    item           : blog,
+	    list_name      : 'entries',
+	    attachpoint    : '#news_div',
+	    column_headers : [ 'hey there' ], 
+	    columns        : [ ],
+	    //include delete or archive
+	    plimit : 10
+	} );
+
+	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+	page_counter.increment( 'Admin Page',
+				function( count ) {
+				    $('#counter').empty().append( count );
+				},
+				function( err ) {},
+				1
+			      );
+
+	function check_perms() {
+	    console.log( [ $.yote.is_logged_in(), $.yote.get_login(), "B" ] );
+	    if( $.yote.is_logged_in() ) { console.log( [ "ILI", $.yote.get_login().is_root() ] ); }
+	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
+		$( '#mainpanel' ).show();
+		$( '#errpanel' ).hide();
+	    } else {
+		$( '#mainpanel' ).hide();
+		$( '#errpanel' ).show();
+	    } 
+	}
+
+	attach_login( {
+	    attachpoint         : '#logged_in_status',
+	    message_attachpoint : '#msg_div',
+	    after_login  : check_perms,
+	    after_logout : check_perms
+	} );
+
+	check_perms();
+    });
+    </script>
+  </head>
+
+  <BODY>
+
+    <DIV class="header">
+	<img src="yotelogo.png">
+	<UL id="top_nav" class="nav"></UL>
+        <DIV class="login logged_in" id="logged_in_status"></DIV>
+        <DIV id="msg_div"></DIV>
+    </DIV>
+    
+    <DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</div>
+
+    <DIV class="mainpanel" id="mainpanel">
+
+	<!--
+	    accounts, with pagination and search
+	    edit motd
+            add and edit news
+	    show apps	    
+	  -->
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>Yote Admin Page</H1>
+	  </DIV>
+	  <P>
+	    Welcome to the Yote Admin Page.
+	  </P>
+	  <p>
+	    Yote manages persistant objects in a graph structure containing a root node. It can also be used as a web server itself.
+	    The objects are automatically saved and cached. The datastore can be one of Mongo, SQLite and MySQL. Mongo is the
+	    favored and fastest data store for Yote so far.
+	  </P>
+	  <p>
+	    Yote has just entered its alpha release phase, meaning it's in feature freeze.
+	    This website is dogfooding Yote, meaning that all pages and apps on the site are run from a Yote server.
+	  </P>
+	  <P>
+	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
+	  </P>
+	</SECTION>
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>News Control Panel</H1>
+	  </DIV>
+
+          <h3>Edit the Message of the Day</h3>
+	  <p> <SPAN id="motd_div"></SPAN> </p>
+	  
+	  <h3>Edit News Blog</h3>
+	  <P>
+	    <DIV id="news_div"></DIV>
+	  </P>
+	</SECTION>
+	
+      </DIV>
+
+    </DIV>
+
+    <footer>
+      This page has been viewed <span id="counter"></span> times.
+    </footer>
+    <script src="/js/local.js"></script>
+  </body>
+</html>

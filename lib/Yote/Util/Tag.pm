@@ -15,6 +15,8 @@ $VERSION = '0.01';
 
 use base 'Yote::Obj';
 
+use Yote::ObjProvider;
+
 sub _init {
     my $self = shift;
     $self->set_tag_to_items( {} );
@@ -82,6 +84,7 @@ sub _add_tag {
 #
 sub _remove_tag {
     my( $self, $tag, @items ) = @_;
+    my $xpath = $self->_path_to_root();
     for my $item (@items) {
 	Yote::ObjProvider::xpath_insert( "$xpath/item_to_tags/$item->{ID}/$tag" );
     }

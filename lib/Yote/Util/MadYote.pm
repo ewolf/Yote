@@ -6,6 +6,7 @@ use warnings;
 use base 'Yote::AppRoot';
 
 use Yote::Util::ChatBoard;
+use Yote::Util::Blog;
 
 sub _init {
 
@@ -16,8 +17,24 @@ sub _init {
     
     $self->set_chat_board( $cb );
 
+    $self->set_MOTD( '' );
+
+    $self->set_news_blog( new Yote::Util::Blog() );
+
 } #_init
 
+sub _load {
+    my $self = shift;
+    $self->get_MOTD( '' );
+    $self->get_news_blog( new Yote::Util::Blog() );
+}
+
+sub update {
+    my( $self, $data, $acct ) = @_;
+    
+    $self->_update( $data, 'MOTD' );
+
+} #update
 
 1;
 
