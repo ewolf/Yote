@@ -46,6 +46,9 @@ A single post for the blog
 
 =over 4
 
+=item update( hashref )
+
+Pass in a hash ref of update fields and values ( now limited to subject and content ).
 
 =back
 

@@ -70,6 +70,10 @@ Eric Wolf
 
 Post a message to the board. If a user is logged in, the argument is a string message. If not, the message is a list reference where the first argument is the message and the second the name of the poster. The message board does not allow anonymous posting by default. This is controlled by the requires_account switch.
 
+=item remove_post( post )
+
+Removes the given post from this Chat Board. Must be admin or owner to do so.
+
 =item sync_all
 
 Sends all the messages in this chat board to the client at once.

@@ -171,6 +171,12 @@ __END__
 
 =item medium_time
 
+=item purge_app
+
+=item update
+
+=item SDFfetch_hash
+
 =back
 
 =head1 AUTHOR

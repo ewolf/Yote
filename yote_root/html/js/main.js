@@ -4,7 +4,8 @@ var menu_list = [ [ 'About',      'index.html' ],
 		  [ 'Client',       'client_docs.html' ],
 		  [ 'Server',       'server_docs.html' ],
 		  [ 'Samples',    'samples.html' ],
-		  [ 'Wishlist',   'Todo.html' ]
+		  [ 'Wishlist',   'Todo.html' ],
+		  [ 'Download',   'Yote-current.tar.gz' ]
 		];
 var admin_menu_list = [ ['Admin', 'admin.html' ] ];
 

@@ -56,7 +56,7 @@ sub test_suite {
     is( $root_node->get_content(), "This is CMS", "content attached to root node" );
     is( $lang_node->get_content(), "Heir ist CMS", "content attached to lang node" );
 
-    my $no_node = $cms->fetch_content_node( { path =>  "foo", lang => 'german' } );
+    $no_node = $cms->fetch_content_node( { path =>  "foo", lang => 'german' } );
     is( $no_node->get_content(), "Heir ist CMS", "content attached to lang node without path" );
 
     # test language and region interactions, as well as specific_content_node
@@ -65,7 +65,7 @@ sub test_suite {
     my $na_g_node = $cms->attach_content( { path => "foo", traits => [ lang => 'german', region => 'north america' ], content => "Mein Foo vom Nord"} );
     my $na_confusion_node = $cms->attach_content( { path => "foo", traits => [ region => 'north america', lang => 'german',  ], content => "Lets be confusing"} );
     ok( ! $na_confusion_node->_is( $na_g_node ), "mixed up node works" );
-    my $na_g_node = $cms->attach_content( { path => "foo", traits => [ lang => 'german' ], content => "Mein Foo"} );
+    $na_g_node = $cms->attach_content( { path => "foo", traits => [ lang => 'german' ], content => "Mein Foo"} );
     my $c_node   = $cms->fetch_content_node( { path => "foo", lang => 'german', region => 'north america' } );
     is( $c_node->get_content(), "Mein Foo vom Nord" );
     my $g_node   = $cms->fetch_content_node( { path => "foo", lang => 'german', region => 'Rhein' } );
@@ -76,7 +76,7 @@ sub test_suite {
     
     # test dates
     my( $d_start, $d_end, $d_test_between, $d_test_early, $d_test_late ) = qw/ 2012-12-13:02:10 2012-12-13:02:20 2012-12-13:02:15 2012-12-13:01:12 2012-12-13:04:12 /;
-    my $na_node   = $cms->attach_content( { path => "foo", traits => [ region => 'north america' ], starts => $d_start, ends => $d_end, content => "My Zoo in North America"} );
+    $na_node   = $cms->attach_content( { path => "foo", traits => [ region => 'north america' ], starts => $d_start, ends => $d_end, content => "My Zoo in North America"} );
     my $d_fetch   = $cms->fetch_content_node( { path => "foo", region => 'north america', starts => $d_test_between } );
     is( $d_fetch->get_content(), 'My Zoo in North America', "date specific test match" );
     $d_fetch   = $cms->fetch_content_node( { path => "foo", region => 'north america', starts => $d_test_early } );

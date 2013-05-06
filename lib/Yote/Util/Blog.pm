@@ -26,15 +26,6 @@ sub _load {
 #    $self->get_posts( [] );
 }
 
-sub remove_post {
-    my( $self, $data, $acct ) = @_;
-
-    die "Need admin to remove" unless $acct && ( $acct->get_login()->is_root() || $acct->_is( $data->get_author() ) );
-
-    $self->remove_from_posts( $data );
-
-}
-
 sub post {
     my( $self, $data, $acct ) = @_;
 
@@ -51,9 +42,14 @@ sub post {
     return $post;
 } #post
 
-sub read {
+sub remove_post {
     my( $self, $data, $acct ) = @_;
-}
+
+    die "Need admin to remove" unless $acct && ( $acct->get_login()->is_root() || $acct->_is( $data->get_author() ) );
+
+    $self->remove_from_posts( $data );
+
+} #remove_post
 
 1;
 
@@ -75,6 +71,13 @@ The blog holds onto blog posts.
 
 =over 4
 
+=item post( hash )
+
+Makes a post given the key value pairs containing content and subject. Sets the created time.
+
+=item remove_post( post )
+
+Removes the given post from the blog if the account is root or the owner of the post.
 
 =back
 

@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.084';
+$VERSION = '0.085';
 
 
 my( %prid2result, $singleton );
@@ -225,6 +225,7 @@ sub process_http_request {
 	} 
 	if( open( IN, "<$root/$dest" ) ) {
 	    print $soc "HTTP/1.0 200 OK\015\012";
+	    my $binary = 0;
 	    if( $dest =~ /\.js$/i ) {
 		push( @return_headers, "Content-Type: text/javascript" );
 	    }
@@ -232,6 +233,9 @@ sub process_http_request {
 		push( @return_headers, "Content-Type: text/css" );
 	    }
 	    elsif( $dest =~ /\.(jpg|gif|png|jpeg)$/i ) {
+		push( @return_headers, "Content-Type: image/$1" );
+	    }
+	    elsif( $dest =~ /\.(tar|gz|zip|bz2)$/i ) {
 		push( @return_headers, "Content-Type: image/$1" );
 	    }
 	    else {
@@ -243,8 +247,10 @@ sub process_http_request {
 	    my $size = -s "<$root/$dest";
 	    push( @return_headers, "Content-length: $size" );
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
-            while(<IN>) {
-                print $soc $_;
+
+	    my $buf;
+            while( read( IN,$buf, 8 * 2**10 ) ) {
+                print $soc $buf;
             }
             close( IN );
 	    accesslog( "200 : $dest");

@@ -40,6 +40,15 @@ sub update {
 
 __END__
 
+=head1 PUBLIC API METHODS
+
+=over 4
+
+=item update( hashref )
+
+Pass in a hash ref of update fields and values ( now limited to MOTD ).
+
+=back
 
 =head1 AUTHOR
 
