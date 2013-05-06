@@ -60,7 +60,7 @@ $.yote.util = {
 
 	return check_ready;
 
-    }, // button_actions
+    }, //button_actions
 
     next_id:function() {
         return 'yidx_'+this.ids++;
@@ -540,42 +540,167 @@ $.yote.util = {
     }, //login_control
 
 
-    control_table:function( args ) {
-	var item           = args[ 'item' ];
-	var list_name      = args[ 'list_name' ];
-	var paginate_type  = args[ 'paginate_type' ] || 'list';
-	var paginate_order = args[ 'paginate_type' ] || 'forward';
-	var attachpoint    = args[ 'attachpoint' ];
-	var column_headers = args[ 'column_headers' ];
-	var columns        = args[ 'columns' ];
-	var fields         = args[ 'fields' ];
-	var plimit         = args[ 'plimit' ] || 10;
-	var after_render   = args[ 'after_render' ] || function() {};
-
-	function refresh( start ) {
-	    var tab = $.yote.util.make_table();
-
-	    tab.add_header_row( column_headers );
-	    
-	    var items = paginate_type == 'hash' ?
-		item.paginate_hash( [ list_name, plimit, start ] ) :
-		paginate_order == 'forward' ? item.paginate( [ list_name, plimit, start ] ) : 
-		item.paginate_rev( [ list_name, plimit, start ] );
-	    
-	    for( var i = 0 ; i < items.length() ; i++ ) {
-		var row = [];
-		for( var j = 0 ; j < fields.length; j++ ) {
-		    
-		}
-		tab.add_row( row );
+    col_edit:function( fld, extra ) {
+	return function( item, is_prep ) {
+	    if( is_prep ) {
+		return $.yote.util.prep_edit( item, fld, extra );
+	    } else {
+		return $.yote.util.implement_edit( item, fld );
 	    }
+	};
+    }, //col_edit
 
-	    $( attachpoint ).append( tag.get_html() );
+    control_table:function( args ) {
+	var ct = {
+	    start   : 0,
+	    args    : args,
+	    refresh : function() {
+		var me = this;
 
-	} //refresh
-	
-	refresh( 0 );
+		var item           = this.args[ 'item' ];
+		var list_name      = this.args[ 'list_name' ];
+		var paginate_type  = this.args[ 'paginate_type' ] || 'list';
+		var paginate_order = this.args[ 'paginate_order' ] || 'forward';
+		var attachpoint    = this.args[ 'attachpoint' ];
+		var column_headers = this.args[ 'column_headers' ];
+		var columns        = this.args[ 'columns' ];
+		var plimit         = this.args[ 'plimit' ] || 10;
 
+		var new_attachpoint    = this.args[ 'new_attachpoint' ];
+		var new_columns        = this.args[ 'new_columns' ];
+		var new_column_titles  = this.args[ 'new_column_titles' ] || new_columns;
+		var new_function       = this.args[ 'new_function' ];
+		var new_button         = this.args[ 'new_button' ] || 'New';
+		
+		var after_render   = this.args[ 'after_render' ] || function(x) {};
+		var table_extra    = this.args[ 'table_extra' ];
+		var remove_fun     = this.args[ 'remove_function' ];
+		
+		// calculated
+		var count          = item.count( list_name );
+		
+		var tab = $.yote.util.make_table( table_extra );
+
+		if( new_attachpoint ) {
+		    var bf = 'New<BR>';
+		    
+		    var txts = [];
+		    for( var i=0; i < new_columns.length; i++ ) {
+			bf += new_columns[ i ] + ' : <INPUT TYPE="TEXT" id="_new_' + item.id + 
+			    '_' + new_columns[ i ] + '"><BR>';
+			txts.push( '#_new_' + item.id + '_' + new_columns[ i ] );
+		    }
+		    bf += '<BUTTON type="BUTTON" id="_new_' + item.id + '_b">' + new_button + '</BUTTON>';
+		    $( new_attachpoint ).empty().append( bf );
+
+		    $.yote.util.button_actions( {
+			button : '#_new_' + item.id + '_b',
+			texts  : txts,
+			action : (function(it) { return function() {
+			    var newitem = new_function();
+			    for( var i=0; i < new_columns.length; i++ ) {
+				var val = $( '#_new_' + it.id + '_' + new_columns[ i ] ).val();
+				newitem.set( new_columns[ i ], val );
+			    }
+			    me.refresh();
+			} } )(item)
+		    } );
+		} //new attacher
+		
+		if( column_headers ) {
+		    var ch = [];
+		    for( var i=0; i < column_headers.length; i++ ) {
+			ch.push( column_headers[ i ] );
+		    }
+		    if( remove_fun ) {
+			ch.push( 'Delete' );
+		    }
+		    tab.add_header_row( ch );
+		}
+		
+		var items = paginate_type == 'hash' ?
+		    item.paginate_hash( [ list_name, plimit, me.start ] ) :
+		    paginate_order == 'forward' ? item.paginate( [ list_name, plimit + 1, me.start ] ) : 
+		    item.paginate_rev( [ list_name, plimit, me.start ] );
+		
+		var max = items.length() > plimit ? plimit : items.length();
+		
+		for( var i = 0 ; i < max ; i++ ) {
+		    var item = items.get( i );
+		    var row = [];
+		    for( var j = 0 ; j < columns.length; j++ ) {
+			row.push( typeof columns[ j ] == 'function' ?
+				  columns[ j ]( item, true ) : 
+				  typeof columns[ j ] == 'object' ?
+				  columns[ j ][ 'render' ]( item )
+				  : item.get( columns[ j ] )
+				);
+		    }
+		    if( remove_fun ) {
+			row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
+		    }
+		    tab.add_row( row );
+		}
+
+		var buf = '';
+		
+		if( me.start > 0 || items.length() > plimit ) {
+		    buf += '<br>';
+		    if( me.start > 0 ) {
+			buf += '<BUTTON type="button" id="to_start_b">&lt;&lt;</BUTTON>';
+			buf += ' <BUTTON type="button" id="back_b">&lt;</BUTTON>';
+		    }
+
+		    if( items.length() > plimit ) {
+			buf += '<BUTTON type="button" id="forward_b">&gt;</BUTTON>';
+			buf += ' <BUTTON type="button" id="to_end_b">&gt;&gt;</BUTTON>';
+		    }
+		}
+		buf += tab.get_html();
+		$( attachpoint ).empty().append( buf );
+
+		if( me.start > 0 ) {
+		    $( '#to_start_b' ).click(function() { me.start = 0; me.refresh(); } );
+		    var b = me.start - plimit;
+		    if( b < 0 ) b = 0;
+		    $( '#back_b' ).click(function() { me.start = b; me.refresh(); } );
+		}
+		if( items.length() > plimit ) {
+		    var e = me.start + plimit;
+		    if( e > count ) {
+			e = count - plimit;
+		    }
+		    $( '#forward_b' ).click(function() { me.start = e; me.refresh() } );
+		    $( '#to_end_b' ).click(function() { me.start = count - plimit; me.refresh(); } );
+		}
+
+		for( var i = 0 ; i < max ; i++ ) {
+		    var item = items.get( i );
+		    for( var j = 0 ; j < columns.length; j++ ) {
+			if( typeof columns[ j ] == 'function' ) {
+			    columns[ j ]( item, false );
+			}
+			else if( typeof columns[ j ] == 'object' ) {
+			    columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			}
+		    }
+		    if( remove_fun ) {
+			$( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
+			    remove_fun( it );
+			    var to = me.start - 1;
+			    if( to < 0 ) to = 0;
+			    me.start = to;
+			    me.refresh();
+			} } )( item ) );
+		    }
+		} //each row again
+		
+		after_render( items );
+	    }
+	};
+	ct.refresh();
+
+	return ct;
     } //control_table
 
 }//$.yote.util

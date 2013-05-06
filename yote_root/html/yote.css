@@ -1,5 +1,6 @@
 body { background-color: rgba(47, 139, 34, 0.59); margin-left:5px; }
 section > p, section > ul, section > dl, section > h3, section > blockquote { margin:10px; margin-left:50px; }
+section > h3 { margin:10px; margin-left:35px; }
 
 section > blockquote {
     padding: 13px;

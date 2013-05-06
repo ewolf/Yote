@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
+use warnings;
 
 use File::Spec::Functions qw( catdir updir );
 use Test::More;

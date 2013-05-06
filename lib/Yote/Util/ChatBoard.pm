@@ -5,6 +5,10 @@ use warnings;
 
 use base 'Yote::AppRoot';
 
+use vars qw($VERSION);
+
+$VERSION = '0.01';
+
 sub _init {
     my $self = shift;
     $self->set_posts( [] );
@@ -27,6 +31,15 @@ sub post {
     pop @$posts if @$posts > $self->get_size();
     
 } #post
+
+sub remove_post {
+    my( $self, $data, $acct ) = @_;
+    
+    die "Need admin to remove" unless $acct && $acct->get_login()->is_root();
+
+    $self->remove_from_posts( $data );
+
+} #remove_post
 
 sub sync_all {
     my $self = shift;

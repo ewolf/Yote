@@ -43,7 +43,27 @@ if we are our experiences then we are both sides of them.
 	    $( '#motd' ).empty().append( motd );
 	    $( '#motd_sec' ).show();
 	}
+	
+	var news_blog = yote_app.get_news_blog();
+	
+	$.yote.util.control_table( {
+	    item            : news_blog,
+	    list_name       : 'posts',
+	    attachpoint     : '#news',
+	    paginate_order  : 'reverse',
+	    remove_function : function( item ) {
+		blog.remove_post( item );
+	    },
+	    column_headers  : [ 'Subject', 'Content', 'Posted On' ],
+	    columns         : [
+		'subject',
+		'content',
+		function( row ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); }
+	    ],
+	    plimit          : 5,
 
+	} );
+	
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Main Page',
@@ -54,86 +74,64 @@ if we are our experiences then we are both sides of them.
 				1
 			      );
 
-	function yote_chat( post_box, chatter_box ) {
-	    var chat = yote_app.get_chat_board();
-	    return {
-		last_logged_in : undefined,
-		post     : function( msg ) {
-		    chat.post( msg );
-		    this.refresh();
-		},
-		draw_post_box : function() {
-		    var me = this;
-		    if( $.yote.is_logged_in() ) {
-			$( post_box ).empty().append(
-			    '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message">' +
-				'<BUTTON type="BUTTON" id="send_msg">Send</BUTTON>'
-			);
-			$.yote.util.button_actions( {
-			    button : '#send_msg',
-			    texts  : [ '#post_out' ],
-			    action : function() {
-				me.post( $( '#post_out' ).val() );
-			    }
-			} );
-		    }
-		    else {
-			$( post_box ).empty().append(
-			    '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message"> ' +
-				'<INPUT TYPE="text" id="post_name" size="8" placeholder="Name">' +
-				'<BUTTON type="BUTTON" id="send_msg">Send</BUTTON>'
-			);
-			$.yote.util.button_actions( {
-			    button : '#send_msg',
-			    texts  : [ '#post_out', '#post_name' ],
-			    cleanup_exempt : { '#post_name' : 1 },
-			    action : function() {
-				me.post( [ $( '#post_out' ).val(), $( '#post_name' ).val() ] );
-			    }
-			} );
-		    }
-		    me.last_logged_in = $.yote.is_logged_in();
-		},
-		refresh  : function() {
-		    if( this.last_logged_in != $.yote.is_logged_in() || typeof this.last_logged_in === 'undefined' ) {
-			this.draw_post_box();
-		    }
-		    console.log( 'BSA :: ' + $( '#username' ).attr( 'disabled' ) );
-		    chat.sync_all();
+	var board = yote_app.get_chat_board();
+	function make_chat() {
 
-		    console.log( 'ASA :: ' + $( '#username' ).attr( 'disabled' ) );
-		    var posts = chat.get_posts();
-		    $( chatter_box ).empty();
-		    var now = new Date();
-		    var max = posts.length() > 10 ? 10 : posts.length();
-		    for( var i=0; i < max; i++ ) {
-			var post = posts.get( i );
-			var when = new Date( 1000 * post.get( 2 ) );
-			var showtime = when.toLocaleDateString() == now.toLocaleDateString() ? when.toLocaleTimeString() : when.toLocaleString();
-			$( chatter_box ).append(
-			    '<div class="c_msg_div">'  +
-				'<span class="c_name">'    + post.get( 0 ) + ' : </span>' +
-				'<span class="c_message">' + post.get( 1 ) + '</span><BR>' +
-				'<span class="c_time">'    + showtime + '</span>' +
-				'</div>'
-			);
+	    var bf = '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message">';
+	    if( ! $.yote.is_logged_in() ) {
+		bf += '<INPUT TYPE="text" id="post_name" size="8" placeholder="Name">';
+	    }
+	    bf += '<BUTTON type="BUTTON" id="send_msg">Send</BUTTON> <BR>' + 
+		'<div id="chatter_table"></div>';
+
+	    $( '#chatter' ).empty().append( bf );
+
+	    var ct = $.yote.util.control_table( {
+		item           : board,
+		list_name      : 'posts',
+		paginate_order : 'reverse',
+		attachpoint    : '#chatter_table',
+		columns        : [
+		    function( row ) {
+			var when = new Date( row.get( 2 ) * 1000 );
+			return '<span class="c_name">' + row.get( 0 ) + '</span> ' +
+			    '<span class="c_message">' + row.get( 1 ) + '</span> ' +
+			    '<span class="c_time">' + when.toLocaleTimeString() + '</span>';
 		    }
-		}
-	    };
-	} //yote_chat
+		],
+		plimit          : 15
+	    } );
 
-	var chat = yote_chat( '#post_box', '#chatter' );
-
+	    if( $.yote.is_logged_in() ) {
+		$.yote.util.button_actions( {
+		    button : '#send_msg',
+		    texts  : [ '#post_out' ],
+		    action : function() {
+			board.post( $( '#post_out' ).val() );
+			ct.refresh();
+			$( '#post_out' ).focus();
+		    }
+		} );
+	    }
+	    else {
+		$.yote.util.button_actions( {
+		    button : '#send_msg',
+		    texts  : [ '#post_out', '#post_name' ],
+		    cleanup_exempt : { '#post_name' : 1 },
+		    action : function() {
+			board.post( [ $( '#post_out' ).val(), $( '#post_name' ).val() ] );
+			ct.refresh();
+			$( '#post_out' ).focus();
+		    }
+		} );
+	    }
+	} //make_chat
 
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
 	    message_attachpoint : '#msg_div',
-	    after_login : function() {
-		chat.refresh();
-	    },
-	    after_logout : function () {
-		chat.refresh();
-	    }
+	    after_login  : make_chat,
+	    after_logout : make_chat
 	} );
     });
     </script>
@@ -158,6 +156,14 @@ if we are our experiences then we are both sides of them.
 	  </DIV>
 	  <p id="motd"></p>
         </SECTION>
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>News</H1>
+	  </DIV>
+	  <p id="news"></p>    
+ 	</SECTION>
+        
 
 	<SECTION>
 	  <DIV class="page-header">

@@ -6,6 +6,8 @@ package Yote::Test::TestAppNeedsLogin;
 
 use strict;
 
+use warnings;
+
 use Yote::Obj;
 use Yote::Test::TestAppNoLogin;
 
@@ -13,7 +15,7 @@ use base 'Yote::AppRoot';
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 sub _init {
     my $self = shift;

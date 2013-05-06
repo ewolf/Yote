@@ -560,6 +560,15 @@ sub test_suite {
     is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
     is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
     
+    # recursion testing
+    my $o2 = new Yote::Obj( { recurse => $o } );
+    $o->add_to_curse( $o2 );
+    $o->set_emptylist( [] );
+    $root->add_to_rogers( $o );
+    Yote::ObjProvider::stow_all();
+    is( $o->_path_to_root(), '/rogers/3', "Xpath for recurseive 1" );
+    is( $o2->_path_to_root(), '/rogers/3/curse/0', "Xpath for recursive 2" );
+    is( $o->count( 'emptylist' ), 0, "emptylist" );
 
 } #test suite
 

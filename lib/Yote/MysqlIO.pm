@@ -6,6 +6,7 @@ package Yote::MysqlIO;
 
 use strict;
 use warnings;
+no warnings 'uninitialized';
 
 use Data::Dumper;
 use DBD::MySQL;
@@ -13,7 +14,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use constant {
     DATA => 2,
@@ -487,7 +488,7 @@ sub path_to_root {
     my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
     for my $row (@$res) {
 	my( $new_obj_id, $field ) = @$row;
-	if( $self->has_path_to_root( $new_obj_id ) ) {
+	if( $self->has_path_to_root( $new_obj_id, { $obj_id => 1 } ) ) {
 	    return $self->path_to_root( $new_obj_id ) . "/$field";
 	}
     }

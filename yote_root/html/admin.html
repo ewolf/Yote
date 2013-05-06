@@ -32,33 +32,61 @@ if we are our experiences then we are both sides of them.
 
 	var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
 
+	var chat = madyote_app.get_chat_board();
+
 	$( '#motd_div' ).empty().append( $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
 
 	$.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
 	
 	var blog = madyote_app.get_news_blog();
 
-	// 
-	//  make the thing below then wrap it in an other easier layer just for the blog.
-	//  this sort of indicates that there are server / client matchups
-	//  maybe an infrastructure that automatically wraps a server side object in a UI or something
-	//  based on a pattern. Something like
-	//     ctrl = $.yote.get_control( obj );
+	// edit the blog
+	//  show the entries in an editable table
+	//  allow for deletion
+	// have a new entry add at the top
+	
+	$( '#news_div' ).empty().append(
+	    '<div id="new_blog_div"></div><div id="news_list"></div>'
+	);
 
-	//
-	//  work backwards and generalize with each step of the way.
-	//
-
-	//
-	// get existing posts, add a control to delete or edit them.
 	$.yote.util.control_table( {
-	    item           : blog,
-	    list_name      : 'entries',
-	    attachpoint    : '#news_div',
-	    column_headers : [ 'hey there' ], 
-	    columns        : [ ],
+	    item            : blog,
+	    list_name       : 'posts',
+	    attachpoint     : '#news_list',
+	    remove_function : function( item ) {
+		blog.remove_post( item );
+	    },
+	    column_headers  : [ 'Subject', 'Content', 'Time' ],
+	    columns         : [
+		$.yote.util.col_edit( 'subject' ),
+		$.yote.util.col_edit( 'content' ),
+		function( row ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); }
+	    ],
+	    plimit          : 20,
+	    
+	    new_attachpoint : '#new_blog_div',
+	    new_columns     : [ 'subject', 'content' ],
+	    new_column_titles : [ 'Subject', 'Content' ],
+	    new_button        : 'New News',
+	    new_function      : function() {
+		return blog.post( { content : '', subject : '' } )
+	    }
+	} );
+
+	var cv = $.yote.util.col_edit;
+
+	$.yote.util.control_table( {
+	    item           : chat,
+	    list_name      : 'posts',
+	    attachpoint    : '#chat_div',
+	    column_headers : [ 'Name', 'Message', 'Time' ], 
+	    remove_function : function( item ) {
+		chat.remove_post( item );
+	    },
+	    columns        : [ 0, 1, 2 ],
+
 	    //include delete or archive
-	    plimit : 10
+	    plimit : 20
 	} );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
@@ -71,8 +99,6 @@ if we are our experiences then we are both sides of them.
 			      );
 
 	function check_perms() {
-	    console.log( [ $.yote.is_logged_in(), $.yote.get_login(), "B" ] );
-	    if( $.yote.is_logged_in() ) { console.log( [ "ILI", $.yote.get_login().is_root() ] ); }
 	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
 		$( '#mainpanel' ).show();
 		$( '#errpanel' ).hide();
@@ -142,10 +168,11 @@ if we are our experiences then we are both sides of them.
 
           <h3>Edit the Message of the Day</h3>
 	  <p> <SPAN id="motd_div"></SPAN> </p>
-	  
+
 	  <h3>Edit News Blog</h3>
-	  <P>
-	    <DIV id="news_div"></DIV>
+	  <P id="news_div"></P>
+	  <h3>Chat Admin</h3>
+	  <P id="chat_div">
 	  </P>
 	</SECTION>
 	

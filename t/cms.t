@@ -1,6 +1,7 @@
 #!env perl
 
 use strict;
+use warnings;
 
 use Yote::Util::CMS;
 

@@ -15,7 +15,7 @@ use MongoDB;
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -231,7 +231,6 @@ sub paginate_xpath_list {
 sub path_to_root {
     my( $self, $obj_id ) = @_;
     return '' if $obj_id eq $self->first_id();
-
     my $curs = $self->{ OBJS }->find( { r => $obj_id } );
 
     while( my $obj = $curs->next ) {
@@ -250,7 +249,7 @@ sub path_to_root {
 	    }
 	}
 	my $new_obj_id = $obj->{ _id }{ value };
-	if( $self->has_path_to_root( $new_obj_id ) ) {
+	if( $self->has_path_to_root( $new_obj_id, { $obj_id => 1 } ) ) {
 	    return $self->path_to_root( $new_obj_id ) . "/$field";
 	}
     } #each doc

@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.083';
+$VERSION = '0.084';
 
 
 my( %prid2result, $singleton );
@@ -436,7 +436,8 @@ sub _process_command {
 
         my $app_object = Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
-	die "Access Error" if index( $action, "set_" ) == 0; # set may not be called directly on an object.
+	
+	die "Access Error" if $action =~ /^([gs]et|add_(once_)?to_|remove_(all_)?from)_/; # set may not be called directly on an object.
         my $account;
         if( $login ) {
             $account = $app->__get_account( $login );

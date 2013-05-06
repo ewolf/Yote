@@ -1,8 +1,17 @@
 package Yote::Util::Blog;
 
+use strict;
+
+use warnings;
+
 use base 'Yote::Obj';
 
+use Yote::Util::BlogPost;
 use Yote::Util::Tag;
+
+use vars qw($VERSION);
+
+$VERSION = '0.02';
 
 sub _init {
     my $self = shift;
@@ -14,13 +23,22 @@ sub _init {
 
 sub _load {
     my $self = shift;
-    $self->get_posts( [] );
+#    $self->get_posts( [] );
+}
+
+sub remove_post {
+    my( $self, $data, $acct ) = @_;
+
+    die "Need admin to remove" unless $acct && ( $acct->get_login()->is_root() || $acct->_is( $data->get_author() ) );
+
+    $self->remove_from_posts( $data );
+
 }
 
 sub post {
     my( $self, $data, $acct ) = @_;
 
-    my $post = new BlogPost();
+    my $post = new Yote::Util::BlogPost();
     $post->set_blog( $self );
     $post->set_author( $acct );
 
@@ -30,33 +48,12 @@ sub post {
 
     $self->add_to_posts( $post );
 
+    return $post;
 } #post
 
 sub read {
     my( $self, $data, $acct ) = @_;
 }
-
-
-package BlogPost;
-
-use base 'Yote::Obj';
-
-# main fields : subject, content, author, blog, created_on, last_edited_on
-# can have the following fields : pending, flagged_for_abuse, 
-
-sub update {
-    my( $self, $data, $acct ) = @_;
-
-    die "No post given" unless $post;
-    die "Must be logged in" unless $acct;
-    die "Not author of post" unless $acct->_is( post->get_author() ) || $acct->is_root();
-
-    my $dirty = $self->_update( $data,  qw( subject content ) );
-    if( $dirty ) {
-	$self->set_last_edited_on( time() );
-    }
-
-} #edit_post
 
 1;
 

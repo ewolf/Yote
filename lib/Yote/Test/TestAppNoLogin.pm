@@ -5,6 +5,7 @@ package Yote::Test::TestAppNoLogin;
 #
 
 use strict;
+use warnings;
 
 use Yote::Obj;
 
@@ -12,7 +13,7 @@ use base 'Yote::AppRoot';
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 #
 # need subs to return : scalars, lists, hashes, g-objects
