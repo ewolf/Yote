@@ -39,7 +39,7 @@ eval {
     $SIG{CHLD} = sub {
 	print STDERR "Got CHLD\n";
 	#this is important. I may be able to handle the occasional crashing of the web server process right here!
-	print STDERR Data::Dumper->Dump(["GOT SIG CHLD", \%config]);
+	print STDERR Data::Dumper->Dump(["GOT SIG CHLD", $config]);
     };
 
     $SIG{PIPE} = sub {};
