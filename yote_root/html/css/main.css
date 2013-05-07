@@ -58,6 +58,12 @@ div.hover_hide {
 a.hotlink:visited, a.hotlink:hover, a.hotlink, .hotlink {
     color:rgb(198, 194, 236);
 }
+.big {
+    font-size: large;
+}
+.small {
+    font-size: small;
+}
 .error {
     color: orange;
 }

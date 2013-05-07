@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 no warnings 'uninitialized';
 
@@ -66,7 +66,7 @@ sub create_login {
             die "password required";
         }
 
-	$EMAIL_CACHE->{$email}   = 1;
+	$EMAIL_CACHE->{$email}   = 1 if $email;
 	$HANDLE_CACHE->{$lc_handle} = 1;
 
         my $new_login = new Yote::Login();
@@ -81,7 +81,7 @@ sub create_login {
 
         $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
 
-	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login );
+	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login ) if $email;
 	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $new_login );
 	
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };

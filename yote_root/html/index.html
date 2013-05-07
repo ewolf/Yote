@@ -14,13 +14,21 @@
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
     <STYLE>
-      .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
-      .mainpanel { top:0px; min-width:500px; max-width:900px; display:inline-block; }
+      .widget    { background-color: rgba( 255,255,255,.2 ); margin-bottom: 10px; padding:5px; }
       .c_name    { font-style: italic }
       .c_time    { font-family: monospace; text-size: smaller; }
       .c_message { }
       .motd      { padding : 5px; margin : 5px; border solid 1 px black }
-      body       { min-width:1200px; margin-top:70px }
+      body       { margin-top:70px }
+      .page_panel { width : 800px; background-color: rgb(79, 153, 88); margin: auto; }
+      .mainpanel { top:0px; width:500px; display:inline-block; }
+      .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
+      .news_time { font-family: monospace;
+		   font-size: small; }
+      .news_body { font-family: serif; margin-left: 10px; padding-left: 10px; }
+      .news_header{ font-family: sans-serif; 
+		    font-style: italic;		    
+		    font-size: large; margin-top: 3px; margin-bottom: 3px; }
     </STYLE>
 
 <!--
@@ -30,7 +38,7 @@ if we are our experiences then we are both sides of them.
 
 -->
 
-    <script>
+ <script>
     $().ready(function(){
 	$( '#motd_sec' ).hide();
 
@@ -51,11 +59,14 @@ if we are our experiences then we are both sides of them.
 	    list_name       : 'posts',
 	    attachpoint     : '#news',
 	    paginate_order  : 'reverse',
-	    column_headers  : [ 'Subject', 'Content', 'Posted On' ],
 	    columns         : [
-		'subject',
-		'content',
-		function( row ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); }
+		function( item ) {
+		    var dt = new Date( 1000 * item.get_created_on() );
+		    var auth = item.get_author();
+		    return '<div class="news_header">' + item.get_subject() + '</div>' +
+			'<div class="news_body">' + item.get_content() + '</div>' + 
+			'<div class="news_time">Posted by ' + auth.get_handle() + ' on ' + dt.toLocaleTimeString() + '</div>';
+		}
 	    ],
 	    plimit          : 5,
 
@@ -96,7 +107,7 @@ if we are our experiences then we are both sides of them.
 			    '<span class="c_time">' + when.toLocaleTimeString() + '</span>';
 		    }
 		],
-		plimit          : 15
+		plimit          : 8
 	    } );
 
 	    if( $.yote.is_logged_in() ) {
@@ -123,7 +134,6 @@ if we are our experiences then we are both sides of them.
 		} );
 	    }
 	} //make_chat
-
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
 	    message_attachpoint : '#msg_div',
@@ -143,49 +153,48 @@ if we are our experiences then we are both sides of them.
         <DIV id="msg_div"></DIV>
     </DIV>
 
-    <DIV class="overlesson">
+    <DIV class="page_panel">
 
       <DIV class="mainpanel">
-
-        <SECTION id="motd_sec">
-	  <DIV class="page-header">
-	    <H1>Currently Ongoing</H1>
-	  </DIV>
-	  <p id="motd"></p>
-        </SECTION>
-
-	<SECTION>
-	  <DIV class="page-header">
-	    <H1>News</H1>
-	  </DIV>
-	  <p id="news"></p>    
- 	</SECTION>
-        
 
 	<SECTION>
 	  <DIV class="page-header">
 	    <H1>What is Yote</H1>
 	  </DIV>
-	  <P>Yote is a web application server written in perl and javascript. It is
-	    designed for the rapid development of web applications.
+	  <P>
+	    Yote is a web application server written in perl and javascript. 
+	    It is designed for the rapid development of web applications.
+	    It is an open source project and is available to all.
 	  </P>
-	  <p>
-	    Yote manages persistant objects in a graph structure containing a root node. It can also be used as a web server itself.
-	    The objects are automatically saved and cached. The datastore can be one of Mongo, SQLite and MySQL. Mongo is the
-	    favored and fastest data store for Yote so far.
-	  </P>
-	  <p>
-	    Yote has just entered its alpha release phase, meaning it's in feature freeze.
-	    This website is dogfooding Yote, meaning that all pages and apps on the site are run from a Yote server.
+<!--
+	  <P>
+	    Yote connects javascript to Perl. 
+	    Methods you write in Perl on the server automatically show up on the client.
+	    Yote security makes sure that clients only see objects and methods intended for them.
 	  </P>
 	  <P>
 	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
 	  </P>
+-->
 	</SECTION>
 
 	<SECTION>
 	  <DIV class="page-header">
-	    <H2>It's for those who</H2>
+	    <H2>What Yote Does</H2>
+	  </DIV>
+	  <UL>
+	    <LI>Yote connects client javascript to server perl</LI>
+	    <LI>Automatically saves objects in a data store</LI>
+	    <LI>Controls what methods and data a client may see and use</LI>
+	    <LI>Provides a library of utility objects and UI widgets</LI>
+	    <LI>Serves web content</LI>
+	  </UL>
+	</section>
+
+<!--
+	<SECTION>
+	  <DIV class="page-header">
+	    <H2>Yote is for those who</H2>
 	  </DIV>
 	  <UL>
 	    <LI>Don't have the time to use schemas</LI>
@@ -204,7 +213,6 @@ if we are our experiences then we are both sides of them.
 	    <LI><strong>Synchronous :</strong> the javascript calls are synchronous by default, but can be called asynchronous as well. The code then flows from one statement to the next without needing to chain lots of asycnronous calls.</LI>
 	  </ul>
 	</SECTION>
-
 	<SECTION id="contact">
 	  <DIV class="page-header">
 	    <H1>Contacting the programmer</H1>
@@ -217,12 +225,36 @@ if we are our experiences then we are both sides of them.
 	    Yes, I will help with any questions or installation issues.
 	  </p>
 	</SECTION>
+
+        <SECTION id="motd_sec">
+	  <DIV class="page-header">
+	    <H1>Currently Ongoing</H1>
+	  </DIV>
+	  <p id="motd"></p>
+        </SECTION>
+-->
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>News</H1>
+	  </DIV>
+	  <p id="news"></p>    
+ 	</SECTION>
+        
       </DIV>
 
+
       <DIV class="chatbar">
-	Yote Chat
-	<DIV id="post_box"></DIV>
-	<DIV id="chatter"></DIV>
+<!--
+	<DIV id="search_box" class="widget">
+	  <INPUT TYPE="text" PLACEHOLDER="Search" id="search_txt"> <BUTTON type="Button">Search</BUTTON>
+	</DIV>
+-->
+	<DIV class="widget">
+	  Yote Chat
+	  <DIV id="post_box"></DIV>
+	  <DIV id="chatter"></DIV>
+	</DIV>
       </DIV>
 
     </DIV>

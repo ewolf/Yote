@@ -455,14 +455,50 @@ $.yote.util = {
 		} );
 	    }, //on_login
 
+	    make_create_login:function() {
+		var thislc = this;
+		thislc.msg_function('');
+		$( thislc.attachpoint ).empty().append(
+		    '<div class="panel core" id="create_acct_div">' +
+			'<P><input type="text" id="username" placeholder="Name" size="6">' +
+			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
+			'<input type="password" placeholder="Password" id="pw" size="6">' +
+			'<A id="create_account_b" class="hotlink" href="#">Create</A> <A HREF="#" id="cancel_b">[X]</A>' +
+			'</div>'
+		);
+		$( '#username' ).focus();
+		$( '#cancel_b' ).click( function() {
+		    thislc.msg_function('');
+		    thislc.needs_login();
+		} );
+
+		$.yote.util.button_actions( {
+		    button : '#create_account_b',
+		    texts  : [ '#username', '#em', '#pw' ],
+		    required : [ '#username', '#pw' ],
+		    action : function() {
+			$.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
+					     function( msg ) {
+						 thislc.msg_function( msg );
+						 thislc.on_login_fun();
+						 thislc.after_login_fun();
+					     },
+					     function( err ) {
+						 thislc.msg_function( err, 'error' );
+					     }  );
+		    }
+		} );
+
+	    },
+
 	    needs_login:function() {
 		var thislc = this;
 		$( thislc.attachpoint ).empty().append(
-		    '<A class="hotlink" HREF="#" id="go_to_login_b">Log In</A>'
+		    '<A class="hotlink big" HREF="#" id="go_to_login_b">Log In</A> <BR>' +
+		    '<A class="hotlink small" HREF="#" id="create_account_b">Create an Account</A>'
 		);
-		$( '#go_to_login_b' ).click( function() {
-		    thislc.make_login();
-		} );
+		$( '#go_to_login_b' ).click( function() { thislc.make_login() } );
+		$( '#create_account_b' ).click( function() { thislc.make_create_login() } );
 	    }, //needs_login
 
 	    make_login:function() {
@@ -499,39 +535,7 @@ $.yote.util = {
 		    }
 		} );
 
-		$( '#create_account_b' ).click( function() {
-		    thislc.msg_function('');
-		    $( thislc.attachpoint ).empty().append(
-			'<div class="panel core" id="create_acct_div">' +
-			    '<P><input type="text" id="username" placeholder="Name" size="6">' +
-			    '<input type="email" placeholder="Email" id="em" size="6">' +
-			    '<input type="password" placeholder="Password" id="pw" size="6">' +
-			    '<A id="create_account_b" class="hotlink" href="#">Create</A> <A HREF="#" id="cancel_b">[X]</A>' +
-			    '</div>'
-		    );
-		    $( '#username' ).focus();
-		    $( '#cancel_b' ).click( function() {
-			thislc.msg_function('');
-			thislc.needs_login();
-		    } );
-
-		    $.yote.util.button_actions( {
-			button : '#create_account_b',
-			texts  : [ '#username', '#em', '#pw' ],
-			action : function() {
-			    $.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
-						 function( msg ) {
-						     thislc.msg_function( msg );
-						     thislc.on_login_fun();
-						     thislc.after_login_fun();
-						 },
-						 function( err ) {
-						     thislc.msg_function( err, 'error' );
-						 }  );
-			}
-		    } );
-
-		} );
+		$( '#create_account_b' ).click( function() { thislc.make_create_login(); } );
 	    } //make_login
 	};
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
@@ -619,9 +623,9 @@ $.yote.util = {
 		}
 		
 		var items = paginate_type == 'hash' ?
-		    item.paginate_hash( [ list_name, plimit, me.start ] ) :
+		    item.paginate_hash( [ list_name, plimit + 1, me.start ] ) :
 		    paginate_order == 'forward' ? item.paginate( [ list_name, plimit + 1, me.start ] ) : 
-		    item.paginate_rev( [ list_name, plimit, me.start ] );
+		    item.paginate_rev( [ list_name, plimit + 1, me.start ] );
 		
 		var max = items.length() > plimit ? plimit : items.length();
 		
@@ -642,21 +646,15 @@ $.yote.util = {
 		    tab.add_row( row );
 		}
 
-		var buf = '';
-		
+		var buf = tab.get_html();
 		if( me.start > 0 || items.length() > plimit ) {
 		    buf += '<br>';
-		    if( me.start > 0 ) {
-			buf += '<BUTTON type="button" id="to_start_b">&lt;&lt;</BUTTON>';
-			buf += ' <BUTTON type="button" id="back_b">&lt;</BUTTON>';
-		    }
-
-		    if( items.length() > plimit ) {
-			buf += '<BUTTON type="button" id="forward_b">&gt;</BUTTON>';
-			buf += ' <BUTTON type="button" id="to_end_b">&gt;&gt;</BUTTON>';
-		    }
+		    buf += '<BUTTON type="button" id="to_start_b">&lt;&lt;</BUTTON>';
+		    buf += ' <BUTTON type="button" id="back_b">&lt;</BUTTON>';
+		    buf += '<BUTTON type="button" id="forward_b">&gt;</BUTTON>';
+		    buf += ' <BUTTON type="button" id="to_end_b">&gt;&gt;</BUTTON>';
 		}
-		buf += tab.get_html();
+
 		$( attachpoint ).empty().append( buf );
 
 		if( me.start > 0 ) {
@@ -664,7 +662,12 @@ $.yote.util = {
 		    var b = me.start - plimit;
 		    if( b < 0 ) b = 0;
 		    $( '#back_b' ).click(function() { me.start = b; me.refresh(); } );
+		} 
+		else {
+		    $( '#to_start_b' ).attr( 'disabled', 'disabled' );
+		    $( '#back_b' ).attr( 'disabled', 'disabled' );
 		}
+		
 		if( items.length() > plimit ) {
 		    var e = me.start + plimit;
 		    if( e > count ) {
@@ -672,6 +675,10 @@ $.yote.util = {
 		    }
 		    $( '#forward_b' ).click(function() { me.start = e; me.refresh() } );
 		    $( '#to_end_b' ).click(function() { me.start = count - plimit; me.refresh(); } );
+		}
+		else {
+		    $( '#to_end_b' ).attr( 'disabled', 'disabled' );
+		    $( '#forward_b' ).attr( 'disabled', 'disabled' );
 		}
 
 		for( var i = 0 ; i < max ; i++ ) {

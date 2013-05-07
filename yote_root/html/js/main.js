@@ -32,7 +32,9 @@ function make_menus( attach_point ) {
 	    }
 	}	
     }
-    
+  
+    buf += '</UL>';
+
     $( attach_point ).empty().append( buf );
 
 } //make_menus
