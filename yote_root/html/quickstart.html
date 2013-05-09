@@ -31,25 +31,6 @@
 
 	make_menus( '#top_nav' );
 
-	if( false ) {
-	    var hello_app = $.yote.fetch_app('Yote::Test::Hello');
-	    alert( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor() );
-	    /*
-	    alert( hello_app.hello_scalar() );
-	    var yote_list = hello_app.hello_array();
-	    for( var i=0; i < yote_list.length(); i++ ) {
-		alert( yote_list.get( i ) );
-	    }
-	    var yote_hash = hello_app.hello_hash();
-	    var hash_keys = yote_hash.keys();
-	    for( var i=0; i < hash_keys.length; i++ ) {
-		var hk = hash_keys[ i ];
-		alert( hk + ' --> ' + yote_hash.get( hk ) );
-	    }
-	    alert( hello_app.hello_nothing() );
-	    */
-	}
-
 	var lesson_template =
 	    {
 		title             : '',

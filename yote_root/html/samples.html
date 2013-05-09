@@ -12,16 +12,428 @@
     <script src="/yote/js/yote.util.js"></script>
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <STYLE>
+      .overlesson { min-width: 900px; display:inline;}
+      .sample    { border: 0; }
+      .sidebar   { top:0px; width:200px; display:inline-block; vertical-align:top; }
+      .mainpanel { top:0px; width:700px; display:inline-block; }
+      .sample td { height: auto; vertical-align:middle; }
+
+      .code_box  { margin-top:25px; }
+      .server_col { border:ridge 4px lightblue; padding: 5px; background-color: #E1EEED; }
+      .javascript_col { border:ridge 4px lightblue; padding: 5px; background-color: #E1EEED; }
+      .html_col { border:ridge 4px lightblue; padding: 5px; background-color: #E1EEED; }
+
+      .uc_title   { margin-top:20px; font-family: sans-serif; font-size: large; border-top : solid 3px rgb(0, 238, 119); }
+      .uc_body    { font-family: serif; padding:5px 25px 25px 25px;  }
+      .body_code  { background-color : rgba( 255,255,255,.3 ); }
+      .faint      { font-style:bold; color : rgba( 0,0,0,.6 ); font-size: small; }
+    </STYLE>
+
     <script>
     $().ready(function(){
-	
+
 	$.yote.init();
 
 	make_menus( '#top_nav' );
 
+	var sample_template =
+	    {
+		title             : '',
+		summary           : '',
+		use_cases         : [],
+		client            : '',
+		server            : '',
+		discussion        : '',
+		server_discussion : '',
+		client_discussion : ''
+	    };
+
+	var samples = [
+	    {
+		title             : 'Web Counter',
+		summary           : 'A simple counter that increments each time a page is served.',
+		use_cases         : [ 'Increment the number of times the page (given by name) has been seen and return this number.' ],
+		html              : '\
+&lt;DIV&gt;This page has been viewed &lt;SPAN id="counter_span"&gt; times.&lt;/DIV&gt;\
+',		
+		javascript            : 'var page_counter = $.yote.fetch_app("Yote::Util::Counter");\n\n\
+page_counter.increment(\n\
+   "My Page", // sent as the argument to the server\n\
+   function( count ) { // handler for success \n\
+     $("#counter_span").empty().append( count );\n\
+   },\n\
+   function( err ) { // handler for fail \n\
+       console.log( "Count got error " + err );\n\
+   },\n\
+   true // async \n\
+);',
+		server            : 'package Yote::Util::Counter;\n\
+\n\
+use strict;\n\
+\n\
+use base "Yote::AppRoot";\n\
+\n\
+sub increment {\n\
+    my( $self, $page_name ) = @_;\n\
+    my $count = $self->get__counts( {} )->{$page_name} + 1; \n\
+    $self->get__counts()->{$page_name} = $count; \n\
+    return $count;\n\
+}\n\
+\n\
+1;',
+		discussion        : 'This simple example does not take IP origin into account. \
+The IP is passed in to all yote methods as part of the environment hash reference passed in as the fourth argument.',
+
+		server_discussion : 'The call <code>get__counts( {} )</code> ensures that the <code>_counts</code> variable is populated.',
+
+		client_discussion : 'The client is being called asyncronously. The second argument is the handler for when this completes.\
+It is given the return value as a single parameter. The third argument is for a handler for the error case. The error message\
+is given as the single parameter for this case.'
+	    },
+
+
+
+	    {
+		title             : 'To Do App',
+		summary           : '<P>A simple to do app that shows one thing to do at a time. The user has the choice of marking that \
+item complete or asking for a different item which is picked randomly.<p>\
+<p\>The task has 5 use cases and when those are completed in the order shown below, the task will be complete, except for the surrounding css, html and calls \
+to get the javascript files.\
+</P>',
+		use_cases         : [
+		    { title : 'Give a new user a task when they sign into this app the first time.',
+		      body  : '<code><h4>Server Side</h4><pre class="body_code">\
+package Yote::Util::Todo;\n\
+use strict;\n\
+use base "Yote::AppRoot"\n\
+sub _init_account {  \n\
+  my( $self, $account ) = @_;\n\
+\n\
+  my $first_todo_item = "Enter todo items";\n\
+  $account->set_current_todo( $first_todo_item ); \n\
+  $account->add_to_my_todos( $first_todo_item ); \n\
+}\n\
+\n\
+1;</pre></code><p>For this use case, we will define the app class for todo items and write the code to assign the first task to a new user account.\
+If this class is in Perl\'s classpath, Yote will create a singleton app object for it which can be called on the client using <code>fetch_app</code>.\
+</P><p>\
+When the user uses any app for the first time, an account objects specific to that user and this app is created and the <code>_init_account</code> method on the app is fired\
+and passed a reference to the newly created account.\</P>\
+<p>When <code>set_current_todo</code> is called, it creates a <code><i>current_todo</i></code> property on the account and assigns the string value to it. \
+When <code>add_to_my_todos</code> is called, a list named <code><i>my_todos</i></code>  is created, populated with the string value and attached to the account.</p>'
+		    },
+		    { title : 'The current item should show on the page',
+		      body  : '\
+<code><h4>Client Side HTML</h4><pre class="body_code">\
+ The current task is &lt;span id="current_task"&gt; &lt;/span&gt;\
+</pre></code>\
+<code><h4>Client Side Javascript</h4><pre class="body_code">\
+$.yote.init();\n\
+var todo_app = $.yote.fetch_app( "Yote::Util::Todo" );\n\
+var account = todo_app.account();\n\
+$( "#current_task" ).empty().append( account.get_current_task() );\n\
+</pre></code>\
+The account is obtained by caling the <code>account</code> \
+method on the app, which always returns the account of the currently logged in user. The account\'s public data fields \
+are visible to the client.'
+		    },
+		    { title : 'The user types in a new task and hits submit. The task is recorded on the server side.',
+		      body  : '\
+<code><h4>Client Side HTML</h4><pre class="body_code">\
+<span class="faint"> The current task is &lt;b id="current_task"&gt; &lt;/b &gt;\</span>\n\
+ &lt;DIV&gt;\n  Enter a new task &lt;INPUT type="text" id="new_task"&gt;\n\
+  &lt;BUTTON type="BUTTON" id="submit_task" &gt;Submit&lt;/BUTTON&gt;\n&lt;/DIV&gt;\
+</pre></code>\
+<code><h4>Client Side Javascript</h4><pre class="body_code">\
+<span class="faint">$.yote.init();\n\
+var todo_app = $.yote.fetch_app( "Yote::Util::Todo" );\n\
+var account = todo_app.account();\n\
+$( "#current_task" ).empty().append( account.get_current_task() );</span>\n\
+$( "#submit_task" ).click(function() {\n\
+   todo_app.add_item( $( "#current_task" ).val() );\n\
+}\n\
+</pre></code>\
+<code><h4>Server Side</h4><pre class="body_code"><span class="faint">\
+package Yote::Util::Todo;\n\
+use strict;\n\
+use base "Yote::AppRoot"\n\
+sub _init_account {  \n\
+  my( $self, $account ) = @_;\n\
+\n\
+  my $first_todo_item = "Enter todo items";\n\
+  $account->set_current_todo( $first_todo_item ); \n\
+  $account->add_to_my_todos( $first_todo_item ); \n\
+}\n\
+</span>\n\
+sub add_item {\n\
+  my( $self, $todo_item, $account ) = @_;\n\
+  $account->add_to_my_todos( $todo_item );\n\
+}\n\n\
+<span class="faint">1;</span></pre></code>'
+		    },
+		    { title : 'The user presses a button and gets a random new task.',
+		      body  : '\
+<code><h4>Client Side HTML</h4><pre class="body_code">\
+<span class="faint"> The current task is &lt;b id="current_task"&gt; &lt;/b &gt;\n\
+ &lt;DIV&gt;\n  Enter a new task &lt;INPUT type="text" id="new_task"&gt;\n\
+  &lt;BUTTON type="BUTTON" id="submit_task" &gt;Submit&lt;/BUTTON&gt;\n&lt;/DIV&gt;</span>\n\
+ &lt;BUTTON type="BUTTON" id="change_task" &gt;Change Task&lt;/BUTTON&gt;\n\
+</pre></code>\
+<code><h4>Client Side Javascript</h4><pre class="body_code">\
+<span class="faint">$.yote.init();\n\
+var todo_app = $.yote.fetch_app( "Yote::Util::Todo" );\n\
+var account = todo_app.account();\n\
+$( "#current_task" ).empty().append( account.get_current_task() );\n\
+$( "#submit_task" ).click(function() {\n\
+   todo_app.add_item( $( "#current_task" ).val() );\n\
+}</span>\n\
+$( "#change_task" ).click(function() {\n\
+   todo_app.pick_random_todo();\n\
+}\n\
+</pre></code>\
+<code><h4>Server Side</h4><pre class="body_code"><span class="faint">\
+package Yote::Util::Todo;\n\
+use strict;\n\
+use base "Yote::AppRoot"\n\
+sub _init_account {  \n\
+  my( $self, $account ) = @_;\n\
+\n\
+  my $first_todo_item = "Enter todo items";\n\
+  $account->set_current_todo( $first_todo_item ); \n\
+  $account->add_to_my_todos( $first_todo_item ); \n\
+}\n\
+sub add_item {\n\
+  my( $self, $todo_item, $account ) = @_;\n\
+  $account->add_to_my_todos( $todo_item );\n\
+}\n\
+</span>\n\
+sub pick_random_todo {\n\
+  my( $self, $data, $account ) = @_;\n\
+  \n\
+  my $todos = $account->get_my_todos();\n\
+  my $rand = $todos->[ rand( @$todos ) ];\n\
+  $self->set_current_todo( $rand );\n\
+  return $rand;\n\
+}\n\n\
+<span class="faint">1;</span></pre></code>'
+		    },
+		    { title : 'The user marks the current task complete and the app presents them with a random new task.',
+		      body  : '\
+<code><h4>Client Side HTML</h4><pre class="body_code">\
+<span class="faint"> The current task is &lt;b id="current_task"&gt; &lt;/b &gt;\n\
+ &lt;DIV&gt;\n  Enter a new task &lt;INPUT type="text" id="new_task"&gt;\n\
+  &lt;BUTTON type="BUTTON" id="submit_task" &gt;Submit&lt;/BUTTON&gt;\n&lt;/DIV&gt;\n\
+ &lt;BUTTON type="BUTTON" id="change_task" &gt;Change Task&lt;/BUTTON&gt;</span>\n\
+ &lt;BUTTON type="BUTTON" id="complete_task" &gt;Complete Task&lt;/BUTTON&gt;</span>\n\
+</pre></code>\
+<code><h4>Client Side Javascript</h4><pre class="body_code">\
+<span class="faint">$.yote.init();\n\
+var todo_app = $.yote.fetch_app( "Yote::Util::Todo" );\n\
+var account = todo_app.account();\n\
+$( "#current_task" ).empty().append( account.get_current_task() );\n\
+$( "#submit_task" ).click(function() {\n\
+   todo_app.add_item( $( "#current_task" ).val() );\n\
+}\n\
+$( "#change_task" ).click(function() {\n\
+   todo_app.pick_random_todo();\n\
+}</span>\n\
+$( "#complete_task" ).click(function() {\n\
+   todo_app.complete_current_item();\n\
+}\n\
+</pre></code>\
+<code><h4>Server Side</h4><pre class="body_code"><span class="faint">\
+package Yote::Util::Todo;\n\
+use strict;\n\
+use base "Yote::AppRoot"\n\
+sub _init_account {  \n\
+  my( $self, $account ) = @_;\n\
+\n\
+  my $first_todo_item = "Enter todo items";\n\
+  $account->set_current_todo( $first_todo_item ); \n\
+  $account->add_to_my_todos( $first_todo_item ); \n\
+}\n\
+sub add_item {\n\
+  my( $self, $todo_item, $account ) = @_;\n\
+  $account->add_to_my_todos( $todo_item );\n\
+}\n\
+sub pick_random_todo {\n\
+  my( $self, $data, $account ) = @_;\n\
+  \n\
+  my $todos = $account->get_my_todos();\n\
+  my $rand = $todos->[ rand( @$todos ) ];\n\
+  $self->set_current_todo( $rand );\n\
+  return $rand;\n\
+}\n\n\
+</span>\n\
+sub complete_current_item {\n\
+  my( $self, $data, $account ) = @_;\n\
+\n\
+  my $current = $account->get_current_todo();\n\
+  $account->remove_from_my_todos( $current );\n\
+\n\
+  return $self->pick_random_todo( $data, $account );\n\
+}\n\n\
+<span class="faint">1;</span></pre></code>'
+		    }
+		],
+		html : '\
+',
+		discussion        : '',
+		server_discussion : '',
+		client_discussion : ''
+	    },
+	    {
+		title             : 'Chat',
+		summary           : 'A simple chat that allows users to communicate with each other on the page. In this example, the users must be logged in and no anonymous messages are permitted. The chat will contain at most 50 messages.',
+		html : '\
+&lt;input type="TEXT" id="message_txt" placeholder="Enter a message" size="15"&gt; \n\
+&lt;BUTTON type="BUTTON" id="message_b"&gt;Send&lt;/BUTTON&gt;\n\
+&lt;BUTTON type="BUTTON" id="refresh_b"&gt;Refresh&lt;/BUTTON&gt;\n\
+&lt;DIV id="messages_div"&gt;&lt;/DIV&gt;\
+',
+		javascript : '\
+$.yote.init();\n\
+var chat_app = $.yote.fetch_app( "Yote::Util::ChatBoard" );\n\
+\n\
+function refresh_chat() {\n\
+  var buf = "";\n\
+  var rows = chat_app.get_posts();\n\
+  for( var i=0; i < rows.length(); i++ ) { //length is a method in this case\n\
+      // a row is a list of user handle, message and time\n\
+      var row = rows.get( i );\n\
+      var when = new Date( row.get( 2 ) * 1000 );\n\
+      buf += row.get( 0 ) + " said : " + row.get( 1 ) + \n\
+             " at " + when.toLocaleTimeString() + "&lt;BRgt;";\n\
+  }\n\
+  $( "#messages_div" ).empty().append( buf );\n\
+}\n\
+\n\
+$( "#message_b" ).click(function(){\n\
+  chat_app.post( $( "#message_txt" ).val() );\n\
+  refresh_chat();\n\
+});\n\
+\n\
+$( "#refresh_b" ).click(function(){\n\
+  refresh_chat();\n\
+});\
+',
+		server : '\
+package Yote::Util::ChatBoard;\n\
+\n\
+use strict;\n\
+\n\
+use base "Yote::AppRoot";\n\
+\n\
+sub post {\n\
+    my( $self, $post, $acct ) = @_;\n\
+\n\
+    die "Need to be logged in to post" unless $acct;\n\
+\n\
+    my $posts = $self->get_posts( [] );\n\
+\n\
+    unshift @$posts, [ $acct->get_handle(), $post, time() ];\n\
+\n\
+    pop @$posts if @$posts > $self->get_size( 50 );\n\
+}\n\n\
+1;\
+',
+		discussion        : '',
+		server_discussion : '',
+		client_discussion : ''
+	    }
+	];
+
+	var buf = '';
+	for( var i=0; i < samples.length; i++ ) {
+	    var sample = samples[ i ];
+	    buf += '<LI id="li_' + i + '"><A HREF="#" id="sample_' + i + '"> ' +
+		sample[ 'title' ] + '</LI>';
+	}
+
+	$( '#navcol' ).empty().append( buf );
+	for( var i=0; i < samples.length; i++ ) {
+	    $( '#sample_' + i ).click( (function(ii) {
+		return function() {
+		    show_sample( ii );
+		}
+	    } )( i ) );
+	}
+
+	function show_sample( sample_idx ) {
+	    var sample = samples[ sample_idx ];
+	    $( '#navcol a' ).removeClass( 'active' );
+	    $( '#li_' + sample_idx + ' a' ).addClass( 'active' );
+	    if( ! sample ) {
+		return;
+	    }
+	    var buf = '<DIV class="page-header"><h2>' +
+		sample[ 'title' ] + '</h2>' + sample[ 'summary' ] + '</DIV>';
+
+	    if( sample[ 'use_cases' ] && sample[ 'use_cases' ].length > 0 ) {
+		buf += '<div class="use_case">';
+		if( sample[ 'use_cases' ].length == 1 ) {
+		    buf += '<b>Use Case</b> : ' + sample[ 'use_cases' ][ 0 ];
+		    buf += '<BR>';
+		} else {
+		    buf += "<h2>Use Cases</h2>";
+		    for( var j=0 ; j <  sample[ 'use_cases' ].length; j++ ) {
+			var uc = sample[ 'use_cases' ][ j ];
+			buf += '<div class="uc_title">' + uc.title + '</div>' +
+			    '<div class="uc_body">' + uc.body + '</div>';
+		    }
+		}
+		buf += '</div>';
+	    }
+
+	    if( sample[ 'html' ] ) {
+		buf += '<DIV class="code_box"><h3>HTML Client code</h3><DIV class="html_col"><pre class="codebox"><code>' + sample[ 'html' ] + '</code></pre></div></DIV>';
+	    }
+	    if( sample[ 'javascript' ] ) {
+		buf += '<DIV class="code_box"><h3>Javascript Client code</h3><DIV class="javascript_col"><pre class="codebox"><code>' + sample[ 'javascript' ] + '</code></pre></div></DIV>';
+	    }
+	    if( sample[ 'server' ] ) {
+		buf += '<DIV class="code_box"><h3>Perl Server Code</h3><DIV class="server_col"><pre class="codebox"><code>' + sample[ 'server' ] + '</code></pre></div></DIV>';
+	    }
+
+	    if( sample[ 'server_discussion' ] ) {
+		buf += '<p><h4>Server Notes</h4>' + sample[ 'server_discussion' ] + '</p>';
+	    }
+	    if( sample[ 'client_discussion' ] ) {
+		buf += '<p><h4>Client Notes</h4>' + sample[ 'client_discussion' ] + '</p>';
+	    }
+	    if( sample[ 'discussion' ] ) {
+		buf += '<p><h4>Discussion</h4>' + sample[ 'discussion' ] + '</p>';
+	    }
+	    buf += '<div style="padding:0 300px 0 300px;display:inline">';
+	    if( sample_idx > 0 ) {
+		// can move backwards
+		buf += '<a id="back" href="#">Previous</a>';
+	    }
+	    if( sample_idx < (samples.length-1) ) {
+		// can move forwards
+		buf += '<a id="ahead" href="#" style="float:right">Next</a>';
+	    }
+	    buf += '</div>';
+
+	    $( '#sample' ).empty().append( buf );
+
+	    $( '#back' ).click( (function(newidx) {
+		return function() { show_sample( newidx ); }
+	    } )( sample_idx - 1 ) );
+
+	    $( '#ahead' ).click( (function(newidx) {
+		return function() { show_sample( newidx ); }
+	    } )( sample_idx + 1 ) );
+
+	} //show_sample
+
+	show_sample( 0 );
+
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Samples Page',
-				function( count ) { 
+				function( count ) {
 				    $('#counter').empty().append( count );
 				},
 				function( err ) {},
@@ -29,7 +441,7 @@
 			      );
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
-	    message_attachpoint : '#msg_div' 
+	    message_attachpoint : '#msg_div'
 	} );
     });
     </script>
@@ -44,476 +456,31 @@
         <DIV id="msg_div"></DIV>
     </DIV>
 
-    <SECTION>
-      <DIV class="page-header">
-	<H1>A Web Counter App</H1>
+    <DIV class="page_div">
+      <DIV class="sidebar">
+        <h3>Sample Apps</h3>
+        <UL id="navcol" class="navlink"/>
       </DIV>
-      <H3>USE CASE</h3>
-      <p>
-	<ul>
-	  <li>Increment the number of times the page (given by name) has been seen and return this number</li>
-	</ul>
-	In this simple example, I am not taking IP origin into account.
-      </p>
-      <H3>Implementation</h3>
-      <DL>
-      <DT>Server Side Code</DT>
-      <DD>
-      <pre>
-package Yote::Util::Counter;
 
-use base 'Yote::AppRoot';
-
-sub _init {
-    <span class="muted"># this is called only when the app is loaded for the first time.</span>
-    my $self = shift;
-
-    <span class="muted"># create a hidden field called _counts
-    # fields starting with an underscore are not passed to the client side</span>
-    <strong>$self->set__counts( {} );</strong>
-}
-
-sub increment {
-    my( $self, $data, $account, $env ) = @_;
-
-    <span class="muted"># not used, but this demonstrates how the IP address can be obtained</span>
-    my $ip = $env->{ REMOTE_ADDR }; 
-
-    <span class="muted"># data in this case is the name of the page we are tracking. It is the value
-    #  of the argument passed into the javascript method call ( see below )</span>
-    <strong>my $count = $self->get__counts()->{$data} + 1; 
-    $self->get__counts()->{$data} = $count; 
-    return $count;</strong>
-}
-
-
-1;
-</pre>
-      </DD>
-      <DT>Client Side Code</DT>
-      <DD>
-The following code snippet illustrates how the server side code can be invoked from the 
-client side. Yote javascript depends on jquery being used.
-<pre>
-&lt;script src="/yote/js/jquery-latest.js"&gt;&lt;/script&gt;
-&lt;script src="/yote/js/yote.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-$().ready(function(){
- $.yote.init(); <span class="muted">// must be called once before any objects are used.</span>
-
- <span class="muted">// fetches the app from the server side, as long as it can be found in the classpath.</span>
- var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-
- <span class="muted">// increments and returns the count for the main page</span>
- var count = page_counter.increment( Samples Page' );
-
- alert( 'The Main Page has been viewed ' + count +  ' times' );
-});
-&lt;/script&gt;
-</pre>
-</DD>
-      </DL>
-    </SECTION>
-    
-    <SECTION>
-      <DIV class="page-header">
-	<H1>A Simple ToDo App</H1>
+      <DIV class="mainpanel">
+	<h1>Samples</h1>
+	<P>
+          The samples page features apps that are used on this site.
+          The apps may be slightly simplified for clarity.
+        </p>
+	<HR>
+	<SECTION id="sample">
+	</SECTION>
       </DIV>
-	
-	<p>
-	  Here is a very simple to do list app that only shows one thing to do at a time.  The app has four use cases :
-	  <ul>
-	    <li>The app shows the currently selected item of the to-do list</li>
-	    <li>The user enters a new item into the to-list.</li>
-	    <li>Selecting a random item in the to-do list</li>
-	    <li>Completing the currently selected item from the to-do list</li>
-	  </ul>
-	  To start, we create a package that is going to be a Yote App. All Yote Apps descend from the Yote::AppRoot class.
-	</p>
-<h4>Server Side Code</h4>
-<pre>
-package Yote::Sample::SimpleTodo;
-
-use base 'Yote::AppRoot';
-
-sub _init_account {  
-  <span class="muted"># Gets called when a person uses this app for the first time.
-  # This is useful to populate their account data container with initial values.</span>
-
-  my( $self, $account ) = @_;
-
-  my $first = "Enter todo items";
-
-  <span class="muted"># create a list for the 'my_todos' field and add $first to it.</span>
-  $account->add_to_my_todos( $first ); 
-
-  <span class="muted"># attach the value of $first to the current_todo field.</span>
-  $account->set_current_todo( $first ); 
-} <span class="muted">#_init_account</span>
-
-sub add_item {
-  <span class="muted"># all yote subs called from the client side get passed in the following arguments.
-  # data is the data given to the client javascript object call of the app. 
-  #      In this case, it is a string that is the to do item.
-  # account is the account for the currently logged in user. 
-  #   The account is a container that stores items for this app that relate to
-  #   who is logged in now.
-  # environ is a hash of environment values given at the time of the request.
-  #   Most often used from this is IP address to deteremine locale of the requester.</span>
-  my( $self, $data, $account, $environ ) = @_;
-
-  <span class="muted"># add the value to the 'my_todos' field's list but do not duplicate that value in the list.</span>
-  $account->add_once_to_my_todos( $data );
-} <span class="muted">#add_item</span>
-
-sub pick_random_todo {
-  <span class="muted"># picks a random to do item from the list.
-  # returns the picked entry.</span>
-  my( $self, $data, $account, $environ ) = @_;
-  
-  my $todos = $account->get_my_todos();
-  my $rand = $todos->[ rand( @$todos ) ];
-  $self->set_current_todo( $rand );
-  return $rand;
-} <span class="muted">#pick_random_todo</span>
-
-sub complete_current_item {
-  <span class="muted"># removes the current todo item and picks an other random one, returning it</span>
-  my( $self, $data, $account, $environ ) = @_;
-
-  my $current = $account->get_current_todo();
-  $account->remove_from_my_todos( $current );
-
-  return $self->pick_random_todo( $data, $account, $environ );
-} <span class="muted">#complete_current_item</span>
-
-1;
-</pre>
-<P>
-The above completes the server side coding for this app.<BR>
-The following is a javascript snippet that interacts with the app. 
-We can use the parts of the snippet to create a real app page. 
-</P>
-<h4>Client Side Code</h4>
-<pre>
-  $.yote.init();  <span class="muted">// connects to the server</span>
-  var todo_app = $.yote.fetch_app('Yote::Sample::SimpleTodo');
-  alert( "The current todo item is " + todo_app.get_current_todo() );
-  todo_app.add_item( "Find even more things to do" );
-  todo_app.pick_random_todo();
-  todo_app.complete_current_item();
-  alert( "The current todo item is now " + todo_app.get_current_todo() );
-</pre>
-    </SECTION>
-
-    <SECTION>
-      <DIV class="page-header">
-	<H1></H1>
-      </DIV>
-    </SECTION>
-
+    </DIV>
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
-    
+
   </body>
 </html>
 
-<!--
-	  <H2>Secret Collect</H2>
-	  <P>Let's make a trivial but real riddle game called 'Secret Collect'.
-	    In this game, you add riddles and try to answer the riddles of others.</P>
-	  <P>
-	    You start the game by entering in 3 riddles. You answer others riddles
-	    to steal them away. If your riddles are stolen, you may enter to get to three.
-	    Your score is how many riddles you own.
-	  </P>
-	  <p>
-	    The first step in creating this app is to sketch out a design and the elements needed.
-	  </P>
-	  <h3>Elements</h3>
-	  <blockquote>
-	    <h4>Application</h4>
 
-	    The application runs the game. It keeps track of players and questions. The players
-	    call methods on the application to play the game. Yote creates a singleton instance of
-	    the application mapped to its package name internally. This application will store a list
-	    of riddles that can be collected.
-
-	    <h4>Players</h4>
-
-	    Yote provides Account objects, which are the players in this case.
-	    Methods invoked on the application are invoked with
-	    Yote account objects, automatically passed to the called method. Accounts are created and
-	    accessed using the javascript calls $.yote.create_account and $.yote.login. Once logged in,
-	    the javascript in the browser keeps track of the login state and account identification.
-
-	    Each account has a container object per application. This is meant to store things
-	    like documents, games played in the app, messages sent and received or pictures stored.
-	    For this application, it stores a list of collected secrets.
-
-	    <h4>Riddles</h4>
-
-	    Riddles are the secrets to be collected in the game. They are basic yote objects containing a question
-	    and an encrypted version of the answer to prevent cheating.
-
-	  </blockquote>
-	</div>
-      </div>
-    </div>
-	<h3>Object Model</h3>
-	<h4>Application</h4>
-	Class : <i>Yote::Sample::SecretCollect</i>
-	<blockquote>
-	  Methods - Player data is automatically passed to the methods.
-	  <ul>
-	    <li>add_riddle( { question:"question", answer:"answer" } )</li>
-	    <li>can_start()</li>
-	    <li>random_riddle()</li>
-	  </ul>
-	  Data
-	  <ul>
-	    <li>riddles (list)</li>
-	    <li>riddle_count (number)</li>
-	  </ul>
-	</blockquote>
-	<h4>Player Data</h4>
-	Class : <i>Yote::AccountRoot</i>
-	<blockquote>
-	  Data
-	  <ul>
-	    <li>my_riddles</li>
-	    <li>guesses</li>
-	  </ul>
-	</blockquote>
-	<h4>Riddle</h4>
-	Class : <i>Yote::Obj</i>
-	<blockquote>
-	  Data
-	  <ul>
-	    <li>question</li>
-	    <li>secret_answer - encyrpted answer</li>
-	    <li>owner - who currently owns it. This is an account root object.</li>
-	    <li>collect_count - number of times this has been collected</li>
-	    <li>guesses - number of times this has been guessed</li>
-	  </ul>
-	</blockquote>
-	<h3>Client Side Code</h3>
-	<pre>
-	  &lt;html&gt;&lt;head&gt;&lt;title&gt;Secret Collect&lt;/title&gt;
-	  &lt;script src="/js/jquery-latest.js"&gt;&lt;/script&gt;
-	  &lt;script src="/js/jquery.base64.min.js"&gt;&lt;/script&gt;
-	  &lt;script src="/js/json2.js"&gt;&lt;/script&gt;
-	  &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
-	  &lt;script&gt;
-	  $().ready(function(){ <span class=emp>
-	    var secret_collect_app = $.yote.fetch_app('Yote::Sample::SecretCollect');
-	    $('#button').click( function() {
-            var result = hello_app.hello({ name:$('#txt').val() } );
-            alert( result ); //get the message from running the hello method.
-            alert( 'testfield is ' + hello_app.get_testfield() ); //get the value of testfield that is attached to the app
-            var counter = hello_app.get_counter();                //get the counter object that is attached to the app
-            alert( 'counter is at ' + counter.get_count() );      //get the value of the count field of the counter object attached to the app
-	    } );
-          </emp>
-      });
-      &lt;/script&gt;&lt;/head&gt;
-      &lt;body&gt;&lt;h1&gt;Secret Collect&lt;/h1&gt;
-      &lt;/body&gt;&lt;/html&gt;
-        </pre>
-
-<h3>Server Side Code</h3>
-As long as the classes defined are in perl's classpath, they will be accessible.
-There is no need to start the yote server to load them. At the time of this writing
-if you make changes to the classes, yote must be restarted to see those changes.
-<pre>
-  package Yote::Sample::SecretCollect;
-
-  use base 'Yote::AppRoot';
-
-  use Crypt::Passwd;
-
-  sub add_riddle {
-
-  my( $self,      # This singleton AppRoot object.
-  # It lives in /apps/Yote::Sample::SecretCollect
-  # Calling
-  #   var app = $.yote.fetch_app('Yote::Sample::SecretCollect');
-  #   on the client side will return only this instance.
-
-  $data,      # The data structure sent by the client.
-  # This app is expecting app.add_riddle({question:'ques',answer:'ans'});
-  $acct_root, # This is a container specific to the account calling add_riddle
-  # and the SecretCollect app. This is meant to store state data
-  # for the player that does not clash with state data they have
-  # for any other app.
-
-  $acct       # The account object the user is logged in as.
-  # It is created by calling
-  #   $.yote.create_account( {} );
-  ) = @_;
-
-  #
-  # Create a new riddle object and add it to the account root's riddle supply.
-  # encrypt the riddle to hide its answer.
-  #
-  # The riddle methods 'set_question', 'set_secret_answer', 'set_owner'
-  #    are automatically there and need no definition.
-  # The account root
-  #
-  my $riddle = new Yote::Obj();
-  $riddle-&gt;set_question( $data-&gt;{question} );
-  $riddle-&gt;set_secret_answer( unix_std_crypt( $data-&gt;{answer},
-  $data-&gt;{question} ) );
-  $riddle-&gt;set_owner( $acct_root );
-  $acct_root-&gt;add_to_my_riddles( $riddle );
-
-  #
-  # add the riddle to all riddles the app has
-  #
-  $self-&gt;add_to_riddles( $riddle );
-  $self-&gt;set_riddle_count( 1 + $self-&gt;get_riddle_count() );
-
-  return { msg =&gt; 'riddle added' };
-
-  } #add_riddle
-
-  sub can_start {
-
-  my( $self, $data, $acct_root, $acct ) = @_;
-
-  # need 3 riddles to start guessing
-  return { r =&gt; @{ $acct_root-&gt;get_riddles( [] ) } &gt; 0 };
-  }
-
-
-  sub random_riddle {
-
-  my( $self, $data, $acct_root, $acct ) = @_;
-
-  unless( $self-&gt;can_start( $data, $acct_root, $acct ) ) {
-  return { err =&gt; 'Must have 3 riddles to guess others' };
-  }
-
-  my $riddle_count = $self-&gt;get_riddle_count();
-
-  if( $riddle_count == 0 ) {
-  return { err =&gt; 'there are no riddles to guess' };
-  }
-
-  #
-  # Pick the riddle without having to load in the whole riddle array :
-  #
-  my $riddle_idx = int( rand( $riddle_count ) );
-  my $riddle = $self-&gt;_xpath( &quot;/riddles/$riddle_idx&quot; );
-
-  return { riddle =&gt; $riddle };
-
-  } #random_riddle
-
-
-
-  sub guess_riddle {
-
-  my( $self, $data, $acct_root, $acct ) = @_;
-
-  my $riddle = $data-&gt;{riddle};
-  my $answer = $data-&gt;{answer};
-
-  my $riddle_owner = $riddle-&gt;get_owner();
-
-  #
-  # Collect stats on the riddle. They can be accessed on the client side
-  #   by calling riddle.get_guesses();
-  # Don't bother incrementing for one's own riddle.
-  #
-  if( ! $riddle_owner-&gt;is( $acct_root ) ) {
-  $riddle-&gt;set_guesses( 1 + $riddle-&gt;get_guesses() );
-  $acct_root-&gt;set_guesses( 1 + $acct_root-&gt;get_guesses() );
-  }
-
-  if( $riddle-&gt;get_secret_answer() eq unix_std_crypt( $answer, $riddle-&gt;get_question() ) ) {
-  #
-  # A secret collect! Change ownership and update the stats.
-  #
-  if( ! $riddle_owner-&gt;is( $acct_root ) ) {
-  $acct_root-&gt;set_collected_count( 1 + $acct_root-&gt;get_collected_count() );
-  $riddle-&gt;set_collect_count( 1 + $riddle-&gt;get_collect_count() );
-
-  $riddle_owner-&gt;remove_from_my_riddles( $riddle );
-  $acct_root-&gt;add_to_my_riddles( $riddle );
-  $riddle-&gt;set_owner( $acct_root );
-  }
-  return { msg =&gt; 'You collected this riddle' };
-  }
-  else {
-  return { msg =&gt; 'You got the wrong answer' };
-  }
-  } #guess_riddle
-
-
-  1;
-</pre>
-
-<h2>Client Side Code</h2>
-<blockquote>
-  <pre>
-    &lt;html&gt;&lt;head&gt;&lt;title&gt;Hello World&lt;/title&gt;
-    &lt;script src="/js/jquery-latest.js"&gt;&lt;/script&gt;
-    &lt;script src="/js/jquery.base64.min.js"&gt;&lt;/script&gt;
-    &lt;script src="/js/json2.js"&gt;&lt;/script&gt;
-    &lt;script src="/js/yote.js"&gt;&lt;/script&gt;
-    &lt;script&gt;
-    $().ready(function(){ <span class=emp>
-      var hello_app = $.yote.fetch_app('Yote::Hello');
-      $('#button').click( function() {
-      var result = hello_app.hello({ name:$('#txt').val() } );
-      alert( result ); //get the message from running the hello method.
-      alert( 'testfield is ' + hello_app.get_testfield() ); //get the value of testfield that is attached to the app
-      var counter = hello_app.get_counter();                //get the counter object that is attached to the app
-      alert( 'counter is at ' + counter.get_count() );      //get the value of the count field of the counter object attached to the app
-      } );
-</emp>
-});
-&lt;/script&gt;&lt;/head&gt;
-&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;
-&lt;input type=text id=txt&gt;&lt;BR&gt;&lt;button type=button id=button&gt;Say Hi&lt;/button&gt;
-&lt;/body&gt;&lt;/html&gt;
-</pre>
-</blockquote>
-<hr>
-<h2>Server Side Code</h2>
-<blockquote>
-  <pre>
-    package Yote::Hello;
-
-    use strict;
-
-    use Yote::Obj;
-
-    use base 'Yote::AppRoot';
-
-    sub init {
-    my $self = shift;
-    #when the hello is created for the first time, install a counter to track how many times it is called
-    $self-&gt;set_counter( new Yote::Obj() );
-    }
-
-    sub hello {
-    my( $self, $data, $acct ) = @_;
-    my $name = $data-&gt;{name};
-    $self-&gt;set_testfield(int(rand(10)); # set this to a random value each time
-    my $counter = $self-&gt;get_counter(); # this could be counted with a field, but I wanted to demo how easy it is to send objects across.
-    $counter-&gt;set_count( $counter-&gt;get_count() + 1 ); #increment the value in the counter
-    return { r =&gt; "hello there '$name'. I have said hello ".$counter-&gt;get_count()." times." };
-    }
-
-    1;
-  </pre>
-</blockquote>
-<hr>
-
-!-->
     <script src="/js/local.js"></script>
 </body>
 </html>
