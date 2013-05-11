@@ -48,6 +48,10 @@ The Yote::Account object is a container intended to store any data that is relev
 
 This is called with a file uploaded POST where the file input name is 'avatar_file'.
 
+=item is_root
+
+Called to reveal if the login behind this account is a root login.
+
 =back
 
 =head1 AUTHOR
