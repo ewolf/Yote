@@ -44,7 +44,6 @@ lib/Yote/YoteRoot.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
-MANIFEST.SKIP
 META.json
 META.yml
 README
@@ -57,18 +56,6 @@ t/sqlite.t
 tasklog
 ToDo.txt
 VERSIONS
-Yote-0.0985/bin/dummy_server_for_debug.pl
-Yote-0.0985/bin/yote_classpath_updater.pl
-Yote-0.0985/install
-Yote-0.0985/lib/Yote/SimpleLRUCache.pm
-Yote-0.0985/lib/Yote/SQLiteIO.pm
-Yote-0.0985/lib/Yote/Test/TestAppNeedsLogin.pm
-Yote-0.0985/lib/Yote/Test/TestNoDeepCloner.pm
-Yote-0.0985/MANIFEST
-Yote-0.0985/t/mysql.t
-Yote-0.0985/yote_root/html/index.html
-Yote-0.0985/yote_root/html/robots.txt
-Yote-0.0985/yote_root/html/yote/js/yote.js
 yote_root/html/admin.html
 yote_root/html/client_docs.html
 yote_root/html/css/main.css

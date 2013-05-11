@@ -15,7 +15,7 @@ use Yote::Test::TestNoDeepCloner;
 
 use Data::Dumper;
 use DBI;
-use Test::More;
+use Test::More tests => 180;
 use Test::Pod;
 
 use Carp;
@@ -90,6 +90,8 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 
 done_testing();
+
+exit( 0 );
 
 sub query_line {
     my( $db, $query, @args ) = @_;

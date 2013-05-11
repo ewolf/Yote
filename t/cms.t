@@ -9,7 +9,7 @@ use Yote::Util::CMS;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More;
+use Test::More tests => 23;
 use Test::Pod;
 use Time::Piece;
 
@@ -31,6 +31,8 @@ test_suite();
 done_testing();
 
 unlink( $name );
+
+exit( 0 );
 
 sub test_suite {
     

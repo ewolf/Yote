@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More;
+use Test::More tests => 183;
 use Test::Pod;
 
 
@@ -45,6 +45,8 @@ test_suite( $db );
 done_testing();
 
 unlink( $name );
+
+exit( 0 );
 
 sub query_line {
     my( $db, $query, @args ) = @_;

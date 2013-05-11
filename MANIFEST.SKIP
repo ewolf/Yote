@@ -43,9 +43,6 @@
 \.#
 \.rej$
 
-#avoid distributions
-Yote.*\.gz$
-
 # Avoid OS-specific files/dirs
 # Mac OSX metadata
 \B\.DS_Store
@@ -60,6 +57,20 @@ Yote.*\.gz$
 ^MYMETA\.
 #!end included /Library/Perl/5.12/ExtUtils/MANIFEST.SKIP
 
+# Avoid configuration metadata file
+^MYMETA\.
 
-#upload tests
-yote_root/html/uploads
+# Avoid Module::Build generated and utility files.
+\bBuild$
+\bBuild.bat$
+\b_build
+\bBuild.COM$
+\bBUILD.COM$
+\bbuild.com$
+^MANIFEST\.SKIP
+
+# Avoid archives of this distribution
+\bYote-[\d\.\_]+
+
+# Avoid the downloadable file
+yote_root/html/Yote-current.tar.gz

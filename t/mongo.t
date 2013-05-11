@@ -16,7 +16,7 @@ use Yote::MongoIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More;
+use Test::More tests => 167;
 use Test::Pod;
 
 
@@ -99,6 +99,8 @@ $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 
 done_testing();
+
+exit( 0 );
 
 sub test_suite {
     my $db = shift;

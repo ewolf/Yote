@@ -27,4 +27,6 @@ all_pod_files_ok(
     all_pod_files( map { catdir updir, $_ } @poddirs )
     );
 
+exit( 0 );
+
 __END__
