@@ -1,3 +1,13 @@
+2013-05-10  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0985
+	* added is_root method to accounts.
+	* updated web pages
+	* email parameter now optional for account creation
+	* files are now read much faster ( this includes serving up the web pages )
+	* updated version of javascript files
+	* include author in html files
+
 2013-05-02  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0982

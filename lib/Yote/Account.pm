@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use base 'Yote::Messenger';
 
@@ -17,6 +17,11 @@ sub upload_avatar {
     }
     die "incorrect password";
 }
+
+sub is_root {
+    my $self = shift;
+    return $self->get_login()->get__is_root();
+} #is_root
 
 1;
 

@@ -1,3 +1,11 @@
+/*
+ * LICENSE AND COPYRIGHT
+ *
+ * Copyright (C) 2012 Eric Wolf
+ * This module is free software; it can be used under the terms of the artistic license
+ *
+ * Version 0.01
+ */
 $.yote.util = {
     ids:0,
 

@@ -13,6 +13,8 @@
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
+    <META NAME="Author" CONTENT="Eric Wolf, coyocanid@gmail.com">
+
     <STYLE>
       .overlesson { min-width: 900px; display:inline;}
       .sample    { border: 0; }
@@ -43,7 +45,8 @@
 		title             : '',
 		summary           : '',
 		use_cases         : [],
-		client            : '',
+		html              : '',
+		javascript        : '',
 		server            : '',
 		discussion        : '',
 		server_discussion : '',
@@ -57,7 +60,7 @@
 		use_cases         : [ 'Increment the number of times the page (given by name) has been seen and return this number.' ],
 		html              : '\
 &lt;DIV&gt;This page has been viewed &lt;SPAN id="counter_span"&gt; times.&lt;/DIV&gt;\
-',		
+',
 		javascript            : 'var page_counter = $.yote.fetch_app("Yote::Util::Counter");\n\n\
 page_counter.increment(\n\
    "My Page", // sent as the argument to the server\n\
@@ -342,6 +345,135 @@ sub post {\n\
 		discussion        : '',
 		server_discussion : '',
 		client_discussion : ''
+	    },
+	    {
+		title             : 'Blog',
+		summary           : '<P>The Blog lets users make and edit postings. The postings are composed of the following fields : author, content, subject, created_on, last_edited, and the blog object that has the posting. The blog itself is composed of a list of posts.</P><p>The news on this site uses the Blog code. The examples below highlight the brevity of writing apps in Yote. The blog is fully functional and no exotic libraries were needed to make it.</p>',
+		use_cases         : [ "User posts a blog Entry", "User or admin Edits a Blog Entry", "User or admin Removes a Blog Entry", "Entries are posted"],
+		html              : '\
+&lt!-- for posting ------ --&gt;\n\
+&lt;input type="text" placeholder="Title" id="blog_title"&gt; \n\
+&lt;textarea id="blog_entry"&gt;&lt;/textarea&gt;\n\
+&lt;button type="button" id="post_blog"&gt;Post&lt;/button&gt;\n\
+\n\
+\n\
+&lt!-- for display ------ --&gt;\n\
+A Blog : \n\
+&lt;div id="blog_entries"&gt;&lt;/div&gt;\n\
+\n\
+',
+		javascript        : '\
+$.yote.init();\n\
+var blog = $.yote.fetch_app( "MyBlogger" ).get_blog();\n\
+\n\
+$( "#post_blog" ).click( function() {\n\
+  blog.post( { subject : $( "#blog_title" ).val(), \n\
+               content : $( "#blog_entry" ).val() } );\n\
+  refresh();\n\
+\n\
+} );\n\
+sub refresh() {\n\
+  var entries = blog.get_posts();\n\
+  var buf = "";\n\
+  for( var i=0; i &lt; entries.length(); i++ ) {\n\
+    var entry = entries.get( i );\n\
+    var when = new Date( entry.get_created_on() * 1000 );\n\
+    buf += "&lt;h2&gt;" + entry.get_subject() + "&lt;/h2&gt;";\n\
+    buf += "&lt;DIV&gt;" + entry.get_content() + "&lt;/DIV&gt;";\n\
+    buf += "&lt;SPAN&gt;Posted by " + entry.get_author().get_handle() + \n\
+        " on " + when.toLocaleTimeString() + "&lt;/DIV&gt;";\n\
+  }\n\
+  $( "#blog_entries" ).empty().append( buf );\n\
+}\n\
+',
+		server            : '\
+# ----- There are three yote classes for this case ----\n\
+\n\
+package MyBlogger;\n\
+\n\
+use strict;\n\
+\n\
+use base "Yote::AppRoot";\n\
+\n\
+use Yote::Util::Blog;\n\
+\n\
+sub _init {\n\
+  my $self = shift;\n\
+  $self->set_blog( new Yote::Util::Blog() );\n\
+}\n\
+\n\
+1;\n\
+# -----------------------------------------------\n\
+\n\
+package Yote::Util::Blog;\n\
+\n\
+use strict;\n\
+\n\
+use base "Yote::Obj";\n\
+\n\
+use Yote::Util::BlogPost;\n\
+\n\
+sub post {\n\
+    my( $self, $data, $acct ) = @_;\n\
+\n\
+    my $post = new Yote::Util::BlogPost();\n\
+    $post->set_blog( $self );\n\
+    $post->set_author( $acct );\n\
+\n\
+    $post->set_content( $data->{ content } );\n\
+    $post->set_subject( $data->{ subject } );\n\
+    $post->set_created_on( time() );\n\
+\n\
+    $self->add_to_posts( $post );\n\
+\n\
+    return $post;\n\
+} #post\n\
+\n\
+sub remove_post {\n\
+    my( $self, $data, $acct ) = @_;\n\
+\n\
+    die "Not authorized to remove" unless $acct && \n\
+      ( $acct->get_login()->is_root() || $acct->_is( $data->get_author() ) );\n\
+\n\
+    $self->remove_from_posts( $data );\n\
+\n\
+} #remove_post\n\
+\n\
+1;\n\
+\n\
+# -----------------------------------------------\n\
+\n\
+package Yote::Util::BlogPost;\n\
+\n\
+use strict;\n\
+\n\
+use base "Yote::Obj";\n\
+\n\
+sub update {\n\
+    my( $self, $data, $acct ) = @_;\n\
+\n\
+    die "No post given" unless $data;\n\
+    die "Not author of post" unless $acct && \n\
+     ( $acct->_is( $self->get_author() ) || $acct->is_root() );\n\
+\n\
+    my $dirty = $self->_update( $data,  qw( subject content ) );\n\
+    if( $dirty ) {\n\
+	$self->set_last_edited_on( time() );\n\
+    }\n\
+\n\
+} #edit_post\n\
+\n\
+1;\
+',
+		discussion        : '',
+		server_discussion : '<p>There are three different methods being introduced here. \
+<p><code>$account->is_root</code> is a method that returns true if this account is a root one.</p>\
+<p><code>$obj->_is( $other_obj )</code> returns true if $obj and $other_obj are the same.</p>\
+<p><code>$obj->_update( $data_hash )</code> is a method that, when overridden, updates the data in the object.\
+The <code>_update</code> dies by default and is called by the server when the client tries to update an object.\
+In this case, only the subject and content may be updated.</p></p>\
+',
+		client_discussion : ''
 	    }
 	];
 
@@ -378,10 +510,22 @@ sub post {\n\
 		    buf += '<BR>';
 		} else {
 		    buf += "<h2>Use Cases</h2>";
+		    var ucbuf = '';
+		    var is_list = false;
 		    for( var j=0 ; j <  sample[ 'use_cases' ].length; j++ ) {
 			var uc = sample[ 'use_cases' ][ j ];
-			buf += '<div class="uc_title">' + uc.title + '</div>' +
-			    '<div class="uc_body">' + uc.body + '</div>';
+			if( typeof uc === 'object' ) {
+			    ucbuf += '<div class="uc_title">' + uc.title + '</div>' +
+				'<div class="uc_body">' + uc.body + '</div>';
+			    is_list = true;
+			} else {
+			    ucbuf += '<li>' + uc + "</li>";
+			}
+		    }
+		    if( is_list ) {
+			buf += '<ul>' + ucbuf + '</ul>';
+		    } else {
+			buf += ucbuf;
 		    }
 		}
 		buf += '</div>';
@@ -429,7 +573,7 @@ sub post {\n\
 
 	} //show_sample
 
-	show_sample( 0 );
+	show_sample( 3 );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Samples Page',
