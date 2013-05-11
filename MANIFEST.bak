@@ -21,7 +21,6 @@ lib/Yote/Obj.pm
 lib/Yote/ObjManager.pm
 lib/Yote/ObjProvider.pm
 lib/Yote/Sample/SecretCollect.pm
-lib/Yote/Sample/SimpleToDo.pm
 lib/Yote/SimpleLRUCache.pm
 lib/Yote/SQLiteIO.pm
 lib/Yote/Test/Hello.pm
