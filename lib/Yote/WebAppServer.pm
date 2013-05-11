@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.085';
+$VERSION = '0.086';
 
 
 my( %prid2result, $singleton );
@@ -93,9 +93,9 @@ sub process_http_request {
 
     while( my $hdr = <$soc> ) {
 	$hdr =~ s/\s*$//s;
-	my( $key, $val ) = split /:\s*/, $hdr;
-	$ENV{ "HTTP_" . uc( $key ) } = $val;
 	last unless $hdr =~ /\S/;
+	my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
+	$ENV{ "HTTP_" . uc( $key ) } = $val;
     }
 
     my $content_length = $ENV{CONTENT_LENGTH};
@@ -224,6 +224,7 @@ sub process_http_request {
 	    }
 	} 
 	if( open( IN, "<$root/$dest" ) ) {
+
 	    print $soc "HTTP/1.0 200 OK\015\012";
 	    my $binary = 0;
 	    if( $dest =~ /\.js$/i ) {

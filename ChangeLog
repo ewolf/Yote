@@ -1,3 +1,8 @@
+2013-05-11  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0986
+	* fixed bug where http_referer was not being read correctly
+
 2013-05-10  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0985
