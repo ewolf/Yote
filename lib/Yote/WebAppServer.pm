@@ -123,6 +123,8 @@ sub process_http_request {
     #
 
     my( $verb, $uri, $proto ) = split( /\s+/, $req );
+    my $rest;
+    ( $uri, $rest ) = ( $uri =~ /([^&?]+)([&?]?.*)/ );
 
     $uri ||= '/index.html';
 
