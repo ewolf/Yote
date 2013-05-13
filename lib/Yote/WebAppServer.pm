@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.086';
+$VERSION = '0.087';
 
 
 my( %prid2result, $singleton );
@@ -124,7 +124,7 @@ sub process_http_request {
 
     my( $verb, $uri, $proto ) = split( /\s+/, $req );
     my $rest;
-    ( $uri, $rest ) = ( $uri =~ /([^&?]+)([&?]?.*)/ );
+    ( $uri, $rest ) = ( $uri =~ /([^&?#]+)([&?#]?.*)/ );
 
     $uri ||= '/index.html';
 
