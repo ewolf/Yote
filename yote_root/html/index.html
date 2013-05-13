@@ -67,7 +67,7 @@ if we are our experiences then we are both sides of them.
 		    var auth = item.get_author();
 		    return '<div class="news_header">' + item.get_subject() + '</div>' +
 			'<div class="news_body">' + item.get_content() + '</div>' + 
-			'<div class="news_time">Posted by ' + auth.get_handle() + ' on ' + dt.toLocaleTimeString() + '</div>';
+			'<div class="news_time">Posted by ' + auth.get_handle() + ' on ' + dt.toLocaleString() + '</div>';
 		}
 	    ],
 	    plimit          : 5,
@@ -147,12 +147,13 @@ if we are our experiences then we are both sides of them.
   </head>
 
   <BODY>
-
     <DIV class="header">
-	<img src="yotelogo.png">
-	<UL id="top_nav" class="nav"></UL>
-        <DIV class="login logged_in" id="logged_in_status"></DIV>
-        <DIV id="msg_div"></DIV>
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="yotelogo.png">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="msg_div"></DIV>
     </DIV>
 
     <DIV class="page_panel">
@@ -167,6 +168,11 @@ if we are our experiences then we are both sides of them.
 	    Yote is a web application server written in perl and javascript. 
 	    It is designed for the rapid development of web applications.
 	    It is an open source project and is available to all.
+	  </P>
+
+	  <P>
+	    It was created by <a href="mailto:coyocanid@gmail.com">Eric Wolf</A>.
+	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
 	  </P>
 <!--
 	  <P>

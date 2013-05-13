@@ -41,10 +41,12 @@
   <BODY>
 
     <DIV class="header">
-	<img src="yotelogo.png">
-	<UL id="top_nav" class="nav"></UL>
-        <DIV class="login logged_in" id="logged_in_status"></DIV>
-        <DIV id="msg_div"></DIV>
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="yotelogo.png">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="msg_div"></DIV>
     </DIV>
 
     <H1>Server Side Documentation</H1>
@@ -110,8 +112,19 @@
 	<li><code>paginate( [ $listname, $limit, $start ] )</code> returns a paginated part of a list that is attached to this object.</li>
 	<li><code>paginate_rev( [ $listname, $limit, $start ] )</code> returns a paginated part of a reversed list that is attached to this object.</li>
 	<li><code>paginate_hash( [ $hashname, $limit, $start ] )</code> returns a slice of a hash attached to this object. The keys are sorted so the order is guaranteed.</li>
-	<li><code>update( $hash_ref )</code> allows the client to update the writeable data in this object.</li>
+	<li><code>update( $hash_ref )</code> This method will fail unless overridden. It is intended to update the 
+	data of the object with the data supplied in the hash argument.</li>
       </ul>
+
+      <h3>Private Methods</h3>
+      <ul>
+	<li><code>_is( $otherobj )</code> Returns true if the $otherobj is the same object as this one.</li>
+	<li><code>_absorb( hash )</code> Loads the fields of the incoming hash into the data of this object.</li>
+	<li><code>_load</code> This method is called whenever this method is loaded. 
+	  This can be used to include new data or do checks or calculations.</li>
+	<li><code>_update( $hash_ref )</code> allows the client to update the writeable data in this object.</li>
+      </ul>
+
       <h3>Method Signature</h3>
       <P>
 	All public methods have the same signature. This is required so that the client and server can connect to
@@ -176,6 +189,17 @@ $yote_obj->mymethod( $data_scalar_or_reference, $user_account, $environment );
 	    All objects relevant to the App can trace a path back to this root object. Any App Root resides inside the
 	    YoteRoot.
 	  </p>
+	  <h3>Public Methods</h3>
+	  <ul>
+	    <li><code>account</code> : Returns the account currently logged into this app.</li>
+	  </ul>
+
+	  <h3>Private Methods</h3>
+	  <ul>
+	    <li><code>_init_account</code> : This is run the first time a user logs into this app. It takes one argument - the new account.</li>
+	    <li><code>_new_account</code> : Returns a new Account object. This method can be overridden to return a subclass of Account.</li>
+	  </ul>
+
 	<h3>Yote::FileHelper</h3>
 	  <p>
 	    Yote provides a mechanism to upload files. These files, once uploaded, are stored on a the filesystem 
