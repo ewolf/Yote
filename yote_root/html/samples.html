@@ -349,7 +349,7 @@ sub post {\n\
 	    {
 		title             : 'Blog',
 		summary           : '<P>The Blog lets users make and edit postings. The postings are composed of the following fields : author, content, subject, created_on, last_edited, and the blog object that has the posting. The blog itself is composed of a list of posts.</P><p>The news on this site uses the Blog code. The examples below highlight the brevity of writing apps in Yote. The blog is fully functional and no exotic libraries were needed to make it.</p>',
-		use_cases         : [ "User posts a blog Entry", "User or admin Edits a Blog Entry", "User or admin Removes a Blog Entry", "Entries are posted"],
+		use_cases         : [ "User posts a blog Entry", "Entries are displayed"],
 		html              : '\
 &lt!-- for posting ------ --&gt;\n\
 &lt;input type="text" placeholder="Title" id="blog_title"&gt; \n\
@@ -381,7 +381,7 @@ sub refresh() {\n\
     buf += "&lt;h2&gt;" + entry.get_subject() + "&lt;/h2&gt;";\n\
     buf += "&lt;DIV&gt;" + entry.get_content() + "&lt;/DIV&gt;";\n\
     buf += "&lt;SPAN&gt;Posted by " + entry.get_author().get_handle() + \n\
-        " on " + when.toLocaleTimeString() + "&lt;/DIV&gt;";\n\
+        " on " + when.toLocaleTimeString() + "&lt;/SPAN&gt;";\n\
   }\n\
   $( "#blog_entries" ).empty().append( buf );\n\
 }\n\
@@ -627,4 +627,151 @@ In this case, only the subject and content may be updated.</p></p>\
 
     <script src="/js/local.js"></script>
 </body>
+
+<noscript>
+<body style="cursor: auto;">
+
+    <div class="header">
+      <img src="yotelogo.png">
+      <ul id="top_nav" class="nav"><li><a href="index.html">About</a></li><li><a href="quickstart.html">Quickstart</a></li><li><a href="install.html">Install</a></li><li><a href="client_docs.html">Client</a></li><li><a href="server_docs.html">Server</a></li><li><a class="active" href="samples.html">Samples</a></li><li><a href="Todo.html">Wishlist</a></li><li><a href="Yote-current.tar.gz">Download</a></li><li><a href="admin.html">Admin</a></li></ul>
+        <div class="login logged_in" id="logged_in_status">Logged in as wolf<br><a href="#" id="logout">Log Out</a></div>
+        <div id="msg_div"></div>
+    </div>
+
+    <div class="page_div">
+      <div class="sidebar">
+        <h3>Sample Apps</h3>
+        <ul id="navcol" class="navlink"><li id="li_0"><a href="#" id="sample_0"> Web Counter</a></li><li id="li_1"><a href="#" id="sample_1"> To Do App</a></li><li id="li_2"><a href="#" id="sample_2"> Chat</a></li><li id="li_3"><a href="#" id="sample_3" class="active"> Blog</a></li></ul></div>
+
+      <div class="mainpanel">
+	<h1>Samples</h1>
+	<p>
+          The samples page features apps that are used on this site.
+          The apps may be slightly simplified for clarity.
+        </p>
+	<hr>
+	<section id="sample"><div class="page-header"><h2>Blog</h2><p>The Blog lets users make and edit postings. The postings are composed of the following fields : author, content, subject, created_on, last_edited, and the blog object that has the posting. The blog itself is composed of a list of posts.</p><p>The news on this site uses the Blog code. The examples below highlight the brevity of writing apps in Yote. The blog is fully functional and no exotic libraries were needed to make it.</p></div><div class="use_case"><h2>Use Cases</h2><li>User posts a blog Entry</li><li>Entries are displayed</li></div><div class="code_box"><h3>HTML Client code</h3><div class="html_col"><pre class="codebox"><code>&lt;!-- for posting ------ --&gt;
+&lt;input type="text" placeholder="Title" id="blog_title"&gt; 
+&lt;textarea id="blog_entry"&gt;&lt;/textarea&gt;
+&lt;button type="button" id="post_blog"&gt;Post&lt;/button&gt;
+
+
+&lt;!-- for display ------ --&gt;
+A Blog : 
+&lt;div id="blog_entries"&gt;&lt;/div&gt;
+
+</code></pre></div></div><div class="code_box"><h3>Javascript Client code</h3><div class="javascript_col"><pre class="codebox"><code>$.yote.init();
+var blog = $.yote.fetch_app( "MyBlogger" ).get_blog();
+
+$( "#post_blog" ).click( function() {
+  blog.post( { subject : $( "#blog_title" ).val(), 
+               content : $( "#blog_entry" ).val() } );
+  refresh();
+
+} );
+sub refresh() {
+  var entries = blog.get_posts();
+  var buf = "";
+  for( var i=0; i &lt; entries.length(); i++ ) {
+    var entry = entries.get( i );
+    var when = new Date( entry.get_created_on() * 1000 );
+    buf += "&lt;h2&gt;" + entry.get_subject() + "&lt;/h2&gt;";
+    buf += "&lt;DIV&gt;" + entry.get_content() + "&lt;/DIV&gt;";
+    buf += "&lt;SPAN&gt;Posted by " + entry.get_author().get_handle() + 
+        " on " + when.toLocaleTimeString() + "&lt;/SPAN&gt;";
+  }
+  $( "#blog_entries" ).empty().append( buf );
+}
+</code></pre></div></div><div class="code_box"><h3>Perl Server Code</h3><div class="server_col"><pre class="codebox"><code># ----- There are three yote classes for this case ----
+
+package MyBlogger;
+
+use strict;
+
+use base "Yote::AppRoot";
+
+use Yote::Util::Blog;
+
+sub _init {
+  my $self = shift;
+  $self-&gt;set_blog( new Yote::Util::Blog() );
+}
+
+1;
+# -----------------------------------------------
+
+package Yote::Util::Blog;
+
+use strict;
+
+use base "Yote::Obj";
+
+use Yote::Util::BlogPost;
+
+sub post {
+    my( $self, $data, $acct ) = @_;
+
+    my $post = new Yote::Util::BlogPost();
+    $post-&gt;set_blog( $self );
+    $post-&gt;set_author( $acct );
+
+    $post-&gt;set_content( $data-&gt;{ content } );
+    $post-&gt;set_subject( $data-&gt;{ subject } );
+    $post-&gt;set_created_on( time() );
+
+    $self-&gt;add_to_posts( $post );
+
+    return $post;
+} #post
+
+sub remove_post {
+    my( $self, $data, $acct ) = @_;
+
+    die "Not authorized to remove" unless $acct &amp;&amp; 
+      ( $acct-&gt;get_login()-&gt;is_root() || $acct-&gt;_is( $data-&gt;get_author() ) );
+
+    $self-&gt;remove_from_posts( $data );
+
+} #remove_post
+
+1;
+
+# -----------------------------------------------
+
+package Yote::Util::BlogPost;
+
+use strict;
+
+use base "Yote::Obj";
+
+sub update {
+    my( $self, $data, $acct ) = @_;
+
+    die "No post given" unless $data;
+    die "Not author of post" unless $acct &amp;&amp; 
+     ( $acct-&gt;_is( $self-&gt;get_author() ) || $acct-&gt;is_root() );
+
+    my $dirty = $self-&gt;_update( $data,  qw( subject content ) );
+    if( $dirty ) {
+		  $self-&gt;set_last_edited_on( time() );
+    }
+
+} #edit_post
+
+1;</code></pre></div></div><p></p><h4>Server Notes</h4><p>There are three different methods being introduced here. </p><p><code>$account-&gt;is_root</code> is a method that returns true if this account is a root one.</p><p><code>$obj-&gt;_is( $other_obj )</code> returns true if $obj and $other_obj are the same.</p><p><code>$obj-&gt;_update( $data_hash )</code> is a method that, when overridden, updates the data in the object.The <code>_update</code> dies by default and is called by the server when the client tries to update an object.In this case, only the subject and content may be updated.</p><p></p><p></p><div style="padding:0 300px 0 300px;display:inline"><a id="back" href="#">Previous</a></div></section>
+      </div>
+    </div>
+    <footer>
+      This page has been viewed <span id="counter">29</span> times.
+    </footer>
+
+  
+
+
+
+    <script src="/js/local.js"></script>
+
+
+</body></noscript>
+
 </html>

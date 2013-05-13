@@ -129,8 +129,6 @@ sub process_http_request {
     $ENV{PATH_INFO} = $uri;
     $ENV{REQUEST_METHOD} = $verb;
 
-    accesslog( "GOT URI '$uri'" );
-
     ### ******* $uri **********
 
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
@@ -157,9 +155,6 @@ sub process_http_request {
 	    $obj_id      = pop( @path );
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
 	}
-
-
-	accesslog( "$path_start/$app_id/$obj_id/$action/ uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
 
         my $command = {
             a  => $action,
@@ -212,7 +207,8 @@ sub process_http_request {
     } #if a command on an object
 
     else { #serve up a web page
-	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ]" );
+	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
+
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
 
@@ -254,7 +250,7 @@ sub process_http_request {
                 print $soc $buf;
             }
             close( IN );
-	    accesslog( "200 : $dest");
+	    #accesslog( "200 : $dest");
 	} else {
 	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
 	    $self->do404();
@@ -429,7 +425,7 @@ sub _process_command {
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
 	
-	accesslog( "   DATA : " . Data::Dumper->Dump( [ $data ] ) );
+	#accesslog( "   DATA : " . Data::Dumper->Dump( [ $data ] ) );
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
@@ -484,7 +480,7 @@ sub _process_command {
     $resp = to_json( $resp );
 
     ### SEND BACK $resp
-    accesslog( "SEND BACK : $resp" );
+    #accesslog( "SEND BACK : $resp" );
 
     #
     # Send return value back to the caller if its waiting for it.
