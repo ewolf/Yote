@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0986';
+$VERSION = '0.0987';
 
 use Carp;
 
@@ -12,8 +12,6 @@ use Yote::ConfigData;
 use Yote::ObjProvider;
 use Yote::SQLiteIO;
 use Yote::WebAppServer;
-
-
 
 sub _print_use {
     print '
@@ -71,17 +69,18 @@ sub _ask {
 sub _create_configuration {
     my $yote_root_dir = shift;
     
-    my $newconfig = _get_configuration();
+    my $newconfig = _get_configuration( $yote_root_dir );
 
     open( OUT, ">$yote_root_dir/yote.conf" ) or die $@;
     print OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
     close( OUT );
-
     return $newconfig;
 
 } #_create_configuration
 
 sub _get_configuration {
+    my $yote_root_dir = shift;
+
     my %newconfig;
 
     my $engine = _ask( 'This is the first time yote is being run and must be set up now.
@@ -91,7 +90,30 @@ mongo db is the fastest, but sqlite will always work.',
     $newconfig{ engine } = $engine;
     
     if ( $engine eq 'sqlite' ) {
-	$newconfig{ store } = _ask( "sqlite filename", undef, 'yote.sqlite' );
+	my $done;
+	until( $done ) {
+	    my( $dir, $store ) = ( _ask( "sqlite filename", undef, 'yote.sqlite' ) =~ /(.*\/)?([^\/]+)$/ );
+	    print "$dir, $store\n";
+	    if( $store ) {
+		if( substr( $dir, 0, 1 ) eq '/' ) {
+		    if( -d $dir && -w $dir ) {
+			$done = 1;
+			$newconfig{ $store } = "$dir$store";
+		    }
+		}
+		elsif( $dir ) {
+		    use File::Path;
+		    my $full_store = "$yote_root_dir/$dir";
+		    mkpath( $full_store );
+		    $newconfig{ store } = "$full_store/$store";
+		    $done = 1;
+		}
+		else {
+		    $newconfig{ $store } = "$yote_root_dir/data/$store";
+		    $done = 1;
+		}
+	    }
+	}
     }
     elsif ( lc($engine) eq 'mongo' ) {
 	$newconfig{ store }       = _ask( "MongoDB database", undef, 'yote' );
@@ -189,7 +211,7 @@ sub get_args {
 	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
 	    my $newconfig = _create_configuration( $yote_root_dir );
 	    for my $key ( keys %$newconfig ) {
-		$config{ $key } ||= $newconfig->{ key };
+		$config{ $key } ||= $newconfig->{ $key };
 	    }
 	}
 
@@ -198,7 +220,7 @@ sub get_args {
 	_log "No configuration file exists. Asking user to get values for one.\n";
 	my $newconfig = _create_configuration( $yote_root_dir );
 	for my $key ( keys %$newconfig ) {
-	    $config{ $key } ||= $newconfig->{ key };
+	    $config{ $key } = $newconfig->{ $key };
 	}	
     } #had to write first config file
 
