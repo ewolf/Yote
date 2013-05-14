@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0987';
+$VERSION = '0.0988';
 
 use Carp;
 
@@ -98,7 +98,7 @@ mongo db is the fastest, but sqlite will always work.',
 		if( substr( $dir, 0, 1 ) eq '/' ) {
 		    if( -d $dir && -w $dir ) {
 			$done = 1;
-			$newconfig{ $store } = "$dir$store";
+			$newconfig{ store } = "$dir$store";
 		    }
 		}
 		elsif( $dir ) {
@@ -109,7 +109,7 @@ mongo db is the fastest, but sqlite will always work.',
 		    $done = 1;
 		}
 		else {
-		    $newconfig{ $store } = "$yote_root_dir/data/$store";
+		    $newconfig{ store } = "$yote_root_dir/data/$store";
 		    $done = 1;
 		}
 	    }

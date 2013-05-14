@@ -1,3 +1,8 @@
+2013-05-14  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0987
+	* fixed bug in storing sqlite file location
+
 2013-05-13  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0986 ( had not CPAN'd this version yet )
