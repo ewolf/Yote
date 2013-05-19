@@ -6,7 +6,7 @@ use warnings;
 no warnings 'uninitialized';
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use base 'Yote::Obj';
 
@@ -70,7 +70,7 @@ sub fetch_specific_content_node {
     # CHECK PATH
     if( $path ) {
 	my $working_node = $self->get__path_nodes( {} )->{ $path };
-	return undef unless $working_node;
+	return unless $working_node;
 	return $working_node->fetch_specific_content_node( { starts => $starts,
 							     lang   => $lang,
 							     region => $region,
@@ -80,7 +80,7 @@ sub fetch_specific_content_node {
     # CHECK DATE
     if( $starts ) {
 	my( $date_node ) = sort { $a->get_start_time() gt $b->get_start_time() } grep { $_->get_start_time() le $starts } @{ $self->get__date_nodes() };
-	return undef unless $date_node;
+	return unless $date_node;
 	return $date_node->fetch_specific_content_node( { lang   => $lang,
 							  region => $region, } );
     }
@@ -88,14 +88,14 @@ sub fetch_specific_content_node {
     # CHECK LANG
     if( $lang ) {
 	my( $lang_node ) = $self->get__lang_nodes( {} )->{ $lang };
-	return undef unless $lang_node;
+	return unless $lang_node;
 	return $lang_node->fetch_specific_content_node( { region => $region, } );
     }
 
     # CHECK REGION
     if( $region ) {
 	my( $region_node ) = $self->get__region_nodes( {} )->{ $region };
-	return undef unless $region_node;
+	return unless $region_node;
 	return $region_node;
     }
     

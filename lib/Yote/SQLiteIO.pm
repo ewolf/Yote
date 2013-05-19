@@ -15,7 +15,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use constant {
     DATA => 2,
@@ -105,7 +105,7 @@ sub fetch {
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
 
-    return undef unless $class;
+    return unless $class;
     my $obj = [$id,$class];
     if( $class  eq 'ARRAY') {
 	$obj->[DATA] = [];
@@ -268,7 +268,7 @@ sub path_to_root {
 	}
     }
 
-    return undef;
+    return;
 } #path_to_root
 
 #

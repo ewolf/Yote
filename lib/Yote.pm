@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0988';
+$VERSION = '0.0989';
 
 use Carp;
+use File::Path;
 
 use Yote::ConfigData;
 use Yote::ObjProvider;
@@ -15,17 +16,19 @@ use Yote::WebAppServer;
 
 sub _print_use {
     print '
-Usage : 
+Usage :
 yote_server --engine=sqlite|mongo|mysql --user=engine-username --password=engine-password \\
             --store=filename|mongo-db|mysq-db --host=mongo-or-mysql-host --engine_port=port-mongo-or-mysql-use \\
             --port=yote-server-port \\
             START|STOP|RESTART
 ';
+    return;
 }
 
 sub _log {
     my $foo = shift;
     print STDERR "$foo\n";
+    return;
 }
 
 sub _soft_exit {
@@ -42,7 +45,7 @@ sub _ask {
 	%valmap = map { (1 + $_ ) => $allowed->[$_] } ( 0 .. $#$allowed );
 	for my $all (@$allowed) { $valmap{ lc( $all ) } = $all; }
     }
-    
+
     while( 1 ) {
 	if( $allowed ) {
 	    print "$question : possible values ( ".join(',',map { (1 + $_ ) .") $allowed->[$_]".($default eq $allowed->[$_] ? '*' : '') } ( 0 .. $#$allowed )).") ? ";
@@ -51,8 +54,8 @@ sub _ask {
 	} else {
 	    print "$question : ";
 	}
-	my $ans = <STDIN>;  
-	$ans =~ s/[\n\r]+$//;  
+	my $ans = <STDIN>;
+	$ans =~ s/[\n\r]+$//;
 	if( $allowed && $valmap{ lc($ans) } ) {
 	    return $valmap{ lc($ans) }
 	}
@@ -68,12 +71,12 @@ sub _ask {
 
 sub _create_configuration {
     my $yote_root_dir = shift;
-    
+
     my $newconfig = _get_configuration( $yote_root_dir );
 
-    open( OUT, ">$yote_root_dir/yote.conf" ) or die $@;
-    print OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
-    close( OUT );
+    open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
+    print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
+    close( $OUT );
     return $newconfig;
 
 } #_create_configuration
@@ -84,11 +87,11 @@ sub _get_configuration {
     my %newconfig;
 
     my $engine = _ask( 'This is the first time yote is being run and must be set up now.
-The first decision as to what data store to use. 
+The first decision as to what data store to use.
 mongo db is the fastest, but sqlite will always work.',
 		      [ 'sqlite', 'mongo', 'mysql' ], 'sqlite' );
     $newconfig{ engine } = $engine;
-    
+
     if ( $engine eq 'sqlite' ) {
 	my $done;
 	until( $done ) {
@@ -102,7 +105,6 @@ mongo db is the fastest, but sqlite will always work.',
 		    }
 		}
 		elsif( $dir ) {
-		    use File::Path;
 		    my $full_store = "$yote_root_dir/$dir";
 		    mkpath( $full_store );
 		    $newconfig{ store } = "$full_store/$store";
@@ -195,8 +197,8 @@ sub get_args {
     _log "Looking for '$yote_root_dir/yote.conf'";
 
     if ( -r "$yote_root_dir/yote.conf" ) {
-	open( IN, "<$yote_root_dir/yote.conf" ) or die $@;
-	while ( <IN> ) {
+	open( my $IN, '<', "$yote_root_dir/yote.conf" ) or die $@;
+	while ( <$IN> ) {
 	    s/\#.*//;
 	    next unless /\S/;
 	    if ( /\s*(\S+)\s*=\s*(.*)\s*$/ ) {
@@ -206,7 +208,7 @@ sub get_args {
 		warn "Bad line in config file : '$_'";
 	    }
 	}
-	close( IN );
+	close( $IN );
 	if( grep { ! $config{ $_ } } keys %required ) {
 	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
 	    my $newconfig = _create_configuration( $yote_root_dir );
@@ -221,7 +223,7 @@ sub get_args {
 	my $newconfig = _create_configuration( $yote_root_dir );
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } = $newconfig->{ $key };
-	}	
+	}
     } #had to write first config file
 
     $cmd ||= 'start';
@@ -240,7 +242,7 @@ sub run {
 
     push( @INC, "$yote_root_dir/lib" );
 
-    my $s = new Yote::WebAppServer;
+    my $s = Yote::WebAppServer->new;
 
     _log "Starting Server";
     my $args = Data::Dumper->Dump([\%config]);
@@ -325,7 +327,7 @@ If no configuration has been saved, this program prompts the user for configurat
 
 =item run( %args )
 
-This method activates starts the Yote server with configuration values that have been passed in. It does not 
+This method activates starts the Yote server with configuration values that have been passed in. It does not
 return until the yote server has shut down.
 
 =back

@@ -10,7 +10,6 @@ use forks::shared;
 use IO::Handle;
 use IO::Socket;
 
-use Logger::Simple;
 use MIME::Base64;
 use JSON;
 use Data::Dumper;
@@ -22,7 +21,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.087';
+$VERSION = '0.088';
 
 
 my( %prid2result, $singleton );
@@ -62,18 +61,20 @@ sub do404 {
     print "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
 }
 
+
+sub iolog {
+    my( $msg ) = @_;
+    print $Yote::WebAppServer::IO "$msg\n";
+}
+
 sub errlog {
     my( $msg ) = @_;
-    return accesslog( $msg );
+    print $Yote::WebAppServer::ERR "$msg\n";
 }
 
 sub accesslog {
     my( $msg ) = @_;
-    if( $Yote::WebAppServer::ACCESS_LOG ) {
-	$Yote::WebAppServer::ACCESS_LOG->write( $msg );
-    } else {
-	print STDERR Data::Dumper->Dump([$msg]);
-    }
+    print $Yote::WebAppServer::ACCESS "$msg\n";
 }
 
 #
@@ -101,6 +102,7 @@ sub process_http_request {
     my $content_length = $ENV{CONTENT_LENGTH};
     if( $content_length > 5_000_000 ) { #make this into a configurable field
 	$self->do404();
+	close( $soc );
 	return;
     }
 
@@ -141,14 +143,14 @@ sub process_http_request {
 
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
-	push( @return_headers, "Content-Type: text/json");
+	push( @return_headers, "Content-Type: text/json; charset=utf-8");
 	push( @return_headers, "Server: Yote" );
 	if( $path_start eq '_' ) {
 	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
 	}
 	else {
-	    my $vars = Yote::FileHelper::__ingest( $soc );
+	    my $vars = Yote::FileHelper::__ingest( _parse_form( $soc ) );
 	    $data        = $vars->{d};
 	    $token       = $vars->{t};
 	    $guest_token = $vars->{gt};
@@ -194,22 +196,29 @@ sub process_http_request {
 		sleep 0.001;
             }
 	    print $soc "HTTP/1.0 200 OK\015\012";
-	    push( @return_headers, "Content-Type: text/json" );
+	    push( @return_headers, "Content-Type: text/json; charset=utf-8" );
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
 	    print $soc join( "\n", @return_headers )."\n\n";
+	    utf8::encode( $result );
             print $soc "$result";
         }
         else {  #not waiting for an answer, but give an acknowledgement
 	    print $soc "HTTP/1.0 200 OK\015\012";
-	    push( @return_headers, "Content-Type: text/json" );
+	    push( @return_headers, "Content-Type: text/json; charset=utf-8" );
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
 	    print $soc join( "\n", @return_headers )."\n\n";
             print $soc "{\"msg\":\"Added command\"}";
         }
     } #if a command on an object
 
+    elsif( $path[0] eq '_c' ) {
+	# modify the file helper ingest method, splitting out the part that returns the form
+	# call the method that returns the form ( maybe move that method here )
+    } #if a 'cgi' is requested
+
     else { #serve up a web page
 	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
+	iolog( $uri );
 
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
@@ -221,7 +230,7 @@ sub process_http_request {
 		$dest = "$dest/index.html";
 	    }
 	} 
-	if( open( IN, "<$root/$dest" ) ) {
+	if( open( my $IN, '<', "$root/$dest" ) ) {
 
 	    print $soc "HTTP/1.0 200 OK\015\012";
 	    my $binary = 0;
@@ -248,15 +257,16 @@ sub process_http_request {
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
 
 	    my $buf;
-            while( read( IN,$buf, 8 * 2**10 ) ) {
+            while( read( $IN,$buf, 8 * 2**10 ) ) {
                 print $soc $buf;
             }
-            close( IN );
+            close( $IN );
 	    #accesslog( "200 : $dest");
 	} else {
 	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
 	    $self->do404();
 	}
+	close( $soc );
 	return;
     } #serve html
 
@@ -312,7 +322,9 @@ sub start_server {
     mkdir( $Yote::WebAppServer::UPLOAD_DIR );
     mkdir( $Yote::WebAppServer::LOG_DIR );
 
-    $Yote::WebAppServer::ACCESS_LOG = Logger::Simple->new( LOG => "$Yote::WebAppServer::LOG_DIR/access.log" );
+    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" );
+    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" );
+    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" );
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
@@ -427,7 +439,7 @@ sub _process_command {
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
 	
-	#accesslog( "   DATA : " . Data::Dumper->Dump( [ $data ] ) );
+	iolog( "  * DATA IN  : " . Data::Dumper->Dump( [ $data ] ) );
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
@@ -482,7 +494,7 @@ sub _process_command {
     $resp = to_json( $resp );
 
     ### SEND BACK $resp
-    #accesslog( "SEND BACK : $resp" );
+    iolog( " * DATA BACK : $resp" );
 
     #
     # Send return value back to the caller if its waiting for it.
@@ -497,6 +509,74 @@ sub _process_command {
 } #_process_command
 
 #
+# 
+#
+sub _parse_form {
+    my $soc = shift;
+    my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
+    my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
+    my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{'HTTP_CONTENT-TYPE'} || $ENV{CONTENT_TYPE};
+    if( $boundary_header =~ /boundary=(.*)/ ) {
+	my $boundary = $1;
+	my $counter = 0;
+	# find boundary parts
+	while($counter < $content_length) {
+	    $_ = <$soc>;
+	    if( /$boundary/s ) {
+		last if $1;
+		$finding_headers = 1;
+		$finding_content = 0;
+		if( $content_data{ name } && !$content_data{ filename } ) {
+		    $post_data{ $content_data{ name } } =~ s/[\n\r]*$//;
+		}
+		%content_data = ();
+		undef $fn;
+	    }
+	    elsif( $finding_headers ) {
+		if( /^\s*$/s ) {  # got a blank line, so end of headers
+		    $finding_headers = 0;
+		    $finding_content = 1;
+		    if( $content_data{ name } && $content_data{ filename } ) {
+			my $name = $content_data{ name };
+			
+			$fn = File::Temp->new( UNLINK => 0, DIR => $Yote::WebAppServer::FILE_DIR );
+			$file_helpers{ $name } = {
+			    filename     => $fn->filename,
+			    content_type => $content_type,
+			}
+		    }
+		} else {
+		    my( $hdr, $val ) = split( /:/, $_ );
+		    if( lc($hdr) eq 'content-disposition' ) {
+			my( $hdr_type, @parts ) = split( /\s*;\s*/, $val );
+			$content_data{ $hdr } = $hdr_type;
+			for my $part (@parts) {
+			    my( $k, $d, $v ) = ( $part =~ /([^=]*)=(['"])?(.*)\2\s*$/s );
+			    $content_data{ $k } = $v;
+			}
+		    } elsif( lc( $hdr ) eq 'content-type' && $val =~ /^([^;]*)/ ) {
+			$content_type = $1;
+		    }
+		}
+	    }
+	    elsif( $finding_content ) {
+		if( $fn ) {
+		    print $fn $_;
+		} else {
+		    $post_data{ $content_data{ name } } .= $_;
+		}
+	    } else {
+
+	    }
+	    $counter += length( $_ );
+
+	} #while
+    } #if has a boundary content type
+
+    return ( \%post_data, \%file_helpers );
+} #parse_form
+
+#
 # Translates from vValue and reference_id to values and references
 #
 sub _translate_data {
@@ -508,7 +588,7 @@ sub _translate_data {
     elsif( ref( $val ) eq 'ARRAY' ) { #from javacript object, or hash. no fields starting with underscores accepted
         return [ map {  _translate_data( $_ ) } @$val ];
     }
-    return undef unless $val;
+    return unless $val;
     if( index($val,'v') == 0 ) {
 	return substr( $val, 1 );
     }
@@ -563,6 +643,10 @@ Return a 404 not found page and exit.
 =item errlog( msg )
 
 Write the message to the error log
+
+=item iolog( msg )
+
+Writes to an IO log for client server communications
 
 =item init_server
 

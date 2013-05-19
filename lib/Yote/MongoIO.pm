@@ -15,7 +15,7 @@ use MongoDB;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -94,7 +94,7 @@ sub first_id {
 sub fetch {
     my( $self, $id ) = @_;
     my $data = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $id ) } );
-    return undef unless $data;
+    return unless $data;
     if( $data->{ c } eq 'ARRAY' ) {
 	return [ $id, $data->{ c }, $data->{d} ];
     } else {
@@ -254,7 +254,7 @@ sub path_to_root {
 	}
     } #each doc
 
-    return undef;
+    return;
 } #path_to_root
 
 #
@@ -270,22 +270,28 @@ sub paths_to_root {
 
     while( my $obj = $curs->next ) {
 	my $d = $obj->{ d };
-	my $field;
+	my $last_field;
 	if( $obj->{ c } eq 'ARRAY' ) {
-	    for( $field=0; $field < @$d; $field++ ) {
-		last if $d->[ $field ] eq $obj_id;
+	    for( my $field=0; $field < @$d; $field++ ) {
+		if( $d->[ $field ] eq $obj_id ) { 
+		    $last_field = $field;
+		    last;
+		}
 	    }
 	} 
 	else {
-	    for $field ( keys %$d ) {
-		last if $d->{$field} eq $obj_id;
+	    for my $field ( keys %$d ) {
+		if( $d->{$field} eq $obj_id ) {
+		    $last_field = $field;
+		    last;
+		}
 	    }
 	}
 	my $new_obj_id = $obj->{ _id }{ value };
 	if( ! $seen->{ $new_obj_id } && $self->has_path_to_root( $new_obj_id ) ) {
 	    $seen->{ $new_obj_id } = 1;
 	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
-	    push @$ret, map { "$_/$field" } @$paths;
+	    push @$ret, map { "$_/$last_field" } @$paths;
 	}
     } #each doc
     
@@ -388,12 +394,12 @@ sub xpath {
 	else {
 	    $next_ref = $odata->{ d }{ $l };
 	}
-	return undef unless defined( $next_ref );
-	return undef if index( $next_ref, 'v' ) == 0;
+	return unless defined( $next_ref );
+	return if index( $next_ref, 'v' ) == 0;
 	$odata = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $next_ref ) } );
     } #each path part
 
-    return undef unless $odata;
+    return unless $odata;
 
     # @TODO: log bad xpath if final_value not defined
     if( $odata->{c} eq 'ARRAY' ) {
@@ -405,7 +411,7 @@ sub xpath {
 	return $odata->{ d }{ $final_field };
     }
 
-    return undef;
+    return;
 } #xpath
 
 #
@@ -415,10 +421,10 @@ sub xpath_count {
     my( $self, $path ) = @_;
 
     my $obj_id = $self->xpath( $path );
-    return undef unless $obj_id;
+    return unless $obj_id;
 
     my $odata = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    return undef unless $odata;
+    return unless $odata;
 
     # @TODO: log bad xpath if final_value not defined
     if( $odata->{c} eq 'ARRAY' ) {
