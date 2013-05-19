@@ -3,14 +3,14 @@
 FOR Stable Alpha
 
   * Enable Cron
+  * Make sure encoding requests are honored
   * Create admin pages
   * Unify unit tests for different stores
   * Create program to reset root password
-  * Create program to reset whole config
+  * Create program to reset whole config ( code for this is done as part of Yote.pm )
   * More yote tools
-  * Better way to set variables from the client rather than relying on uppercase
+  * Add at least simple modperl support
   * UI - account change password and request password reset link
-  * Versions in javascript
   * method to get version to client
   * add test only requirements to Build.PL
 

@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 no warnings 'uninitialized';
 
@@ -110,7 +110,7 @@ sub fetch_app_by_class {
     my( $self, $data ) = @_;
     my $app = $self->get__apps({})->{$data};
     unless( $app ) {
-        eval("use $data");
+        eval ("use $data");
         die $@ if $@;
         $app = $data->new();
         $self->get__apps()->{$data} = $app;

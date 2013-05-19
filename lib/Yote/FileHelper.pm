@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.011';
+$VERSION = '0.012';
 
 use base 'Yote::Obj';
 
@@ -31,70 +31,11 @@ sub Url {
 
 
 sub __ingest {
-    my $soc = shift;
-    my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
-    my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
-    my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{'HTTP_CONTENT-TYPE'} || $ENV{CONTENT_TYPE};
-    if( $boundary_header =~ /boundary=(.*)/ ) {
-	my $boundary = $1;
-	my $counter = 0;
-	# find boundary parts
-	while($counter < $content_length) {
-	    $_ = <$soc>;
-	    if( /$boundary/s ) {
-		last if $1;
-		$finding_headers = 1;
-		$finding_content = 0;
-		if( $content_data{ name } && !$content_data{ filename } ) {
-		    $post_data{ $content_data{ name } } =~ s/[\n\r]*$//;
-		}
-		%content_data = ();
-		undef $fn;
-	    }
-	    elsif( $finding_headers ) {
-		if( /^\s*$/s ) {
-		    $finding_headers = 0;
-		    $finding_content = 1;
-		    if( $content_data{ name } && $content_data{ filename } ) {
-			my $name = $content_data{ name };
-			
-			$fn = File::Temp->new( UNLINK => 0, DIR => $Yote::WebAppServer::FILE_DIR );
-			$file_helpers{ $name } = {
-			    filename     => $fn->filename,
-			    content_type => $content_type,
-			}
-		    }
-		} else {
-		    my( $hdr, $val ) = split( /:/, $_ );
-		    if( lc($hdr) eq 'content-disposition' ) {
-			my( $hdr_type, @parts ) = split( /\s*;\s*/, $val );
-			$content_data{ $hdr } = $hdr_type;
-			for my $part (@parts) {
-			    my( $k, $d, $v ) = ( $part =~ /([^=]*)=(['"])?(.*)\2\s*$/s );
-			    $content_data{ $k } = $v;
-			}
-		    } elsif( lc( $hdr ) eq 'content-type' && $val =~ /^([^;]*)/ ) {
-			$content_type = $1;
-		    }
-		}
-	    }
-	    elsif( $finding_content ) {
-		if( $fn ) {
-		    print $fn $_;
-		} else {
-		    $post_data{ $content_data{ name } } .= $_;
-		}
-	    } else {
-
-	    }
-	    $counter += length( $_ );
-
-	} #while
-    } #if has a boundary content type
+    my( $post_data, $file_helpers ) = @_;
     # go through the $post_data and translate any values into FileHelper object ids.
-    $post_data{d} = MIME::Base64::encode( to_json( __translate( from_json( MIME::Base64::decode($post_data{d}) ), \%file_helpers ) ), '' );
+    $post_data->{d} = MIME::Base64::encode( to_json( __translate( from_json( MIME::Base64::decode($post_data->{d}) ), $file_helpers ) ), '' );
 
-    return \%post_data;
+    return $post_data;
 } #__ingest
 
 sub __translate {

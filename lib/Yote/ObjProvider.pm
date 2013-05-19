@@ -26,7 +26,7 @@ our $CACHE;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 
 # ------------------------------------------------------------------------------------------
@@ -91,6 +91,14 @@ sub encrypt_pass {
 #
 sub first_id {
     return $DATASTORE->first_id();
+}
+
+sub flush {
+    my( $id ) = @_;
+    delete $Yote::ObjProvider::DIRTY->{$id};
+    delete $Yote::ObjProvider::WEAK_REFS->{$id};
+    delete $Yote::ObjProvider::DIRTY->{$id};
+    $CACHE->flush( $id );
 }
 
 sub fetch {
@@ -551,6 +559,10 @@ Requests the data store used disconnect.
 =item encrypt_pass( pass_string )
 
 Returns a string of the argument encrypted.
+
+=item flush( id )
+
+Removes any object with the given ID from any cache
 
 =item fetch( id )
 

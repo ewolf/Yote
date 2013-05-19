@@ -36,7 +36,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -230,7 +230,6 @@ sub __transform_data_no_id {
     }
 } #__transform_data_no_id
 
-
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
@@ -288,6 +287,9 @@ sub update {
 #
 # Private method to update the hash give. Returns if things were made dirty.
 # Takes a list of fields to try to extract from the hash.
+#
+# This is the same as _absorb. Only one should remain.
+#   probably _update with the code from _absorb
 #
 sub _update {
     my( $self, $datahash, @fieldlist ) = @_;

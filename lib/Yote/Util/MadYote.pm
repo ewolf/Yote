@@ -8,6 +8,9 @@ use base 'Yote::AppRoot';
 use Yote::Util::ChatBoard;
 use Yote::Util::Blog;
 
+use vars qw($VERSION);
+$VERSION = '0.02';
+
 sub _init {
 
     my $self = shift;

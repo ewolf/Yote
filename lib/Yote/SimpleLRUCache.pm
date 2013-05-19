@@ -6,7 +6,7 @@ no warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 sub new {
     my( $pkg, $size, $boxes ) = @_;
@@ -20,6 +20,13 @@ sub new {
     return bless $self, $class;
 } #new
 
+sub flush {
+    my( $self, $id ) = @_;
+    for my $box (@{$self->{ boxes }}) {
+	delete $box->{ $id };
+    }    
+} #flush
+
 sub fetch {
     my( $self, $id ) = @_;
     for my $box (@{$self->{ boxes }}) {
@@ -28,7 +35,7 @@ sub fetch {
 	return $val if defined( $val );
     }
     $self->{misses}++;
-    return undef;
+    return;
 } #fetch
 
 sub stow {
@@ -47,6 +54,10 @@ __END__
 =head1 INIT METHODS
 
 =over 4
+
+=item flush( id )
+
+Removes any object with the given ID from the cache
 
 =item fetch( id )
 

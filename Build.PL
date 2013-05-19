@@ -68,7 +68,6 @@ my $builder = Module::Build->new(
 	'forks'                 => 0.34,
 	'forks::shared'         => 0.34,
 	'JSON'                  => 2.53,
-	'Logger::Simple'        => 2.0,
 	'Mail::Sender'          => 0,
 	'MIME::Lite'            => 3.029,
 	'MongoDB'               => 0.503,

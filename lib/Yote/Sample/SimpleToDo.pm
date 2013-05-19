@@ -2,7 +2,12 @@ package Yote::Sample::SimpleTodo;
 
 use strict;
 
+use warnings;
+
 use base "Yote::AppRoot";
+
+use vars qw($VERSION);
+$VERSION = '0.02';
 
 sub _init_account {  
   my( $self, $account ) = @_;

@@ -250,6 +250,7 @@ $.yote = {
 	$.ajax( {
 	    async:async,
 	    cache: false,
+	    contentType: "application/json; charset=utf-8",
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
 		    console.log('incoming '); console.log( a );
