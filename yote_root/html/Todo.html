@@ -24,7 +24,7 @@
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'ToDo Page',
-				function( count ) { 
+				function( count ) {
 				    $('#counter').empty().append( count );
 				},
 				function( err ) {},
@@ -32,7 +32,7 @@
 			      );
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
-	    message_attachpoint : '#msg_div' 
+	    message_attachpoint : '#msg_div'
 	} );
     });
     </script>
@@ -57,21 +57,19 @@
 	The following is a wish list of things to do including bug fixes and new features
       </p>
       <ul>
-	<li>Automatically create the root user login account and have its password be a configuration option.</li>
-	<li>Daemonize the yote_server script. The initial attempts failed due to threading issues, but it can be done.</li>
-	<li>Create an account management</li>
-	<li>Create an object browsing page</li>
-	<li>Create an object browsing shell</li>
-	<li>Add FileHelper methods to update the file in question with a new value.</li>
-	<li>Consider changing the set capitaliziation uppercase convention in favor of a list defined in the object. </li>
-	<li>Put together a cron that makes sense.</li>
+        <li>Daemonize the yote_server script. The initial attempts failed due to threading issues, but it can be done.</li>
+        <li>Create an account management page</li>
+        <li>Create an object browsing page</li>
+        <li>Create an object browsing shell</li>
+        <li>Add FileHelper methods to update the file in question with a new value.</li>
+        <li>Add modperl ( at least simple modperl ) support.</li>
+        <li>Put together a cron that makes sense.</li>
       </ul>
     </SECTION>
-    
+
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
   </body>
 </html>
-	
