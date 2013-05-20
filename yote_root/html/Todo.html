@@ -24,7 +24,7 @@
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'ToDo Page',
-				function( count ) { 
+				function( count ) {
 				    $('#counter').empty().append( count );
 				},
 				function( err ) {},
@@ -32,7 +32,7 @@
 			      );
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
-	    message_attachpoint : '#msg_div' 
+	    message_attachpoint : '#msg_div'
 	} );
     });
     </script>
@@ -66,11 +66,10 @@
 	<li>Put together a cron that makes sense.</li>
       </ul>
     </SECTION>
-    
+
     <footer>
       This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
   </body>
 </html>
-	
