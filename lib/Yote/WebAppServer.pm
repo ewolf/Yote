@@ -7,12 +7,12 @@ no warnings 'uninitialized';
 use forks;
 use forks::shared;
 
+use Data::Dumper;
+use MIME::Base64;
 use IO::Handle;
 use IO::Socket;
-
-use MIME::Base64;
 use JSON;
-use Data::Dumper;
+use POSIX qw(strftime);
 
 use Yote::AppRoot;
 use Yote::ObjManager;
@@ -21,7 +21,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.088';
+$VERSION = '0.089';
 
 
 my( %prid2result, $singleton );
@@ -64,17 +64,20 @@ sub do404 {
 
 sub iolog {
     my( $msg ) = @_;
-    print $Yote::WebAppServer::IO "$msg\n";
+    my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
+    print $Yote::WebAppServer::IO "$t : $msg\n";
 }
 
 sub errlog {
     my( $msg ) = @_;
-    print $Yote::WebAppServer::ERR "$msg\n";
+    my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
+    print $Yote::WebAppServer::ERR "$t : $msg\n";
 }
 
 sub accesslog {
     my( $msg ) = @_;
-    print $Yote::WebAppServer::ACCESS "$msg\n";
+    my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
+    print $Yote::WebAppServer::ACCESS "$t : $msg\n";
 }
 
 #

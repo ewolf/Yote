@@ -3,8 +3,13 @@
 Build
 MYMETA.json
 MYMETA.yml
-Makefile
+Makefile*
 _build
 blib
 pm_to_blib
 yote.pid
+*.gz
+MANIFEST.*bak
+META.*
+yote_root/html/js/local.js
+
