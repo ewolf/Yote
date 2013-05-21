@@ -1,3 +1,8 @@
+2013-05-21  wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0991
+	* split logging into io, error and access
+
 2013-05-19  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0989
