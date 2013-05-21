@@ -21,7 +21,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.089';
+$VERSION = '0.090';
 
 
 my( %prid2result, $singleton );
@@ -325,9 +325,12 @@ sub start_server {
     mkdir( $Yote::WebAppServer::UPLOAD_DIR );
     mkdir( $Yote::WebAppServer::LOG_DIR );
 
-    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" );
-    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" );
-    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" );
+    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" )
+		      && $Yote::WebAppServer::IO->autoflush;
+    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
+		      && $Yote::WebAppServer::ACCESS->autoflush;
+    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
+		      && $Yote::WebAppServer::ERR->autoflush;
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
@@ -382,6 +385,13 @@ sub _start_server_thread {
 		  unless( $self->{lsn} ) {
 		      threads->exit();
 		  }
+		  open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" ) 
+		      && $Yote::WebAppServer::IO->autoflush;
+		  open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
+		      && $Yote::WebAppServer::ACCESS->autoflush;
+		  open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
+		      && $Yote::WebAppServer::ERR->autoflush;
+		  
 		  while( my $fh = $self->{lsn}->accept ) {
 		      $ENV{ REMOTE_ADDR } = $fh->peerhost;
 		      $self->process_http_request( $fh );
