@@ -32,6 +32,8 @@ if we are our experiences then we are both sides of them.
 	$.yote.init();
 	make_menus( '#top_nav' );
 
+	var root = $.yote.fetch_root();
+
 	var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
 
 	var chat = madyote_app.get_chat_board();
@@ -89,6 +91,16 @@ if we are our experiences then we are both sides of them.
 
 	    //include delete or archive
 	    plimit : 20
+	} );
+
+	$.yote.util.control_table( { 
+	    item          : root,
+	    paginate_type : 'hash',
+	    list_name     : '_handles',
+	    attachpoint   : '#accounts_div',
+	    column_headers : [ 'Handle', 'Email' ],
+	    plimit  : 10,
+	    columns : [ 'handle', 'email' ]
 	} );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
@@ -179,7 +191,13 @@ if we are our experiences then we are both sides of them.
 	  <P id="chat_div">
 	  </P>
 	</SECTION>
-	
+
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>Accounts Control Panel</H1>
+	  </DIV>
+          <DIV id="accounts_div"></DIV>
+        </SECTION>
       </DIV>
 
     </DIV>

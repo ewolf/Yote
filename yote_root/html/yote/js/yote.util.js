@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.01
+ * Version 0.02
  */
 $.yote.util = {
     ids:0,
@@ -636,22 +636,46 @@ $.yote.util = {
 		    item.paginate_rev( [ list_name, plimit + 1, me.start ] );
 		
 		var max = items.length() > plimit ? plimit : items.length();
-		
-		for( var i = 0 ; i < max ; i++ ) {
-		    var item = items.get( i );
-		    var row = [];
-		    for( var j = 0 ; j < columns.length; j++ ) {
-			row.push( typeof columns[ j ] == 'function' ?
-				  columns[ j ]( item, true ) : 
-				  typeof columns[ j ] == 'object' ?
-				  columns[ j ][ 'render' ]( item )
-				  : item.get( columns[ j ] )
-				);
+
+		if( paginate_type == 'hash' ) {
+
+		    var keys = items.keys();
+
+		    for( var i in keys ) {
+			var key = keys[ i ];
+			var item = items.get( key );
+			var row = [];
+			for( var j = 0 ; j < columns.length; j++ ) {
+			    row.push( typeof columns[ j ] == 'function' ?
+				      columns[ j ]( item, true ) : 
+				      typeof columns[ j ] == 'object' ?
+				      columns[ j ][ 'render' ]( item )
+				      : item.get( columns[ j ] )
+				    );
+			}
+			if( remove_fun ) {
+			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
+			}
+			tab.add_row( row );
 		    }
-		    if( remove_fun ) {
-			row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
+		}
+		else {
+		    for( var i = 0 ; i < max ; i++ ) {
+			var item = items.get( i );
+			var row = [];
+			for( var j = 0 ; j < columns.length; j++ ) {
+			    row.push( typeof columns[ j ] == 'function' ?
+				      columns[ j ]( item, true ) : 
+				      typeof columns[ j ] == 'object' ?
+				      columns[ j ][ 'render' ]( item )
+				      : item.get( columns[ j ] )
+				    );
+			}
+			if( remove_fun ) {
+			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
+			}
+			tab.add_row( row );
 		    }
-		    tab.add_row( row );
 		}
 
 		var buf = tab.get_html();

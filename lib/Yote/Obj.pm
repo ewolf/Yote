@@ -36,7 +36,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -235,7 +235,11 @@ sub __transform_data_no_id {
 # ------------------------------------------------------------------------------------------
 
 sub count {
-    my( $self, $data ) = @_;
+    my( $self, $data, $account ) = @_;
+
+    if( index( $data, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
 
     return Yote::ObjProvider::xpath_count( $self->_path_to_root() . "/$data" );
 } #count
@@ -244,6 +248,10 @@ sub paginate {
     my( $self, $data, $account ) = @_;
     
     my( $list_name, $number, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
 
     return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start );
 
@@ -254,6 +262,10 @@ sub paginate_rev {
     
     my( $list_name, $number, $start ) = @$data;
 
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+
     return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start, 1 );
 
 } #paginate_rev
@@ -262,7 +274,7 @@ sub paginate_hash {
     my( $self, $data, $account ) = @_;
     my( $list_name, $number, $start ) = @$data;
 
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() ) {
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
 	die "permissions error";
     }
 

@@ -21,7 +21,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.090';
+$VERSION = '0.091';
 
 
 my( %prid2result, $singleton );
@@ -471,6 +471,8 @@ sub _process_command {
         my $account;
         if( $login ) {
             $account = $app->__get_account( $login );
+	    $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
+	    $login->add_once_to__accounts( $account );
         }
 
         my $ret = $app_object->$action( $data, $account, $command->{e} );

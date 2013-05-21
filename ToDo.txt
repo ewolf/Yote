@@ -3,6 +3,8 @@
 FOR Stable Alpha
 
   * Enable Cron
+  * Security improvement : offer up proxies for other users' accounts. This makes sure that
+     the client does not access account data it shouldn't
   * Make sure encoding requests are honored
   * Create admin pages
   * Unify unit tests for different stores
