@@ -64,7 +64,7 @@ if we are our experiences then we are both sides of them.
 	    columns         : [
 		$.yote.util.col_edit( 'subject' ),
 		$.yote.util.col_edit( 'content' ),
-		function( row ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); }
+		function( row, is_html ) { if( is_html ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); } }
 	    ],
 	    plimit          : 20,
 	    
@@ -98,9 +98,9 @@ if we are our experiences then we are both sides of them.
 	    paginate_type : 'hash',
 	    list_name     : '_handles',
 	    attachpoint   : '#accounts_div',
-	    column_headers : [ 'Handle', 'Email' ],
+	    column_headers : [ 'Handle', 'Email', 'Is Root' ],
 	    plimit  : 10,
-	    columns : [ 'handle', 'email' ]
+	    columns : [ 'handle', 'email', function( acct, is_html ) { if( is_html ) { return acct.is_root() == '1' ? 'Y' : 'N';  } }  ]
 	} );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');

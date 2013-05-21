@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.02
+ * Version 0.021
  */
 $.yote.util = {
     ids:0,
@@ -586,12 +586,17 @@ $.yote.util = {
 		
 		var after_render   = this.args[ 'after_render' ] || function(x) {};
 		var table_extra    = this.args[ 'table_extra' ];
+		var suppress_table = this.args[ 'suppress_table' ] || false;
 		var remove_fun     = this.args[ 'remove_function' ];
 		
 		// calculated
 		var count          = item.count( list_name );
+
+		var buf = '';
 		
-		var tab = $.yote.util.make_table( table_extra );
+		if( ! suppress_table ) {
+		    var tab = $.yote.util.make_table( table_extra );
+		}
 
 		if( new_attachpoint ) {
 		    var bf = 'New<BR>';
@@ -619,7 +624,7 @@ $.yote.util = {
 		    } );
 		} //new attacher
 		
-		if( column_headers ) {
+		if( column_headers && ! suppress_table ) {
 		    var ch = [];
 		    for( var i=0; i < column_headers.length; i++ ) {
 			ch.push( column_headers[ i ] );
@@ -671,14 +676,20 @@ $.yote.util = {
 				      : item.get( columns[ j ] )
 				    );
 			}
-			if( remove_fun ) {
+			if( remove_fun && ! suppress_table ) {
 			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
 			}
-			tab.add_row( row );
+			if( suppress_table ) { 
+			    buf += row.join('');
+			}
+			else {
+			    tab.add_row( row );
+			}
 		    }
 		}
 
-		var buf = tab.get_html();
+		buf += suppress_table ? '' : tab.get_html();
+
 		if( me.start > 0 || items.length() > plimit ) {
 		    buf += '<br>';
 		    buf += '<BUTTON type="button" id="to_start_b">&lt;&lt;</BUTTON>';
@@ -713,26 +724,52 @@ $.yote.util = {
 		    $( '#forward_b' ).attr( 'disabled', 'disabled' );
 		}
 
-		for( var i = 0 ; i < max ; i++ ) {
-		    var item = items.get( i );
-		    for( var j = 0 ; j < columns.length; j++ ) {
-			if( typeof columns[ j ] == 'function' ) {
-			    columns[ j ]( item, false );
+		if( paginate_type == 'hash' ) {
+		    for( var i in keys ) {
+			var key = keys[ i ];
+			var item = items.get( key );
+			for( var j = 0 ; j < columns.length; j++ ) {
+			    if( typeof columns[ j ] == 'function' ) {
+				columns[ j ]( item, false );
+			    }
+			    else if( typeof columns[ j ] == 'object' ) {
+				columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			    }
 			}
-			else if( typeof columns[ j ] == 'object' ) {
-			    columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			if( remove_fun ) {
+			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
+				remove_fun( it );
+				var to = me.start - 1;
+				if( to < 0 ) to = 0;
+				me.start = to;
+				me.refresh();
+			    } } )( item ) );
 			}
-		    }
-		    if( remove_fun ) {
-			$( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
-			    remove_fun( it );
-			    var to = me.start - 1;
-			    if( to < 0 ) to = 0;
-			    me.start = to;
-			    me.refresh();
+		    } //each row again
+		    
+		} 
+		else {
+		    for( var i = 0 ; i < max ; i++ ) {
+			var item = items.get( i );
+			for( var j = 0 ; j < columns.length; j++ ) {
+			    if( typeof columns[ j ] == 'function' ) {
+				columns[ j ]( item, false );
+			    }
+			    else if( typeof columns[ j ] == 'object' ) {
+				columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			    }
+			}
+			if( remove_fun ) {
+			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
+				remove_fun( it );
+				var to = me.start - 1;
+				if( to < 0 ) to = 0;
+				me.start = to;
+				me.refresh();
 			} } )( item ) );
-		    }
-		} //each row again
+			}
+		    } //each row again
+		}
 		
 		after_render( items );
 	    }

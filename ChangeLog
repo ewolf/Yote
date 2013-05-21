@@ -1,3 +1,7 @@
+2013-05-21  Eric Wolf  <coyo@gmail.com>
+
+	* yote.util.js update - the table tag is now optional, allowing the output to be a horizontal list, for example
+
 2013-05-21  wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0991

@@ -57,6 +57,7 @@ if we are our experiences then we are both sides of them.
 	var news_blog = yote_app.get_news_blog();
 	
 	$.yote.util.control_table( {
+	    suppress_table  : true,
 	    item            : news_blog,
 	    list_name       : 'posts',
 	    attachpoint     : '#news',
@@ -65,9 +66,10 @@ if we are our experiences then we are both sides of them.
 		function( item ) {
 		    var dt = new Date( 1000 * item.get_created_on() );
 		    var auth = item.get_author();
-		    return '<div class="news_header">' + item.get_subject() + '</div>' +
+		    return '<DIV><div class="news_header">' + item.get_subject() + '</div>' +
 			'<div class="news_body">' + item.get_content() + '</div>' + 
-			'<div class="news_time">Posted by ' + auth.get_handle() + ' on ' + dt.toLocaleString() + '</div>';
+			'<div class="news_time">Posted by ' + auth.get_handle() + ' on ' + dt.toLocaleString() + '</div>' +
+			'</DIV>';
 		}
 	    ],
 	    plimit          : 5,
@@ -97,15 +99,16 @@ if we are our experiences then we are both sides of them.
 	    $( '#chatter' ).empty().append( bf );
 
 	    var ct = $.yote.util.control_table( {
+		suppress_table : true,
 		item           : board,
 		list_name      : 'posts',
 		attachpoint    : '#chatter_table',
 		columns        : [
 		    function( row ) {
 			var when = new Date( row.get( 2 ) * 1000 );
-			return '<span class="c_name">' + row.get( 0 ) + '</span> ' +
+			return '<DIV><span class="c_name">' + row.get( 0 ) + '</span> ' +
 			    '<span class="c_message">' + row.get( 1 ) + '</span> ' +
-			    '<span class="c_time">' + when.toLocaleTimeString() + '</span>';
+			    '<span class="c_time">' + when.toLocaleTimeString() + '</span></DIV>';
 		    }
 		],
 		plimit          : 8
