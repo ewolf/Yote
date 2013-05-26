@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 183;
+use Test::More tests => 185;
 use Test::Pod;
 
 
@@ -82,7 +82,7 @@ sub test_suite {
 # Save key value fields for simple scalars, arrays and hashes.
 #                                                       # rows in fields total 
     $root->get_default( "DEFAULT" );                        # 1
-    $root->set_first( "FRIST" );                            # 1
+    is( $root->set_first( "FRIST" ), "FRIST", "set_ returns value" ); # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 8, "highest id in database 8" );
@@ -313,6 +313,9 @@ sub test_suite {
     $new_obj->set_cow( "FIRSTY" );
     $root->set_obj( $new_obj );
     $root->add_once_to_array( "MORE STUFF", "MORE STUFF", "MORE STUFF" );
+
+    $root->add_once_to_obj_array( $new_obj, $new_obj );
+    is( scalar(@{$root->get_obj_array()}), 1, "add once works for references" );
 
     $simple_array = $root->get_array();
     is( scalar(@$simple_array), 3, "add_once_to test array count" );

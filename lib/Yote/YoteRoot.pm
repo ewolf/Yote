@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 no warnings 'uninitialized';
 
@@ -177,10 +177,12 @@ sub logout {
 # and can only be used by the superuser.
 #
 sub purge_app {
-    my( $self, $data, $account ) = @_;
-    if( $account->get__is_root() ) {
-	$self->_purge_app( $data );
-	return "Purged '$data'";
+    my( $self, $app_name, $account ) = @_;
+    if( $account->get_login()->get__is_root() ) {
+	my $apps = $self->get__apps();
+	my $app = delete $apps->{ $app_name };
+	$self->add_to__purged_apps( $app );
+	return "Purged '$app_name'";
     }
     die "Permissions Error";
 } #purge_app
@@ -330,13 +332,6 @@ sub _create_token {
     $login->set__token( $token."x$ip" );
     return $login->{ID}.'-'.$token;
 }
-
-sub _purge_app {
-    my( $self, $app ) = @_;
-    my $apps = $self->get__apps();
-    return delete $apps->{$app};
-} #_purge_app
-
 
 1;
 

@@ -1,5 +1,6 @@
 2013-05-26  Eric Wolf  <coyocanid@gmail.com>
 
+	* VERSION 0.0992
 	* yote.util.js - control_table new entry can now have more than textbox; Rather than a fieldname, an object can be used
 	* server_docs.html - content update
 	* samples.html - minor content update

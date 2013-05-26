@@ -2,6 +2,7 @@
 
 FOR Stable Alpha
 
+  * Add timing alarm and max execute length parameter for configuration
   * Enable Cron
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't

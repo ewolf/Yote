@@ -349,6 +349,10 @@ $.yote = {
       This is called automatically by message if there is an upload involved. It is not meant to be invoked directly.
      */
     upload_message:function( params, uploads ) {
+
+
+	// for multiple, upload the files in order, then get the filehelper objs as callbacks and then make the call
+
         var root   = this;
         var data   = root._translate_data( params.data || {}, true );
 	var wait   = params.wait  == true ? 1 : 0;

@@ -4,6 +4,8 @@ bin/yote_classpath_updater.pl
 bin/yote_server
 Build.PL
 ChangeLog
+extra_test/mongo.t
+extra_test/mysql.t
 install
 lib/Yote.pm
 lib/Yote/Account.pm
@@ -49,14 +51,13 @@ META.yml
 README
 t/cms.t
 t/docs.t
-t/mongo.t
-t/mysql.t
 t/pod-coverage.t
 t/sqlite.t
 tasklog
 ToDo.txt
 VERSIONS
 yote_root/html/admin.html
+yote_root/html/apple-touch-icon.png
 yote_root/html/client_docs.html
 yote_root/html/css/main.css
 yote_root/html/docs.html
