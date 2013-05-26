@@ -69,7 +69,11 @@ if we are our experiences then we are both sides of them.
 	    plimit          : 20,
 	    
 	    new_attachpoint : '#new_blog_div',
-	    new_columns     : [ 'subject', 'content' ],
+	    new_columns     : [ 'subject', 
+				{ html     : function( id ) { return '<TEXTAREA id="' + id + '" placeholder="Content"></TEXTAREA><BR>'; },
+				  field    : 'content'
+				}
+			      ],
 	    new_column_titles : [ 'Subject', 'Content' ],
 	    new_button        : 'New News',
 	    new_function      : function() {

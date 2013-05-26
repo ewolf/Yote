@@ -583,29 +583,35 @@ $.yote.util = {
 		var new_column_titles  = this.args[ 'new_column_titles' ] || new_columns;
 		var new_function       = this.args[ 'new_function' ];
 		var new_button         = this.args[ 'new_button' ] || 'New';
-		
+
 		var after_render   = this.args[ 'after_render' ] || function(x) {};
 		var table_extra    = this.args[ 'table_extra' ];
 		var suppress_table = this.args[ 'suppress_table' ] || false;
 		var remove_fun     = this.args[ 'remove_function' ];
-		
+
 		// calculated
 		var count          = item.count( list_name );
 
 		var buf = '';
-		
+
 		if( ! suppress_table ) {
 		    var tab = $.yote.util.make_table( table_extra );
 		}
 
 		if( new_attachpoint ) {
 		    var bf = 'New<BR>';
-		    
+
 		    var txts = [];
 		    for( var i=0; i < new_columns.length; i++ ) {
-			bf += new_columns[ i ] + ' : <INPUT TYPE="TEXT" id="_new_' + item.id + 
-			    '_' + new_columns[ i ] + '"><BR>';
-			txts.push( '#_new_' + item.id + '_' + new_columns[ i ] );
+			var nc = new_columns[ i ];
+			var field = typeof nc === 'object' ? nc.field : nc;
+			var id = '_new_' + item.id + '_' + field;
+			if( typeof nc === 'object' ) {
+			    bf += nc.html( id );
+			} else {
+			    bf += nc + ' : <INPUT TYPE="TEXT" id="' + id + '"><BR>';
+			}
+			txts.push( '#' + id );
 		    }
 		    bf += '<BUTTON type="BUTTON" id="_new_' + item.id + '_b">' + new_button + '</BUTTON>';
 		    $( new_attachpoint ).empty().append( bf );
@@ -616,14 +622,16 @@ $.yote.util = {
 			action : (function(it) { return function() {
 			    var newitem = new_function();
 			    for( var i=0; i < new_columns.length; i++ ) {
-				var val = $( '#_new_' + it.id + '_' + new_columns[ i ] ).val();
-				newitem.set( new_columns[ i ], val );
+				var nc = new_columns[ i ];
+				var field = typeof nc === 'object' ? nc.field : nc;
+				var val = $( '#_new_' + it.id + '_' + field ).val();
+				newitem.set( field, val );
 			    }
 			    me.refresh();
 			} } )(item)
 		    } );
 		} //new attacher
-		
+
 		if( column_headers && ! suppress_table ) {
 		    var ch = [];
 		    for( var i=0; i < column_headers.length; i++ ) {
@@ -634,12 +642,12 @@ $.yote.util = {
 		    }
 		    tab.add_header_row( ch );
 		}
-		
+
 		var items = paginate_type == 'hash' ?
 		    item.paginate_hash( [ list_name, plimit + 1, me.start ] ) :
-		    paginate_order == 'forward' ? item.paginate( [ list_name, plimit + 1, me.start ] ) : 
+		    paginate_order == 'forward' ? item.paginate( [ list_name, plimit + 1, me.start ] ) :
 		    item.paginate_rev( [ list_name, plimit + 1, me.start ] );
-		
+
 		var max = items.length() > plimit ? plimit : items.length();
 
 		if( paginate_type == 'hash' ) {
@@ -652,7 +660,7 @@ $.yote.util = {
 			var row = [];
 			for( var j = 0 ; j < columns.length; j++ ) {
 			    row.push( typeof columns[ j ] == 'function' ?
-				      columns[ j ]( item, true ) : 
+				      columns[ j ]( item, true ) :
 				      typeof columns[ j ] == 'object' ?
 				      columns[ j ][ 'render' ]( item )
 				      : item.get( columns[ j ] )
@@ -670,7 +678,7 @@ $.yote.util = {
 			var row = [];
 			for( var j = 0 ; j < columns.length; j++ ) {
 			    row.push( typeof columns[ j ] == 'function' ?
-				      columns[ j ]( item, true ) : 
+				      columns[ j ]( item, true ) :
 				      typeof columns[ j ] == 'object' ?
 				      columns[ j ][ 'render' ]( item )
 				      : item.get( columns[ j ] )
@@ -679,7 +687,7 @@ $.yote.util = {
 			if( remove_fun && ! suppress_table ) {
 			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
 			}
-			if( suppress_table ) { 
+			if( suppress_table ) {
 			    buf += row.join('');
 			}
 			else {
@@ -705,12 +713,12 @@ $.yote.util = {
 		    var b = me.start - plimit;
 		    if( b < 0 ) b = 0;
 		    $( '#back_b' ).click(function() { me.start = b; me.refresh(); } );
-		} 
+		}
 		else {
 		    $( '#to_start_b' ).attr( 'disabled', 'disabled' );
 		    $( '#back_b' ).attr( 'disabled', 'disabled' );
 		}
-		
+
 		if( items.length() > plimit ) {
 		    var e = me.start + plimit;
 		    if( e > count ) {
@@ -746,8 +754,8 @@ $.yote.util = {
 			    } } )( item ) );
 			}
 		    } //each row again
-		    
-		} 
+
+		}
 		else {
 		    for( var i = 0 ; i < max ; i++ ) {
 			var item = items.get( i );
@@ -770,7 +778,7 @@ $.yote.util = {
 			}
 		    } //each row again
 		}
-		
+
 		after_render( items );
 	    }
 	};

@@ -71,6 +71,13 @@
 	the database until the get_obj method returns it. This allows there to be a huge cohesive data tree that does
 	not have to be loaded into memory all at once.
       </P>
+      <P>
+	Only one master process executes the Yote code and communicates with the data store. Server processes all talk
+	to the master process, which executes from a list of queued commands. The server process adds a command onto
+	a shared queue, which the master process reads from and executes, one at a time. The server thread waits on a 
+	shared variable to be released by the main thread and returns the result contained within to the client. Optionally
+	the server thread can place a command in the queue and not wait for the answer.
+      </P>
       <h3>Creating</h3>
       <P>
 	Creating a new Yote object is as easy as <code>my $obj = new Yote::Obj();</code>. Once created it can be

@@ -403,6 +403,7 @@ sub AUTOLOAD {
             my $inval = Yote::ObjProvider::xform_in( $val );
             Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval;
+	    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;
     }

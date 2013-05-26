@@ -15,7 +15,7 @@ use Yote::Test::TestNoDeepCloner;
 
 use Data::Dumper;
 use DBI;
-use Test::More tests => 180;
+use Test::More tests => 181;
 use Test::Pod;
 
 use Carp;
@@ -127,7 +127,7 @@ sub test_suite {
 # Save key value fields for simple scalars, arrays and hashes.
 #                                                       # rows in fields total 
     $root->get_default( "DEFAULT" );                        # 1
-    $root->set_first( "FRIST" );                            # 1
+    is( $root->set_first( "FRIST" ), "FRIST", "set returns value" );                            # 1
     $root->get_default_array( ["DEFAULT ARRAY"] );          # 2
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 8, "highest id in database 8" );

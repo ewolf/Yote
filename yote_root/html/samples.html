@@ -89,7 +89,10 @@ sub increment {\n\
 		discussion        : 'This simple example does not take IP origin into account. \
 The IP is passed in to all yote methods as part of the environment hash reference passed in as the fourth argument.',
 
-		server_discussion : 'The call <code>get__counts( {} )</code> ensures that the <code>_counts</code> variable is populated.',
+		server_discussion : 'The call <code>get__counts( {} )</code> ensures that the <code>_counts</code> variable is populated.\
+Under the hood, Yote has a single process that runs calculations or updates the database, so there can not be two page hits that update the \
+count to the same value.\
+',
 
 		client_discussion : 'The client is being called asyncronously. The second argument is the handler for when this completes.\
 It is given the return value as a single parameter. The third argument is for a handler for the error case. The error message\
@@ -573,7 +576,7 @@ In this case, only the subject and content may be updated.</p></p>\
 
 	} //show_sample
 
-	show_sample( 3 );
+	show_sample( 0 );
 
 	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
 	page_counter.increment( 'Samples Page',

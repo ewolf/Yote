@@ -89,7 +89,7 @@ if we are our experiences then we are both sides of them.
 	var board = yote_app.get_chat_board();
 	function make_chat() {
 
-	    var bf = '<INPUT TYPE="text" id="post_out" size="15" placeholder="Message">';
+	    var bf = '<TEXTAREA id="post_out" rows="5" cols="25" placeholder="Message"></TEXTAREA>';
 	    if( ! $.yote.is_logged_in() ) {
 		bf += '<INPUT TYPE="text" id="post_name" size="8" placeholder="Name">';
 	    }
@@ -175,6 +175,13 @@ if we are our experiences then we are both sides of them.
 	  <P>
 	    It was created by <a href="mailto:coyocanid@gmail.com">Eric Wolf</A>.
 	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
+	  </P>
+
+	  <P>
+	    The News section of this page uses Yote::Util::Blog which is no more than about 50 lines of perl code
+	    when you include the helper class of Yote::Util::BlogPost.
+	    The javascript code to add entries and display the blog is about 20 lines of javascript code.
+	    Take a look on the <A href="samples.html">samples</A> page.
 	  </P>
 <!--
 	  <P>
