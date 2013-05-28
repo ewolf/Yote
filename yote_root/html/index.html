@@ -96,6 +96,15 @@ if we are our experiences then we are both sides of them.
 	    bf += '<BUTTON type="BUTTON" id="send_msg">Send</BUTTON> <BR>' + 
 		'<div id="chatter_table"></div>';
 
+	    $.yote.util.button_actions( {
+		button : '#send_sug',
+		texts  : [ '#suggestions' ],
+		action : function() {
+		    var sug = $( '#suggestions' ).val();
+		    yote_app.suggestion_box( sug );
+		    $( '#suggestion_result' ).empty().append( "Sent '" + sug + "'" );
+		},
+	    } );
 	    $( '#chatter' ).empty().append( bf );
 
 	    var ct = $.yote.util.control_table( {
@@ -267,6 +276,14 @@ if we are our experiences then we are both sides of them.
 	  <INPUT TYPE="text" PLACEHOLDER="Search" id="search_txt"> <BUTTON type="Button">Search</BUTTON>
 	</DIV>
 -->
+        <DIV class="widget">
+	  <DIV id="suggestion_box">
+	    <TEXTAREA id="suggestions" placeholder="Suggestion Box"></TEXTAREA>
+            <BUTTON id="send_sug">Sent</BUTTON>
+          </DIV>
+	  <DIV id="suggestion_result"></DIV>
+	</DIV>
+
 	<DIV class="widget">
 	  Yote Chat
 	  <DIV id="post_box"></DIV>

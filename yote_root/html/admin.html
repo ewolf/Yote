@@ -17,6 +17,44 @@
 
     <STYLE>
       .mainpanel { top:0px; width:900px; display:inline-block; }
+      .tabs {  
+	  position: relative;   
+	  min-height: 300px; /* This part sucks */
+	  clear: both;
+	  margin: 25px 0;
+      }
+      .tab {
+	  float: left;
+      }
+      .tab label {
+	  background: #eee; 
+	  padding: 10px; 
+	  border: 1px solid #ccc; 
+	  margin-left: -1px; 
+	  position: relative;
+	  left: 1px; 
+      }
+      .tab [type=radio] {
+	  display: none;   
+      }
+      .content {
+	  position: absolute;
+	  top: 28px;
+	  left: 0;
+	  background: white;
+	  right: 0;
+	  bottom: 0;
+	  padding: 20px;
+	  border: 1px solid #ccc; 
+      }
+      [type=radio]:checked ~ label {
+	  background: white;
+	  border-bottom: 1px solid white;
+	  z-index: 2;
+      }
+      [type=radio]:checked ~ label ~ .content {
+	  z-index: 1;
+      }
     </STYLE>
 
 <!--
@@ -38,7 +76,7 @@ if we are our experiences then we are both sides of them.
 
 	var chat = madyote_app.get_chat_board();
 
-	$( '#motd_div' ).empty().append( $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
+	$( '#motd_div' ).empty().append( 'Click to Edit<BR>' + $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
 
 	$.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
 	
@@ -97,6 +135,18 @@ if we are our experiences then we are both sides of them.
 	    plimit : 20
 	} );
 
+	$.yote.util.control_table( {
+	    item           : madyote_app,
+	    list_name      : '_suggestion_box',
+	    attachpoint   : '#suggestion_div',
+	    plimit         : 20,
+	    column_headers : [ 'From', 'Message' ],
+	    columns        : [ 'from', 'message' ],
+	    remove_function : function( item ) {
+		madyote_app.remove_suggestion( item );
+	    }
+	} );
+
 	$.yote.util.control_table( { 
 	    item          : root,
 	    paginate_type : 'hash',
@@ -134,6 +184,15 @@ if we are our experiences then we are both sides of them.
 	} );
 
 	check_perms();
+
+	var tabs = [ '#motd_div', '#news_div', '#suggestion_div',
+		     '#chat_div', '#accounts_div' ];
+	var min = 0;
+	for( var i=0; i < tabs.length; i++ ) {
+	    min = min > $( tabs[ i ] ).height() ? min : $( tabs[ i ] ).height();
+	}
+	$( '.content' ).css( 'min-height', min + 'px' );
+	$( '#bottom_half' ).css( 'min-height', ( $('#bottom_header' ).height() + min + 100 ) + 'px' );
     });
     </script>
   </head>
@@ -149,7 +208,9 @@ if we are our experiences then we are both sides of them.
       <DIV id="msg_div"></DIV>
     </DIV>
     
-    <DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</div>
+    <DIV id="errpanel" class="err">
+      Must be logged in with a root account to view this page.
+    </DIV>
 
     <DIV class="mainpanel" id="mainpanel">
 
@@ -167,43 +228,46 @@ if we are our experiences then we are both sides of them.
 	  <P>
 	    Welcome to the Yote Admin Page.
 	  </P>
-	  <p>
-	    Yote manages persistant objects in a graph structure containing a root node. It can also be used as a web server itself.
-	    The objects are automatically saved and cached. The datastore can be one of Mongo, SQLite and MySQL. Mongo is the
-	    favored and fastest data store for Yote so far.
-	  </P>
-	  <p>
-	    Yote has just entered its alpha release phase, meaning it's in feature freeze.
-	    This website is dogfooding Yote, meaning that all pages and apps on the site are run from a Yote server.
-	  </P>
-	  <P>
-	    An example of a Yote app is the <A href="/gru/index.html">Animal Learning Game</A>
-	  </P>
 	</SECTION>
 
-	<SECTION>
-	  <DIV class="page-header">
+	<SECTION id="bottom_half">
+	  <DIV class="page-header" id="bottom_header">
 	    <H1>News Control Panel</H1>
 	  </DIV>
 
-          <h3>Edit the Message of the Day</h3>
-	  <p> <SPAN id="motd_div"></SPAN> </p>
+	  <DIV class="tabs">
 
-	  <h3>Edit News Blog</h3>
-	  <P id="news_div"></P>
-	  <h3>Chat Admin</h3>
-	  <P id="chat_div">
-	  </P>
-	</SECTION>
+	    <DIV class="tab" id="sugbox">
+	      <input type="radio" id="sb-tab" name="tab-group-1" checked>
+	      <label for="sb-tab">Suggestion Box</label>
+	      <DIV class="content"><DIV id="suggestion_div"></DIV></DIV>
+	    </DIV>
 
-	<SECTION>
-	  <DIV class="page-header">
-	    <H1>Accounts Control Panel</H1>
+	    <DIV class="tab" id="motd">
+	      <input type="radio" id="motd-tab" name="tab-group-1">
+	      <label for="motd-tab">Edit the Message of the Day</label>
+	      <DIV class="content"><DIV id="motd_div"></DIV></DIV>
+	    </DIV>
+
+	    <DIV class="tab" id="newsblog">
+	      <input type="radio" id="newsblog-tab" name="tab-group-1">
+	      <label for="newsblog-tab">Edit News Blog</label>
+	      <DIV class="content"><DIV id="news_div"></DIV></DIV>
+	    </DIV>
+
+	    <DIV class="tab" id="chatadmin">
+	      <input type="radio" id="chatadmin-tab" name="tab-group-1">
+	      <label for="chatadmin-tab">Chat Admin</label>
+	      <DIV class="content"><DIV id="chat_div"></DIV></DIV>
+	    </DIV>
+
+	    <DIV class="tab" id="accts">
+	      <input type="radio" id="accts-tab" name="tab-group-1">
+	      <label for="accts-tab">Accounts Control Panel</label>
+              <DIV class="content"><DIV id="accounts_div"></DIV></DIV>
+	    </DIV>
 	  </DIV>
-          <DIV id="accounts_div"></DIV>
         </SECTION>
-      </DIV>
-
     </DIV>
 
     <footer>
