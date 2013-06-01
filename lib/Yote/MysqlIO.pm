@@ -526,7 +526,7 @@ sub commit_transaction {
 
 sub start_transaction {
     my $self = shift;
-    $self->_do( "BEGIN TRANSACTION" );
+    $self->_do( "BEGIN" );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
