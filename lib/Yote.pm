@@ -174,7 +174,6 @@ sub get_args {
     my $cmd;
 
     # ---------  get command line arguments ---------
-
     while ( @ARGV ) {
 	my $arg = shift @ARGV;
 	if ( $arg =~ /^--(.*)=(.*)/ ) {
@@ -204,7 +203,7 @@ sub get_args {
 	    s/\#.*//;
 	    next unless /\S/;
 	    if ( /\s*(\S+)\s*=\s*(.*)\s*$/ ) {
-		$config{ lc( $1 ) } = $2;
+		$config{ lc( $1 ) } ||= $2;
 	    } else {
 		chop;
 		warn "Bad line in config file : '$_'";
@@ -224,7 +223,7 @@ sub get_args {
 	_log "No configuration file exists. Asking user to get values for one.\n";
 	my $newconfig = _create_configuration( $yote_root_dir );
 	for my $key ( keys %$newconfig ) {
-	    $config{ $key } = $newconfig->{ $key };
+	    $config{ $key } ||= $newconfig->{ $key };
 	}
     } #had to write first config file
 
