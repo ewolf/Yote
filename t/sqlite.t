@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 185;
+use Test::More tests => 182;
 use Test::Pod;
 
 
@@ -41,7 +41,6 @@ Yote::ObjProvider::init(
     );
 my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
-
 done_testing();
 
 unlink( $name );
@@ -332,12 +331,12 @@ sub test_suite {
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
     is( $root_3->count( 'array' ), 6, 'Array has 6 with count' );
-    is_deeply( $root_3->paginate( [ 'array', 3 ] ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->paginate_rev( [ 'array', 3 ] ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse with one argument' );
-    is_deeply( $root_3->paginate( [ 'array', 1, 2 ] ), [ 'MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->paginate_rev( [ 'array', 1, 4 ] ), [ 'With more than one thing' ], 'paginate with one argument' );
-    is_deeply( $root_3->paginate( [ 'array', 3, 4 ] ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->paginate_rev( [ 'array', 3, 4 ] ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list( 'array', 3 ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 3 ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse with one argument' );
+    is_deeply( $root_3->_paginate_list( 'array', 1, 2 ), [ 'MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 1, 4 ), [ 'With more than one thing' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list( 'array', 3, 4 ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 3, 4 ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate with one argument' );
 
     is( scalar(@$simple_array), 6, "add_to test array count" );
 
@@ -420,12 +419,12 @@ sub test_suite {
     is( $res->{l}->get_handle(), 'root', "handle for created root account" );
     is( $res->{l}->get_email(), 'foo@bar.com', "handle for created root account" );
     Yote::ObjProvider::stow_all();
-    my $root_acct = Yote::ObjProvider::xpath("/_handles/root");
+    my $root_acct = $root->_hash_fetch( "_handles", "root");
     unless( $root_acct ) {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
     }
-    is( Yote::ObjProvider::xpath_count("/_handles"), 1, "1 handle stored");
+    is( $root->_count("_handles"), 1, "1 handle stored");
     is( $root_acct->get_handle(), 'root', 'handle set' );
     is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
     isnt( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
@@ -445,7 +444,7 @@ sub test_suite {
     is( $res->{l}->get_handle(), 'toot', "second account created" );
     ok( $res->{t}, "second account created with token" );
     Yote::ObjProvider::stow_all();
-    my $acct = Yote::ObjProvider::xpath("/_handles/toot");
+    my $acct = $root->_hash_fetch( '_handles', 'toot' );
     ok( ! $acct->get__is_root(), 'second account not root' );
 
     my $rpass = Yote::ObjProvider::encrypt_pass( "realpass", 'realroot' );
@@ -498,49 +497,47 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
     
-    is( Yote::ObjProvider::path_to_root( $hello_app ), '/_apps/Yote::Test::Hello', 'path to root works' );
-
-    is( Yote::ObjProvider::xpath("/rogers/1"), "array", "xpath with array" );
-    is( Yote::ObjProvider::xpath("/hashfoo/zort"), "zot", "xpath with array" );
+    is( $root->_list_fetch( 'rogers', '1'), "array", "hash_fetch with array" );
+    is( $root->_list_fetch( "hashfoo", "zort"), "zot", "hash_fetch with array" );
 
     Yote::ObjProvider::stow_all();
-    my $app = Yote::ObjProvider::xpath( '/_apps/Yote::Test::TestAppNeedsLogin' );
+    my $app = $root->_hash_fetch( '_apps', 'Yote::Test::TestAppNeedsLogin' );
     $app->add_to_azzy( "A","B","C","D");
     Yote::ObjProvider::stow_all();
-    ok( ref( $app ) eq 'Yote::Test::TestAppNeedsLogin', "xpath gets AppObj" );
-    is(  Yote::ObjProvider::xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy/2' ), 'C', "xpath from AppRoot object" );
-    is(  Yote::ObjProvider::xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy/0' ), 'A', "xpath from AppRoot object" );
+    ok( ref( $app ) eq 'Yote::Test::TestAppNeedsLogin', "hash fetch gets AppObj" );
+    is(  $app->_hash_fetch( 'azzy', '2' ), 'C', "hash fetch from AppRoot object" );
+    is(  $app->_hash_fetch( 'azzy', '0' ), 'A', "hash fetch from AppRoot object" );
 
-    # test xpath insert, paginate_xpath
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, [ qw/A B C D/ ], 'xpath list without limits correct' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 0 );
-    is_deeply( $res, [ qw/A B/ ], 'xpath limits from 0 with 2 are correct' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 1 );
-    is_deeply( $res, [ qw/B C/  ], 'xpath limits from 1 with 2 are correct' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 4 );
-    is_deeply( $res, [ ], 'xpath limits beyond last index are empty' );
-    Yote::ObjProvider::xpath_insert( '/_apps/Yote::Test::TestAppNeedsLogin/azzy/4', 'E' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, [ qw/A B C D E/ ], 'xpath list without limits correct' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 4 );
-    is_deeply( $res, [ 'E' ], 'just the last of the xpath limit' );
+    # test hash fetch insert, _paginate 
+    $res = $app->_paginate_list( 'azzy' );
+    is_deeply( $res, [ qw/A B C D/ ], 'paginate list without limits correct' );
+    $res = $app->_paginate_list( 'azzy', 2, 0 );
+    is_deeply( $res, [ qw/A B/ ], 'paginate limits from 0 with 2 are correct' );
+    $res = $app->_paginate_list( 'azzy', 2, 1 );
+    is_deeply( $res, [ qw/B C/  ], 'paginate limits from 1 with 2 are correct' );
+    $res = $app->_paginate_list( 'azzy', 2, 4 );
+    is_deeply( $res, [ ], 'paginate limits beyond last index are empty' );
+    $res = $app->_list_insert( 'azzy', 'E', 4 );
+    $res = $app->_paginate_list( 'azzy' );
+    is_deeply( $res, [ qw/A B C D E/ ], 'paginate list without limits correct' );
+    $res = $app->_paginate_list( 'azzy', 2, 4 );
+    is_deeply( $res, [ 'E' ], 'just the last of the paginate limit' );
     
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct' );
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 0 );
-    is_deeply( $res, { 0 => 'A', 1 => 'B' }, 'xpath list limits from 0 with 2 are correct' );
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 2, 4 );
-    is_deeply( $res, { 4 => 'E' }, 'just the last of the xpath limit' );
+    $res = $app->_paginate_hash( 'azzy' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', 4 => 'E' }, 'paginate hash without limits correct' );
+    $res = $app->_paginate_hash( 'azzy', 2, 0 );
+    is_deeply( $res, { 0 => 'A', 1 => 'B' }, 'paginate list limits from 0 with 2 are correct' );
+    $res = $app->_paginate_hash( 'azzy', 2, 4 );
+    is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit' );
     
-    Yote::ObjProvider::xpath_delete( '/_apps/Yote::Test::TestAppNeedsLogin/azzy/2' );
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'xpath hash without limits correct after xpath_delete' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
-    is_deeply( $res, [ qw/A B D E/ ], 'xpath list without limits correct after xpath_delete' );
+    $app->_list_delete( 'azzy', 2 );
+    $res = $app->_paginate_hash( 'azzy' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'paginate hash without limits correct after paginate_delete' );
+    $res = $app->_paginate_list( 'azzy' );
+    is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after list_delete' );
 
-    Yote::ObjProvider::xpath_list_insert( '/_apps/Yote::Test::TestAppNeedsLogin/azzy', 'foo/bar' );
-    $res = Yote::ObjProvider::paginate_xpath_list( '/_apps/Yote::Test::TestAppNeedsLogin/azzy' );
+    $app->_list_insert( 'azzy', 'foo/bar' );
+    $res = $app->_paginate_list( 'azzy' );
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
     Yote::ObjProvider::stow_all();    
@@ -549,16 +546,16 @@ sub test_suite {
     $hash->{'baz/bof'} = "FOOME";
     $hash->{Bingo} = "BARFO";
     Yote::ObjProvider::stow_all();
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/hsh' );
-    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, 'xpath paginate for hash, with one key having a slash in its name' );
+    $res = $app->_paginate_hash( 'hsh' );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash, with one key having a slash in its name' );
     
     # delete with key that has slash in the name
-    Yote::ObjProvider::xpath_delete( '/_apps/Yote::Test::TestAppNeedsLogin/hsh/baz\\/bof' );    
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/hsh' );
-    is_deeply( $res, { 'Bingo' => "BARFO" }, 'xpath delete with key having a slash in its name' );
-    Yote::ObjProvider::xpath_insert( '/_apps/Yote::Test::TestAppNeedsLogin/hsh/\\/yakk\\/zakk\\/bakk', 'gotta slashy for it' );
-    $res = Yote::ObjProvider::paginate_xpath( '/_apps/Yote::Test::TestAppNeedsLogin/hsh' );
-    is_deeply( $res, { 'Bingo' => "BARFO", '/yakk/zakk/bakk' => 'gotta slashy for it' }, 'xpath paginate for hash, with one key having a slash in its name' );
+    $app->_hash_delete( 'hsh', 'baz/bof' );    
+    $res = $app->_paginate_hash( 'hsh' );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, 'delete with key having a slash in its name' );
+    $app->_hash_insert( 'hsh', '/\\/yakk\\/zakk/bakk', 'gotta slashy for it' );
+    $res = $app->_paginate_hash( 'hsh' );
+    is_deeply( $res, { 'Bingo' => "BARFO", '/\\/yakk\\/zakk/bakk' => 'gotta slashy for it' }, 'paginate for hash, with one key having a slash in its name' );
 
     # test hash argument to new obj :
     my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
@@ -571,8 +568,6 @@ sub test_suite {
     $o->set_emptylist( [] );
     $root->add_to_rogers( $o );
     Yote::ObjProvider::stow_all();
-    is( $o->_path_to_root(), '/rogers/3', "Xpath for recurseive 1" );
-    is( $o2->_path_to_root(), '/rogers/3/curse/0', "Xpath for recursive 2" );
     is( $o->count( 'emptylist' ), 0, "emptylist" );
 
 } #test suite

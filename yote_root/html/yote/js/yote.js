@@ -338,12 +338,14 @@ $.yote = {
 	var uctxt = 'u' + this.upload_count++;
 	$( selector_id ).attr( 'name', uctxt );
 	return (function(uct, sel_id) {
-	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input contro
+	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input control
 		if( return_selector_id ) return sel_id;
 		return uctxt;
 	    };
 	} )( uctxt, selector_id );
     }, //upload
+
+    /* Should have a upload_multiple. This would pass the files as filename -> data pairs, and include a filenames list */
 
     /*
       This is called automatically by message if there is an upload involved. It is not meant to be invoked directly.
@@ -506,7 +508,7 @@ $.yote = {
 			    if( this.is_hash ) { 
 				this.contents = obj.paginate_hash( [ this.field, this.page_size, idx ] ).to_hash();
 			    } else {
-				var res = obj.paginate( [ this.field, this.page_size, idx ] );
+				var res = obj.paginate_list( [ this.field, this.page_size, idx ] );
 				this.contents = [];
 				for( var i=0; i < res.length(); i++ ) {
 				    this.contents.push( res.get( i ) );

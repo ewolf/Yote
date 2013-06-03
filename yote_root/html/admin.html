@@ -74,100 +74,114 @@ if we are our experiences then we are both sides of them.
 
 	var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
 
-	var chat = madyote_app.get_chat_board();
+	function fill_data() {
 
-	$( '#motd_div' ).empty().append( 'Click to Edit<BR>' + $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
+	    var chat = madyote_app.get_chat_board();
 
-	$.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
-	
-	var blog = madyote_app.get_news_blog();
+	    $( '#motd_div' ).empty().append( 'Click to Edit<BR>' + $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
 
-	// edit the blog
-	//  show the entries in an editable table
-	//  allow for deletion
-	// have a new entry add at the top
-	
-	$( '#news_div' ).empty().append(
-	    '<div id="new_blog_div"></div><div id="news_list"></div>'
-	);
-
-	$.yote.util.control_table( {
-	    item            : blog,
-	    list_name       : 'posts',
-	    attachpoint     : '#news_list',
-	    remove_function : function( item ) {
-		blog.remove_post( item );
-	    },
-	    column_headers  : [ 'Subject', 'Content', 'Time' ],
-	    columns         : [
-		$.yote.util.col_edit( 'subject' ),
-		$.yote.util.col_edit( 'content' ),
-		function( row, is_html ) { if( is_html ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); } }
-	    ],
-	    plimit          : 20,
+	    $.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
 	    
-	    new_attachpoint : '#new_blog_div',
-	    new_columns     : [ 'subject', 
-				{ html     : function( id ) { return '<TEXTAREA id="' + id + '" placeholder="Content"></TEXTAREA><BR>'; },
-				  field    : 'content'
-				}
-			      ],
-	    new_column_titles : [ 'Subject', 'Content' ],
-	    new_button        : 'New News',
-	    new_function      : function() {
-		return blog.post( { content : '', subject : '' } )
-	    }
-	} );
+	    var blog = madyote_app.get_news_blog();
 
-	var cv = $.yote.util.col_edit;
+	    // edit the blog
+	    //  show the entries in an editable table
+	    //  allow for deletion
+	    // have a new entry add at the top
+	    
+	    $( '#news_div' ).empty().append(
+		'<div id="new_blog_div"></div><div id="news_list"></div>'
+	    );
 
-	$.yote.util.control_table( {
-	    item           : chat,
-	    list_name      : 'posts',
-	    attachpoint    : '#chat_div',
-	    column_headers : [ 'Name', 'Message', 'Time' ], 
-	    remove_function : function( item ) {
-		chat.remove_post( item );
-	    },
-	    columns        : [ 0, 1, 2 ],
+	    $.yote.util.control_table( {
+		item            : blog,
+		list_name       : 'posts',
+		attachpoint     : '#news_list',
+		remove_function : function( item ) {
+		    blog.remove_post( item );
+		},
+		column_headers  : [ 'Subject', 'Content', 'Time' ],
+		columns         : [
+		    $.yote.util.col_edit( 'subject' ),
+		    $.yote.util.col_edit( 'content' ),
+		    function( row, is_html ) { if( is_html ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); } }
+		],
+		plimit          : 20,
+		
+		new_attachpoint : '#new_blog_div',
+		new_columns     : [ 'subject', 
+				    { html     : function( id ) { return '<TEXTAREA id="' + id + '" placeholder="Content"></TEXTAREA><BR>'; },
+				      field    : 'content'
+				    }
+				  ],
+		new_column_titles : [ 'Subject', 'Content' ],
+		new_button        : 'New News',
+		new_function      : function() {
+		    return blog.post( { content : '', subject : '' } )
+		}
+	    } );
 
-	    //include delete or archive
-	    plimit : 20
-	} );
+	    var cv = $.yote.util.col_edit;
 
-	$.yote.util.control_table( {
-	    item           : madyote_app,
-	    list_name      : '_suggestion_box',
-	    attachpoint   : '#suggestion_div',
-	    plimit         : 20,
-	    column_headers : [ 'From', 'Message' ],
-	    columns        : [ 'from', 'message' ],
-	    remove_function : function( item ) {
-		madyote_app.remove_suggestion( item );
-	    }
-	} );
+	    $.yote.util.control_table( {
+		item           : chat,
+		list_name      : 'posts',
+		attachpoint    : '#chat_div',
+		column_headers : [ 'Name', 'Message', 'Time' ], 
+		remove_function : function( item ) {
+		    chat.remove_post( item );
+		},
+		columns        : [ 0, 1, 2 ],
 
-	$.yote.util.control_table( { 
-	    item          : root,
-	    paginate_type : 'hash',
-	    list_name     : '_handles',
-	    attachpoint   : '#accounts_div',
-	    column_headers : [ 'Handle', 'Email', 'Is Root' ],
-	    plimit  : 10,
-	    columns : [ 'handle', 'email', function( acct, is_html ) { if( is_html ) { return acct.is_root() == '1' ? 'Y' : 'N';  } }  ]
-	} );
+		//include delete or archive
+		plimit : 20
+	    } );
 
-	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	page_counter.increment( 'Admin Page',
-				function( count ) {
-				    $('#counter').empty().append( count );
-				},
-				function( err ) {},
-				1
-			      );
+	    $.yote.util.control_table( {
+		item           : madyote_app,
+		list_name      : '_suggestion_box',
+		attachpoint   : '#suggestion_div',
+		plimit         : 20,
+		column_headers : [ 'From', 'Message' ],
+		columns        : [ 'from', 'message' ],
+		remove_function : function( item ) {
+		    madyote_app.remove_suggestion( item );
+		}
+	    } );
+
+	    $.yote.util.control_table( { 
+		item          : root,
+		paginate_type : 'hash',
+		list_name     : '_handles',
+		attachpoint   : '#accounts_div',
+		column_headers : [ 'Handle', 'Email', 'Is Root' ],
+		plimit  : 10,
+		columns : [ 'handle', 'email', function( acct, is_html ) { if( is_html ) { return acct.is_root() == '1' ? 'Y' : 'N';  } }  ]
+	    } );
+	    var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+	    page_counter.increment( 'Admin Page',
+				    function( count ) {
+					$('#counter').empty().append( count );
+				    },
+				    function( err ) {},
+				    1
+				  );
+	}//fill_data
+
 
 	function check_perms() {
 	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
+		$( '#logged_in_status' ).empty().append( 
+		    'Logged in as ' + se_app.account().get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
+		);
+		$( '#logout' ).click( function() {
+		    $.yote.logout();
+		    $( '#header_bar' ).empty();
+	    se.splash_screen( 'Logged Out');
+		    $( '#logged_in_status' ).empty();
+		} );
+		
+		fill_data();
 		$( '#mainpanel' ).show();
 		$( '#errpanel' ).hide();
 	    } else {

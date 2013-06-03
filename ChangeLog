@@ -1,3 +1,10 @@
+2013-06-03  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.0993
+	* Big changes under the hood.
+	* Deprecated and removed xpath stuff. May reimplement if people call for it.
+	* Minor UI fixes.
+
 2013-05-26  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0992

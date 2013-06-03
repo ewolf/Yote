@@ -55,7 +55,7 @@ sub token_login {
     my $ip = $env->{ REMOTE_ADDR };
     if( $t =~ /(.+)\-(.+)/ ) {
         my( $uid, $token ) = ( $1, $2 );
-        my $login = Yote::ObjProvider::fetch( $uid );
+        my $login = $self->_fetch( $uid );
         if( ref( $login ) && ref( $login ) ne 'HASH' && ref( $login ) ne 'ARRAY'
 	    && $login->get__token() eq "${token}x$ip" ) {
 	    return $login;

@@ -110,96 +110,76 @@ sub ensure_datastore {
     $self->{DBH}->do( "COMMIT" );
 } #ensure_datastore
 
+
 #
-# Returns the number of entries in the data structure given.
+# Returns the number of entries in the list of the given id.
 #
-sub xpath_count {
-    my( $self, $path ) = @_;
-    my( @list ) = split( /\//, $path );
-    my $next_ref = 1;
-    for my $l (@list) {
-        next unless $l; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-        my( $ref ) = $self->{DBH}->selectrow_array( "SELECT ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
-        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-        $next_ref = $ref;
-        last unless $next_ref;
-    } #each path part
-
-    my( $count ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?", {}, $next_ref );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+sub count {
+    my( $self, $container_id ) = @_;
+    my( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
     return $count;
+} #count
 
-} #xpath_count
+sub list_insert {
+    my( $self, $list_id, $val, $idx ) = @_;
+    unless( defined( $idx ) ) {
+	( $idx ) = $self->{DBH}->selectrow_array( "SELECT 1 + max( field ) FROM field WHERE obj_id=?", {}, $list_id );
+    } else {
+	my( $occupied ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", {}, $list_id, $idx );
+	if( $occupied ) {
+	    $self->{DBH}->selectrow_array( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", {}, $list_id, $idx );
+	}
+    }
+    if( index( $val, 'v' ) == 0 ) {
+	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $list_id, $idx, substr( $val, 1 )  );
+    } else {
+	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $list_id, $idx, $val );
+    }
+    return;
+} #list_insert
 
-#
-# Returns a single value given the xpath (hash only, and notation is slash separated from root)
-# This will always query persistance directly for the value, bypassing objects.
-# The use for this is to fetch specific things from potentially very long hashes that you don't want to
-#   load in their entirety.
-#
-sub xpath {
-    my( $self, $path ) = @_;
-    my( @list ) = split( /\//, $path );
-    my $next_ref = 1;
-    my $final_val;
-    for my $l (@list) {
-        next unless defined($l); #skip blank paths like /foo//bar/  (should just look up foo -> bar
-	next if $l eq '';
-        undef $final_val;
-        my( $val, $ref ) = $self->{DBH}->selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?", {}, $l, $next_ref );
-        print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+sub hash_delete {
+    my( $self, $hash_id, $key ) = @_;
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
+    return;
+}
 
-        if( $ref && $val ) {
-            my ( $big_val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref );
-            print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+sub list_delete {
+    my( $self, $list_id, $idx ) = @_;
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+    return;
+}
 
-            $final_val = "v$big_val";
-            last;
-        } elsif( $ref ) {
-            $next_ref = $ref;
-            $final_val = $ref;
-        } else {
-            $final_val = "v$val";
-            last;
-        }
-    } #each path part
+sub hash_insert {
+    my( $self, $hash_id, $key, $val ) = @_;
+    if( index( $val, 'v' ) == 0 ) {
+	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $hash_id, $key, substr( $val, 1 )  );
+    } else {
+	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $hash_id, $key, $val );
+    }
+    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    return;
+} #hash_insert
 
-    # @TODO: log bad xpath if final_value not defined
+sub list_fetch {
+    my( $self, $list_id, $idx ) = @_;
+    my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+    return $ref_id || "v$val";
+} 
 
-    return $final_val;
-} #xpath
+sub hash_fetch {
+    my( $self, $hash_id, $key ) = @_;
+    my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
+    return $ref_id || "v$val";
+} 
 
-#
-# Deletes a value from the given xpath. /foo/bar/baz. 
-#
-sub xpath_delete {
-    my( $self, $path ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $field = pop @list;
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for delete";
-        }
-    } #each path part
-
-    #find the object type to see if this is an array to append to, or a hash to insert to
-    $self->_do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
-
-} #xpath_delete
-
+sub hash_has_key {
+    my( $self, $hash_id, $key ) = @_;
+    my( $fld ) = $self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
+    return defined( $fld );
+}
 sub _do {
     my( $self, $query, @args ) = @_;
     return $self->{DBH}->do( $query, {}, @args );
@@ -215,93 +195,6 @@ sub _selectall_arrayref {
     return $self->{DBH}->selectall_arrayref( $query, {}, @args );
 }
 
-
-sub _xpath_to_list {
-    my $path = shift;
-    my( @path ) = split( //, $path );
-    my( $working, $escaped, @res ) = '';
-    for my $ch (@path) {
-	if( $ch eq '/' && ! $escaped ) {
-	    push( @res, $working );
-	    $working = '';
-	    $escaped = 0;
-	} 
-	elsif( $ch eq '\\' ) {
-	    $escaped = 1;
-	}
-	else {
-	    $working .= $ch;
-	}
-    }
-    push( @res, $working ) if defined( $working );
-    return @res;
-} #_xpath_to_list
-
-
-#
-# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists.
-#
-sub xpath_insert {
-    my( $self, $path, $item_to_insert ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $field = pop @list;
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for insert";
-        }
-    } #each path part
-
-    $self->_do( "DELETE FROM field WHERE obj_id = ? AND field=?", $next_ref, $field );
-
-    if( index( $item_to_insert, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
-    } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
-    }
-
-} #xpath_insert
-
-#
-# Appends a value into the list located at the given xpath.
-#
-sub xpath_list_insert {
-    my( $self, $path, $item_to_insert ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for insert";
-        }
-    } #each path part
-
-    my( $field ) = $self->_selectrow_array( "SELECT max(field) + 1 FROM field WHERE obj_id=?", $next_ref );
-
-   if( index( $item_to_insert, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $next_ref, $field, substr( $item_to_insert, 1)  );
-    } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $next_ref, $field, $item_to_insert );
-    }
-
-} #xpath_list_insert
 
 #
 # Returns the first ID that is associated with the root YoteRoot object
@@ -377,20 +270,20 @@ sub get_id {
 #
 # Returns true if the given object traces back to the root.
 #
-sub has_path_to_root {
+sub _has_path_to_root {
     my( $self, $obj_id, $seen ) = @_;
     return 1 if $obj_id == 1;
     $seen ||= { $obj_id => 1 };
     my $res = $self->_selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
     for my $o_id (map { $_->[0] } @$res) {
 	next if $seen->{ $o_id }++;
-	if( $self->has_path_to_root( $o_id, $seen ) ) {
+	if( $self->_has_path_to_root( $o_id, $seen ) ) {
 	    return 1;
 	}
     }
 
     return 0;
-} #has_path_to_root
+} #_has_path_to_root
 
 # returns the max id (mostly used for diagnostics)
 sub max_id {
@@ -398,124 +291,6 @@ sub max_id {
     my( $highd ) = $self->_selectrow_array( "SELECT max(ID) FROM objects" );
     return $highd;
 }
-#
-# Returns a hash of paginated items that belong to the xpath.
-# 
-sub paginate_xpath {
-    my( $self, $path, $paginate_length, $paginate_start ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for pagination";
-        }
-    } #each path part
-
-    my $PAG = '';
-    if( defined( $paginate_start ) ) {
-	$PAG = "LIMIT $paginate_start";
-	if( $paginate_length ) {
-	    $PAG .= ",$paginate_length"
-	}
-    }    
-
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $next_ref );
-#    return [ map { [ $_->[0], $_->[1] || 'v' . $_->[2] ] } @$res ];
-    my %ret;
-    for my $row (@$res) {
-	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
-    }
-    return \%ret
-} #paginate_xpath
-
-#
-# Returns a hash of paginated items that belong to the xpath. Note that this 
-# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
-#   rather than [ undef, undef, undef, 'val1', 'val2' ]
-#
-sub paginate_xpath_list {
-    my( $self, $path, $paginate_length, $paginate_start, $reverse ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $next_ref = 1;
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-        my( $val, $ref ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE field=? AND obj_id=?",  $l, $next_ref );
-        die $self->{DBH}->errstr() if $self->{DBH}->errstr();
-
-
-        if( $ref ) {
-            $next_ref = $ref;
-        }
-        else {
-	    die "Unable to find xpath location '$path' for pagination";
-        }
-    } #each path part
-
-    my $PAG = '';
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $PAG = "LIMIT $paginate_start,$paginate_length";
-	} else {
-	    $PAG = "LIMIT $paginate_length";
-	}
-    }    
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field " . ( $reverse ? 'DESC ' : '' ) . " $PAG", $next_ref );
-    my @ret;
-    for my $row (@$res) {
-	push @ret, $row->[1] || "v$row->[2]";
-    }
-    return \@ret
-} #paginate_xpath_list
-
-#
-# Return a path to root that this object has (specified by id), if any.
-#
-sub path_to_root {
-    my( $self, $obj_id ) = @_;
-    return '' if $obj_id == 1;
-    my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
-    for my $row (@$res) {
-	my( $new_obj_id, $field ) = @$row;
-	if( $self->has_path_to_root( $new_obj_id, { $obj_id => 1 } ) ) {
-	    return $self->path_to_root( $new_obj_id ) . "/$field";
-	}
-    }
-
-    return;
-} #path_to_root
-
-#
-# Return all paths to root that this object (specified by id) has, if any.
-#
-sub paths_to_root {
-    my( $self, $obj_id, $seen ) = @_;
-    $seen ||= {};
-    return [''] if $obj_id == 1;
-    my $ret = [];
-    my $res = $self->_selectall_arrayref( "SELECT obj_id,field FROM field WHERE ref_id=?", $obj_id );
-    for my $row (@$res) {
-	my( $new_obj_id, $field ) = @$row;
-	if(  ! $seen->{$new_obj_id} && $self->has_path_to_root( $new_obj_id ) ) {
-	    $seen->{$new_obj_id} = 1;
-	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
-	    push @$ret, map { $_. "/$field" } @$paths;
-	}
-    }
-    
-    return $ret;
-} #paths_to_root
 
 sub commit_transaction {
     my $self = shift;
@@ -529,6 +304,57 @@ sub start_transaction {
     $self->_do( "BEGIN" );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
+
+#
+# Returns a hash of paginated items
+# 
+sub paginate_hash {
+    my( $self, $obj_id, $paginate_length, $paginate_start ) = @_;
+
+
+    my $PAG = '';
+    if( defined( $paginate_start ) ) {
+	$PAG = "LIMIT $paginate_start";
+	if( $paginate_length ) {
+	    $PAG .= ",$paginate_length"
+	}
+    }    
+
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $obj_id );
+
+    my %ret;
+    for my $row (@$res) {
+	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
+    }
+    return \%ret
+} #paginate_hash
+
+
+#
+# Returns a hash of paginated items that belong to the list. Note that this 
+# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
+#   rather than [ undef, undef, undef, 'val1', 'val2' ]
+#
+sub paginate_list {
+    my( $self, $obj_id, $paginate_length, $paginate_start, $reverse ) = @_;
+
+    my $PAG = '';
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    $PAG = "LIMIT $paginate_start,$paginate_length";
+	} else {
+	    $PAG = "LIMIT $paginate_length";
+	}
+    }    
+
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as decimal )" .
+					  ( $reverse ? 'DESC ' : '' ) . " $PAG", $obj_id );
+    my @ret;
+    for my $row (@$res) {
+	push @ret, $row->[1] || "v$row->[2]";
+    }
+    return \@ret
+} #paginate_list
 
 
 #
@@ -544,7 +370,7 @@ sub recycle_objects {
     
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
 	my $obj = $self->fetch( $id );
-	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
+	if( $obj && ( ! $self->_has_path_to_root( $id ) ) ) {
 	    $self->recycle_object( $id );
 	    ++$recycled;
 	}
@@ -679,6 +505,10 @@ Yote::ObjProvider::init( datastore => 'Yote::MysqlIO', db => 'yote_db', uname =>
 
 =item commit_transaction( )
 
+=item count( container_id )
+
+returns the number of items in the given container
+
 =item database( )
 
 Provides a database handle. Used only in testing.
@@ -701,9 +531,23 @@ Returns the id of the first object in the system, the YoteRoot.
 
 Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
 
-=item has_path_to_root( obj_id )
+=item hash_delete( hash_id, key )
 
-Returns true if the object specified by the id can trace a path back to the root yote object.
+Removes the key from the hash given by the id
+
+=item hash_fetch( hash_id, key )
+
+=item hash_has_key( hash_id, key )
+
+=item hash_insert( hash_id, key, value )
+
+=item list_delete( list_id, idx )
+
+=item list_fetch( list_id, idx )
+
+=item list_insert( list_id, val, idx )
+
+Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 
 =item max_id( ) 
 
@@ -711,21 +555,13 @@ Returns the max ID in the yote system. Used for testing.
 
 =item new
 
-=item paginate_xpath( path, start, length )
+=item paginate_hash( hash_id, length, start )
 
-This method returns a paginated portion of an object that is attached to the xpath given, as internal yote values.
+Returns a paginated hash reference
 
-=item paginate_xpath_list( parth, start, length )
+=item paginate_list( list_id, length, start )
 
-This method returns a paginated portion of a list that is attached to the xpath given.
-
-=item path_to_root( object )
-
-Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
-
-=item paths_to_root( object )
-
-Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+Returns a paginated list reference
 
 =item recycle_object( obj_id )
 
@@ -744,26 +580,6 @@ Stores the object of class class encoded in the internal data format into the da
 =item stow_all( )
 
 Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
-
-=item xpath( path )
-
-Given a path designator, returns the object data at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
-
-=item xpath_count( path )
-
-Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
-
-=item xpath_delete( path )
-
-Deletes the entry specified by the path.
-
-=item xpath_insert( path, item )
-
-Inserts the item at the given xpath, overwriting anything that had existed previously.
-
-=item xpath_list_insert( path, item )
-
-Appends the item to the list located at the given xpath.
 
 =back
 

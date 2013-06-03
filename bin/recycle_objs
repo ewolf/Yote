@@ -75,7 +75,7 @@ if( -e "$run_dir/yote.pid" && $pidfile->running() ) {
 $pidfile->write();
 
 Yote::ObjProvider::init( \%config );
-Yote::ObjProvider->recycle_objects();
+Yote::ObjProvider::recycle_objects();
 
 $pidfile->remove();
 

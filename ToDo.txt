@@ -3,7 +3,10 @@
 FOR Stable Alpha
 
   * Add timing alarm and max execute length parameter for configuration
+  * Move MongoIO, etc, to an IO sub package
+  * refactor IO to include better back references. Object will have to take note.
   * Enable Cron
+  * Move encrypt_pass to somewhere self, maybe?
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't
   * Make sure encoding requests are honored

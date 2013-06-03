@@ -137,7 +137,7 @@ sub fetch {
                 my $obj = $class->new( $id );
                 $obj->{DATA} = $data;
                 $obj->{ID} = $id;
-		$obj->_load();		
+		$obj->_load();
                 __store_weak( $id, $obj );
 		$CACHE->stow( $id, $obj );
                 return $obj;
@@ -206,13 +206,40 @@ sub get_id {
     }
 } #get_id
 
-#
-# Returns true if object connects to root
-#
-sub has_path_to_root {
-    my( $self, $obj_id ) = @_;
-    return $DATASTORE->has_path_to_root( $obj_id );
-} #has_path_to_root
+sub list_insert {
+    my( $list_id, $val, $idx ) = @_;
+    return $DATASTORE->list_insert( $list_id, ref( $val ) ? get_id( $val ) : "v$val", $idx );
+}
+
+sub list_delete {
+    my( $list_id, $key ) = @_;
+    return $DATASTORE->list_delete( $list_id, $key );
+}
+
+sub hash_delete {
+    my( $hash_id, $key ) = @_;
+    return $DATASTORE->hash_delete( $hash_id, $key );
+}
+
+sub hash_insert {
+    my( $hash_id, $key, $val ) = @_;
+    return $DATASTORE->hash_insert( $hash_id, $key, ref( $val ) ? get_id( $val ) : "v$val" );
+} #hash_insert
+
+sub hash_fetch {
+    my( $hash_id, $key ) = @_;
+    return xform_out( $DATASTORE->hash_fetch( $hash_id, $key ) );
+} 
+
+sub list_fetch {
+    my( $list_id, $idx ) = @_;
+    return xform_out( $DATASTORE->list_fetch( $list_id, $idx ) );
+} 
+
+sub hash_has_key {
+    my( $hash_id, $key ) = @_;
+    return $DATASTORE->hash_has_key( $hash_id, $key );
+}
 
 sub package_methods {
     my $pkg = shift;
@@ -234,33 +261,21 @@ sub package_methods {
 } #package_methods
 
 #
-# Returns a hash of paginated items that belong to the xpath.
+# Get around paginating a list without having to read in the whole thing at once.
 #
-sub paginate_xpath {
-    my( $path, $paginate_length, $paginate_start ) = @_;
-    my $hash = $DATASTORE->paginate_xpath( $path, $paginate_length, $paginate_start );
+sub paginate_list {
+    my( $obj_id, $paginate_length, $paginate_start, $rev ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_list( $obj_id, $paginate_length, $paginate_start, $rev ) } ];
+} #paginate_list
+
+#
+# Get around paginating a list without having to read in the whole thing at once.
+#
+sub paginate_hash {
+    my( $obj_id, $paginate_length, $paginate_start ) = @_;
+    my $hash = $DATASTORE->paginate_hash( $obj_id, $paginate_length, $paginate_start );
     return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
-} #paginate_xpath
-
-#
-# Returns a hash of paginated items that belong to the xpath. Note that this 
-# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
-#   rather than [ undef, undef, undef, 'val1', 'val2' ]
-#
-sub paginate_xpath_list {
-    my( $path, $paginate_length, $paginate_start, $reverse ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_xpath_list( $path, $paginate_length, $paginate_start, $reverse ) } ];
-} #paginate_xpath_list
-
-sub paths_to_root {
-    my( $obj ) = @_;
-    return $DATASTORE->paths_to_root( get_id($obj) );
-}
-
-sub path_to_root {
-    my( $obj ) = @_;
-    return $DATASTORE->path_to_root( get_id($obj) );
-} #path_to_root
+} #paginate_list
 
 #
 # Deep clone this object. This will clone any yote object that is not an AppRoot.
@@ -312,14 +327,8 @@ sub power_clone {
     }
 
     return $clone;
-    
+
 } #power_clone
-
-
-sub recycle_object {
-    my( $self, $obj_id ) = @_;
-    return $DATASTORE->recycle_object( $obj_id );
-}
 
 #
 # Finds objects not connected to the root and recycles them.
@@ -421,40 +430,11 @@ sub xform_out {
     return fetch( $val );
 }
 
-sub xpath {
-    my $path = shift;
-    return xform_out( $DATASTORE->xpath( $path ) );
+sub count {
+    my $container_id = shift;
+    return $DATASTORE->count( $container_id );
 }
 
-sub xpath_count {
-    my $path = shift;
-    return $DATASTORE->xpath_count( $path );
-}
-
-sub xpath_delete {
-    my $path = shift;
-    return $DATASTORE->xpath_delete( $path );
-}
-
-#
-# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists. Appends if it is a list.
-#
-sub xpath_insert {
-    my $path = shift;
-    my $item = shift;
-    my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
-    return $DATASTORE->xpath_insert( $path, $stow_val );
-}
-
-#
-# Appends a value into the list located at the given xpath.
-#
-sub xpath_list_insert {
-    my $path = shift;
-    my $item = shift;
-    my $stow_val = ref( $item ) ? get_id( $item ) : "v$item";
-    return $DATASTORE->xpath_list_insert( $path, $stow_val );
-}
 
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
@@ -534,7 +514,7 @@ It is the only module to directly interact with the datastore layer.
 
 =over 4
 
-=item new 
+=item new
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
@@ -545,6 +525,11 @@ It is the only module to directly interact with the datastore layer.
 =over 4
 
 =item commit_transaction( )
+
+=item count( container_id )
+
+returns the number of items in the given container
+
 
 Requests the data store used commit the transaction.
 
@@ -574,42 +559,42 @@ Returns the id of the first object in the system, the YoteRoot.
 
 =item get_id( obj )
 
-Returns the id assigned to the array ref, hash ref or yote object. This method assigns that id 
+Returns the id assigned to the array ref, hash ref or yote object. This method assigns that id
 if none had been assigned to it.
 
-=item has_path_to_root( obj )
+=item hash_delete( hash_id, key )
 
-Returns true if the argument ( which can be an array ref, hash ref or yote object ) can
-trace a path back to the root Yote::YoteRoot object ( id 1 ). This is used to detect if the
-object is dead and should be recycled.
+Removes the key from the hash given by the id
+
+=item hash_fetch( hash_id, key )
+
+=item hash_has_key( hash_id, key )
+
+=item hash_insert( hash_id, key, value )
+
+=item list_delete( list_id, idx )
+
+=item list_fetch( list_id, idx )
+
+=item list_insert( list_id, val, idx )
+
+Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 
 =item package_methods( package_name )
 
 This method returns a list of the public API methods attached to the given package name. This excludes the automatic getters and setters that are part of yote objects.
 
-=item paginate_xpath( xpath, start, length )
+=item paginate_hash( hash_id, length, start )
 
-This method returns a paginated slice of a hash that is attached to the xpath given. The slice order is sorted so that subsequent calls have a guaranteed order.
+Returns a paginated hash reference
 
-=item paginate_xpath_list( xpath, start, length )
+=item paginate_list( list_id, length, start )
 
-This method returns a paginated portion of a list that is attached to the xpath given.
-
-=item path_to_root( object )
-
-Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
-
-=item paths_to_root( object )
-
-Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+Returns a paginated list reference
 
 =item power_clone( item )
 
 Returns a deep clone of the object. This will clone any object that is part of the yote system except for the yote root or any app (a Yote::AppRoot object)
-
-=item recycle_object( obj_id )
-
-Sets the available for recycle mark on the object entry in the database by object id and removes its data.
 
 =item recycle_objects( start_id, end_id )
 
@@ -638,36 +623,6 @@ Returns the internal yote storage for the value, be it a string/number value, or
 =item xform_out( identifier )
 
 Returns the external value given the internal identifier. The external value can be a string/number value or a yote reference.
-
-=item xpath( path )
-
-Given a path designator, returns the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
-
-For example, get the value of the hash keyed to 'zap' where the hash is the  second element of an array that is attached to the root with the key 'baz' : 
-
-my $object = Yote::ObjProvider::xpath( "/baz/1/zap" );
-
-=item xpath_count( path )
-
-Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
-
-my $count = Yote::ObjProvider::xpath_count( "/foo/bar/baz/myarray" );
-
-Takes two objects as arguments. Returns true if object a is branched off of object b.
-
-if(  Yote::ObjProvider::xpath_count( $obj_a, $obj_b ) ) {
-
-=item xpath_delete( path )
-
-Deletes the entry specified by the path.
-
-=item xpath_insert( path, item )
-
-Inserts the item at the given xpath, overwriting anything that had existed previously.
-
-=item xpath_list_insert( path, item )
-
-Appends the item to the list located at the given xpath.
 
 =back
 

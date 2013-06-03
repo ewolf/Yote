@@ -107,7 +107,7 @@ sub __activate {
     if( $items && @$items ) {
 	for my $item (@$items) {
 	    my( $obj_id, $method ) = @$item;
-	    my $obj = Yote::ObjProvider::fetch( $obj_id );
+	    my $obj = $self->_fetch( $obj_id );
 	    eval {
 		$obj->$method();
 	    };

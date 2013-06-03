@@ -51,11 +51,11 @@ sub create_login {
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
     if( $handle ) {
 	my $lc_handle = lc( $handle );
-        if( $HANDLE_CACHE->{$lc_handle} || Yote::ObjProvider::xpath("/_handles/$lc_handle") ) {
+        if( $HANDLE_CACHE->{$lc_handle} || $self->_hash_has_key( '_handles', $lc_handle ) ) {
             die "handle already taken";
         }
         if( $email ) {
-            if( $EMAIL_CACHE->{$email} || Yote::ObjProvider::xpath("/_emails/$email") ) {
+            if( $EMAIL_CACHE->{$email} || $self->_hash_has_key( '_emails', $email ) ) {
                 die "email already taken";
             }
             unless( Email::Valid->address( $email ) ) {
@@ -81,8 +81,8 @@ sub create_login {
 
         $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
 
-	Yote::ObjProvider::xpath_insert( "/_emails/$email", $new_login ) if $email;
-	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $new_login );
+	$self->_hash_insert( '_emails', $email, $new_login ) if $email;
+	$self->_hash_insert( '_handles', $lc_handle, $new_login );
 	
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
     } #if handle
@@ -156,7 +156,7 @@ sub login {
     if( $data->{h} ) {
 	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
-        my $login = Yote::ObjProvider::xpath("/_handles/$lc_h");
+        my $login = $self->_hash_fetch( '_handles', $lc_h );
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
@@ -200,9 +200,7 @@ sub recover_password {
     my $from_url = $args->{u};
     my $to_reset = $args->{t};
 
-    my $login = Yote::ObjProvider::xpath( "/_emails/$email" );
-
-    print STDERR Data::Dumper->Dump(["RECOVERY FOR $email",$login]);
+    my $login = $self->_hash_fetch( '_emails', $email );
 
     if( $login ) {
         my $now = time();
@@ -307,7 +305,7 @@ sub _check_root {
     
     my $lc_handle = lc( $root_name );
 
-    my $root_login = Yote::ObjProvider::xpath("/_handles/$lc_handle" );
+    my $root_login = $self->_hash_fetch( '_handles', $lc_handle );
     
     unless( $root_login ) {
 	$root_login = new Yote::Login();
@@ -316,7 +314,7 @@ sub _check_root {
 
         $root_login->set__time_created( time() );
 
-	Yote::ObjProvider::xpath_insert( "/_handles/$lc_handle", $root_login );	
+	$self->_hash_insert( '_handles', $lc_handle, $root_login );	
     }
 
     $root_login->set__password( $encr_passwd );

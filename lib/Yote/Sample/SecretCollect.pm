@@ -98,7 +98,7 @@ sub random_riddle {
     # Pick the riddle without having to load in the whole riddle array :
     #
     my $riddle_idx = int( rand( $riddle_count ) );
-    my $riddle = Yote::ObjProvider::xpath( "/apps/Yote::Sample::SecretCollect/riddles/$riddle_idx" );
+    my $riddle = $self->_hash_fetch( 'riddles', $riddle_idx );
     return $riddle; # should standardize the sending of this. have a send success, send error
 
 } #random_riddle

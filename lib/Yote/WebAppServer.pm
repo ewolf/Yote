@@ -141,7 +141,8 @@ sub process_http_request {
     my( @path ) = grep { $_ ne '' && $_ ne '..' } split( /\//, $uri );
     my( @return_headers );
     if( $path[0] eq '_' || $path[0] eq '_u' ) { # _ is normal yote io, _u is upload file
-
+	iolog( $uri );
+	errlog( $uri );
 	my $path_start = shift @path;
 
 	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
@@ -502,7 +503,8 @@ sub _process_command {
     if( $@ ) {
 	my $err = $@;
 	$err =~ s/at \/\S+\.pm.*//s;
-        accesslog( "ERROR : $@" );
+        errlog( "ERROR : $@" );
+	iolog( "ERROR : $@" );
         $resp = { err => $err, r => '' };
     }
 

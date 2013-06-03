@@ -446,8 +446,8 @@ $.yote.util = {
     login_control:function( args ) {
 	var lc = {
 	    attachpoint      : args[ 'attachpoint' ],
-	    msg_function     : args[ 'msg_function' ]        || function(m,c){},
-	    log_in_status    : args[ 'log_in_status' ]       || '#logged_in_status',
+	    msg_function     : args[ 'msg_function' ]              || function(m,c){ c ? $( '#login_msg' ).removeClass().addClass( c ) : '';$( '#login_msg' ).empty().append( m ); },
+	    log_in_status    : args[ 'log_in_status_attachpoint' ] || '#logged_in_status',
 	    after_login_fun  : args[ 'after_login_function' ],
 	    after_logout_fun : args[ 'after_logout_function' ],
 
@@ -459,9 +459,9 @@ $.yote.util = {
 		);
 		$( '#logout' ).click( function() {
 		    thislc.msg_function( 'logged out' );
-		    $.yote.logout();
 		    $( thislc.log_in_status ).empty();
 		    thislc.on_logout_fun();
+		    $.yote.logout();
 		    thislc.after_logout_fun();
 		} );
 	    }, //on_login
@@ -471,6 +471,7 @@ $.yote.util = {
 		thislc.msg_function('');
 		$( thislc.attachpoint ).empty().append(
 		    '<div class="panel core" id="create_acct_div">' +
+			'<DIV id="login_msg"></DIV>' + 
 			'<P><input type="text" id="username" placeholder="Name" size="6">' +
 			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
 			'<input type="password" placeholder="Password" id="pw" size="6">' +
@@ -516,6 +517,7 @@ $.yote.util = {
 		var thislc = this;
 		$( thislc.attachpoint ).empty().append(
 		    '<div class="panel core" id="create_acct_div">' +
+			'<DIV id="login_msg"></DIV>' + 
 			'Log In' +
 			'<input type="text" id="username" placeholder="Name" size="6">' +
 			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON></P> ' +
@@ -551,6 +553,14 @@ $.yote.util = {
 	};
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
+
+	if( $.yote.is_logged_in() ) {
+	    lc.on_login_fun();
+	    lc.after_login_fun();
+	} else {
+	    lc.on_logout_fun();
+	    lc.after_logout_fun();
+	}
 	return lc
     }, //login_control
 
@@ -648,8 +658,8 @@ $.yote.util = {
 
 		var items = paginate_type == 'hash' ?
 		    item.paginate_hash( [ list_name, plimit + 1, me.start ] ) :
-		    paginate_order == 'forward' ? item.paginate( [ list_name, plimit + 1, me.start ] ) :
-		    item.paginate_rev( [ list_name, plimit + 1, me.start ] );
+		    paginate_order == 'forward' ? item.paginate_list( [ list_name, plimit + 1, me.start ] ) :
+		    item.paginate_list_rev( [ list_name, plimit + 1, me.start ] );
 
 		var max = items.length() > plimit ? plimit : items.length();
 

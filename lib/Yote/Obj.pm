@@ -61,7 +61,7 @@ sub new {
 	}, $class;
     }
 
-    my $needs_init = ! $obj->_id;
+    my $needs_init = ! defined($obj->{ID});
 
     $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
     $obj->_init() if $needs_init;
@@ -74,8 +74,6 @@ sub new {
 
     return $obj;
 } #new
-
-sub _id { $_[0]->{ID} } # same as $self->{ID} but faster (this is called a lot)
 
 #
 # Called the very first time this object is created. It is not called
@@ -103,7 +101,7 @@ sub _absorb {
     my $updated_count = 0;
     for my $fld (keys %$data) {
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-        Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
+        Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;
         ++$updated_count;
     } #each field
@@ -117,21 +115,81 @@ sub _is {
         Yote::ObjProvider::get_id( $obj ) eq Yote::ObjProvider::get_id( $self );
 }
 
-# 
-# Returns all xpaths for this object.
-#
-sub _paths_to_root {
-    my $self = shift;
-    return Yote::ObjProvider::paths_to_root( $self );
+# fetches from ObjProvider
+sub _fetch {
+    my( $self, $obj_id ) = @_;
+    return Yote::ObjProvider::fetch( $obj_id );    
+} #_fetch
+
+# just asks the object provider to return the id for the given item
+sub _get_id {
+    my( $self, $obj ) = @_;
+    return Yote::ObjProvider::get_id( $obj );
+} #_get_id
+
+sub _count {
+    my( $self, $container_name ) = @_;
+    return Yote::ObjProvider::count( $self->{DATA}{$container_name} );
 }
 
-# 
-# Returns the xpath for this object.
-#
-sub _path_to_root {
-    my $self = shift;
-    return Yote::ObjProvider::path_to_root( $self );
+sub _list_insert {
+    my( $self, $listname, $val, $idx ) = @_;
+    return Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $val, $idx );
 }
+
+sub _list_delete {
+    my( $self, $listname, $idx ) = @_;
+    return Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $idx ); 
+}
+
+sub _hash_delete {
+    my( $self, $hashname, $key ) = @_;
+    return Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );    
+}
+
+sub _hash_insert {
+    my( $self, $hashname, $key, $val ) = @_;
+    return Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
+} #_hash_insert
+
+sub _hash_fetch {
+    my( $self, $hashname, $key ) = @_;
+    return Yote::ObjProvider::hash_fetch( $self->{DATA}{$hashname}, $key );
+} 
+
+sub _list_fetch {
+    my( $self, $listname, $key ) = @_;
+    return Yote::ObjProvider::list_fetch( $self->{DATA}{$listname}, $key );
+} 
+
+sub _hash_has_key {
+    my( $self, $hashname, $key ) = @_;
+    return Yote::ObjProvider::hash_has_key( $self->{DATA}{$hashname}, $key );
+}
+
+sub _power_clone {
+    my( $self, $replacements ) = @_;
+    return Yote::ObjProvider::power_clone( $self, $replacements );
+}
+
+#
+# Private method to update the hash give. Returns if things were made dirty.
+# Takes a list of fields to try to extract from the hash.
+#
+sub _update {
+    my( $self, $datahash, @fieldlist ) = @_;
+
+    my $dirty;
+    for my $fld ( @fieldlist ) {
+	my $set = "set_$fld";
+	my $get = "get_$fld";
+	if( defined( $datahash->{ $fld } ) ) {
+	    $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
+	    $self->$set( $datahash->{ $fld });
+	}
+    }
+    return $dirty;
+} #_update
 
 # ------------------------------------------------------------------------------------------
 #      * UTILITY METHODS *
@@ -240,24 +298,32 @@ sub count {
     if( index( $data, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
 	die "permissions error";
     }
-
-    return Yote::ObjProvider::xpath_count( $self->_path_to_root() . "/$data" );
+    return $self->_count( $data );
 } #count
 
-sub paginate {
+sub paginate_list {
     my( $self, $data, $account ) = @_;
     
     my( $list_name, $number, $start ) = @$data;
 
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+    if( index( $list_name, '_' ) == 0 && $account && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
 	die "permissions error";
     }
 
-    return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start );
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
 
 } #paginate
 
-sub paginate_rev {
+sub _paginate_list {
+    my( $self, $list_name, $number, $start ) = @_;
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
+}
+sub _paginate_list_rev {
+    my( $self, $list_name, $number, $start ) = @_;
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
+}
+
+sub paginate_list_rev {
     my( $self, $data, $account ) = @_;
     
     my( $list_name, $number, $start ) = @$data;
@@ -266,21 +332,30 @@ sub paginate_rev {
 	die "permissions error";
     }
 
-    return Yote::ObjProvider::paginate_xpath_list( $self->_path_to_root() . "/$list_name", $number, $start, 1 );
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
 
 } #paginate_rev
 
+
+sub _paginate_hash {
+    my( $self, $hash_name, $number, $start ) = @_;
+
+    return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
+
+} #paginate_hash
+
 sub paginate_hash {
     my( $self, $data, $account ) = @_;
-    my( $list_name, $number, $start ) = @$data;
+    my( $hash_name, $number, $start ) = @$data;
 
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+    if( index( $hash_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
 	die "permissions error";
     }
 
-    return Yote::ObjProvider::paginate_xpath( $self->_path_to_root() . "/$list_name", $number, $start );
+    return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
 
 } #paginate_hash
+
 
 #
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
@@ -296,27 +371,6 @@ sub update {
     die "Disallows update";
 } #update
 
-#
-# Private method to update the hash give. Returns if things were made dirty.
-# Takes a list of fields to try to extract from the hash.
-#
-# This is the same as _absorb. Only one should remain.
-#   probably _update with the code from _absorb
-#
-sub _update {
-    my( $self, $datahash, @fieldlist ) = @_;
-
-    my $dirty;
-    for my $fld ( @fieldlist ) {
-	my $set = "set_$fld";
-	my $get = "get_$fld";
-	if( defined( $datahash->{ $fld } ) ) {
-	    $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-	    $self->$set( $datahash->{ $fld });
-	}
-    }
-    return $dirty;
-} #_update
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list
@@ -401,8 +455,10 @@ sub AUTOLOAD {
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
             my $inval = Yote::ObjProvider::xform_in( $val );
-            Yote::ObjProvider::dirty( $self, $self->_id ) if $self->{DATA}{$fld} ne $inval;
+
+            Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval;
+
 	    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;
@@ -417,7 +473,7 @@ sub AUTOLOAD {
                 if( ref( $init_val ) ) {
                     Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
                 }
-                Yote::ObjProvider::dirty( $self, $self->_id );
+                Yote::ObjProvider::dirty( $self, $self->{ID} );
             }
             return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
@@ -546,10 +602,6 @@ values for the fields corresponding to the hash keys.
 
 Returns true if the single object argument passed in is equivalent to this one. 
 
-=item _path_to_root
-
-Returns the xpath string that locates this object in the object tree.
-
 =back
 
 =head2 INITIALIZATION METHODS
@@ -580,8 +632,17 @@ This method is called each time an object is loaded from the data store.
 
 Returns the number of items for the field of this object provided it is an array or hash.
 
-=item paginate
+=item paginate_list
 
+This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
+field name and attached to this object.
+
+This will throw an error if the value of the field name is defined as something other than a list.
+
+=item paginate_list_rev
+
+This method is just like paginate except it works on the list in reverse order.
 This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
 The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
 field name and attached to this object.
@@ -594,15 +655,6 @@ This method takes a list ref with three entries : [field_name, number of items t
 The starting point is optional and defaults to 0. Returns a slice of the hash that is specified by the
 field name and attached to this object. The keys are sorted before the return so that the order can
 be guaranteed between subsequent calls.
-
-This will throw an error if the value of the field name is defined as something other than a list.
-
-=item paginate_rev
-
-This method is just like paginate except it works on the list in reverse order.
-This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
-The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
-field name and attached to this object.
 
 This will throw an error if the value of the field name is defined as something other than a list.
 

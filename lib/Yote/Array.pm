@@ -6,6 +6,8 @@ use warnings;
 no warnings 'uninitialized';
 use Tie::Array;
 
+use Yote::ObjProvider;
+
 use vars qw($VERSION);
 
 $VERSION = '0.01';

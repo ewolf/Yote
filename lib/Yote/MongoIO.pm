@@ -120,7 +120,7 @@ sub get_id {
 #
 # Returns true if the given object traces back to the root.
 #
-sub has_path_to_root {
+sub _has_path_to_root {
     my( $self, $obj_id, $seen ) = @_;
     return 1 if $obj_id eq $self->first_id();
     $seen ||= { $obj_id => 1 };
@@ -129,29 +129,112 @@ sub has_path_to_root {
     while( my $obj = $curs->next ) {
 	my $o_id = $obj->{ _id }{ value };
 	next if $seen->{ $o_id }++;
-	if( $self->has_path_to_root( $o_id, $seen ) ) {
+	if( $self->_has_path_to_root( $o_id, $seen ) ) {
 	    return 1;
 	}
     }
     return 0;
-} #has_path_to_root
+} #_has_path_to_root
 
 #
-# Returns a hash of paginated items that belong to the xpath. The xpath must end in a hash.
-# 
-sub paginate_xpath {
-    my( $self, $path, $paginate_length, $paginate_start ) = @_;
-
-    my $obj_id = $self->xpath( $path );
-    die "Unable to find xpath location '$path' for pagination" unless $obj_id;
-
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-
-    die "Unable to find xpath location '$path' for pagination" unless $obj;
-
-    my $result_data = $obj->{ d };
-
+# Returns the number of entries in the list of the given id.
+#
+sub count {
+    my( $self, $container_id ) = @_;
+    my $mid = MongoDB::OID->new( value => $container_id );
+    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
     if( $obj->{ c } eq 'ARRAY' ) {
+	return scalar( @{$obj->{ d } } );
+    }
+    return scalar( keys %{$obj->{ d } } );
+} #count
+
+sub list_insert {
+    my( $self, $list_id, $val, $idx ) = @_;
+    my $mid = MongoDB::OID->new( value => $list_id );
+    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
+    if( $obj ) {
+	if( defined( $idx ) ) {
+	    splice @{$obj->{ d }}, $idx, 0, $val;
+	} else {
+	    push @{$obj->{ d }}, $val;
+	}
+	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+    }
+    return;
+} #list_insert
+
+sub hash_delete {
+    my( $self, $hash_id, $key ) = @_;
+    my $mid = MongoDB::OID->new( value => $hash_id );
+    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
+    delete $obj->{ d }{ $key };
+    if( $obj ) {
+	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+    }
+    return;
+}
+
+sub list_delete {
+    my( $self, $list_id, $idx ) = @_;
+    my $mid = MongoDB::OID->new( value => $list_id );
+    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
+    if( $obj ) {
+	splice @{$obj->{ d }}, $idx, 1;
+	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+    }
+    return;
+}
+
+sub hash_insert {
+    my( $self, $hash_id, $key, $val ) = @_;
+    my $mid = MongoDB::OID->new( value => $hash_id );
+    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
+    $obj->{ d }{ $key } = $val;
+    if( $obj ) {
+	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+    }
+    return;
+} #hash_insert
+
+sub hash_fetch {
+    my( $self, $hash_id, $key ) = @_;
+
+    my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+    die "hash fetch must be called for hash" if $hash->{ c } ne 'HASH';
+    return $hash->{ d }->{ $key } if $hash;
+} 
+
+sub list_fetch {
+    my( $self, $list_id, $idx ) = @_;
+
+    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
+    die "list fetch must be called for array" if $list->{ c } ne 'ARRAY';
+
+    return $list->{ d }->[ $idx ] if $list;
+} 
+
+sub hash_has_key {
+    my( $self, $hash_id, $key ) = @_;
+    my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+    return defined( $hash->{ d }->{$key} );
+}
+
+#
+# Returns a hash of paginated items that belong to the hash. 
+# 
+sub paginate_hash {
+    my( $self, $hash_id, $paginate_length, $paginate_start ) = @_;
+
+    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+
+    my $result_data = $list->{ d };
+
+    if( $list->{ c } eq 'ARRAY' ) {
 	if( defined( $paginate_length ) ) {
 	    if( $paginate_start ) {
 		if( $paginate_start > $#$result_data ) {
@@ -189,23 +272,20 @@ sub paginate_xpath {
 	my @keys = sort keys %$result_data;
 	return { map { $_ => $result_data->{ $_ } } @keys };
     }
-} #paginate_xpath
+} #paginate_hash
 
 #
-# Returns a hash of paginated items that belong to the xpath. Note that this 
+# Returns a hash of paginated items that belong to the list. Note that this 
 # does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
 #   rather than [ undef, undef, undef, 'val1', 'val2' ]
 #
-sub paginate_xpath_list {
-    my( $self, $path, $paginate_length, $paginate_start, $reverse ) = @_;
-    my $obj_id = $self->xpath( $path );
-    die "Unable to find xpath location '$path' for pagination" unless $obj_id;
+sub paginate_list {
+    my( $self, $list_id, $paginate_length, $paginate_start, $reverse ) = @_;
 
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    die "Unable to find xpath location '$path' for pagination" unless $obj;
-    die "xpath list pagination must be called for array" if $obj->{ c } ne 'ARRAY';
+    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
+    die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
 
-    my $result_data = $reverse ? [reverse @{$obj->{ d }}] : $obj->{ d };
+    my $result_data = $reverse ? [reverse @{$list->{ d }}] : $list->{ d };
 
     if( defined( $paginate_length ) ) {
 	if( $paginate_start ) {
@@ -223,81 +303,7 @@ sub paginate_xpath_list {
 	return [ @$result_data[0..($paginate_length-1)] ];
     }    
     return $result_data;
-} #paginate_xpath_list
-
-#
-# Return a path to root that this object has (specified by id), if any.
-#
-sub path_to_root {
-    my( $self, $obj_id ) = @_;
-    return '' if $obj_id eq $self->first_id();
-    my $curs = $self->{ OBJS }->find( { r => $obj_id } );
-
-    while( my $obj = $curs->next ) {
-	my $d = $obj->{ d };
-	my $field;
-	if( $obj->{ c } eq 'ARRAY' ) {
-	    for( my $f=0; $f < @$d; $f++ ) {
-		$field = $f;
-		last if $d->[ $field ] eq $obj_id;
-	    }
-	} 
-	else {
-	    for my $f ( keys %$d ) {
-		$field = $f;
-		last if $d->{$field} eq $obj_id;
-	    }
-	}
-	my $new_obj_id = $obj->{ _id }{ value };
-	if( $self->has_path_to_root( $new_obj_id, { $obj_id => 1 } ) ) {
-	    return $self->path_to_root( $new_obj_id ) . "/$field";
-	}
-    } #each doc
-
-    return;
-} #path_to_root
-
-#
-# Return all paths to root that this object (specified by id) has, if any.
-#
-sub paths_to_root {
-    my( $self, $obj_id, $seen ) = @_;
-    $seen ||= {};
-    return [''] if $obj_id eq $self->first_id();
-    my $ret = [];
-
-    my $curs = $self->{ OBJS }->find( { r => $obj_id } );
-
-    while( my $obj = $curs->next ) {
-	my $d = $obj->{ d };
-	my $last_field;
-	if( $obj->{ c } eq 'ARRAY' ) {
-	    for( my $field=0; $field < @$d; $field++ ) {
-		if( $d->[ $field ] eq $obj_id ) { 
-		    $last_field = $field;
-		    last;
-		}
-	    }
-	} 
-	else {
-	    for my $field ( keys %$d ) {
-		if( $d->{$field} eq $obj_id ) {
-		    $last_field = $field;
-		    last;
-		}
-	    }
-	}
-	my $new_obj_id = $obj->{ _id }{ value };
-	if( ! $seen->{ $new_obj_id } && $self->has_path_to_root( $new_obj_id ) ) {
-	    $seen->{ $new_obj_id } = 1;
-	    my $paths = $self->paths_to_root( $new_obj_id, $seen );
-	    push @$ret, map { "$_/$last_field" } @$paths;
-	}
-    } #each doc
-    
-    return $ret;
-} #paths_to_root
-
+} #paginate_list
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
@@ -314,7 +320,7 @@ sub recycle_objects {
     my $rec_count = 0;
     while( my $obj = $cursor->next ) {
 	my $id = $obj->{ _id }{ value };
-	unless( $self->has_path_to_root( $id ) ) {
+	unless( $self->_has_path_to_root( $id ) ) {
 	    $self->recycle_object( $id );
 	    $rec_count++;
 	}
@@ -367,142 +373,8 @@ sub stow {
 					     r   => \@refs,
 					   } );
     }
-} #stow
-
-#
-# Returns a single value given the xpath (notation is slash separated from root)
-# This will always query persistance directly for the value, bypassing objects.
-# The use for this is to fetch specific things from potentially very long hashes that you don't want to
-#   load in their entirety.
-#
-sub xpath {
-    my( $self, $path ) = @_;
-    my( @list ) = _xpath_to_list( $path );
-    my $final_field = pop @list;
-    my $next_ref = $self->first_id();
-
-    my $odata = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $next_ref ) } );
-
-    for my $l (@list) {
-        next if $l eq ''; #skip blank paths like /foo//bar/  (should just look up foo -> bar
-
-	if( $odata->{c} eq 'ARRAY' ) {
-	    if( $l > 0 || $l eq '0' ) {
-		$next_ref = $odata->{ d }[ $l ];		
-	    } 
-	}
-	else {
-	    $next_ref = $odata->{ d }{ $l };
-	}
-	return unless defined( $next_ref );
-	return if index( $next_ref, 'v' ) == 0;
-	$odata = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $next_ref ) } );
-    } #each path part
-
-    return unless $odata;
-
-    # @TODO: log bad xpath if final_value not defined
-    if( $odata->{c} eq 'ARRAY' ) {
-	if( $final_field > 0 || $final_field eq '0' ) {
-	    return $odata->{ d }[ $final_field ];		
-	} 
-    }
-    else {
-	return $odata->{ d }{ $final_field };
-    }
-
     return;
-} #xpath
-
-#
-# Returns the number of entries in the data structure given.
-#
-sub xpath_count {
-    my( $self, $path ) = @_;
-
-    my $obj_id = $self->xpath( $path );
-    return unless $obj_id;
-
-    my $odata = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    return unless $odata;
-
-    # @TODO: log bad xpath if final_value not defined
-    if( $odata->{c} eq 'ARRAY' ) {
-	return scalar( @{ $odata->{ d } } );
-    }
-    return scalar( keys %{$odata->{ d }} );
-} #xpath_count
-
-#
-# Deletes a value into the given xpath. /foo/bar/baz. 
-#
-sub xpath_delete {
-    my( $self, $path ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $del_field = pop @list;
-
-    my $o_id = $self->xpath( join( '/', @list ) );
-    die "Unable to find xpath location '$path' for delete" unless $o_id;
-
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $o_id ) } );
-    die "Unable to find xpath location '$path' for delete" unless $obj;
-
-    if( $obj->{ c } eq 'ARRAY' ) {
-	if( $del_field > 0 || $del_field eq '0' ) {
-	    if( $obj->{ d }[ $del_field ] ) {
-		# this is where ya need to update the document
-		$self->{ OBJS }->update( { _id => $obj->{ _id } }, { '$unset' => { "d.$del_field" => 1 } } );
-		$self->{ OBJS }->update( { _id => $obj->{ _id } }, { '$pull' =>  { "d" => undef } } );
-		return 1;
-	    }
-	}
-	return 0;
-    }
-    elsif( $obj->{ d }{ $del_field } ) {
-	$self->{ OBJS }->update( { _id => $obj->{ _id } }, { '$unset' => { "d.$del_field" => 1 } } );
-	return 1;
-    }
-    return 0;
-} #xpath_delete
-
-#
-# Inserts a value into the given xpath. /foo/bar/baz. Overwrites old value if it exists.
-#
-sub xpath_insert {
-    my( $self, $path, $item_to_insert ) = @_;
-
-    my( @list ) = _xpath_to_list( $path );
-    my $field = pop @list;
-
-    my $obj_id = $self->xpath( join( '/', @list ) );
-    die "Unable to find xpath location '$path' for insert" unless $obj_id;
-
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    die "Unable to find xpath location '$path' for insert" unless $obj;
-    die "xpath_insert must be called for hash" if $obj->{ c } ne 'HASH' and $field == 0 and $field != '0';
-
-    $self->{ OBJS }->update( { _id => MongoDB::OID->new( value => $obj->{ _id }{ value } ) }, 
-			     { '$set' => { "d.$field" => $item_to_insert } } );
-
-} #xpath_insert
-
-#
-# Appends a value into the list located at the given xpath.
-#
-sub xpath_list_insert {
-    my( $self, $path, $item_to_insert ) = @_;
-
-    my $obj_id = $self->xpath( $path );
-    die "xpath_list_insert must be called for array" unless $obj_id;
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    die "xpath_list_insert must be called for array" unless $obj;
-    die "xpath_list_insert must be called for array" if $obj->{ c } ne 'ARRAY';
-
-    $self->{ OBJS }->update( { _id => MongoDB::OID->new( value => $obj->{ _id }{ value } ) }, 
-			     { '$push' => { "d" => $item_to_insert } } );
-} #xpath_list_insert
-
+} #stow
 
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
@@ -522,28 +394,6 @@ sub _connect {
     $self->{DB} = $self->{MONGO_CLIENT}->get_database( $args->{ store } || 'yote' );
 } #_connect
 
-sub _xpath_to_list {
-    my $path = shift;
-    my( @path ) = split( //, $path );
-    my( $working, $escaped, @res ) = '';
-    for my $ch (@path) {
-	if( $ch eq '/' && ! $escaped ) {
-	    $working =~ s/\./\\/g;
-	    push( @res, $working );
-	    $working = '';
-	    $escaped = 0;
-	} 
-	elsif( $ch eq '\\' ) {
-	    $escaped = 1;
-	}
-	else {
-	    $working .= $ch;
-	}
-    }
-    $working =~ s/\./\\/g;
-    push( @res, $working ) if defined( $working );
-    return @res;
-} #_xpath_to_list
 
 1;
 __END__
@@ -574,6 +424,10 @@ Return the mongo client object
 
 =item commit_transaction( )
 
+=item count( container_id )
+
+returns the number of items in the given container
+
 =item database( )
 
 Provides a database handle. Used only in testing.
@@ -596,9 +450,23 @@ Returns the id of the first object in the system, the YoteRoot.
 
 Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
 
-=item has_path_to_root( obj_id )
+=item hash_delete( hash_id, key )
 
-Returns true if the object specified by the id can trace a path back to the root yote object.
+Removes the key from the hash given by the id
+
+=item hash_fetch( hash_id, key )
+
+=item hash_has_key( hash_id, key )
+
+=item hash_insert( hash_id, key, value )
+
+=item list_delete( list_id, idx )
+
+=item list_fetch( list_id, idx )
+
+=item list_insert( list_id, val, idx )
+
+Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 
 =item max_id( ) 
 
@@ -606,21 +474,13 @@ Returns the max ID in the yote system. Used for testing.
 
 =item new 
 
-=item paginate_xpath( path, start, length )
+=item paginate_hash( hash_id, length, start )
 
-This method returns a paginated portion of an object that is attached to the xpath given, as internal yote values.
+Returns a paginated hash reference
 
-=item paginate_xpath_list( parth, start, length )
+=item paginate_list( list_id, length, start )
 
-This method returns a paginated portion of a list that is attached to the xpath given.
-
-=item path_to_root( object )
-
-Returns the xpath of the given object tracing back a path to the root. This is not guaranteed to be the shortest path to root.
-
-=item paths_to_root( object )
-
-Returns the a list of all valid xpaths of the given object tracing back a path to the root. 
+Returns a paginated list reference
 
 =item recycle_object( obj_id )
 
@@ -639,26 +499,6 @@ Stores the object of class class encoded in the internal data format into the da
 =item stow_all( )
 
 Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
-
-=item xpath( path )
-
-Given a path designator, returns the object data at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. 
-
-=item xpath_count( path )
-
-Given a path designator, returns the number of fields of the object at the end of it, starting in the root. The notation is /foo/bar/baz where foo, bar and baz are field names. This is useful for counting how many things are in a list.
-
-=item xpath_delete( path )
-
-Deletes the entry specified by the path.
-
-=item xpath_insert( path, item )
-
-Inserts the item at the given xpath, overwriting anything that had existed previously.
-
-=item xpath_list_insert( path, item )
-
-Appends the item to the list located at the given xpath.
 
 
 =back

@@ -15,8 +15,6 @@ $VERSION = '0.01';
 
 use base 'Yote::Obj';
 
-use Yote::ObjProvider;
-
 sub _init {
     my $self = shift;
     $self->set_tag_to_items( {} );
@@ -28,8 +26,7 @@ sub _init {
 #
 sub _items_for_tag {
     my( $self, $tag, $paginate_start, $paginate_length ) = @_;
-    my $xpath = $self->_path_to_root() . '/tag_to_items';
-    return Yote::ObjProvider::paginate_xpath( $xpath, $paginate_start, $paginate_length );    
+    return $self->paginate_hash( $self->{DATA}{ tag_to_items }, $paginate_length, $paginate_start );
 } #_items_for_tag
 
 
@@ -38,7 +35,7 @@ sub _items_for_tag {
 #
 sub _items_for_tags {
 
-    my( $self, $args ) = @_;
+    my( $self, $args, $paginate_start, $paginate_length ) = @_;
 
     my $tags = $args->{tags};
     my $exclude = $args->{exclude_tags};
@@ -55,16 +52,17 @@ sub _items_for_tags {
 	    $scores{$item}++;
 	} #each item
     } #each tag
-
-    return [sort { $scores{$b} <=> $scores{$a} } values %res];
-
+    my @res = sort { $scores{$b} <=> $scores{$a} } values %res;
+    if( $paginate_length ) { 
+	$paginate_start ||= 0;
+	return [ @res[$paginate_start..($paginate_length+$paginate_start)] ];
+    }
+    return \@res;
 } #_items_for_tags
 
 sub _has_tag {
-    my( $self, $item, $tag ) = @_;
-
-    my $xpath = $self->_path_to_root();
-    return Yote::ObjProvider::xpath_count( "$xpath/item_to_tags/$tag" ) > 0;
+    my( $self, $tag ) = @_;
+    return $self->_hash_has_key( 'item_to_tags', $tag );
 } #_has_tag
 
 #
@@ -72,10 +70,10 @@ sub _has_tag {
 #
 sub _add_tag {
     my( $self, $tag, @items ) = @_;
-    my $xpath = $self->_path_to_root();
+
     for my $item (@items) {
-	Yote::ObjProvider::xpath_insert( "$xpath/tag_to_items/$tag", $item );
-	Yote::ObjProvider::xpath_insert( "$xpath/item_to_tags/$item->{ID}", $tag );
+	$self->_hash_insert( 'tag_to_items', $tag, $item );
+	$self->_hash_insert( 'item_to_tags', $item->{ID}, $tag );
     }
 } #_add_tag
 
@@ -84,10 +82,11 @@ sub _add_tag {
 #
 sub _remove_tag {
     my( $self, $tag, @items ) = @_;
-    my $xpath = $self->_path_to_root();
     for my $item (@items) {
-	Yote::ObjProvider::xpath_insert( "$xpath/item_to_tags/$item->{ID}/$tag" );
+	my $hash = $self->_hash_fetch( 'item_to_tags', $item->{ID} );
+	delete $hash->{ $tag };
     }
+    $self->_hash_delete( 'tag_to_items', $tag );
 } #_remove_tag
 
 1;

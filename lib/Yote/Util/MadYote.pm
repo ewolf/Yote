@@ -69,6 +69,14 @@ __END__
 
 =over 4
 
+=item remove_suggestion
+
+Takes a suggestion object as a parameter and removes it from the suggestion box list.
+
+=item suggestion_box
+
+Takes text as its parameter. This adds that text to the suggestion box. This stores it with the account handle or the ip address.
+
 =item update( hashref )
 
 Pass in a hash ref of update fields and values ( now limited to MOTD ).
