@@ -1,11 +1,12 @@
 package Yote::WebAppServer;
 
+# forks should be placed before any other use
+use forks;
+use forks::shared; 
+
 use strict;
 use warnings;
 no warnings 'uninitialized';
-
-use forks;
-use forks::shared;
 
 use Data::Dumper;
 use MIME::Base64;
@@ -39,8 +40,7 @@ my $cmd_queue = Thread::Queue->new();
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;
-    $singleton = bless {}, $class;
-    return $singleton;
+    return bless {}, $class;
 }
 
 #
@@ -222,7 +222,7 @@ sub process_http_request {
 
     else { #serve up a web page
 	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
-	iolog( $uri );
+	iolog( "Request\n\t$uri" );
 
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
@@ -297,6 +297,24 @@ sub start_server {
     $self->{ args }{ upload }  ||= $self->{ args }{ webroot }   . '/upload';
     $self->{ args }{ log_dir } ||= $self->{ args }{ yote_root } . '/log';
     $self->{ args }{ port }    ||= 80;
+    $self->{ args }{ threads } ||= 10;
+
+    # make sure the filehelper knows where the data directory is
+    $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
+    $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
+    $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
+    $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
+    mkdir( $Yote::WebAppServer::FILE_DIR );
+    mkdir( $Yote::WebAppServer::WEB_DIR );
+    mkdir( $Yote::WebAppServer::UPLOAD_DIR );
+    mkdir( $Yote::WebAppServer::LOG_DIR );
+
+    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" )
+		      && $Yote::WebAppServer::IO->autoflush;
+    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
+		      && $Yote::WebAppServer::ACCESS->autoflush;
+    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
+		      && $Yote::WebAppServer::ERR->autoflush;
 
     Yote::ObjProvider::init( %$args );
 
@@ -316,22 +334,6 @@ sub start_server {
     #my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
     #$self->{cron_thread} = $cron_thread;
 
-    # make sure the filehelper knows where the data directory is
-    $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
-    $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
-    $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
-    $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
-    mkdir( $Yote::WebAppServer::FILE_DIR );
-    mkdir( $Yote::WebAppServer::WEB_DIR );
-    mkdir( $Yote::WebAppServer::UPLOAD_DIR );
-    mkdir( $Yote::WebAppServer::LOG_DIR );
-
-    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" )
-		      && $Yote::WebAppServer::IO->autoflush;
-    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
-		      && $Yote::WebAppServer::ACCESS->autoflush;
-    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
-		      && $Yote::WebAppServer::ERR->autoflush;
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
