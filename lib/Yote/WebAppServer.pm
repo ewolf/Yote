@@ -341,11 +341,9 @@ sub start_server {
 
     $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port}) or die $@;
 
-    $self->{threadcount} = 5;
-
     $self->{threads} = [];
 
-    for( 1 .. $self->{threadcount} ) {
+    for( 1 .. $self->{args}{threads} ) {
 	$self->_start_server_thread;
     } #creating 5 threads
 
@@ -354,7 +352,7 @@ sub start_server {
 	    while( 1 ) {
 		sleep( 5 );
 		$self->{threads} = [ grep { $_->is_running } @{$self->{threads}}];
-		while( @{$self->{threads}} < $self->{threadcount} ) {
+		while( @{$self->{threads}} < $self->{args}{threads} ) {
 		    $self->_start_server_thread;
 		}
 	    }
