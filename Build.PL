@@ -71,6 +71,7 @@ my $builder = Module::Build->new(
 	'Mail::Sender'          => 0,
 	'MIME::Lite'            => 3.029,
 	'MongoDB'               => 0.503,
+	'Thread::Queue'         => 2.12,
 	'WeakRef'               => 0.01,
     },
     );
