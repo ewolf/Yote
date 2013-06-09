@@ -5,7 +5,6 @@ use warnings;
 no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
-use feature ':5.10';
 
 use Yote::Array;
 use Yote::Hash;
@@ -26,7 +25,7 @@ our $CACHE;
 
 use vars qw($VERSION);
 
-$VERSION = '0.03';
+$VERSION = '0.05';
 
 
 # ------------------------------------------------------------------------------------------

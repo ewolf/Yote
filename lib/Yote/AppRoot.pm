@@ -15,7 +15,7 @@ use Yote::Account;
 use base 'Yote::Obj';
 
 use vars qw($VERSION);
-$VERSION = '0.085';
+$VERSION = '0.086';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *

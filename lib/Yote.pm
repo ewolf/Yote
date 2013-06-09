@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0993';
+$VERSION = '0.0994';
 
 use Carp;
 use File::Path;
