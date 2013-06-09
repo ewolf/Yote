@@ -137,6 +137,7 @@ mongo db is the fastest, but sqlite will always work.',
     }
 
     $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
+    $newconfig{ threads } = _ask( "Number of threads to start the serve with?", undef, 10 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, 'root' );
@@ -163,10 +164,11 @@ sub get_args {
 	p  => 'port',
 	u  => 'user',
 	P  => 'password',
-	r  => 'root',
+	r  => 'yote_root',
+	t  => 'threads',
 	);
     my %argnames = map { $_ => 1 } values %argmap;
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port/;
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
 
     # ---------  run variables  -----------------
 
@@ -190,7 +192,7 @@ sub get_args {
     } # each argument
 
     # --------- find yote root directory and configuration file ---------
-    my $yote_root_dir = Yote::ConfigData->config( 'yote_root' );
+    my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
     $config{ yote_root } = $yote_root_dir;
 
     _log "using root directory '$yote_root_dir'";
