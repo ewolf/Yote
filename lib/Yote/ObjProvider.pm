@@ -5,6 +5,7 @@ use warnings;
 no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
+use feature ':5.10';
 
 use Yote::Array;
 use Yote::Hash;
