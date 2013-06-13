@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
+
 $VERSION = '0.0996';
 
 use Carp;
@@ -138,7 +139,6 @@ mongo db is the fastest, but sqlite will always work.',
 
     $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
     $newconfig{ threads } = _ask( "Number of threads to start the serve with?", undef, 10 );
-
     $newconfig{ threads } = _ask( "How many threads should be run?", undef, 10 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
