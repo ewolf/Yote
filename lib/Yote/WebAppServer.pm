@@ -24,9 +24,22 @@ use vars qw($VERSION);
 
 $VERSION = '0.092';
 
-
+# %prid2result stores process id to a json encoded string result
 my( %prid2result, $singleton );
 share( %prid2result );
+
+# %oid2pid stores object id to process id that is locking it
+# %pid2waiting_on stores process id to an objects that it is waiting on. This exists for deadlock detection and resolution.
+#   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
+#    by an other thread that has locked an item this thread is waiting on.
+# 
+my( %oid2pid, %pid2waitingoid );
+share( %oid2pid );
+share( %pid2waitingoid );
+
+# There will be two queues. One for fast commands and one for slow commands.
+# The 'slow' commands are scheduled by cron.
+# The 'fast' commands are processed by one or more cached yote processes.
 
 use Thread::Queue;
 
