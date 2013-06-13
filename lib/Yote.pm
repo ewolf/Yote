@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.0993';
+$VERSION = '0.0996';
 
 use Carp;
 use File::Path;
@@ -137,6 +137,7 @@ mongo db is the fastest, but sqlite will always work.',
     }
 
     $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
+    $newconfig{ threads } = _ask( "Number of threads to start the serve with?", undef, 10 );
 
     $newconfig{ threads } = _ask( "How many threads should be run?", undef, 10 );
 
@@ -165,7 +166,7 @@ sub get_args {
 	p  => 'port',
 	u  => 'user',
 	P  => 'password',
-	r  => 'root',
+	r  => 'yote_root',
 	t  => 'threads',
 	);
     my %argnames = map { $_ => 1 } values %argmap;
@@ -193,7 +194,7 @@ sub get_args {
     } # each argument
 
     # --------- find yote root directory and configuration file ---------
-    my $yote_root_dir = Yote::ConfigData->config( 'yote_root' );
+    my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
     $config{ yote_root } = $yote_root_dir;
 
     _log "using root directory '$yote_root_dir'";

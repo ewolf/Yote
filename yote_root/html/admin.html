@@ -172,7 +172,7 @@ if we are our experiences then we are both sides of them.
 	function check_perms() {
 	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
 		$( '#logged_in_status' ).empty().append( 
-		    'Logged in as ' + se_app.account().get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
+		    'Logged in as ' + madyote_app.account().get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
 		);
 		$( '#logout' ).click( function() {
 		    $.yote.logout();
