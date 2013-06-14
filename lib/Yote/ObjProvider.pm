@@ -23,10 +23,11 @@ $Yote::ObjProvider::WEAK_REFS = {};
 
 our $DATASTORE;
 our $CACHE;
+our $LOCKER;
 
 use vars qw($VERSION);
 
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 
 # ------------------------------------------------------------------------------------------
@@ -53,6 +54,9 @@ sub init {
     $CACHE = new Yote::SimpleLRUCache();
 } #init
 
+sub make_server {
+    $LOCKER = shift;
+}
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC CLASS METHODS *
@@ -97,8 +101,13 @@ sub flush {
     my( $id ) = @_;
     delete $Yote::ObjProvider::DIRTY->{$id};
     delete $Yote::ObjProvider::WEAK_REFS->{$id};
-    delete $Yote::ObjProvider::DIRTY->{$id};
     $CACHE->flush( $id );
+}
+
+sub flush_all {
+    my( $id ) = @_;
+    $Yote::ObjProvider::DIRTY = {};
+    $Yote::ObjProvider::WEAK_REFS = {};
 }
 
 sub fetch {
@@ -108,8 +117,13 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch( $id );
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id}; # || $CACHE->fetch( $id );
     return $ref if $ref;
+
+    if( $LOCKER ) { 
+	$LOCKER->lock_object( $id );
+    }
+
     my $obj_arry = $DATASTORE->fetch( $id );
 
     if( $obj_arry ) {

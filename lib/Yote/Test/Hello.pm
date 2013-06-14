@@ -25,8 +25,8 @@ sub _init {
 sub _load {
     my $self = shift;
     $self->set_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
-    $self->set_foo_array( [ "A".."Z" ] );
-    $self->set_bar_hash( { map { $_ => 1 } ( "A".."Z" ) } );
+    $self->get_foo_array( [ "A".."Z" ] );
+    $self->get_bar_hash( { map { $_ => 1 } ( "A".."Z" ) } );
 }
 
 sub hello {

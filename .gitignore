@@ -1,0 +1,13 @@
+*~
+*stackdump
+Build
+MYMETA.json
+MYMETA.yml
+Makefile
+_build
+blib
+pm_to_blib
+yote.pid
+Yote*gz
+*.bak
+yote_root/html/js/local.js

@@ -8,9 +8,6 @@ $VERSION = '0.01';
 
 no warnings 'uninitialized';
 
-$Yote::ObjManager::ALLOWS = {}; # obj_id  --> ( login id || guest token ) --> time
-$Yote::ObjManager::DIRTY  = {}; # ( login id || guest token ) --> obj_id --> 1
-
 sub allows_access {
     my( $obj_id, $app, $login, $guest_token ) = @_;
 
@@ -31,48 +28,62 @@ sub allows_access {
     my $obj = Yote::ObjProvider::fetch( $obj_id );
     return 1 unless $obj;
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $ALLOWS = $root->get___ALLOWS();
     if( $login ) {
-	my $ret = $Yote::ObjManager::ALLOWS->{ $obj_id }{ $login->{ID} };
+	my $ret = $ALLOWS->{ $obj_id }{ $login->{ID} };
 	unless( $ret ) { # transfer from guest to logged in token, if needed
-	    $ret = $Yote::ObjManager::ALLOWS->{ $obj_id }{ $guest_token };
+	    $ret = $ALLOWS->{ $obj_id }{ $guest_token };
 	    if( $ret ) {
-		$Yote::ObjManager::ALLOWS->{ $obj_id }{ $login->{ID} } = 1;
-		delete $Yote::ObjManager::ALLOWS->{ $obj_id }{ $guest_token };
+		$ALLOWS->{ $obj_id }{ $login->{ID} } = 1;
+		delete $ALLOWS->{ $obj_id }{ $guest_token };
 	    }
 	}
 	return $ret;
     }
 
-    return $Yote::ObjManager::ALLOWS->{ $obj_id }{ $guest_token };
+    return $ALLOWS->{ $obj_id }{ $guest_token };
     
 } #allows_access
 
 sub clear_login {
     my( $login, $guest_token ) = @_;
+
+    my $root = Yote::YoteRoot::fetch_root();    
+    my $DIRTY = $root->get___DIRTY();
     if( $login ) {
-	delete $Yote::ObjManager::DIRTY->{ $login->{ID} };
+	delete $DIRTY->{ $login->{ID} };
     }
-    delete $Yote::ObjManager::DIRTY->{ $guest_token };
+    delete $DIRTY->{ $guest_token };
 }
 
 # return a list of object ids whos data should be sent to the caller.
 sub fetch_dirty {
     my( $login, $guest_token ) = @_;
     my $ids = [];
+    my $root = Yote::YoteRoot::fetch_root();
+    my $DIRTY = $root->get___DIRTY();
     if( $login ) {
-	push @$ids, keys %{ $Yote::ObjManager::DIRTY->{ $login->{ID} } };
-	delete $Yote::ObjManager::DIRTY->{ $login->{ID} };
+	push @$ids, keys %{ $DIRTY->{ $login->{ID} } };
+	delete $DIRTY->{ $login->{ID} };
     }
-    push @$ids, keys %{ $Yote::ObjManager::DIRTY->{ $guest_token } };
-    delete $Yote::ObjManager::DIRTY->{ $guest_token };
+    push @$ids, keys %{ $DIRTY->{ $guest_token } };
+    delete $DIRTY->{ $guest_token };
     return $ids;
 }
 
 sub mark_dirty {
     my( $obj_id ) = @_;
-    my $obj_hash = $Yote::ObjManager::ALLOWS->{ $obj_id };
+
+    return if $Yote::YoteRoot::ROOT_INIT;
+    my $root = Yote::YoteRoot::fetch_root();
+    my $DIRTY = $root->get___DIRTY();
+    my $ALLOWS = $root->get___ALLOWS();
+    my $obj_hash = $ALLOWS->{ $obj_id };
     for my $recip_id ( keys %$obj_hash ) {
-	$Yote::ObjManager::DIRTY->{ $recip_id }{ $obj_id } = 1;
+	#must be or, so that DIRTY doesn't become dirty and start an infinite loop
+	$DIRTY->{ $recip_id }{ $obj_id } ||= 1;  
     }
 }
 
@@ -80,7 +91,10 @@ sub register_object {
     my( $obj_id, $recipient_id ) = @_;
     die unless $obj_id;
     return unless $recipient_id;
-    $Yote::ObjManager::ALLOWS->{ $obj_id }{ $recipient_id } = 1;
+    my $root = Yote::YoteRoot::fetch_root();
+    my $ALLOWS = $root->get___ALLOWS();
+    $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;
+
 } #register_object
 
 

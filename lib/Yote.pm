@@ -138,8 +138,8 @@ mongo db is the fastest, but sqlite will always work.',
     }
 
     $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
-    $newconfig{ threads } = _ask( "Number of threads to start the serve with?", undef, 10 );
-    $newconfig{ threads } = _ask( "How many threads should be run?", undef, 10 );
+    $newconfig{ threads } = _ask( "Number of server threads : ", undef, 10 );
+    $newconfig{ processing_threads } = _ask( "Number of processing threads :", undef, 1 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, 'root' );
@@ -168,9 +168,10 @@ sub get_args {
 	P  => 'password',
 	r  => 'yote_root',
 	t  => 'threads',
+	T  => 'processing_threads',
 	);
     my %argnames = map { $_ => 1 } values %argmap;
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads processing_threads/;
 
     # ---------  run variables  -----------------
 

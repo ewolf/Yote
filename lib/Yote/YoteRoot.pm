@@ -18,6 +18,7 @@ use base 'Yote::AppRoot';
 our $HANDLE_CACHE = {};
 our $EMAIL_CACHE = {};
 
+$Yote::YoteRoot::ROOT_INIT = 0;
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -29,8 +30,15 @@ sub _init {
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
+    $self->set___ALLOWS( {} );
+    $self->set___DIRTY( {} );
 } #_init
 
+sub _load {
+    my $self = shift;
+    $self->get___ALLOWS( {} );
+    $self->get___DIRTY( {} );    
+} #_load
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
@@ -123,11 +131,13 @@ sub fetch_app_by_class {
 # Returns this root object.
 #
 sub fetch_root {
+    $Yote::YoteRoot::ROOT_INIT = 1;
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     unless( $root ) {
 	$root = new Yote::YoteRoot();
 	Yote::ObjProvider::stow( $root );
     }
+    $Yote::YoteRoot::ROOT_INIT = 0;
     return $root;
 }
 
