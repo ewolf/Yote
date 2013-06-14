@@ -52,10 +52,13 @@ sub clear_login {
 
     my $root = Yote::YoteRoot::fetch_root();    
     my $DIRTY = $root->get___DIRTY();
+    my $ALLOWS_REV = $root->get___ALLOWS_REV();
     if( $login ) {
 	delete $DIRTY->{ $login->{ID} };
+	delete $ALLOWS_REV->{ $login->{ID} };
     }
     delete $DIRTY->{ $guest_token };
+    delete $ALLOWS_REV->{ $guest_token };
 }
 
 # return a list of object ids whos data should be sent to the caller.
@@ -93,7 +96,9 @@ sub register_object {
     return unless $recipient_id;
     my $root = Yote::YoteRoot::fetch_root();
     my $ALLOWS = $root->get___ALLOWS();
+    my $ALLOWS_REV = $root->get___ALLOWS_REV();
     $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;
+    $ALLOWS_REV->{ $recipient_id }{ $obj_id } ||= 1;
 
 } #register_object
 

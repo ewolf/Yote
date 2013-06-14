@@ -31,11 +31,13 @@ sub _init {
     $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
     $self->set___ALLOWS( {} );
+    $self->set___ALLOWS_REV( {} );
     $self->set___DIRTY( {} );
 } #_init
 
 sub _load {
     my $self = shift;
+    $self->get___ALLOWS_REV( {} );
     $self->get___ALLOWS( {} );
     $self->get___DIRTY( {} );    
 } #_load
@@ -150,7 +152,7 @@ sub guest_token {
     $Yote::ObjProvider::IP_TO_GUEST_TOKEN->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
     $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{$token} = {};  #memory leak? @todo - test this
 
-    # @TODO write a Cache class to hold onto objects, with an interface like fetch( obj_id, login, guest_token )
+    Yote::ObjManager::clear_login( undef, $token );
 
     return $token;
 } #guest_token
