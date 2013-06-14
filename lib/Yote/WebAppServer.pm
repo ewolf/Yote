@@ -400,9 +400,10 @@ sub start_server {
     my $processing_threads = $self->{ args }{ processing_threads };
     
     if( $processing_threads > 1 ) {
+	Yote::ObjProvider::make_server( $self );
 	for( 1 .. $processing_threads ) {
-	    Yote::ObjProvider::make_server( $self );
 	    threads->new( sub {
+		print "Starting processing thread $$\n";
 		$self->_poll_commands();
 			  } );
 	}
@@ -528,7 +529,7 @@ sub _process_command {
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
 	
-	iolog( "  * DATA IN  : " . Data::Dumper->Dump( [ $data ] ) );
+	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
@@ -586,7 +587,7 @@ sub _process_command {
     $resp = to_json( $resp );
 
     ### SEND BACK $resp
-    iolog( " * DATA BACK : $resp" );
+    iolog( " * DATA BACK $$ : $resp" );
     #
     # Send return value back to the caller if its waiting for it.
     #
