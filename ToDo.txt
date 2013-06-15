@@ -2,20 +2,20 @@
 
 FOR Stable Alpha
 
-  * Add timing alarm and max execute length parameter for configuration
+  * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.
+  * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
   * Move MongoIO, etc, to an IO sub package
   * refactor IO to include better back references. Object will have to take note.
   * Enable Cron
   * Move encrypt_pass to somewhere self, maybe?
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't
-  * Make sure encoding requests are honored
   * Create admin pages
   * Unify unit tests for different stores
   * Create program to reset root password
   * Create program to reset whole config ( code for this is done as part of Yote.pm )
   * More yote tools
-  * Add at least simple modperl support
+  * Add at least simple modperl support. Maybe use plack?
   * UI - account change password and request password reset link
   * method to get version to client
   * add test only requirements to Build.PL

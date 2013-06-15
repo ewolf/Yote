@@ -36,7 +36,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -70,6 +70,7 @@ sub new {
 	for my $key ( %$id_or_hash ) {
 	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
 	}
+	Yote::ObjProvider::dirty( $obj, $obj->{ID} );
     }
 
     return $obj;
@@ -199,94 +200,6 @@ sub _update {
 # These methods are not part of the public API
 #
 
-#
-# Converts scalar, yote object, hash or array to data for returning.
-#
-sub __obj_to_response {
-    my( $self, $to_convert, $login, $guest_token ) = @_;
-    my $ref = ref($to_convert);
-    my $use_id;
-    if( $ref ) {
-        my( $m, $d );
-        if( $ref eq 'ARRAY' ) {
-            my $tied = tied @$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-		for my $entry (@$d) {
-		    next unless $entry;
-		    if( index( $entry, 'v' ) != 0 ) {
-			Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
-		    }
-		}
-            } else {
-                $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
-            }
-        } 
-        elsif( $ref eq 'HASH' ) {
-            my $tied = tied %$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-		for my $entry (values %$d) {
-		    next unless $entry;
-		    if( index( $entry, 'v' ) != 0 ) {
-			Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
-		    }
-		}
-            } else {
-                $d = $self->__transform_data_no_id( $to_convert, $login, $guest_token );
-            }
-        } 
-        else {
-            $use_id = Yote::ObjProvider::get_id( $to_convert );
-            $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
-	    for my $vl (values %$d) {
-		if( index( $vl, 'v' ) != 0 ) {
-		    Yote::ObjManager::register_object( $vl, $login ? $login->{ID} : $guest_token );
-		}
-	    }
-	    $m = Yote::ObjProvider::package_methods( $ref );
-        }
-
-	Yote::ObjManager::register_object( $use_id, $login ? $login->{ID} : $guest_token ) if $use_id;
-	return $m ? { c => $ref, id => $use_id, d => $d, 'm' => $m } : { c => $ref, id => $use_id, d => $d };
-    } # if a reference
-    return "v$to_convert";
-} #__obj_to_response
-
-#
-# Transforms data structure but does not assign ids to non tied references.
-#
-sub __transform_data_no_id {
-    my( $self, $item, $login, $guest_token ) = @_;
-    if( ref( $item ) eq 'ARRAY' ) {
-        my $tied = tied @$item;
-        if( $tied ) {
-	    my $id =  Yote::ObjProvider::get_id( $item ); 
-	    Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-            return $id;
-        }
-        return [map { $self->__obj_to_response( $_, $login, $guest_token ) } @$item];
-    }
-    elsif( ref( $item ) eq 'HASH' ) {
-        my $tied = tied %$item;
-        if( $tied ) {
-	    my $id =  Yote::ObjProvider::get_id( $item ); 
-	    Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-            return $id;
-        }
-        return { map { $_ => $self->__obj_to_response( $item->{$_}, $login, $guest_token ) } keys %$item };
-    }
-    elsif( ref( $item ) ) {
-        my $id = Yote::ObjProvider::get_id( $item ); 
-	Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-	return $id;
-    }
-    else {
-        return "v$item"; #scalar case
-    }
-} #__transform_data_no_id
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
