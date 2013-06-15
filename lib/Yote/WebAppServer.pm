@@ -29,13 +29,13 @@ my( %prid2result, $singleton );
 share( %prid2result );
 
 # %oid2pid stores object id to process id that is locking it
-# %pid2waiting_on stores process id to an objects that it is waiting on. This exists for deadlock detection and resolution.
+# %oid2waitingpid stores object id to the process id of the process waiting for that object. This exists for deadlock detection and resolution.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
 #    by an other thread that has locked an item this thread is waiting on.
 # 
-my( %oid2pid, %pid2waitingoid );
+my( %oid2pid, %oid2waitingpid );
 share( %oid2pid );
-share( %pid2waitingoid );
+share( %oid2waitingpid );
 
 use Thread::Queue;
  
@@ -94,12 +94,43 @@ sub lock_object {
     my( $self, $obj_id ) = @_;
     while( 1 ) {
 	lock( %oid2pid );
-	if( $oid2pid{ $obj_id } && $oid2pid{ $obj_id } != $$ ) {
-	    cond_wait( %oid2pid );
+	my $locked_by_pid = $oid2pid{ $obj_id };
+	if( $locked_by_pid && $locked_by_pid != $$ ) {
+	    my( @locked_objs );
+
+	    {
+		lock( %oid2waitingpid );
+
+		# check for deadlock here before the cond_wait
+		for my $oid ( keys %{ $self->{LOCKED} || {} } ) {
+		    # check if a different process is locking this object but waiting on 
+		    # something this process has locked
+		    if( $oid2waitingpid{$oid} == $locked_by_pid ) {
+			push @locked_objs, $oid;
+			$oid2pid{ $oid } = $locked_by_pid;
+		    }
+		}
+	    }
+
+	    if( @locked_objs ) { #these objects could cause a deadlock
+		$self->unlock_objects( @locked_objs );
+		for my $oid ( @locked_objs, $obj_id ) {
+		    $self->lock_object( $oid );
+		}
+		return;
+	    }
+	    else {	    
+		{
+		    lock( %oid2waitingpid );
+		    # insert the waiting on right here
+		    $oid2waitingpid{$obj_id} = $$;
+		}
+		cond_wait( %oid2pid );
+	    }
 	}
 	else {
 	    $oid2pid{ $obj_id } = $$;
-	    push @{ $self->{LOCKED} }, $obj_id;
+	    $self->{LOCKED}{ $obj_id } = 1;
 	    return;
 	}
     }
@@ -117,13 +148,13 @@ sub unlock_objects {
 sub unlock_all {
     my( $self  ) = @_;
     lock( %oid2pid );
-    for my $key ( @{ $self->{LOCKED} } ) {
+    for my $key ( keys %{ $self->{LOCKED} || {} } ) {
 	if( $oid2pid{ $key } == $$ ) {
 	    delete $oid2pid{ $key };
 	}
     }
     cond_signal( %oid2pid );
-    $self->{LOCKED} = [];
+    $self->{LOCKED} = {};
 }
 
 #
