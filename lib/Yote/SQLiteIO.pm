@@ -288,6 +288,8 @@ sub stow_all {
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
+    print STDERR "[$$ ".time()."] STOW : $id \n";    
+
     unless( $self->{STOW_LATER} ) {
 	return $self->_stow_now( $id, $class, $data );
     }

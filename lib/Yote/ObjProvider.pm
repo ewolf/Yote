@@ -16,14 +16,15 @@ use Yote::SimpleLRUCache;
 use Crypt::Passwd::XS;
 use WeakRef;
 
-$Yote::ObjProvider::DIRTY = {};
-$Yote::ObjProvider::CHANGED = {};
+$Yote::ObjProvider::DIRTY          = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
-$Yote::ObjProvider::WEAK_REFS = {};
+$Yote::ObjProvider::WEAK_REFS      = {};
+$Yote::ObjProvider::LAST_LOAD_TIME = {};
 
 our $DATASTORE;
 our $CACHE;
 our $LOCKER;
+our $FIRST_ID;
 
 use vars qw($VERSION);
 
@@ -94,18 +95,19 @@ sub encrypt_pass {
 # Returns the first ID that is associated with the root YoteRoot object
 #
 sub first_id {
-    return $DATASTORE->first_id();
+    $FIRST_ID ||= $DATASTORE->first_id();
+    return $FIRST_ID;
 }
 
 sub flush {
-    my( $id ) = @_;
-    delete $Yote::ObjProvider::DIRTY->{$id};
-    delete $Yote::ObjProvider::WEAK_REFS->{$id};
-    $CACHE->flush( $id );
+    for my $id ( @_ ) {
+	delete $Yote::ObjProvider::DIRTY->{$id};
+	delete $Yote::ObjProvider::WEAK_REFS->{$id};
+	$CACHE->flush( $id );
+    }
 }
 
-sub flush_all {
-    my( $id ) = @_;
+sub flush_all_volatile {
     $Yote::ObjProvider::DIRTY = {};
     $Yote::ObjProvider::WEAK_REFS = {};
 }
@@ -117,14 +119,27 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id}; # || $CACHE->fetch( $id );
-    return $ref if $ref;
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch( $id );
+
+    if( $ref && $LOCKER && $id ne first_id() && (! $LOCKER->locked_by_me( $id ) ) ) {
+	my $ldt = $LOCKER->check_last_dirty_time( $id );
+	print STDERR "[$$ ".time()."] GOT A REF for $id at $ldt. its last load time was $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
+	if( $ldt && $Yote::ObjProvider::LAST_LOAD_TIME->{$id} <= $ldt ) {
+	    print STDERR "[$$ ".time()."] FLUSHING $id \n";
+	    flush( $id );
+	    $ref = undef;
+	}
+    }
 
     if( $LOCKER ) { 
 	$LOCKER->lock_object( $id );
     }
 
+    return $ref if $ref;
+
     my $obj_arry = $DATASTORE->fetch( $id );
+    $Yote::ObjProvider::LAST_LOAD_TIME->{$id} = time();
+    print STDERR "[$$ ".time()."] OBJ $id loaded at $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -362,6 +377,7 @@ sub stow {
     return unless $class;
     my $id = get_id( $obj );
     die unless $id;
+    print STDERR "[$$ ".time()."] Stow object $obj->{ID}\n";
     my $data = __raw_data( $obj );
     given( $class ) {
         when('ARRAY') {
@@ -411,6 +427,7 @@ sub stow {
 
 sub stow_all {
     my @odata;
+    print STDERR "[$$ ".time()."] STOW ALL with " . scalar( keys %{$Yote::ObjProvider::DIRTY} ) . " dirty items.\n";
     for my $obj (values %{$Yote::ObjProvider::DIRTY} ) {
 	my $cls;
 	my $ref = ref( $obj );

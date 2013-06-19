@@ -76,7 +76,7 @@ sub create_login {
             die "password required";
         }
 
-	$EMAIL_CACHE->{$email}   = 1 if $email;
+	$EMAIL_CACHE->{$email}      = 1 if $email;
 	$HANDLE_CACHE->{$lc_handle} = 1;
 
         my $new_login = new Yote::Login();
@@ -164,11 +164,13 @@ sub guest_token {
 #
 sub login {
     my( $self, $data, $dummy, $env ) = @_;
-
+    print Yote::WebAppServer::iolog( "LOGINTRY : " . Data::Dumper->Dump([$data]) );
     if( $data->{h} ) {
 	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = $self->_hash_fetch( '_handles', $lc_h );
+    print Yote::WebAppServer::iolog( "LOGIN $lc_h : " . Data::Dumper->Dump([$login]) );
+	print STDERR Data::Dumper->Dump([$login, Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()),"LOGIN"]);
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };

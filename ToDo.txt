@@ -2,6 +2,8 @@
 
 FOR Stable Alpha
 
+  * deadlock test cases
+  * cache clearning test cases
   * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.
   * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
   * Move MongoIO, etc, to an IO sub package

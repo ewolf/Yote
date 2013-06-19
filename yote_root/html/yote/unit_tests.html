@@ -134,6 +134,7 @@ $().ready(function(){
             $.yote.login( 'unit_test_account', 'ut',
 			  pass( "able to log in" ),
 			  fail( "unable to log in" ) );
+
             step('login has token');
 	    ok( $.yote.token != '', 'login has token', 'token missing from login' );
 	    ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
@@ -165,6 +166,7 @@ $().ready(function(){
             is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
             login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
             is( login.obj_text(), 'bar', 'correct object 1 text' ); //should have dirty sent back
+
             var o3 = login.get_obj(); //<--- STILL FAIL
             is( o3.get_Text(), 'bar', 'correct object 1 text directly' );
 

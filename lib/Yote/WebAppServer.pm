@@ -33,9 +33,10 @@ share( %prid2result );
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
 #    by an other thread that has locked an item this thread is waiting on.
 # 
-my( %oid2pid, %oid2waitingpid );
+my( %oid2pid, %oid2waitingpid, %dirty );
 share( %oid2pid );
 share( %oid2waitingpid );
+share( %dirty );
 
 use Thread::Queue;
  
@@ -75,6 +76,7 @@ sub do404 {
 sub iolog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
+    print STDERR "[$$ ".time()."]$msg\n";
     print $Yote::WebAppServer::IO "$t : $msg\n";
 }
 
@@ -90,8 +92,15 @@ sub accesslog {
     print $Yote::WebAppServer::ACCESS "$t : $msg\n";
 }
 
+sub locked_by_me {
+    my( $self, $obj_id ) = @_;
+    return $self->{LOCKED}{$obj_id};
+}
+
 sub lock_object {
     my( $self, $obj_id ) = @_;
+    return if $obj_id eq Yote::ObjProvider::first_id();
+    print STDERR "[$$ ".time()."] LOCK REQ $obj_id \n";
     while( 1 ) {
 	lock( %oid2pid );
 	my $locked_by_pid = $oid2pid{ $obj_id };
@@ -105,6 +114,12 @@ sub lock_object {
 		for my $oid ( keys %{ $self->{LOCKED} || {} } ) {
 		    # check if a different process is locking this object but waiting on 
 		    # something this process has locked
+		    # check if this object is dirty. If it is, abort?
+		    if( Yote::ObjProvider::__is_dirty( $oid ) ) {
+			$self->unlock_objects( keys %{ $self->{LOCKED} } );
+			Yote::ObjProvider::flush( map { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} } );
+			die "__DEADLOCK__";
+		    }
 		    if( $oid2waitingpid{$oid} == $locked_by_pid ) {
 			push @locked_objs, $oid;
 			$oid2pid{ $oid } = $locked_by_pid;
@@ -131,6 +146,7 @@ sub lock_object {
 	else {
 	    $oid2pid{ $obj_id } = $$;
 	    $self->{LOCKED}{ $obj_id } = 1;
+	    print STDERR "[$$ ".time()."] FINISHED LOCKING $obj_id \n";
 	    return;
 	}
     }
@@ -143,6 +159,28 @@ sub unlock_objects {
 	delete $oid2pid{ $obj_id };
     }
     cond_signal( %oid2pid );
+}
+
+sub check_locked_for_dirty {
+    my( $self  ) = @_;
+    lock( %dirty );
+    # LOCKED is not picking up everything that is dirty :(
+    for my $key ( keys %{ $self->{LOCKED} || {} } ) {
+	if( Yote::ObjProvider::__is_dirty( $key ) ) {
+	    $dirty{ $key } = time();
+	    print STDERR "[$$ ".time()."] SET DIRTY : $key ( at time $dirty{ $key } )\n";
+	} else { print STDERR "[$$ ".time()."] NOT DIRTY : $key \n"; }
+    }
+}
+
+sub check_last_dirty_time {
+    my( $self, $obj_id ) = @_;
+    my $time;
+    {
+	lock( %dirty );
+	$time = $dirty{ $obj_id };
+    }
+    return $time;
 }
 
 sub unlock_all {
@@ -531,21 +569,13 @@ sub _crond {
 sub _poll_commands {
     my $self = shift;
     while(1) {
-	_process_command( $cmd_queue->dequeue() );
-	Yote::ObjProvider::start_transaction();
-	Yote::ObjProvider::stow_all();
-	Yote::ObjProvider::flush_all();
-	$self->unlock_all();
-
-	# its this little self that suggests we might split this package into two : one for server threads and one for processing threads
-
-	Yote::ObjProvider::commit_transaction();
+	$self->_process_command( $cmd_queue->dequeue() );
     } #endlees loop
 
 } #_poll_commands
 
 sub _process_command {
-    my( $req ) = @_;
+    my( $self, $req ) = @_;
     my( $command, $procid ) = @$req;
     
     my $wait = $command->{w};
@@ -609,6 +639,12 @@ sub _process_command {
     };
     if( $@ ) {
 	my $err = $@;
+	if( $err =~ /^__DEADLOCK__/ ) {
+	    iolog( "DEADLOCK TO RETRY $procid : $@" );
+	    # if a deadlock condition was detected. back out of any changes and retry
+	    $cmd_queue->enqueue( [ $command, $procid ] );
+	    return 0;
+	}
 	$err =~ s/at \/\S+\.pm.*//s;
         errlog( "ERROR : $@" );
 	iolog( "ERROR : $@" );
@@ -616,6 +652,13 @@ sub _process_command {
     }
     
     $resp = to_json( $resp );
+
+    $self->check_locked_for_dirty();
+    Yote::ObjProvider::start_transaction();
+    Yote::ObjProvider::stow_all();
+    Yote::ObjProvider::flush_all_volatile();
+    Yote::ObjProvider::commit_transaction();
+    $self->unlock_all();
 
     ### SEND BACK $resp
     iolog( " * DATA BACK $$ : $resp" );
