@@ -164,13 +164,10 @@ sub guest_token {
 #
 sub login {
     my( $self, $data, $dummy, $env ) = @_;
-    print Yote::WebAppServer::iolog( "LOGINTRY : " . Data::Dumper->Dump([$data]) );
     if( $data->{h} ) {
 	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = $self->_hash_fetch( '_handles', $lc_h );
-    print Yote::WebAppServer::iolog( "LOGIN $lc_h : " . Data::Dumper->Dump([$login]) );
-	print STDERR Data::Dumper->Dump([$login, Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()),"LOGIN"]);
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
@@ -237,7 +234,6 @@ sub recover_password {
 		smtp => 'localhost',
 		from => 'yote@localhost',
 					   } );
-	    print STDERR Data::Dumper->Dump(["RECOVERY LINK $link"]);
 	    $sender->MailMsg( { to => $email,
 				 subject => 'Password Recovery',
 				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
