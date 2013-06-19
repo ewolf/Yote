@@ -123,9 +123,9 @@ sub fetch {
 
     if( $ref && $LOCKER && $id ne first_id() && (! $LOCKER->locked_by_me( $id ) ) ) {
 	my $ldt = $LOCKER->check_last_dirty_time( $id );
-	print STDERR "[$$ ".time()."] GOT A REF for $id at $ldt. its last load time was $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
+#	print STDERR "[$$ ".time()."] GOT A REF for $id at $ldt. its last load time was $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
 	if( $ldt && $Yote::ObjProvider::LAST_LOAD_TIME->{$id} <= $ldt ) {
-	    print STDERR "[$$ ".time()."] FLUSHING $id \n";
+#	    print STDERR "[$$ ".time()."] FLUSHING $id \n";
 	    flush( $id );
 	    $ref = undef;
 	}
@@ -139,7 +139,7 @@ sub fetch {
 
     my $obj_arry = $DATASTORE->fetch( $id );
     $Yote::ObjProvider::LAST_LOAD_TIME->{$id} = time();
-    print STDERR "[$$ ".time()."] OBJ $id loaded at $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
+#    print STDERR "[$$ ".time()."] OBJ $id loaded at $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -377,7 +377,7 @@ sub stow {
     return unless $class;
     my $id = get_id( $obj );
     die unless $id;
-    print STDERR "[$$ ".time()."] Stow object $obj->{ID}\n";
+
     my $data = __raw_data( $obj );
     given( $class ) {
         when('ARRAY') {
@@ -427,7 +427,7 @@ sub stow {
 
 sub stow_all {
     my @odata;
-    print STDERR "[$$ ".time()."] STOW ALL with " . scalar( keys %{$Yote::ObjProvider::DIRTY} ) . " dirty items.\n";
+#    print STDERR "[$$ ".time()."] STOW ALL with " . scalar( keys %{$Yote::ObjProvider::DIRTY} ) . " dirty items.\n";
     for my $obj (values %{$Yote::ObjProvider::DIRTY} ) {
 	my $cls;
 	my $ref = ref( $obj );

@@ -76,7 +76,7 @@ sub do404 {
 sub iolog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
-    print STDERR "[$$ ".time()."]$msg\n";
+#    print STDERR "[$$ ".time()."]$msg\n";
     print $Yote::WebAppServer::IO "$t : $msg\n";
 }
 
@@ -100,7 +100,7 @@ sub locked_by_me {
 sub lock_object {
     my( $self, $obj_id ) = @_;
     return if $obj_id eq Yote::ObjProvider::first_id();
-    print STDERR "[$$ ".time()."] LOCK REQ $obj_id \n";
+#    print STDERR "[$$ ".time()."] LOCK REQ $obj_id \n";
     while( 1 ) {
 	lock( %oid2pid );
 	my $locked_by_pid = $oid2pid{ $obj_id };
@@ -146,7 +146,7 @@ sub lock_object {
 	else {
 	    $oid2pid{ $obj_id } = $$;
 	    $self->{LOCKED}{ $obj_id } = 1;
-	    print STDERR "[$$ ".time()."] FINISHED LOCKING $obj_id \n";
+#	    print STDERR "[$$ ".time()."] FINISHED LOCKING $obj_id \n";
 	    return;
 	}
     }
@@ -168,8 +168,8 @@ sub check_locked_for_dirty {
     for my $key ( keys %{ $self->{LOCKED} || {} } ) {
 	if( Yote::ObjProvider::__is_dirty( $key ) ) {
 	    $dirty{ $key } = time();
-	    print STDERR "[$$ ".time()."] SET DIRTY : $key ( at time $dirty{ $key } )\n";
-	} else { print STDERR "[$$ ".time()."] NOT DIRTY : $key \n"; }
+#	    print STDERR "[$$ ".time()."] SET DIRTY : $key ( at time $dirty{ $key } )\n";
+	} #else { print STDERR "[$$ ".time()."] NOT DIRTY : $key \n"; }
     }
 }
 

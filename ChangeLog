@@ -1,3 +1,10 @@
+2013-06-19  Eric Wolf  <coyocanid@gmail.com>
+
+	* VERSION 0.1000
+	* Major changes. There are now two types of processes running : server and process
+	* server processes field requests and either serve up web pages, or queue up requests for process processes to do. The server processes wait for the answer from the processing processes.
+	* configuration file updates to include number of processes of both types to create
+
 2013-06-12  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0996

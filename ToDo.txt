@@ -2,6 +2,7 @@
 
 FOR Stable Alpha
 
+  * add option to yote_server to do a full reconfiguring of the server
   * deadlock test cases
   * cache clearning test cases
   * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.

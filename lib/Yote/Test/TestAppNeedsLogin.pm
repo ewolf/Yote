@@ -69,6 +69,7 @@ sub give_obj {
     my( $self, $data, $acct ) = @_;
     die "Need account" unless $acct;
     $self->set_obj( $data );
+#    print STDERR "[$$] give_obj for id $self->{ID} ( dirty ? " .Yote::ObjProvider::__is_dirty(  $self->{ID} )."\n";
     return '';
 }
 

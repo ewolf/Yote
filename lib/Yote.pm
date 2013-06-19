@@ -5,7 +5,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.0996';
+$VERSION = '0.1000';
 
 use Carp;
 use File::Path;
@@ -139,7 +139,7 @@ mongo db is the fastest, but sqlite will always work.',
 
     $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
     $newconfig{ threads } = _ask( "Number of server threads : ", undef, 10 );
-    $newconfig{ processing_threads } = _ask( "Number of processing threads :", undef, 1 );
+    $newconfig{ processing_threads } = _ask( "Number of processing threads :", undef, 4 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, 'root' );
