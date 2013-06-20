@@ -588,6 +588,10 @@ Returns the array ref, hash ref or yote object specified by the numeric id or ha
 
 Returns the id of the first object in the system, the YoteRoot.
 
+=item flush_all_volatile()
+
+Clears out DIRTY and WEAK_REFS caches.
+
 =item get_id( obj )
 
 Returns the id assigned to the array ref, hash ref or yote object. This method assigns that id
@@ -610,6 +614,11 @@ Removes the key from the hash given by the id
 =item list_insert( list_id, val, idx )
 
 Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
+
+=item make_server( datalocker )
+
+This is just used when multiple processes will be activatig the same data share.
+
 
 =item package_methods( package_name )
 

@@ -892,6 +892,14 @@ The server set up uses Net::Server::Fork receiving and sending messages on multi
 
 Write the message to the access log
 
+=item check_last_dirty_time( obj_id )
+
+Returns the time when this item was marked dirty
+
+=item check_locked_for_dirty()
+
+Checks items that are dirty and notes that in the inter process communications.
+
 =item do404
 
 Return a 404 not found page and exit.
@@ -905,6 +913,22 @@ Write the message to the error log
 Writes to an IO log for client server communications
 
 =item init_server
+
+=item lock_object( obj_id )
+
+Locks the given object id for use by this process only until it is unlocked.
+
+=item locked_by_me( obj_id )
+
+Returns true if the object is locked by this process.
+
+=item unlock_all()
+
+Unlocks all objects locked by this process and notifies other processes
+
+=item unlock_objects( objlist )
+
+Unlocked items in the given list and notifices other processes.
 
 =item new
 
