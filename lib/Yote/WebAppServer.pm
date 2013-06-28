@@ -456,8 +456,21 @@ sub start_server {
     my $paths = $root->get__application_lib_directories([]);
     push @INC, @$paths;
 
-    $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port}) or die $@;
+    until( $self->{lsn} ) {
+	$self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port});
+	unless( $self->{lsn} ) {
+	    if( $! =~ /Address already in use/i ) {
+		print STDERR "Address already in use. Retrying.\n";
+		sleep( 5 );
+	    } else {
+		die $!;
+	    }
+	}
+    }
 
+    print STDERR "Connected\n";
+
+    
     $self->{threads} = [];
 
     for( 1 .. $self->{args}{threads} ) {

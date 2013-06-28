@@ -16,12 +16,19 @@ use Yote::SQLiteIO;
 use Yote::WebAppServer;
 
 sub _print_use {
-    print '
-Usage :
-yote_server --engine=sqlite|mongo|mysql --user=engine-username --password=engine-password \\
-            --store=filename|mongo-db|mysq-db --host=mongo-or-mysql-host --engine_port=port-mongo-or-mysql-use \\
-            --port=yote-server-port \\
-            START|STOP|RESTART
+    print 'Usage : yote_server --engine=sqlite|mongo|mysql
+                    --engine_port=port-mongo-or-mysql-use
+                    --generate
+                    --help
+                    --host=mongo-or-mysql-host
+                    --password=engine-password 
+                    --port=yote-server-port
+                    --store=filename|mongo-db|mysq-db
+                    --threads=number-of-serving-processes
+                    --processing_threads=number-of-processing-processes
+                    --user=engine-username 
+                    --yote_root=yote-root-directory
+                          START|STOP|RESTART
 ';
     return;
 }
@@ -34,7 +41,7 @@ sub _log {
 
 sub _soft_exit {
     my $msg = shift;
-    print STDERR "$msg : Exiting\n";
+    print STDERR "$msg : Exiting\n" if $msg;
     _print_use();
     exit(0);
 }
@@ -88,9 +95,9 @@ sub _get_configuration {
     my %newconfig;
 
     my $engine = _ask( 'This is the first time yote is being run and must be set up now.
-The first decision as to what data store to use.
-mongo db is the fastest, but sqlite will always work.',
-		      [ 'sqlite', 'mongo', 'mysql' ], 'sqlite' );
+ The first decision as to what data store to use.
+ mongo db is the fastest, but sqlite will always work.',
+		       [ 'sqlite', 'mongo', 'mysql' ], 'sqlite' );
     $newconfig{ engine } = $engine;
 
     if ( $engine eq 'sqlite' ) {
@@ -124,7 +131,7 @@ mongo db is the fastest, but sqlite will always work.',
 	$newconfig{ engine_port } = _ask( "MongoDB port", undef, 27017 );
 	$newconfig{ user }        = _ask( "MongoDB user acccount name" );
 	if ( $newconfig{ user } ) {
-	    $newconfig{ password } = _ask( "MongoDB user acccount name" );
+	    $newconfig{ password } = _ask( "aMongoDB user acccount name" );
 	}
     }
     elsif ( lc($engine) eq 'mysql' ) {
@@ -162,13 +169,22 @@ sub get_args {
 
     my %argmap = (
 	e  => 'engine',
-	s  => 'store',
-	p  => 'port',
-	u  => 'user',
+	E  => 'engine_port',
+	g  => 'generate',
+	h  => 'help',
+	'?' => 'help',
+	H  => 'host',
 	P  => 'password',
+	p  => 'port',
+	s  => 'store',
+	u  => 'user',
 	r  => 'yote_root',
 	t  => 'threads',
 	T  => 'processing_threads',
+	);
+    my %noval = (  #arguments that do not take a value
+		   help     => 1,
+		   generate => 1,
 	);
     my %argnames = map { $_ => 1 } values %argmap;
     my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads processing_threads/;
@@ -181,12 +197,12 @@ sub get_args {
     # ---------  get command line arguments ---------
     while ( @ARGV ) {
 	my $arg = shift @ARGV;
-	if ( $arg =~ /^--(.*)=(.*)/ ) {
+	if ( $arg =~ /^--(.*)(=(.*))?/ ) {
 	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 };
-	    $config{ $1 } = $2;
+	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
 	} elsif ( $arg =~ /^-(.*)/ ) {
 	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 };
-	    $config{ $1 } = shift @ARGV;
+	    $config{ $argmap{ $1 } } = $noval{ $argmap{ $1 } } ? 1 : shift @ARGV;
 	} else {
 	    _soft_exit( "Unknown command '$arg'" ) unless $commands{ lc($arg) };
 	    _soft_exit( "Only takes one command argument" ) if $cmd;
@@ -198,11 +214,23 @@ sub get_args {
     my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
     $config{ yote_root } = $yote_root_dir;
 
+    if( $config{ help } ) {
+	_soft_exit();
+    }
+
     _log "using root directory '$yote_root_dir'";
 
     _log "Looking for '$yote_root_dir/yote.conf'";
 
-    if ( -r "$yote_root_dir/yote.conf" ) {
+
+    if( $config{ generate } ) {
+	_log( "Generating new configuration file" );
+	my $newconfig = _create_configuration( $yote_root_dir );
+	for my $key ( keys %$newconfig ) {
+	    $config{ $key } ||= $newconfig->{ $key };
+	}	
+    }
+    elsif ( -r "$yote_root_dir/yote.conf" ) {
 	open( my $IN, '<', "$yote_root_dir/yote.conf" ) or die $@;
 	while ( <$IN> ) {
 	    s/\#.*//;
