@@ -1,3 +1,9 @@
+2013-06-27  Eric Wolf  <coyocanid@gmail.com>Eric Wolf  <ewolf@localhost>
+
+	* cleaned up useage printout
+	* have the server try to retart if the port is not yet clear.
+	* 
+
 2013-06-19  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.1000
