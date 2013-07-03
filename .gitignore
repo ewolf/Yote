@@ -5,6 +5,7 @@ MYMETA.json
 MYMETA.yml
 META.json
 META.yml
+Makefile.PL
 Makefile
 _build
 blib

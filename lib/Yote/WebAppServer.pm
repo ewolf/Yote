@@ -28,15 +28,13 @@ $VERSION = '0.093';
 my( %prid2result, $singleton );
 share( %prid2result );
 
-# %oid2pid stores object id to process id that is locking it
+# %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 # %oid2waitingpid stores object id to the process id of the process waiting for that object. This exists for deadlock detection and resolution.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
 #    by an other thread that has locked an item this thread is waiting on.
 # 
-my( %oid2pid, %oid2waitingpid, %dirty );
-share( %oid2pid );
-share( %oid2waitingpid );
-share( %dirty );
+my( %oid2lockdata );
+share( %oid2lockdata );
 
 use Thread::Queue;
  
@@ -92,106 +90,107 @@ sub accesslog {
     print $Yote::WebAppServer::ACCESS "$t : $msg\n";
 }
 
-sub locked_by_me {
-    my( $self, $obj_id ) = @_;
-    return $self->{LOCKED}{$obj_id};
-}
-
 sub lock_object {
-    my( $self, $obj_id ) = @_;
-    return if $obj_id eq Yote::ObjProvider::first_id();
+    my( $self, $obj_id, $ref ) = @_;
+    if( $obj_id eq Yote::ObjProvider::first_id() || $self->{ LOCKED }{ $obj_id } ) {
+	return $ref;
+    }
+
 #    print STDERR "[$$ ".time()."] LOCK REQ $obj_id \n";
     while( 1 ) {
-	lock( %oid2pid );
-	my $locked_by_pid = $oid2pid{ $obj_id };
-	if( $locked_by_pid && $locked_by_pid != $$ ) {
-	    my( @locked_objs );
+	my( @locked );
+	{
+	    lock( %oid2lockdata );
+	    my $lockdata = $oid2lockdata{ $obj_id };
 
-	    {
-		lock( %oid2waitingpid );
+	    if( ! $lockdata ) {
+		$oid2lockdata{ $obj_id } = "$$|";
+#		print STDERR "[$$ ".time()."] LOCKED $obj_id \n";
+		$self->{ LOCKED }{ $obj_id } = 1;
+		return $ref;
+	    }
+	    my( $locking_pid, $dirty_time, @pids_waiting_for_this_object ) = split( /\|/, $lockdata );
 
-		# check for deadlock here before the cond_wait
-		for my $oid ( keys %{ $self->{LOCKED} || {} } ) {
-		    # check if a different process is locking this object but waiting on 
-		    # something this process has locked
-		    # check if this object is dirty. If it is, abort?
-		    if( Yote::ObjProvider::__is_dirty( $oid ) ) {
+	    my( %waiters ) = map { $_ => 1 } @pids_waiting_for_this_object;
+
+#	    print STDERR "[$$ ".time()."] LOCKDATA : $lockdata\n";
+
+	    if( ! $locking_pid ) {
+		delete $waiters{$$}; #remove this from any waiting list
+		$oid2lockdata{ $obj_id } = join( '|', $$, $dirty_time, keys %waiters );
+#		print STDERR "[$$ ".time()."] LOCKED $obj_id \n";
+		$self->{ LOCKED }{ $obj_id } = 1;
+		if( $dirty_time &&  $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } && $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } <= $dirty_time ) {
+#		    print STDERR "[$$ ".time()."] RETURNING as dity time is now $obj_id \n";
+		    return;
+		}
+		return $ref;
+	    }
+	    
+	    # locked by an other pid. Check to make sure that pid isn't waiting on what we have locked, for that is deadlock
+	    my @locked_ids = keys %{ $self->{LOCKED} || {} };
+	    for my $locked_oid ( @locked_ids ) {
+		# check if the process that has obj_id locked is waiting on any of the locked objects that are had.
+		if( $waiters{ $locking_pid } ) {
+		    # if this object is dirty then 
+		    if( Yote::ObjProvider::__is_dirty( $locked_oid ) ) {
 			$self->unlock_objects( keys %{ $self->{LOCKED} } );
 			Yote::ObjProvider::flush( map { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} } );
 			die "__DEADLOCK__";
 		    }
-		    if( $oid2waitingpid{$oid} == $locked_by_pid ) {
-			push @locked_objs, $oid;
-			$oid2pid{ $oid } = $locked_by_pid;
-		    }
 		}
+		else { # the object is clean so can be unlocked from this thread
+		    push @locked, $locked_oid;
+		}
+	    } #each locked oid
+
+	    if( $waiters{$$} ) {
+		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, @pids_waiting_for_this_object );
+	    } 
+	    else {
+		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, $$, @pids_waiting_for_this_object );
 	    }
 
-	    if( @locked_objs ) { #these objects could cause a deadlock
-		$self->unlock_objects( @locked_objs );
-		for my $oid ( @locked_objs, $obj_id ) {
-		    $self->lock_object( $oid );
-		}
-		return;
+	    unless( @locked ) {
+		cond_wait( %oid2lockdata );
 	    }
-	    else {	    
-		{
-		    lock( %oid2waitingpid );
-		    # insert the waiting on right here
-		    $oid2waitingpid{$obj_id} = $$;
-		}
-		cond_wait( %oid2pid );
-	    }
+	} # scope for locked var
+	
+	if( @locked ) {
+	    $self->unlock_objects( @locked );
+	    lock( %oid2lockdata );
+	    cond_wait( %oid2lockdata );
 	}
-	else {
-	    $oid2pid{ $obj_id } = $$;
-	    $self->{LOCKED}{ $obj_id } = 1;
-#	    print STDERR "[$$ ".time()."] FINISHED LOCKING $obj_id \n";
-	    return;
-	}
-    }
+    } #while loop
 } #lock_object
 
 sub unlock_objects {
     my( $self, @objs ) = @_;
-    lock( %oid2pid );
+    lock( %oid2lockdata );
     for my $obj_id ( @objs ) {
-	delete $oid2pid{ $obj_id };
+	$oid2lockdata{ $obj_id } =~ s/^([^\|]+)//; 
+#	print STDERR "[$$ ".time()."] UNLOCKED $obj_id : $oid2lockdata{ $obj_id }\n";
+	delete $self->{ LOCKED }{ $obj_id };
     }
-    cond_signal( %oid2pid );
+    cond_signal( %oid2lockdata );
 }
 
 sub check_locked_for_dirty {
     my( $self  ) = @_;
-    lock( %dirty );
-    # LOCKED is not picking up everything that is dirty :(
-    for my $key ( keys %{ $self->{LOCKED} || {} } ) {
-	if( Yote::ObjProvider::__is_dirty( $key ) ) {
-	    $dirty{ $key } = time();
-#	    print STDERR "[$$ ".time()."] SET DIRTY : $key ( at time $dirty{ $key } )\n";
-	} #else { print STDERR "[$$ ".time()."] NOT DIRTY : $key \n"; }
-    }
-}
-
-sub check_last_dirty_time {
-    my( $self, $obj_id ) = @_;
-    my $time;
-    {
-	lock( %dirty );
-	$time = $dirty{ $obj_id };
-    }
-    return $time;
+    my( @dirty_oids ) = grep { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} || {} };
+    if( @dirty_oids ) {
+	lock( %oid2lockdata );
+	my $t = time();
+	for my $dirty_oid ( @dirty_oids ) {
+	    my( $locking_pid, $last_dirty_time, @pids_waiting_for_this_object ) = split( /\|/, $oid2lockdata{ $dirty_oid } );
+	    $oid2lockdata{ $dirty_oid } = join( '|', $locking_pid, $t, @pids_waiting_for_this_object );
+	}
+    } #if dirty
 }
 
 sub unlock_all {
     my( $self  ) = @_;
-    lock( %oid2pid );
-    for my $key ( keys %{ $self->{LOCKED} || {} } ) {
-	if( $oid2pid{ $key } == $$ ) {
-	    delete $oid2pid{ $key };
-	}
-    }
-    cond_signal( %oid2pid );
+    $self->unlock_objects( keys %{ $self->{LOCKED} || {} } );
     $self->{LOCKED} = {};
 }
 
@@ -602,7 +601,9 @@ sub _process_command {
         my $app         = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-	
+
+	iolog( "  * CMD IN $$ : " . Data::Dumper->Dump( [ $command ] ) );
+
 	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
@@ -905,10 +906,6 @@ The server set up uses Net::Server::Fork receiving and sending messages on multi
 
 Write the message to the access log
 
-=item check_last_dirty_time( obj_id )
-
-Returns the time when this item was marked dirty
-
 =item check_locked_for_dirty()
 
 Checks items that are dirty and notes that in the inter process communications.
@@ -930,10 +927,6 @@ Writes to an IO log for client server communications
 =item lock_object( obj_id )
 
 Locks the given object id for use by this process only until it is unlocked.
-
-=item locked_by_me( obj_id )
-
-Returns true if the object is locked by this process.
 
 =item unlock_all()
 

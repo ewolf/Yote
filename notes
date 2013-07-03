@@ -1,0 +1,19 @@
+
+Having a performance issue with multiple processing threads :
+
+
+with 3 processing threads
+   tests completed in 478 ms
+
+with 2 processing threads
+   tests completed in 458 ms
+
+with 1 processing thread
+   tests completed in 177 ms
+
+# ------- have updated the threads model to test a new way
+
+ugh, worse?
+
+with 3 processing threads
+    tests completed in 690 ms
