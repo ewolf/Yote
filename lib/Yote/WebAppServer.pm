@@ -602,7 +602,7 @@ sub _process_command {
 
         my $data        = _translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
 
-	iolog( "  * CMD IN $$ : " . Data::Dumper->Dump( [ $command ] ) );
+#	iolog( "  * CMD IN $$ : " . Data::Dumper->Dump( [ $command ] ) );
 
 	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
 
