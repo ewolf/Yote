@@ -1,6 +1,7 @@
 *~
 *stackdump
 Build
+Makefile.PL
 MYMETA.json
 MYMETA.yml
 META.json
