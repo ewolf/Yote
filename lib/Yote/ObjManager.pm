@@ -79,7 +79,9 @@ sub fetch_dirty {
 sub mark_dirty {
     my( $obj_id ) = @_;
 
-    return if $Yote::YoteRoot::ROOT_INIT;
+    if( $Yote::YoteRoot::ROOT_INIT ) {
+	return;
+    }
     my $root = Yote::YoteRoot::fetch_root();
     my $DIRTY = $root->get___DIRTY();
     my $ALLOWS = $root->get___ALLOWS();
