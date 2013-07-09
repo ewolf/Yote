@@ -22,7 +22,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.093';
+$VERSION = '0.094';
 
 # %prid2result stores process id to a json encoded string result
 my( %prid2result, $singleton );

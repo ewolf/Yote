@@ -1,8 +1,12 @@
-2013-06-27  Eric Wolf  <coyocanid@gmail.com>Eric Wolf  <ewolf@localhost>
+2013-07-09  Eric Wolf  <coyocanid@gmail.com>
+
+	* Version 0.1002
+	* This version has a faster multi processing for processing processes than the previous version.
+
+2013-06-27  Eric Wolf  <coyocanid@gmail.com>
 
 	* cleaned up useage printout
 	* have the server try to retart if the port is not yet clear.
-	* 
 
 2013-06-19  Eric Wolf  <coyocanid@gmail.com>
 
@@ -14,7 +18,7 @@
 2013-06-12  Eric Wolf  <coyocanid@gmail.com>
 
 	* VERSION 0.0996
-	* added number of threads as a configuration value
+	* added number of processes as a configuration value
 
 2013-06-09  wolf  <coyocanid@gmail.com>
 
