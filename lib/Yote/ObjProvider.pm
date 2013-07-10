@@ -10,7 +10,6 @@ use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
 use Yote::YoteRoot;
-use Yote::SimpleLRUCache;
 
 use Crypt::Passwd::XS;
 use WeakRef;
@@ -21,7 +20,6 @@ $Yote::ObjProvider::WEAK_REFS      = {};
 $Yote::ObjProvider::LAST_LOAD_TIME = {};
 
 our $DATASTORE;
-our $CACHE;
 our $LOCKER;
 our $FIRST_ID;
 
@@ -51,7 +49,6 @@ sub init {
     eval( "require $datapkg" );
     $DATASTORE = $datapkg->new( $args );
     $DATASTORE->ensure_datastore();
-    $CACHE = new Yote::SimpleLRUCache();
 } #init
 
 sub make_server {
@@ -102,7 +99,6 @@ sub flush {
     for my $id ( @_ ) {
 	delete $Yote::ObjProvider::DIRTY->{$id};
 	delete $Yote::ObjProvider::WEAK_REFS->{$id};
-	$CACHE->flush( $id );
     }
 }
 
@@ -118,7 +114,7 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch( $id );
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
 #	print STDERR "[$$ ".time()."] cached $ref $id, checking on LOCKER\n";
     if( $LOCKER ) { 
 	$ref = $LOCKER->lock_object( $id, $ref );
@@ -141,7 +137,6 @@ sub fetch {
 	    tie @arry, 'Yote::Array', $id, @$data;
 	    my $tied = tied @arry; $tied->[2] = \@arry;
 	    __store_weak( $id, \@arry );
-	    $CACHE->stow( $id, \@arry );
 	    return \@arry;
 	}
 	elsif( $class eq 'HASH' ) {
@@ -149,7 +144,6 @@ sub fetch {
 	    tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
 	    my $tied = tied %hash; $tied->[2] = \%hash;
 	    __store_weak( $id, \%hash );
-	    $CACHE->stow( $id, \%hash );
 	    return \%hash;
 	}
 	else {
@@ -160,7 +154,6 @@ sub fetch {
 	    $obj->{ID} = $id;
 	    $obj->_load();
 	    __store_weak( $id, $obj );
-	    $CACHE->stow( $id, $obj );
 	    return $obj;
 	}
     }

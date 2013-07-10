@@ -24,10 +24,6 @@ use vars qw($VERSION);
 
 $VERSION = '0.094';
 
-# %prid2result stores process id to a json encoded string result
-my( %prid2result, $singleton );
-share( %prid2result );
-
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 # %oid2waitingpid stores object id to the process id of the process waiting for that object. This exists for deadlock detection and resolution.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
@@ -35,11 +31,6 @@ share( %prid2result );
 # 
 my( %oid2lockdata );
 share( %oid2lockdata );
-
-use Thread::Queue;
- 
-my $cmd_queue = Thread::Queue->new();
-
 
 
 # ------------------------------------------------------------------------------------------
@@ -278,7 +269,7 @@ sub process_http_request {
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
 	}
 
-        my $command = {
+        my $result = $self->_process_command( {
             a  => $action,
             ai => $app_id,
             d  => $data,
@@ -287,46 +278,14 @@ sub process_http_request {
             t  => $token,
 	    gt => $guest_token,
             w  => $wait,
-        };
+        } );
 
-        my $procid = $$;
-
-        #
-        # Queue up the command for processing in a separate thread.
-        #
-	$cmd_queue->enqueue( [$command, $procid ] );
-
-        #
-        # If the connection is waiting for an answer, give it
-        #
-        if( $wait ) {
-	    my $result;
-            while( 1 ) {
-                lock( %prid2result );
-                $result = $prid2result{$procid};
-		if( defined( $result ) ) {
-		    delete $prid2result{$procid};
-		    last;
-		}
-		else {
-		    cond_wait( %prid2result );
-		}
-		sleep 0.001;
-            }
-	    print $soc "HTTP/1.0 200 OK\015\012";
-	    push( @return_headers, "Content-Type: text/json; charset=utf-8" );
-	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
-	    print $soc join( "\n", @return_headers )."\n\n";
-	    utf8::encode( $result );
-            print $soc "$result";
-        }
-        else {  #not waiting for an answer, but give an acknowledgement
-	    print $soc "HTTP/1.0 200 OK\015\012";
-	    push( @return_headers, "Content-Type: text/json; charset=utf-8" );
-	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
-	    print $soc join( "\n", @return_headers )."\n\n";
-            print $soc "{\"msg\":\"Added command\"}";
-        }
+	print $soc "HTTP/1.0 200 OK\015\012";
+	push( @return_headers, "Content-Type: text/json; charset=utf-8" );
+	push( @return_headers,  "Access-Control-Allow-Origin: *" );
+	print $soc join( "\n", @return_headers )."\n\n";
+	utf8::encode( $result );
+	print $soc "$result";
 	
     } #if a command on an object
 
@@ -472,45 +431,15 @@ sub start_server {
     
     $self->{threads} = [];
 
+    Yote::ObjProvider::make_server( $self );
     for( 1 .. $self->{args}{threads} ) {
 	$self->_start_server_thread;
     } #creating threads
 
-    # a singleton thread for now
-    # make this into more threads as that happens
-    my $processing_threads = $self->{ args }{ processing_threads };
-    
-    if( $processing_threads > 1 ) {
-	Yote::ObjProvider::make_server( $self );
-	for( 1 .. $processing_threads ) {
-	    threads->new( sub {
-		print "Starting processing thread $$\n";
-		$self->_poll_commands();
-			  } );
-	}
-	while( 1 ) {
-	    sleep( 5 );
-	    $self->{threads} = [ grep { $_->is_running } @{$self->{threads}}];
-	    while( @{$self->{threads}} < $self->{args}{threads} ) {
-		$self->_start_server_thread;
-	    }
-	}
-    }  #just one processing thread
-    else {
-	$self->{watchdog_thread} = threads->new(
-	    sub {
-		while( 1 ) {
-		    sleep( 5 );
-		    $self->{threads} = [ grep { $_->is_running } @{$self->{threads}}];
-		    while( @{$self->{threads}} < $self->{args}{threads} ) {
-			$self->_start_server_thread;
-		    }
-		}
-	    } );
-	
-	$self->_poll_commands();
+    while( 1 ) {
+	sleep( 5 );
     }
-	
+
     _stop_threads();
 
    Yote::ObjProvider::disconnect();
@@ -559,39 +488,22 @@ sub _crond {
 
     while( 1 ) {
 	sleep( 60 );
-	{
-	    $cmd_queue->enqueue( [ {
-		a  => 'check',
-		ai => 1,
-		d  => 'eyJkIjoxfQ==',
-		e  => {%ENV},
-		oi => $cron_id,
-		t  => undef,
-		w  => 0,
-				   }, $$]
-		);
-	}
+	$self->_process_command( {
+	    a  => 'check',
+	    ai => 1,
+	    d  => 'eyJkIjoxfQ==',
+	    e  => {%ENV},
+	    oi => $cron_id,
+	    t  => undef,
+	    w  => 0,
+				 } );
     } #infinite loop
 
 } #_crond
 
-#
-# Run by a thread that constantly polls for commands.
-#
-sub _poll_commands {
-    my $self = shift;
-    while(1) {
-	$self->_process_command( $cmd_queue->dequeue() );
-    } #endlees loop
-
-} #_poll_commands
-
 sub _process_command {
-    my( $self, $req ) = @_;
-    my( $command, $procid ) = @$req;
+    my( $self, $command ) = @_;
     
-    my $wait = $command->{w};
-
     my $resp;
 
     eval {
@@ -604,7 +516,7 @@ sub _process_command {
 
 #	iolog( "  * CMD IN $$ : " . Data::Dumper->Dump( [ $command ] ) );
 
-	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
+#	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
@@ -654,10 +566,10 @@ sub _process_command {
     if( $@ ) {
 	my $err = $@;
 	if( $err =~ /^__DEADLOCK__/ ) {
-	    iolog( "DEADLOCK TO RETRY $procid : $@" );
+	    iolog( "DEADLOCK TO RETRY $$ : $@" );
 	    # if a deadlock condition was detected. back out of any changes and retry
-	    $cmd_queue->enqueue( [ $command, $procid ] );
-	    return 0;
+	    # now this could become an issue if things deadlock really really often as the stack would fill up.
+	    return $self->_process_command( $command );
 	}
 	$err =~ s/at \/\S+\.pm.*//s;
         errlog( "ERROR : $@" );
@@ -679,12 +591,7 @@ sub _process_command {
     #
     # Send return value back to the caller if its waiting for it.
     #
-    if( $wait ) {
-	lock( %prid2result );
-	$prid2result{$procid} = $resp;
-        cond_signal( %prid2result );
-    }
-
+    return $resp
 
 } #_process_command
 
