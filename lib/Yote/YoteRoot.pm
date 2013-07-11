@@ -10,8 +10,9 @@ no warnings 'uninitialized';
 
 use Yote::Cron;
 use Yote::Login;
+
+use Email::Valid;
 use Mail::Sender;
-use MIME::Lite;
 
 use base 'Yote::AppRoot';
 

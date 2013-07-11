@@ -22,10 +22,9 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.094';
+$VERSION = '0.095';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
-# %oid2waitingpid stores object id to the process id of the process waiting for that object. This exists for deadlock detection and resolution.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
 #    by an other thread that has locked an item this thread is waiting on.
 # 

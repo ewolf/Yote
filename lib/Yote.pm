@@ -1,11 +1,14 @@
 package Yote;
 
+use forks;
+use forks::shared;
+
 use strict;
 use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1002';
+$VERSION = '0.1003';
 
 use Carp;
 use File::Path;
