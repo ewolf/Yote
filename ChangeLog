@@ -1,3 +1,8 @@
+2013-07-15  Eric Wolf  <coyocanid@gmail.com>
+
+	* Version 0.1003
+	* Minor fix to Yote::MysqlIO - removed incorrect dependency
+
 2013-07-09  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1002

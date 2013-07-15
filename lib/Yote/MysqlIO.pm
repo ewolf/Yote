@@ -9,12 +9,11 @@ use warnings;
 no warnings 'uninitialized';
 
 use Data::Dumper;
-use DBD::MySQL;
 use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.031';
+$VERSION = '0.032';
 
 use constant {
     DATA => 2,
