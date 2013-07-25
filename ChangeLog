@@ -1,3 +1,15 @@
+2013-07-24  Eric Wolf  <eric@DobreDen>
+
+	* VERSION 0.1005
+	* update with documentation changes.
+	* fixed the yote_classpath_updater.pl
+	* fixed major bug in Yote::Obj that didn't mark new things as dirty
+
+2013-07-24  Eric Wolf  <coyocanid@gmail.com>
+
+	* Version 0.1004
+	* The update that really wasn't
+
 2013-07-15  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1003
