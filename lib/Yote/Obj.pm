@@ -36,7 +36,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.06';
+$VERSION = '0.07';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -61,11 +61,12 @@ sub new {
 	}, $class;
     }
 
-    my $needs_init = ! defined($obj->{ID});
-
-    $obj->{ID} ||= Yote::ObjProvider::get_id( $obj );
-    $obj->_init() if $needs_init;
-
+    if( ! defined( $obj->{ID} ) ) {
+	$obj->{ID} = Yote::ObjProvider::get_id( $obj );
+	$obj->_init();
+	Yote::ObjProvider::dirty( $obj, $obj->{ID} );
+    }
+    
     if( ref( $id_or_hash ) eq 'HASH' ) {
 	for my $key ( %$id_or_hash ) {
 	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );

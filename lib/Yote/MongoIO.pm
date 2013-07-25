@@ -10,12 +10,11 @@ no warnings 'uninitialized';
 no warnings 'recursion';
 use feature ':5.10';
 
-use Data::Dumper;
 use MongoDB;
 
 use vars qw($VERSION);
 
-$VERSION = '0.031';
+$VERSION = '0.032';
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
