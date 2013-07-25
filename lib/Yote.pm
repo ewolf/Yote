@@ -22,6 +22,7 @@ sub _print_use {
     print 'Usage : yote_server --engine=sqlite|mongo|mysql
                     --engine_port=port-mongo-or-mysql-use
                     --generate
+                    --show-config
                     --help
                     --host=mongo-or-mysql-host
                     --password=engine-password 
@@ -80,9 +81,9 @@ sub _ask {
 } #_ask
 
 sub _create_configuration {
-    my $yote_root_dir = shift;
+    my( $yote_root_dir, $current_config ) = @_;
 
-    my $newconfig = _get_configuration( $yote_root_dir );
+    my $newconfig = _get_configuration( $yote_root_dir, $current_config );
 
     open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
     print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
@@ -92,20 +93,21 @@ sub _create_configuration {
 } #_create_configuration
 
 sub _get_configuration {
-    my $yote_root_dir = shift;
+    my( $yote_root_dir, $current_config ) = @_;
+    $current_config ||= {};
 
     my %newconfig;
 
     my $engine = _ask( 'This is the first time yote is being run and must be set up now.
  The first decision as to what data store to use.
  mongo db is the fastest, but sqlite will always work.',
-		       [ 'sqlite', 'mongo', 'mysql' ], 'sqlite' );
+		       [ 'sqlite', 'mongo', 'mysql' ], $current_config->{ engine } || 'sqlite' );
     $newconfig{ engine } = $engine;
 
     if ( $engine eq 'sqlite' ) {
 	my $done;
 	until( $done ) {
-	    my( $dir, $store ) = ( _ask( "sqlite filename", undef, 'yote.sqlite' ) =~ /(.*\/)?([^\/]+)$/ );
+	    my( $dir, $store ) = ( _ask( "sqlite filename", undef, $current_config->{ store } ||  'yote.sqlite' ) =~ /(.*\/)?([^\/]+)$/ );
 	    print "$dir, $store\n";
 	    if( $store ) {
 		if( substr( $dir, 0, 1 ) eq '/' ) {
@@ -128,36 +130,43 @@ sub _get_configuration {
 	}
     }
     elsif ( lc($engine) eq 'mongo' ) {
-	$newconfig{ store }       = _ask( "MongoDB database", undef, 'yote' );
-	$newconfig{ host }        = _ask( "MongoDB host", undef, 'localhost' );
-	$newconfig{ engine_port } = _ask( "MongoDB port", undef, 27017 );
-	$newconfig{ user }        = _ask( "MongoDB user acccount name" );
+	$newconfig{ store }       = _ask( "MongoDB database", undef, $current_config->{ store }       || 'yote' );
+	$newconfig{ host }        = _ask( "MongoDB host",     undef, $current_config->{ host }        || 'localhost' );
+	$newconfig{ engine_port } = _ask( "MongoDB port",     undef, $current_config->{ engine_port } || 27017 );
+	$newconfig{ user }        = _ask( "MongoDB user acccount name", undef, $current_config->{ user } );
 	if ( $newconfig{ user } ) {
-	    $newconfig{ password } = _ask( "aMongoDB user acccount name" );
+	    $newconfig{ password } = _ask( "aMongoDB user acccount name", undef, $current_config->{ password } );
 	}
     }
     elsif ( lc($engine) eq 'mysql' ) {
-	$newconfig{ store }       = _ask( "MysqlDB database", undef, 'yote' );
-	$newconfig{ host }        = _ask( "MysqlDB host", undef, 'localhost' );
-	$newconfig{ engine_port } = _ask( "MysqlDB port", undef, 27017 );
-	$newconfig{ user }        = _ask( "MysqlDB user acccount name" );
+	$newconfig{ store }       = _ask( "MysqlDB database", undef, $current_config->{ store }       || 'yote' );
+	$newconfig{ host }        = _ask( "MysqlDB host",     undef, $current_config->{ host }        || 'localhost' );
+	$newconfig{ engine_port } = _ask( "MysqlDB port",     undef, $current_config->{ engine_port } || 27017 );
+	$newconfig{ user }        = _ask( "MysqlDB user acccount name", undef, $current_config->{ user } );
 	if ( $newconfig{ user } ) {
-	    $newconfig{ password } = _ask( "MysqlDB user acccount name" );
+	    $newconfig{ password } = _ask( "MysqlDB user acccount name", undef, $current_config->{ password } );
 	}
     }
 
-    $newconfig{ port } = _ask( "Port to run yote server on?", undef, 80 );
-    $newconfig{ threads } = _ask( "Number of server processes :", undef, 4 );
+    $newconfig{ port } = _ask( "Port to run yote server on?",     undef, $current_config->{ port }    || 80 );
+    $newconfig{ threads } = _ask( "Number of server processes :", undef, $current_config->{ threads } || 4 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
-    $newconfig{ root_account  } = _ask( "Root Account name", undef, 'root' );
-    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password" ), $newconfig{ root_account } );
+    $newconfig{ root_account  } = _ask( "Root Account name", undef, $current_config->{ root_account} || 'root' );
+    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password", undef, $current_config->{ root_password } ),
+								   $newconfig{ root_account } );
 
     return \%newconfig;
 } #_get_configuration
 
 
 sub get_args {
+
+    my %params = ref( $_[0] ) ? %{ $_[0] } : @_;
+    
+    my $allow_unknown = $params{ allow_unknowns };
+    my $allow_multiple_commands = $params{ allow_multiple_commands };
+
     # -------- run data ---------------------------
 
     my %commands = (
@@ -172,6 +181,7 @@ sub get_args {
 	e  => 'engine',
 	E  => 'engine_port',
 	g  => 'generate',
+	c  => 'show-config',
 	h  => 'help',
 	'?' => 'help',
 	H  => 'host',
@@ -183,8 +193,9 @@ sub get_args {
 	t  => 'threads',
 	);
     my %noval = (  #arguments that do not take a value
-		   help     => 1,
-		   generate => 1,
+		   help          => 1,
+		   generate      => 1,
+		   'show-config' => 1,
 	);
     my %argnames = map { $_ => 1 } values %argmap;
     my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
@@ -193,20 +204,22 @@ sub get_args {
 
     my %config;
     my $cmd;
+    my @cmds;
 
     # ---------  get command line arguments ---------
     while ( @ARGV ) {
 	my $arg = shift @ARGV;
 	if ( $arg =~ /^--([^=]*)(=(.*))?/ ) {
-	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 };
+	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 } || $allow_unknown;
 	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
 	} elsif ( $arg =~ /^-(.*)/ ) {
-	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 };
+	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 } || $allow_unknown;
 	    $config{ $argmap{ $1 } } = $noval{ $argmap{ $1 } } ? 1 : shift @ARGV;
 	} else {
-	    _soft_exit( "Unknown command '$arg'" ) unless $commands{ lc($arg) };
-	    _soft_exit( "Only takes one command argument" ) if $cmd;
+	    _soft_exit( "Unknown command '$arg'" ) unless $commands{ lc($arg) } || $allow_unknown || $allow_multiple_commands;
+	    _soft_exit( "Only takes one command argument" ) if $cmd && ! $allow_multiple_commands;
 	    $cmd = $arg;
+	    push @cmds, $cmd;
 	}
     } # each argument
 
@@ -222,27 +235,23 @@ sub get_args {
 
     _log "Looking for '$yote_root_dir/yote.conf'";
 
-
-    if( $config{ generate } ) {
+    if( $config{ 'show-config' }  ) {
+	my $loaded_config = _load_config( $yote_root_dir );
+	print "Yote configuration :\n " . join( "\n ", map { "$_ : $loaded_config->{ $_ }" } keys %$loaded_config ) . "\n";
+	exit( 0 );
+    }
+    elsif( $config{ generate } ) {
 	_log( "Generating new configuration file" );
-	my $newconfig = _create_configuration( $yote_root_dir );
+	my $newconfig = _create_configuration( $yote_root_dir, _load_config( $yote_root_dir ) );
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ $key };
 	}	
     }
     elsif ( -r "$yote_root_dir/yote.conf" ) {
-	open( my $IN, '<', "$yote_root_dir/yote.conf" ) or die $@;
-	while ( <$IN> ) {
-	    s/\#.*//;
-	    next unless /\S/;
-	    if ( /\s*(\S+)\s*=\s*(.*)\s*$/ ) {
-		$config{ lc( $1 ) } ||= $2;
-	    } else {
-		chop;
-		warn "Bad line in config file : '$_'";
-	    }
+	my $loaded_config = _load_config( $yote_root_dir );
+	for my $key ( keys %$loaded_config ) {
+	    $config{ lc( $key ) } ||= $loaded_config->{ $key };
 	}
-	close( $IN );
 	if( grep { ! $config{ $_ } } keys %required ) {
 	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
 	    my $newconfig = _create_configuration( $yote_root_dir );
@@ -264,8 +273,29 @@ sub get_args {
 
     _log "Returning arguments";
 
-    return { config => \%config, command => $cmd };
+    return { config => \%config, command => $cmd, commands => \@cmds };
 } #get_args
+
+sub _load_config {
+    my $yote_root_dir = shift;
+
+    my %config;
+    if( -r "$yote_root_dir/yote.conf" ) {
+	open( my $IN, '<', "$yote_root_dir/yote.conf" ) or die $@;
+	while ( <$IN> ) {
+	    s/\#.*//;
+	    next unless /\S/;
+	    if ( /\s*(\S+)\s*=\s*(.*)\s*$/ ) {
+		$config{ lc( $1 ) } ||= $2;
+	    } else {
+		chop;
+		warn "Bad line in config file : '$_'";
+	    }
+	}
+	close( $IN );
+    }
+    return \%config;
+} #_load_config
 
 sub run {
     my %config = @_;
