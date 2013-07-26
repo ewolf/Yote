@@ -158,6 +158,11 @@ sub guest_token {
     return $token;
 } #guest_token
 
+sub is_root {
+    my( $self, $check_account, $acct ) = @_;
+    return $self->get__roots({})->{ Yote::ObjProvider::get_id( $check_account ) };
+} #is_root
+
 #
 # Validates that the given credentials are given
 #   (client side) use : login({h:'handle',p:'password'});
@@ -373,6 +378,10 @@ Returns the singleton root object. It creates it if it has not been created.
 =item guest_token
 
 Creates and returns a guest token, associating it with the calling IP address.
+
+=item is_root
+
+Returns true if the account passed in is a root account.
 
 =item login( { h: handle, p : password } )
 

@@ -1,3 +1,12 @@
+2013-07-25  Eric Wolf  <eric@DobreDen>
+
+	* VERSION 0.1006
+	* fixed javascript bug where uploads were not being set properly for set_foo property calls.
+	* added YOTE_ROOT/lib directory, which is automatically in the classpath yote uses.
+	* min width for javascript util edit boxes
+	* fixed bug where fail and pass functions were not being called properly for property set calls.
+
+
 2013-07-24  Eric Wolf  <eric@DobreDen>
 
 	* VERSION 0.1005

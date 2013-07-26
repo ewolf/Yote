@@ -16,13 +16,14 @@ use JSON;
 use POSIX qw(strftime);
 
 use Yote::AppRoot;
+use Yote::ConfigData;
 use Yote::ObjManager;
 use Yote::FileHelper;
 use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.095';
+$VERSION = '0.096';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
@@ -411,7 +412,7 @@ sub start_server {
 
     # update @INC library list
     my $paths = $root->get__application_lib_directories([]);
-    push @INC, @$paths;
+    push @INC, Yote::ConfigData->config( 'yote_root' ), @$paths;
 
     until( $self->{lsn} ) {
 	$self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port});

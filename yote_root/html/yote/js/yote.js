@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.1
+ * Version 0.11
  */
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19
@@ -378,6 +378,11 @@ $.yote = {
 		cb_list.push(  $( 'input:checkbox', this ) );
 	    }
 	);
+	if( $.yote.debug == true ) {
+	    console.log("\noutgoing " + url + '-------------------------' );
+	    console.log( data );
+	}
+
 	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
 	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
@@ -400,6 +405,10 @@ $.yote = {
 		$( '#' + iframe_name ).remove();
 		try {
 		    resp = JSON.parse( contents );
+		    if( $.yote.debug == true ) {
+			console.log('incoming '); console.log( resp );
+		    }
+		    
                     if( typeof resp !== 'undefined' ) {
 			if( typeof resp.err === 'undefined' ) {
 			    //dirty objects that may need a refresh
@@ -595,7 +604,8 @@ $.yote = {
 		var val = this._staged[key] || this._d[key];
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
-		if( (0+val) > 0 || val.substring(0,1) != 'v' ) {
+		if( typeof val === 'function' ) return val;
+		if( val.substring(0,1) != 'v' ) {
 		    var obj = root.objs[val] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;
                     return obj;
@@ -606,6 +616,7 @@ $.yote = {
 	    o.set = function( key, val, failh, passh ) {
 		this._stage( key, val );
 		this._send_update( undefined, failh, passh );
+		delete this._staged[ key ];
 	    };
 
 	    // get fields
@@ -619,7 +630,7 @@ $.yote = {
 			o._d[fld] = (function(xx) { return xx; })(val);
 		    }
 		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-		    o['set_'+fld] = (function(fl,fh,ph) { return function(val) { return this.set(fl,val,fh,ph) } } )(fld);
+		    o['set_'+fld] = (function(fl) { return function(val,fh,ph) { return this.set(fl,val,fh,ph) } } )(fld);
 		}
 	    }
 
@@ -650,7 +661,7 @@ $.yote = {
                 if( this.c === 'Array' ) {
                     to_send = Array();
                 }
-                if( typeof data === 'undefined' ) {
+                if( typeof data === 'undefined' ) { //sending from staged
                     for( var key in this._staged ) {
                         if( this.c === 'Array' ) {
                             to_send.push( root._untranslate_data(this._staged[key]) );
@@ -686,9 +697,6 @@ $.yote = {
                     obj_id:this.id,
                     passhandler:(function(td) {
                         return function() {
-                            for( var key in td ) {
-                                o._d[key] = root._translate_data(td[key]);
-                            }
                             o._staged = {};
                             if( typeof passhandler === 'function' ) {
                                 passhandler();
@@ -697,7 +705,7 @@ $.yote = {
                     } )(to_send),
                     wait:true
                 } );
-            };
+            }; //_send_update
 
 	    if( o.id && o.id.substring(0,1) != 'v' ) {
 		root.objs[o.id] = o;
@@ -780,6 +788,9 @@ $.yote = {
     }, //_translate_data
 
     _untranslate_data:function(data) {
+	if( typeof data === 'function' ) {
+	    return data;
+	}
         if( data.substring(0,1) == 'v' ) {
             return data.substring(1);
         }

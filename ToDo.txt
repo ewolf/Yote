@@ -1,10 +1,14 @@
-
+Next updates
+  * changed permissions model so that YoteRoot checks if accounts are root
+  * include app class rather than app id in the IO
+  * 
+  
 
 FOR Stable Alpha
 
-  * add option to yote_server to do a full reconfiguring of the server
-  * deadlock test cases
-  * cache clearning test cases
+ - * add option to yote_server to do a full reconfiguring of the server
+ - * deadlock test cases
+ - * cache clearning test cases
   * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.
   * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
   * Move MongoIO, etc, to an IO sub package
@@ -15,13 +19,13 @@ FOR Stable Alpha
      the client does not access account data it shouldn't
   * Create admin pages
   * Unify unit tests for different stores
-  * Create program to reset root password
-  * Create program to reset whole config ( code for this is done as part of Yote.pm )
+ - * Create program to reset root password
+ - * Create program to reset whole config ( code for this is done as part of Yote.pm )
   * More yote tools
   * Add at least simple modperl support. Maybe use plack?
   * UI - account change password and request password reset link
   * method to get version to client
-  * add test only requirements to Build.PL
+ - * add test only requirements to Build.PL
 
 
 #----------- Pre Aril 2013 ----
@@ -39,20 +43,20 @@ FOR ALPHA
         - viewing user login objects
         - cron admin
   * Create guest page to be hosted at madyote.com
-  * Make installer work for the common case of user having root. [ done, needs testing ]
+  - * Make installer work for the common case of user having root. [ done, needs testing ]
   * Have server respond to javascript permissions requests.
   * Fix page counter
-  * Make simple WIKI for updating Yote News
-  * installer so that other scripts work (rename them to yote_ )
+  - * Make simple WIKI for updating Yote News
+  - * installer so that other scripts work (rename them to yote_ )
 
 BEYOND
 
 * have methods sent just once per class
 * add GRU module for searches against tag lists
 * update to not use backticks
-* make sure installer script works universally
-* build yote homepage
+- * make sure installer script works universally ( well, windows fails due to threads :( )
+- * build yote homepage
 * build page editor
 * yote objects that brige to files an allow for editing.
-* replace Crypt:Passwd with something better.
+- * replace Crypt:Passwd with something better.
 * unit test of app id passing in the IO. If its missing, the wrong account may be used.

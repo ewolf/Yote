@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.022
+ * Version 0.023
  */
 $.yote.util = {
     ids:0,
@@ -105,8 +105,9 @@ $.yote.util = {
 		rows = Math.round( val.length / 25 );
 	    }
 	    if( rows < 2 ) { rows = 2; }
-	    var w = $( '#' + div_id ).width();
-	    var h = $( '#' + div_id ).height();
+	    var w = $( '#' + div_id ).width() + 40;
+	    if( w < 100 ) w = 100;
+	    var h = $( '#' + div_id ).height() + 20;
 	    $( '#' + div_id ).empty().append( '<textarea STYLE="width:' + w + 'px;' + 
 					      'height:' + h + 'px;" class="in_edit_same" id="' + txt_id + '">' + val + '</textarea><BR>' +
 					'<button class="cancel" type="button" id="' + canc_id + '">cancel</button> ' +
