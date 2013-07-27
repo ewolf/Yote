@@ -571,10 +571,28 @@ $.yote.util = {
 	    if( is_prep ) {
 		return $.yote.util.prep_edit( item, fld, extra );
 	    } else {
-		return $.yote.util.implement_edit( item, fld );
+		$.yote.util.implement_edit( item, fld );
 	    }
 	};
     }, //col_edit
+
+    cols_edit:function( flds, titles, extra ) {
+	var use_titles = titles || flds;
+	return function( item, is_prep ) {
+	    if( is_prep ) {
+		var tab = $.yote.util.make_table();
+		for( var i=0; i<flds.length; i++ ) {
+		    tab.add_param_row( [ use_titles[ i ], $.yote.util.prep_edit( item, flds[i], extra ) ] );
+		}
+		return tab.get_html();
+	    } else {
+		for( var i=0; i<flds.length; i++ ) {
+		    $.yote.util.implement_edit( item, flds[i] );
+		}
+	    }
+	};	
+    }, //cols_edit
+
 
     control_table:function( args ) {
 	var ct = {
@@ -597,6 +615,7 @@ $.yote.util = {
 		var new_column_titles  = this.args[ 'new_column_titles' ] || new_columns;
 		var new_function       = this.args[ 'new_function' ];
 		var new_button         = this.args[ 'new_button' ] || 'New';
+		var new_title          = this.args[ 'new_title' ] || 'New';
 
 		var after_render   = this.args[ 'after_render' ] || function(x) {};
 		var table_extra    = this.args[ 'table_extra' ];
@@ -613,20 +632,22 @@ $.yote.util = {
 		}
 
 		if( new_attachpoint ) {
-		    var bf = 'New<BR>';
+		    var bf = new_title + '<BR>';
 
 		    var txts = [];
+		    var tbl = $.yote.util.make_table();
 		    for( var i=0; i < new_columns.length; i++ ) {
 			var nc = new_columns[ i ];
 			var field = typeof nc === 'object' ? nc.field : nc;
 			var id = '_new_' + item.id + '_' + field;
 			if( typeof nc === 'object' ) {
-			    bf += nc.html( id );
+			    tbl.add_row( [ nc.html( id ) ] );
 			} else {
-			    bf += nc + ' : <INPUT TYPE="TEXT" id="' + id + '"><BR>';
+			    tbl.add_param_row( [ new_column_titles[ i ], '<INPUT TYPE="TEXT" id="' + id + '">' ] );
 			}
 			txts.push( '#' + id );
 		    }
+		    bf += tbl.get_html();
 		    bf += '<BUTTON type="BUTTON" id="_new_' + item.id + '_b">' + new_button + '</BUTTON>';
 		    $( new_attachpoint ).empty().append( bf );
 
