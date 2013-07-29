@@ -15,7 +15,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.031';
+$VERSION = '0.032';
 
 use constant {
     DATA => 2,
@@ -222,6 +222,27 @@ sub paginate_list {
     }
     return \@ret
 } #paginate_list
+
+sub search_list {
+    my( $self, $obj_id, $paginate_length, $paginate_start, $reverse ) = @_;
+
+    my $PAG = '';
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    $PAG = "LIMIT $paginate_start,$paginate_length";
+	} else {
+	    $PAG = "LIMIT $paginate_length";
+	}
+    }    
+
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int )" .
+					  ( $reverse ? 'DESC ' : '' ) . " $PAG", $obj_id );
+    my @ret;
+    for my $row (@$res) {
+	push @ret, $row->[1] || "v$row->[2]";
+    }
+    return \@ret
+} #search_list
 
 #
 # Finds objects not connected to the root and recycles them.

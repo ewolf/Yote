@@ -108,7 +108,7 @@ $.yote.util = {
 	    var w = $( '#' + div_id ).width() + 40;
 	    if( w < 100 ) w = 100;
 	    var h = $( '#' + div_id ).height() + 20;
-	    $( '#' + div_id ).empty().append( '<textarea STYLE="width:' + w + 'px;' + 
+	    $( '#' + div_id ).empty().append( '<textarea STYLE="width:' + w + 'px;' +
 					      'height:' + h + 'px;" class="in_edit_same" id="' + txt_id + '">' + val + '</textarea><BR>' +
 					'<button class="cancel" type="button" id="' + canc_id + '">cancel</button> ' +
 					'<button class="go" type="button" id="' + go_id + '">Go</button> ' );
@@ -451,6 +451,8 @@ $.yote.util = {
 	    log_in_status    : args[ 'log_in_status_attachpoint' ] || '#logged_in_status',
 	    after_login_fun  : args[ 'after_login_function' ],
 	    after_logout_fun : args[ 'after_logout_function' ],
+	    logged_in_test   : args[ 'logged_in_test' ] || function() { return $.yote.is_logged_in(); },
+	    logged_in_fail_msg : args[ 'logged_in_fail_msg' ],
 
 	    on_login:function() {
 		var thislc = this;
@@ -472,7 +474,7 @@ $.yote.util = {
 		thislc.msg_function('');
 		$( thislc.attachpoint ).empty().append(
 		    '<div class="panel core" id="create_acct_div">' +
-			'<DIV id="login_msg"></DIV>' + 
+			'<DIV id="login_msg"></DIV>' +
 			'<P><input type="text" id="username" placeholder="Name" size="6">' +
 			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
 			'<input type="password" placeholder="Password" id="pw" size="6">' +
@@ -492,9 +494,13 @@ $.yote.util = {
 		    action : function() {
 			$.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
 					     function( msg ) {
-						 thislc.msg_function( msg );
-						 thislc.on_login_fun();
-						 thislc.after_login_fun();
+						 if( thislc.logged_in_test() == true ) {
+						     thislc.msg_function( msg );
+						     thislc.on_login_fun();
+						     thislc.after_login_fun();
+						 } else if( thislc.logged_in_fail_msg ) {
+						     thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+						 }
 					     },
 					     function( err ) {
 						 thislc.msg_function( err, 'error' );
@@ -518,7 +524,7 @@ $.yote.util = {
 		var thislc = this;
 		$( thislc.attachpoint ).empty().append(
 		    '<div class="panel core" id="create_acct_div">' +
-			'<DIV id="login_msg"></DIV>' + 
+			'<DIV id="login_msg"></DIV>' +
 			'Log In' +
 			'<input type="text" id="username" placeholder="Name" size="6">' +
 			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON></P> ' +
@@ -540,8 +546,12 @@ $.yote.util = {
 			$.yote.login( $( '#username' ).val(),
 				      $( '#pw' ).val(),
 				      function( msg ) {
-					  thislc.on_login_fun();
-					  thislc.after_login_fun();
+					  if( thislc.logged_in_test() ) {
+					      thislc.on_login_fun();
+					      thislc.after_login_fun();
+					  } else if( thislc.logged_in_fail_msg ) {
+					      thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+					  }
 				      },
 				      function( err ) {
 					  thislc.msg_function( err, 'error' );
@@ -554,14 +564,16 @@ $.yote.util = {
 	};
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
-
-	if( $.yote.is_logged_in() ) {
+	if( lc.logged_in_test() ) {
 	    lc.on_login_fun();
 	    lc.after_login_fun();
 	} else {
+	    if( lc.logged_in_fail_msg )
+		lc.msg_function( lc.logged_in_fail_msg, 'error' );
 	    lc.on_logout_fun();
 	    lc.after_logout_fun();
 	}
+
 	return lc
     }, //login_control
 
@@ -590,42 +602,90 @@ $.yote.util = {
 		    $.yote.util.implement_edit( item, flds[i] );
 		}
 	    }
-	};	
+	};
     }, //cols_edit
 
 
     control_table:function( args ) {
 	var ct = {
-	    start   : 0,
-	    args    : args,
+	    start          : 0,
+	    item           : args[ 'item' ],
+	    list_name      : args[ 'list_name' ],
+	    paginate_type  : args[ 'paginate_type' ] || 'list',
+	    paginate_order : args[ 'paginate_order' ] || 'forward',
+	    plimit         : args[ 'plimit' ] || 10,
+	    attachpoint    : args[ 'attachpoint' ],
+	    column_headers : args[ 'column_headers' ],
+	    columns        : args[ 'columns' ],
+
+	    new_attachpoint    : args[ 'new_attachpoint' ],
+	    new_columns        : args[ 'new_columns' ],
+	    new_column_titles  : args[ 'new_column_titles' ] || new_columns,
+	    new_function       : args[ 'new_function' ],
+	    new_button         : args[ 'new_button' ] || 'New',
+	    new_title          : args[ 'new_title' ]  || 'New',
+
+	    after_render   : args[ 'after_render' ]   || function(x) {},
+	    table_extra    : args[ 'table_extra' ],
+	    suppress_table : args[ 'suppress_table' ] || false,
+	    remove_fun     : args[ 'remove_function' ],
+
+	    search         : args[ 'search' ],
+	    search_fun     : args[ 'search_function' ], // optional alternate searcdh function
+	    search_on      : args[ 'search_on' ], //what search fields to use
+	    title          : args[ 'title' ],
+	    description    : args[ 'description' ],
+
+	    ct_id   : this.next_id(),
+	    terms   : [],
 	    refresh : function() {
 		var me = this;
 
-		var item           = this.args[ 'item' ];
-		var list_name      = this.args[ 'list_name' ];
-		var paginate_type  = this.args[ 'paginate_type' ] || 'list';
-		var paginate_order = this.args[ 'paginate_order' ] || 'forward';
-		var attachpoint    = this.args[ 'attachpoint' ];
-		var column_headers = this.args[ 'column_headers' ];
-		var columns        = this.args[ 'columns' ];
-		var plimit         = this.args[ 'plimit' ] || 10;
 
-		var new_attachpoint    = this.args[ 'new_attachpoint' ];
-		var new_columns        = this.args[ 'new_columns' ];
-		var new_column_titles  = this.args[ 'new_column_titles' ] || new_columns;
-		var new_function       = this.args[ 'new_function' ];
-		var new_button         = this.args[ 'new_button' ] || 'New';
-		var new_title          = this.args[ 'new_title' ] || 'New';
+		var paginate_function;
 
-		var after_render   = this.args[ 'after_render' ] || function(x) {};
-		var table_extra    = this.args[ 'table_extra' ];
-		var suppress_table = this.args[ 'suppress_table' ] || false;
-		var remove_fun     = this.args[ 'remove_function' ];
+		(function(it) {
+		    if( it.search && it.terms.length > 0 ) {
+			paginate_function = function() {
+			    if( it.search_fun ) {
+				return it.search_fun( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
+			    } else {
+				return it.item.search( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
+			    }
+			} 
+		    } 
+		    else {
+			paginate_function = it.paginate_function || 
+			    if( it.paginate_type == 'hash' ) {
+				return function() {
+				    return it.paginate_hash( [ it.list_name, it.plimit + 1, it.start ] );
+				}
+			    }
+			else if( it.paginate_order == 'forward' ) {
+			    return function() {
+				return it.paginate_list( [ it.list_name, it.plimit + 1, it.start ] );
+			    }
+			}
+			else {
+			    return function() {
+				return it.paginate_list_rev( [ it.list_name, it.plimit + 1, it.start ] );
+			    }
+			}
+		    }
+		} )( me );
+
 
 		// calculated
 		var count          = item.count( list_name );
 
-		var buf = '';
+		var buf = title + '' + description;
+
+		if( search ) {
+		    buf += '<div id="_search_div">Search <input type="text" id="_search_txt_' + me.ct_id + '"> ' +
+			'<button type="button" id="_search_btn_' + me.ct_id + '">Search</button>' +
+			'</div>';
+		    
+		}
 
 		if( ! suppress_table ) {
 		    var tab = $.yote.util.make_table( table_extra );
@@ -641,7 +701,7 @@ $.yote.util = {
 			var field = typeof nc === 'object' ? nc.field : nc;
 			var id = '_new_' + item.id + '_' + field;
 			if( typeof nc === 'object' ) {
-			    tbl.add_row( [ nc.html( id ) ] );
+			    tbl.add_row( [ new_column_titles[ i ], nc.html( id ) ] );
 			} else {
 			    tbl.add_param_row( [ new_column_titles[ i ], '<INPUT TYPE="TEXT" id="' + id + '">' ] );
 			}
@@ -650,6 +710,17 @@ $.yote.util = {
 		    bf += tbl.get_html();
 		    bf += '<BUTTON type="BUTTON" id="_new_' + item.id + '_b">' + new_button + '</BUTTON>';
 		    $( new_attachpoint ).empty().append( bf );
+
+		    if( search ) {
+			$.yote.util.button_actions( {
+			    button : '#_search_btn_' + me.ct_id,
+			    texts  : [ '#_search_txt_' + me.ct_id ],
+			    action : (function(it) { return function() {
+				me.terms = $( '#_search_txt_' + me.ct_id ).val().split( /[ ,;]+/ );
+				me.refresh();
+			    } } )( item )
+			} );
+		    }
 
 		    $.yote.util.button_actions( {
 			button : '#_new_' + item.id + '_b',
@@ -663,7 +734,7 @@ $.yote.util = {
 				newitem.set( field, val );
 			    }
 			    me.refresh();
-			} } )(item)
+			} } )( item )
 		    } );
 		} //new attacher
 
@@ -678,10 +749,8 @@ $.yote.util = {
 		    tab.add_header_row( ch );
 		}
 
-		var items = paginate_type == 'hash' ?
-		    item.paginate_hash( [ list_name, plimit + 1, me.start ] ) :
-		    paginate_order == 'forward' ? item.paginate_list( [ list_name, plimit + 1, me.start ] ) :
-		    item.paginate_list_rev( [ list_name, plimit + 1, me.start ] );
+		var items = paginate_function();
+		console.log( [ 'items', items ] );
 
 		var max = items.length() > plimit ? plimit : items.length();
 
@@ -704,7 +773,12 @@ $.yote.util = {
 			if( remove_fun ) {
 			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
 			}
-			tab.add_row( row );
+			if( suppress_table ) {
+			    buf += row.join('');
+			}
+			else {
+			    tab.add_row( row );
+			}
 		    }
 		}
 		else {
@@ -815,8 +889,8 @@ $.yote.util = {
 		}
 
 		after_render( items );
-	    }
-	};
+	    } //refresh
+	}; //define cgt
 	ct.refresh();
 
 	return ct;

@@ -35,7 +35,7 @@ BEGIN {
 
 my( $host, $port, $store, $un, $pw ) = ( 'localhost', 27017, 'yote_test' );
 print "Test Yote against mongo database up and running on $host : $port not requiring a username? ( Yes | No | Change Setup ) : ";
-my $ans = <STDIN>;
+my $ans = 'Y'; #<STDIN>;
 
 
 if( $ans =~ /^\s*c/i ) {
@@ -146,7 +146,7 @@ sub test_suite {
     my $recycled = Yote::ObjProvider->recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), 17, "number of objects after recycling" );
+    is( $objcol->count(), 19, "number of objects after recycling" );
 
     my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root_clone->get_cool_hash()->{'ll.ama'} ), 'ARRAY', '2nd level array object. Also tests escape of dot (.) in yote.' );
@@ -569,6 +569,23 @@ sub test_suite {
     my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
     is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
     is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
+
+    $app->set_weirdy( $o );
+    Yote::ObjProvider::stow_all();
+
+    
+    # test search_list
+    $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "foobie", b => "oobie", c => "goobol" } ),
+			   new Yote::Obj( { n => "two", a => "bar", b => "car", c => "war" } ),
+			   new Yote::Obj( { n => "three", c => "foobie", b => "xxx" } ),
+			   new Yote::Obj( { n => "four", 'q' => "foobie", b => "xxx" } ),
+			   new Yote::Obj( { n => "five", a => "foobie", b => "car", c => "war" } ),
+	);
+    Yote::ObjProvider::stow_all();
+    print STDERR Data::Dumper->Dump([$app->get_weirdy()->get_searchlist() ]);
+
+    my $res = $o->search_list( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ] ] );
+    print STDERR Data::Dumper->Dump([$res]);
     
 
 } #test suite

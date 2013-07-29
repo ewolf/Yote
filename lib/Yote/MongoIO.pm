@@ -14,7 +14,7 @@ use MongoDB;
 
 use vars qw($VERSION);
 
-$VERSION = '0.032';
+$VERSION = '0.033';
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -327,6 +327,54 @@ sub recycle_objects {
     return $rec_count;
 } #recycle_object
 
+sub search_list {
+    my( $self, $list_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
+
+    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
+    die "list not found" unless $list;
+    die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
+    
+    # db.x.find( { $or : [ { "d.parm1" : { '$regex' : '\bsearch-one\b', '$options' : 'i' }
+    #                        "d.parm1" : { '$regex' : '\bsearch-two\b', '$options' : 'i' }
+    #                        "d.parm2" : { '$regex' : '\bsearch-one\b', '$options' : 'i' }
+    #                        "d.parm2" : { '$regex' : '\bsearch-two\b', '$options' : 'i' }
+    my @ors;
+    for my $field ( @$search_fields ) {
+	for my $term ( @$search_terms ) {
+	    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+	}
+    }
+    my $curs = $self->{ OBJS }->find( { 
+	_id => { '$in' => [
+		     map { MongoDB::OID->new( value => $_ ) } 
+		     @{ $self->{ OBJS }->find_one( { 
+			 _id => MongoDB::OID->new( value => $list_id ) } )->{r} 
+		     } ] 
+	},
+			 '$or' => \@ors
+				      } );
+    
+    my $result_data = [map { $_->{ _id }->value() } $curs->all];
+    print STDERR Data::Dumper->Dump([$result_data]);
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    if( $paginate_start > $#$result_data ) {
+		return [];
+	    }
+	    if( ($paginate_start+$paginate_length) > @$result_data ) {
+		$paginate_length = scalar( @$result_data ) - $paginate_start;
+	    }
+	    return [ @$result_data[$paginate_start..($paginate_start+$paginate_length-1)] ];
+	} 
+	if( $paginate_length > @$result_data ) {
+	    $paginate_length = scalar( @$result_data );
+	}
+	return [ @$result_data[0..($paginate_length-1)] ];
+    }
+    return $result_data
+    
+} #search_list
+
 sub start_transaction {}
 
 sub stow_all {
@@ -488,6 +536,10 @@ Sets the available for recycle mark on the object entry in the database by objec
 =item recycle_objects( start_id, end_id )
 
 Recycles all objects in the range given if they cannot trace back a path to root.
+
+=item search_list
+
+Returns a paginated search list
 
 =item start_transaction( )
 

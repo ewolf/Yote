@@ -36,7 +36,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.07';
+$VERSION = '0.071';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -228,10 +228,13 @@ sub paginate_list {
 
 } #paginate
 
-sub _paginate_list {
+# used to help tests
+sub _paginate_list { 
     my( $self, $list_name, $number, $start ) = @_;
     return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
 }
+
+# used to help tests
 sub _paginate_list_rev {
     my( $self, $list_name, $number, $start ) = @_;
     return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
@@ -250,7 +253,7 @@ sub paginate_list_rev {
 
 } #paginate_rev
 
-
+# used to help tests
 sub _paginate_hash {
     my( $self, $hash_name, $number, $start ) = @_;
 
@@ -269,6 +272,24 @@ sub paginate_hash {
     return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
 
 } #paginate_hash
+
+#
+# By default this does nothing but die. Each object that want search should override this.
+#
+sub search_list {
+    my( $self, $data, $account, $env ) = @_;
+
+    my( $list_name, $search_fields, $search_terms, $amount, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::search_list( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );
+    
+
+} #search_list
+
 
 
 #
@@ -571,6 +592,10 @@ field name and attached to this object. The keys are sorted before the return so
 be guaranteed between subsequent calls.
 
 This will throw an error if the value of the field name is defined as something other than a list.
+
+=item search_list
+
+Returns a paginated search list
 
 =item sync_all
 

@@ -23,7 +23,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.096';
+$VERSION = '0.097';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
@@ -438,6 +438,15 @@ sub start_server {
 
     while( 1 ) {
 	sleep( 5 );
+	my $threads = $self->{ threads };
+	for my $thread ( @$threads ) {
+	    if( $thread->is_joinable() ) {
+		$thread->join();
+	    }
+	}
+	while( @$threads < $self->{ args }{ threads } ) {
+	    $self->_start_server_thread;
+	}
     }
 
     _stop_threads();
@@ -460,7 +469,7 @@ sub _stop_threads {
 
 sub _start_server_thread {
     my $self = shift;
-    push( @{ $self->{threads} },
+    push( @{ $self->{ threads } },
 	  threads->new(
 	      sub {
 		  unless( $self->{lsn} ) {

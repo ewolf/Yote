@@ -25,7 +25,7 @@ our $FIRST_ID;
 
 use vars qw($VERSION);
 
-$VERSION = '0.07';
+$VERSION = '0.071';
 
 
 # ------------------------------------------------------------------------------------------
@@ -272,6 +272,11 @@ sub package_methods {
     }
     return $methods;
 } #package_methods
+
+sub search_list {
+    my( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->search_list( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) } ];
+} #search_list
 
 #
 # Get around paginating a list without having to read in the whole thing at once.
@@ -623,6 +628,10 @@ Recycles all objects in the range given if they cannot trace back a path to root
 =item reset_changed( )
 
 This is a helper method that clears out a changed hash. The hash stores objects that become dirty until reset changed is called again.
+
+=item search_list
+
+Returns a paginated search list
 
 =item start_transaction( )
 
