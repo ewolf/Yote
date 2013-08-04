@@ -472,6 +472,7 @@ sub _start_server_thread {
     push( @{ $self->{ threads } },
 	  threads->new(
 	      sub {
+		  $SIG{PIPE} = sub { threads->exit() };
 		  unless( $self->{lsn} ) {
 		      threads->exit();
 		  }
