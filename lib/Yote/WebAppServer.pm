@@ -429,7 +429,7 @@ sub start_server {
     print STDERR "Connected\n";
 
     
-    $self->{threads} = [];
+    $self->{threads} = {};
 
     Yote::ObjProvider::make_server( $self );
     for( 1 .. $self->{args}{threads} ) {
@@ -439,12 +439,12 @@ sub start_server {
     while( 1 ) {
 	sleep( 5 );
 	my $threads = $self->{ threads };
-	for my $thread ( @$threads ) {
+	for my $thread ( values %$threads ) {
 	    if( $thread->is_joinable() ) {
 		$thread->join();
 	    }
 	}
-	while( @$threads < $self->{ args }{ threads } ) {
+	while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
 	    $self->_start_server_thread;
 	}
     }
@@ -462,35 +462,39 @@ sub start_server {
 sub _stop_threads {
     my $self = shift;
     $self->{watchdog_thread}->kill if $self->{watchdog_thread} && $self->{watchdog_thread}->is_running;
-    for my $thread (@{$self->{threads}}) {
+    for my $thread (values %{$self->{threads}}) {
 	$thread->kill if $thread && $thread->is_running;
     }
 }
 
 sub _start_server_thread {
     my $self = shift;
-    push( @{ $self->{ threads } },
-	  threads->new(
-	      sub {
-		  $SIG{PIPE} = sub { threads->exit() };
-		  unless( $self->{lsn} ) {
-		      threads->exit();
-		  }
 
-		  open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" ) 
-		      && $Yote::WebAppServer::IO->autoflush;
-		  open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
-		      && $Yote::WebAppServer::ACCESS->autoflush;
-		  open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
-		      && $Yote::WebAppServer::ERR->autoflush;
-
-		  while( my $fh = $self->{lsn}->accept ) {
-		      $ENV{ REMOTE_ADDR } = $fh->peerhost;
-		      $self->process_http_request( $fh );
-		      $fh->close();
-		  } #main loop
-	      } ) #new thread
-	);
+    my $new_thread = threads->new(
+	sub {
+	    $SIG{PIPE} = sub { 
+		print STDERR "Thread $$ got sig pipe. Exiting\n";
+		threads->exit()
+	    };
+	    unless( $self->{lsn} ) {
+		threads->exit();
+	    }
+	    
+	    open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" ) 
+		&& $Yote::WebAppServer::IO->autoflush;
+	    open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
+		&& $Yote::WebAppServer::ACCESS->autoflush;
+	    open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
+		&& $Yote::WebAppServer::ERR->autoflush;
+	    
+	    while( my $fh = $self->{lsn}->accept ) {
+		$ENV{ REMOTE_ADDR } = $fh->peerhost;
+		$self->process_http_request( $fh );
+		$fh->close();
+	    } #main loop
+	} ); #new thread
+    $self->{ threads }{ $new_thread->tid() } = $new_thread;
+    
 } #_start_server_thread
 
 sub _crond {

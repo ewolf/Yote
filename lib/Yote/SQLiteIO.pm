@@ -586,6 +586,10 @@ Sets the available for recycle mark on the object entry in the database by objec
 
 Recycles all objects in the range given if they cannot trace back a path to root.
 
+=item search_list
+
+Returns a paginated search list
+
 =item start_transaction( )
 
 =item stow( id, class, data )
