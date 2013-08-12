@@ -608,19 +608,19 @@ $.yote.util = {
 
     control_table:function( args ) {
 	var ct = {
-	    start          : 0,
-	    item           : args[ 'item' ],
-	    list_name      : args[ 'list_name' ],
-	    paginate_type  : args[ 'paginate_type' ] || 'list',
-	    paginate_order : args[ 'paginate_order' ] || 'forward',
-	    plimit         : args[ 'plimit' ] || 10,
-	    attachpoint    : args[ 'attachpoint' ],
-	    column_headers : args[ 'column_headers' ],
-	    columns        : args[ 'columns' ],
+	    start		: 0,
+	    item		: args[ 'item' ],
+	    list_name		: args[ 'list_name' ],
+	    paginate_type	: args[ 'paginate_type' ] || 'list',
+	    paginate_order	: args[ 'paginate_order' ] || 'forward',
+	    plimit		: args[ 'plimit' ] || 10,
+	    attachpoint		: args[ 'attachpoint' ],
+	    column_headers	: args[ 'column_headers' ],
+	    columns		: args[ 'columns' ],
 
 	    new_attachpoint    : args[ 'new_attachpoint' ],
 	    new_columns        : args[ 'new_columns' ],
-	    new_column_titles  : args[ 'new_column_titles' ] || new_columns,
+	    new_column_titles  : args[ 'new_column_titles' ] || args[ 'new_columns' ],
 	    new_function       : args[ 'new_function' ],
 	    new_button         : args[ 'new_button' ] || 'New',
 	    new_title          : args[ 'new_title' ]  || 'New',
@@ -652,23 +652,18 @@ $.yote.util = {
 			    } else {
 				return it.item.search( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
 			    }
-			} 
-		    } 
-		    else {
-			paginate_function = it.paginate_function || 
-			    if( it.paginate_type == 'hash' ) {
-				return function() {
-				    return it.paginate_hash( [ it.list_name, it.plimit + 1, it.start ] );
-				}
-			    }
-			else if( it.paginate_order == 'forward' ) {
-			    return function() {
-				return it.paginate_list( [ it.list_name, it.plimit + 1, it.start ] );
-			    }
 			}
-			else {
-			    return function() {
-				return it.paginate_list_rev( [ it.list_name, it.plimit + 1, it.start ] );
+		    }
+		    else {
+			paginate_function = function() {
+			    if( it.paginate_type == 'hash' ) {
+				return it.item.paginate_hash( [ it.list_name, it.plimit + 1, it.start ] );
+			    }
+			    else if( it.paginate_order == 'forward' ) {
+				return it.item.paginate_list( [ it.list_name, it.plimit + 1, it.start ] );
+			    }
+			    else {
+				return it.item.paginate_list_rev( [ it.list_name, it.plimit + 1, it.start ] );
 			    }
 			}
 		    }
@@ -676,74 +671,74 @@ $.yote.util = {
 
 
 		// calculated
-		var count          = item.count( list_name );
+		var count          = me.item.count( me.list_name );
 
-		var buf = title + '' + description;
+		var buf = me.title + '' + me.description;
 
-		if( search ) {
+		if( me.search ) {
 		    buf += '<div id="_search_div">Search <input type="text" id="_search_txt_' + me.ct_id + '"> ' +
 			'<button type="button" id="_search_btn_' + me.ct_id + '">Search</button>' +
 			'</div>';
-		    
+
 		}
 
-		if( ! suppress_table ) {
-		    var tab = $.yote.util.make_table( table_extra );
+		if( ! me.suppress_table ) {
+		    var tab = $.yote.util.make_table( me.table_extra );
 		}
 
-		if( new_attachpoint ) {
-		    var bf = new_title + '<BR>';
+		if( me.new_attachpoint ) {
+		    var bf = me.new_title + '<BR>';
 
 		    var txts = [];
 		    var tbl = $.yote.util.make_table();
-		    for( var i=0; i < new_columns.length; i++ ) {
-			var nc = new_columns[ i ];
+		    for( var i=0; i < me.new_columns.length; i++ ) {
+			var nc = me.new_columns[ i ];
 			var field = typeof nc === 'object' ? nc.field : nc;
-			var id = '_new_' + item.id + '_' + field;
+			var id = '_new_' + me.item.id + '_' + field;
 			if( typeof nc === 'object' ) {
-			    tbl.add_row( [ new_column_titles[ i ], nc.html( id ) ] );
+			    tbl.add_row( [ me.new_column_titles[ i ], nc.html( id ) ] );
 			} else {
-			    tbl.add_param_row( [ new_column_titles[ i ], '<INPUT TYPE="TEXT" id="' + id + '">' ] );
+			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" id="' + id + '">' ] );
 			}
 			txts.push( '#' + id );
 		    }
 		    bf += tbl.get_html();
-		    bf += '<BUTTON type="BUTTON" id="_new_' + item.id + '_b">' + new_button + '</BUTTON>';
+		    bf += '<BUTTON type="BUTTON" id="_new_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
 		    $( new_attachpoint ).empty().append( bf );
 
-		    if( search ) {
+		    if( me.search ) {
 			$.yote.util.button_actions( {
 			    button : '#_search_btn_' + me.ct_id,
 			    texts  : [ '#_search_txt_' + me.ct_id ],
 			    action : (function(it) { return function() {
-				me.terms = $( '#_search_txt_' + me.ct_id ).val().split( /[ ,;]+/ );
-				me.refresh();
-			    } } )( item )
+				it.terms = $( '#_search_txt_' + it.ct_id ).val().split( /[ ,;]+/ );
+				it.refresh();
+			    } } )( me )
 			} );
 		    }
 
 		    $.yote.util.button_actions( {
-			button : '#_new_' + item.id + '_b',
+			button : '#_new_' + me.item.id + '_b',
 			texts  : txts,
 			action : (function(it) { return function() {
-			    var newitem = new_function();
-			    for( var i=0; i < new_columns.length; i++ ) {
-				var nc = new_columns[ i ];
+			    var newitem = it.new_function();
+			    for( var i=0; i < it.new_columns.length; i++ ) {
+				var nc = it.new_columns[ i ];
 				var field = typeof nc === 'object' ? nc.field : nc;
-				var val = $( '#_new_' + it.id + '_' + field ).val();
+				var val = $( '#_new_' + it.item.id + '_' + field ).val();
 				newitem.set( field, val );
 			    }
-			    me.refresh();
-			} } )( item )
+			    it.refresh();
+			} } )( me )
 		    } );
 		} //new attacher
 
-		if( column_headers && ! suppress_table ) {
+		if( me.column_headers && ! me.suppress_table ) {
 		    var ch = [];
-		    for( var i=0; i < column_headers.length; i++ ) {
-			ch.push( column_headers[ i ] );
+		    for( var i=0; i < me.column_headers.length; i++ ) {
+			ch.push( me.column_headers[ i ] );
 		    }
-		    if( remove_fun ) {
+		    if( me.remove_fun ) {
 			ch.push( 'Delete' );
 		    }
 		    tab.add_header_row( ch );
@@ -752,9 +747,9 @@ $.yote.util = {
 		var items = paginate_function();
 		console.log( [ 'items', items ] );
 
-		var max = items.length() > plimit ? plimit : items.length();
+		var max = items.length() > me.plimit ? me.plimit : items.length();
 
-		if( paginate_type == 'hash' ) {
+		if( me.paginate_type == 'hash' ) {
 
 		    var keys = items.keys();
 
@@ -762,18 +757,18 @@ $.yote.util = {
 			var key = keys[ i ];
 			var item = items.get( key );
 			var row = [];
-			for( var j = 0 ; j < columns.length; j++ ) {
-			    row.push( typeof columns[ j ] == 'function' ?
-				      columns[ j ]( item, true ) :
-				      typeof columns[ j ] == 'object' ?
-				      columns[ j ][ 'render' ]( item )
-				      : item.get( columns[ j ] )
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    row.push( typeof me.columns[ j ] == 'function' ?
+				      me.columns[ j ]( item, true ) :
+				      typeof me.columns[ j ] == 'object' ?
+				      me.columns[ jb ][ 'render' ]( item )
+				      : item.get( me.columns[ j ] )
 				    );
 			}
-			if( remove_fun ) {
+			if( me.remove_fun ) {
 			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
 			}
-			if( suppress_table ) {
+			if( me.suppress_table ) {
 			    buf += row.join('');
 			}
 			else {
@@ -785,18 +780,18 @@ $.yote.util = {
 		    for( var i = 0 ; i < max ; i++ ) {
 			var item = items.get( i );
 			var row = [];
-			for( var j = 0 ; j < columns.length; j++ ) {
-			    row.push( typeof columns[ j ] == 'function' ?
-				      columns[ j ]( item, true ) :
-				      typeof columns[ j ] == 'object' ?
-				      columns[ j ][ 'render' ]( item )
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    row.push( typeof me.columns[ j ] == 'function' ?
+				      me.columns[ j ]( item, true ) :
+				      typeof me.columns[ j ] == 'object' ?
+				      me.columns[ j ][ 'render' ]( item )
 				      : item.get( columns[ j ] )
 				    );
 			}
-			if( remove_fun && ! suppress_table ) {
+			if( me.remove_fun && ! me.suppress_table ) {
 			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">Delete</BUTTON>' );
 			}
-			if( suppress_table ) {
+			if( me.suppress_table ) {
 			    buf += row.join('');
 			}
 			else {
@@ -805,9 +800,9 @@ $.yote.util = {
 		    }
 		}
 
-		buf += suppress_table ? '' : tab.get_html();
+		buf += me.suppress_table ? '' : tab.get_html();
 
-		if( me.start > 0 || items.length() > plimit ) {
+		if( me.start > 0 || items.length() > me.plimit ) {
 		    buf += '<br>';
 		    buf += '<BUTTON type="button" id="to_start_b">&lt;&lt;</BUTTON>';
 		    buf += ' <BUTTON type="button" id="back_b">&lt;</BUTTON>';
@@ -815,11 +810,11 @@ $.yote.util = {
 		    buf += ' <BUTTON type="button" id="to_end_b">&gt;&gt;</BUTTON>';
 		}
 
-		$( attachpoint ).empty().append( buf );
+		$( me.attachpoint ).empty().append( buf );
 
 		if( me.start > 0 ) {
 		    $( '#to_start_b' ).click(function() { me.start = 0; me.refresh(); } );
-		    var b = me.start - plimit;
+		    var b = me.start - me.plimit;
 		    if( b < 0 ) b = 0;
 		    $( '#back_b' ).click(function() { me.start = b; me.refresh(); } );
 		}
@@ -828,34 +823,34 @@ $.yote.util = {
 		    $( '#back_b' ).attr( 'disabled', 'disabled' );
 		}
 
-		if( items.length() > plimit ) {
-		    var e = me.start + plimit;
+		if( items.length() > me.plimit ) {
+		    var e = me.start + me.plimit;
 		    if( e > count ) {
-			e = count - plimit;
+			e = count - me.plimit;
 		    }
 		    $( '#forward_b' ).click(function() { me.start = e; me.refresh() } );
-		    $( '#to_end_b' ).click(function() { me.start = count - plimit; me.refresh(); } );
+		    $( '#to_end_b' ).click(function() { me.start = count - me.plimit; me.refresh(); } );
 		}
 		else {
 		    $( '#to_end_b' ).attr( 'disabled', 'disabled' );
 		    $( '#forward_b' ).attr( 'disabled', 'disabled' );
 		}
 
-		if( paginate_type == 'hash' ) {
+		if( me.paginate_type == 'hash' ) {
 		    for( var i in keys ) {
 			var key = keys[ i ];
 			var item = items.get( key );
-			for( var j = 0 ; j < columns.length; j++ ) {
-			    if( typeof columns[ j ] == 'function' ) {
-				columns[ j ]( item, false );
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    if( typeof me.columns[ j ] == 'function' ) {
+				me.columns[ j ]( item, false );
 			    }
-			    else if( typeof columns[ j ] == 'object' ) {
-				columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			    else if( typeof me.columns[ j ] == 'object' ) {
+				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
 			    }
 			}
-			if( remove_fun ) {
+			if( me.remove_fun ) {
 			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
-				remove_fun( it );
+				me.remove_fun( it );
 				var to = me.start - 1;
 				if( to < 0 ) to = 0;
 				me.start = to;
@@ -868,17 +863,17 @@ $.yote.util = {
 		else {
 		    for( var i = 0 ; i < max ; i++ ) {
 			var item = items.get( i );
-			for( var j = 0 ; j < columns.length; j++ ) {
-			    if( typeof columns[ j ] == 'function' ) {
-				columns[ j ]( item, false );
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    if( typeof me.columns[ j ] == 'function' ) {
+				me.columns[ j ]( item, false );
 			    }
-			    else if( typeof columns[ j ] == 'object' ) {
-				columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+			    else if( typeof me.columns[ j ] == 'object' ) {
+				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
 			    }
 			}
-			if( remove_fun ) {
+			if( me.remove_fun ) {
 			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
-				remove_fun( it );
+				me.remove_fun( it );
 				var to = me.start - 1;
 				if( to < 0 ) to = 0;
 				me.start = to;
@@ -888,7 +883,7 @@ $.yote.util = {
 		    } //each row again
 		}
 
-		after_render( items );
+		me.after_render( items );
 	    } //refresh
 	}; //define cgt
 	ct.refresh();
