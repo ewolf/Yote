@@ -429,7 +429,7 @@ sub start_server {
     print STDERR "Connected\n";
 
     
-    $self->{threads} = {};
+    $self->{ threads } = {};
 
     Yote::ObjProvider::make_server( $self );
     for( 1 .. $self->{args}{threads} ) {
@@ -441,6 +441,7 @@ sub start_server {
 	my $threads = $self->{ threads };
 	for my $thread ( values %$threads ) {
 	    if( $thread->is_joinable() ) {
+		delete $threads->{ $thread->tid() };
 		$thread->join();
 	    }
 	}
