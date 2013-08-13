@@ -473,6 +473,7 @@ sub _start_server_thread {
 
     my $new_thread = threads->new(
 	sub {
+	    print STDERR "Starting server thread " . threads->tid() . "\n";
 	    $SIG{PIPE} = sub { 
 		print STDERR "Thread $$ got sig pipe. Exiting\n";
 		threads->exit()

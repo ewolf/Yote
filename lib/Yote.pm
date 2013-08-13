@@ -22,11 +22,12 @@ sub _print_use {
     print 'Usage : yote_server --engine=sqlite|mongo|mysql
                     --engine_port=port-mongo-or-mysql-use
                     --generate
-                    --show-config
                     --help
                     --host=mongo-or-mysql-host
+                    --show_config
                     --password=engine-password 
                     --port=yote-server-port
+                    --reset_password
                     --store=filename|mongo-db|mysq-db
                     --threads=number-of-server-processes
                     --user=engine-username 
@@ -92,6 +93,18 @@ sub _create_configuration {
 
 } #_create_configuration
 
+sub _reset_root_password {
+    my( $yote_root_dir, $config ) = @_;
+
+    $config->{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password" ), $config->{ root_account } );
+
+    open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
+    print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $config->{$_}" } grep { $config->{$_} } keys %$config )."\n\n";
+    close( $OUT );
+    return $config;    
+
+} #_reset_root_password
+
 sub _get_configuration {
     my( $yote_root_dir, $current_config ) = @_;
     $current_config ||= {};
@@ -135,7 +148,7 @@ sub _get_configuration {
 	$newconfig{ engine_port } = _ask( "MongoDB port",     undef, $current_config->{ engine_port } || 27017 );
 	$newconfig{ user }        = _ask( "MongoDB user acccount name", undef, $current_config->{ user } );
 	if ( $newconfig{ user } ) {
-	    $newconfig{ password } = _ask( "aMongoDB user acccount name", undef, $current_config->{ password } );
+	    $newconfig{ password } = _ask( "MongoDB user acccount name", undef, $current_config->{ password } );
 	}
     }
     elsif ( lc($engine) eq 'mysql' ) {
@@ -181,23 +194,26 @@ sub get_args {
 	e  => 'engine',
 	E  => 'engine_port',
 	g  => 'generate',
-	c  => 'show-config',
+	c  => 'show_config',
 	h  => 'help',
 	'?' => 'help',
 	H  => 'host',
 	P  => 'password',
 	p  => 'port',
+	R  => 'reset_password',
 	s  => 'store',
 	u  => 'user',
 	r  => 'yote_root',
 	t  => 'threads',
 	);
     my %noval = (  #arguments that do not take a value
-		   help          => 1,
-		   generate      => 1,
-		   'show-config' => 1,
+		   help			=> 1,
+		   generate		=> 1,
+		   show_config		=> 1,
+		   reset_password	=> 1,
 	);
     my %argnames = map { $_ => 1 } values %argmap;
+
     my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
 
     # ---------  run variables  -----------------
@@ -209,6 +225,7 @@ sub get_args {
     # ---------  get command line arguments ---------
     while ( @ARGV ) {
 	my $arg = shift @ARGV;
+
 	if ( $arg =~ /^--([^=]*)(=(.*))?/ ) {
 	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 } || $allow_unknown;
 	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
@@ -235,7 +252,7 @@ sub get_args {
 
     _log "Looking for '$yote_root_dir/yote.conf'";
 
-    if( $config{ 'show-config' }  ) {
+    if( $config{ show_config }  ) {
 	my $loaded_config = _load_config( $yote_root_dir );
 	print "Yote configuration :\n " . join( "\n ", map { "$_ : $loaded_config->{ $_ }" } keys %$loaded_config ) . "\n";
 	exit( 0 );
@@ -246,6 +263,10 @@ sub get_args {
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ $key };
 	}	
+    }
+    elsif( $config{ reset_password } ) {
+	%config = %{ _reset_root_password( $yote_root_dir, _load_config( $yote_root_dir ) ) };
+	exit( 0 );
     }
     elsif ( -r "$yote_root_dir/yote.conf" ) {
 	my $loaded_config = _load_config( $yote_root_dir );
