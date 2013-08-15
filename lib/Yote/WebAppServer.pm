@@ -464,6 +464,7 @@ sub _stop_threads {
     my $self = shift;
     $self->{watchdog_thread}->kill if $self->{watchdog_thread} && $self->{watchdog_thread}->is_running;
     for my $thread (values %{$self->{threads}}) {
+	$thread->join if $thread && $thread->is_joinable;
 	$thread->kill if $thread && $thread->is_running;
     }
 }
