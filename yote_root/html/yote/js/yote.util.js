@@ -605,7 +605,8 @@ $.yote.util = {
 	};
     }, //cols_edit
 
-
+    // this tool is to create a table where the rows correspond to a list in a target
+    // objects and the end user can add or remove the rows, or manipulate them
     control_table:function( args ) {
 	var ct = {
 	    start		: 0,
@@ -785,7 +786,7 @@ $.yote.util = {
 				      me.columns[ j ]( item, true ) :
 				      typeof me.columns[ j ] == 'object' ?
 				      me.columns[ j ][ 'render' ]( item )
-				      : item.get( columns[ j ] )
+				      : item.get( me.columns[ j ] )
 				    );
 			}
 			if( me.remove_fun && ! me.suppress_table ) {

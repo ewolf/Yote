@@ -226,7 +226,7 @@ sub paginate_list {
 
     return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
 
-} #paginate
+} #paginate_list
 
 # used to help tests
 sub _paginate_list { 
@@ -274,7 +274,8 @@ sub paginate_hash {
 } #paginate_hash
 
 #
-# By default this does nothing but die. Each object that want search should override this.
+# By default this does nothing but die for non-admin aaccounts.. Each object that want search should override this.
+# This should search through a list of yote objects.
 #
 sub search_list {
     my( $self, $data, $account, $env ) = @_;
@@ -299,8 +300,7 @@ sub sync_all {}
 
 
 #
-# Updates the object but only for capitolized keys that already exist.
-# public client method.
+# Stub method to apply update to an object. Throws an error by default. Override and call _update with input data and a list of allowed fields to update.
 #
 sub update {
     die "Disallows update";
