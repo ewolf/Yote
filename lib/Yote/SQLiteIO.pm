@@ -224,7 +224,7 @@ sub paginate_list {
 } #paginate_list
 
 sub search_list {
-    my( $self, $obj_id, $paginate_length, $paginate_start, $reverse ) = @_;
+    my( $self, $list_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
 
     my $PAG = '';
     if( defined( $paginate_length ) ) {
@@ -235,13 +235,18 @@ sub search_list {
 	}
     }    
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int )" .
-					  ( $reverse ? 'DESC ' : '' ) . " $PAG", $obj_id );
-    my @ret;
-    for my $row (@$res) {
-	push @ret, $row->[1] || "v$row->[2]";
+    my( @params, @ors ) = ( $list_id );
+    for my $field ( @$search_fields ) {
+	for my $term (@$search_terms) {
+	    push @ors, " (field=? AND value LIKE ?) ";
+	    push @params, $field, "\%$term\%";
+	}
     }
-    return \@ret
+
+    my $orstr = @ors > 1 ? " AND (" . join( ' OR ', @ors ) . ")" : @ors == 1 ? $ors[ 0 ] : '';
+    my $query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY obj_id $PAG";
+    my $ret = $self->_selectall_arrayref( $query, @params );
+    return [map {  @$_ } @$ret ];
 } #search_list
 
 #

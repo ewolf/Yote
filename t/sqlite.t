@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 182;
+use Test::More tests => 186;
 use Test::Pod;
 
 
@@ -35,9 +35,10 @@ BEGIN {
 
 my( $fh, $name ) = mkstemp( "/tmp/SQLiteTest.XXXX" );
 $fh->close();
+
 Yote::ObjProvider::init(
     datastore      => 'Yote::SQLiteIO',
-    sqlitefile     => $name,
+    store          => $name,
     );
 my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
@@ -569,6 +570,32 @@ sub test_suite {
     $root->add_to_rogers( $o );
     Yote::ObjProvider::stow_all();
     is( $o->count( 'emptylist' ), 0, "emptylist" );
+
+    # test hash argument to new obj :
+    my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
+    is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
+    is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
+
+    $app->set_weirdy( $o );
+    Yote::ObjProvider::stow_all();
+
+    # test search_list
+    $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "foobie", b => "oobie", c => "goobol" } ),
+			   new Yote::Obj( { n => "two", a => "bar", b => "car", c => "war" } ),
+			   new Yote::Obj( { n => "three", c => "foobie", b => "xxx" } ),
+			   new Yote::Obj( { n => "four", 'q' => "foobie", b => "xxx" } ),
+			   new Yote::Obj( { n => "five", a => "foobie", b => "car", c => "war" } ),
+	);
+    Yote::ObjProvider::stow_all();
+
+    $res = $o->search_list( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ] ] );
+    is( @$res, 3, "Three search results" );
+    my $searchlist = $o->get_searchlist();
+    my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
+    my %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches" );
+    
+
 
 } #test suite
 
