@@ -1,7 +1,6 @@
 Next updates
   * changed permissions model so that YoteRoot checks if accounts are root
-  * include app class rather than app id in the IO
-  * 
+  * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
   
 
 FOR Stable Alpha
@@ -14,7 +13,7 @@ FOR Stable Alpha
   * Move MongoIO, etc, to an IO sub package
   * refactor IO to include better back references. Object will have to take note.
   * Enable Cron
-  * Move encrypt_pass to somewhere self, maybe?
+ - Move encrypt_pass to somewhere self, maybe? Moved to ObjProvider
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't
   * Create admin pages
@@ -26,6 +25,7 @@ FOR Stable Alpha
   * UI - account change password and request password reset link
   * method to get version to client
  - * add test only requirements to Build.PL
+ - include app class rather than app id in the IO
 
 
 #----------- Pre Aril 2013 ----
