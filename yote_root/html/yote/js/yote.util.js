@@ -456,7 +456,7 @@ $.yote.util = {
 	    log_in_status    : args[ 'log_in_status_attachpoint' ] || '#logged_in_status',
 	    after_login_fun  : args[ 'after_login_function' ],
 	    after_logout_fun : args[ 'after_logout_function' ],
-	    logged_in_test   : args[ 'logged_in_test' ] || function() { return $.yote.is_logged_in(); },
+	    access_test      : args[ 'access_test' ] || function() { return $.yote.is_logged_in(); },
 	    logged_in_fail_msg : args[ 'logged_in_fail_msg' ],
 
 	    on_login:function() {
@@ -499,7 +499,7 @@ $.yote.util = {
 		    action : function() {
 			$.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
 					     function( msg ) {
-						 if( thislc.logged_in_test() == true ) {
+						 if( thislc.access_test() == true ) {
 						     thislc.msg_function( msg );
 						     thislc.on_login_fun();
 						     thislc.after_login_fun();
@@ -551,7 +551,7 @@ $.yote.util = {
 			$.yote.login( $( '#username' ).val(),
 				      $( '#pw' ).val(),
 				      function( msg ) {
-					  if( thislc.logged_in_test() ) {
+					  if( thislc.access_test() ) {
 					      thislc.on_login_fun();
 					      thislc.after_login_fun();
 					  } else if( thislc.logged_in_fail_msg ) {
@@ -569,7 +569,7 @@ $.yote.util = {
 	};
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
-	if( lc.logged_in_test() ) {
+	if( lc.access_test() ) {
 	    lc.on_login_fun();
 	    lc.after_login_fun();
 	} else {
@@ -655,11 +655,12 @@ $.yote.util = {
 	    /* ACTIONS */
 	    after_render	: args[ 'after_render' ]   || function(list_of_items) {}, // run this function after rendering. It takes a single argument : list_of_items
 	    show_when_empty     : args[ 'show_when_empty' ],                              // run this function if there were no items found for pagination. Function shold
-	                                                                                  // return html that goes _IN PLACE_ of the table. Expects search string as single
-   	                                                                                  //   parameter.
-	    /* NEW ITEMS - An optional widget for adding to the list can be provided */
+	                                                                                  // return html that goes _IN PLACE_ of the table. Expects search item list as single parameter and passes the list of search terms as the single argument.
+	    after_render_when_empty : args[ 'after_render_when_empty' ],                  // run this function if there were no items found for pagination. Function shold
+	                                                                                  // expects search item list as single parameter. This is run after after_render, if it is run.
 	    new_attachpoint	: args[ 'new_attachpoint' ],                              // selector for where to place new things
 	    new_columns		: args[ 'new_columns' ],                                  // A list of objects or strings that is used to build the input for new objects.
+	    new_columns_required : args[ 'new_columns_required' ], //defaults to new_columns. 
                                                                                           //  if strings, it creates a text input that is used to populate that field in the new object
 	                                                                                  //  if an object, it expect the following fields :
 	                                                                                  //     field - a string that may be anything as long as it is unique to this particular call to control_table
@@ -667,7 +668,9 @@ $.yote.util = {
 	                                                                                  //     after_render - a function called after the html is in the dom. Takes id as an argument
 	                                                                                  //     on_create - a function called after the item has been created. Takes the new item as an argument
 	    new_column_titles	: args[ 'new_column_titles' ] || args[ 'new_columns' ],   // Titles for the data fields
-	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination
+	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
+	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
+	    new_set_values      : args[ 'new_set_values' ] || false,                      // If true, the new function will try and set the values after creation.
 	    new_button		: args[ 'new_button' ] || 'New',                          // text that appears on the create new item button. Default is 'New'
 	    new_title		: args[ 'new_title' ],                                    // title for the new items widget that appears on top of it. If it is defined, it is put in a span with <prefix_classname>_new_title class
 	    new_description	: args[ 'new_description' ],                              // description for new items for the widget that appears under the title. If it is defined, it is put in a span with <prefix_classname>_new_description class
@@ -676,6 +679,11 @@ $.yote.util = {
 	    remove_btn_txt	: args[ 'remove_button_text' ] || 'Delete', // Text that goes on the remove button. Default is 'Delete'.
 	    remove_column_txt	: args[ 'remove_column_text' ] || 'Delete', // Text that goes on the remove column header. Default is 'Delete'.
 
+
+	    clear_search : function() {
+		this.terms = [];
+		this.refresh();
+	    },
 
 	    refresh : function() {
 		var me = this;
@@ -721,6 +729,7 @@ $.yote.util = {
 			'</div>';
 
 		    if( me.terms.length > 0 ) {
+			console.log( [ "SRCH", me.terms ] );
 			buf += 'Search Results : <BR>';
 		    }
 		}
@@ -731,8 +740,8 @@ $.yote.util = {
 
 
 		if( me.new_attachpoint ) {
-		    var bf = me.new_title ? '<span class="' + me.prefix_classname + ' + _new_title _ct_new_title">' + me.new_title + '</span>' : '';
-		    bf    += me.new_description ? '<span class="' + me.prefix_classname + ' + _new_description _ct_new_description">' + me.new_description + '</span>' : '';
+		    var bf = me.new_title ? '<div class="' + me.prefix_classname + '_new_title _ct_new_title">' + me.new_title + '</div>' : '';
+		    bf    += me.new_description ? '<div class="' + me.prefix_classname + '_new_description _ct_new_description">' + me.new_description + '</div>' : '';
 
 		    var txts = [];
 		    var tbl = $.yote.util.make_table( [ me.prefix_classname + '_new_item_table', '_ct_new_item_table' ] );
@@ -749,7 +758,7 @@ $.yote.util = {
 		    }
 		    bf += tbl.get_html();
 		    bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
-		    $( new_attachpoint ).empty().append( bf );
+		    $( me.new_attachpoint ).empty().append( bf );
 
 
 		    for( var i=0; i < me.new_columns.length; i++ ) {
@@ -762,17 +771,34 @@ $.yote.util = {
 		    $.yote.util.button_actions( {
 			button : '#_new_' + me.item.id + '_b',
 			texts  : txts,
+			required : me.new_columns_required,
 			action : (function(it) { return function() {
-			    var newitem = it.new_function();
-			    for( var i=0; i < it.new_columns.length; i++ ) {
-				var nc = it.new_columns[ i ];
-				if( typeof nc === 'object' ) {
-				    nc.on_create( newitem );
+			    var newitem;
+			    if( me.new_set_values ) {
+				newitem = it.new_function();
+				for( var i=0; i < it.new_columns.length; i++ ) {
+				    var nc = it.new_columns[ i ];
+				    if( typeof nc === 'object' ) {
+					nc.on_create( newitem );
+				    }
+				    else {
+					var val = $( '#_new_' + it.item.id + '_' + field ).val();
+					newitem.set( nc, val );
+				    }
 				}
-				else {
-				    var val = $( '#_new_' + it.item.id + '_' + field ).val();
-				    newitem.set( nc, val );
+			    }
+			    else {
+				var vals = {};
+				for( var i=0; i < it.new_columns.length; i++ ) {
+				    var nc = it.new_columns[ i ];
+				    if( typeof nc !== 'object' ) {
+					vals[ nc ] = $( '#_new_' + it.item.id + '_' + field ).val();
+				    }
 				}
+				newitem = it.new_function( vals );
+			    } 
+			    if( it.after_new_fun ) {
+				it.after_new_fun( newitem );
 			    }
 			    it.refresh();
 			} } )( me )
@@ -792,66 +818,72 @@ $.yote.util = {
 
 		var items = paginate_function();
 
+
+		var max = items.length() > me.plimit ? me.plimit : items.length();
+		
+		if( max == count ) {	   
+		    buf += '<BR>Showing all items<BR>';
+		} else {
+		    buf += '<BR>Showing ' + max + ' of ' + count + ' items<BR>';
+		}
+
+		if( me.paginate_type == 'hash' ) {
+		    
+		    var keys = items.keys();
+		    
+		    for( var i in keys ) {
+			var key = keys[ i ];
+			var item = items.get( key );
+			var row = [];
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    row.push( typeof me.columns[ j ] == 'function' ?
+				      me.columns[ j ]( item, true ) :
+				      typeof me.columns[ j ] == 'object' ?
+				      me.columns[ jb ][ 'render' ]( item )
+				      : item.get( me.columns[ j ] )
+				    );
+			}
+			if( me.remove_fun ) {
+			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			}
+			if( me.suppress_table ) {
+			    buf += row.join('');
+			}
+			else {
+			    tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
+			}
+		    }
+		} //hash pagination
+		else {
+		    for( var i = 0 ; i < max ; i++ ) {
+			var item = items.get( i );
+			var row = [];
+			for( var j = 0 ; j < me.columns.length; j++ ) {
+			    row.push( typeof me.columns[ j ] == 'function' ?
+				      me.columns[ j ]( item, true ) :
+				      typeof me.columns[ j ] == 'object' ?
+				      me.columns[ j ][ 'render' ]( item )
+				      : item.get( me.columns[ j ] )
+				    );
+			}
+			if( me.remove_fun && ! me.suppress_table ) {
+			    row.push( '<BUTTON class="' + me.prefix_classname + '_delete_btn _ct_delete_btn" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			}
+			if( me.suppress_table ) {
+			    buf += row.join('');
+			}
+			else {
+			    tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
+			}
+		    }
+		} //list pagination
+
 		if( items.length() == 0 && me.show_when_empty ) {
-		    me.show_when_empty();
+		    buf += me.show_when_empty( me.terms );
 		} 
 		else {
-
-		    var max = items.length() > me.plimit ? me.plimit : items.length();
-
-		    if( me.paginate_type == 'hash' ) {
-
-			var keys = items.keys();
-
-			for( var i in keys ) {
-			    var key = keys[ i ];
-			    var item = items.get( key );
-			    var row = [];
-			    for( var j = 0 ; j < me.columns.length; j++ ) {
-				row.push( typeof me.columns[ j ] == 'function' ?
-					  me.columns[ j ]( item, true ) :
-					  typeof me.columns[ j ] == 'object' ?
-					  me.columns[ jb ][ 'render' ]( item )
-					  : item.get( me.columns[ j ] )
-					);
-			    }
-			    if( me.remove_fun ) {
-				row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
-			    }
-			    if( me.suppress_table ) {
-				buf += row.join('');
-			    }
-			    else {
-				tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
-			    }
-			}
-		    }
-		    else {
-			for( var i = 0 ; i < max ; i++ ) {
-			    var item = items.get( i );
-			    var row = [];
-			    for( var j = 0 ; j < me.columns.length; j++ ) {
-				row.push( typeof me.columns[ j ] == 'function' ?
-					  me.columns[ j ]( item, true ) :
-					  typeof me.columns[ j ] == 'object' ?
-					  me.columns[ j ][ 'render' ]( item )
-					  : item.get( me.columns[ j ] )
-					);
-			    }
-			    if( me.remove_fun && ! me.suppress_table ) {
-				row.push( '<BUTTON class="' + me.prefix_classname + '_delete_btn _ct_delete_btn" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
-			    }
-			    if( me.suppress_table ) {
-				buf += row.join('');
-			    }
-			    else {
-				tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
-			    }
-			}
-		    }
-
 		    buf += me.suppress_table ? '' : tab.get_html();
-
+		    
 		    if( me.start > 0 || items.length() > me.plimit ) {
 			buf += '<br>';
 			buf += '<BUTTON class="' + me.prefix_classname + '_to_start_btn _ct_to_start_btn" type="button" id="to_start_b">&lt;&lt;</BUTTON>';
@@ -859,9 +891,9 @@ $.yote.util = {
 			buf += '<BUTTON class="' + me.prefix_classname + '_forward_btn _ct_forward_btn" type="button" id="forward_b">&gt;</BUTTON>';
 			buf += ' <BUTTON class="' + me.prefix_classname + '_to_end_btn _ct_to_end_btn" type="button" id="to_end_b">&gt;&gt;</BUTTON>';
 		    }
-
-		    $( me.attachpoint ).empty().append( buf );
 		}
+
+		$( me.attachpoint ).empty().append( buf );
 
 		if( me.start > 0 ) {
 		    $( '#to_start_b' ).click(function() { me.start = 0; me.refresh(); } );
@@ -897,9 +929,11 @@ $.yote.util = {
 			required : [],
 			cleanup_exempt : clnup_ex,
 			action : (function(it) { return function() {
-			    it.terms = $( srch_txt ).val().split( /[ ,;]+/ );
-			    if( it.terms.length == 0 ) {
-				it.terms = undefined;
+			    var searching = $( srch_txt ).val();
+			    if( searching.match( /\S/ ) ) {
+				it.terms = $( srch_txt ).val().split( /[ ,;]+/ );
+			    } else {
+				it.terms = [];
 			    }
 			    it.refresh();
 			} } )( me )
@@ -954,6 +988,10 @@ $.yote.util = {
 		}
 
 		me.after_render( items );
+
+		if( items.length() == 0 && me.after_render_when_empty ) {
+		    me.after_render_when_empty( me.terms );
+		}
 	    } //refresh
 	}; //define cgt
 	ct.refresh();

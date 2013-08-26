@@ -65,72 +65,69 @@ sub token_login {
     return 0;
 } #token_login
 
-#
-# Create login.
-#
-sub create_login {
-    my( $self, $args, $dummy, $env ) = @_;
+sub is_admin {
+    my( $self, $data, $account ) = @_;
 
-    my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
-    if( $handle ) {
-	my $root = Yote::Yote::fetch_root();
-	my $lc_handle = lc( $handle );
-        if( $Yote::YoteRoot::HANDLE_CACHE->{$lc_handle} || $root->_hash_has_key( '_handles', $lc_handle ) ) {
-            die "handle already taken";
-        }
-        if( $email ) {
-            if( $Yote::YoteRoot::EMAIL_CACHE->{$email} || $root->_hash_has_key( '_emails', $email ) ) {
-                die "email already taken";
-            }
-            unless( Email::Valid->address( $email ) ) {
-                die "invalid email '$email'";
-            }
-        }
-        unless( $password ) {
-            die "password required";
-        }
+    return $account->get_login()->is_root();
+} #is_admin
 
-	$Yote::YoteRoot::EMAIL_CACHE->{$email}      = 1 if $email;
-	$Yote::YoteRoot::HANDLE_CACHE->{$lc_handle} = 1;
-
-        my $new_login = new Yote::Login();
-
-	$new_login->set__is_root( 0 );
-        $new_login->set_handle( $handle );
-        $new_login->set_email( $email );
-	my $ip = $env->{REMOTE_ADDR};
-        $new_login->set__created_ip( $ip );
-
-        $new_login->set__time_created( time() );
-
-        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
-
-	$root->_hash_insert( '_emails', $email, $new_login ) if $email;
-	$root->_hash_insert( '_handles', $lc_handle, $new_login );
-
-	$self->_validation_request( $new_login );
-	
-        return { l => $new_login, t => $root->_create_token( $new_login, $ip ) };
-    } #if handle
-
-    die "no handle given";
-} #create_login
-
-#
-# Request password email be sent.
-#
-sub recover_password {
-    my( $self, $args ) = @_;
+sub paginate_list {
+    my( $self, $data, $account ) = @_;
     
-} #recover_password
+    my( $list_name, $number, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $self->is_admin( $account ) ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
+
+} #paginate_list
+
+sub paginate_list_rev {
+    my( $self, $data, $account ) = @_;
+    
+    my( $list_name, $number, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $self->is_admin( $account ) ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
+
+} #paginate_rev
+
+sub paginate_hash {
+    my( $self, $data, $account ) = @_;
+    my( $hash_name, $number, $start ) = @$data;
+
+    if( index( $hash_name, '_' ) == 0 && ! $self->is_admin( $account ) ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
+
+} #paginate_hash
+
 
 #
-# reset her password.
-# 
-sub reset_password {
-    my( $self, $args ) = @_;
+# By default this does nothing but die for non-admin aaccounts.. Each object that want search should override this.
+# This should search through a list of yote objects.
+#
+sub search_list {
+    my( $self, $data, $account, $env ) = @_;
 
-} #reset_password
+    my( $list_name, $search_fields, $search_terms, $amount, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $self->is_admin( $account ) ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::search_list( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );
+    
+
+} #search_list
+
 
 # ------------------------------------------------------------------------------------------
 #      * Private Methods *
@@ -190,25 +187,6 @@ A Yote::AppRoot extends Yote::Obj and provides some class methods and the follow
 =item account()
 
 Returns the currently logged in account using this app.
-
-=item create_login( args )
-
-Create a login with the given client supplied args : h => handle, e => email, p => password.
-This checks to make sure handle and email address are not already taken. 
-This is invoked by the javascript call $.yote.create_login( handle, password, email )
-
-=item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
-
-Causes an email with a recovery link sent to the email in question, if it is associated with an account.
-
-=item reset_password( { p : newpassword, p2 : newpasswordverify, t : recovery_token } )
-
-Resets the password of the login for this account.
-
-=item recovery_reset_password( { p : newpassword, p2 : newpasswordverify, t : recovery_token } )
-
-Resets the password ( kepts hashed in the database ) for the account that the recovery token belongs to.
-Returns the url_the_person_requested_recovery that was given in the recover_password call.
 
 =item token_login()
 

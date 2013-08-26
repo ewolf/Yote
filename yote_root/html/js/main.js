@@ -44,12 +44,14 @@ function attach_login( args ) {
     var message_attachpoint = args[ 'message_attachpoint' ];
     var a_login_f           = args[ 'after_login' ]  || function(){};
     var a_logout_f          = args[ 'after_logout' ];
+    var access_test_f      = args[ 'access_test' ];
+    var logged_in_fail_msg = args[ 'logged_in_fail_msg' ];
     if( a_logout_f ) {
 	var after_logout_f = function() { make_menus( menu_attach_point ); a_logout_f(); }
     } else {
 	after_logout_f = function() { make_menus( menu_attach_point ); }
     }
-    if( a_logout_f ) {
+    if( a_login_f ) {
 	var after_login_f = function() { make_menus( menu_attach_point ); a_login_f(); }
     } else {
 	after_login_f = function() { make_menus( menu_attach_point ); }
@@ -68,7 +70,9 @@ function attach_login( args ) {
 	msg_function       : msg,
 	on_logout_function : $.yote.util.needs_login,
 	after_login_function  : after_login_f,
-	after_logout_function : after_logout_f
+	after_logout_function : after_logout_f,
+	logged_in_fail_msg : logged_in_fail_msg,
+	access_test : access_test_f
     } );
     if( $.yote.is_logged_in() ) {
 	lc.on_login();
