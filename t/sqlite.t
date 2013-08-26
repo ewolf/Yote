@@ -572,7 +572,7 @@ sub test_suite {
     is( $o->count( 'emptylist' ), 0, "emptylist" );
 
     # test hash argument to new obj :
-    my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
+    $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
     is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
     is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
 
