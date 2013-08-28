@@ -458,6 +458,7 @@ $.yote.util = {
 	    after_logout_fun : args[ 'after_logout_function' ],
 	    access_test      : args[ 'access_test' ] || function() { return $.yote.is_logged_in(); },
 	    logged_in_fail_msg : args[ 'logged_in_fail_msg' ],
+	    app                : args[ 'app' ] || $.yote.fetch_root(),
 
 	    on_login:function() {
 		var thislc = this;
@@ -499,12 +500,13 @@ $.yote.util = {
 		    action : function() {
 			$.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
 					     function( msg ) {
-						 if( thislc.access_test() == true ) {
+						 if( thislc.access_test( thislc.app.account() ) ) {
 						     thislc.msg_function( msg );
 						     thislc.on_login_fun();
 						     thislc.after_login_fun();
 						 } else if( thislc.logged_in_fail_msg ) {
 						     thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+						     $.yote.logout();
 						 }
 					     },
 					     function( err ) {
@@ -551,11 +553,12 @@ $.yote.util = {
 			$.yote.login( $( '#username' ).val(),
 				      $( '#pw' ).val(),
 				      function( msg ) {
-					  if( thislc.access_test() ) {
+					  if( thislc.access_test( thislc.app.account() ) ) {
 					      thislc.on_login_fun();
 					      thislc.after_login_fun();
 					  } else if( thislc.logged_in_fail_msg ) {
 					      thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+					      $.yote.logout();
 					  }
 				      },
 				      function( err ) {
@@ -569,12 +572,14 @@ $.yote.util = {
 	};
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
-	if( lc.access_test() ) {
+	if( lc.access_test( lc.app.account() ) ) {
 	    lc.on_login_fun();
 	    lc.after_login_fun();
 	} else {
-	    if( lc.logged_in_fail_msg )
+	    if( lc.logged_in_fail_msg ) {
 		lc.msg_function( lc.logged_in_fail_msg, 'error' );
+		$.yote.logout();
+	    }
 	    lc.on_logout_fun();
 	    lc.after_logout_fun();
 	}
@@ -697,7 +702,7 @@ $.yote.util = {
 			    if( it.search_fun ) {
 				return it.search_fun( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
 			    } else {
-				return it.item.search_list( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
+				return it.item.search( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
 			    }
 			}
 		    }
@@ -729,7 +734,6 @@ $.yote.util = {
 			'</div>';
 
 		    if( me.terms.length > 0 ) {
-			console.log( [ "SRCH", me.terms ] );
 			buf += 'Search Results : <BR>';
 		    }
 		}
@@ -782,7 +786,7 @@ $.yote.util = {
 					nc.on_create( newitem );
 				    }
 				    else {
-					var val = $( '#_new_' + it.item.id + '_' + field ).val();
+					var val = $( '#_new_' + it.item.id + '_' + nc ).val();
 					newitem.set( nc, val );
 				    }
 				}
@@ -792,7 +796,7 @@ $.yote.util = {
 				for( var i=0; i < it.new_columns.length; i++ ) {
 				    var nc = it.new_columns[ i ];
 				    if( typeof nc !== 'object' ) {
-					vals[ nc ] = $( '#_new_' + it.item.id + '_' + field ).val();
+					vals[ nc ] = $( '#_new_' + it.item.id + '_' + nc ).val();
 				    }
 				}
 				newitem = it.new_function( vals );
@@ -818,7 +822,6 @@ $.yote.util = {
 
 		var items = paginate_function();
 
-
 		var max = items.length() > me.plimit ? me.plimit : items.length();
 		
 		if( max == count ) {	   
@@ -826,7 +829,6 @@ $.yote.util = {
 		} else {
 		    buf += '<BR>Showing ' + max + ' of ' + count + ' items<BR>';
 		}
-
 		if( me.paginate_type == 'hash' ) {
 		    
 		    var keys = items.keys();
@@ -839,7 +841,7 @@ $.yote.util = {
 			    row.push( typeof me.columns[ j ] == 'function' ?
 				      me.columns[ j ]( item, true ) :
 				      typeof me.columns[ j ] == 'object' ?
-				      me.columns[ jb ][ 'render' ]( item )
+				      me.columns[ j ][ 'render' ]( item )
 				      : item.get( me.columns[ j ] )
 				    );
 			}

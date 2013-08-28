@@ -277,7 +277,7 @@ sub paginate_hash {
 # By default this does nothing but die for non-admin aaccounts.. Each object that want search should override this.
 # This should search through a list of yote objects.
 #
-sub search_list {
+sub search {
     my( $self, $data, $account, $env ) = @_;
 
     my( $list_name, $search_fields, $search_terms, $amount, $start ) = @$data;
@@ -286,12 +286,8 @@ sub search_list {
 	die "permissions error";
     }
 
-    return Yote::ObjProvider::search_list( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );
-    
-
-} #search_list
-
-
+    return Yote::ObjProvider::search( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );    
+} #search
 
 #
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.

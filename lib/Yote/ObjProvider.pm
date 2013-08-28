@@ -273,9 +273,10 @@ sub package_methods {
     return $methods;
 } #package_methods
 
-sub search_list {
+
+sub search {
     my( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->search_list( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) } ];
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->search( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) } ];
 } #search_list
 
 #

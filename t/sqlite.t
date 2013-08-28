@@ -588,7 +588,7 @@ sub test_suite {
 	);
     Yote::ObjProvider::stow_all();
 
-    $res = $o->search_list( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ] ] );
+    $res = $o->search( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ] ] );
     is( @$res, 3, "Three search results" );
     my $searchlist = $o->get_searchlist();
     my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );

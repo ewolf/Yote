@@ -198,9 +198,10 @@ sub paginate_hash {
 
 
 #
-# Returns a hash of paginated items that belong to the list. Note that this 
+# Returns a paginated list of items from this list. Note that this 
 # does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
 #   rather than [ undef, undef, undef, 'val1', 'val2' ]
+# This method can be used on a hash as well. It returns a paginated list of values of the hash, sorted by hash key.
 #
 sub paginate_list {
     my( $self, $obj_id, $paginate_length, $paginate_start, $reverse ) = @_;
@@ -214,7 +215,7 @@ sub paginate_list {
 	}
     }    
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int )" .
+    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as int ) " . ( $reverse ? 'DESC ' : '' ) . ", field " .
 					  ( $reverse ? 'DESC ' : '' ) . " $PAG", $obj_id );
     my @ret;
     for my $row (@$res) {
@@ -223,8 +224,8 @@ sub paginate_list {
     return \@ret
 } #paginate_list
 
-sub search_list {
-    my( $self, $list_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
+sub search {
+    my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
 
     my $PAG = '';
     if( defined( $paginate_length ) ) {
@@ -235,7 +236,7 @@ sub search_list {
 	}
     }    
 
-    my( @params, @ors ) = ( $list_id );
+    my( @params, @ors ) = ( $datastructure_id );
     for my $field ( @$search_fields ) {
 	for my $term (@$search_terms) {
 	    push @ors, " (field=? AND value LIKE ?) ";
@@ -247,7 +248,7 @@ sub search_list {
     my $query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY obj_id $PAG";
     my $ret = $self->_selectall_arrayref( $query, @params );
     return [map {  @$_ } @$ret ];
-} #search_list
+} #search
 
 #
 # Finds objects not connected to the root and recycles them.

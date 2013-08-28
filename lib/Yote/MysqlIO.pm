@@ -384,6 +384,32 @@ sub recycle_object {
     $self->_do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
 
+sub search {
+    my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
+
+    my $PAG = '';
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    $PAG = "LIMIT $paginate_start,$paginate_length";
+	} else {
+	    $PAG = "LIMIT $paginate_length";
+	}
+    }    
+
+    my( @params, @ors ) = ( $datastructure_id );
+    for my $field ( @$search_fields ) {
+	for my $term (@$search_terms) {
+	    push @ors, " (field=? AND value LIKE ?) ";
+	    push @params, $field, "\%$term\%";
+	}
+    }
+
+    my $orstr = @ors > 1 ? " AND (" . join( ' OR ', @ors ) . ")" : @ors == 1 ? $ors[ 0 ] : '';
+    my $query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY obj_id $PAG";
+    my $ret = $self->_selectall_arrayref( $query, @params );
+    return [map {  @$_ } @$ret ];
+} #search
+
 sub stow_all {
     my( $self, $objs ) = @_;
     $self->{QUERIES} = [[[]],[[]]];

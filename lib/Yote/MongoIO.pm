@@ -327,12 +327,11 @@ sub recycle_objects {
     return $rec_count;
 } #recycle_object
 
-sub search_list {
-    my( $self, $list_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
+sub search {
+    my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
 
-    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
-    die "list not found" unless $list;
-    die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
+    my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $datastructure_id ) } );
+    die "data structure $datastructure_id not found" unless $data_structure;
     
     # db.x.find( { $or : [ { "d.parm1" : { '$regex' : '\bsearch-one\b', '$options' : 'i' }
     #                        "d.parm1" : { '$regex' : '\bsearch-two\b', '$options' : 'i' }
@@ -348,14 +347,14 @@ sub search_list {
 	_id => { '$in' => [
 		     map { MongoDB::OID->new( value => $_ ) } 
 		     @{ $self->{ OBJS }->find_one( { 
-			 _id => MongoDB::OID->new( value => $list_id ) } )->{r} 
+			 _id => MongoDB::OID->new( value => $datastructure_id ) } )->{r} 
 		     } ] 
 	},
 			 '$or' => \@ors
 				      } );
     
     my $result_data = [map { $_->{ _id }->value() } $curs->all];
-    print STDERR Data::Dumper->Dump([$result_data]);
+
     if( defined( $paginate_length ) ) {
 	if( $paginate_start ) {
 	    if( $paginate_start > $#$result_data ) {
@@ -373,7 +372,7 @@ sub search_list {
     }
     return $result_data
     
-} #search_list
+} #search
 
 sub start_transaction {}
 
