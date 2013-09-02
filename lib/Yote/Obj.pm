@@ -5,21 +5,21 @@ use warnings;
 no warnings 'uninitialized';
 
 #
-# This is base class for all Yote objects. 
+# This is base class for all Yote objects.
 #
 # It is a container class with fields and methods.
 #
 # On the server side :
 #
 #   The fields can be accessed with get_, like 'get_foo();' or 'get_foo( $initializer )'
-#      A getter takes an optional initialization object 
+#      A getter takes an optional initialization object
 #      that is only used if the field has not yet been defined
 #
 #   The fields can be set with set_ like 'set_foo( "value" )'.
-#    
+#
 #   Lists can be added by by add_to_, like 'add_to_mylist( 'a', 2, $obj );'
-#  
-#   Items can be removed from lists with remove_from_,  like 'remove_from_list( 2 );'        
+#
+#   Items can be removed from lists with remove_from_,  like 'remove_from_list( 2 );'
 #
 # On the client side :
 #
@@ -53,7 +53,7 @@ sub new {
 	    ID       => undef,
 	    DATA     => {},
 	}, $class;
-    } 
+    }
     else {
 	$obj = bless {
 	    ID       => $id_or_hash,
@@ -66,7 +66,7 @@ sub new {
 	$obj->_init();
 	Yote::ObjProvider::dirty( $obj, $obj->{ID} );
     }
-    
+
     if( ref( $id_or_hash ) eq 'HASH' ) {
 	for my $key ( %$id_or_hash ) {
 	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
@@ -80,7 +80,7 @@ sub new {
 #
 # Called the very first time this object is created. It is not called
 # when object is loaded from storage.
-# 
+#
 sub _init {}
 
 #
@@ -120,7 +120,7 @@ sub _is {
 # fetches from ObjProvider
 sub _fetch {
     my( $self, $obj_id ) = @_;
-    return Yote::ObjProvider::fetch( $obj_id );    
+    return Yote::ObjProvider::fetch( $obj_id );
 } #_fetch
 
 # just asks the object provider to return the id for the given item
@@ -141,12 +141,12 @@ sub _list_insert {
 
 sub _list_delete {
     my( $self, $listname, $idx ) = @_;
-    return Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $idx ); 
+    return Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $idx );
 }
 
 sub _hash_delete {
     my( $self, $hashname, $key ) = @_;
-    return Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );    
+    return Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );
 }
 
 sub _hash_insert {
@@ -157,12 +157,12 @@ sub _hash_insert {
 sub _hash_fetch {
     my( $self, $hashname, $key ) = @_;
     return Yote::ObjProvider::hash_fetch( $self->{DATA}{$hashname}, $key );
-} 
+}
 
 sub _list_fetch {
     my( $self, $listname, $key ) = @_;
     return Yote::ObjProvider::list_fetch( $self->{DATA}{$listname}, $key );
-} 
+}
 
 sub _hash_has_key {
     my( $self, $hashname, $key ) = @_;
@@ -217,7 +217,7 @@ sub count {
 
 sub paginate_list {
     my( $self, $data, $account ) = @_;
-    
+
     my( $list_name, $number, $start ) = @$data;
 
     if( index( $list_name, '_' ) == 0 && $account && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
@@ -229,7 +229,7 @@ sub paginate_list {
 } #paginate_list
 
 # used to help tests
-sub _paginate_list { 
+sub _paginate_list {
     my( $self, $list_name, $number, $start ) = @_;
     return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
 }
@@ -242,7 +242,7 @@ sub _paginate_list_rev {
 
 sub paginate_list_rev {
     my( $self, $data, $account ) = @_;
-    
+
     my( $list_name, $number, $start ) = @$data;
 
     if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
@@ -286,8 +286,20 @@ sub search {
 	die "permissions error";
     }
 
-    return Yote::ObjProvider::search( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );    
+    return Yote::ObjProvider::search( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );
 } #search
+
+sub sort {
+    my( $self, $data, $account, $env ) = @_;
+
+    my( $list_name, $sort_fields, $reversed_orders, $amount, $start ) = @$data;
+
+    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+
+    return Yote::ObjProvider::sort( $self->{DATA}{$list_name}, $sort_fields, $reversed_orders, $amount, $start );
+} #sort
 
 #
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
@@ -428,24 +440,24 @@ Yote::Obj - Base class for all persistant Yote objects.
 
 =head1 DESCRIPTION
 
-Yote::Obj is the base class for all stateful Yote objects that have an API presence 
-and will be stored in persistant. 
+Yote::Obj is the base class for all stateful Yote objects that have an API presence
+and will be stored in persistant.
 
 This is a container class and all objects of this class have automatic getter and
 setter methods for scalar and list entries. Invoking '$yote_obj->set_foo( "bar" );'
 will cause a variable named 'foo' to be attached to this object and assigned the value
 of "bar". The values that can be assigend are any number, string, hash, list or Yote::Obj
-object. Calling 'my $val = $yote_obj->get_baz( "fred" )' will return the value of the 
+object. Calling 'my $val = $yote_obj->get_baz( "fred" )' will return the value of the
 variable 'baz', and if none is defined, assigns the value "fred" to 'baz' and returns it.
 
-Additionally, '$yote_obj->add_to_foo( "a", "b", "c", "c" )' will add the values 'a', 'b', 'c' and 'c' 
+Additionally, '$yote_obj->add_to_foo( "a", "b", "c", "c" )' will add the values 'a', 'b', 'c' and 'c'
 to the list with the variable name 'foo' that is attached to this object. If no such variable
 exists, a list will be created and assigned to it. If there already is a 'foo' that is not a list,
 and error will not result. There are a counterpart methods '$yote_obj->remove_from_foo( "c" )' which
-removes the first instance of c from the foo list, and '$yote_obj->remove_all_from_foo( "b" )' which 
+removes the first instance of c from the foo list, and '$yote_obj->remove_all_from_foo( "b" )' which
 will remove all the "b" values from the 'foo' list.
 
-All Yote objects have public api methods. These are methods that connect to javascript objects 
+All Yote objects have public api methods. These are methods that connect to javascript objects
 and are invoked by clients. All the public api methods have the same signature :
 
 All Yote objects except YoteRoot are attached to an application or descent of the Yote::AppRoot
@@ -469,8 +481,8 @@ There are different method types for yote :
 
 =item Public API methods
 
-These methods are called automatically by the yote system and are not meant to be called by other subs. 
-The yote system automatically passes data given to the API and passes in the account of the logged in 
+These methods are called automatically by the yote system and are not meant to be called by other subs.
+The yote system automatically passes data given to the API and passes in the account of the logged in
 user (if any), so the signature for these methods is always the same.
 
 
@@ -491,7 +503,7 @@ any data name.
 
 =item Initialization methods
 
-These methods begin with an underscore. The underscore signals to yote to not broadcast this method to the 
+These methods begin with an underscore. The underscore signals to yote to not broadcast this method to the
 javascript proxy objects. The yote convention is a single underscore for a utility method that is called
 by other methods in all packages, and a double underscore for 'private' methods.
 
@@ -510,7 +522,7 @@ object, and will ignore any requests from the client to update its value.
 
 =item read/write through api
 
-If a field begins with a capital letter, it will be transmitted to the javascript proxy object, which 
+If a field begins with a capital letter, it will be transmitted to the javascript proxy object, which
 may send updates of its value back to the yote server.
 
 =item private data field
@@ -531,7 +543,7 @@ values for the fields corresponding to the hash keys.
 
 =item _is
 
-Returns true if the single object argument passed in is equivalent to this one. 
+Returns true if the single object argument passed in is equivalent to this one.
 
 =back
 
@@ -551,7 +563,7 @@ This is called once : only the very first time a Yote object is created. It is u
 
 =item _load
 
-This method is called each time an object is loaded from the data store. 
+This method is called each time an object is loaded from the data store.
 
 =back
 
@@ -565,7 +577,7 @@ Returns the number of items for the field of this object provided it is an array
 
 =item paginate_list
 
-This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+This method takes a list ref with three entries : [field_name, number of items to return, starting point].
 The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
 field name and attached to this object.
 
@@ -574,7 +586,7 @@ This will throw an error if the value of the field name is defined as something 
 =item paginate_list_rev
 
 This method is just like paginate except it works on the list in reverse order.
-This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+This method takes a list ref with three entries : [field_name, number of items to return, starting point].
 The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
 field name and attached to this object.
 
@@ -582,7 +594,7 @@ This will throw an error if the value of the field name is defined as something 
 
 =item paginate_hash
 
-This method takes a list ref with three entries : [field_name, number of items to return, starting point]. 
+This method takes a list ref with three entries : [field_name, number of items to return, starting point].
 The starting point is optional and defaults to 0. Returns a slice of the hash that is specified by the
 field name and attached to this object. The keys are sorted before the return so that the order can
 be guaranteed between subsequent calls.
@@ -600,7 +612,7 @@ This method is actually a no-op, but has the effect of syncing the state of clie
 =item update
 
 This method is called automatically by a client javascript objet when its _send_update method is called.
-It takes a hash ref filled with field name value pairs and updates the values that are read/write 
+It takes a hash ref filled with field name value pairs and updates the values that are read/write
 ( first character is a capital letter ).
 
 =back

@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 186;
+use Test::More tests => 198;
 use Test::Pod;
 
 
@@ -44,7 +44,7 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
 
-unlink( $name );
+#unlink( $name );
 
 exit( 0 );
 
@@ -594,7 +594,47 @@ sub test_suite {
     my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
     my %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
+
+    $res = $o->search( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ], 2 ] );
+    is( @$res, 2, "Two paginated search results" );
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
     
+    $res = $o->search( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ], 2, 1 ] );
+    is( @$res, 2, "Two paginated search results" );
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches. paginated" );
+
+    $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "aoobie", b => "oobie" } ) );
+    Yote::ObjProvider::stow_all();
+
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ] ] );
+    my @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
+
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [ 1, 1 ] ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );
+
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [ 0, 1 ] ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 0, 5, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct mixed sort order" );
+
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 3 ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
+    
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 4, 2 ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
+    is( 4, @$res, "lim sort 4 results" );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
+
+    $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 8, 3 ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
+    is( 3, @$res, "pag sort 3 results" );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
 
 } #test suite

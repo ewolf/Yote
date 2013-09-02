@@ -277,7 +277,12 @@ sub package_methods {
 sub search {
     my( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
     return [ map { xform_out( $_ ) } @{ $DATASTORE->search( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) } ];
-} #search_list
+} #search
+
+sub sort {
+    my( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->sort( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) } ];
+} #sort
 
 #
 # Get around paginating a list without having to read in the whole thing at once.

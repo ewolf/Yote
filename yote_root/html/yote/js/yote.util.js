@@ -74,7 +74,7 @@ $.yote.util = {
         return 'yidx_'+this.ids++;
     },
 
-    implement_edit:function( item, field ) {
+    implement_edit:function( item, field, on_edit_function ) {
 	var id_root  = item.id + '_' + field;
 	var div_id   = 'ed_'  + id_root;
 	var txt_id   = 'txt_' + id_root;
@@ -96,6 +96,7 @@ $.yote.util = {
 	    var val = $( '#' + txt_id ).val();
 	    item.set( field, val );
 	    stop_edit();
+	    if( on_edit_function ) { on_edit_function(); }
 	}
 
 	var go_edit = function() {
@@ -588,12 +589,12 @@ $.yote.util = {
     }, //login_control
 
 
-    col_edit:function( fld, extra_classes ) {
+    col_edit:function( fld, extra_classes, on_edit_f ) {
 	return function( item, is_prep ) {
 	    if( is_prep ) {
 		return $.yote.util.prep_edit( item, fld, extra_classes );
 	    } else {
-		$.yote.util.implement_edit( item, fld );
+		$.yote.util.implement_edit( item, fld, on_edit_f );
 	    }
 	};
     }, //col_edit
@@ -684,7 +685,20 @@ $.yote.util = {
 	    remove_btn_txt	: args[ 'remove_button_text' ] || 'Delete', // Text that goes on the remove button. Default is 'Delete'.
 	    remove_column_txt	: args[ 'remove_column_text' ] || 'Delete', // Text that goes on the remove column header. Default is 'Delete'.
 
-
+	    _classes : function( cls ) {
+		if( this.prefix_classname ) {
+		    return this.prefix_classname + '_' + cls + ' ' + '_ct_' + cls;
+		} else {
+		    return '_ct_' + cls;
+		}
+	    },
+	    _classes_array : function( cls ) {
+		if( this.prefix_classname ) {
+		    return [ this.prefix_classname + '_' + cls, '_ct_' + cls ];
+		} else {
+		    return [ '_ct_' + cls ];
+		}		
+	    },
 	    clear_search : function() {
 		this.terms = [];
 		this.refresh();
@@ -725,11 +739,11 @@ $.yote.util = {
 		// calculated
 		var count          = me.item.count( me.list_name );
 
-		var buf = me.title ? '<span class="' + me.prefix_classname + '_title _ct_title">' + me.title + '</span>' : '';
-		buf    += me.description ? '<span class="' + me.prefix_classname + '_description _ct_description">' + me.description + '</span>' : '';
+		var buf = me.title ? '<span class="' + me._classes( '_title' ) + '">' + me.title + '</span>' : '';
+		buf    += me.description ? '<span class="' + me._classes( '_description' ) + '">' + me.description + '</span>' : '';
 
 		if( me.search_on ) {
-		    buf += '<div id="_search_div_' + me.ct_id + '" class="' + me.prefix_classname + '_search_div _ct_search_div">Search <input class="' + me.prefix_classname + '_search_input_ _ct_search_input"  type="text" id="_search_txt_' + me.ct_id + '" value="' + me.terms.join(' ') + '"> ' +
+		    buf += '<div id="_search_div_' + me.ct_id + '" class="' + me._classes( '_search_div' ) + '">Search <input class="' + me._classes( '_search_input' ) + '"  type="text" id="_search_txt_' + me.ct_id + '" value="' + me.terms.join(' ') + '"> ' +
 			'<button type="button" id="_search_btn_' + me.ct_id + '">Search</button>' +
 			'</div>';
 
@@ -739,24 +753,24 @@ $.yote.util = {
 		}
 
 		if( ! me.suppress_table ) {
-		    var tab = $.yote.util.make_table( [ me.prefix_classname + '_table _ct_table' ] );
+		    var tab = $.yote.util.make_table( me._classes_array( 'table' ) );
 		}
 
 
 		if( me.new_attachpoint ) {
-		    var bf = me.new_title ? '<div class="' + me.prefix_classname + '_new_title _ct_new_title">' + me.new_title + '</div>' : '';
-		    bf    += me.new_description ? '<div class="' + me.prefix_classname + '_new_description _ct_new_description">' + me.new_description + '</div>' : '';
+		    var bf = me.new_title ? '<div class="' + me._classes( '_new_title' ) + '">' + me.new_title + '</div>' : '';
+		    bf    += me.new_description ? '<div class="' + me._classes( '_new_description' ) + '">' + me.new_description + '</div>' : '';
 
 		    var txts = [];
-		    var tbl = $.yote.util.make_table( [ me.prefix_classname + '_new_item_table', '_ct_new_item_table' ] );
+		    var tbl = $.yote.util.make_table( me._classes_array( '_new_item_table' ) );
 		    for( var i=0; i < me.new_columns.length; i++ ) {
 			var nc = me.new_columns[ i ];
 			var field = typeof nc === 'object' ? nc.field : nc;
 			var id = '_new_' + me.item.id + '_' + field;
 			if( typeof nc === 'object' ) {
-			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], [ me.prefix_classname + '_new_item_row', '_ct_new_item_row' ], [ me.prefix_classname + '_new_item_cell', '_ct_new_item_cell' ] );
+			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( '_new_item_row' ), me._classes_array( '_new_item_cell' ) );
 			} else {
-			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" class="' + me.prefix_classname + '_new_item_field _ct_new_item_field" id="' + id + '">' ], [ me.prefix_classname + '_new_item_row', '_ct_new_item_row' ], [ me.prefix_classname + '_new_item_cell', '_ct_new_item_cell' ] );
+			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( '_new_item_row' ), me._classes_array( '_new_item_cell' ) );
 			}
 			txts.push( '#' + id );
 		    }
@@ -815,9 +829,9 @@ $.yote.util = {
 			ch.push( me.column_headers[ i ] );
 		    }
 		    if( me.remove_fun ) {
-			ch.push( 'Delete' );
+			ch.push( me.remove_column_txt );
 		    }
-		    tab.add_header_row( ch, [ me.prefix_classname + '_row', '_ct_row"' ], [ me.prefix_classname + '_cell', '_ct_header' ] );
+		    tab.add_header_row( ch, me._classes_array( '_row' ), me._classes_array( '_cell' ) );
 		}
 
 		var items = paginate_function();
@@ -852,8 +866,7 @@ $.yote.util = {
 			    buf += row.join('');
 			}
 			else {
-			    tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
-			}
+			    tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );			}
 		    }
 		} //hash pagination
 		else {
@@ -869,13 +882,13 @@ $.yote.util = {
 				    );
 			}
 			if( me.remove_fun && ! me.suppress_table ) {
-			    row.push( '<BUTTON class="' + me.prefix_classname + '_delete_btn _ct_delete_btn" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			}
 			if( me.suppress_table ) {
 			    buf += row.join('');
 			}
 			else {
-			    tab.add_row( row, [ me.prefix_classname + '_row', '_ct_row' ], [ me.prefix_classname + '_cell', '_ct_cell' ] );
+			    tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );
 			}
 		    }
 		} //list pagination
@@ -888,10 +901,10 @@ $.yote.util = {
 		    
 		    if( me.start > 0 || items.length() > me.plimit ) {
 			buf += '<br>';
-			buf += '<BUTTON class="' + me.prefix_classname + '_to_start_btn _ct_to_start_btn" type="button" id="to_start_b">&lt;&lt;</BUTTON>';
-			buf += ' <BUTTON class="' + me.prefix_classname + '_back_btn _ct_back_btn" type="button" id="back_b">&lt;</BUTTON>';
-			buf += '<BUTTON class="' + me.prefix_classname + '_forward_btn _ct_forward_btn" type="button" id="forward_b">&gt;</BUTTON>';
-			buf += ' <BUTTON class="' + me.prefix_classname + '_to_end_btn _ct_to_end_btn" type="button" id="to_end_b">&gt;&gt;</BUTTON>';
+			buf += '<BUTTON class="' + me._classes( '_to_start_btn' ) + '" type="button" id="to_start_b">&lt;&lt;</BUTTON>';
+			buf += ' <BUTTON class="' + me._classes( '_back_btn' ) + '" type="button" id="back_b">&lt;</BUTTON>';
+			buf += '<BUTTON class="' + me._classes( '_forward_btn' ) + '" type="button" id="forward_b">&gt;</BUTTON>';
+			buf += ' <BUTTON class="' + me._classes( '_to_end_btn' ) + '" type="button" id="to_end_b">&gt;&gt;</BUTTON>';
 		    }
 		}
 
