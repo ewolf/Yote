@@ -44,7 +44,7 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
 
-#unlink( $name );
+unlink( $name );
 
 exit( 0 );
 
