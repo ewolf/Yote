@@ -384,6 +384,31 @@ sub recycle_object {
     $self->_do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
 
+#
+# Sorts the list and paginates it.
+#
+sub sort {
+    my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
+#     sqlite> SELECT obj_id,GROUP_CONCAT(CASE WHEN field='handle' THEN value END), GROUP_CONCAT(CASE WHEN field='login' THEN ref_id END) from field where obj_id IN ( select ref_id from field WHERE obj_id=8981 ) GROUP BY 1;
+# 8983|root|11
+# 9054|wolf|2186
+    $reversed_orders ||= [];
+    my $PAG = '';
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    $PAG = " LIMIT $paginate_start,$paginate_length";
+	} else {
+	    $PAG = " LIMIT $paginate_length";
+	}
+    }    
+    my $res = $self->_selectall_arrayref( "SELECT obj_id, ".join(',', map { "GROUP_CONCAT( CASE WHEN field='".$_."' THEN value END )" } @$sort_fields )." FROM field WHERE obj_id IN (SELECT ref_id FROM field WHERE obj_id=?) GROUP BY 1 ORDER BY " . join(',', map { (2+$_). ( $reversed_orders->[$_] ? ' DESC' : '')} (0..$#$sort_fields )) . $PAG, $obj_id );
+    my @ret;
+    for my $row (@$res) {
+	push @ret, $row->[0];
+    }
+    return \@ret;
+} #sort
+
 sub search {
     my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
 
