@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 198;
+use Test::More tests => 199;
 use Test::Pod;
 
 
@@ -575,6 +575,14 @@ sub test_suite {
     $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
     is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
     is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
+
+    # recursion testing
+    $o2 = new Yote::Obj( { recurse => $o } );
+    $o->add_to_curse( $o2 );
+    $o->set_emptylist( [] );
+    $root->add_to_rogers( $o );
+    Yote::ObjProvider::stow_all();
+    is( $o->count( 'emptylist' ), 0, "emptylist" );
 
     $app->set_weirdy( $o );
     Yote::ObjProvider::stow_all();

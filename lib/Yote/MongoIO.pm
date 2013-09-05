@@ -327,6 +327,41 @@ sub recycle_objects {
     return $rec_count;
 } #recycle_object
 
+#
+# Sorts the list and paginates it.
+#
+sub sort {
+    my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
+
+    my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
+    die "data structure $obj_id not found" unless $data_structure;
+
+    my $opts = {};
+    for my $i (0..$#$sort_fields) {
+	$opts->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
+    }
+    
+    if( defined( $paginate_length ) ) {
+	if( $paginate_start ) {
+	    $opts->{ skip } = $paginate_start;
+	}
+	$opts->{ limit } = $paginate_length;
+    }
+
+    my $curs = $self->{ OBJS }->query( { 
+	_id => { '$in' => [
+		     map { MongoDB::OID->new( value => $_ ) } 
+		     @{ $self->{ OBJS }->find_one( { 
+			 _id => MongoDB::OID->new( value => $obj_id ) } )->{r} 
+		     } ] 
+	},
+				      }, $opts );
+
+
+    return [map { $_->{ _id }->value() } $curs->all];
+
+} #sort
+
 sub search {
     my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
 
@@ -353,24 +388,14 @@ sub search {
 			 '$or' => \@ors
 				      } );
     
-    my $result_data = [map { $_->{ _id }->value() } $curs->all];
-
     if( defined( $paginate_length ) ) {
 	if( $paginate_start ) {
-	    if( $paginate_start > $#$result_data ) {
-		return [];
-	    }
-	    if( ($paginate_start+$paginate_length) > @$result_data ) {
-		$paginate_length = scalar( @$result_data ) - $paginate_start;
-	    }
-	    return [ @$result_data[$paginate_start..($paginate_start+$paginate_length-1)] ];
-	} 
-	if( $paginate_length > @$result_data ) {
-	    $paginate_length = scalar( @$result_data );
+	    $curs->skip( $paginate_start );
 	}
-	return [ @$result_data[0..($paginate_length-1)] ];
+	$curs->limit( $paginate_length );
     }
-    return $result_data
+
+    return [map { $_->{ _id }->value() } $curs->all];
     
 } #search
 
