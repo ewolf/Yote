@@ -162,12 +162,14 @@ sub hash_insert {
     return;
 } #hash_insert
 
+# return single item from a list
 sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
     my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
     return $ref_id || "v$val";
 } 
 
+# return single item from a hash
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
     my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
@@ -304,56 +306,82 @@ sub start_transaction {
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
-#
-# Returns a hash of paginated items
-# 
-sub paginate_hash {
-    my( $self, $obj_id, $paginate_length, $paginate_start ) = @_;
-
+sub paginate {
+    my( $self, $obj_id, $args ) = @_;
 
     my $PAG = '';
-    if( defined( $paginate_start ) ) {
-	$PAG = "LIMIT $paginate_start";
-	if( $paginate_length ) {
-	    $PAG .= ",$paginate_length"
-	}
-    }    
-
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY field $PAG", $obj_id );
-
-    my %ret;
-    for my $row (@$res) {
-	$ret{$row->[0]} = $row->[1] || "v$row->[2]";
-    }
-    return \%ret
-} #paginate_hash
-
-
-#
-# Returns a hash of paginated items that belong to the list. Note that this 
-# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
-#   rather than [ undef, undef, undef, 'val1', 'val2' ]
-#
-sub paginate_list {
-    my( $self, $obj_id, $paginate_length, $paginate_start, $reverse ) = @_;
-
-    my $PAG = '';
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $PAG = "LIMIT $paginate_start,$paginate_length";
+    if( defined( $args->{ limit } ) ) {
+	if( $args->{ skip } ) {
+	    $PAG = " LIMIT $args->{ skip },$args->{ limit }";
 	} else {
-	    $PAG = "LIMIT $paginate_length";
+	    $PAG = " LIMIT $args->{ limit }";
 	}
     }    
 
-    my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=? ORDER BY cast( field as decimal )" .
-					  ( $reverse ? 'DESC ' : '' ) . " $PAG", $obj_id );
-    my @ret;
-    for my $row (@$res) {
-	push @ret, $row->[1] || "v$row->[2]";
+    my( $orstr, @params ) = ( '', $obj_id );
+    my $search_terms = $args->{ search_terms };
+    my $search_fields = $args->{ search_fields };
+    if( $search_terms ) {
+	if( $search_fields ) {
+	    my( @ors );
+	    for my $field ( @$search_fields ) {
+		for my $term (@$search_terms) {
+		    push @ors, " (f.field=? AND f.value LIKE ?) ";
+		    push @params, $field, "\%$term\%";
+		}
+	    }
+	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	}
+	else {
+	    $orstr = " AND value IN (".join('',map { '?' } @$search_terms ).")";
+	    push @params, map { "\%$_\%" } @$search_terms;
+	}
     }
-    return \@ret
-} #paginate_list
+
+    my $query;
+    if( $args->{ sort_fields } ) {
+	my $sort_fields = $args->{ sort_fields };
+	my $reversed_orders = $args->{ reversed_orders } || [];
+	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
+    }
+    elsif( $search_fields ) {
+	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+
+	$query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
+	if( $type eq 'ARRAY' ) {
+	    $query .= ' ORDER BY cast( bar.field as unsigned ) ';
+	}
+	else {
+	    $query .= ' ORDER BY bar.field ';
+	}
+	$query .= ' DESC' if $args->{ reverse };
+	$query .= $PAG;	
+    }
+    else {
+	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
+	if( $type eq 'ARRAY' ) {
+	    if( $args->{ sort } ) {
+		$query .= ' ORDER BY value ';
+	    }
+	    else {
+		$query .= ' ORDER BY cast( field as unsigned ) ';
+	    }
+	}
+	else {
+	    $query .= ' ORDER BY field ';
+	}
+	$query .= ' DESC' if $args->{ reverse };
+	$query .= $PAG;	
+    }
+    my $ret = $self->_selectall_arrayref( $query, @params );
+#    print STDERR Data::Dumper->Dump([$query,\@params,$ret]);
+    if( $args->{return_hash} ) {
+	return { map { $_->[0] => $_->[1] || 'v'.$_->[2] } @$ret };
+    }
+    return [map { $_->[1] || 'v'.$_->[2] } @$ret ];    
+
+} #paginate
 
 
 #
@@ -383,57 +411,6 @@ sub recycle_object {
     $self->_do( "DELETE FROM field WHERE obj_id=? or ref_id=?", $obj_id, $obj_id );
     $self->_do( "UPDATE objects SET class=NULL,recycled=1 WHERE id=?", $obj_id );
 }
-
-#
-# Sorts the list and paginates it.
-#
-sub sort {
-    my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
-#     sqlite> SELECT obj_id,GROUP_CONCAT(CASE WHEN field='handle' THEN value END), GROUP_CONCAT(CASE WHEN field='login' THEN ref_id END) from field where obj_id IN ( select ref_id from field WHERE obj_id=8981 ) GROUP BY 1;
-# 8983|root|11
-# 9054|wolf|2186
-    $reversed_orders ||= [];
-    my $PAG = '';
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $PAG = " LIMIT $paginate_start,$paginate_length";
-	} else {
-	    $PAG = " LIMIT $paginate_length";
-	}
-    }    
-    my $res = $self->_selectall_arrayref( "SELECT obj_id, ".join(',', map { "GROUP_CONCAT( CASE WHEN field='".$_."' THEN value END )" } @$sort_fields )." FROM field WHERE obj_id IN (SELECT ref_id FROM field WHERE obj_id=?) GROUP BY 1 ORDER BY " . join(',', map { (2+$_). ( $reversed_orders->[$_] ? ' DESC' : '')} (0..$#$sort_fields )) . $PAG, $obj_id );
-    my @ret;
-    for my $row (@$res) {
-	push @ret, $row->[0];
-    }
-    return \@ret;
-} #sort
-
-sub search {
-    my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
-
-    my $PAG = '';
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $PAG = "LIMIT $paginate_start,$paginate_length";
-	} else {
-	    $PAG = "LIMIT $paginate_length";
-	}
-    }    
-
-    my( @params, @ors ) = ( $datastructure_id );
-    for my $field ( @$search_fields ) {
-	for my $term (@$search_terms) {
-	    push @ors, " (field=? AND value LIKE ?) ";
-	    push @params, $field, "\%$term\%";
-	}
-    }
-
-    my $orstr = @ors > 1 ? " AND (" . join( ' OR ', @ors ) . ")" : @ors == 1 ? $ors[ 0 ] : '';
-    my $query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY obj_id $PAG";
-    my $ret = $self->_selectall_arrayref( $query, @params );
-    return [map {  @$_ } @$ret ];
-} #search
 
 sub stow_all {
     my( $self, $objs ) = @_;

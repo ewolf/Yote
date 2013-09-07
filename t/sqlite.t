@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 223;
+use Test::More tests => 226;
 use Test::Pod;
 
 
@@ -68,7 +68,7 @@ sub test_suite {
     Yote::YoteRoot->fetch_root();
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, 10, "number of objects before save root, since root is initiated automatically" );
-    my $root = Yote::ObjProvider::fetch( 1 );
+    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
     my $max_id = $Yote::ObjProvider::DATASTORE->max_id();
@@ -137,7 +137,7 @@ sub test_suite {
     is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
 
 
-    my $root_clone = Yote::ObjProvider::fetch( 1 );
+    my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
@@ -290,7 +290,8 @@ sub test_suite {
     $simple_hash->{BZAZ} = [ "woof", "bOOf" ];
     Yote::ObjProvider::stow_all();
 
-    my $root_2 = Yote::ObjProvider::fetch( 1 );
+
+    my $root_2 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     ( %simple_hash ) = %{$root_2->get_hash()};
     delete $simple_hash{__ID__};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE","FOO" => "bar", BZAZ => [ "woof", "bOOf" ]}, "Simple hash after reload" );
@@ -326,7 +327,7 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
-    my $root_3 = Yote::ObjProvider::fetch( 1 );
+    my $root_3 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is_deeply( $root_3, $root, "recursive data structure" );
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
@@ -346,6 +347,9 @@ sub test_suite {
     is_deeply( $root_3->_paginate( { name => 'array', limit => 1, skip => 4, reverse => 1 } ), [ 'With more than one thing' ], 'paginate reverse with start and length' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, skip => 4 } ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with start and length' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, skip => 4, reverse => 1  } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate reverse with start and length' );
+    is_deeply( $root_3->_paginate( { name => 'array', sort => 1 } ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF', 'MORE STUFF', 'THIS IS AN ARRAY', 'With more than one thing',  ], 'paginate with sort and no length limit' );
+    is_deeply( $root_3->_paginate( { name => 'array', sort => 1, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY',  'MORE STUFF', 'MORE STUFF', 'MORE STUFF', 'MORE STUFF',  ], 'paginate with reverse sort and no length limit' );
+    is_deeply( $root_3->_paginate( { name => 'array', limit => 3, skip => 3, sort => 1 } ), [ 'MORE STUFF', 'THIS IS AN ARRAY', 'With more than one thing',  ], 'paginate with sort and no length limit' );
 
     is( scalar(@$simple_array), 6, "add_to test array count" );
 
@@ -374,7 +378,7 @@ sub test_suite {
     $simple_array = $root_3->get_array();
     is( scalar(@$simple_array), 2, "add_to test array count after remove all" );
 
-    my $root_4 = Yote::ObjProvider::fetch( 1 );
+    my $root_4 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
 
 
     # test shallow and deep clone.
@@ -412,7 +416,7 @@ sub test_suite {
 # ------------- app serv tests ------------#
 #
 #                                          #
-    $root = Yote::ObjProvider::fetch( 1 );
+    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     Yote::ObjProvider::stow_all();
     eval { 
         $root->create_login();

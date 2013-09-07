@@ -215,7 +215,7 @@ sub paginate {
 
 	$query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
 	if( $type eq 'ARRAY' ) {
-	    $query .= ' ORDER BY cast( bar.field as int ) ';
+	    $query .= ' ORDER BY cast( bar.field as int ) ';	    
 	}
 	else {
 	    $query .= ' ORDER BY bar.field ';
@@ -227,7 +227,12 @@ sub paginate {
 	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
 	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
 	if( $type eq 'ARRAY' ) {
-	    $query .= ' ORDER BY cast( field as int ) ';
+	    if( $args->{ sort } ) {
+		$query .= ' ORDER BY value ';
+	    }
+	    else {
+		$query .= ' ORDER BY cast( field as int ) ';
+	    }
 	}
 	else {
 	    $query .= ' ORDER BY field ';
