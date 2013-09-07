@@ -215,22 +215,9 @@ sub count {
     return $self->_count( $data );
 } #count
 
-sub paginate_list {
-    my( $self, $data, $account ) = @_;
-
-    my( $list_name, $number, $start ) = @$data;
-
-    if( index( $list_name, '_' ) == 0 && $account && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-
-    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
-
-} #paginate_list
-
 sub _paginate {
     my( $self, $args ) = @_;
-    return Yote::ObjProvider::paginate( $self->{DATA}{$args->{collection_name}}, $args );
+    return Yote::ObjProvider::paginate( $self->{DATA}{$args->{name}}, $args );
 } #_paginate
 
 sub paginate {
@@ -240,93 +227,6 @@ sub paginate {
     }
     return Yote::ObjProvider::paginate( $self->{DATA}{ $args->{name} }, $args );
 } #paginate
-
-sub _paginate_scalars {
-    my( $self, $args ) = @_;
-    return Yote::ObjProvider::paginate_scalars( $self->{DATA}{$args->{collection_name}}, $args );
-} #_paginate_scalars
-
-sub paginate_scalars {
-    my( $self, $data, $account ) = @_;
-    my( $collection_name, $args ) = @$data;
-    if( index( $collection_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-    return Yote::ObjProvider::paginate_scalars( $self->{DATA}{$collection_name}, $args );
-} #paginate_scalars
-
-# used to help tests
-sub _paginate_list {
-    my( $self, $list_name, $number, $start ) = @_;
-    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start );
-}
-
-# used to help tests
-sub _paginate_list_rev {
-    my( $self, $list_name, $number, $start ) = @_;
-    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
-}
-
-sub paginate_list_rev {
-    my( $self, $data, $account ) = @_;
-
-    my( $list_name, $number, $start ) = @$data;
-
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-
-    return Yote::ObjProvider::paginate_list( $self->{DATA}{$list_name}, $number, $start, 1 );
-
-} #paginate_rev
-
-# used to help tests
-sub _paginate_hash {
-    my( $self, $hash_name, $number, $start ) = @_;
-
-    return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
-
-} #paginate_hash
-
-sub paginate_hash {
-    my( $self, $data, $account ) = @_;
-    my( $hash_name, $number, $start ) = @$data;
-
-    if( index( $hash_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-
-    return Yote::ObjProvider::paginate_hash( $self->{DATA}{$hash_name}, $number, $start );
-
-} #paginate_hash
-
-#
-# By default this does nothing but die for non-admin aaccounts.. Each object that want search should override this.
-# This should search through a list of yote objects.
-#
-sub search {
-    my( $self, $data, $account, $env ) = @_;
-
-    my( $list_name, $search_fields, $search_terms, $amount, $start ) = @$data;
-
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-
-    return Yote::ObjProvider::search( $self->{DATA}{$list_name}, $search_fields, $search_terms, $amount, $start );
-} #search
-
-sub sort {
-    my( $self, $data, $account, $env ) = @_;
-
-    my( $list_name, $sort_fields, $reversed_orders, $amount, $start ) = @$data;
-
-    if( index( $list_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
-
-    return Yote::ObjProvider::sort( $self->{DATA}{$list_name}, $sort_fields, $reversed_orders, $amount, $start );
-} #sort
 
 #
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.

@@ -273,44 +273,14 @@ sub package_methods {
     return $methods;
 } #package_methods
 
-
-sub search {
-    my( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->search( $obj_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) } ];
-} #search
-
-sub sort {
-    my( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->sort( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) } ];
-} #sort
-
 sub paginate {
     my( $obj_id, $args ) = @_;
+    if( $args->{ return_hash } ) {
+	my $res = $DATASTORE->paginate( $obj_id, $args );
+	return { map { $_ => xform_out( $res->{$_} ) } keys %$res };
+    }
     return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
 } #paginate
-
-sub paginate_scalars {
-    my( $obj_id, $args ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_scalars( $obj_id, $args ) } ];
-} #paginate_scalars
-
-
-#
-# Get around paginating a list without having to read in the whole thing at once.
-#
-sub paginate_list {
-    my( $obj_id, $paginate_length, $paginate_start, $rev ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_list( $obj_id, $paginate_length, $paginate_start, $rev ) } ];
-} #paginate_list
-
-#
-# Get around paginating a list without having to read in the whole thing at once.
-#
-sub paginate_hash {
-    my( $obj_id, $paginate_length, $paginate_start ) = @_;
-    my $hash = $DATASTORE->paginate_hash( $obj_id, $paginate_length, $paginate_start );
-    return { map { $_ => xform_out( $hash->{$_} ) } keys %$hash };
-} #paginate_list
 
 #
 # Deep clone this object. This will clone any yote object that is not an AppRoot.
