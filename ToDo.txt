@@ -1,11 +1,12 @@
 Next updates
   * changed permissions model so that YoteRoot checks if accounts are root
-  * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
+  - * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
   * Document all the widgets
   -* for control_table, show showing a-n of y numbering.
-  * caching of paginated lists
-  * search_hash for all IO types, as well as tests for it
-  * add sort for control table for Mongo and Mysql
+  x* caching of paginated lists ( wont do now )
+  -* search_hash for all IO types, as well as tests for it ( just one sort )
+  -* add sort for control table for Mongo and Mysql
+  * unify sort, search and pagination
 
 FOR Stable Alpha
 

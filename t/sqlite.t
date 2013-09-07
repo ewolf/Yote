@@ -16,7 +16,7 @@ use Yote::SQLiteIO;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 199;
+use Test::More tests => 231;
 use Test::Pod;
 
 
@@ -44,7 +44,7 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
 
-unlink( $name );
+#unlink( $name );
 
 exit( 0 );
 
@@ -332,12 +332,20 @@ sub test_suite {
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
     is( $root_3->count( 'array' ), 6, 'Array has 6 with count' );
-    is_deeply( $root_3->_paginate_list( 'array', 3 ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->_paginate_list_rev( 'array', 3 ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse with one argument' );
-    is_deeply( $root_3->_paginate_list( 'array', 1, 2 ), [ 'MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->_paginate_list_rev( 'array', 1, 4 ), [ 'With more than one thing' ], 'paginate with one argument' );
-    is_deeply( $root_3->_paginate_list( 'array', 3, 4 ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with one argument' );
-    is_deeply( $root_3->_paginate_list_rev( 'array', 3, 4 ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate with one argument' );
+    is_deeply( $root_3->_paginate_list( 'array', 3 ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate limit 3' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 3 ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse limit 3' );
+    is_deeply( $root_3->_paginate_list( 'array', 1, 2 ), [ 'MORE STUFF' ], 'paginate limit three from 2' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 1, 4 ), [ 'With more than one thing' ], 'paginate limit 1 from 4' );
+    is_deeply( $root_3->_paginate_list( 'array', 3, 4 ), [ 'MORE STUFF','MORE STUFF' ], 'paginate limit 3 from 4' );
+    is_deeply( $root_3->_paginate_list_rev( 'array', 3, 4 ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
+
+    # unified pagination test
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 3 } ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with length limit' );
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 3, reverse => 1 } ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse with length limit' );
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 1, paginate_start => 2 } ), [ 'MORE STUFF' ], 'paginate with start and length' );
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 1, paginate_start => 4, reverse => 1 } ), [ 'With more than one thing' ], 'paginate reverse with start and length' );
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 3, paginate_start => 4 } ), [ 'MORE STUFF','MORE STUFF' ], 'paginate with start and length' );
+    is_deeply( $root_3->_paginate_scalars( { collection_name => 'array', paginate_length => 3, paginate_start => 4, reverse => 1  } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate reverse with start and length' );
 
     is( scalar(@$simple_array), 6, "add_to test array count" );
 
@@ -518,7 +526,20 @@ sub test_suite {
     is_deeply( $res, [ qw/B C/  ], 'paginate limits from 1 with 2 are correct' );
     $res = $app->_paginate_list( 'azzy', 2, 4 );
     is_deeply( $res, [ ], 'paginate limits beyond last index are empty' );
+
+    # paginate scalars
+    $res = $app->_paginate_scalars( { collection_name => 'azzy' } );
+    is_deeply( $res, [ qw/A B C D/ ], 'paginate list without limits correct' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy', paginate_length => 2, paginate_start => 0 } );
+    is_deeply( $res, [ qw/A B/ ], 'paginate limits from 0 with 2 are correct' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy', paginate_length => 2, paginate_start => 1 } );
+    is_deeply( $res, [ qw/B C/  ], 'paginate limits from 1 with 2 are correct' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy', paginate_length => 2, paginate_start => 4 } );
+    is_deeply( $res, [ ], 'paginate limits beyond last index are empty' );
+
     $res = $app->_list_insert( 'azzy', 'E', 4 );
+
+    # paginate_list
     $res = $app->_paginate_list( 'azzy' );
     is_deeply( $res, [ qw/A B C D E/ ], 'paginate list without limits correct' );
     $res = $app->_paginate_list( 'azzy', 2, 4 );
@@ -531,14 +552,26 @@ sub test_suite {
     $res = $app->_paginate_hash( 'azzy', 2, 4 );
     is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit' );
     
+    # test _paginate_scalars
+    $res = $app->_paginate_scalars( { collection_name => 'azzy' } );
+    is_deeply( $res, [ qw/A B C D E/ ], 'paginate list without limits correct' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy', paginate_length => 2, paginate_start => 4 } );
+    is_deeply( $res, [ 'E' ], 'just the last of the paginate limit' );
+    
     $app->_list_delete( 'azzy', 2 );
+
+    # paginate_hash
     $res = $app->_paginate_hash( 'azzy' );
     is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'paginate hash without limits correct after paginate_delete' );
     $res = $app->_paginate_list( 'azzy' );
     is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after list_delete' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy' } );
+    is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after list_delete' );
 
     $app->_list_insert( 'azzy', 'foo/bar' );
     $res = $app->_paginate_list( 'azzy' );
+    is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
+    $res = $app->_paginate_scalars( { collection_name => 'azzy' } );
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
     Yote::ObjProvider::stow_all();    
@@ -549,11 +582,12 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
     $res = $app->_paginate_hash( 'hsh' );
     is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash, with one key having a slash in its name' );
-    
+
     # delete with key that has slash in the name
     $app->_hash_delete( 'hsh', 'baz/bof' );    
     $res = $app->_paginate_hash( 'hsh' );
     is_deeply( $res, { 'Bingo' => "BARFO" }, 'delete with key having a slash in its name' );
+
     $app->_hash_insert( 'hsh', '/\\/yakk\\/zakk/bakk', 'gotta slashy for it' );
     $res = $app->_paginate_hash( 'hsh' );
     is_deeply( $res, { 'Bingo' => "BARFO", '/\\/yakk\\/zakk/bakk' => 'gotta slashy for it' }, 'paginate for hash, with one key having a slash in its name' );
@@ -596,11 +630,17 @@ sub test_suite {
 	);
     Yote::ObjProvider::stow_all();
 
+    $res = $o->search( [ 'searchlist', [ 'a' ], [ 'foobie' ] ] );
+    is( @$res, 2, "Two search results" );
+    my $searchlist = $o->get_searchlist();
+    my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 4 );
+    my %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches" );
+
     $res = $o->search( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ] ] );
     is( @$res, 3, "Three search results" );
-    my $searchlist = $o->get_searchlist();
-    my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
-    my %resids = map { $_->{ID} => 1 } @$res;
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
+    %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
     $res = $o->search( [ 'searchlist', [ 'a', 'c' ], [ 'foobie' ], 2 ] );
@@ -614,6 +654,33 @@ sub test_suite {
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. paginated" );
+
+    # paginate test of search
+    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
+    is( @$res, 2, "Two search results" );
+    $searchlist = $o->get_searchlist();
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 4 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
+    is( @$res, 3, "Three search results" );
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], paginate_length => 2 } );
+    is( @$res, 2, "Two paginated search results" );
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
+    
+    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], paginate_length => 2, paginate_start => 1 } );
+    is( @$res, 2, "Two paginated search results" );
+    %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
+    %resids = map { $_->{ID} => 1 } @$res;
+    is_deeply( \%ids, \%resids, "Got correct search matches. paginated" );
+
 
     $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "aoobie", b => "oobie" } ) );
     Yote::ObjProvider::stow_all();
@@ -632,6 +699,7 @@ sub test_suite {
 
     $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 3 ] );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
+
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
     
     $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 4, 2 ] );
@@ -640,6 +708,34 @@ sub test_suite {
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
 
     $res = $o->sort( [ 'searchlist', [ 'n', 'a' ], [], 8, 3 ] );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
+    is( 3, @$res, "pag sort 3 results" );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
+
+
+    # paginate for sort
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 0, 1 ] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 0, 5, 2, 1 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct mixed sort order" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 3 } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
+    
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 4, paginate_start => 2 } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
+    is( 4, @$res, "lim sort 4 results" );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
+
+    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 8, paginate_start => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );

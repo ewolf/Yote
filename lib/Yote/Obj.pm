@@ -228,6 +228,33 @@ sub paginate_list {
 
 } #paginate_list
 
+sub _paginate_objects {
+    my( $self, $args ) = @_;
+    return Yote::ObjProvider::paginate_objects( $self->{DATA}{$args->{collection_name}}, $args );
+} #_paginate_objects
+
+sub paginate_objects {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{collection_name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    return Yote::ObjProvider::paginate_objects( $self->{DATA}{ $args->{collection_name} }, $args );
+} #paginate_objects
+
+sub _paginate_scalars {
+    my( $self, $args ) = @_;
+    return Yote::ObjProvider::paginate_scalars( $self->{DATA}{$args->{collection_name}}, $args );
+} #_paginate_scalars
+
+sub paginate_scalars {
+    my( $self, $data, $account ) = @_;
+    my( $collection_name, $args ) = @$data;
+    if( index( $collection_name, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    return Yote::ObjProvider::paginate_scalars( $self->{DATA}{$collection_name}, $args );
+} #paginate_scalars
+
 # used to help tests
 sub _paginate_list {
     my( $self, $list_name, $number, $start ) = @_;

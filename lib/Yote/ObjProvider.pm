@@ -284,6 +284,17 @@ sub sort {
     return [ map { xform_out( $_ ) } @{ $DATASTORE->sort( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) } ];
 } #sort
 
+sub paginate_objects {
+    my( $obj_id, $args ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_objects( $obj_id, $args ) } ];
+} #paginate_objects
+
+sub paginate_scalars {
+    my( $obj_id, $args ) = @_;
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_scalars( $obj_id, $args ) } ];
+} #paginate_scalars
+
+
 #
 # Get around paginating a list without having to read in the whole thing at once.
 #
