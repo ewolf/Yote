@@ -656,26 +656,26 @@ sub test_suite {
     is_deeply( \%ids, \%resids, "Got correct search matches. paginated" );
 
     # paginate test of search
-    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
     is( @$res, 2, "Two search results" );
     $searchlist = $o->get_searchlist();
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
     is( @$res, 3, "Three search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], paginate_length => 2 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
     
-    $res = $o->paginate_objects( { collection_name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], paginate_length => 2, paginate_start => 1 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2, skip => 1 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
@@ -714,28 +714,28 @@ sub test_suite {
 
 
     # paginate for sort
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 0, 1 ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 0, 1 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 0, 5, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct mixed sort order" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 3 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
     
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 4, paginate_start => 2 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 4, skip => 2 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
     is( 4, @$res, "lim sort 4 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
 
-    $res = $o->paginate_objects( { collection_name => 'searchlist', sort_fields => [ 'n', 'a' ], paginate_length => 8, paginate_start => 3 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 8, skip => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );

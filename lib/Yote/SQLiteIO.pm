@@ -172,30 +172,35 @@ sub max_id {
     return $highd;
 }
 
-sub paginate_objects {
+sub paginate {
     my( $self, $obj_id, $args ) = @_;
 
     my $PAG = '';
-    if( defined( $args->{ paginate_length } ) ) {
-	if( $args->{ paginate_start } ) {
-	    $PAG = " LIMIT $args->{ paginate_start },$args->{ paginate_length }";
+    if( defined( $args->{ limit } ) ) {
+	if( $args->{ skip } ) {
+	    $PAG = " LIMIT $args->{ skip },$args->{ limit }";
 	} else {
-	    $PAG = " LIMIT $args->{ paginate_length }";
+	    $PAG = " LIMIT $args->{ limit }";
 	}
     }    
 
     my( $orstr, @params ) = ( '', $obj_id );
-    my $search_fields = $args->{ search_fields };
-    if( $search_fields ) {
-	my( $search_terms, @ors ) = $args->{ search_terms };
-	if( $search_terms ) {
+    my $search_terms = $args->{ search_terms };
+    if( $search_terms ) {
+	my $search_fields = $args->{ search_fields };
+	if( $search_fields ) {
+	    my( @ors );
 	    for my $field ( @$search_fields ) {
 		for my $term (@$search_terms) {
-		    push @ors, " (field=? AND value LIKE ?) ";
+		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
 		}
 	    }
-	    $orstr = @ors > 1 ? " AND (" . join( ' OR ', @ors ) . ")" : @ors == 1 ? " AND $ors[ 0 ]" : '';
+	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	}
+	else {
+	    $orstr = " WHERE value IN (".join('',map { '?' } @$search_terms ).")";
+	    push @params, map { "\%$_\%" } @$search_terms;
 	}
     }
 
@@ -203,34 +208,26 @@ sub paginate_objects {
     if( $args->{ sort_fields } ) {
 	my $sort_fields = $args->{ sort_fields };
 	my $reversed_orders = $args->{ reversed_orders } || [];
-	if( $orstr ) {
-	    $query = "SELECT obj_id, ".join(',', map { "GROUP_CONCAT( CASE WHEN field='".$_."' THEN value END )" } @$sort_fields )." FROM field WHERE obj_id IN (SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id) GROUP BY obj_id ORDER BY " . join(',', map { (2+$_). ( $reversed_orders->[$_] ? ' DESC' : '')} (0..$#$sort_fields )) . $PAG;
-	}
-	else {
-	    $query = "SELECT obj_id, ".join(',', map { "GROUP_CONCAT( CASE WHEN field='".$_."' THEN value END )" } @$sort_fields )." FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) GROUP BY obj_id ORDER BY " . join(',', map { (2+$_). ( $reversed_orders->[$_] ? ' DESC' : '')} (0..$#$sort_fields )) . $PAG;
-	}
+	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
     }
     else {
 	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+
+	$query = "SELECT bar.field,fi.obj_id FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
 	if( $type eq 'ARRAY' ) {
-	    if( $args->{ reverse } ) {
-		$query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY cast( field as int ) DESC $PAG";
-	    } 
-	    else {
-		$query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY cast( field as int ) $PAG";
-	    }
-	} else {
-	    if( $args->{ reverse } ) {
-		$query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY field DESC $PAG";
-	    } 
-	    else {
-		$query = "SELECT obj_id FROM field WHERE obj_id IN ( SELECT ref_id FROM field WHERE obj_id=? ) $orstr GROUP BY obj_id ORDER BY field $PAG";
-	    }
+	    $query .= ' ORDER BY cast( bar.field as int ) ';
 	}
+	else {
+	    $query .= ' ORDER BY bar.field ';
+	}
+	$query .= ' DESC' if $args->{ reverse };
+	$query .= $PAG;	
     }
     my $ret = $self->_selectall_arrayref( $query, @params );
-    return [map { $_->[0] } @$ret ];
-} #paginate_objects
+#    print STDERR Data::Dumper->Dump([$query,\@params,$ret]);
+    return [map { $_->[1] } @$ret ];    
+
+} #paginate
 
 sub paginate_scalars {
     my( $self, $obj_id, $args ) = @_;

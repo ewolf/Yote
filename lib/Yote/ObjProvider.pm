@@ -284,10 +284,10 @@ sub sort {
     return [ map { xform_out( $_ ) } @{ $DATASTORE->sort( $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) } ];
 } #sort
 
-sub paginate_objects {
+sub paginate {
     my( $obj_id, $args ) = @_;
-    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate_objects( $obj_id, $args ) } ];
-} #paginate_objects
+    return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
+} #paginate
 
 sub paginate_scalars {
     my( $obj_id, $args ) = @_;
