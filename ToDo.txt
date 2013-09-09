@@ -4,9 +4,10 @@ Next updates
   * Document all the widgets
   -* for control_table, show showing a-n of y numbering.
   x* caching of paginated lists ( wont do now )
+  -* update control table widget to use new paginate
   -* search_hash for all IO types, as well as tests for it ( just one sort )
   -* add sort for control table for Mongo and Mysql
-  * unify sort, search and pagination
+  -* unify sort, search and pagination
   * complete test cases for hash pagination
 
 * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.

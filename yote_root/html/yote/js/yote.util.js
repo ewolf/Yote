@@ -714,23 +714,18 @@ $.yote.util = {
 		    if( it.search_on && it.terms.length > 0 ) {
 			paginate_function = function() {
 			    if( it.search_fun ) {
+				// TODO : make these into an argument list
 				return it.search_fun( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
 			    } else {
-				return it.item.search( [ it.list_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
+				return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, skip : it.start, 
+							   search_fields : it.search_on, search_terms : it.terms,
+							   reverse : it.paginate_order != 'forward' } );
 			    }
 			}
 		    }
 		    else {
 			paginate_function = function() {
-			    if( it.paginate_type == 'hash' ) {
-				return it.item.paginate_hash( [ it.list_name, it.plimit + 1, it.start ] );
-			    }
-			    else if( it.paginate_order == 'forward' ) {
-				return it.item.paginate_list( [ it.list_name, it.plimit + 1, it.start ] );
-			    }
-			    else {
-				return it.item.paginate_list_rev( [ it.list_name, it.plimit + 1, it.start ] );
-			    }
+			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, skip : it.start, reverse : it.paginate_order != 'forward' } );
 			}
 		    }
 		} )( me );
