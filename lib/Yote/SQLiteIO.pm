@@ -205,14 +205,13 @@ sub paginate {
     }
 
     my $query;
+    my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
     if( $args->{ sort_fields } ) {
 	my $sort_fields = $args->{ sort_fields };
 	my $reversed_orders = $args->{ reversed_orders } || [];
 	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
     }
     elsif( $search_fields ) {
-	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
-
 	$query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
 	if( $type eq 'ARRAY' ) {
 	    $query .= ' ORDER BY cast( bar.field as int ) ';	    
@@ -224,7 +223,6 @@ sub paginate {
 	$query .= $PAG;	
     }
     else {
-	my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
 	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
 	if( $type eq 'ARRAY' ) {
 	    if( $args->{ sort } ) {
@@ -243,6 +241,9 @@ sub paginate {
     my $ret = $self->_selectall_arrayref( $query, @params );
 #    print STDERR Data::Dumper->Dump([$query,\@params,$ret]);
     if( $args->{return_hash} ) {
+	if( $type eq 'ARRAY' ) {
+	    return { map { ($args->{ skip }+$_) => $ret->[$_][1] || 'v'.$ret->[$_][2] } (0..$#$ret) };
+	}
 	return { map { $_->[0] => $_->[1] || 'v'.$_->[2] } @$ret };
     }
     return [map { $_->[1] || 'v'.$_->[2] } @$ret ];    

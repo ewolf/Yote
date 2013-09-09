@@ -204,7 +204,7 @@ sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
 
     my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
-    die "hash fetch must be called for hash" if $hash->{ c } ne 'HASH';
+    return $hash->{ d }->[ $key ] if $hash->{ c } ne 'HASH';
     return $hash->{ d }->{ $key } if $hash;
 } 
 
@@ -212,7 +212,13 @@ sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
 
     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
-    die "list fetch must be called for array" if $list->{ c } ne 'ARRAY';
+
+    return undef unless $list;
+
+    if( $list->{ c } ne 'ARRAY' ) {
+	return $list->{ d }{ $idx };
+    }
+    
 
     return $list->{ d }->[ $idx ] if $list;
 } 
@@ -223,86 +229,86 @@ sub hash_has_key {
     return defined( $hash->{ d }->{$key} );
 }
 
-#
-# Returns a hash of paginated items that belong to the hash. 
-# 
-sub paginate_hash {
-    my( $self, $hash_id, $paginate_length, $paginate_start ) = @_;
+# #
+# # Returns a hash of paginated items that belong to the hash. 
+# # 
+# sub paginate_hash {
+#     my( $self, $hash_id, $paginate_length, $paginate_start ) = @_;
 
-    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+#     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
 
-    my $result_data = $list->{ d };
+#     my $result_data = $list->{ d };
 
-    if( $list->{ c } eq 'ARRAY' ) {
-	if( defined( $paginate_length ) ) {
-	    if( $paginate_start ) {
-		if( $paginate_start > $#$result_data ) {
-		    return {};
-		}
-		if( ( $paginate_start+$paginate_length ) > @$result_data ) {
-		    $paginate_length = scalar( @$result_data ) - $paginate_start;
-		}
-		return { map { $_ => $result_data->[ $_ ] } ( $paginate_start..($paginate_start+$paginate_length-1) ) };
-	    }
-	    if( $paginate_length > $#$result_data ) {
-		$paginate_length = $#$result_data;
-	    }
-	    return { map { $_ => $result_data->[ $_ ] } ( 0..($paginate_length-1) ) };
-	}
-	return  { map { $_ => $result_data->[ $_ ] } ( 0..$#$result_data ) };
-    }
-    else {
-	if( defined( $paginate_length ) ) {
-	    my @keys = sort keys %$result_data;
-	    if( $paginate_start ) {
-		if( $paginate_start > $#keys ) {
-		    return {};
-		}
-		if( ( $paginate_start + $paginate_length ) > @keys ) {
-		    $paginate_length = scalar( @keys ) - $paginate_start;
-		}
-		return { map { $_ => $result_data->{ $_ } } @keys[$paginate_start..($paginate_start+$paginate_length-1)] };
-	    }
-	    if( $paginate_length > @keys ) {
-		$paginate_length = scalar( @keys );
-	    }
-	    return { map { $_ => $result_data->{ $_ } } @keys[0..($paginate_length-1)] };
-	}
-	my @keys = sort keys %$result_data;
-	return { map { $_ => $result_data->{ $_ } } @keys };
-    }
-} #paginate_hash
+#     if( $list->{ c } eq 'ARRAY' ) {
+# 	if( defined( $paginate_length ) ) {
+# 	    if( $paginate_start ) {
+# 		if( $paginate_start > $#$result_data ) {
+# 		    return {};
+# 		}
+# 		if( ( $paginate_start+$paginate_length ) > @$result_data ) {
+# 		    $paginate_length = scalar( @$result_data ) - $paginate_start;
+# 		}
+# 		return { map { $_ => $result_data->[ $_ ] } ( $paginate_start..($paginate_start+$paginate_length-1) ) };
+# 	    }
+# 	    if( $paginate_length > $#$result_data ) {
+# 		$paginate_length = $#$result_data;
+# 	    }
+# 	    return { map { $_ => $result_data->[ $_ ] } ( 0..($paginate_length-1) ) };
+# 	}
+# 	return  { map { $_ => $result_data->[ $_ ] } ( 0..$#$result_data ) };
+#     }
+#     else {
+# 	if( defined( $paginate_length ) ) {
+# 	    my @keys = sort keys %$result_data;
+# 	    if( $paginate_start ) {
+# 		if( $paginate_start > $#keys ) {
+# 		    return {};
+# 		}
+# 		if( ( $paginate_start + $paginate_length ) > @keys ) {
+# 		    $paginate_length = scalar( @keys ) - $paginate_start;
+# 		}
+# 		return { map { $_ => $result_data->{ $_ } } @keys[$paginate_start..($paginate_start+$paginate_length-1)] };
+# 	    }
+# 	    if( $paginate_length > @keys ) {
+# 		$paginate_length = scalar( @keys );
+# 	    }
+# 	    return { map { $_ => $result_data->{ $_ } } @keys[0..($paginate_length-1)] };
+# 	}
+# 	my @keys = sort keys %$result_data;
+# 	return { map { $_ => $result_data->{ $_ } } @keys };
+#     }
+# } #paginate_hash
 
-#
-# Returns a hash of paginated items that belong to the list. Note that this 
-# does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
-#   rather than [ undef, undef, undef, 'val1', 'val2' ]
-#
-sub paginate_list {
-    my( $self, $list_id, $paginate_length, $paginate_start, $reverse ) = @_;
+# #
+# # Returns a hash of paginated items that belong to the list. Note that this 
+# # does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
+# #   rather than [ undef, undef, undef, 'val1', 'val2' ]
+# #
+# sub paginate_list {
+#     my( $self, $list_id, $paginate_length, $paginate_start, $reverse ) = @_;
 
-    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
-    die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
+#     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
+#     die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
 
-    my $result_data = $reverse ? [reverse @{$list->{ d }}] : $list->{ d };
+#     my $result_data = $reverse ? [reverse @{$list->{ d }}] : $list->{ d };
 
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    if( $paginate_start > $#$result_data ) {
-		return [];
-	    }
-	    if( ($paginate_start+$paginate_length) > @$result_data ) {
-		$paginate_length = scalar( @$result_data ) - $paginate_start;
-	    }
-	    return [ @$result_data[$paginate_start..($paginate_start+$paginate_length-1)] ];
-	} 
-	if( $paginate_length > @$result_data ) {
-	    $paginate_length = scalar( @$result_data );
-	}
-	return [ @$result_data[0..($paginate_length-1)] ];
-    }    
-    return $result_data;
-} #paginate_list
+#     if( defined( $paginate_length ) ) {
+# 	if( $paginate_start ) {
+# 	    if( $paginate_start > $#$result_data ) {
+# 		return [];
+# 	    }
+# 	    if( ($paginate_start+$paginate_length) > @$result_data ) {
+# 		$paginate_length = scalar( @$result_data ) - $paginate_start;
+# 	    }
+# 	    return [ @$result_data[$paginate_start..($paginate_start+$paginate_length-1)] ];
+# 	} 
+# 	if( $paginate_length > @$result_data ) {
+# 	    $paginate_length = scalar( @$result_data );
+# 	}
+# 	return [ @$result_data[0..($paginate_length-1)] ];
+#     }    
+#     return $result_data;
+# } #paginate_list
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
@@ -327,77 +333,177 @@ sub recycle_objects {
     return $rec_count;
 } #recycle_object
 
-#
-# Sorts the list and paginates it.
-#
-sub sort {
-    my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
+# #
+# # Sorts the list and paginates it.
+# #
+# sub sort {
+#     my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
 
-    my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-    die "data structure $obj_id not found" unless $data_structure;
+#     my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
+#     die "data structure $obj_id not found" unless $data_structure;
 
-    my $opts = {};
-    for my $i (0..$#$sort_fields) {
-	$opts->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
-    }
+#     my $opts = {};
+#     for my $i (0..$#$sort_fields) {
+# 	$opts->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
+#     }
     
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $opts->{ skip } = $paginate_start;
+#     if( defined( $paginate_length ) ) {
+# 	if( $paginate_start ) {
+# 	    $opts->{ skip } = $paginate_start;
+# 	}
+# 	$opts->{ limit } = $paginate_length;
+#     }
+
+#     my $curs = $self->{ OBJS }->query( { 
+# 	_id => { '$in' => [
+# 		     map { MongoDB::OID->new( value => $_ ) } 
+# 		     @{ $self->{ OBJS }->find_one( { 
+# 			 _id => MongoDB::OID->new( value => $obj_id ) } )->{r} 
+# 		     } ] 
+# 	},
+# 				       }, $opts );
+
+
+#     return [map { $_->{ _id }->value() } $curs->all];
+
+# } #sort
+
+sub paginate {
+    my( $self, $obj_id, $args ) = @_;
+
+    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
+    die "data structure $obj_id not found" unless $obj;
+
+    # must cover the cases of 
+    #  args has search fields
+    #  args has search terms but no fields
+
+    my $search_fields = $args->{ search_fields };
+    my $search_terms = $args->{ search_terms };
+
+    my $sort_fields = $args->{ sort_fields };
+    my $reversed_orders = $args->{ reversed_orders } || [];
+
+    my $limit = $args->{ limit };
+    my $skip = $args->{ skip } || 0;
+    
+    my( @list_items, %hash_items );
+
+    if( $sort_fields || $search_terms ) {  #must be searching through or sorting by objects
+	my( $query, $query_args );
+
+	if( $obj->{c} eq 'ARRAY' ) {
+	    $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } @{$obj->{d}} ] } };
 	}
-	$opts->{ limit } = $paginate_length;
-    }
-
-    my $curs = $self->{ OBJS }->query( { 
-	_id => { '$in' => [
-		     map { MongoDB::OID->new( value => $_ ) } 
-		     @{ $self->{ OBJS }->find_one( { 
-			 _id => MongoDB::OID->new( value => $obj_id ) } )->{r} 
-		     } ] 
-	},
-				      }, $opts );
-
-
-    return [map { $_->{ _id }->value() } $curs->all];
-
-} #sort
-
-sub search {
-    my( $self, $datastructure_id, $search_fields, $search_terms, $paginate_length, $paginate_start ) = @_;
-
-    my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $datastructure_id ) } );
-    die "data structure $datastructure_id not found" unless $data_structure;
-    
-    # db.x.find( { $or : [ { "d.parm1" : { '$regex' : '\bsearch-one\b', '$options' : 'i' }
-    #                        "d.parm1" : { '$regex' : '\bsearch-two\b', '$options' : 'i' }
-    #                        "d.parm2" : { '$regex' : '\bsearch-one\b', '$options' : 'i' }
-    #                        "d.parm2" : { '$regex' : '\bsearch-two\b', '$options' : 'i' }
-    my @ors;
-    for my $field ( @$search_fields ) {
-	for my $term ( @$search_terms ) {
-	    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+	else {
+	    $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } values %{$obj->{d}} ] } };
 	}
-    }
-    my $curs = $self->{ OBJS }->find( { 
-	_id => { '$in' => [
-		     map { MongoDB::OID->new( value => $_ ) } 
-		     @{ $self->{ OBJS }->find_one( { 
-			 _id => MongoDB::OID->new( value => $datastructure_id ) } )->{r} 
-		     } ] 
-	},
-			 '$or' => \@ors
-				      } );
-    
-    if( defined( $paginate_length ) ) {
-	if( $paginate_start ) {
-	    $curs->skip( $paginate_start );
+
+
+	if( $search_fields ) { #search fields must be objects
+	    my @ors;
+	    for my $field ( @$search_fields ) {
+		for my $term ( @$search_terms ) {
+		    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+		}
+	    }
+	    $query->{'$or'} = \@ors;
+	} # if search fields
+
+	if( $sort_fields ) {
+	    for my $i (0..$#$sort_fields) {
+		$query_args->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
+	    }
 	}
-	$curs->limit( $paginate_length );
+
+	my $curs = $self->{ OBJS }->find( $query, $query_args );
+
+	if( defined( $limit ) ) {
+	    if( $skip ) {
+		$curs->skip( $skip );
+	    }
+	    $curs->limit( $limit );
+	}
+
+	if( $args->{ return_hash } ) {
+	    my %id2key = reverse %{ $obj->{ d } };
+	    return { map { $id2key{ $_->{ _id }{ value } } => $_->{ _id }{ value } } $curs->all };  #david sean from ms to call
+	}
+
+	return [map { $_->{ _id }{ value } } $curs->all];
+
+    } #if searching through or sorting by objects
+
+
+    if( $search_terms ) {  
+	if( $obj->{c} eq 'ARRAY' ) {
+	    for my $item (grep { index( $_, 'v' ) == 0 } @{ $obj->{ d } } ) {
+		for my $term ( @$search_terms ) {
+		    if( $item =~ /$term/ ) {
+			push @list_items, $item;
+			last;
+		    }
+		}		
+	    }
+	}
+	else { #hash
+	    for my $key (grep { index( $obj->{ d }{ $_ }, 'v' ) == 0 } keys %{ $obj->{ d } } ) {
+		for my $term ( @$search_terms ) {
+		    if( $obj->{ d }{ $key } =~ /$term/ ) {
+			$hash_items{ $key } = $obj->{ d }{ $key };
+			last;
+		    }
+		}		
+	    }	    
+	}
+    } #with search terms
+
+    elsif( $obj->{c} eq 'ARRAY' ) {
+	@list_items = @{ $obj->{ d } };
+    }
+ 
+    else {
+	%hash_items = %{ $obj->{ d } };
     }
 
-    return [map { $_->{ _id }->value() } $curs->all];
-    
-} #search
+
+    if( $obj->{c} eq 'ARRAY' ) {
+	if( $args->{ sort } ) {
+	    @list_items = sort @list_items;
+	}
+	if( $args->{ reverse } ) {
+	    @list_items = reverse @list_items;
+	}
+	if( $limit ) {
+	    my $end = $skip + $limit - 1;
+	    $end = $end > $#list_items ? $#list_items : $end;
+	    @list_items = @list_items[ $skip..$end ];
+	}
+
+	if( $args->{ return_hash } ) {
+	    return { map { ($skip+$_) => $list_items[$_] } (0..$#list_items) };
+	}
+
+	return \@list_items;
+    }
+
+    my( @hash_keys ) = sort keys %hash_items;
+    if( $args->{ reverse } ) {
+	@hash_keys = reverse @hash_keys;
+    }
+    if( $limit ) {
+	my $end = $skip + $limit - 1;
+	$end = $end > $#list_items ? $#list_items : $end;		    
+	@hash_keys = @hash_keys[ $skip..$end ]; # < --- make sure there is a test for this TODO
+    }
+
+    if( $args->{ return_hash } ) {
+	return { map { $_ => $hash_items{$_} } @hash_keys };
+    }
+
+    return [ map { $hash_items{ $_ } } @hash_keys ];
+
+} #paginate
 
 sub start_transaction {}
 

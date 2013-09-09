@@ -554,8 +554,8 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
     
-    is( $root->_list_fetch( 'rogers', '1'), "array", "hash_fetch with array" );
-    is( $root->_list_fetch( "hashfoo", "zort"), "zot", "hash_fetch with array" );
+    is( $root->_list_fetch( 'rogers', '1'), "array", "list_fetch with array" );
+    is( $root->_hash_fetch( "hashfoo", "zort"), "zot", "hash_fetch with hash" );
 
     Yote::ObjProvider::stow_all();
     my $app = $root->_hash_fetch( '_apps', 'Yote::Test::TestAppNeedsLogin' );
@@ -588,13 +588,13 @@ sub test_suite {
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 0 } );
     is_deeply( $res, { 0 => 'A', 1 => 'B' }, 'paginate list limits from 0 with 2 are correct' );
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 4 } );
-    is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit' );
+    is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit returning hash' );
         
     $app->_list_delete( 'azzy', 2 );
 
     # paginate_hash
     $res = $app->_paginate( { name => 'azzy', return_hash => 1 } );
-    is_deeply( $res, { 0 => 'A', 1 => 'B', 3 => 'D', 4 => 'E' }, 'paginate hash without limits correct after list_delete' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'D', 3 => 'E' }, 'paginate hash without limits correct after list_delete' );
     $res = $app->_paginate( { name => 'azzy' } );
     is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after list_delete' );
 
