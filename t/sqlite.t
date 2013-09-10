@@ -11,7 +11,7 @@ use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
 use Yote::Test::TestNoDeepCloner;
-use Yote::SQLiteIO;
+use Yote::IO::SQLite;
 
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
@@ -24,7 +24,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/Obj Hash SQLiteIO/) {
+    for my $class (qw/Obj Hash IO::SQLite/) {
         use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
     }
 }

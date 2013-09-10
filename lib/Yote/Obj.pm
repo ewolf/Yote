@@ -502,35 +502,25 @@ This method is called each time an object is loaded from the data store.
 
 Returns the number of items for the field of this object provided it is an array or hash.
 
-=item paginate_list
 
-This method takes a list ref with three entries : [field_name, number of items to return, starting point].
-The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
-field name and attached to this object.
+=item paginate( args )
 
-This will throw an error if the value of the field name is defined as something other than a list.
+Returns a paginated list or hash. Arguments are 
 
-=item paginate_list_rev
+=over 4
 
-This method is just like paginate except it works on the list in reverse order.
-This method takes a list ref with three entries : [field_name, number of items to return, starting point].
-The starting point is optional and defaults to 0. Returns a subset of the list that is specified by the
-field name and attached to this object.
+* name - name of data structure attached to this object.
+* search_fields - a list of fields to search for in collections of yote objects
+* search_terms - a list of terms to search for
+* sort_fields - a list of fields to sort by for collections of yote objects
+* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+* limit - maximum number of entries to return
+* skip - skip this many entries before returning the list
+* return_hash - return the result as a hashtable rather than as a list
+* reverse - return the result in reverse order
 
-This will throw an error if the value of the field name is defined as something other than a list.
+=back
 
-=item paginate_hash
-
-This method takes a list ref with three entries : [field_name, number of items to return, starting point].
-The starting point is optional and defaults to 0. Returns a slice of the hash that is specified by the
-field name and attached to this object. The keys are sorted before the return so that the order can
-be guaranteed between subsequent calls.
-
-This will throw an error if the value of the field name is defined as something other than a list.
-
-=item search_list
-
-Returns a paginated search list
 
 =item sync_all
 

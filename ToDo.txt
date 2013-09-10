@@ -9,6 +9,9 @@ Next updates
   -* add sort for control table for Mongo and Mysql
   -* unify sort, search and pagination
   * complete test cases for hash pagination
+  * MongoIO pagination update - use different collection for large tables
+  * review all methods and classes and remove those thta no longer fit
+  * control_table sort
 
 * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.
 
@@ -19,8 +22,8 @@ FOR Stable Alpha
  - * cache clearning test cases
   * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.
   * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
-  * Move MongoIO, etc, to an IO sub package
-  * refactor IO to include better back references. Object will have to take note.
+  -* Move MongoIO, etc, to an IO sub package
+  * refactor IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
   * Enable Cron
  - Move encrypt_pass to somewhere self, maybe? Moved to ObjProvider
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
@@ -45,7 +48,6 @@ FOR Stable Alpha
 FOR ALPHA
 
   * Enable caching that pays attention to who has what.
-  * Enable Cron
   * Make guest tokens required for running any non-root app command.
   * Create yote admin page for
         - viewing apps
@@ -53,7 +55,7 @@ FOR ALPHA
         - cron admin
   * Create guest page to be hosted at madyote.com
   - * Make installer work for the common case of user having root. [ done, needs testing ]
-  * Have server respond to javascript permissions requests.
+  -* Have server respond to javascript permissions requests. ( this is now moot )
   * Fix page counter
   - * Make simple WIKI for updating Yote News
   - * installer so that other scripts work (rename them to yote_ )
@@ -66,6 +68,6 @@ BEYOND
 - * make sure installer script works universally ( well, windows fails due to threads :( )
 - * build yote homepage
 * build page editor
-* yote objects that brige to files an allow for editing.
+* yote objects that bridge to files an allow for editing.
 - * replace Crypt:Passwd with something better.
-* unit test of app id passing in the IO. If its missing, the wrong account may be used.
+

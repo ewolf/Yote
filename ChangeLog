@@ -1,7 +1,10 @@
 2013-07-28  Eric Wolf  <eric@DobreDen>
 
 	* VERSION 0.1007
-	* added search by list
+	* added paginate, a catch all method for list and hash pagination. It allows for search and sort
+	* control_table major work. Works with new paginate, has settings for automatic search
+	* moved MongoIO, MysqlIO and SQLiteIO to IO subpackage
+	* yote_server has arguments to reset password and change configuration
 
 2013-07-25  Eric Wolf  <eric@DobreDen>
 

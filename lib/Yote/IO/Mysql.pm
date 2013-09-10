@@ -1,4 +1,4 @@
-package Yote::MysqlIO;
+package Yote::IO::Mysql;
 
 #
 # This stows and fetches G objects from a database store and provides object ids.
@@ -584,13 +584,22 @@ Returns the max ID in the yote system. Used for testing.
 
 =item new
 
-=item paginate_hash( hash_id, length, start )
+=item paginate( container_id, args )
 
-Returns a paginated hash reference
+Returns a paginated list or hash. Arguments are 
 
-=item paginate_list( list_id, length, start )
+=over 4
 
-Returns a paginated list reference
+* search_fields - a list of fields to search for in collections of yote objects
+* search_terms - a list of terms to search for
+* sort_fields - a list of fields to sort by for collections of yote objects
+* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+* limit - maximum number of entries to return
+* skip - skip this many entries before returning the list
+* return_hash - return the result as a hashtable rather than as a list
+* reverse - return the result in reverse order
+
+=back
 
 =item recycle_object( obj_id )
 

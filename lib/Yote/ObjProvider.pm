@@ -39,12 +39,12 @@ sub new {
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
-    my $datapkg = 'Yote::SQLiteIO';
+    my $datapkg = 'Yote::IO::SQLite';
     if( $args->{engine} eq 'mongo' ) {
-	$datapkg = 'Yote::MongoIO';
+	$datapkg = 'Yote::IO::Mongo';
     }
     elsif( $args->{engine} eq 'mysql' ) {
-	$datapkg = 'Yote::MysqlIO';
+	$datapkg = 'Yote::IO::Mysql';
     }
     eval( "require $datapkg" );
     $DATASTORE = $datapkg->new( $args );
@@ -595,6 +595,26 @@ This is just used when multiple processes will be activatig the same data share.
 =item package_methods( package_name )
 
 This method returns a list of the public API methods attached to the given package name. This excludes the automatic getters and setters that are part of yote objects.
+
+
+=item paginate( obj_id, args )
+
+Returns a paginated list or hash that is attached to the object specified by obj_id. Arguments are 
+
+=over 4
+
+* name - name of data structure attached to this object.
+* search_fields - a list of fields to search for in collections of yote objects
+* search_terms - a list of terms to search for
+* sort_fields - a list of fields to sort by for collections of yote objects
+* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+* limit - maximum number of entries to return
+* skip - skip this many entries before returning the list
+* return_hash - return the result as a hashtable rather than as a list
+* reverse - return the result in reverse order
+
+=back
+
 
 =item paginate_hash( hash_id, length, start )
 

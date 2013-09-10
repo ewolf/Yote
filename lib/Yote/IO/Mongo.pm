@@ -1,4 +1,4 @@
-package Yote::MongoIO;
+package Yote::IO::Mongo;
 
 #
 # This stows and fetches G objects from a database store and provides object ids.
@@ -229,86 +229,6 @@ sub hash_has_key {
     return defined( $hash->{ d }->{$key} );
 }
 
-# #
-# # Returns a hash of paginated items that belong to the hash. 
-# # 
-# sub paginate_hash {
-#     my( $self, $hash_id, $paginate_length, $paginate_start ) = @_;
-
-#     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
-
-#     my $result_data = $list->{ d };
-
-#     if( $list->{ c } eq 'ARRAY' ) {
-# 	if( defined( $paginate_length ) ) {
-# 	    if( $paginate_start ) {
-# 		if( $paginate_start > $#$result_data ) {
-# 		    return {};
-# 		}
-# 		if( ( $paginate_start+$paginate_length ) > @$result_data ) {
-# 		    $paginate_length = scalar( @$result_data ) - $paginate_start;
-# 		}
-# 		return { map { $_ => $result_data->[ $_ ] } ( $paginate_start..($paginate_start+$paginate_length-1) ) };
-# 	    }
-# 	    if( $paginate_length > $#$result_data ) {
-# 		$paginate_length = $#$result_data;
-# 	    }
-# 	    return { map { $_ => $result_data->[ $_ ] } ( 0..($paginate_length-1) ) };
-# 	}
-# 	return  { map { $_ => $result_data->[ $_ ] } ( 0..$#$result_data ) };
-#     }
-#     else {
-# 	if( defined( $paginate_length ) ) {
-# 	    my @keys = sort keys %$result_data;
-# 	    if( $paginate_start ) {
-# 		if( $paginate_start > $#keys ) {
-# 		    return {};
-# 		}
-# 		if( ( $paginate_start + $paginate_length ) > @keys ) {
-# 		    $paginate_length = scalar( @keys ) - $paginate_start;
-# 		}
-# 		return { map { $_ => $result_data->{ $_ } } @keys[$paginate_start..($paginate_start+$paginate_length-1)] };
-# 	    }
-# 	    if( $paginate_length > @keys ) {
-# 		$paginate_length = scalar( @keys );
-# 	    }
-# 	    return { map { $_ => $result_data->{ $_ } } @keys[0..($paginate_length-1)] };
-# 	}
-# 	my @keys = sort keys %$result_data;
-# 	return { map { $_ => $result_data->{ $_ } } @keys };
-#     }
-# } #paginate_hash
-
-# #
-# # Returns a hash of paginated items that belong to the list. Note that this 
-# # does not preserve indexes ( for example, if the list has two rows, and first index in the database is 3, the list returned is still [ 'val1', 'val2' ]
-# #   rather than [ undef, undef, undef, 'val1', 'val2' ]
-# #
-# sub paginate_list {
-#     my( $self, $list_id, $paginate_length, $paginate_start, $reverse ) = @_;
-
-#     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
-#     die "list pagination must be called for array" if $list->{ c } ne 'ARRAY';
-
-#     my $result_data = $reverse ? [reverse @{$list->{ d }}] : $list->{ d };
-
-#     if( defined( $paginate_length ) ) {
-# 	if( $paginate_start ) {
-# 	    if( $paginate_start > $#$result_data ) {
-# 		return [];
-# 	    }
-# 	    if( ($paginate_start+$paginate_length) > @$result_data ) {
-# 		$paginate_length = scalar( @$result_data ) - $paginate_start;
-# 	    }
-# 	    return [ @$result_data[$paginate_start..($paginate_start+$paginate_length-1)] ];
-# 	} 
-# 	if( $paginate_length > @$result_data ) {
-# 	    $paginate_length = scalar( @$result_data );
-# 	}
-# 	return [ @$result_data[0..($paginate_length-1)] ];
-#     }    
-#     return $result_data;
-# } #paginate_list
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
@@ -332,41 +252,6 @@ sub recycle_objects {
     }
     return $rec_count;
 } #recycle_object
-
-# #
-# # Sorts the list and paginates it.
-# #
-# sub sort {
-#     my( $self, $obj_id, $sort_fields, $reversed_orders, $paginate_length, $paginate_start ) = @_;
-
-#     my $data_structure = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
-#     die "data structure $obj_id not found" unless $data_structure;
-
-#     my $opts = {};
-#     for my $i (0..$#$sort_fields) {
-# 	$opts->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
-#     }
-    
-#     if( defined( $paginate_length ) ) {
-# 	if( $paginate_start ) {
-# 	    $opts->{ skip } = $paginate_start;
-# 	}
-# 	$opts->{ limit } = $paginate_length;
-#     }
-
-#     my $curs = $self->{ OBJS }->query( { 
-# 	_id => { '$in' => [
-# 		     map { MongoDB::OID->new( value => $_ ) } 
-# 		     @{ $self->{ OBJS }->find_one( { 
-# 			 _id => MongoDB::OID->new( value => $obj_id ) } )->{r} 
-# 		     } ] 
-# 	},
-# 				       }, $opts );
-
-
-#     return [map { $_->{ _id }->value() } $curs->all];
-
-# } #sort
 
 sub paginate {
     my( $self, $obj_id, $args ) = @_;
@@ -651,13 +536,22 @@ Returns the max ID in the yote system. Used for testing.
 
 =item new 
 
-=item paginate_hash( hash_id, length, start )
+=item paginate( container_id, args )
 
-Returns a paginated hash reference
+Returns a paginated list or hash. Arguments are 
 
-=item paginate_list( list_id, length, start )
+=over 4
 
-Returns a paginated list reference
+* search_fields - a list of fields to search for in collections of yote objects
+* search_terms - a list of terms to search for
+* sort_fields - a list of fields to sort by for collections of yote objects
+* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+* limit - maximum number of entries to return
+* skip - skip this many entries before returning the list
+* return_hash - return the result as a hashtable rather than as a list
+* reverse - return the result in reverse order
+
+=back
 
 =item recycle_object( obj_id )
 

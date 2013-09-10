@@ -7,7 +7,7 @@ use Yote::WebAppServer;
 
 use Yote::AppRoot;
 use Yote::YoteRoot;
-use Yote::MysqlIO;
+use Yote::IO::Mysql;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -22,7 +22,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/Obj Hash MysqlIO/) {
+    for my $class (qw/Obj Hash IO::Mysql/) {
         use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
     }
 }
