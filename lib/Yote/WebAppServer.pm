@@ -447,25 +447,24 @@ sub start_server {
 
 	my @cron_entries = $cron->entries();
 	for my $entry (@cron_entries) {
-	    threads->new(
-		sub {
-		    print STDERR "Starting cron thread " . threads->tid() . "\n";
-		    my $script = $entry->get_script();
-		    eval "$script";
-		    if( $@ ) {
-			print STDERR "Error in cron $@ $!\n";
-		    } 
-		    else {
-			$self->check_lock_for_dirty();
-			Yote::ObjProvider::start_transaction();
-			Yote::ObjProvider::stow_all();
-			Yote::ObjProvider::flush_all_volatile();
-			Yote::ObjProvider::commit_transaction();
-			$self->unlock_all();
-		    }
-		    $cron->mark_done( $entry );
-		    print STDERR "Done cron thread " . threads->tid() . "\n";
-		} );
+	    threads->new( sub {
+		print STDERR "Starting cron thread " . threads->tid() . "\n";
+		my $script = $entry->get_script();
+		eval "$script";
+		if( $@ ) {
+		    print STDERR "Error in cron $@ $!\n";
+		} 
+		else {
+		    $self->check_locked_for_dirty();
+		    Yote::ObjProvider::start_transaction();
+		    Yote::ObjProvider::stow_all();
+		    Yote::ObjProvider::flush_all_volatile();
+		    Yote::ObjProvider::commit_transaction();
+		    $self->unlock_all();
+		}
+		$cron->mark_done( $entry );
+		print STDERR "Done cron thread " . threads->tid() . "\n";
+			  } );
 	} #each cron entry
 	
     } #endless loop

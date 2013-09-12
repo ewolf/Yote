@@ -176,6 +176,9 @@ $.yote = {
 	return r;
     }, //fetch_root
 
+    is_root:function() {
+	return this.is_logged_in() && this.get_login().is_root();
+    },
 
     get_login:function() {
 	return this.login_obj;

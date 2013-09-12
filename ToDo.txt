@@ -1,17 +1,18 @@
 Next updates
+  * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
   * changed permissions model so that YoteRoot checks if accounts are root
-  - * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
   * Document all the widgets
+  * complete test cases for hash pagination
+  * MongoIO pagination update - use different collection for large tables
+  * review all methods and classes and remove those thta no longer fit
+  * control_table sort
+  - * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
   -* for control_table, show showing a-n of y numbering.
   x* caching of paginated lists ( wont do now )
   -* update control table widget to use new paginate
   -* search_hash for all IO types, as well as tests for it ( just one sort )
   -* add sort for control table for Mongo and Mysql
   -* unify sort, search and pagination
-  * complete test cases for hash pagination
-  * MongoIO pagination update - use different collection for large tables
-  * review all methods and classes and remove those thta no longer fit
-  * control_table sort
 
 * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.
 
@@ -24,7 +25,7 @@ FOR Stable Alpha
   * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
   -* Move MongoIO, etc, to an IO sub package
   * refactor IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
-  * Enable Cron
+  -* Enable Cron
  - Move encrypt_pass to somewhere self, maybe? Moved to ObjProvider
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't
