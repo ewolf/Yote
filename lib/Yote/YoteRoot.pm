@@ -101,6 +101,16 @@ sub create_login {
     die "no handle given";
 
 } #create_login
+
+# returns cron object for root
+sub cron {
+    my( $self, $data, $acct ) = @_;
+    if( $self->is_root( $acct ) ) {
+	return $self->get__crond();
+    }
+    die "Permissions Error";
+} #cron
+
 #
 # Fetches objects by id list
 #

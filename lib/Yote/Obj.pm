@@ -31,7 +31,6 @@ no warnings 'uninitialized';
 #
 
 
-use Yote::ObjManager;
 use Yote::ObjProvider;
 
 use vars qw($VERSION);
@@ -68,7 +67,7 @@ sub new {
     }
 
     if( ref( $id_or_hash ) eq 'HASH' ) {
-	for my $key ( %$id_or_hash ) {
+	for my $key ( keys %$id_or_hash ) {
 	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
 	}
 	Yote::ObjProvider::dirty( $obj, $obj->{ID} );

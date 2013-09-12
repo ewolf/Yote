@@ -16,7 +16,7 @@ use Yote::IO::SQLite;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 226;
+use Test::More tests => 231;
 use Test::Pod;
 
 
@@ -724,7 +724,27 @@ sub test_suite {
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
-
+    # cron tests
+    my $cron = $root->get__crond();
+    $cron->add_entry( new Yote::Obj( {
+	repeats => [
+	    { repeat_infinite => 1, repeat_interval => 14 },
+	    { repeat_times => 1, repeat_interval => 3 },
+	    ],
+	    
+				     } ) );
+    my @dolist = $cron->entries();
+    is( scalar( @dolist ), 0, "no entries yet ready" );
+    sleep(3);
+    is( scalar( $cron->entries ), 1, "one entry now ready" );
+    sleep(3);
+    @dolist = $cron->entries;
+    is( scalar( @dolist ), 1, "one entry still ready" );
+    $cron->mark_done( $dolist[0] );
+    sleep(3);
+    is( scalar( $cron->entries ), 0, "no entries yet ready" );
+    sleep(5);
+    is( scalar( $cron->entries ), 1, "one entry yet ready" );
 } #test suite
 
 __END__

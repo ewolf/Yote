@@ -402,11 +402,6 @@ sub start_server {
     # check for default account and set its password from the config.
     $root->_check_root( $args->{ root_account }, $args->{ root_password } );
 
-    # @TODO - finish the cron and uncomment this
-    # cron thread
-    #my $cron = $root->get__crond();
-    #my $cron_thread = threads->new( sub { $self->_crond( $cron->{ID} ); } );
-    #$self->{cron_thread} = $cron_thread;
 
     # make sure the filehelper knows where the data directory is
 
@@ -427,7 +422,6 @@ sub start_server {
     }
 
     print STDERR "Connected\n";
-
     
     $self->{ threads } = {};
 
@@ -435,6 +429,8 @@ sub start_server {
     for( 1 .. $self->{args}{threads} ) {
 	$self->_start_server_thread;
     } #creating threads
+
+    my $cron = $root->get__crond();
 
     while( 1 ) {
 	sleep( 5 );
@@ -448,7 +444,31 @@ sub start_server {
 	while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
 	    $self->_start_server_thread;
 	}
-    }
+
+	my @cron_entries = $cron->entries();
+	for my $entry (@cron_entries) {
+	    threads->new(
+		sub {
+		    print STDERR "Starting cron thread " . threads->tid() . "\n";
+		    my $script = $entry->get_script();
+		    eval "$script";
+		    if( $@ ) {
+			print STDERR "Error in cron $@ $!\n";
+		    } 
+		    else {
+			$self->check_lock_for_dirty();
+			Yote::ObjProvider::start_transaction();
+			Yote::ObjProvider::stow_all();
+			Yote::ObjProvider::flush_all_volatile();
+			Yote::ObjProvider::commit_transaction();
+			$self->unlock_all();
+		    }
+		    $cron->mark_done( $entry );
+		    print STDERR "Done cron thread " . threads->tid() . "\n";
+		} );
+	} #each cron entry
+	
+    } #endless loop
 
     _stop_threads();
 
