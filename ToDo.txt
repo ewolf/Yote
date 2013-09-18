@@ -1,4 +1,8 @@
 Next updates
+  * configuration for LOCK_MODE
+  * new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects.
+  * count for searches! This is missing and makes control_table buggy.
+  * Exclusive cron. Means cron entry must have a unique name and that by default only one of that name may be run at once.
   * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
   * changed permissions model so that YoteRoot checks if accounts are root
   * Document all the widgets

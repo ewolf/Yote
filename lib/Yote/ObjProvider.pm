@@ -19,6 +19,12 @@ $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS      = {};
 $Yote::ObjProvider::LAST_LOAD_TIME = {};
 
+use constant LOCK_ON_WRITE => 1;
+use constant LOCK_ALWAYS   => 2;
+use constant LOCK_NEVER    => 3;
+
+our $LOCK_MODE = LOCK_ON_WRITE;
+
 our $DATASTORE;
 our $LOCKER;
 our $FIRST_ID;
@@ -69,6 +75,9 @@ sub commit_transaction {
 sub dirty {
     my $obj = shift;
     my $id = shift;
+    if( $LOCK_MODE != LOCK_NEVER && $LOCKER ) {
+	$obj = $LOCKER->lock_object( $id, $obj );
+    }
     Yote::ObjManager::mark_dirty( $id );
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
 } #dirty
@@ -116,7 +125,7 @@ sub fetch {
     #
     my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
 #	print STDERR "[$$ ".time()."] cached $ref $id, checking on LOCKER\n";
-    if( $LOCKER ) { 
+    if( $LOCKER && $LOCK_MODE == LOCK_ALWAYS ) { 
 	$ref = $LOCKER->lock_object( $id, $ref );
     }
 
@@ -631,10 +640,6 @@ Returns a deep clone of the object. This will clone any object that is part of t
 =item recycle_objects( start_id, end_id )
 
 Recycles all objects in the range given if they cannot trace back a path to root.
-
-=item reset_changed( )
-
-This is a helper method that clears out a changed hash. The hash stores objects that become dirty until reset changed is called again.
 
 =item search_list
 

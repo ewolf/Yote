@@ -118,7 +118,7 @@ sub test_suite {
 
     # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
-    my $recycled = $Yote::ObjProvider::DATASTORE->recycle_objects();
+    my $recycled = Yote::ObjProvider::recycle_objects();
     is( $recycled, 5, "recycled 5 objects" );
 
     # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
@@ -734,17 +734,17 @@ sub test_suite {
 	    
 				     } ) );
     my @dolist = $cron->entries();
-    is( scalar( @dolist ), 0, "no entries yet ready" );
+    is( scalar( @dolist ), 0, "no cron entries yet ready" );
     sleep(3);
-    is( scalar( $cron->entries ), 1, "one entry now ready" );
+    is( scalar( $cron->entries ), 1, "one cron entry now ready" );
     sleep(3);
     @dolist = $cron->entries;
-    is( scalar( @dolist ), 1, "one entry still ready" );
+    is( scalar( @dolist ), 1, "one cron entry still ready" );
     $cron->mark_done( $dolist[0] );
     sleep(3);
-    is( scalar( $cron->entries ), 0, "no entries yet ready" );
+    is( scalar( $cron->entries ), 0, "no cron entries yet ready" );
     sleep(5);
-    is( scalar( $cron->entries ), 1, "one entry yet ready" );
+    is( scalar( $cron->entries ), 1, "one cron entry yet ready" );
 } #test suite
 
 __END__

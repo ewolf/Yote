@@ -78,7 +78,6 @@ sub fetch_dirty {
 
 sub mark_dirty {
     my( $obj_id ) = @_;
-
     if( $Yote::YoteRoot::ROOT_INIT ) {
 	return;
     }

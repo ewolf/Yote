@@ -8,7 +8,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1007';
+$VERSION = '0.1008';
 
 use Carp;
 use File::Path;
@@ -21,6 +21,7 @@ use Yote::WebAppServer;
 sub _print_use {
     print 'Usage : yote_server --engine=sqlite|mongo|mysql
                     --engine_port=port-mongo-or-mysql-use
+                    --profile
                     --generate
                     --help
                     --host=mongo-or-mysql-host
@@ -195,6 +196,7 @@ sub get_args {
 	E  => 'engine_port',
 	g  => 'generate',
 	c  => 'show_config',
+	f  => 'profile',
 	h  => 'help',
 	'?' => 'help',
 	H  => 'host',
@@ -211,6 +213,7 @@ sub get_args {
 		   generate		=> 1,
 		   show_config		=> 1,
 		   reset_password	=> 1,
+		   profile              => 1,
 	);
     my %argnames = map { $_ => 1 } values %argmap;
 

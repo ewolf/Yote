@@ -68,6 +68,143 @@ if we are our experiences then we are both sides of them.
     $().ready(function(){
 
 	$.yote.init();
+	var root = $.yote.fetch_root();
+
+	attach_login( {
+	    attachpoint         : '#logged_in_status',
+	    message_attachpoint : '#msg_div',
+	    after_login  : check_perms,
+	    after_logout : check_perms
+	} );
+
+	//var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
+	function check_perms() {
+	    if( $.yote.is_root() ) {
+		$( '#errpanel' ).hide();
+		$( '#sidenav' ).empty().append( 
+		    'Nav <ul>' +
+			'<li><button id="app_b">Apps</button></li>' +
+			'<li><button id="user_b">Users</button></li>' +
+			'<li><button id="cron_b">Cron</button></li>' +
+			'</ul>'
+		);
+		$( '#app_b' ).click(function(){
+		    $.yote.util.control_table( {
+			attachpoint : '#apppanel',
+			plimit : 10,
+			item : root,
+			list_name : '_apps',
+			paginate_type : 'hash',
+			title : 'Apps',
+			column_headers : [ 'Name', 'Number of Users', 'Reset' ],
+			columns : [ 'x',
+				    {
+					render : function( app ) {
+					    return app.count( '_account_roots' );
+					},
+					after_render : function( app ) {}
+				    },
+				    {
+					render : function( app ) {
+					    return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
+					},
+					after_render : function( app, name ) {
+					    $( '#reset_b_' + app.id ).click(function() {
+						if( confirm( "This will remove all user accounts and app data. Are you sure?" ) ) {
+						    alert( name );
+						    root.purge_app( name,
+								    function() { alert( "App '" + name + "' purged" ); },
+								    function( err ) { alert( err ); }
+								  );
+						}
+					    } );
+					}
+				    }
+				  ],
+		    } );
+		} ); //app_b
+
+		$( '#user_b' ).click(function(){
+		    $.yote.util.control_table( {
+			attachpoint : '#apppanel',
+			plimit : 10,
+			item : root,
+			list_name : '_handles',
+			paginate_type : 'hash',
+			title : 'Logins',
+			column_headers : [ 'Handle', 'Email', 'Is Root' ],
+			columns : [ 'x',
+				    {
+					render : function( login, handle ) {
+					    var em = login.get( 'email' );
+					    return em ? em : 'n/a';
+					},
+					after_render : function( app ) {}
+				    },
+				    {
+					render : function( login, handle ) {
+					    if( login.is_master_root() ) {
+						return "master root";
+					    } 
+					    return '<input type="checkbox" id="lr_' + login.id + '" ' +
+						( login.is_root()*1 == 1 ? ' checked' : '' ) + '>';
+					},
+					after_render : function( login, handle ) {
+					    if( ! login.is_master_root() ) {
+						(function( li ) {
+						    $( '#lr_' + li.id ).click( function() {
+							if( $( '#lr_' + li.id ).is( ':checked' ) ) {
+							    root.make_root( li );
+							} else {
+							    root.remove_root( li, function(){},
+									      function(err) { alert(err)} );
+							}
+						    } )
+						} )( login );
+					    }
+					}
+				    }
+				  ],
+		    } );
+		} ); //user_b
+
+		$( '#cron_b' ).click(function(){
+		    $.yote.util.control_table( {
+			attachpoint : '#apppanel',
+			plimit : 10,
+			item : root.cron(),
+			list_name : 'entries',
+			paginate_type : 'list',
+			title : 'Crons',
+			column_headers : [ 'Name', 'Enabled', 'Script', 'Next Run', 'Repeat', 'Schedule' ],
+			columns : [ $.yote.util.col_edit( 'name' ),
+				    $.yote.util.check_edit( 'enabled' ),
+				    $.yote.util.col_edit( 'script' ),
+				    'next_time',
+				    {
+					render : function( entry ) {
+					    
+					},
+					after_render : function( entry ) {}
+				    },
+				    {
+					render : function( entry ) {
+					    
+					},
+					after_render : function( entry ) {}
+				    },
+				  ],
+		    } );
+		} ); //cron_b
+
+	    }
+	    else {
+		$( '#appwrapper' ).hide();
+		$( '#errpanel' ).show();
+		$( '#errpanel' ).empty().append( 'Must be logged in with a root account to view this page.' );
+	    }
+	} //check_perms
+/*
 	make_menus( '#top_nav' );
 
 	var root = $.yote.fetch_root();
@@ -207,6 +344,7 @@ if we are our experiences then we are both sides of them.
 	}
 	$( '.content' ).css( 'min-height', min + 'px' );
 	$( '#bottom_half' ).css( 'min-height', ( $('#bottom_header' ).height() + min + 100 ) + 'px' );
+*/
     });
     </script>
   </head>
@@ -237,13 +375,23 @@ if we are our experiences then we are both sides of them.
 
 	<SECTION>
 	  <DIV class="page-header">
-	    <H1>Yote Admin Page</H1>
+	    <H1>Yote Admin Page (YAP)</H1>
 	  </DIV>
 	  <P>
-	    Welcome to the Yote Admin Page.
+	    Welcome to the Yote Admin Page. 
+	    Let\'s control the apps and users and cron.	    
 	  </P>
 	</SECTION>
 
+	<DIV class="appwrapper">
+	  <DIV id="sidenav" class="sidenav">
+	  </DIV>
+	  <DIV id="apppanel" class="apppanel">
+	  </DIV>
+	</DIV>
+
+    </DIV>
+<!--
 	<SECTION id="bottom_half">
 	  <DIV class="page-header" id="bottom_header">
 	    <H1>News Control Panel</H1>
@@ -283,9 +431,8 @@ if we are our experiences then we are both sides of them.
 	  </DIV>
         </SECTION>
     </DIV>
-
+-->
     <footer>
-      This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
   </body>

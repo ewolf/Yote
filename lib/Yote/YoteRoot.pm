@@ -105,7 +105,7 @@ sub create_login {
 # returns cron object for root
 sub cron {
     my( $self, $data, $acct ) = @_;
-    if( $self->is_root( $acct ) ) {
+    if( $acct->is_root() ) {
 	return $self->get__crond();
     }
     die "Permissions Error";
@@ -167,11 +167,6 @@ sub guest_token {
 
     return $token;
 } #guest_token
-
-sub is_root {
-    my( $self, $check_account, $acct ) = @_;
-    return $self->get__roots({})->{ Yote::ObjProvider::get_id( $check_account ) };
-} #is_root
 
 #
 # Validates that the given credentials are given
@@ -334,16 +329,40 @@ sub _check_root {
     unless( $root_login ) {
 	$root_login = new Yote::Login();
 	$root_login->set_handle( $root_name );
-	$root_login->set__is_root( 1 );
+	$root_login->set__is_master_root( 1 );
 
         $root_login->set__time_created( time() );
 
 	$self->_hash_insert( '_handles', $lc_handle, $root_login );	
     }
+    $root_login->set__is_root( 1 );
+    $root_login->set__is_master_root( 1 );
 
     $root_login->set__password( $encr_passwd );
     
 } #_create_root
+
+#
+# Transforms the login into a login with root privs. Do not use lightly.
+#
+sub make_root {
+    my( $self, $login, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    $login->set__is_root( 1 );
+    return;
+} #make_root
+
+#
+# Removes root privs from a login. Do not use lightly. Does not remove the last root if there is one
+#
+sub remove_root {
+    my( $self, $login, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    die "Cannot remove master root account" if $login->get__is_master_root();
+    $login->set__is_root( 0 );
+    return;
+} #remove_root
+
 
 #
 # Create token and store with the account and return it.
@@ -402,7 +421,9 @@ the login token and the login object.
 
 Invalidates the tokens of the currently logged in user.
 
-=item new 
+=item make_root
+
+Takes a login as an argument and makes it root. Throws access error if the callee is not root.
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 

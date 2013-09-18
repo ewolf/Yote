@@ -104,7 +104,6 @@ sub fetch {
     my( $class ) = $self->_selectrow_array( "SELECT class FROM objects WHERE recycled=0 AND id=?",  $id );
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
-
     return unless $class;
     my $obj = [$id,$class];
     if( $class  eq 'ARRAY') {
@@ -239,7 +238,6 @@ sub paginate {
 	$query .= $PAG;	
     }
     my $ret = $self->_selectall_arrayref( $query, @params );
-#    print STDERR Data::Dumper->Dump([$query,\@params,$ret]);
     if( $args->{return_hash} ) {
 	if( $type eq 'ARRAY' ) {
 	    return { map { ($args->{ skip }+$_) => $ret->[$_][1] || 'v'.$ret->[$_][2] } (0..$#$ret) };

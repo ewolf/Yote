@@ -87,7 +87,9 @@ $.yote.util = {
 	} //implement_edit.go_normal
 
 	var stop_edit = function() {
-	    $( '#' + div_id ).empty().append( item.get( field ) );
+	    var val = item.get( field );
+	    val = val.replace( /[\n\r]/g, '<BR>' );
+	    $( '#' + div_id ).empty().append( val );
 	    go_normal();
 	    $.yote.util.implement_edit( item, field );
 	} //implement_edit.stop_edit
@@ -149,6 +151,7 @@ $.yote.util = {
 	var val = item.get( fld ) || '';
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
+	val = val.replace( /[\n\r]/g, '<BR>' );
 	return '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
     }, //prep_edit
 
@@ -336,7 +339,7 @@ $.yote.util = {
 		row_classes = row_classes ? row_classes : [];
 		cell_classes = cell_classes ? cell_classes : [];
 
-		this.html = this.html + '<tr class="' + this.next_row_class + ' ' + row_classes.join(' ' ) +  '">';
+		this.html = this.html + '<tr class="' + this.next_row_class + ' ' + row_classes.join(' ') +  '">';
 		if( this.next_row_class == 'even-row' ) {
 		    this.next_row_class = 'odd-row';
 		} else {
@@ -588,6 +591,33 @@ $.yote.util = {
 	return lc
     }, //login_control
 
+    check_edit:function( fld, checked_fun, unchecked_fun, extra_classes, on_edit_f ) {
+	return function( item, is_prep ) {
+	    var div_id = 'ed_' + item.id + '_' + fld;
+	    if( is_prep ) {
+		extra_classes = extra_classes ? extra_classes : [];
+		return '<input type="checkbox" id="' + div_id + '" ' + 
+		    ( 1 * item.get( fld ) == 1 ? ' checked' : '' ) + 
+		    ' class="' + extra_classes.join(' ') + '">';
+	    } else {
+		$( '#' + div_id ).click( function() {
+		    if( $( '#' + div_id ).is( ':checked' ) ) {
+			if( checked_fun ) { 
+			    checked_fun();
+			} else {
+			    item.set( fld, 1 );
+			}
+		    } else {
+			if( unchecked_fun ) { 
+			    unchecked_fun();
+			} else {
+			    item.set( fld, 0 );
+			}
+		    }
+		} );
+	    }
+	};
+    },
 
     col_edit:function( fld, extra_classes, on_edit_f ) {
 	return function( item, is_prep ) {
@@ -719,13 +749,16 @@ $.yote.util = {
 			    } else {
 				return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, skip : it.start, 
 							   search_fields : it.search_on, search_terms : it.terms,
+							   return_hash : it.paginate_type != 'list',
 							   reverse : it.paginate_order != 'forward' } );
 			    }
 			}
 		    }
 		    else {
 			paginate_function = function() {
-			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, skip : it.start, reverse : it.paginate_order != 'forward' } );
+			    console.log( [ "PAG", it.item ] );
+
+			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, return_hash : it.paginate_type != 'list', skip : it.start, reverse : it.paginate_order != 'forward' } );
 			}
 		    }
 		} )( me );
@@ -845,23 +878,32 @@ $.yote.util = {
 		    for( var i in keys ) {
 			var key = keys[ i ];
 			var item = items.get( key );
-			var row = [];
-			for( var j = 0 ; j < me.columns.length; j++ ) {
-			    row.push( typeof me.columns[ j ] == 'function' ?
-				      me.columns[ j ]( item, true ) :
-				      typeof me.columns[ j ] == 'object' ?
-				      me.columns[ j ][ 'render' ]( item )
-				      : item.get( me.columns[ j ] )
-				    );
+			if( item ) {
+			    var row = [];
+			    row.push( typeof me.columns[ 0 ] == 'function' ?
+				      me.columns[ 0 ]( item, true ) :
+				      typeof me.columns[ 0 ] == 'object' ?
+				      me.columns[ 0 ][ 'render' ]( item, key )
+				      : key );
+			    
+			    for( var j = 1 ; j < me.columns.length; j++ ) {
+				row.push( typeof me.columns[ j ] == 'function' ?
+					  me.columns[ j ]( item, true ) :
+					  typeof me.columns[ j ] == 'object' ?
+					  me.columns[ j ][ 'render' ]( item, key )
+					  : item.get( me.columns[ j ] )
+					);
+			    }
+			    if( me.remove_fun ) {
+				row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			    }
+			    if( me.suppress_table ) {
+				buf += row.join('');
+			    }
+			    else {
+				tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );			
+			    }
 			}
-			if( me.remove_fun ) {
-			    row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
-			}
-			if( me.suppress_table ) {
-			    buf += row.join('');
-			}
-			else {
-			    tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );			}
 		    }
 		} //hash pagination
 		else {
@@ -951,15 +993,24 @@ $.yote.util = {
 		}
 
 		if( me.paginate_type == 'hash' ) {
+		    console.log( [ "KEYS", keys ] );
 		    for( var i in keys ) {
 			var key = keys[ i ];
 			var item = items.get( key );
-			for( var j = 0 ; j < me.columns.length; j++ ) {
+			console.log( [ "KEYVAL", key,item ] );
+			if( typeof me.columns[ 0 ] == 'function' ) {
+			    me.columns[ 0 ]( item, false, key );
+			}
+			else if( typeof me.columns[ 0 ] == 'object' ) {
+			    me.columns[ 0 ][ 'after_render' ]( item, key );//, function( newstart, key ) { me.refresh(); } );
+			}
+
+			for( var j = 1 ; j < me.columns.length; j++ ) {
 			    if( typeof me.columns[ j ] == 'function' ) {
-				me.columns[ j ]( item, false );
+				me.columns[ j ]( item, false, key );
 			    }
 			    else if( typeof me.columns[ j ] == 'object' ) {
-				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+				me.columns[ j ][ 'after_render' ]( item, key );//function( newstart, key ) { me.refresh(); } );
 			    }
 			}
 			if( me.remove_fun ) {

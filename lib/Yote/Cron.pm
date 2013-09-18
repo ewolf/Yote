@@ -19,21 +19,25 @@ use base 'Yote::Obj';
 #       * repeat_interval - how many seconds to repeat this
 #       * repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
 #  * scheduled_times - a list of epoc times this cron should be run
-#  * run_next - epoc time this should be run next
+#  * next_time - epoc time this should be run next
 #  * last_run - time this was last run
 
 sub _init {
     my $self = shift;
-    $self->set_entries( [] );
+    $self->add_to_entries( new Yote::CronEntry( {
+	name   => 'recycler',
+	enabled => 1,
+	script => 'my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
+	repeats => [
+	    { repeat_times => 1, repeat_interval => 140000 },
+	    ],
+	    
+					  } ) );
 } #_init
 
 sub mark_done {
     my( $self, $entry, $acct ) = @_;
-    $self->_mark_done( $entry );
-}
-
-sub _mark_done {
-    my( $self, $entry ) = @_;
+    die "Access Error" unless $acct->is_root();
     my $ran_at = time;
     my $next_time;
     $entry->set_last_run( $ran_at );
@@ -72,12 +76,11 @@ sub _mark_done {
     }
 
     $entry->set_next_time( $next_time );
-
     unless( $next_time ) {
 	$self->remove_from_entries( $entry );
 	$self->add_to_completed_entries( $entry );
     }
-} #_mark_done
+} #mark_done
 
 sub add_entry {
     my( $self, $entry, $acct ) = @_;
@@ -107,7 +110,7 @@ sub add_entry {
 sub entries {
     my $self = shift;
     my $now_running = time;
-    return grep { $now_running >= $_->get_next_time() } @{ $self->get_entries() };
+    return grep { $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
 } #entries
 
 
@@ -142,6 +145,8 @@ The Yote::Cron's public methods can only be called by an account with the __is_r
 
 Ads an entry to this list. Takes a Yote::Obj that has the following data structure :
 
+ * name - name of script to run
+ * enabled - if true, this cron is active
  * script - what to run
  * repeats - a list of hashes with the following values : 
       * repeat_infinite - true if this will always be repeated

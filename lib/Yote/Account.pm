@@ -23,6 +23,11 @@ sub is_root {
     return $self->get_login()->get__is_root();
 } #is_root
 
+sub is_master_root {
+    my $self = shift;
+    return $self->get_login()->get__is_master_root();    
+}
+
 1;
 
 __END__

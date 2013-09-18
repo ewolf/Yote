@@ -7,7 +7,6 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-
 use Data::Dumper;
 use MIME::Base64;
 use IO::Handle;
@@ -83,6 +82,7 @@ sub accesslog {
 
 sub lock_object {
     my( $self, $obj_id, $ref ) = @_;
+    # LOCKED in this case means already locked by this thread
     if( $obj_id eq Yote::ObjProvider::first_id() || $self->{ LOCKED }{ $obj_id } ) {
 	return $ref;
     }
@@ -118,7 +118,8 @@ sub lock_object {
 		return $ref;
 	    }
 	    
-	    # locked by an other pid. Check to make sure that pid isn't waiting on what we have locked, for that is deadlock
+	    # lock data indicates this obj is locked by an other pid. 
+	    # Check to make sure that pid isn't waiting on what we have locked, for that is deadlock
 	    my @locked_ids = keys %{ $self->{LOCKED} || {} };
 	    for my $locked_oid ( @locked_ids ) {
 		# check if the process that has obj_id locked is waiting on any of the locked objects that are had.
@@ -127,6 +128,7 @@ sub lock_object {
 		    if( Yote::ObjProvider::__is_dirty( $locked_oid ) ) {
 			$self->unlock_objects( keys %{ $self->{LOCKED} } );
 			Yote::ObjProvider::flush( map { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} } );
+#			print STDERR Data::Dumper->Dump(["[$$ ".time()."] DEADLOCK"]);
 			die "__DEADLOCK__";
 		    }
 		}
@@ -136,20 +138,27 @@ sub lock_object {
 	    } #each locked oid
 
 	    if( $waiters{$$} ) {
+		# if I am already in the waiters, I'm already in @pids_waiting_for_this_object
 		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, @pids_waiting_for_this_object );
 	    } 
 	    else {
+		# add me to @pids_waiting_for_this_object
 		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, $$, @pids_waiting_for_this_object );
 	    }
-
+	    
+#	    print STDERR "[$$ ".time()."] UPDATED oid2lockeddata for $obj_id : $oid2lockdata{ $obj_id }\n";
+	    
 	    unless( @locked ) {
+		lock( %oid2lockdata );
+#		print STDERR "[$$ ".time()."] NO LOCKED. WAITING ON $obj_id\n";
 		cond_wait( %oid2lockdata );
 	    }
 	} # scope for locked var
-	
+
 	if( @locked ) {
 	    $self->unlock_objects( @locked );
 	    lock( %oid2lockdata );
+#	    print STDERR "[$$ ".time()."] JUST UNLOCKED. WAITING on $obj_id\n";
 	    cond_wait( %oid2lockdata );
 	}
     } #while loop
@@ -157,14 +166,18 @@ sub lock_object {
 
 sub unlock_objects {
     my( $self, @objs ) = @_;
-    lock( %oid2lockdata );
-    for my $obj_id ( @objs ) {
-	$oid2lockdata{ $obj_id } =~ s/^([^\|]+)//; 
+    return if $Yote::ObjProvider::LOCK_NEVER;
+    @objs = grep { $self->{ LOCKED }{ $_ } } @objs;
+    if( @objs ) {
+	lock( %oid2lockdata );
+	for my $obj_id ( @objs ) {
+	    $oid2lockdata{ $obj_id } =~ s/^([^\|]+)//; 
 #	print STDERR "[$$ ".time()."] UNLOCKED $obj_id : $oid2lockdata{ $obj_id }\n";
-	delete $self->{ LOCKED }{ $obj_id };
+	    delete $self->{ LOCKED }{ $obj_id };
+	}
+	cond_signal( %oid2lockdata );
     }
-    cond_signal( %oid2lockdata );
-}
+} #unlock_objects
 
 sub check_locked_for_dirty {
     my( $self  ) = @_;
@@ -341,7 +354,7 @@ sub process_http_request {
             close( $IN );
 	    #accesslog( "200 : $dest");
 	} else {
-	    accesslog( "404 NOT FOUND : $@,$! $root/$dest");
+	    accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
 	    $self->do404();
 	}
 	close( $soc );
@@ -424,13 +437,16 @@ sub start_server {
     print STDERR "Connected\n";
     
     $self->{ threads } = {};
-
+    
     Yote::ObjProvider::make_server( $self );
     for( 1 .. $self->{args}{threads} ) {
 	$self->_start_server_thread;
     } #creating threads
 
     my $cron = $root->get__crond();
+    Yote::ObjProvider::flush_all_volatile();
+    $self->unlock_all();
+    
 
     while( 1 ) {
 	sleep( 5 );
@@ -444,29 +460,32 @@ sub start_server {
 	while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
 	    $self->_start_server_thread;
 	}
-
+	
 	my @cron_entries = $cron->entries();
+	Yote::ObjProvider::flush_all_volatile();
+	$self->unlock_all();
+
 	for my $entry (@cron_entries) {
 	    threads->new( sub {
+		$cron->mark_done( $entry );
 		print STDERR "Starting cron thread " . threads->tid() . "\n";
 		my $script = $entry->get_script();
+		print STDERR "EVAL $script\n";
 		eval "$script";
+		print STDERR "Done EVAL\n";
 		if( $@ ) {
-		    print STDERR "Error in cron $@ $!\n";
+		    print STDERR "Error in Cron : $@ $!\n";
 		} 
-		else {
-		    $self->check_locked_for_dirty();
-		    Yote::ObjProvider::start_transaction();
-		    Yote::ObjProvider::stow_all();
-		    Yote::ObjProvider::flush_all_volatile();
-		    Yote::ObjProvider::commit_transaction();
-		    $self->unlock_all();
-		}
-		$cron->mark_done( $entry );
+		
+		$self->check_locked_for_dirty();
+		Yote::ObjProvider::start_transaction();
+		Yote::ObjProvider::stow_all();
+		Yote::ObjProvider::flush_all_volatile();
+		Yote::ObjProvider::commit_transaction();
+		$self->unlock_all();
 		print STDERR "Done cron thread " . threads->tid() . "\n";
-			  } );
+			  } ); #done with cron entry thread
 	} #each cron entry
-	
     } #endless loop
 
     _stop_threads();
@@ -496,6 +515,7 @@ sub _start_server_thread {
 	    print STDERR "Starting server thread " . threads->tid() . "\n";
 	    $SIG{PIPE} = sub { 
 		print STDERR "Thread $$ got sig pipe. Exiting\n";
+		$self->{lsn}->close() if $self->{lsn};
 		threads->exit()
 	    };
 	    unless( $self->{lsn} ) {
@@ -510,8 +530,14 @@ sub _start_server_thread {
 		&& $Yote::WebAppServer::ERR->autoflush;
 	    
 	    while( my $fh = $self->{lsn}->accept ) {
-		$ENV{ REMOTE_ADDR } = $fh->peerhost;
-		$self->process_http_request( $fh );
+		eval {
+		    $ENV{ REMOTE_ADDR } = $fh->peerhost;
+		    $self->process_http_request( $fh );
+		};
+		if( $@ ) {
+		    $self->{lsn}->close() if $self->{lsn};
+		    last;
+		}
 		$fh->close();
 	    } #main loop
 	} ); #new thread
@@ -519,27 +545,8 @@ sub _start_server_thread {
     
 } #_start_server_thread
 
-sub _crond {
-    my( $self, $cron_id ) = @_;
-
-    while( 1 ) {
-	sleep( 60 );
-	$self->_process_command( {
-	    a  => 'check',
-	    ai => 1,
-	    d  => 'eyJkIjoxfQ==',
-	    e  => {%ENV},
-	    oi => $cron_id,
-	    t  => undef,
-	    w  => 0,
-				 } );
-    } #infinite loop
-
-} #_crond
-
 sub _process_command {
     my( $self, $command ) = @_;
-    
     my $resp;
 
     eval {
@@ -566,7 +573,7 @@ sub _process_command {
 
         my $app_object = Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
-	
+
 	die "Access Error" if $action =~ /^([gs]et|add_(once_)?to_|remove_(all_)?from)_/; # set may not be called directly on an object.
         my $account;
         if( $login ) {
@@ -578,6 +585,7 @@ sub _process_command {
         my $ret = $app_object->$action( $data, $account, $command->{e} );
 
 	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
+
 	my( $dirty_data );
 	if( @$dirty_delta ) {
 	    $dirty_data = {};
@@ -601,10 +609,13 @@ sub _process_command {
     };
     if( $@ ) {
 	my $err = $@;
+	print STDERR Data::Dumper->Dump(["ERRRR $@"]);
 	if( $err =~ /^__DEADLOCK__/ ) {
 	    iolog( "DEADLOCK TO RETRY $$ : $@" );
 	    # if a deadlock condition was detected. back out of any changes and retry
 	    # now this could become an issue if things deadlock really really often as the stack would fill up.
+#	    print STDERR "[$$ ".time()."] DEADLOCK DETECTED\n";
+	    $self->unlock_all();
 	    return $self->_process_command( $command );
 	}
 	$err =~ s/at \/\S+\.pm.*//s;
