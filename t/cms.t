@@ -5,6 +5,7 @@ use warnings;
 
 use Yote::Util::CMS;
 
+use Yote::ObjManager;
 
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;

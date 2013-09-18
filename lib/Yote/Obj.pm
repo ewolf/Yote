@@ -34,7 +34,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.071';
+$VERSION = '0.072';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *

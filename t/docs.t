@@ -22,7 +22,7 @@ $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 #
 # Test documentation.
 #
-my( @poddirs ) = ( '../Yote' );
+my( @poddirs ) = ( 'Yote/lib' );
 all_pod_files_ok(
     all_pod_files( map { catdir updir, $_ } @poddirs )
     );

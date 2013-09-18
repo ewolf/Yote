@@ -5,9 +5,11 @@ use warnings;
 no warnings 'uninitialized';
 
 use vars qw($VERSION);
-$VERSION = '0.011';
+$VERSION = '0.012';
 
 use DateTime;
+
+use Yote::CronEntry;
 
 use base 'Yote::Obj';
 

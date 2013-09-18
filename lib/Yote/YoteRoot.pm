@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.051';
+$VERSION = '0.052';
 
 no warnings 'uninitialized';
 
@@ -339,8 +339,9 @@ sub _check_root {
     $root_login->set__is_master_root( 1 );
 
     $root_login->set__password( $encr_passwd );
-    
-} #_create_root
+
+    return $root_login;
+} #_check_root
 
 #
 # Transforms the login into a login with root privs. Do not use lightly.
@@ -444,11 +445,19 @@ Returns the url_the_person_requested_recovery that was given in the recover_pass
 
 Purges the login account from the system if its credentials are verified. It moves the account to a special removed logins hidden field under the yote root.
 
+=item remove_root( login )
+
+Removes the root bit from the login.
+
 =item create_login( args )
 
 Create a login with the given client supplied args : h => handle, e => email, p => password.
 This checks to make sure handle and email address are not already taken. 
 This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
+=item cron
+
+Returns the cron. Only a root login may call this.
 
 =back
 

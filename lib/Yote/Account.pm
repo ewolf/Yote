@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 use base 'Yote::Messenger';
 
@@ -56,6 +56,11 @@ This is called with a file uploaded POST where the file input name is 'avatar_fi
 =item is_root
 
 Called to reveal if the login behind this account is a root login.
+
+=item is_master_root
+
+Returns trus if the account is the original root account
+
 
 =back
 

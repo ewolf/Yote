@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use base 'Yote::Obj';
 
@@ -69,6 +69,10 @@ container objects that store state data for the users.
 =item is_root
 
 Returns trus if the account has root privileges.
+
+=item is_master_root
+
+Returns trus if the account is the original root account
 
 =item reset_password
 

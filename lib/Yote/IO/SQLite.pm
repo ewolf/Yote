@@ -15,7 +15,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.032';
+$VERSION = '0.033';
 
 use constant {
     DATA => 2,
