@@ -71,7 +71,6 @@ my $builder = Module::Build->new(
 	'JSON'                  => 2.53,
 	'Mail::Sender'          => 0,
 	'MIME::Base64'          => 0,
-	'MongoDB'               => 0.503,
 	'Test::More'            => 0,
 	'Test::Pod'             => 0,
 	'WeakRef'               => 0.01,
