@@ -1,4 +1,5 @@
 bin/dummy_server_for_debug.pl
+bin/perf_reader.pl
 bin/recycle_objs
 bin/yote_classpath_updater.pl
 bin/yote_server
@@ -13,6 +14,7 @@ lib/Yote/AppRoot.pm
 lib/Yote/Array.pm
 lib/Yote/Cache.pm
 lib/Yote/Cron.pm
+lib/Yote/CronEntry.pm
 lib/Yote/DummyCache.pm
 lib/Yote/FileHelper.pm
 lib/Yote/Hash.pm
@@ -24,6 +26,7 @@ lib/Yote/Messenger.pm
 lib/Yote/Obj.pm
 lib/Yote/ObjManager.pm
 lib/Yote/ObjProvider.pm
+lib/Yote/PerfAspect.pm
 lib/Yote/Sample/SecretCollect.pm
 lib/Yote/Sample/SimpleToDo.pm
 lib/Yote/SimpleLRUCache.pm
@@ -52,6 +55,7 @@ META.yml
 notes
 README
 t/cms.t
+t/cron.t
 t/docs.t
 t/pod-coverage.t
 t/sqlite.t
