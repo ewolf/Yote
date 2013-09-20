@@ -112,11 +112,12 @@ sub lock_object {
 #		print STDERR "[$$ ".time()."] LOCKED $obj_id \n";
 		$self->{ LOCKED }{ $obj_id } = 1;
 		if( $dirty_time &&  $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } && $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } <= $dirty_time ) {
+		    # means the object is dirty and should be reloaded
 #		    print STDERR "[$$ ".time()."] RETURNING as dity time is now $obj_id \n";
 		    return;
 		}
 		return $ref;
-	    }
+	    } # not locking pid
 	    
 	    # lock data indicates this obj is locked by an other pid. 
 	    # Check to make sure that pid isn't waiting on what we have locked, for that is deadlock
@@ -166,7 +167,6 @@ sub lock_object {
 
 sub unlock_objects {
     my( $self, @objs ) = @_;
-    return if $Yote::ObjProvider::LOCK_NEVER;
     @objs = grep { $self->{ LOCKED }{ $_ } } @objs;
     if( @objs ) {
 	lock( %oid2lockdata );
@@ -190,7 +190,7 @@ sub check_locked_for_dirty {
 	    $oid2lockdata{ $dirty_oid } = join( '|', $locking_pid, $t, @pids_waiting_for_this_object );
 	}
     } #if dirty
-}
+} #check_locked_for_dirty
 
 sub unlock_all {
     my( $self  ) = @_;

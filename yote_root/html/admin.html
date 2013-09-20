@@ -176,11 +176,21 @@ if we are our experiences then we are both sides of them.
 			list_name : 'entries',
 			paginate_type : 'list',
 			title : 'Crons',
+			remove_function : function( item ) {
+			    
+			},
 			column_headers : [ 'Name', 'Enabled', 'Script', 'Next Run', 'Repeat', 'Schedule' ],
 			columns : [ $.yote.util.col_edit( 'name' ),
 				    $.yote.util.check_edit( 'enabled' ),
 				    $.yote.util.col_edit( 'script' ),
-				    'next_time',
+				    { 
+					render : function( entry ) {
+					    if( entry.get( 'next_time' ) > 0 )
+						return new Date( 1000 * entry.get( 'next_time' ) );
+					    else
+						return "Not Scheduled";
+					}
+				    },
 				    {
 					render : function( entry ) {
 					    
@@ -194,6 +204,23 @@ if we are our experiences then we are both sides of them.
 					after_render : function( entry ) {}
 				    },
 				  ],
+			new_attachpoint : '',
+			new_column_titles : [ 'Name', 'Script', 'Enabled' ],
+			new_set_values : true,
+			new_columns : [
+			    'name',
+			    'script',
+			    {
+				render: function( id ) {
+				    return '<input type="checkbox" id="' + id + '" CHECKED>';
+				},
+				on_create : function( obj, id  ) {
+				    obj.set( 'enabled', $( '#' + id ).is( ':checked' ) );
+				}
+			    },
+			],
+			new_function : function( args ) {},
+			after_new_function : function() {},
 		    } );
 		} ); //cron_b
 

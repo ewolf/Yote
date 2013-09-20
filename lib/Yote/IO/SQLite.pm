@@ -15,7 +15,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.033';
+$VERSION = '0.034';
 
 use constant {
     DATA => 2,
@@ -205,6 +205,7 @@ sub paginate {
 
     my $query;
     my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+
     if( $args->{ sort_fields } ) {
 	my $sort_fields = $args->{ sort_fields };
 	my $reversed_orders = $args->{ reversed_orders } || [];
@@ -355,8 +356,23 @@ sub _engage_queries {
 # Returns the number of entries in the list of the given id.
 #
 sub count {
-    my( $self, $container_id ) = @_;
-    my( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
+    my( $self, $container_id, $args ) = @_;
+    my $count;
+    if( $args->{search_fields} && $args->{search_terms} ) {
+	my( @ors );
+	my( @params ) = $container_id;
+	for my $field ( @{$args->{search_fields}} ) {
+	    for my $term (@{$args->{search_terms}}) {
+		push @ors, " (f.field=? AND f.value LIKE ?) ";
+		push @params, $field, "\%$term\%";
+	    }
+	}
+	my $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM (SELECT bar.field,fi.obj_id FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2) foo", @params );
+    } #if count with search
+    else {
+	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
+    }
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
     return $count;
@@ -499,7 +515,7 @@ __END__
 
 =head1 NAME
 
-Yote::SQLiteIO - A SQLite persistance engine for Yote.
+Yote::IO::SQLite - A SQLite persistance engine for Yote.
 
 =head1 DESCRIPTION
 
@@ -509,9 +525,9 @@ The interaction the developer will have with this may be specifying its intializ
 
 =head1 CONFIGURATION
 
-The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::SQLiteIO.
+The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::IO::SQLiteb.
 
-Yote::ObjProvider::init( datastore => 'Yote::SQLiteIO', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
+Yote::ObjProvider::init( datastore => 'Yote::IO::SQLite', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
 
 =head1 PUBLIC METHODS
 

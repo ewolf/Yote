@@ -127,8 +127,11 @@ sub _get_id {
 } #_get_id
 
 sub _count {
-    my( $self, $container_name ) = @_;
-    return Yote::ObjProvider::count( $self->{DATA}{$container_name} );
+    my( $self, $args ) = @_;
+    if( ref( $args ) ) {
+	return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
+    }
+    return Yote::ObjProvider::count( $self->{DATA}{$args} );
 }
 
 sub _list_insert {
@@ -160,6 +163,16 @@ sub _list_fetch {
     my( $self, $listname, $key ) = @_;
     return Yote::ObjProvider::list_fetch( $self->{DATA}{$listname}, $key );
 }
+
+sub _lock {
+    my $self = shift;
+    return Yote::ObjProvider::lock( $self->{ID}, $self );
+} #lock
+
+sub _unlock {
+    my $self = shift;
+    return Yote::ObjProvider::unlock( $self->{ID} );
+} #_unlock
 
 sub _hash_has_key {
     my( $self, $hashname, $key ) = @_;
@@ -238,6 +251,21 @@ sub update {
     die "Disallows update";
 } #update
 
+sub add_to {
+    die "Disallows add_to";
+}
+
+sub hash {
+    die "Disallows hash";
+}
+
+sub remove_from {
+    die "Disallows remove_from";
+}
+
+sub delete_key {
+    die "Disallows delete_key";
+}
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list

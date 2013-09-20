@@ -264,7 +264,7 @@ $().ready(function(){
 	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
 	    // testing pagination
-	    var pag = hello_app.list_paginator( 'foo_array', 5 );
+	    var pag = hello_app.paginate( { name : 'foo_array', limit : 5 } );
 	    is( pag.full_size, 26, "26 letters of the alphabet" );
 	    is( pag.get( 0 ), "A", "first letter" );
 	    is( pag.page_size, 5, "Size of 5" );

@@ -19,12 +19,6 @@ $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS      = {};
 $Yote::ObjProvider::LAST_LOAD_TIME = {};
 
-use constant LOCK_ON_WRITE => 1;
-use constant LOCK_ALWAYS   => 2;
-use constant LOCK_NEVER    => 3;
-
-our $LOCK_MODE = LOCK_ON_WRITE;
-
 our $DATASTORE;
 our $LOCKER;
 our $FIRST_ID;
@@ -75,9 +69,6 @@ sub commit_transaction {
 sub dirty {
     my $obj = shift;
     my $id = shift;
-    if( $LOCK_MODE != LOCK_NEVER && $LOCKER ) {
-	$obj = $LOCKER->lock_object( $id, $obj );
-    }
     Yote::ObjManager::mark_dirty( $id );
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
 } #dirty
@@ -116,6 +107,24 @@ sub flush_all_volatile {
     $Yote::ObjProvider::WEAK_REFS = {};
 }
 
+sub lock {
+    my( $id, $ref ) = @_;
+    my $oref = $LOCKER ? $LOCKER->lock_object( $id, $ref ) : $ref;
+    unless( $oref ) {
+	$oref = fetch( $id );
+	$ref->{DATA} = $oref->{DATA};
+    }
+    return $ref;
+} #lock
+
+sub unlock {
+    my $id = shift;
+    if( $LOCKER ) {
+	return $LOCKER->unlock_objects( $id );
+    }
+    return;
+} #unlock
+
 sub fetch {
     my( $id ) = @_;
 
@@ -124,10 +133,6 @@ sub fetch {
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
-#	print STDERR "[$$ ".time()."] cached $ref $id, checking on LOCKER\n";
-    if( $LOCKER && $LOCK_MODE == LOCK_ALWAYS ) { 
-	$ref = $LOCKER->lock_object( $id, $ref );
-    }
 
     if( $ref ) {
 #	print STDERR "[$$ ".time()."] returning ref $ref for $id\n";
@@ -444,8 +449,8 @@ sub xform_out {
 }
 
 sub count {
-    my $container_id = shift;
-    return $DATASTORE->count( $container_id );
+    my( $container_id, $args ) = @_;
+    return $DATASTORE->count( $container_id, $args );
 }
 
 

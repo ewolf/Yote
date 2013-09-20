@@ -13,7 +13,7 @@ use DBI;
 
 use vars qw($VERSION);
 
-$VERSION = '0.032';
+$VERSION = '0.033';
 
 use constant {
     DATA => 2,
@@ -114,8 +114,23 @@ sub ensure_datastore {
 # Returns the number of entries in the list of the given id.
 #
 sub count {
-    my( $self, $container_id ) = @_;
-    my( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
+    my( $self, $container_id, $args ) = @_;
+    my $count;
+    if( $args->{search_fields} && $args->{search_terms} ) {
+	my( @ors );
+	my( @params ) = $container_id;
+	for my $field ( @{$args->{search_fields}} ) {
+	    for my $term (@{$args->{search_terms}}) {
+		push @ors, " (f.field=? AND f.value LIKE ?) ";
+		push @params, $field, "\%$term\%";
+	    }
+	}
+	my $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM (SELECT bar.field,fi.obj_id FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2) foo", @params );
+    } #if count with search
+    else {
+	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
+    }
     die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 
     return $count;
@@ -514,19 +529,19 @@ __END__
 
 =head1 NAME
 
-Yote::MysqlIO - A mysql persistance engine for Yote. 
+Yote::IO::Mysql - A mysql persistance engine for Yote. 
 
 =head1 DESCRIPTION
 
-This is deprecated and has not been further developed. It may be brought up to par with ObjProvider.
+Persistance engine that uses mysql as a store.
 
 This can be installed as a singleton of Yote::ObjProvider and does the actual storage and retreival of Yote objects.
 
 =head1 CONFIGURATION
 
-The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::MysqlIO.
+The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::IO::Mysql.
 
-Yote::ObjProvider::init( datastore => 'Yote::MysqlIO', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
+Yote::ObjProvider::init( datastore => 'Yote::IO::Mysql', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
 
 =head1 PUBLIC METHODS
 

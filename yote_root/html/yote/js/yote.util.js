@@ -702,7 +702,7 @@ $.yote.util = {
 	                                                                                  //     field - a string that may be anything as long as it is unique to this particular call to control_table
 	                                                                                  //     render - a function that takes an id as an argument and returns html 
 	                                                                                  //     after_render - a function called after the html is in the dom. Takes id as an argument
-	                                                                                  //     on_create - a function called after the item has been created. Takes the new item as an argument
+	                                                                                  //     on_create - a function called after the item has been created. Takes the new item and the control id as arguments.
 	    new_column_titles	: args[ 'new_column_titles' ] || args[ 'new_columns' ],   // Titles for the data fields
 	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
 	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
@@ -809,7 +809,7 @@ $.yote.util = {
 
 		    for( var i=0; i < me.new_columns.length; i++ ) {
 			var nc = me.new_columns[ i ];
-			if( typeof nc === 'object' ) {
+			if( typeof nc === 'object' && nc[ 'after_render' ] ) {
 			    nc.after_render( '_new_' + me.item.id + '_' + nc.field );
 			}
 		    }
@@ -824,11 +824,12 @@ $.yote.util = {
 				newitem = it.new_function();
 				for( var i=0; i < it.new_columns.length; i++ ) {
 				    var nc = it.new_columns[ i ];
+				    var id = '_new_' + it.item.id + '_' + nc;
 				    if( typeof nc === 'object' ) {
-					nc.on_create( newitem );
+					nc.on_create( newitem, id );
 				    }
 				    else {
-					var val = $( '#_new_' + it.item.id + '_' + nc ).val();
+					var val = $( '#' + id  ).val();
 					newitem.set( nc, val );
 				    }
 				}
@@ -1001,7 +1002,7 @@ $.yote.util = {
 			if( typeof me.columns[ 0 ] == 'function' ) {
 			    me.columns[ 0 ]( item, false, key );
 			}
-			else if( typeof me.columns[ 0 ] == 'object' ) {
+			else if( typeof me.columns[ 0 ] == 'object' && me.columns[ 0 ][ 'after_render' ] ) {
 			    me.columns[ 0 ][ 'after_render' ]( item, key );//, function( newstart, key ) { me.refresh(); } );
 			}
 
@@ -1009,7 +1010,7 @@ $.yote.util = {
 			    if( typeof me.columns[ j ] == 'function' ) {
 				me.columns[ j ]( item, false, key );
 			    }
-			    else if( typeof me.columns[ j ] == 'object' ) {
+			    else if( typeof me.columns[ j ] == 'object'  && me.columns[ j ][ 'after_render' ] ) {
 				me.columns[ j ][ 'after_render' ]( item, key );//function( newstart, key ) { me.refresh(); } );
 			    }
 			}
@@ -1032,7 +1033,7 @@ $.yote.util = {
 			    if( typeof me.columns[ j ] == 'function' ) {
 				me.columns[ j ]( item, false );
 			    }
-			    else if( typeof me.columns[ j ] == 'object' ) {
+			    else if( typeof me.columns[ j ] == 'object'  && me.columns[ j ][ 'after_render' ] ) {
 				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
 			    }
 			}

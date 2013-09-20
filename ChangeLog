@@ -1,3 +1,11 @@
+2013-09-19  Eric Wolf  <wolf@Talisman>
+
+	* VERSION 0.1009
+	* count now can take arguments to return a count for searches too.
+	* tests for different IO modules now share a common test routine.
+	* object-locking is drastically changed. I've removed any automatic locking. Locks must now be called explicitly in order to work. I made this decision when I realized that most of the calls that were being made resulted in no collision most of the time. I would have kept the safer but it impacted performance way too much.
+	* control_table - fixed some bugs in how the control table rendered hashes rather than lists.
+
 2013-09-17  Eric Wolf  <wolf@Talisman>
 
 	* VERSION 0.1008

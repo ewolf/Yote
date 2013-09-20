@@ -14,7 +14,7 @@ use MongoDB;
 
 use vars qw($VERSION);
 
-$VERSION = '0.033';
+$VERSION = '0.034';
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -139,9 +139,27 @@ sub _has_path_to_root {
 # Returns the number of entries in the list of the given id.
 #
 sub count {
-    my( $self, $container_id ) = @_;
+    my( $self, $container_id, $args ) = @_;
     my $mid = MongoDB::OID->new( value => $container_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    if( $args->{search_fields} && $args->{search_terms} ) {
+	my @ors;
+	for my $field ( @{ $args->{ search_fields } } ) {
+	    for my $term ( @{ $args->{ search_terms } } ) {
+		push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+	    }
+	}
+	my $cands = $obj->{ c } eq 'ARRAY' ? [ @{$obj->{ d }} ] : [ values %{$obj->{ d }} ];
+	my $query = {
+	    _id => { '$in' => [ map { MongoDB::OID->new( value => $_ )  } grep { index( $_, 'v' ) != 0 } @$cands] },
+	    '$or' => \@ors,
+	};
+	my $curs = $self->{ OBJS }->find( $query );
+	print STDERR Data::Dumper->Dump([[$curs->all()],"ALL"]);
+
+	print STDERR Data::Dumper->Dump([$query]);
+	return $self->{ OBJS }->find( $query )->count();
+    }
     if( $obj->{ c } eq 'ARRAY' ) {
 	return scalar( @{$obj->{ d } } );
     }
@@ -285,7 +303,7 @@ sub paginate {
 	}
 
 
-	if( $search_fields ) { #search fields must be objects
+	if( $search_fields && $search_terms) { #search fields must be objects
 	    my @ors;
 	    for my $field ( @$search_fields ) {
 		for my $term ( @$search_terms ) {
@@ -462,7 +480,7 @@ __END__
 
 =head1 NAME
 
-Yote::SQLiteIO - A SQLite persistance engine for Yote.
+Yote::IO::Mongo - A Mongo persistance engine for Yote.
 
 =head1 DESCRIPTION
 
@@ -472,9 +490,9 @@ The interaction the developer will have with this may be specifying its intializ
 
 =head1 CONFIGURATION
 
-The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::SQLiteIO.
+The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::IO::Mongo.
 
-Yote::ObjProvider::init( datastore => 'Yote::SQLiteIO', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
+Yote::ObjProvider::init( datastore => 'Yote::IO::Mongo', db => 'yote_db', uname => 'yote_db_user', pword => 'yote_db_password' );
 
 =head1 PUBLIC METHODS
 
