@@ -1,4 +1,5 @@
 Next updates
+  * control_table to work with the cool built in pagination that objects already have!
   * make sure search and sort fields can both be given. update the tests for that.
   * think of permissiveness. Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
     possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.

@@ -15,7 +15,6 @@ use File::Path;
 
 use Yote::ConfigData;
 use Yote::ObjProvider;
-use Yote::SQLiteIO;
 use Yote::WebAppServer;
 
 sub _print_use {
