@@ -517,10 +517,11 @@ $.yote = {
 			    }
 			},
 			seek : function( idx ) {			    
-			    if( this.is_hash ) { 
-				this.contents = obj.paginate_hash( [ this.field, this.page_size, idx ] ).to_hash();
-			    } else {
-				var res = obj.paginate_list( [ this.field, this.page_size, idx ] );
+			    if( this.is_hash ) {
+				this.contents = obj.paginate( { name : this.field, limit : this.page_size, skip : idx, return_hash : true } ).to_hash();
+			    }
+			    else {
+				var res = obj.paginate( { name : this.field, limit : this.page_size, skip : idx } );
 				this.contents = [];
 				for( var i=0; i < res.length(); i++ ) {
 				    this.contents.push( res.get( i ) );
@@ -556,7 +557,7 @@ $.yote = {
 		    };
 		    pag.seek( st );
 		    return pag;
-		},
+		}, // paginator
 		list_paginator:function( listname, size, start ) {
 		    return this.paginator( listname, false, size, start );
 		},
