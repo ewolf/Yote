@@ -176,9 +176,6 @@ if we are our experiences then we are both sides of them.
 			list_name : 'entries',
 			paginate_type : 'list',
 			title : 'Crons',
-			remove_function : function( item ) {
-			    
-			},
 			column_headers : [ 'Name', 'Enabled', 'Script', 'Next Run', 'Repeat', 'Schedule' ],
 			columns : [ $.yote.util.col_edit( 'name' ),
 				    $.yote.util.check_edit( 'enabled' ),
@@ -193,34 +190,54 @@ if we are our experiences then we are both sides of them.
 				    },
 				    {
 					render : function( entry ) {
-					    
+					    return '<div id="cron_rep_' + entry.id + '"></div><div id="cron_rep_new_' + entry.id + '"></div>';
+					    //repeat
 					},
-					after_render : function( entry ) {}
+					after_render : function( entry ) {
+					    $.yote.util.control_table( {
+						attachpoint : '#cron_rep_' + entry.id,
+						plimit : 100,
+						item : entry,
+						list_name : 'repeats',
+						remove_function : function( item ) {
+						    
+						},
+						column_headers : [ ],
+						columns : [
+						    
+						],
+						new_attachpoint : '#cron_new_rep_' + entry.id,
+						new_column_titles : [],
+						new_set_values : true,
+						new_columns : [
+
+						],
+						after_new_function : function( newitem ) {}
+					    } );
+					}
 				    },
 				    {
 					render : function( entry ) {
-					    
+					    return '<div id="cron_sched_' + entry.id + '"></div>';
 					},
-					after_render : function( entry ) {}
+					after_render : function( entry ) {
+					    $.yote.util.control_table( {
+
+					    } );
+					    //schedule
+					}
 				    },
 				  ],
-			new_attachpoint : '',
-			new_column_titles : [ 'Name', 'Script', 'Enabled' ],
+			new_attachpoint : '#appnewpanel',
+			new_column_titles : [ 'Name', 'Script' ],
 			new_set_values : true,
 			new_columns : [
 			    'name',
-			    'script',
-			    {
-				render: function( id ) {
-				    return '<input type="checkbox" id="' + id + '" CHECKED>';
-				},
-				on_create : function( obj, id  ) {
-				    obj.set( 'enabled', $( '#' + id ).is( ':checked' ) );
-				}
-			    },
+			    'script'
 			],
-			new_function : function( args ) {},
-			after_new_function : function() {},
+			after_new_function : function( newitem ) {
+			    cron.init_entry( newitem );
+			}
 		    } );
 		} ); //cron_b
 
@@ -414,6 +431,8 @@ if we are our experiences then we are both sides of them.
 	  <DIV id="sidenav" class="sidenav">
 	  </DIV>
 	  <DIV id="apppanel" class="apppanel">
+	  </DIV>
+	  <DIV id="appnewpanel" class="apppanel">
 	  </DIV>
 	</DIV>
 

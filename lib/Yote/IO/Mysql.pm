@@ -161,8 +161,8 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $idx ) = @_;
-    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+    my( $self, $list_id, $idx_or_val ) = @_;
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND (field=? OR value=?) LIMIT 1", $list_id, $idx_or_val, $idx_or_val );
     return;
 }
 

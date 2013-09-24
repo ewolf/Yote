@@ -239,13 +239,13 @@ sub list_insert {
 }
 
 sub list_delete {
-    my( $list_id, $key ) = @_;
-    return $DATASTORE->list_delete( $list_id, $key );
+    my( $list_id, $key_or_val ) = @_;
+    return $DATASTORE->list_delete( $list_id, $key_or_val );
 }
 
 sub hash_delete {
-    my( $hash_id, $key ) = @_;
-    return $DATASTORE->hash_delete( $hash_id, $key );
+    my( $hash_id, $key_or_val ) = @_;
+    return $DATASTORE->hash_delete( $hash_id, $key_or_val );
 }
 
 sub hash_insert {

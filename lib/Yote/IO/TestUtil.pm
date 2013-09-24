@@ -405,7 +405,7 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'azzy', limit => 2, skip => 4 } );
     is_deeply( $res, [ ], 'paginate limits beyond last index are empty' );
 
-    $res = $app->_list_insert( 'azzy', 'E', 4 );
+    $res = $app->_insert_at( 'azzy', 'E', 4 );
 
     # paginate_list
     $res = $app->_paginate( { name => 'azzy' } );
@@ -420,16 +420,17 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 4 } );
     is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit returning hash' );
         
-    $app->_list_delete( 'azzy', 2 );
+    $app->_remove_from( 'azzy', 2 );
 
     # paginate_hash
     $res = $app->_paginate( { name => 'azzy', return_hash => 1 } );
-    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'D', 3 => 'E' }, 'paginate hash without limits correct after list_delete' );
+    is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'D', 3 => 'E' }, 'paginate hash without limits correct after remove_from' );
     $res = $app->_paginate( { name => 'azzy' } );
-    is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after list_delete' );
+    is_deeply( $res, [ qw/A B D E/ ], 'paginate list without limits correct after remove_from' );
 
-    $app->_list_insert( 'azzy', 'foo/bar' );
+    $app->_insert_at( 'azzy', 'foo/bar' );
     $res = $app->_paginate( { name => 'azzy' } );
+    print STDERR Data::Dumper->Dump([$res]);
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
     Yote::ObjProvider::stow_all();    
@@ -616,6 +617,7 @@ sub io_independent_tests {
     # cron tests
     my $cron = $root->get__crond();
     $cron->add_entry( new Yote::Obj( {
+	enabled => 1,
 	repeats => [
 	    { repeat_infinite => 1, repeat_interval => 14 },
 	    { repeat_times => 1, repeat_interval => 3 },

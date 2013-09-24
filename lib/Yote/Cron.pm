@@ -9,9 +9,7 @@ $VERSION = '0.012';
 
 use DateTime;
 
-use Yote::CronEntry;
-
-use base 'Yote::Obj';
+use base 'Yote::RootObj';
 
 # cron entries will have the following fields :
 #  * script - what to run
@@ -26,20 +24,22 @@ use base 'Yote::Obj';
 
 sub _init {
     my $self = shift;
-    $self->add_to_entries( new Yote::CronEntry( {
+    my $first_cron = new Yote::RootObj( {
 	name   => 'recycler',
 	enabled => 1,
 	script => 'my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
-	    { repeat_times => 1, repeat_interval => 140000 },
+	    { repeat_interval => 140000, repeat_infinite => 1 },
 	    ],
 	    
-					  } ) );
+					} );
+    $self->add_to_entries( $first_cron );
+    $self->_init_entry( $first_cron );
+
 } #_init
 
-sub mark_done {
-    my( $self, $entry, $acct ) = @_;
-    die "Access Error" unless $acct->is_root();
+sub _mark_done {
+    my( $self, $entry ) = @_;
     my $ran_at = time;
     my $next_time;
     $entry->set_last_run( $ran_at );
@@ -82,11 +82,10 @@ sub mark_done {
 	$self->remove_from_entries( $entry );
 	$self->add_to_completed_entries( $entry );
     }
-} #mark_done
+} #_mark_done
 
-sub add_entry {
-    my( $self, $entry, $acct ) = @_;
-    $self->add_to_entries( $entry );
+sub _init_entry {
+    my( $self, $entry ) = @_;
     my $repeats = $entry->get_repeats();
     my $added_on = time;
     my $next_time;
@@ -106,15 +105,34 @@ sub add_entry {
 	}
     }
     $entry->set_next_time( $next_time );
-    die "Entry  must contain a scheduled time or repeated time" unless $entry->get_next_time();
+    return $entry;
+} #_init_entry
+
+sub add_entry {
+    my( $self, $entry, $acct ) = @_;
+    $self->add_to_entries( $entry );
+    $self->_init_entry( $entry );
+    return $entry;
 } #add_entry
 
 sub entries {
     my $self = shift;
     my $now_running = time;
-    return grep { $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
+    return grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
 } #entries
 
+sub init_entry {
+    my( $self, $entry, $acct ) = @_;
+    
+    return $self->_init_entry( $entry );
+} #init_entry
+
+
+sub mark_done {
+    my( $self, $entry, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    return $self->_mark_done( $entry );
+}
 
 1;
 

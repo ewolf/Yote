@@ -107,6 +107,19 @@ sub _absorb {
     return $updated_count;
 } #_absorb
 
+# adds the items to the list attached to this object with the given name.
+sub _add_to {
+    my( $self, $listname, @data ) = @_;
+    for my $d (@data) {
+	Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $d );
+    }
+} #_add_to
+
+sub _insert_at {
+    my( $self, $listname, $item, $idx ) = @_;
+    Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $item, $idx );
+} #_insert_at
+
 # returns true if the object passsed in is the same as this one.
 sub _is {
     my( $self, $obj ) = @_;
@@ -132,16 +145,6 @@ sub _count {
 	return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
     }
     return Yote::ObjProvider::count( $self->{DATA}{$args} );
-}
-
-sub _list_insert {
-    my( $self, $listname, $val, $idx ) = @_;
-    return Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $val, $idx );
-}
-
-sub _list_delete {
-    my( $self, $listname, $idx ) = @_;
-    return Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $idx );
 }
 
 sub _hash_delete {
@@ -179,9 +182,21 @@ sub _hash_has_key {
     return Yote::ObjProvider::hash_has_key( $self->{DATA}{$hashname}, $key );
 }
 
+sub _paginate {
+    my( $self, $args ) = @_;
+    return Yote::ObjProvider::paginate( $self->{DATA}{$args->{name}}, $args );
+} #_paginate
+
 sub _power_clone {
     my( $self, $replacements ) = @_;
     return Yote::ObjProvider::power_clone( $self, $replacements );
+}
+
+sub _remove_from {
+    my( $self, $listname, @data ) = @_;
+    for my $d (@data) {
+	Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $d );
+    }
 }
 
 #
@@ -192,29 +207,41 @@ sub _update {
     my( $self, $datahash, @fieldlist ) = @_;
 
     my $dirty;
-    for my $fld ( @fieldlist ) {
-	my $set = "set_$fld";
-	my $get = "get_$fld";
-	if( defined( $datahash->{ $fld } ) ) {
+    if( @fieldlist ) {
+	for my $fld ( @fieldlist ) {
+	    my $set = "set_$fld";
+	    my $get = "get_$fld";
+	    if( defined( $datahash->{ $fld } ) ) {
+		$dirty = $dirty || $self->$get() eq $datahash->{ $fld };
+		$self->$set( $datahash->{ $fld });
+	    }
+	}
+    }
+    else {
+	# catch anything tossed in
+	for my $fld ( keys %$datahash ) {
+	    my $set = "set_$fld";
+	    my $get = "get_$fld";
 	    $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-	    $self->$set( $datahash->{ $fld });
+	    $self->$set( $datahash->{ $fld } );
 	}
     }
     return $dirty;
 } #_update
 
 # ------------------------------------------------------------------------------------------
-#      * UTILITY METHODS *
-# ------------------------------------------------------------------------------------------
-
-#
-# These methods are not part of the public API
-#
-
-
-# ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
+
+
+sub add_to {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    my( $listname, $items ) = @$args{'name','items'};
+    return $self->_add_to( $listname, @$items );
+} #add_to
 
 sub count {
     my( $self, $data, $account ) = @_;
@@ -225,10 +252,41 @@ sub count {
     return $self->_count( $data );
 } #count
 
-sub _paginate {
-    my( $self, $args ) = @_;
-    return Yote::ObjProvider::paginate( $self->{DATA}{$args->{name}}, $args );
-} #_paginate
+sub delete_key {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    my( $listname, $key ) = @$args{'name','key'};
+    return $self->_hash_delete( $self->{DATA}{$args->{name}}, $key );
+} #delete_key
+
+sub hash {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    my( $listname, $key, $val ) = @$args{'name','key','value'};
+    return $self->_hash_insert( $self->{DATA}{$args->{name}}, $key, $val );
+} #hash
+
+sub insert_at {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    my( $listname, $idx, $item ) = @$args{'name','index','item'};
+    return $self->_insert_at( $listname, $item, $idx );
+} #insert_at
+
+
+sub list_fetch {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    return $self->_list_fetch( $self->{DATA}{$args->{name}}, $args->{index} );
+} #list_fetch
 
 sub paginate {
     my( $self, $args, $account ) = @_;
@@ -238,34 +296,28 @@ sub paginate {
     return Yote::ObjProvider::paginate( $self->{DATA}{ $args->{name} }, $args );
 } #paginate
 
+sub remove_from {
+    my( $self, $args, $account ) = @_;
+    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
+	die "permissions error";
+    }
+    my( $listname, $idxs, $items ) = @$args{'name','indexes','items'};
+    return $self->_remove_from( $listname, @{$idxs||[]}, @{$items||[]} );
+} #remove_from
+
 #
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
 #
 sub sync_all {}
 
-
 #
 # Stub method to apply update to an object. Throws an error by default. Override and call _update with input data and a list of allowed fields to update.
 #
 sub update {
-    die "Disallows update";
+    my( $self, $data, $acct ) = @_;
+    return $self->_update( $data );
 } #update
 
-sub add_to {
-    die "Disallows add_to";
-}
-
-sub hash {
-    die "Disallows hash";
-}
-
-sub remove_from {
-    die "Disallows remove_from";
-}
-
-sub delete_key {
-    die "Disallows delete_key";
-}
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list
@@ -529,7 +581,7 @@ Returns the number of items for the field of this object provided it is an array
 
 =item paginate( args )
 
-Returns a paginated list or hash. Arguments are 
+Returns a paginated list or hash. Arguments are
 
 =over 4
 

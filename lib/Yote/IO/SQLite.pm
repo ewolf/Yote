@@ -175,6 +175,7 @@ sub paginate {
     my( $self, $obj_id, $args ) = @_;
 
     my $PAG = '';
+
     if( defined( $args->{ limit } ) ) {
 	if( $args->{ skip } ) {
 	    $PAG = " LIMIT $args->{ skip },$args->{ limit }";
@@ -403,8 +404,9 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $idx ) = @_;
-    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+    my( $self, $list_id, $idx_or_val ) = @_;
+#    $self->_do( "DELETE FROM field WHERE obj_id=? AND (field=? OR value=?) LIMIT 1", $list_id, $idx_or_val, $idx_or_val );
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND (field=? OR value=?)", $list_id, $idx_or_val, $idx_or_val );
     return;
 }
 
@@ -452,7 +454,7 @@ sub _connect {
 
 sub _do {
     my( $self, $query, @params ) = @_;
-#    print STDERR "Do Query : $query @params\n";
+#    print STDERR "Do Query : $query | @params\n";
     return $self->{DBH}->do( $query, {}, @params );
 } #_do
 

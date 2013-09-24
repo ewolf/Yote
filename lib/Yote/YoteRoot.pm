@@ -194,6 +194,18 @@ sub logout {
 	$login->set__token();
     }
 } #logout
+
+sub new_obj {
+    my( $self, $data, $acct ) = @_;
+    return new Yote::Obj( ref( $data ) ? $data : undef );
+}
+
+sub new_root_obj {
+    my( $self, $data, $acct ) = @_;
+    return "Access Error" unless $acct->get_login()->is_root();
+    return new Yote::RootObj( ref( $data ) ? $data : undef );    
+}
+
 #
 # Used to wipe and reset a whole app's data. Use with caution
 # and can only be used by the superuser.

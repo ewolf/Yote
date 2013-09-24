@@ -467,7 +467,7 @@ sub start_server {
 
 	for my $entry (@cron_entries) {
 	    threads->new( sub {
-		$cron->mark_done( $entry );
+		$cron->_mark_done( $entry );
 		print STDERR "Starting cron thread " . threads->tid() . "\n";
 		my $script = $entry->get_script();
 		print STDERR "EVAL $script\n";

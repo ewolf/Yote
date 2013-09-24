@@ -195,13 +195,19 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $idx ) = @_;
+    my( $self, $list_id, $idx_or_val ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
     die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
     if( $obj ) {
-	splice @{$obj->{ d }}, $idx, 1;
-	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+	my $idx = $idx_or_val;
+	if( index( $idx_or_val, 'v' ) == 0 ) {
+	    ( $idx ) = grep { $obj->{d} eq $idx_or_val } ( 0..$#{$obj->{d}} );
+	}
+	if( defined( $idx ) ) {
+	    splice @{$obj->{ d }}, $idx, 1;
+	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
+	}
     }
     return;
 }

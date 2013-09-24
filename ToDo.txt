@@ -1,13 +1,16 @@
 Next updates
+  * add tests for list_insert, list_delete, hash_insert, hash_delete
+  * consider moving this list to github for tracking.
   * control_table to work with the cool built in pagination that objects already have!
-  * make sure search and sort fields can both be given. update the tests for that.
-  * think of permissiveness. Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
-    possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.
-    with a double underscore as the reserved space for this __. The goal for this is ease of programming. Maybe the default is
-    the object creator or root can edit it. CRUD permissions? Or use the subclassing below ( or even configuring with __ )
-  * configuration for LOCK_MODE
-  * new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
-  * add_to, remove_from, delete_key - Obj methods to allow for list or hash manipulation off of this object. Will work only for root if _ is the first letter
+  -* make sure search and sort fields can both be given. update the tests for that.
+  * Permissions updates
+      * . Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
+          possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.
+    	  with a double underscore as the reserved space for this __. The goal for this is ease of programming. Maybe the default is
+    	  the object creator or root can edit it. CRUD permissions? Or use the subclassing below ( or even configuring with __ )
+        * configuration for LOCK_MODE
+	* new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
+  -* add_to, remove_from, delete_key - Obj methods to allow for list or hash manipulation off of this object. Will work only for root if _ is the first letter
   -* count for searches! This is missing and makes control_table buggy.
   * Exclusive cron. Means cron entry must have a unique name and that by default only one of that name may be run at once.
   * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
@@ -59,8 +62,8 @@ FOR Stable Alpha
 
 FOR ALPHA
 
-  * Enable caching that pays attention to who has what.
-  * Make guest tokens required for running any non-root app command.
+  -* Enable caching that pays attention to who has what.
+  -* Make guest tokens required for running any non-root app command.
   * Create yote admin page for
         - viewing apps
         - viewing user login objects

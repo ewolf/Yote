@@ -665,6 +665,7 @@ $.yote.util = {
 	    list_name		: args[ 'list_name' ],                     //   name of list attached to item
 	    paginate_type	: args[ 'paginate_type' ] || 'list',       //   list or hash
 	    paginate_order	: args[ 'paginate_order' ] || 'forward',   //   forward or backwards
+	    is_admin            : args[ 'is_admin' ] || false,
 
 	    /* HTML */
 	    attachpoint		: args[ 'attachpoint' ],                   // selector that this control table will empty then fill with itself
@@ -681,7 +682,7 @@ $.yote.util = {
 	    /* STYLE */
 	    prefix_classname    : args[ 'prefix_classname' ],              // Each element, like table, row, header, description gets its own class.
 	                                                                   // If prefix_classname is foo, the table would get the 'foo_table' class.
-	        /* classes : ( each of these will be there, as well as classes with prefix_classname replacing ct. 
+	        /* classes : ( each of these will be there, as well as classes with prefix_classname replacing _ct. 
                                For example, if prefix_classname="foo", there would be a foo_title and a _ct_title class )
                       _ct_title _ct_description _ct_search_div _ct_table _ct_new_title _ct_new_description _ct_new_item_table
 		      _ct_new_item_row _ct_new_item_cell _ct_new_item_field _ct_new_item_btn _ct_row _ct_cell _ct_header _ct_delete_btn
@@ -711,7 +712,8 @@ $.yote.util = {
 	    new_title		: args[ 'new_title' ],                                    // title for the new items widget that appears on top of it. If it is defined, it is put in a span with <prefix_classname>_new_title class
 	    new_description	: args[ 'new_description' ],                              // description for new items for the widget that appears under the title. If it is defined, it is put in a span with <prefix_classname>_new_description class
 
-	    remove_fun		: args[ 'remove_function' ],                // an optional function to remove an item from this list. Takes the item as an argument. If this is present, one more column will be created for the row : delete
+	    include_remove      : args[ 'include_remove' ],   // If true, one more column will be created for the row : delete
+	    remove_fun		: args[ 'remove_function' ],  // optional function to remove an item from this list. Takes the item as an argument. 
 	    remove_btn_txt	: args[ 'remove_button_text' ] || 'Delete', // Text that goes on the remove button. Default is 'Delete'.
 	    remove_column_txt	: args[ 'remove_column_text' ] || 'Delete', // Text that goes on the remove column header. Default is 'Delete'.
 
@@ -821,7 +823,7 @@ $.yote.util = {
 			action : (function(it) { return function() {
 			    var newitem;
 			    if( me.new_set_values ) {
-				newitem = it.new_function();
+				newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
 				for( var i=0; i < it.new_columns.length; i++ ) {
 				    var nc = it.new_columns[ i ];
 				    var id = '_new_' + it.item.id + '_' + nc;
@@ -842,7 +844,7 @@ $.yote.util = {
 					vals[ nc ] = $( '#_new_' + it.item.id + '_' + nc ).val();
 				    }
 				}
-				newitem = it.new_function( vals );
+				newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
 			    } 
 			    if( it.after_new_fun ) {
 				it.after_new_fun( newitem );
@@ -857,7 +859,7 @@ $.yote.util = {
 		    for( var i=0; i < me.column_headers.length; i++ ) {
 			ch.push( me.column_headers[ i ] );
 		    }
-		    if( me.remove_fun ) {
+		    if( me.include_remove ) {
 			ch.push( me.remove_column_txt );
 		    }
 		    tab.add_header_row( ch, me._classes_array( '_row' ), me._classes_array( '_cell' ) );
@@ -895,7 +897,7 @@ $.yote.util = {
 					  : item.get( me.columns[ j ] )
 					);
 			    }
-			    if( me.remove_fun ) {
+			    if( me.include_remove ) {
 				row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			    }
 			    if( me.suppress_table ) {
@@ -919,7 +921,7 @@ $.yote.util = {
 				      : item.get( me.columns[ j ] )
 				    );
 			}
-			if( me.remove_fun && ! me.suppress_table ) {
+			if( me.include_remove && ! me.suppress_table ) {
 			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			}
 			if( me.suppress_table ) {
@@ -1014,9 +1016,13 @@ $.yote.util = {
 				me.columns[ j ][ 'after_render' ]( item, key );//function( newstart, key ) { me.refresh(); } );
 			    }
 			}
-			if( me.remove_fun ) {
+			if( me.include_remove ) {
 			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
-				me.remove_fun( it );
+				if( me.remove_fun ) {
+				    me.remove_fun( it );
+				} else { 
+				    me.item.remove_from( { name : me.list_name, items : [ it ] } );
+				}
 				var to = me.start - 1;
 				if( to < 0 ) to = 0;
 				me.start = to;
@@ -1037,9 +1043,13 @@ $.yote.util = {
 				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
 			    }
 			}
-			if( me.remove_fun ) {
+			if( me.include_remove ) {
 			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
-				me.remove_fun( it );
+				if( me.remove_fun ) {
+				    me.remove_fun( it );
+				} else { 
+				    me.item.remove_from( { name : me.list_name, items : [ it ] } );
+				}
 				var to = me.start - 1;
 				if( to < 0 ) to = 0;
 				me.start = to;

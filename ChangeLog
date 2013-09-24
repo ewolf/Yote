@@ -6,7 +6,11 @@
 	* object-locking is drastically changed. I've removed any automatic locking. Locks must now be called explicitly in order to work. I made this decision when I realized that most of the calls that were being made resulted in no collision most of the time. I would have kept the safer but it impacted performance way too much.
 	* control_table - fixed some bugs in how the control table rendered hashes rather than lists.
 	* removed stray use Yote::SQLiteIO from Yote.pm
-	* unit_tests.html now up to date with this
+	* unit_tests.html now up to date with the new paginate.
+	* Yote::Obj now more permissive in list and hash operations
+	* Yote::RootObj added. It requires root permissions for any list or hash operation
+	* Yote::YoteRoot new methods : new_obj, new_root_obj - returns new Yote::Obj and Yote::RootObj objects
+	* changed list and hash names/operations for Yote::Obj
 
 2013-09-17  Eric Wolf  <wolf@Talisman>
 
