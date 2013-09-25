@@ -707,7 +707,6 @@ $.yote.util = {
 	    new_column_titles	: args[ 'new_column_titles' ] || args[ 'new_columns' ],   // Titles for the data fields
 	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
 	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
-	    new_set_values      : args[ 'new_set_values' ] || false,                      // If true, the new function will try and set the values after creation.
 	    new_button		: args[ 'new_button' ] || 'New',                          // text that appears on the create new item button. Default is 'New'
 	    new_title		: args[ 'new_title' ],                                    // title for the new items widget that appears on top of it. If it is defined, it is put in a span with <prefix_classname>_new_title class
 	    new_description	: args[ 'new_description' ],                              // description for new items for the widget that appears under the title. If it is defined, it is put in a span with <prefix_classname>_new_description class
@@ -821,31 +820,19 @@ $.yote.util = {
 			texts  : txts,
 			required : me.new_columns_required,
 			action : (function(it) { return function() {
-			    var newitem;
-			    if( me.new_set_values ) {
-				newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
-				for( var i=0; i < it.new_columns.length; i++ ) {
-				    var nc = it.new_columns[ i ];
-				    var id = '_new_' + it.item.id + '_' + nc;
-				    if( typeof nc === 'object' ) {
-					nc.on_create( newitem, id );
-				    }
-				    else {
-					var val = $( '#' + id  ).val();
-					newitem.set( nc, val );
-				    }
+			    var newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
+			    for( var i=0; i < it.new_columns.length; i++ ) {
+				var nc = it.new_columns[ i ];
+				var id = '_new_' + it.item.id + '_' + nc;
+				if( typeof nc === 'object' ) {
+				    nc.on_create( newitem, id );
 				}
-			    }
-			    else {
-				var vals = {};
-				for( var i=0; i < it.new_columns.length; i++ ) {
-				    var nc = it.new_columns[ i ];
-				    if( typeof nc !== 'object' ) {
-					vals[ nc ] = $( '#_new_' + it.item.id + '_' + nc ).val();
-				    }
+				else {
+				    var val = $( '#' + id  ).val();
+				    newitem.set( nc, val );
 				}
-				newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
-			    } 
+			    } //each column
+			    it.item.add_to( { name : it.list_name, items : [ newitem ] } );
 			    if( it.after_new_fun ) {
 				it.after_new_fun( newitem );
 			    }

@@ -207,12 +207,20 @@ if we are our experiences then we are both sides of them.
 						    
 						],
 						new_attachpoint : '#cron_new_rep_' + entry.id,
-						new_column_titles : [],
+						new_column_titles : [
+						    'interval',
+						    'number of times ( leave blank for infinite repeat )'
+						],
 						new_set_values : true,
 						new_columns : [
-
+						    'repeat_interval',
+						    'scheduled_times'
 						],
-						after_new_function : function( newitem ) {}
+						after_new_function : function( newitem ) {
+						    if( 1*newitem.get_scheduled_times() > 0 ) {
+							newitem.set( 'repeat_infinite', 1 );
+						    }
+						}
 					    } );
 					}
 				    },
