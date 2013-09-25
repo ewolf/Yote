@@ -792,7 +792,7 @@ $.yote.util = {
 		    for( var i=0; i < me.new_columns.length; i++ ) {
 			var nc = me.new_columns[ i ];
 			var field = typeof nc === 'object' ? nc.field : nc;
-			var id = '_new_' + me.item.id + '_' + field;
+			var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
 			if( typeof nc === 'object' ) {
 			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( '_new_item_row' ), me._classes_array( '_new_item_cell' ) );
 			} else {
@@ -801,26 +801,26 @@ $.yote.util = {
 			txts.push( '#' + id );
 		    }
 		    bf += tbl.get_html();
-		    bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
+		    bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.ct_id + '_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
 		    $( me.new_attachpoint ).empty().append( bf );
 
 
 		    for( var i=0; i < me.new_columns.length; i++ ) {
 			var nc = me.new_columns[ i ];
 			if( typeof nc === 'object' && nc[ 'after_render' ] ) {
-			    nc.after_render( '_new_' + me.item.id + '_' + nc.field );
+			    nc.after_render( '_new_' + me.ct_id + '_' + me.item.id + '_' + nc.field );
 			}
 		    }
 
 		    $.yote.util.button_actions( {
-			button : '#_new_' + me.item.id + '_b',
+			button : '#_new_' + me.ct_id +'_' + me.item.id + '_b',
 			texts  : txts,
 			required : me.new_columns_required,
 			action : (function(it) { return function() {
 			    var newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
 			    for( var i=0; i < it.new_columns.length; i++ ) {
 				var nc = it.new_columns[ i ];
-				var id = '_new_' + it.item.id + '_' + nc;
+				var id = '_new_' + it.ct_id + '_' + it.item.id + '_' + nc;
 				if( typeof nc === 'object' ) {
 				    nc.on_create( newitem, id );
 				}
@@ -882,7 +882,7 @@ $.yote.util = {
 					);
 			    }
 			    if( me.include_remove ) {
-				row.push( '<BUTTON type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+				row.push( '<BUTTON type="BUTTON" id="remove_' + me.ct_id + '_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			    }
 			    if( me.suppress_table ) {
 				buf += row.join('');
@@ -906,7 +906,7 @@ $.yote.util = {
 				    );
 			}
 			if( me.include_remove && ! me.suppress_table ) {
-			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + me.ct_id + '_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			}
 			if( me.suppress_table ) {
 			    buf += row.join('');
@@ -925,24 +925,24 @@ $.yote.util = {
 		    
 		    if( me.start > 0 || items.length() > me.plimit ) {
 			buf += '<br>';
-			buf += '<BUTTON class="' + me._classes( '_to_start_btn' ) + '" type="button" id="to_start_b">&lt;&lt;</BUTTON>';
-			buf += ' <BUTTON class="' + me._classes( '_back_btn' ) + '" type="button" id="back_b">&lt;</BUTTON>';
-			buf += '<BUTTON class="' + me._classes( '_forward_btn' ) + '" type="button" id="forward_b">&gt;</BUTTON>';
-			buf += ' <BUTTON class="' + me._classes( '_to_end_btn' ) + '" type="button" id="to_end_b">&gt;&gt;</BUTTON>';
+			buf += '<BUTTON class="' + me._classes( '_to_start_btn' ) + '" type="button" id="to_start_' + me.ct_id + '_b">&lt;&lt;</BUTTON>';
+			buf += ' <BUTTON class="' + me._classes( '_back_btn' ) + '" type="button" id="back_' + me.ct_id + '_b">&lt;</BUTTON>';
+			buf += '<BUTTON class="' + me._classes( '_forward_btn' ) + '" type="button" id="forward_' + me.ct_id + '_b">&gt;</BUTTON>';
+			buf += ' <BUTTON class="' + me._classes( '_to_end_btn' ) + '" type="button" id="to_end_' + me.ct_id + '_b">&gt;&gt;</BUTTON>';
 		    }
 		}
 
 		$( me.attachpoint ).empty().append( buf );
 
 		if( me.start > 0 ) {
-		    $( '#to_start_b' ).click(function() { me.start = 0; me.refresh(); } );
+		    $( '#to_start_' + me.ct_id + '_b' ).click(function() { me.start = 0; me.refresh(); } );
 		    var b = me.start - me.plimit;
 		    if( b < 0 ) b = 0;
-		    $( '#back_b' ).click(function() { me.start = b; me.refresh(); } );
+		    $( '#back_' + me.ct_id + '_b' ).click(function() { me.start = b; me.refresh(); } );
 		}
 		else {
-		    $( '#to_start_b' ).attr( 'disabled', 'disabled' );
-		    $( '#back_b' ).attr( 'disabled', 'disabled' );
+		    $( '#to_start_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
+		    $( '#back_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
 		}
 
 		if( items.length() > me.plimit ) {
@@ -950,12 +950,12 @@ $.yote.util = {
 		    if( e > count ) {
 			e = count - me.plimit;
 		    }
-		    $( '#forward_b' ).click(function() { me.start = e; me.refresh() } );
-		    $( '#to_end_b' ).click(function() { me.start = count - me.plimit; me.refresh(); } );
+		    $( '#forward_' + me.ct_id + '_b' ).click(function() { me.start = e; me.refresh() } );
+		    $( '#to_end_' + me.ct_id + '_b' ).click(function() { me.start = count - me.plimit; me.refresh(); } );
 		}
 		else {
-		    $( '#to_end_b' ).attr( 'disabled', 'disabled' );
-		    $( '#forward_b' ).attr( 'disabled', 'disabled' );
+		    $( '#to_end_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
+		    $( '#forward_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
 		}
 
 		if( me.search_on ) {
@@ -999,7 +999,7 @@ $.yote.util = {
 			    }
 			}
 			if( me.include_remove ) {
-			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
+			    $( '#remove_' + me.ct_id + '_' + item.id + '_b' ).click((function(it) { return function() {
 				if( me.remove_fun ) {
 				    me.remove_fun( it );
 				} else { 
@@ -1026,7 +1026,7 @@ $.yote.util = {
 			    }
 			}
 			if( me.include_remove ) {
-			    $( '#remove_' + item.id + '_b' ).click((function(it) { return function() {
+			    $( '#remove_' + me.ct_id + '_' + item.id + '_b' ).click((function(it) { return function() {
 				if( me.remove_fun ) {
 				    me.remove_fun( it );
 				} else { 
