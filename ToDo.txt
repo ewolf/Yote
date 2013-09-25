@@ -1,4 +1,5 @@
 Next updates
+  * bug : undefined showing up for undefined me.prefix_classname
   * add tests for list_insert, list_delete, hash_insert, hash_delete
   * consider moving this list to github for tracking.
   * control_table to work with the cool built in pagination that objects already have!

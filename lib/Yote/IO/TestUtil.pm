@@ -430,7 +430,6 @@ sub io_independent_tests {
 
     $app->_insert_at( 'azzy', 'foo/bar' );
     $res = $app->_paginate( { name => 'azzy' } );
-    print STDERR Data::Dumper->Dump([$res]);
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
     Yote::ObjProvider::stow_all();    

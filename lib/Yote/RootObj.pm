@@ -8,20 +8,20 @@ use base 'Yote::Obj';
 sub count {
     my( $self, $args, $account, $env ) = @_;
     die "Access Error" unless $account->is_root();
-    return $self->count( $args, $account, $env );
+    return $self->SUPER::count( $args, $account, $env );
 }
 
 
 sub paginate {
     my( $self, $args, $account, $env ) = @_;
     die "Access Error" unless $account->is_root();
-    return $self->paginate( $args, $account, $env );
+    return $self->SUPER::paginate( $args, $account, $env );
 }
 
 sub update {
     my( $self, $args, $account, $env ) = @_;
     die "Access Error" unless $account->is_root();
-    return $self->update( $args, $account, $env );
+    return $self->SUPER::update( $args, $account, $env );
 }
 
 1;

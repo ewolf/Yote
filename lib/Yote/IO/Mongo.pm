@@ -155,9 +155,7 @@ sub count {
 	    '$or' => \@ors,
 	};
 	my $curs = $self->{ OBJS }->find( $query );
-	print STDERR Data::Dumper->Dump([[$curs->all()],"ALL"]);
 
-	print STDERR Data::Dumper->Dump([$query]);
 	return $self->{ OBJS }->find( $query )->count();
     }
     if( $obj->{ c } eq 'ARRAY' ) {

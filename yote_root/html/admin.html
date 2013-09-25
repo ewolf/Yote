@@ -199,19 +199,16 @@ if we are our experiences then we are both sides of them.
 						plimit : 100,
 						item : entry,
 						list_name : 'repeats',
-						remove_function : function( item ) {
-						    
-						},
+						include_remove : true,
 						column_headers : [ ],
 						columns : [
 						    
 						],
-						new_attachpoint : '#cron_new_rep_' + entry.id,
+						new_attachpoint : '#cron_rep_new_' + entry.id,
 						new_column_titles : [
-						    'interval',
+						    'interval ( in seconds )',
 						    'number of times ( leave blank for infinite repeat )'
 						],
-						new_set_values : true,
 						new_columns : [
 						    'repeat_interval',
 						    'scheduled_times'
@@ -226,11 +223,34 @@ if we are our experiences then we are both sides of them.
 				    },
 				    {
 					render : function( entry ) {
-					    return '<div id="cron_sched_' + entry.id + '"></div>';
+					    return '<div id="cron_sched_' + entry.id + '"></div><div id="cron_sched_new_' + entry.id + '"></div>';
 					},
 					after_render : function( entry ) {
 					    $.yote.util.control_table( {
-
+						attachpoint : '#cron_sched_' + entry.id,
+						plimit : 100,
+						item : entry,
+						list_name : 'scheduled_times',
+						include_remove : true,
+						column_headers : [ ],
+						columns : [
+						    
+						],
+						new_attachpoint : '#cron_sched_new_' + entry.id,
+						new_column_titles : [ 'when ( epoch seconds )' ],
+						new_function : function() {
+						    return $( '#cron_new_rep_at' ).val();
+						},
+						new_columns : [
+						    {
+							on_create : function( str, id ) {
+							    entry.add_to( { name : 'scheduled_times', items : [ str ] } );
+							},
+							render : function() {
+							    return '<input type="text" id="cron_new_rep_at">';
+							}
+						    }
+						]
 					    } );
 					    //schedule
 					}
@@ -238,13 +258,12 @@ if we are our experiences then we are both sides of them.
 				  ],
 			new_attachpoint : '#appnewpanel',
 			new_column_titles : [ 'Name', 'Script' ],
-			new_set_values : true,
 			new_columns : [
 			    'name',
 			    'script'
 			],
 			after_new_function : function( newitem ) {
-			    cron.init_entry( newitem );
+			    this.item.init_entry( newitem );
 			}
 		    } );
 		} ); //cron_b

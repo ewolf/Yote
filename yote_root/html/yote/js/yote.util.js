@@ -63,7 +63,6 @@ $.yote.util = {
 	    } } } )(act,on_escape) );
 
 	$( but ).click( act );
-
 	check_ready();
 
 	return check_ready;
@@ -757,8 +756,6 @@ $.yote.util = {
 		    }
 		    else {
 			paginate_function = function() {
-			    console.log( [ "PAG", it.item ] );
-
 			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, return_hash : it.paginate_type != 'list', skip : it.start, reverse : it.paginate_order != 'forward' } );
 			}
 		    }
@@ -983,11 +980,9 @@ $.yote.util = {
 		}
 
 		if( me.paginate_type == 'hash' ) {
-		    console.log( [ "KEYS", keys ] );
 		    for( var i in keys ) {
 			var key = keys[ i ];
 			var item = items.get( key );
-			console.log( [ "KEYVAL", key,item ] );
 			if( typeof me.columns[ 0 ] == 'function' ) {
 			    me.columns[ 0 ]( item, false, key );
 			}
