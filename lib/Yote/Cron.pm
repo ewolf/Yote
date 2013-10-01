@@ -1,15 +1,54 @@
 package Yote::Cron;
 
+#######################################################################################################
+# This module is not meant to be used directly. It is activated automatically as part of the service. #
+#######################################################################################################
+
+
 use strict;
 use warnings;
 no warnings 'uninitialized';
 
 use vars qw($VERSION);
-$VERSION = '0.012';
+$VERSION = '0.013';
 
 use DateTime;
 
 use base 'Yote::RootObj';
+
+##################
+# Public Methods #
+##################
+
+sub add_entry {
+    my( $self, $entry, $acct ) = @_;
+    $self->add_to_entries( $entry );
+    $self->_update_entry( $entry );
+    return $entry;
+} #add_entry
+
+sub entries {
+    my $self = shift;
+    my $now_running = time;
+    return grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
+} #entries
+
+
+sub mark_done {
+    my( $self, $entry, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    return $self->_mark_done( $entry );
+}
+
+sub update_entry {
+    my( $self, $entry, $acct ) = @_;
+    
+    return $self->_update_entry( $entry );
+} #update_entry
+
+###################
+# Private Methods #
+###################
 
 # cron entries will have the following fields :
 #  * script - what to run
@@ -17,7 +56,6 @@ use base 'Yote::RootObj';
 #       * repeat_infinite - true if this will always be repeated
 #       * repeat_times - a number of times to repeat this; this decrements
 #       * repeat_interval - how many seconds to repeat this
-#       * repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
 #  * scheduled_times - a list of epoc times this cron should be run
 #  * next_time - epoc time this should be run next
 #  * last_run - time this was last run
@@ -108,31 +146,6 @@ sub _update_entry {
     return $entry;
 } #_update_entry
 
-sub add_entry {
-    my( $self, $entry, $acct ) = @_;
-    $self->add_to_entries( $entry );
-    $self->_update_entry( $entry );
-    return $entry;
-} #add_entry
-
-sub entries {
-    my $self = shift;
-    my $now_running = time;
-    return grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
-} #entries
-
-sub update_entry {
-    my( $self, $entry, $acct ) = @_;
-    
-    return $self->_update_entry( $entry );
-} #update_entry
-
-
-sub mark_done {
-    my( $self, $entry, $acct ) = @_;
-    die "Access Error" unless $acct->is_root();
-    return $self->_mark_done( $entry );
-}
 
 1;
 
@@ -144,8 +157,8 @@ Yote::Cron
 
 =head1 SYNOPSIS
 
-The Yote::Cron, while it works as design, has a poor enough design that I'm yanking it from 
-production.
+Yote::Cron is a subsystem in Yote that functions like a cron, allowing scripts to be run inside Yote. Rather than use
+config files, this uses Yote objects to control the cron jobs. A cron editor is part of the Yote admin page.
 
 =head1 DESCRIPTION
 
@@ -159,9 +172,7 @@ The Yote::Cron's public methods can only be called by an account with the __is_r
 
 =over 4
 
-=item mark_done
-
-=item add_entry
+=item add_entry( $entry )
 
 Ads an entry to this list. Takes a Yote::Obj that has the following data structure :
 
@@ -172,23 +183,30 @@ Ads an entry to this list. Takes a Yote::Obj that has the following data structu
       * repeat_infinite - true if this will always be repeated
       * repeat_times - a number of times to repeat this; this decrements
       * repeat_interval - how many seconds to repeat this
-      * repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
  * scheduled times - a list of epoc times this cron should be run
  * next_time - epoc time this should be run next (volatile, should not be set by user)
  * last_run - time this was last run (volatile, should not be set by user)
 
 
-=item entries
+=item entries()
  
-Returns a list of the entries that should be run now.
+Returns a list of the entries that should be run at the time this was called.
 
-=item update_entry
+=item mark_done( $entry )
+
+Marks this entry as done. This causes any repeat_times to decrement, and removes appropriate scheduled times.
+
+=item update_entry( $entry )
+
+This recalculates the next time this entry will be run.
 
 =back
 
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

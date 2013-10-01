@@ -9,6 +9,11 @@ Currently wrapping up phase Alpha 1 and making headway on Alpha 2
 
 
 Next updates
+  * For cron, a repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
+  * implement validation request
+  * make into daemon if possible. did not have much luck with this before
+  * try/catch on the javscript side. dump the cache should there be exceptions that would warrent that.
+  * check to see if recycling needs the rest shut down.
   * clean up widgets to make sure tag id fields are unique. prep_edit, for example, does not guarantee this
   * review all methods and classes and remove those that no longer fit
   -* Indexing for lists always starts at 0...no jumping around with undefs? Agreed. Done and done.

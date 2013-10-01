@@ -1,5 +1,10 @@
 package Yote::Array;
 
+############################################################################################################
+# This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
+# be called explicitly or modified.									   #
+############################################################################################################
+
 use strict;
 use warnings;
 
@@ -10,7 +15,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 sub TIEARRAY {
     my( $class, $id, @list ) = @_;
@@ -101,6 +106,8 @@ This is used transparently and this can be considered a private class.
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

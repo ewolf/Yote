@@ -1,12 +1,26 @@
 package Yote::Login;
 
+###########################################################################
+# A user gets one system wide login, and a separate account for each app. #
+###########################################################################
+
 use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 use base 'Yote::Obj';
+
+sub is_root {
+    my $self = shift;
+    return $self->get__is_root();
+} #is_root
+
+sub is_master_root {
+    my $self = shift;
+    return $self->get__is_master_root();    
+}
 
 #
 # Can either be reset by logged in account, or by a recovery link.
@@ -29,15 +43,6 @@ sub reset_password {
 
 } #reset_password
 
-sub is_root {
-    my $self = shift;
-    return $self->get__is_root();
-} #is_root
-
-sub is_master_root {
-    my $self = shift;
-    return $self->get__is_master_root();    
-}
 
 sub upload_avatar {
     my( $self, $data ) = @_;
@@ -90,9 +95,37 @@ Returns a Yote::FileHelper object representing the avatar image.
 
 =back
 
+=head1 PUBLIC DATA FIELDS
+
+=over 4
+
+=item email
+
+=item handle
+
+=back
+
+=head1 PRIVATE DATA FIELDS
+
+=over 4
+
+=item __created_ip
+
+=item __is_master_root
+
+=item __is_root
+
+=item __time_created
+
+=item _password
+
+=back
+
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

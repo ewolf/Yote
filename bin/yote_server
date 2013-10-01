@@ -1,12 +1,15 @@
 #!/usr/bin/env perl
 
-#
-# start_server.pl - start,stop,restart
-#
+##########################################
+# This program launches the yote server. #
+##########################################
+
+use Yote;
+
+# note, use forks inside of the Yote package should be called before use strict or use warnings.
 use strict;
 use warnings;
 
-use Yote;
 
 my $args = Yote::get_args();
 my $config = $args->{ config };
@@ -54,4 +57,67 @@ if( $@ ) {
 }
 
 __END__
+
+=head1 NAME
+
+yote_server - Turn on and off the Yote Server/Webserver
+
+=head1 SYNOPSIS
+
+The Yote server serves up web pages and IO for javascript Yote requests.
+
+yote_server --help
+yote_server --show_config
+yote_server --generate     # create new configuration and run yote
+yote_server start          # run yote
+
+
+=head1 DESCRIPTION
+
+This program is the Yote server. At the time of writing this is not daemonized 
+( there are some issues using the forks module together with daemonization ).
+
+This uses the configuration in the yote.conf file in the yote root directory. 
+The yote root directory is set upon installation and is usually /opt/yote.
+
+When yote is run for the first time, it asks a series of configuration questions.
+These can be revisited by 
+
+=head1 FILES
+
+yote.conf
+
+=head1 DIAGNOSTICS
+
+Though Yote has unit tests that are run upon install, its web based components are 
+written in javascript, and a javascript interpreter has not been created for this test
+framework yet. There is a test that can be manually run. To run, start the yote server
+and point a browser to http://localhost:yoteport/yote/unit_tests.html. Also included
+are tests for file uploads at http://localhost:yoteport/yote/upload_test.html
+
+=head1 CAVEATS
+
+Most systems will require root permissions to run this. 
+Since this cannot be run at this time as a daemon, it can be run manually in a screen. 
+To stop the server, hit control C.
+
+=head1 BUGS
+
+There are no known bugs, but since this software is Beta or below, bugs are highly likely 
+to exist. Please inform the author if bugs are encountered.
+
+=head1 AUTHOR
+
+Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2011-2013 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
 
