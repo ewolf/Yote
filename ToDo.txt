@@ -1,4 +1,5 @@
 Next updates
+  * clean up widgets to make sure tag id fields are unique. prep_edit, for example, does not guarantee this
   * Indexing for lists always starts at 0...no jumping around with undefs?
   * Cron - make scheduled_times a list of objects with 'time' and 'note' fields.
   * table for scalar list entries

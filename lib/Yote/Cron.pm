@@ -34,7 +34,7 @@ sub _init {
 	    
 					} );
     $self->add_to_entries( $first_cron );
-    $self->_init_entry( $first_cron );
+    $self->_update_entry( $first_cron );
 
 } #_init
 
@@ -84,7 +84,7 @@ sub _mark_done {
     }
 } #_mark_done
 
-sub _init_entry {
+sub _update_entry {
     my( $self, $entry ) = @_;
     my $repeats = $entry->get_repeats();
     my $added_on = time;
@@ -106,12 +106,12 @@ sub _init_entry {
     }
     $entry->set_next_time( $next_time );
     return $entry;
-} #_init_entry
+} #_update_entry
 
 sub add_entry {
     my( $self, $entry, $acct ) = @_;
     $self->add_to_entries( $entry );
-    $self->_init_entry( $entry );
+    $self->_update_entry( $entry );
     return $entry;
 } #add_entry
 
@@ -121,11 +121,11 @@ sub entries {
     return grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
 } #entries
 
-sub init_entry {
+sub update_entry {
     my( $self, $entry, $acct ) = @_;
     
-    return $self->_init_entry( $entry );
-} #init_entry
+    return $self->_update_entry( $entry );
+} #update_entry
 
 
 sub mark_done {
@@ -181,6 +181,8 @@ Ads an entry to this list. Takes a Yote::Obj that has the following data structu
 =item entries
  
 Returns a list of the entries that should be run now.
+
+=item update_entry
 
 =back
 

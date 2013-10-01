@@ -95,10 +95,12 @@ $.yote.util = {
 
 	var apply_edit = function() {
 	    var val = $( '#' + txt_id ).val();
-	    item.set( field, val );
+	    if( on_edit_function ) 
+		on_edit_function(val); 
+	    else
+		item.set( field, val );
 	    stop_edit();
-	    if( on_edit_function ) { on_edit_function(); }
-	}
+	} //apply_edit
 
 	var go_edit = function() {
 	    var rows = 2;
@@ -749,14 +751,14 @@ $.yote.util = {
 			    } else {
 				return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, skip : it.start, 
 							   search_fields : it.search_on, search_terms : it.terms,
-							   return_hash : it.paginate_type != 'list',
-							   reverse : it.paginate_order != 'forward' } );
+							   return_hash : it.paginate_type != 'list' ? 1 : 0,
+							   reverse : it.paginate_order != 'forward' ? 1 : 0 } );
 			    }
 			}
 		    }
 		    else {
 			paginate_function = function() {
-			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, return_hash : it.paginate_type != 'list', skip : it.start, reverse : it.paginate_order != 'forward' } );
+			    return it.item.paginate( { name : it.list_name, limit : it.plimit + 1, return_hash : it.paginate_type != 'list' ? 1 : 0, skip : it.start, reverse : it.paginate_order != 'forward' ? 1 : 0 } );
 			}
 		    }
 		} )( me );
@@ -852,7 +854,6 @@ $.yote.util = {
 		}
 
 		var items = paginate_function();
-
 		var max = items.length() > me.plimit ? me.plimit : items.length();
 		
 		if( max == count ) {	   
@@ -903,7 +904,7 @@ $.yote.util = {
 			    row.push( typeof me.columns[ j ] == 'function' ?
 				      me.columns[ j ]( item, true ) :
 				      typeof me.columns[ j ] == 'object' ?
-				      me.columns[ j ][ 'render' ]( item )
+				      me.columns[ j ][ 'render' ]( item, me.start + i )
 				      : item.get( me.columns[ j ] )
 				    );
 			}
@@ -1003,7 +1004,7 @@ $.yote.util = {
 			if( me.include_remove ) {
 			    $( '#remove_' + me.ct_id + '_' + i + '_b' ).click((function(it,idx) { return function() {
 				if( me.remove_fun ) {
-				    me.remove_fun( it, idx );
+				    me.remove_fun( it, me.start + idx );
 				} else { 
 				    me.item.remove_from( { name : me.list_name, items : [ it ] } );
 				}
@@ -1024,7 +1025,7 @@ $.yote.util = {
 				me.columns[ j ]( item, false );
 			    }
 			    else if( typeof me.columns[ j ] == 'object'  && me.columns[ j ][ 'after_render' ] ) {
-				me.columns[ j ][ 'after_render' ]( item, function( newstart ) { me.refresh(); } );
+				me.columns[ j ][ 'after_render' ]( item, me.start + i );
 			    }
 			}
 			if( me.include_remove ) {

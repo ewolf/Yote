@@ -246,6 +246,7 @@ sub paginate {
 	}
 	return { map { $_->[0] => $_->[1] || 'v'.$_->[2] } @$ret };
     }
+
     return [map { $_->[1] || 'v'.$_->[2] } @$ret ];    
 
 } #paginate
