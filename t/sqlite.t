@@ -17,7 +17,7 @@ use Yote::IO::TestUtil;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 236;
+use Test::More tests => 237;
 use Test::Pod;
 
 
@@ -45,7 +45,7 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
 
-#unlink( $name );
+unlink( $name );
 
 exit( 0 );
 

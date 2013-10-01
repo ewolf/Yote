@@ -200,21 +200,31 @@ if we are our experiences then we are both sides of them.
 						item : entry,
 						list_name : 'repeats',
 						include_remove : true,
-						column_headers : [ ],
+						column_headers : [ 'interval', 'repeats' ],
 						columns : [
-						    
+						    $.yote.util.col_edit( 'repeat_interval' ),
+						    {
+							render : function( item ) {
+							    var buf = item.get_repeat_times() * 1  == 0 ? " Infinite Repeat <BR>" : "";
+							    buf += $.yote.util.prep_edit( item, 'repeat_times' );
+							    return buf;
+							},
+							after_render : function ( item, refr ) {
+							    $.yote.util.implement_edit( item, 'repeat_times', refr );
+							}
+						    }
 						],
 						new_attachpoint : '#cron_rep_new_' + entry.id,
 						new_column_titles : [
 						    'interval ( in seconds )',
-						    'number of times ( leave blank for infinite repeat )'
+						    'number of times ( 0 for infinite repeat )'
 						],
 						new_columns : [
 						    'repeat_interval',
-						    'scheduled_times'
+						    'repeat_times'
 						],
 						after_new_function : function( newitem ) {
-						    if( 1*newitem.get_scheduled_times() > 0 ) {
+						    if( 1*newitem.get_repeat_times() > 0 ) {
 							newitem.set( 'repeat_infinite', 1 );
 						    }
 						}
@@ -232,22 +242,26 @@ if we are our experiences then we are both sides of them.
 						item : entry,
 						list_name : 'scheduled_times',
 						include_remove : true,
-						column_headers : [ ],
+						column_headers : [ 'Scheduled Time' ],
 						columns : [
-						    
+						    { render : function( txt ) { return txt; } }
 						],
 						new_attachpoint : '#cron_sched_new_' + entry.id,
 						new_column_titles : [ 'when ( epoch seconds )' ],
+						remove_function : function( str, idx ) {
+						    entry.remove_from( { name : 'scheduled_times', indexes : [ idx ] } );
+						},
 						new_function : function() {
 						    return $( '#cron_new_rep_at' ).val();
 						},
 						new_columns : [
 						    {
+							field : 'scheduled_time_' + $.yote.util.next_id(),
 							on_create : function( str, id ) {
-							    entry.add_to( { name : 'scheduled_times', items : [ str ] } );
+							    entry.add_to( { name : 'scheduled_times', items : [ $( '#' + id ).val() ] } );
 							},
-							render : function() {
-							    return '<input type="text" id="cron_new_rep_at">';
+							render : function( id ) {
+							    return '<input type="text" id="' + id + '">';
 							}
 						    }
 						]

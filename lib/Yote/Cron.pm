@@ -27,7 +27,7 @@ sub _init {
     my $first_cron = new Yote::RootObj( {
 	name   => 'recycler',
 	enabled => 1,
-	script => 'my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
+	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
 	    { repeat_interval => 140000, repeat_infinite => 1 },
 	    ],

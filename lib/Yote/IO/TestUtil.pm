@@ -610,6 +610,17 @@ sub io_independent_tests {
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
+    # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
+    my $o = new Yote::Obj( { anonymous => "guest" } );
+    Yote::ObjProvider::stow_all();
+    $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] } );
+    $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" } );
+    $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" } );
+    $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] } );
+
+    my $el_list = $root->get_el_list();
+    is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
+
     # root acct test
     $root_acct = $root->_check_root( "NEWROOT","NEWPW" ) ;
 

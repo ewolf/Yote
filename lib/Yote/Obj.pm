@@ -110,14 +110,26 @@ sub _absorb {
 # adds the items to the list attached to this object with the given name.
 sub _add_to {
     my( $self, $listname, @data ) = @_;
+    unless( $self->{DATA}{$listname} ) {
+	my $func = "add_to_$listname";
+	$self->$func( [] );
+    }
     for my $d (@data) {
 	Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $d );
     }
+    Yote::ObjProvider::flush( $self->{DATA}{$listname} );
+    return;
 } #_add_to
 
 sub _insert_at {
     my( $self, $listname, $item, $idx ) = @_;
+    unless( $self->{DATA}{$listname} ) {
+	my $func = "set_$listname";
+	$self->$func( [] );
+    }
     Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $item, $idx );
+    Yote::ObjProvider::flush( $self->{DATA}{$listname} );
+    return;
 } #_insert_at
 
 # returns true if the object passsed in is the same as this one.
@@ -154,7 +166,12 @@ sub _hash_delete {
 
 sub _hash_insert {
     my( $self, $hashname, $key, $val ) = @_;
-    return Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
+    if( $self->{DATA}{$hashname} ) {
+	return Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
+    }
+    my $fun = "set_$hashname";
+    $self->$fun( { $key => $val } );
+    return;
 } #_hash_insert
 
 sub _hash_fetch {
@@ -416,7 +433,7 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
-                    Yote::ObjProvider::dirty( $init_val, $self->{DATA}{$fld} );
+                    Yote::ObjProvider::dirty( $init_val, Yote::ObjProvider::get_id( $init_val ) );
                 }
                 Yote::ObjProvider::dirty( $self, $self->{ID} );
                 $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );

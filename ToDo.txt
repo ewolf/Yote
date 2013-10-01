@@ -1,6 +1,10 @@
 Next updates
+  * Indexing for lists always starts at 0...no jumping around with undefs?
+  * Cron - make scheduled_times a list of objects with 'time' and 'note' fields.
+  * table for scalar list entries
   * bug : undefined showing up for undefined me.prefix_classname
   * add tests for list_insert, list_delete, hash_insert, hash_delete
+  * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete
   * consider moving this list to github for tracking.
   * control_table to work with the cool built in pagination that objects already have!
   -* make sure search and sort fields can both be given. update the tests for that.

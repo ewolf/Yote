@@ -237,22 +237,22 @@ sub get_id {
 
 sub list_insert {
     my( $list_id, $val, $idx ) = @_;
-    return $DATASTORE->list_insert( $list_id, ref( $val ) ? get_id( $val ) : "v$val", $idx );
+    return $DATASTORE->list_insert( $list_id, xform_in( $val ), $idx );
 }
 
 sub list_delete {
     my( $list_id, $key_or_val ) = @_;
-    return $DATASTORE->list_delete( $list_id, $key_or_val );
+    return ref( $key_or_val ) ? $DATASTORE->list_delete( $list_id, get_id( $key_or_val ) ) : $DATASTORE->list_delete( $list_id, undef, $key_or_val );
 }
 
 sub hash_delete {
     my( $hash_id, $key_or_val ) = @_;
-    return $DATASTORE->hash_delete( $hash_id, $key_or_val );
+    return $DATASTORE->hash_delete( $hash_id, ref( $key_or_val ) ? get_id( $key_or_val ) : $key_or_val );
 }
 
 sub hash_insert {
     my( $hash_id, $key, $val ) = @_;
-    return $DATASTORE->hash_insert( $hash_id, $key, ref( $val ) ? get_id( $val ) : "v$val" );
+    return $DATASTORE->hash_insert( $hash_id, $key, xform_in( $val ) );
 } #hash_insert
 
 sub hash_fetch {

@@ -711,7 +711,7 @@ $.yote.util = {
 	    new_description	: args[ 'new_description' ],                              // description for new items for the widget that appears under the title. If it is defined, it is put in a span with <prefix_classname>_new_description class
 
 	    include_remove      : args[ 'include_remove' ],   // If true, one more column will be created for the row : delete
-	    remove_fun		: args[ 'remove_function' ],  // optional function to remove an item from this list. Takes the item as an argument. 
+	    remove_fun		: args[ 'remove_function' ],  // optional function to remove an item from this list. Takes the item and the item index (or key) as arguments.
 	    remove_btn_txt	: args[ 'remove_button_text' ] || 'Delete', // Text that goes on the remove button. Default is 'Delete'.
 	    remove_column_txt	: args[ 'remove_column_text' ] || 'Delete', // Text that goes on the remove column header. Default is 'Delete'.
 
@@ -820,7 +820,9 @@ $.yote.util = {
 			    var newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
 			    for( var i=0; i < it.new_columns.length; i++ ) {
 				var nc = it.new_columns[ i ];
-				var id = '_new_' + it.ct_id + '_' + it.item.id + '_' + nc;
+
+				var field = typeof nc === 'object' ? nc.field : nc;
+				var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
 				if( typeof nc === 'object' ) {
 				    nc.on_create( newitem, id );
 				}
@@ -906,7 +908,7 @@ $.yote.util = {
 				    );
 			}
 			if( me.include_remove && ! me.suppress_table ) {
-			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + me.ct_id + '_' + item.id + '_b">' + me.remove_btn_txt + '</BUTTON>' );
+			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + me.ct_id + '_' + i + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			}
 			if( me.suppress_table ) {
 			    buf += row.join('');
@@ -999,9 +1001,9 @@ $.yote.util = {
 			    }
 			}
 			if( me.include_remove ) {
-			    $( '#remove_' + me.ct_id + '_' + item.id + '_b' ).click((function(it) { return function() {
+			    $( '#remove_' + me.ct_id + '_' + i + '_b' ).click((function(it,idx) { return function() {
 				if( me.remove_fun ) {
-				    me.remove_fun( it );
+				    me.remove_fun( it, idx );
 				} else { 
 				    me.item.remove_from( { name : me.list_name, items : [ it ] } );
 				}
@@ -1009,7 +1011,7 @@ $.yote.util = {
 				if( to < 0 ) to = 0;
 				me.start = to;
 				me.refresh();
-			    } } )( item ) );
+			    } } )( item, i ) );
 			}
 		    } //each row again
 
@@ -1026,9 +1028,9 @@ $.yote.util = {
 			    }
 			}
 			if( me.include_remove ) {
-			    $( '#remove_' + me.ct_id + '_' + item.id + '_b' ).click((function(it) { return function() {
+			    $( '#remove_' + me.ct_id + '_' + i + '_b' ).click((function(it,idx) { return function() {
 				if( me.remove_fun ) {
-				    me.remove_fun( it );
+				    me.remove_fun( it, me.start + idx );
 				} else { 
 				    me.item.remove_from( { name : me.list_name, items : [ it ] } );
 				}
@@ -1036,7 +1038,7 @@ $.yote.util = {
 				if( to < 0 ) to = 0;
 				me.start = to;
 				me.refresh();
-			} } )( item ) );
+			} } )( item, i ) );
 			}
 		    } //each row again
 		}

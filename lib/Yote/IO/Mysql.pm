@@ -138,14 +138,30 @@ sub count {
 
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
-    unless( defined( $idx ) ) {
-	( $idx ) = $self->{DBH}->selectrow_array( "SELECT 1 + max( field ) FROM field WHERE obj_id=?", {}, $list_id );
-    } else {
-	my( $occupied ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", {}, $list_id, $idx );
-	if( $occupied ) {
-	    $self->{DBH}->selectrow_array( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", {}, $list_id, $idx );
+    my( $last_idx ) = $self->{DBH}->selectrow_array( "SELECT max( cast( field as unsigned ) ) FROM field WHERE obj_id=?", {}, $list_id );
+    if( defined( $idx ) ) { 
+	if( !defined( $last_idx ) ) {
+	    $idx = 0;
+	}
+	elsif( $idx > $last_idx ) {
+	    $idx = $last_idx + 1;
+	}
+	else {
+	    my( $occupied ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", {}, $list_id, $idx );
+	    if( $occupied ) {
+		$self->{DBH}->do( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", {}, $list_id, $idx );
+	    }
 	}
     }
+    else {
+	if( defined( $last_idx ) ) {
+	    $idx = $last_idx + 1;
+	} 
+	else {
+	    $idx = 0;
+	}
+    }
+
     if( index( $val, 'v' ) == 0 ) {
 	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $list_id, $idx, substr( $val, 1 )  );
     } else {
@@ -161,8 +177,13 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $idx_or_val ) = @_;
-    $self->_do( "DELETE FROM field WHERE obj_id=? AND (field=? OR value=?) LIMIT 1", $list_id, $idx_or_val, $idx_or_val );
+    my( $self, $list_id, $ref_id, $idx ) = @_;
+    my( $actual_index ) = $ref_id ? 
+	$self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND ref_id=?", $list_id, $ref_id ) :
+	$idx;
+
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $actual_index );
+    $self->_do( "UPDATE field SET field=field-1 WHERE obj_id=? AND field > ?", $list_id, $actual_index );
     return;
 }
 

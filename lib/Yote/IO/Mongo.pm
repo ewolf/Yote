@@ -168,14 +168,19 @@ sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
-    die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
-    if( $obj ) {
-	if( defined( $idx ) ) {
-	    splice @{$obj->{ d }}, $idx, 0, $val;
-	} else {
-	    push @{$obj->{ d }}, $val;
+    if( $obj ) { 
+	die "list_insert must be called for list" if $obj->{ c } ne 'ARRAY';
+	if( $obj ) {
+	    if( defined( $idx ) ) {
+		splice @{$obj->{ d }}, $idx > @{$obj->{d}} ? scalar(@{$obj->{d}}) : $idx, 0, $val;
+	    } else {
+		push @{$obj->{ d }}, $val;
+	    }
+	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
 	}
-	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+    }
+    else {
+	$self->stow( $list_id, 'ARRAY', [ $val ] );
     }
     return;
 } #list_insert
@@ -193,17 +198,19 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $idx_or_val ) = @_;
+    my( $self, $list_id, $ref_id, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
     die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
     if( $obj ) {
-	my $idx = $idx_or_val;
-	if( index( $idx_or_val, 'v' ) == 0 ) {
-	    ( $idx ) = grep { $obj->{d} eq $idx_or_val } ( 0..$#{$obj->{d}} );
+	my $actual_index;
+	if( $ref_id ) {
+	    ( $actual_index ) = grep { $obj->{d}{$_} == $ref_id} ( 0..$#{$obj->{d}} );
+	} else {
+	    $actual_index = $idx;
 	}
-	if( defined( $idx ) ) {
-	    splice @{$obj->{ d }}, $idx, 1;
+	if( defined( $actual_index ) ) {
+	    splice @{$obj->{ d }}, $actual_index, 1;
 	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
 	}
     }
