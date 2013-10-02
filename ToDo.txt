@@ -1,106 +1,125 @@
 The Phases :
   * GET IT WORKING        Alpha 0
   * GET IT CORRECT        Alpha 1
-  * GET IT COMPREHENSIBLE Alpha 2
-  * GET IT FAST           Alpha 3
-  * GET IT PRETTY         Alpha 4
+  * GET IT FAST           Alpha 2
+  * GET IT COMPREHENSIBLE BETA  1
+  * GET IT PRETTY         BETA  2
+  * ADD MORE FEATURES     BETA  3 / Release Candidate 1 
 
-Currently wrapping up phase Alpha 1 and making headway on Alpha 2
+Currently
+   Alpha 0 is complete
+   Alpha 1 is nearing completion
+   Alpha 2 is started in parallel
+   Beta  1 has a few things started   
 
 
-Next updates
-  * clean up widgets to make sure tag id fields are unique. prep_edit, for example, does not guarantee this
-  * review all methods and classes and remove those that no longer fit
-  -* Indexing for lists always starts at 0...no jumping around with undefs? Agreed. Done and done.
-  x* Cron - make scheduled_times a list of objects with 'time' and 'note' fields.
-  * add comments for crons
-  * table for scalar list entries
-  * bug : undefined showing up for undefined me.prefix_classname
-  * add tests for list_insert, list_delete, hash_insert, hash_delete
-  * test for pagination in unit_tests.html
-  * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
+Misc
   x* consider moving this list to github for tracking. ( this is always here. just need discipline to do it)
-  * control_table to work with the cool built in pagination that objects already have!
-  -* make sure search and sort fields can both be given. update the tests for that.
-  -* Permissions updates
-      * . Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
-          possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.
-    	  with a double underscore as the reserved space for this __. The goal for this is ease of programming. Maybe the default is
-    	  the object creator or root can edit it. CRUD permissions? Or use the subclassing below ( or even configuring with __ )
-        * configuration for LOCK_MODE
-	-* new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
-  -* add_to, remove_from, delete_key - Obj methods to allow for list or hash manipulation off of this object. Will work only for root if _ is the first letter
-  -* count for searches! This is missing and makes control_table buggy.
-  x* Exclusive cron. Means cron entry must have a unique name and that by default only one of that name may be run at once.
-  * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
-  x* changed permissions model so that YoteRoot checks if accounts are root. (won't do it now)
-  * Document all the widgets
-  -* complete test cases for hash pagination
-  * MongoIO pagination update - use different collection for large tables
-  * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.
-  * control_table sort
-  - * Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
-  -* for control_table, show showing a-n of y numbering.
-  x* caching of paginated lists ( wont do now )
-  -* update control table widget to use new paginate
-  -* search_hash for all IO types, as well as tests for it ( just one sort )
-  -* add sort for control table for Mongo and Mysql
-  -* unify sort, search and pagination
 
-
-FOR Stable Alpha
-
- -* add option to yote_server to do a full reconfiguring of the server
- -* deadlock test cases
- -* cache clearning test cases
+Beta 3
+ MORE FEATURES
   * Add object versioning? Store a new field in the database : version. Then _load can be used to check the version.
-  * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
- -* Move MongoIO, etc, to an IO sub package
- ?x* refactor IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
- -* Enable Cron
-  - Move encrypt_pass to somewhere self, maybe? Moved to ObjProvider
   * Security improvement : offer up proxies for other users' accounts. This makes sure that
      the client does not access account data it shouldn't
-  * Create admin pages
- -* Unify unit tests for different stores
- -* Create program to reset root password
- -* Create program to reset whole config ( code for this is done as part of Yote.pm )
   * More yote tools
   * Add at least simple modperl support. Maybe use plack?
-  * UI - account change password and request password reset link
   * method to get version to client
+  * add GRU module for searches against tag lists
+  * yote objects that bridge to files an allow for editing.
+
+Beta 2
+ GET IT PRETTY
+  * Fix page counter
+ -* Make simple WIKI for updating Yote News
+  * build page editor
+
+Beta 1
+ GET IT COMPREHENSIBLE
+  * review all methods and classes and remove those that no longer fit
+ -* Indexing for lists always starts at 0...no jumping around with undefs? Agreed. Done and done.
+ x* Cron - make scheduled_times a list of objects with 'time' and 'note' fields.
+  * add comments for crons
+  * Document all the widgets
+ -* for control_table, show showing a-n of y numbering.
+ -* Move MongoIO, etc, to an IO sub package
+  * Create admin pages
+ -* Unify unit tests for different stores
  -* add test only requirements to Build.PL
  -* include app class rather than app id in the IO
-
-
-#----------- Pre Aril 2013 ----
-# 
-# the following list may contain items done
-#
-
-FOR ALPHA
-
-  -* Enable caching that pays attention to who has what.
-  -* Make guest tokens required for running any non-root app command.
-  -* Create yote admin page for
+ -* Create yote admin page for
         -* viewing apps
         -* viewing user login objects
         -* cron admin
   * Create guest page to be hosted at madyote.com
-  - * Make installer work for the common case of user having root. [ done, needs testing ]
-  -* Have server respond to javascript permissions requests. ( this is now moot )
-  * Fix page counter
-  - * Make simple WIKI for updating Yote News
-  - * installer so that other scripts work (rename them to yote_ )
+ -* build yote homepage
+  * reorganize package structure
+  * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
 
-BEYOND
+Alpha 2
+ GET IT FAST
 
-* have methods sent just once per class
-* add GRU module for searches against tag lists
-* update to not use backticks
-- * make sure installer script works universally ( well, windows fails due to threads :( )
-- * build yote homepage
-* build page editor
-* yote objects that bridge to files an allow for editing.
-- * replace Crypt:Passwd with something better.
+ Perl Side
+  * MongoIO pagination update - use different collection for large tables
+  * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.
+  x* caching of paginated lists ( wont do now )
+  * Add timing alarm and max execute length parameter for configuration ( though use something other than sleep, a watchdog thread maybe
 
+ js/perl IO
+  * have methods sent just once per class
+
+
+Alpha 1
+ GET IT CORRECT
+
+ Perl Side
+  * add tests for list_insert, list_delete, hash_insert, hash_delete
+  * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
+ -* make sure search and sort fields can both be given. update the tests for that.
+  * Permissions updates
+        -* Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
+           possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.
+    	   with a double underscore as the reserved space for this __. The goal for this is ease of programming. Maybe the default is
+    	   the object creator or root can edit it. CRUD permissions? Or use the subclassing below ( or even configuring with __ )
+         * configuration for LOCK_MODE
+	-* new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
+ x* Exclusive cron. Means cron entry must have a unique name and that by default only one of that name may be run at once.
+ x* changed permissions model so that YoteRoot checks if accounts are root. (won't do it now)
+ -* complete test cases for hash pagination
+ -* search_hash for all IO types, as well as tests for it ( just one sort )
+ -* add sort for control table for Mongo and Mysql
+ -* unify sort, search and pagination
+ -* Move encrypt_pass to somewhere self, maybe? Moved to ObjProvider
+ -* Make guest tokens required for running any non-root app command.
+ -* Enable caching that pays attention to who has what.
+ -* Make installer work for the common case of user having root. [ done, needs testing ]
+ -* Have server respond to javascript permissions requests. ( this is now moot )
+  * update to not use backticks for cron
+ -* replace Crypt:Passwd with something better.
+
+
+ Javascript Side
+  * clean up widgets to make sure tag id fields are unique. prep_edit, for example, does not guarantee this
+  * control table for scalar list entries ( javascript )
+  * bug : undefined showing up for undefined me.prefix_classname
+  * test for pagination in unit_tests.html
+  * control_table to work with the cool built in pagination that objects already have!
+  * control_table sort
+ -* Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
+ -* update control table widget to use new paginate
+  * UI - account change password and request password reset link [ note - may need configuration for mail. may not need anything fancy, just something to pipe to sendmail or telnet to port 25
+
+
+Alpha 0
+ GET IT WORKING
+
+ -* add_to, remove_from, delete_key - Obj methods to allow for list or hash manipulation off of this object. Will work only for root if _ is the first letter
+ -* count for searches! This is missing and makes control_table buggy.
+ -* add option to yote_server to do a full reconfiguring of the server
+ -* deadlock test cases
+ -* cache clearning test cases
+ ?x* refactor IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
+ -* Enable Cron
+ -* Create program to reset root password
+ -* Create program to reset whole config ( code for this is done as part of Yote.pm )
+ -* installer so that other scripts work (rename them to yote_ )
+ -* make sure installer script works universally ( well, windows fails due to threads :( )

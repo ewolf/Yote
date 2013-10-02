@@ -113,11 +113,11 @@ sub _add_to {
     unless( $self->{DATA}{$listname} ) {
 	my $func = "add_to_$listname";
 	$self->$func( [] );
+	Yote::ObjProvider::flush( $self->{DATA}{$listname} );
     }
     for my $d (@data) {
 	Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $d );
     }
-    Yote::ObjProvider::flush( $self->{DATA}{$listname} );
     return;
 } #_add_to
 
@@ -126,9 +126,9 @@ sub _insert_at {
     unless( $self->{DATA}{$listname} ) {
 	my $func = "set_$listname";
 	$self->$func( [] );
+	Yote::ObjProvider::flush( $self->{DATA}{$listname} );
     }
     Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $item, $idx );
-    Yote::ObjProvider::flush( $self->{DATA}{$listname} );
     return;
 } #_insert_at
 
@@ -171,6 +171,7 @@ sub _hash_insert {
     }
     my $fun = "set_$hashname";
     $self->$fun( { $key => $val } );
+    Yote::ObjProvider::flush( $self->{DATA}{$hashname} );
     return;
 } #_hash_insert
 

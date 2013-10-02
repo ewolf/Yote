@@ -621,6 +621,11 @@ sub io_independent_tests {
     my $el_list = $root->get_el_list();
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
+    # hash insert and hash delete key
+    $root->hash( { name => 'el_hash', key => "FoO", value => "bAr" } );
+    my $el_hash = $root->get_el_hash();
+    is_deeply( $el_hash, { "FoO" => "bAr" } );
+
     # root acct test
     $root_acct = $root->_check_root( "NEWROOT","NEWPW" ) ;
 
