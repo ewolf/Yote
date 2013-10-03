@@ -1,8 +1,8 @@
 package Yote::AppRoot;
 
-#
-# Base class for all Yote applications.
-#
+#########################################
+# Base class for all Yote applications. #
+#########################################
 
 use strict;
 use warnings;
@@ -19,23 +19,6 @@ use vars qw($VERSION);
 $VERSION = '0.087';
 
 # ------------------------------------------------------------------------------------------
-#      * INITIALIZATION *
-# ------------------------------------------------------------------------------------------
-
-
-#
-# Intializes the account object passed in.
-#
-sub _init_account {}
-
-#
-# Override to use different classes for the account objects.
-#
-sub _new_account {
-    return new Yote::Account();
-}
-
-# ------------------------------------------------------------------------------------------
 #      * PUBLIC API Methods *
 # ------------------------------------------------------------------------------------------
 
@@ -49,7 +32,7 @@ sub account {
 } #account
 
 #
-# Available to all apps. Used for verification and for cookie login.
+# Used by the web app server to verify the login. Returns the login object belonging to the token.
 #
 sub token_login {
     my( $self, $t, undef, $env ) = @_;
@@ -65,25 +48,30 @@ sub token_login {
     return 0;
 } #token_login
 
-# ------------------------------------------------------------------------------------------
-#      * Private Methods *
-# ------------------------------------------------------------------------------------------
-
-
+###########################################################
+# Messages meant to be overridden and customized per app. #
+###########################################################
 
 #
-# This can be overridden and is where the app will send out a stylized email validation request to the person who made the account.
+# Intializes the account object passed in.
 #
-sub _validation_request {
-    my( $self, $login ) = @_;
-
-    my $root = Yote::Yote::fetch_root();
-
-
-} #_validation_request
+sub _init_account {}
 
 #
-# Returns the account root attached to this AppRoot for the given account.
+# Override to use different classes for the account objects.
+#
+sub _new_account {
+    return new Yote::Account();
+}
+
+
+
+#######################################################
+# Fixed ( should not be overridden ) utility methods. #
+#######################################################
+
+#
+# Returns the account root attached to this AppRoot for the given account. Not meant to be overridden.
 #
 sub __get_account {
     my( $self, $login ) = @_;
@@ -130,13 +118,16 @@ Returns a token that is used by the client and server to sync up data for the ca
 
 =back
 
-=head1 PUBLIC DATA FIELDS
+=head1 OVERRIDABLE METHODS
 
-=over 4
+=item _init_account( $acct )
 
-=item apps
+This is called whenever a new account is created for this app. This can be overridden to perform any initialzation on the 
+account.
 
-This is a hash of app name to app object.
+=item _new_account()
+
+This returns a new Yote::Account object to be used with this app. May be overridden to return a subclass of Yote::Account.
 
 =back
 
@@ -144,23 +135,17 @@ This is a hash of app name to app object.
 
 =over 4
 
-=item _handles
+=item _account_roots
 
-A hash of handle to Yote::Login object for that user.
-
-=item _emails
-
-A hash of email address to Yote::Login object for that user.
-
-=item _application_lib_directories
-
-A list containing names of directories on the server that should be searched for Yote app classes and libraries.
+This is a hash of login ID to account.
 
 =back
 
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

@@ -1,12 +1,16 @@
 package Yote::Account;
 
+###########################################################################
+# Each user has one account per App. Each user has one system wide login. #
+###########################################################################
+
 use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.04';
+$VERSION = '0.05';
 
-use base 'Yote::Messenger';
+use base 'Yote::Obj';
 
 sub upload_avatar {
     my( $self, $data, $acct ) = @_;
@@ -38,12 +42,8 @@ Yote::Account
 
 =head1 DESCRIPTION 
 
-This module is essentially meant to be used as is or extended.
-Yote::Account is a base class for account objects. A user has different account object for each different app. 
-The distinction between a Login and an account is that a user has exactly one system-wide Yote::Login but
-a different Yote::Account object per application.
-
 The Yote::Account object is a container intended to store any data that is relevant to a user for a particular app.
+A single user will have one account per app, but only one systemwide login.
 
 =head1 PUBLIC API METHODS
 
@@ -67,6 +67,8 @@ Returns trus if the account is the original root account
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

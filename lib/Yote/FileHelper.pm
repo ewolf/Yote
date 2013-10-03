@@ -1,5 +1,9 @@
 package Yote::FileHelper;
 
+##################################################################################
+# This class serves as a wrapper so that files can be stored on the yote system. #
+##################################################################################
+
 use strict;
 use warnings;
 
@@ -91,6 +95,8 @@ Returns a url on the yote system where the file can be accessed.
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

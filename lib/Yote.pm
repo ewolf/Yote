@@ -1,5 +1,12 @@
 package Yote;
 
+################################################################################################
+# This package is used by yote_server to parse command line arguments, read yote configuration #
+# and launch the server.								       #
+################################################################################################
+
+
+# note : forks and forks::shared should be used before any use strict
 use forks;
 use forks::shared;
 
@@ -8,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1008';
+$VERSION = '0.1009';
 
 use Carp;
 use File::Path;
@@ -16,6 +23,161 @@ use File::Path;
 use Yote::ConfigData;
 use Yote::ObjProvider;
 use Yote::WebAppServer;
+
+
+##################
+# Public Methods #
+##################
+
+sub get_args {
+
+    my %params = ref( $_[0] ) ? %{ $_[0] } : @_;
+    
+    my $allow_unknown = $params{ allow_unknowns };
+    my $allow_multiple_commands = $params{ allow_multiple_commands };
+
+    # -------- run data ---------------------------
+
+    my %commands = (
+	'start'    => 'start',
+	'restart'  => 'restart',
+	'stop'     => 'stop',
+	'halt'     => 'stop',
+	'shutdown' => 'stop',
+	);
+
+    my %argmap = (
+	e  => 'engine',
+	E  => 'engine_port',
+	g  => 'generate',
+	c  => 'show_config',
+	f  => 'profile',
+	h  => 'help',
+	'?' => 'help',
+	H  => 'host',
+	P  => 'password',
+	p  => 'port',
+	R  => 'reset_password',
+	s  => 'store',
+	u  => 'user',
+	r  => 'yote_root',
+	t  => 'threads',
+	);
+    my %noval = (  #arguments that do not take a value
+		   help			=> 1,
+		   generate		=> 1,
+		   show_config		=> 1,
+		   reset_password	=> 1,
+		   profile              => 1,
+	);
+    my %argnames = map { $_ => 1 } values %argmap;
+
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
+
+    # ---------  run variables  -----------------
+
+    my %config;
+    my $cmd;
+    my @cmds;
+
+    # ---------  get command line arguments ---------
+    while ( @ARGV ) {
+	my $arg = shift @ARGV;
+
+	if ( $arg =~ /^--([^=]*)(=(.*))?/ ) {
+	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 } || $allow_unknown;
+	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
+	} elsif ( $arg =~ /^-(.*)/ ) {
+	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 } || $allow_unknown;
+	    $config{ $argmap{ $1 } } = $noval{ $argmap{ $1 } } ? 1 : shift @ARGV;
+	} else {
+	    _soft_exit( "Unknown command '$arg'" ) unless $commands{ lc($arg) } || $allow_unknown || $allow_multiple_commands;
+	    _soft_exit( "Only takes one command argument" ) if $cmd && ! $allow_multiple_commands;
+	    $cmd = $arg;
+	    push @cmds, $cmd;
+	}
+    } # each argument
+
+    # --------- find yote root directory and configuration file ---------
+    my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
+    $config{ yote_root } = $yote_root_dir;
+
+    if( $config{ help } ) {
+	_soft_exit();
+    }
+
+    _log "using root directory '$yote_root_dir'";
+
+    _log "Looking for '$yote_root_dir/yote.conf'";
+
+    if( $config{ show_config }  ) {
+	my $loaded_config = _load_config( $yote_root_dir );
+	print "Yote configuration :\n " . join( "\n ", map { "$_ : $loaded_config->{ $_ }" } keys %$loaded_config ) . "\n";
+	exit( 0 );
+    }
+    elsif( $config{ generate } ) {
+	_log( "Generating new configuration file" );
+	my $newconfig = _create_configuration( $yote_root_dir, _load_config( $yote_root_dir ) );
+	for my $key ( keys %$newconfig ) {
+	    $config{ $key } ||= $newconfig->{ $key };
+	}	
+    }
+    elsif( $config{ reset_password } ) {
+	%config = %{ _reset_root_password( $yote_root_dir, _load_config( $yote_root_dir ) ) };
+	exit( 0 );
+    }
+    elsif ( -r "$yote_root_dir/yote.conf" ) {
+	my $loaded_config = _load_config( $yote_root_dir );
+	for my $key ( keys %$loaded_config ) {
+	    $config{ lc( $key ) } ||= $loaded_config->{ $key };
+	}
+	if( grep { ! $config{ $_ } } keys %required ) {
+	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
+	    my $newconfig = _create_configuration( $yote_root_dir );
+	    for my $key ( keys %$newconfig ) {
+		$config{ $key } ||= $newconfig->{ $key };
+	    }
+	}
+
+    } # reading in yote.conf file
+    else {
+	_log "No configuration file exists. Asking user to get values for one.\n";
+	my $newconfig = _create_configuration( $yote_root_dir );
+	for my $key ( keys %$newconfig ) {
+	    $config{ $key } ||= $newconfig->{ $key };
+	}
+    } #had to write first config file
+
+    $cmd ||= 'start';
+
+    _log "Returning arguments";
+
+    return { config => \%config, command => $cmd, commands => \@cmds };
+} #get_args
+
+sub run {
+    my %config = @_;
+
+    _log "Running";
+
+    my $yote_root_dir = $config{ yote_root };
+
+    push( @INC, "$yote_root_dir/lib" );
+
+    my $s = Yote::WebAppServer->new;
+
+    my $start_time = localtime();
+    _log "Starting Server at $start_time";
+    my $args = Data::Dumper->Dump([\%config]);
+    _log $args;
+
+    $s->start_server( %config );
+
+} #run
+
+###################
+# Private Methods #
+###################
 
 sub _print_use {
     print 'Usage : yote_server --engine=sqlite|mongo|mysql
@@ -173,132 +335,6 @@ sub _get_configuration {
 } #_get_configuration
 
 
-sub get_args {
-
-    my %params = ref( $_[0] ) ? %{ $_[0] } : @_;
-    
-    my $allow_unknown = $params{ allow_unknowns };
-    my $allow_multiple_commands = $params{ allow_multiple_commands };
-
-    # -------- run data ---------------------------
-
-    my %commands = (
-	'start'    => 'start',
-	'restart'  => 'restart',
-	'stop'     => 'stop',
-	'halt'     => 'stop',
-	'shutdown' => 'stop',
-	);
-
-    my %argmap = (
-	e  => 'engine',
-	E  => 'engine_port',
-	g  => 'generate',
-	c  => 'show_config',
-	f  => 'profile',
-	h  => 'help',
-	'?' => 'help',
-	H  => 'host',
-	P  => 'password',
-	p  => 'port',
-	R  => 'reset_password',
-	s  => 'store',
-	u  => 'user',
-	r  => 'yote_root',
-	t  => 'threads',
-	);
-    my %noval = (  #arguments that do not take a value
-		   help			=> 1,
-		   generate		=> 1,
-		   show_config		=> 1,
-		   reset_password	=> 1,
-		   profile              => 1,
-	);
-    my %argnames = map { $_ => 1 } values %argmap;
-
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
-
-    # ---------  run variables  -----------------
-
-    my %config;
-    my $cmd;
-    my @cmds;
-
-    # ---------  get command line arguments ---------
-    while ( @ARGV ) {
-	my $arg = shift @ARGV;
-
-	if ( $arg =~ /^--([^=]*)(=(.*))?/ ) {
-	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 } || $allow_unknown;
-	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
-	} elsif ( $arg =~ /^-(.*)/ ) {
-	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 } || $allow_unknown;
-	    $config{ $argmap{ $1 } } = $noval{ $argmap{ $1 } } ? 1 : shift @ARGV;
-	} else {
-	    _soft_exit( "Unknown command '$arg'" ) unless $commands{ lc($arg) } || $allow_unknown || $allow_multiple_commands;
-	    _soft_exit( "Only takes one command argument" ) if $cmd && ! $allow_multiple_commands;
-	    $cmd = $arg;
-	    push @cmds, $cmd;
-	}
-    } # each argument
-
-    # --------- find yote root directory and configuration file ---------
-    my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
-    $config{ yote_root } = $yote_root_dir;
-
-    if( $config{ help } ) {
-	_soft_exit();
-    }
-
-    _log "using root directory '$yote_root_dir'";
-
-    _log "Looking for '$yote_root_dir/yote.conf'";
-
-    if( $config{ show_config }  ) {
-	my $loaded_config = _load_config( $yote_root_dir );
-	print "Yote configuration :\n " . join( "\n ", map { "$_ : $loaded_config->{ $_ }" } keys %$loaded_config ) . "\n";
-	exit( 0 );
-    }
-    elsif( $config{ generate } ) {
-	_log( "Generating new configuration file" );
-	my $newconfig = _create_configuration( $yote_root_dir, _load_config( $yote_root_dir ) );
-	for my $key ( keys %$newconfig ) {
-	    $config{ $key } ||= $newconfig->{ $key };
-	}	
-    }
-    elsif( $config{ reset_password } ) {
-	%config = %{ _reset_root_password( $yote_root_dir, _load_config( $yote_root_dir ) ) };
-	exit( 0 );
-    }
-    elsif ( -r "$yote_root_dir/yote.conf" ) {
-	my $loaded_config = _load_config( $yote_root_dir );
-	for my $key ( keys %$loaded_config ) {
-	    $config{ lc( $key ) } ||= $loaded_config->{ $key };
-	}
-	if( grep { ! $config{ $_ } } keys %required ) {
-	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
-	    my $newconfig = _create_configuration( $yote_root_dir );
-	    for my $key ( keys %$newconfig ) {
-		$config{ $key } ||= $newconfig->{ $key };
-	    }
-	}
-
-    } # reading in yote.conf file
-    else {
-	_log "No configuration file exists. Asking user to get values for one.\n";
-	my $newconfig = _create_configuration( $yote_root_dir );
-	for my $key ( keys %$newconfig ) {
-	    $config{ $key } ||= $newconfig->{ $key };
-	}
-    } #had to write first config file
-
-    $cmd ||= 'start';
-
-    _log "Returning arguments";
-
-    return { config => \%config, command => $cmd, commands => \@cmds };
-} #get_args
-
 sub _load_config {
     my $yote_root_dir = shift;
 
@@ -319,26 +355,6 @@ sub _load_config {
     }
     return \%config;
 } #_load_config
-
-sub run {
-    my %config = @_;
-
-    _log "Running";
-
-    my $yote_root_dir = $config{ yote_root };
-
-    push( @INC, "$yote_root_dir/lib" );
-
-    my $s = Yote::WebAppServer->new;
-
-    my $start_time = localtime();
-    _log "Starting Server at $start_time";
-    my $args = Data::Dumper->Dump([\%config]);
-    _log $args;
-
-    $s->start_server( %config );
-
-} #run
 
 1;
 
@@ -368,11 +384,11 @@ Yote on the server side is a server that is a
 
 =over 4
 
-* schemaless object database with a recursive tree structure
+* container objects exist in a graph structure
 
-* multi-threaded request queuing server
+* multi-threaded request handling
 
-* single-threaded execution server
+* Object fields and connections are contents are free form and require no schema definition
 
 =back
 
@@ -386,22 +402,31 @@ Yote on the client is a javascript library that provides
 
 * web controls for account management
 
+* web widgets for use with yote objects
+
 =back
 
 =head1 DESCRIPTION
 
+The purpose of Yote to be able to develop rapidly, flexbily and 
+fluidly. Yote stores a graph of interconnected container objects.
+Each of these can be connected to any other, and each may have 
+properties attached to them. No schema is needed to describe how
+objects are connected or what properties they contain.
+
+There is an organization to this object graph, however; all objects
+that are 'live' can trace back to the root of the graph. This root
+contains a collection of user logins and application objects. It 
+provides methods for creating these login objects, which, since they are
+Yote objects, can have arbitrary properties attached to them. The
+application objects are singleton Yote objects are are accessed via 
+the fetch_app_by_class method attached to the root.
+
 I wrote Yote because I wanted to write object oriented applications,
-particulally web applications and prototypes, in a ferenic ADHD style.
+particulally web applications and prototypes, in a ferenic ADHD style. I did
+want want to have to set up schemas, and then make changes to them as the 
+application changed.
 
-I wanted the objects and their data to connect together as
-easily as one connects tinker toys together.
-I found writing and modifying table schemas, especially for prototypes, is a
-drag on the development and testing and I wanted to get rid of that
-step once and for all for at least prototype development.
-
-I had chance to use SOAP and XMLHttpdRequest calls. SOAP I found too
-slow, and at the time had seen it only for php, jsp and other server
-side web languages.
 
 =head1 PUBLIC METHODS
 
@@ -423,6 +448,12 @@ return until the yote server has shut down.
 =head1 BUGS
 
 There are likely bugs to be discovered. This is alpha software.
+
+=head1 AUTHOR
+
+Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

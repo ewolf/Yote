@@ -12,9 +12,8 @@ Currently
    Alpha 2 is started in parallel
    Beta  1 has a few things started   
 
+  * try/catch on the javscript side. dump the cache should there be exceptions that would warrent that.
 
-Misc
-  x* consider moving this list to github for tracking. ( this is always here. just need discipline to do it)
 
 Beta 3
  MORE FEATURES
@@ -26,12 +25,15 @@ Beta 3
   * method to get version to client
   * add GRU module for searches against tag lists
   * yote objects that bridge to files an allow for editing.
+  * For cron, a repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
 
 Beta 2
  GET IT PRETTY
   * Fix page counter
  -* Make simple WIKI for updating Yote News
   * build page editor
+  * make into daemon if possible. did not have much luck with this before
+  * implement email validation request
 
 Beta 1
  GET IT COMPREHENSIBLE
@@ -54,6 +56,7 @@ Beta 1
  -* build yote homepage
   * reorganize package structure
   * Update how logging is done. Access log and error log like apache. Capture STDERR and collect to error log
+  x* consider moving this list to github for tracking. ( this is always here. just need discipline to do it)
 
 Alpha 2
  GET IT FAST
@@ -72,6 +75,7 @@ Alpha 1
  GET IT CORRECT
 
  Perl Side
+  * check to see if recycling needs the rest shut down.
   * add tests for list_insert, list_delete, hash_insert, hash_delete
   * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
  -* make sure search and sort fields can both be given. update the tests for that.
