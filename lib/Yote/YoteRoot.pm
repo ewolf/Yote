@@ -195,6 +195,16 @@ sub logout {
     }
 } #logout
 
+#
+# Transforms the login into a login with root privs. Do not use lightly.
+#
+sub make_root {
+    my( $self, $login, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    $login->set__is_root( 1 );
+    return;
+} #make_root
+
 sub new_obj {
     my( $self, $data, $acct ) = @_;
     return new Yote::Obj( ref( $data ) ? $data : undef );
@@ -220,9 +230,6 @@ sub purge_app {
     }
     die "Permissions Error";
 } #purge_app
-
-
-
 
 #
 # Sends an email to the address containing a link to reset password.
@@ -324,6 +331,18 @@ sub remove_login {
     
 } #remove_login
 
+#
+# Removes root privs from a login. Do not use lightly. Does not remove the last root if there is one
+#
+sub remove_root {
+    my( $self, $login, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    die "Cannot remove master root account" if $login->get__is_master_root();
+    $login->set__is_root( 0 );
+    return;
+} #remove_root
+
+
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
@@ -355,27 +374,6 @@ sub _check_root {
     return $root_login;
 } #_check_root
 
-#
-# Transforms the login into a login with root privs. Do not use lightly.
-#
-sub make_root {
-    my( $self, $login, $acct ) = @_;
-    die "Access Error" unless $acct->is_root();
-    $login->set__is_root( 1 );
-    return;
-} #make_root
-
-#
-# Removes root privs from a login. Do not use lightly. Does not remove the last root if there is one
-#
-sub remove_root {
-    my( $self, $login, $acct ) = @_;
-    die "Access Error" unless $acct->is_root();
-    die "Cannot remove master root account" if $login->get__is_master_root();
-    $login->set__is_root( 0 );
-    return;
-} #remove_root
-
 
 #
 # Create token and store with the account and return it.
@@ -397,13 +395,21 @@ Yote::YoteRoot
 
 =head1 DESCRIPTION
 
-The yote root is the main app of the class. It is also always object id 1 and sits at the head of the yote data tree. Yote::YoteRoot is a subclass of Yote::AppRoot.
-
-=head1 DATA 
+This is the first object and the root of the object graph. It stores user logins and stores the apps themselves.
 
 =head1 PUBLIC API METHODS
 
 =over 4
+
+=item create_login( args )
+
+Create a login with the given client supplied args : h => handle, e => email, p => password.
+This checks to make sure handle and email address are not already taken. 
+This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
+=item cron
+
+Returns the cron. Only a root login may call this.
 
 =item fetch( id_list )
 
@@ -420,10 +426,6 @@ Returns the singleton root object. It creates it if it has not been created.
 =item guest_token
 
 Creates and returns a guest token, associating it with the calling IP address.
-
-=item is_root
-
-Returns true if the account passed in is a root account.
 
 =item login( { h: handle, p : password } )
 
@@ -461,21 +463,55 @@ Purges the login account from the system if its credentials are verified. It mov
 
 Removes the root bit from the login.
 
-=item create_login( args )
+=back
 
-Create a login with the given client supplied args : h => handle, e => email, p => password.
-This checks to make sure handle and email address are not already taken. 
-This is invoked by the javascript call $.yote.create_login( handle, password, email )
+=head1 PRIVATE DATA FIELDS
 
-=item cron
+=item _apps
 
-Returns the cron. Only a root login may call this.
+Hash of classname to app singleton.
+
+=item _emails
+
+Hash of email to login object.    
+
+=item _handles
+
+Hash of handle to login object.
+
+=item _crond
+
+A singleton instance of the Cron.
+
+=item _application_lib_directories
+
+A list of directories that Yote will use to look for perl packages.
+
+=item __ALLOWS
+
+A hash of recipient ids to a hash of objects ids whos clients are allowed to access this object.
+
+=item __ALLOWS_REV
+
+A hash of object ids to a hash of recipient ibds whos clients are allowed to access this object.
+
+=item __DIRTY
+
+A hash of recipient ids to a hash of objects ids that need refreshing for that recipient.
+
+=over 4
+
+=item _account_roots
+
+This is a hash of login ID to account.
 
 =back
 
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

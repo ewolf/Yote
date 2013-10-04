@@ -111,12 +111,13 @@ __END__
 
 =head1 NAME
 
-Yote::AccessControl
+Yote::ObjManager
 
 =head1 DESCRIPTION
 
 This module is the gatekeeper that decides which objects may returned to clients from
 their calls by paying attention to what the server explicitly pushed out to the client.
+It also tracks which clients need which objects refreshed.
 
 The ObjManager class is not publically visible to the client.
 
@@ -151,6 +152,8 @@ Registers the object id with the passed in login id or guest token.
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

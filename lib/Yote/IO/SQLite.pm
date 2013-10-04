@@ -149,20 +149,20 @@ sub get_id {
 #
 # Returns true if the given object traces back to the root.
 #
-sub has_path_to_root {
+sub _has_path_to_root {
     my( $self, $obj_id, $seen ) = @_;
     return 1 if $obj_id == 1;
     $seen ||= { $obj_id => 1 };
     my $res = $self->_selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
     for my $o_id (map { $_->[0] } @$res) {
 	next if $seen->{ $o_id }++;
-	if( $self->has_path_to_root( $o_id, $seen ) ) {
+	if( $self->_has_path_to_root( $o_id, $seen ) ) {
 	    return 1;
 	}
     }
 
     return 0;
-} #has_path_to_root
+} #_has_path_to_root
 
 # returns the max id (mostly used for diagnostics)
 sub max_id {
@@ -263,7 +263,7 @@ sub recycle_objects {
     
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
 	my $obj = $self->fetch( $id );
-	if( $obj && ( ! $self->has_path_to_root( $id ) ) ) {
+	if( $obj && ( ! $self->_has_path_to_root( $id ) ) ) {
 	    $self->recycle_object( $id );
 	    ++$recycled;
 	}
@@ -434,6 +434,7 @@ sub list_delete {
 
 sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
     if( index( $val, 'v' ) == 0 ) {
 	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $hash_id, $key, substr( $val, 1 )  );
     } else {
@@ -585,10 +586,6 @@ Returns the id of the first object in the system, the YoteRoot.
 
 Returns the id for the given hash ref, array ref or yote object. If the argument does not have an id assigned, a new id will be assigned.
 
-=item has_path_to_root( obj_id )
-
-Returns true if the object specified by the id can trace a path back to the root yote object.
-
 =item hash_delete( hash_id, key )
 
 Removes the key from the hash given by the id
@@ -658,6 +655,8 @@ Stows all objects that are marked as dirty. This is called automatically by the 
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

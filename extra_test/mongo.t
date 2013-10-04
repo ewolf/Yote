@@ -17,7 +17,7 @@ use Yote::IO::TestUtil;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 223;
+use Test::More tests => 226;
 use Test::Pod;
 
 

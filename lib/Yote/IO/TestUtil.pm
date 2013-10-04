@@ -611,8 +611,15 @@ sub io_independent_tests {
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
-    my $o = new Yote::Obj( { anonymous => "guest" } );
+    $o = new Yote::Obj( { anonymous => "guest" } );
     Yote::ObjProvider::stow_all();
+
+    $root->add_to( { name => 'z_list', items => [ "A", "B" ] } );
+    is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
+
+    $root->insert_at( { name => 'y_list', index => 2, item => "C" } );
+    is_deeply( $root->get_y_list(), [ "C" ], "insert at to having correct obj" );
+
     $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] } );
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" } );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" } );
@@ -668,6 +675,9 @@ This package exists to provide IO engine independent tests for the different sto
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
+
 
 =head1 LICENSE AND COPYRIGHT
 

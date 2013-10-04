@@ -171,7 +171,6 @@ sub _hash_insert {
     }
     my $fun = "set_$hashname";
     $self->$fun( { $key => $val } );
-    Yote::ObjProvider::flush( $self->{DATA}{$hashname} );
     return;
 } #_hash_insert
 
@@ -284,8 +283,9 @@ sub hash {
     if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
 	die "permissions error";
     }
-    my( $listname, $key, $val ) = @$args{'name','key','value'};
-    return $self->_hash_insert( $self->{DATA}{$args->{name}}, $key, $val );
+    my( $name, $key, $val ) = @$args{'name','key','value'};
+
+    return $self->_hash_insert( $name, $key, $val );
 } #hash
 
 sub insert_at {
@@ -631,10 +631,14 @@ It takes a hash ref filled with field name value pairs and updates the values th
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2011 Eric Wolf
+
+
 
 This module is free software; it can be used under the same terms as perl
 itself.

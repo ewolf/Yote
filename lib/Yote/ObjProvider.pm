@@ -63,6 +63,11 @@ sub commit_transaction {
     return $DATASTORE->commit_transaction();
 }
 
+sub count {
+    my( $container_id, $args ) = @_;
+    return $DATASTORE->count( $container_id, $args );
+}
+
 #
 # Markes given object as dirty.
 #
@@ -79,51 +84,13 @@ sub disconnect {
 }
 
 #
-# Encrypt the password so its not saved in plain text.
+# Encrypt the password so its not saved in plain text. This is here because 
+# it fits best in the Object Provider, though it's not a great fit.
 #
 sub encrypt_pass {
     my( $pw, $handle ) = @_;
     return $handle ? Crypt::Passwd::XS::crypt( $pw, $handle ) : undef;
 } #encrypt_pass
-
-
-#
-# Returns the first ID that is associated with the root YoteRoot object
-#
-sub first_id {
-    $FIRST_ID ||= $DATASTORE->first_id();
-    return $FIRST_ID;
-}
-
-sub flush {
-    for my $id ( @_ ) {
-	delete $Yote::ObjProvider::DIRTY->{$id};
-	delete $Yote::ObjProvider::WEAK_REFS->{$id};
-    }
-}
-
-sub flush_all_volatile {
-    $Yote::ObjProvider::DIRTY = {};
-    $Yote::ObjProvider::WEAK_REFS = {};
-}
-
-sub lock {
-    my( $id, $ref ) = @_;
-    my $oref = $LOCKER ? $LOCKER->lock_object( $id, $ref ) : $ref;
-    unless( $oref ) {
-	$oref = fetch( $id );
-	$ref->{DATA} = $oref->{DATA};
-    }
-    return $ref;
-} #lock
-
-sub unlock {
-    my $id = shift;
-    if( $LOCKER ) {
-	return $LOCKER->unlock_objects( $id );
-    }
-    return;
-} #unlock
 
 sub fetch {
     my( $id ) = @_;
@@ -135,14 +102,10 @@ sub fetch {
     my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
 
     if( $ref ) {
-#	print STDERR "[$$ ".time()."] returning ref $ref for $id\n";
 	return $ref;
     }
-#    print STDERR "[$$ ".time()."] LOADING $id\n";
     my $obj_arry = $DATASTORE->fetch( $id );
     $Yote::ObjProvider::LAST_LOAD_TIME->{$id} = time();
-
-#    print STDERR "[$$ ".time()."] OBJ $id loaded at $Yote::ObjProvider::LAST_LOAD_TIME->{$id}\n";
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -176,6 +139,27 @@ sub fetch {
 
     return undef;
 } #fetch
+
+
+#
+# Returns the first ID that is associated with the root YoteRoot object
+#
+sub first_id {
+    $FIRST_ID ||= $DATASTORE->first_id();
+    return $FIRST_ID;
+}
+
+sub flush {
+    for my $id ( @_ ) {
+	delete $Yote::ObjProvider::DIRTY->{$id};
+	delete $Yote::ObjProvider::WEAK_REFS->{$id};
+    }
+}
+
+sub flush_all_volatile {
+    $Yote::ObjProvider::DIRTY = {};
+    $Yote::ObjProvider::WEAK_REFS = {};
+}
 
 
 sub get_id {
@@ -235,19 +219,19 @@ sub get_id {
 
 } #get_id
 
-sub list_insert {
-    my( $list_id, $val, $idx ) = @_;
-    return $DATASTORE->list_insert( $list_id, xform_in( $val ), $idx );
-}
-
-sub list_delete {
-    my( $list_id, $key_or_val ) = @_;
-    return ref( $key_or_val ) ? $DATASTORE->list_delete( $list_id, get_id( $key_or_val ) ) : $DATASTORE->list_delete( $list_id, undef, $key_or_val );
-}
-
 sub hash_delete {
     my( $hash_id, $key_or_val ) = @_;
     return $DATASTORE->hash_delete( $hash_id, ref( $key_or_val ) ? get_id( $key_or_val ) : $key_or_val );
+}
+
+sub hash_fetch {
+    my( $hash_id, $key ) = @_;
+    return xform_out( $DATASTORE->hash_fetch( $hash_id, $key ) );
+} 
+
+sub hash_has_key {
+    my( $hash_id, $key ) = @_;
+    return $DATASTORE->hash_has_key( $hash_id, $key );
 }
 
 sub hash_insert {
@@ -255,20 +239,30 @@ sub hash_insert {
     return $DATASTORE->hash_insert( $hash_id, $key, xform_in( $val ) );
 } #hash_insert
 
-sub hash_fetch {
-    my( $hash_id, $key ) = @_;
-    return xform_out( $DATASTORE->hash_fetch( $hash_id, $key ) );
-} 
+sub list_delete {
+    my( $list_id, $key_or_val ) = @_;
+    return ref( $key_or_val ) ? $DATASTORE->list_delete( $list_id, get_id( $key_or_val ) ) : $DATASTORE->list_delete( $list_id, undef, $key_or_val );
+}
 
 sub list_fetch {
     my( $list_id, $idx ) = @_;
     return xform_out( $DATASTORE->list_fetch( $list_id, $idx ) );
 } 
 
-sub hash_has_key {
-    my( $hash_id, $key ) = @_;
-    return $DATASTORE->hash_has_key( $hash_id, $key );
+sub list_insert {
+    my( $list_id, $val, $idx ) = @_;
+    return $DATASTORE->list_insert( $list_id, xform_in( $val ), $idx );
 }
+
+sub lock {
+    my( $id, $ref ) = @_;
+    my $oref = $LOCKER ? $LOCKER->lock_object( $id, $ref ) : $ref;
+    unless( $oref ) {
+	$oref = fetch( $id );
+	$ref->{DATA} = $oref->{DATA};
+    }
+    return $ref;
+} #lock
 
 sub package_methods {
     my $pkg = shift;
@@ -362,6 +356,7 @@ sub recycle_objects {
 sub start_transaction {
     return $DATASTORE->start_transaction();
 }
+
 sub stow {
     my( $obj ) = @_;
 
@@ -416,7 +411,6 @@ sub stow {
 
 sub stow_all {
     my @odata;
-#    print STDERR "[$$ ".time()."] STOW ALL with " . scalar( keys %{$Yote::ObjProvider::DIRTY} ) . " dirty items.\n";
     for my $obj (values %{$Yote::ObjProvider::DIRTY} ) {
 	my $cls;
 	my $ref = ref( $obj );
@@ -432,6 +426,14 @@ sub stow_all {
     $DATASTORE->stow_all( \@odata );
     $Yote::ObjProvider::DIRTY = {};
 } #stow_all
+
+sub unlock {
+    my $id = shift;
+    if( $LOCKER ) {
+	return $LOCKER->unlock_objects( $id );
+    }
+    return;
+} #unlock
 
 sub xform_in {
     my $val = shift;
@@ -450,10 +452,6 @@ sub xform_out {
     return fetch( $val );
 }
 
-sub count {
-    my( $container_id, $args ) = @_;
-    return $DATASTORE->count( $container_id, $args );
-}
 
 
 # ------------------------------------------------------------------------------------------
@@ -537,6 +535,11 @@ It is the only module to directly interact with the datastore layer.
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
+=item make_server( datalocker )
+
+This links a datalocker to this objprovider. This is called automatically by Yote::WebAppServer 
+which also serves as the locker. The datalocker is responsible for locking and unlocking objects.
+
 =back
 
 =head1 CLASS METHODS
@@ -545,28 +548,30 @@ It is the only module to directly interact with the datastore layer.
 
 =item commit_transaction( )
 
-=item count( container_id )
-
-returns the number of items in the given container
-
-
 Requests the data store used commit the transaction.
+
+=item count( container_id, args )
+
+Returns the number of items in the given container. Args are optional and are
+
+=over 4
+
+* search_fields - a list of fields to search for in collections of yote objects
+* search_terms - a list of terms to search for
+
+=back
 
 =item dirty( obj )
 
-Marks the object as dirty
+Marks the item as needing a save.
 
 =item disconnect( )
 
 Requests the data store used disconnect.
 
-=item encrypt_pass( pass_string )
+=item encrypt_pass( pass_string, handle_string )
 
-Returns a string of the argument encrypted.
-
-=item flush( id )
-
-Removes any object with the given ID from any cache
+Returns a string of the argument encrypted. This is 
 
 =item fetch( id )
 
@@ -574,11 +579,16 @@ Returns the array ref, hash ref or yote object specified by the numeric id or ha
 
 =item first_id( id )
 
-Returns the id of the first object in the system, the YoteRoot.
+Returns the id of the first object in the system, the YoteRoot. This may or may not be 
+numeric.
+
+=item flush( id )
+
+Removes any object with the given ID from any cache.
 
 =item flush_all_volatile()
 
-Clears out DIRTY and WEAK_REFS caches.
+Clears out all caches.
 
 =item get_id( obj )
 
@@ -587,26 +597,36 @@ if none had been assigned to it.
 
 =item hash_delete( hash_id, key )
 
-Removes the key from the hash given by the id
+Removes the key from the hash given by the id direclty from the database.
 
 =item hash_fetch( hash_id, key )
 
+Uses a database lookup to return the value for the key for the hash specified by hash_id.
+
 =item hash_has_key( hash_id, key )
+
+Uses a database lookup to return if the key for the hash specified by hash_id has a value.
 
 =item hash_insert( hash_id, key, value )
 
+Insert a key value pair directly into the database for the given hash_id.
+
 =item list_delete( list_id, idx )
 
+Uses the database to directly delete a given list element. This will cause the list to be reindexed.
+
 =item list_fetch( list_id, idx )
+
+Directly looks in the database to return the list element at the given index.
 
 =item list_insert( list_id, val, idx )
 
 Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
+This method will cause the list to be reindexed.
 
-=item make_server( datalocker )
+=item lock( id, ref )
 
-This is just used when multiple processes will be activatig the same data share.
-
+Requests that the object locker lock the object given by id and reference to this thread. Calling this blocks until the item is unlocked.
 
 =item package_methods( package_name )
 
@@ -619,7 +639,6 @@ Returns a paginated list or hash that is attached to the object specified by obj
 
 =over 4
 
-* name - name of data structure attached to this object.
 * search_fields - a list of fields to search for in collections of yote objects
 * search_terms - a list of terms to search for
 * sort_fields - a list of fields to sort by for collections of yote objects
@@ -631,15 +650,6 @@ Returns a paginated list or hash that is attached to the object specified by obj
 
 =back
 
-
-=item paginate_hash( hash_id, length, start )
-
-Returns a paginated hash reference
-
-=item paginate_list( list_id, length, start )
-
-Returns a paginated list reference
-
 =item power_clone( item )
 
 Returns a deep clone of the object. This will clone any object that is part of the yote system except for the yote root or any app (a Yote::AppRoot object)
@@ -647,10 +657,6 @@ Returns a deep clone of the object. This will clone any object that is part of t
 =item recycle_objects( start_id, end_id )
 
 Recycles all objects in the range given if they cannot trace back a path to root.
-
-=item search_list
-
-Returns a paginated search list
 
 =item start_transaction( )
 
@@ -663,6 +669,10 @@ This saves the hash ref, array ref or yote object argument in the data store.
 =item stow_all( )
 
 Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
+
+=item unlock( id )
+
+Requests the object locker release the object referenced by the given id that was locked to this thread.
 
 =item xform_in( value )
 
@@ -677,6 +687,8 @@ Returns the external value given the internal identifier. The external value can
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

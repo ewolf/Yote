@@ -189,6 +189,7 @@ sub list_delete {
 
 sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
+    $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
     if( index( $val, 'v' ) == 0 ) {
 	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $hash_id, $key, substr( $val, 1 )  );
     } else {
@@ -556,8 +557,6 @@ Yote::IO::Mysql - A mysql persistance engine for Yote.
 
 Persistance engine that uses mysql as a store.
 
-This can be installed as a singleton of Yote::ObjProvider and does the actual storage and retreival of Yote objects.
-
 =head1 CONFIGURATION
 
 The package name is used as an argument to the Yote::ObjProvider package which also takes the configuration parameters for Yote::IO::Mysql.
@@ -660,6 +659,8 @@ Stows all objects that are marked as dirty. This is called automatically by the 
 =head1 AUTHOR
 
 Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
 
 =head1 LICENSE AND COPYRIGHT
 

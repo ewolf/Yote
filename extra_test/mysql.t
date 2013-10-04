@@ -16,7 +16,7 @@ use Yote::Test::TestNoDeepCloner;
 
 use Data::Dumper;
 use DBI;
-use Test::More tests => 237;
+use Test::More tests => 240;
 use Test::Pod;
 
 use Carp;
