@@ -75,6 +75,7 @@ Alpha 1
  GET IT CORRECT
 
  Perl Side
+  * cron reclaculate not working for scheduled times. fix
   * add permissions tests
   * check to see if recycling needs the rest shut down.
   * add tests for list_insert, list_delete, hash_insert, hash_delete

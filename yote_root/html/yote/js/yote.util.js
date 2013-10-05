@@ -9,6 +9,24 @@
 $.yote.util = {
     ids:0,
 
+    format_date: function( date, format ) {
+	if( format ) {
+	    var buf = '';
+	    for( var i=0; i<format.length; i++) {
+		var chara = format.charAt( i );
+		if( chara == 'Y' ) buf += date.getUTCFullYear();
+		else if( chara == 'M' ) buf += (1 + date.getUTCMonth()) > 9 ? 1 + date.getUTCMonth() : '0' + ( 1 + date.getUTCMonth() );
+		else if( chara == 'D' ) buf += date.getUTCDate()    > 9 ? date.getUTCDate()    : '0' + date.getUTCDate();
+		else if( chara == 's' ) buf += date.getUTCSeconds() > 9 ? date.getUTCSeconds() : '0' + date.getUTCSeconds();
+		else if( chara == 'h' ) buf += date.getUTCHours()   > 9 ? date.getUTCHours()   : '0' + date.getUTCHours(); 
+		else if( chara == 'm' ) buf += date.getUTCMinutes() > 9 ? date.getUTCMinutes() : '0' + date.getUTCMinutes();
+		else buf += chara;
+	    }
+	    return buf;
+	}
+	return date.toUTCString();
+    },
+
     button_actions:function( args ) {
 	var but         = args[ 'button' ];
 	var action      = args[ 'action' ] || function(){};
@@ -657,6 +675,7 @@ $.yote.util = {
 	    /* PAGINATION */
 	    start		: 0,                                      // pagination start
 	    plimit		: args[ 'plimit' ] || 10,                 // paginatoin limit
+	    show_count          : typeof args[ 'show_count' ] === 'undefined' ? true : args[ 'show_count' ],
 
 	    search_fun		: args[ 'search_function' ],              // optional alternate search function. Uses the default. which is search_list
 	    search_on		: args[ 'search_on' ],                    // List of what search fields to use for the item. This may or may not be used by the item's search function depending on how it is defined. If this is included, search will be activated.
@@ -691,6 +710,7 @@ $.yote.util = {
 		*/
 	    
 	    /* ACTIONS */
+	    after_load          : args[ 'after_load' ],                                   // this function is run once the first time the table is loaded.
 	    after_render	: args[ 'after_render' ]   || function(list_of_items) {}, // run this function after rendering. It takes a single argument : list_of_items
 	    show_when_empty     : args[ 'show_when_empty' ],                              // run this function if there were no items found for pagination. Function shold
 	                                                                                  // return html that goes _IN PLACE_ of the table. Expects search item list as single parameter and passes the list of search terms as the single argument.
@@ -790,15 +810,15 @@ $.yote.util = {
 		    bf    += me.new_description ? '<div class="' + me._classes( '_new_description' ) + '">' + me.new_description + '</div>' : '';
 
 		    var txts = [];
-		    var tbl = $.yote.util.make_table( me._classes_array( '_new_item_table' ) );
+		    var tbl = $.yote.util.make_table( me._classes_array( 'new_item_table' ) );
 		    for( var i=0; i < me.new_columns.length; i++ ) {
 			var nc = me.new_columns[ i ];
 			var field = typeof nc === 'object' ? nc.field : nc;
 			var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
 			if( typeof nc === 'object' ) {
-			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( '_new_item_row' ), me._classes_array( '_new_item_cell' ) );
+			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			} else {
-			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( '_new_item_row' ), me._classes_array( '_new_item_cell' ) );
+			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			}
 			txts.push( '#' + id );
 		    }
@@ -850,16 +870,18 @@ $.yote.util = {
 		    if( me.include_remove ) {
 			ch.push( me.remove_column_txt );
 		    }
-		    tab.add_header_row( ch, me._classes_array( '_row' ), me._classes_array( '_cell' ) );
+		    tab.add_header_row( ch, me._classes_array( 'row' ), me._classes_array( 'cell' ) );
 		}
 
 		var items = paginate_function();
 		var max = items.length() > me.plimit ? me.plimit : items.length();
 		
-		if( max == count ) {	   
-		    buf += '<BR>Showing all items<BR>';
-		} else {
-		    buf += '<BR>Showing ' + max + ' of ' + count + ' items<BR>';
+		if( me.show_count ) {
+		    if( max == count ) {	   
+			buf += '<BR>Showing all items<BR>';
+		    } else {
+			buf += '<BR>Showing ' + max + ' of ' + count + ' items<BR>';
+		    }
 		}
 		if( me.paginate_type == 'hash' ) {
 		    
@@ -891,7 +913,7 @@ $.yote.util = {
 				buf += row.join('');
 			    }
 			    else {
-				tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );			
+				tab.add_row( row, me._classes_array( 'row' ), me._classes_array( 'cell' ) );			
 			    }
 			}
 		    }
@@ -915,7 +937,7 @@ $.yote.util = {
 			    buf += row.join('');
 			}
 			else {
-			    tab.add_row( row, me._classes_array( '_row' ), me._classes_array( '_cell' ) );
+			    tab.add_row( row, me._classes_array( 'row' ), me._classes_array( 'cell' ) );
 			}
 		    }
 		} //list pagination
@@ -1052,6 +1074,7 @@ $.yote.util = {
 	    } //refresh
 	}; //define cgt
 	ct.refresh();
+	if( ct.after_load ) ct.after_load();
 
 	return ct;
     } //control_table
