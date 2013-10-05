@@ -11,6 +11,7 @@ lib/Yote/IO/SQLite.pm
 lib/Yote/Obj.pm
 
 lib/Yote/PerfAspect.pm
+lib/Yote/RootObject.pm
 
 lib/Yote/Sample/SecretCollect.pm
 lib/Yote/Sample/SimpleToDo.pm

@@ -1,7 +1,8 @@
-package Yote::RootObj;
+package Yote::UserObj;
 
 # anyone may read public ( not starting with _ ) fields 
-# but only root may see private fields or edit any fields.
+# but only root and object creator may see private fields 
+# or edit any fields.
 
 use strict;
 use warnings;
@@ -10,7 +11,7 @@ use base 'Yote::Obj';
 
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
-    return $account->is_root() || ( index( $name, '_' ) != 0 && $write_access == 0 );
+    return $account->_is( $self->get___creator() ) || $account->is_root() || ( index( $name, '_' ) != 0 && $write_access == 0 );
 } #_check_access
 
 1;
@@ -19,12 +20,12 @@ __END__
 
 =head1 NAME
 
-Yote::RootObj
+Yote::UserObj
 
 =head1 DESCRIPTION
 
-This is a subclass of Yote::Obj that allows root access of its public and private fields for reading and wrinting
-and allows read access of its public fields for non root users. The Yote::YoteRoot instance method new_root_obj
+This is a subclass of Yote::Obj that allows root or its creator to access and write to public and private fields.
+Public fields may be read by others but not written. The Yote::YoteRoot instance method new_root_obj
 returns a new object of this type.
 
 =head1 AUTHOR

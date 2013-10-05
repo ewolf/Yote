@@ -151,13 +151,19 @@ sub _get_id {
     return Yote::ObjProvider::get_id( $obj );
 } #_get_id
 
+# anyone may read and write public ( not starting with _ ) fields.
+sub _check_access {
+    my( $self, $account, $write_access, $name ) = @_;
+    return $account->get_login()->is_root() || index( $name, '_' ) != 0;
+} #_check_access
+
 sub _count {
     my( $self, $args ) = @_;
     if( ref( $args ) ) {
 	return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
     }
     return Yote::ObjProvider::count( $self->{DATA}{$args} );
-}
+} #_count
 
 sub _hash_delete {
     my( $self, $hashname, $key ) = @_;
@@ -253,36 +259,27 @@ sub _update {
 
 sub add_to {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $items ) = @$args{'name','items'};
     return $self->_add_to( $listname, @$items );
 } #add_to
 
 sub count {
     my( $self, $data, $account ) = @_;
-
-    if( index( $data, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
     return $self->_count( $data );
 } #count
 
 sub delete_key {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $key ) = @$args{'name','key'};
     return $self->_hash_delete( $self->{DATA}{$args->{name}}, $key );
 } #delete_key
 
 sub hash {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $name, $key, $val ) = @$args{'name','key','value'};
 
     return $self->_hash_insert( $name, $key, $val );
@@ -290,9 +287,7 @@ sub hash {
 
 sub insert_at {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $idx, $item ) = @$args{'name','index','item'};
     return $self->_insert_at( $listname, $item, $idx );
 } #insert_at
@@ -300,25 +295,19 @@ sub insert_at {
 
 sub list_fetch {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
     return $self->_list_fetch( $self->{DATA}{$args->{name}}, $args->{index} );
 } #list_fetch
 
 sub paginate {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
     return Yote::ObjProvider::paginate( $self->{DATA}{ $args->{name} }, $args );
 } #paginate
 
 sub remove_from {
     my( $self, $args, $account ) = @_;
-    if( index( $args->{name}, '_' ) == 0 && ! $account->get_login()->is_root() && ! ref( $account->get_login() ) ne 'Yote::Login' ) {
-	die "permissions error";
-    }
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $idxs, $items ) = @$args{'name','indexes','items'};
     return $self->_remove_from( $listname, @{$idxs||[]}, @{$items||[]} );
 } #remove_from

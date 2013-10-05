@@ -207,14 +207,26 @@ sub make_root {
 
 sub new_obj {
     my( $self, $data, $acct ) = @_;
-    return new Yote::Obj( ref( $data ) ? $data : undef );
-}
+    my $ret = new Yote::Obj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_obj
 
 sub new_root_obj {
     my( $self, $data, $acct ) = @_;
     return "Access Error" unless $acct->get_login()->is_root();
-    return new Yote::RootObj( ref( $data ) ? $data : undef );    
-}
+    my $ret = new Yote::RootObj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_root_obj
+
+sub new_user_obj {
+    my( $self, $data, $acct ) = @_;
+    my $ret = new Yote::UserObj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+
+} #new_user_obj
 
 #
 # Used to wipe and reset a whole app's data. Use with caution
@@ -439,6 +451,14 @@ Invalidates the tokens of the currently logged in user.
 =item make_root
 
 Takes a login as an argument and makes it root. Throws access error if the callee is not root.
+
+=item new_obj( optional_data_hash )
+
+Returns a new yote object, initialized with the optional has reference.
+
+=item new_root_obj( optional_data_hash )
+
+Returns a new root yote object, initialized with the optional has reference.
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 

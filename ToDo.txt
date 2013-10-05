@@ -75,6 +75,7 @@ Alpha 1
  GET IT CORRECT
 
  Perl Side
+  * add permissions tests
   * check to see if recycling needs the rest shut down.
   * add tests for list_insert, list_delete, hash_insert, hash_delete
   * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
