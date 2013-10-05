@@ -106,9 +106,9 @@ sub get_args {
 	_soft_exit();
     }
 
-    _log "using root directory '$yote_root_dir'";
+    _log( "using root directory '$yote_root_dir'" );
 
-    _log "Looking for '$yote_root_dir/yote.conf'";
+    _log( "Looking for '$yote_root_dir/yote.conf'" );
 
     if( $config{ show_config }  ) {
 	my $loaded_config = _load_config( $yote_root_dir );
@@ -132,7 +132,7 @@ sub get_args {
 	    $config{ lc( $key ) } ||= $loaded_config->{ $key };
 	}
 	if( grep { ! $config{ $_ } } keys %required ) {
-	    _log "The configuration file is insufficient to run yote. Asking user to generate a new one.\n";
+	    _log( "The configuration file is insufficient to run yote. Asking user to generate a new one.\n" );
 	    my $newconfig = _create_configuration( $yote_root_dir );
 	    for my $key ( keys %$newconfig ) {
 		$config{ $key } ||= $newconfig->{ $key };
@@ -141,7 +141,7 @@ sub get_args {
 
     } # reading in yote.conf file
     else {
-	_log "No configuration file exists. Asking user to get values for one.\n";
+	_log( "No configuration file exists. Asking user to get values for one.\n" );
 	my $newconfig = _create_configuration( $yote_root_dir );
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ $key };
@@ -150,7 +150,7 @@ sub get_args {
 
     $cmd ||= 'start';
 
-    _log "Returning arguments";
+    _log( "Returning arguments" );
 
     return { config => \%config, command => $cmd, commands => \@cmds };
 } #get_args
@@ -158,7 +158,7 @@ sub get_args {
 sub run {
     my %config = @_;
 
-    _log "Running";
+    _log( "Running" );
 
     my $yote_root_dir = $config{ yote_root };
 
@@ -167,9 +167,9 @@ sub run {
     my $s = Yote::WebAppServer->new;
 
     my $start_time = localtime();
-    _log "Starting Server at $start_time";
+    _log( "Starting Server at $start_time" );
     my $args = Data::Dumper->Dump([\%config]);
-    _log $args;
+    _log( $args );
 
     $s->start_server( %config );
 

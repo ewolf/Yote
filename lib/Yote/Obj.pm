@@ -154,7 +154,7 @@ sub _get_id {
 # anyone may read and write public ( not starting with _ ) fields.
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
-    return $account->get_login()->is_root() || index( $name, '_' ) != 0;
+    return ( $account && $account->get_login()->is_root() ) || index( $name, '_' ) != 0;
 } #_check_access
 
 sub _count {
@@ -266,7 +266,7 @@ sub add_to {
 
 sub count {
     my( $self, $data, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
+    die "Access Error" unless $self->_check_access( $account, 0, ref( $data ) ? $data->{ name } : $data );
     return $self->_count( $data );
 } #count
 
