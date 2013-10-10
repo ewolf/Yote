@@ -110,25 +110,46 @@ sub _absorb {
 # adds the items to the list attached to this object with the given name.
 sub _add_to {
     my( $self, $listname, @data ) = @_;
-    unless( $self->{DATA}{$listname} ) {
-	my $func = "add_to_$listname";
-	$self->$func( [] );
-	Yote::ObjProvider::flush( $self->{DATA}{$listname} );
+    my $list_id = $self->{DATA}{$listname};
+    if( $list_id ) {
+	Yote::ObjManager::mark_dirty( $list_id );
     }
+    else {
+	my $func = "set_$listname";
+	$self->$func( [] );
+    }
+    $list_id ||= $self->{DATA}{$listname};
     for my $d (@data) {
-	Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $d );
+	Yote::ObjProvider::list_insert( $list_id, $d );
+    }
+    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    if( $list ) {
+	push @$list, @data;
     }
     return;
 } #_add_to
 
 sub _insert_at {
     my( $self, $listname, $item, $idx ) = @_;
-    unless( $self->{DATA}{$listname} ) {
+    my $list_id = $self->{DATA}{$listname};
+    if( $list_id ) {
+	Yote::ObjManager::mark_dirty( $list_id );
+    }
+    else {
 	my $func = "set_$listname";
 	$self->$func( [] );
-	Yote::ObjProvider::flush( $self->{DATA}{$listname} );
     }
-    Yote::ObjProvider::list_insert( $self->{DATA}{$listname}, $item, $idx );
+    $list_id ||= $self->{DATA}{$listname};
+    Yote::ObjProvider::list_insert( $list_id, $item, $idx );
+    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    if( $list ) {
+	if( @$list <= $idx ) {
+	    push @$list, $item;
+	}
+	else {
+	    splice @$list, $idx, 0, $item;
+	}
+    }
     return;
 } #_insert_at
 
@@ -167,13 +188,29 @@ sub _count {
 
 sub _hash_delete {
     my( $self, $hashname, $key ) = @_;
-    return Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );
-}
+    Yote::ObjManager::mark_dirty( $self->{DATA}{$hashname} );
+    my $ret = Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );
+
+    my $hash = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$hashname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$hashname} };
+    if( $hash ) {
+	delete $hash->{ $key };
+    }
+
+    return $ret;
+} #_hash_delete
 
 sub _hash_insert {
     my( $self, $hashname, $key, $val ) = @_;
     if( $self->{DATA}{$hashname} ) {
-	return Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
+	# mark dirty here in case there are outstanding instances of that hash?
+	Yote::ObjManager::mark_dirty( $self->{DATA}{$hashname} );
+
+	my $ret = Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
+	my $hash = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$hashname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$hashname} };
+	if( $hash ) {
+	    $hash->{ $key }= $val;
+	}
+	return $ret;
     }
     my $fun = "set_$hashname";
     $self->$fun( { $key => $val } );
@@ -184,6 +221,18 @@ sub _hash_fetch {
     my( $self, $hashname, $key ) = @_;
     return Yote::ObjProvider::hash_fetch( $self->{DATA}{$hashname}, $key );
 }
+
+sub _list_delete {
+    my( $self, $listname, $idx ) = @_;
+    my $list_id = $self->{DATA}{$listname};
+    return unless $list_id;
+    Yote::ObjProvider::list_delete( $list_id, $idx );
+    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    if( $list ) {
+	splice @$list, $idx, 1;
+    }
+    return;
+} #_list_delete
 
 sub _list_fetch {
     my( $self, $listname, $key ) = @_;
@@ -217,10 +266,17 @@ sub _power_clone {
 
 sub _remove_from {
     my( $self, $listname, @data ) = @_;
+    Yote::ObjManager::mark_dirty( $self->{DATA}{$listname} );
     for my $d (@data) {
-	Yote::ObjProvider::list_delete( $self->{DATA}{$listname}, $d );
+	Yote::ObjProvider::remove_from( $self->{DATA}{$listname}, $d );
     }
-}
+    my $list = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$listname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$listname} };
+    if( $list ) {
+	for( my $i=0; $i < @$list; $i++ ) {
+	    splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
+	}
+    }    
+} #_remove_from
 
 #
 # Private method to update the hash give. Returns if things were made dirty.
@@ -292,6 +348,11 @@ sub insert_at {
     return $self->_insert_at( $listname, $item, $idx );
 } #insert_at
 
+sub list_delete {
+    my( $self, $args, $account ) = @_;
+    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
+    return $self->_list_delete( $args->{name}, $args->{index} );
+} #list_delete
 
 sub list_fetch {
     my( $self, $args, $account ) = @_;

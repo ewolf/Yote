@@ -420,7 +420,7 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 4 } );
     is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit returning hash' );
         
-    $app->_remove_from( 'azzy', 2 );
+    $app->_list_delete( 'azzy', 2 );
 
     # paginate_hash
     $res = $app->_paginate( { name => 'azzy', return_hash => 1 } );
@@ -631,10 +631,60 @@ sub io_independent_tests {
     # hash insert and hash delete key
     $root->hash( { name => 'el_hash', key => "FoO", value => "bAr" } );
     my $el_hash = $root->get_el_hash();
-    is_deeply( $el_hash, { "FoO" => "bAr" } );
+    is_deeply( $el_hash, { "FoO" => "bAr" }, 'hash method' );
 
+    $root->_hash_insert( 'el_hash', 'BBB', 123 );
+    is_deeply( $el_hash, { "FoO" => "bAr", "BBB" => 123 }, '_hash_insert method' );
+
+    $root->_hash_delete( 'el_hash', 'FoO' );
+    is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
+    
     # root acct test
     $root_acct = $root->_check_root( "NEWROOT","NEWPW" ) ;
+
+    # have $acct, $root_acct
+    my $zoot_acct = $root->create_login( { h => 'zoot', p => 'naughty', e => "zoot\@tooz.com" } )->{l};
+    my $widget = $root->new_obj;
+
+    Yote::ObjManager::register_object( $widget->{ID}, $zoot_acct->{ID} );
+    Yote::ObjManager::register_object( $widget->{ID}, $root_acct->{ID} );
+    Yote::ObjManager::register_object( $widget->{ID}, $acct->{ID} );
+
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [], "No dirty for acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ), [], "No dirty for root acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ), [], "No dirty for zoot acct" );
+
+    $widget->set_thing( 22 );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{ID}], "Missing dirty for acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ),  [ $widget->{ID} ], "Missing dirty for root acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ),  [ $widget->{ID} ], "Missing dirty for zoot acct" );
+    
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ ], "dirty cleared for acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ),  [ ], "dirty cleared for root acct" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ),  [ ], "dirty cleared for zoot acct" );
+
+    my $mylist = $widget->set_mylist( [] );
+    Yote::ObjManager::register_object( $widget->{DATA}{mylist}, $acct->{ID} );
+    $widget->_add_to( 'mylist', "A", 2, "Gamma" );
+    
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{ID}, $widget->{DATA}{mylist} ], "_add_to makes dirty" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+
+    is_deeply( $mylist, [ 'A', 2, 'Gamma' ], "list contents after add to" );
+
+    $widget->_insert_at( 'mylist', "INTER", 1 );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_insert_at makes dirty" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+
+    $widget->_remove_from( 'mylist', 2, 'A' );
+    is_deeply( $mylist, [ "INTER", "Gamma" ], "_remove_from works" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_remove_from makes dirty" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+    
+    $widget->_list_delete( 'mylist', 0 );
+    is_deeply( $mylist, [ "Gamma" ], "_remove_from works" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_list_delete makes dirty" );
+    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
 
     # cron tests
     my $cron = $root->get__crond();
@@ -658,6 +708,7 @@ sub io_independent_tests {
     is( scalar( $cron->entries ), 0, "no cron entries yet ready" );
     sleep(5);
     is( scalar( $cron->entries ), 1, "one cron entry yet ready" );
+
 } #io_independent_tests
 
 1;

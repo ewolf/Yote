@@ -34,6 +34,7 @@ Beta 2
   * build page editor
   * make into daemon if possible. did not have much luck with this before
   * implement email validation request
+  * implement a list_delete that removes from a specific index. (rename old list_delete to be remove_from )
 
 Beta 1
  GET IT COMPREHENSIBLE
@@ -62,6 +63,7 @@ Alpha 2
  GET IT FAST
 
  Perl Side
+  * Something to kill anb restart all server threads to refresh classes
   * MongoIO pagination update - use different collection for large tables
   * for mongo db, maybe do a separate collection for list parts. When a list is too big, maybe its object nodes uses this other collection to split the list.
   x* caching of paginated lists ( wont do now )
@@ -75,19 +77,20 @@ Alpha 1
  GET IT CORRECT
 
  Perl Side
+  * unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
   * cron reclaculate not working for scheduled times. fix
-  * add permissions tests
-  * check to see if recycling needs the rest shut down.
-  * add tests for list_insert, list_delete, hash_insert, hash_delete
-  * make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
+  * check to see if recycling needs the rest shut down. 
+ -* add tests for list_insert, list_delete, hash_insert, hash_delete ( done, needs test )
+ -* make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
  -* make sure search and sort fields can both be given. update the tests for that.
-  * Permissions updates
-        -* Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
+  x* Permissions updates
+        -x* Consider with the LOCK_MODE change below. Maybe the default should be make things as permissive as 
            possible and the user can override that permissivity, possibly with a set of tags or conditions to allow the thing to happen.
     	   with a double underscore as the reserved space for this __. The goal for this is ease of programming. Maybe the default is
     	   the object creator or root can edit it. CRUD permissions? Or use the subclassing below ( or even configuring with __ )
-         * configuration for LOCK_MODE
-	-* new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
+         x* configuration for LOCK_MODE
+ -* Object Locking updates. The objects can be cooperatively locked between threads with the _lock method on the object. This requires that the user 
+ -* new subclasses for Yote::Obj, one that allows anyone to update its fields, and the other that allows only root to - these should supplant creating some objects. may be made moot with the permissiveness above
  x* Exclusive cron. Means cron entry must have a unique name and that by default only one of that name may be run at once.
  x* changed permissions model so that YoteRoot checks if accounts are root. (won't do it now)
  -* complete test cases for hash pagination
@@ -99,7 +102,7 @@ Alpha 1
  -* Enable caching that pays attention to who has what.
  -* Make installer work for the common case of user having root. [ done, needs testing ]
  -* Have server respond to javascript permissions requests. ( this is now moot )
-  * update to not use backticks for cron
+ x* update to not use backticks for cron ( since admin crons, it should have freedom )
  -* replace Crypt:Passwd with something better.
 
 

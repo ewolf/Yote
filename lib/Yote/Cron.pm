@@ -67,7 +67,7 @@ sub _init {
 	enabled => 1,
 	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
-	    { repeat_interval => 140000, repeat_infinite => 1 },
+	    { repeat_interval => 140000, repeat_infinite => 1, repeat_times => 0 },
 	    ],
 	    
 					} );

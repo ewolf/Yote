@@ -240,8 +240,8 @@ sub hash_insert {
 } #hash_insert
 
 sub list_delete {
-    my( $list_id, $key_or_val ) = @_;
-    return ref( $key_or_val ) ? $DATASTORE->list_delete( $list_id, get_id( $key_or_val ) ) : $DATASTORE->list_delete( $list_id, undef, $key_or_val );
+    my( $list_id, $idx ) = @_;
+    return $DATASTORE->list_delete( $list_id, undef, $idx );
 }
 
 sub list_fetch {
@@ -352,6 +352,11 @@ sub power_clone {
 sub recycle_objects {
     return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
+
+sub remove_from {
+    my( $list_id, $item ) = @_;
+    return $DATASTORE->list_delete( $list_id, xform_in( $item ) );
+} #remove_from
 
 sub start_transaction {
     return $DATASTORE->start_transaction();

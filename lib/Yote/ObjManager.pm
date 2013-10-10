@@ -7,7 +7,6 @@ use vars qw($VERSION);
 $VERSION = '0.02';
 
 no warnings 'uninitialized';
-
 sub allows_access {
     my( $obj_id, $app, $login, $guest_token ) = @_;
 
@@ -42,7 +41,6 @@ sub allows_access {
 	}
 	return $ret;
     }
-
     return $ALLOWS->{ $obj_id }{ $guest_token };
     
 } #allows_access
@@ -59,6 +57,7 @@ sub clear_login {
     }
     delete $DIRTY->{ $guest_token };
     delete $ALLOWS_REV->{ $guest_token };
+
 }
 
 # return a list of object ids whos data should be sent to the caller.
@@ -67,10 +66,12 @@ sub fetch_dirty {
     my $ids = [];
     my $root = Yote::YoteRoot::fetch_root();
     my $DIRTY = $root->get___DIRTY();
+
     if( $login ) {
 	push @$ids, keys %{ $DIRTY->{ $login->{ID} } };
 	delete $DIRTY->{ $login->{ID} };
     }
+
     push @$ids, keys %{ $DIRTY->{ $guest_token } };
     delete $DIRTY->{ $guest_token };
     return $ids;
@@ -85,6 +86,7 @@ sub mark_dirty {
     my $DIRTY = $root->get___DIRTY();
     my $ALLOWS = $root->get___ALLOWS();
     my $obj_hash = $ALLOWS->{ $obj_id };
+
     for my $recip_id ( keys %$obj_hash ) {
 	#must be or, so that DIRTY doesn't become dirty and start an infinite loop
 	$DIRTY->{ $recip_id }{ $obj_id } ||= 1;  
@@ -95,6 +97,7 @@ sub register_object {
     my( $obj_id, $recipient_id ) = @_;
     die unless $obj_id;
     return unless $recipient_id;
+
     my $root = Yote::YoteRoot::fetch_root();
     my $ALLOWS = $root->get___ALLOWS();
     my $ALLOWS_REV = $root->get___ALLOWS_REV();

@@ -177,9 +177,9 @@ sub hash_delete {
 }
 
 sub list_delete {
-    my( $self, $list_id, $ref_id, $idx ) = @_;
-    my( $actual_index ) = $ref_id ? 
-	$self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND ref_id=?", $list_id, $ref_id ) :
+    my( $self, $list_id, $val, $idx ) = @_;
+    my( $actual_index ) = $val ? 
+	$self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
 	$idx;
 
     $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $actual_index );

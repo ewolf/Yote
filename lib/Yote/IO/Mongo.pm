@@ -172,24 +172,31 @@ sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
     my $mid = MongoDB::OID->new( value => $hash_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
-    die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
-    $obj->{ d }{ $key } = $val;
     if( $obj ) {
-	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+	die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
+	$obj->{ d }{ $key } = $val;
+	if( $obj ) {
+	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
+	}
+    }
+    else {
+	$self->{ OBJS }->insert( { _id => $mid, d => { $key => $val },
+				   c => 'HASH', refs => index( $val, 'v' ) == 0 ? [] :
+				       [ $val ] } );
     }
     return;
 } #hash_insert
 
 
 sub list_delete {
-    my( $self, $list_id, $ref_id, $idx ) = @_;
+    my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
-    die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
     if( $obj ) {
+	die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
 	my $actual_index;
-	if( $ref_id ) {
-	    ( $actual_index ) = grep { $obj->{d}{$_} == $ref_id} ( 0..$#{$obj->{d}} );
+	if( $val ) {
+	    ( $actual_index ) = grep { $obj->{d}[$_] eq $val } ( 0..$#{$obj->{d}} );
 	} else {
 	    $actual_index = $idx;
 	}
@@ -224,9 +231,10 @@ sub list_insert {
     if( $obj ) { 
 	die "list_insert must be called for list" if $obj->{ c } ne 'ARRAY';
 	if( $obj ) {
-	    if( defined( $idx ) ) {
+	    if( defined( $idx ) && $idx <= @{$obj->{d}} ) {
 		splice @{$obj->{ d }}, $idx > @{$obj->{d}} ? scalar(@{$obj->{d}}) : $idx, 0, $val;
-	    } else {
+	    }
+	    else {
 		push @{$obj->{ d }}, $val;
 	    }
 	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
