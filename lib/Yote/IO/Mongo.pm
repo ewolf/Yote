@@ -146,9 +146,9 @@ sub hash_delete {
     my( $self, $hash_id, $key ) = @_;
     my $mid = MongoDB::OID->new( value => $hash_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
-    die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
-    delete $obj->{ d }{ $key };
     if( $obj ) {
+	die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
+	delete $obj->{ d }{ $key };
 	$self->{ OBJS }->update( { _id => $mid, }, $obj );
     }
     return;
@@ -211,7 +211,6 @@ sub list_delete {
 
 sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
-
     my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
 
     return undef unless $list;

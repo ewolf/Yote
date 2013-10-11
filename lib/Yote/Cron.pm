@@ -131,7 +131,7 @@ sub _update_entry {
 	for my $rep (@$repeats) {
 	    $rep->{ next_time } = ( $added_on + $rep->{ repeat_interval } );
 	    $next_time ||= $rep->{ next_time };
-	    $next_time = $rep->{ next_time } if $next_time > $rep->{ next_time }
+	    $next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };
 	}
     } #if repeats
     if( $entry->{ scheduled_times } ) {

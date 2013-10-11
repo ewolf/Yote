@@ -9,6 +9,34 @@ $VERSION = '0.001';
 
 use Test::More;
 
+#
+#
+#
+sub pass_permission {
+    my( $obj, $acct, $cmd, $data, $msg ) = @_;
+    eval {
+	$obj->$cmd( $data, $acct );
+    };
+    my $err = $@;
+    $err =~ s/at \/\S+\.pm.*//s;
+    ok( $err eq '', $msg );
+} #pass_permission
+
+sub fail_permission {
+    my( $obj, $acct, $cmd, $data, $msg ) = @_;
+    eval {
+	$obj->$cmd( $data, $acct );
+    };
+    my $err = $@;
+    $err =~ s/ at \/\S+\.pm.*//s;
+    ok( $err eq 'Access Error', $msg );
+} #fail_permission
+
+sub compare_sets {
+    my( $s1, $s2, $msg ) = @_;
+    is_deeply( [ scalar( @$s1 ), { map { $_ => 1 } @$s1 } ], [ scalar( @$s2 ), { map { $_ => 1 } @$s2 } ], $msg );
+} #compare_sets
+
 sub io_independent_tests {
     my( $root ) = @_;
     my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
@@ -34,7 +62,7 @@ sub io_independent_tests {
     is_deeply( $root_clone->get_default_hash(), {"DEFKEY"=>"DEFVALUE"}, "Simple default hash" );
     my( %simple_hash ) = %{$root_clone->get_hash()};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE"}, "Simple hash" );
-    
+
 
     #
     # Test dirtying of hash. Tests if tied,  put, clear and delete
@@ -61,7 +89,7 @@ sub io_independent_tests {
     Yote::ObjProvider::stow( $fetched_hash );
     ok( !Yote::ObjProvider::__is_dirty( $clone_hash ), "hash not dirty after delete and save" );
     # -- clear
-    %$clone_hash = (); 
+    %$clone_hash = ();
     ok( Yote::ObjProvider::__is_dirty( $clone_hash ), "Hash dirty after clear" );
     $fetched_hash = Yote::ObjProvider::fetch( $hid );
     is_deeply( $fetched_hash, {}, "Hash other reference also clear" );
@@ -79,8 +107,8 @@ sub io_independent_tests {
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array not dirty" );
     is( ref(tied @$def_arry),'Yote::Array',"clone array tied");
     # - store
-    $def_arry->[13] = "booya";  #14 
-    $def_arry->[12] = "zoog";  
+    $def_arry->[13] = "booya";  #14
+    $def_arry->[12] = "zoog";
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after store" );
     my $fetched_arry = Yote::ObjProvider::fetch( $aid );
     is_deeply( $fetched_arry, ['DEFAULT ARRAY',(map { undef } (1..11)),'zoog','booya'], "array after store" );
@@ -103,14 +131,14 @@ sub io_independent_tests {
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after clear" );
     Yote::ObjProvider::stow( $fetched_arry );
     ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after clear and save" );
-    # - push 
+    # - push
     push @$def_arry, "one", "two", "tree";
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
     is_deeply( $fetched_arry, ["one", "two", "tree"], "array after push" );
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after push" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after push" );
     Yote::ObjProvider::stow( $fetched_arry );
-    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after push and save" );    
+    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after push and save" );
     # - pop
     is( pop @$def_arry, "tree", "pop array value" );
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
@@ -118,7 +146,7 @@ sub io_independent_tests {
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after pop" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after pop" );
     Yote::ObjProvider::stow( $fetched_arry );
-    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after pop and save" );    
+    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after pop and save" );
     # - shift
     is( shift @$def_arry, "one", "shifted array value" );
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
@@ -126,7 +154,7 @@ sub io_independent_tests {
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after shift" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after shift" );
     Yote::ObjProvider::stow( $fetched_arry );
-    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after shift and save" );    
+    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after shift and save" );
     # - unshift
     unshift @$def_arry, "newguy", "orange", "Lemon", "tango";
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
@@ -134,7 +162,7 @@ sub io_independent_tests {
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after unshift" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after unshift" );
     Yote::ObjProvider::stow( $fetched_arry );
-    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after unshift and save" );    
+    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after unshift and save" );
     # - splice
     my( @slice ) = splice @$def_arry, 1, 2, "Booga", "Boo", "Bobby";
     is_deeply( \@slice, ["orange","Lemon"], "spliced array value" );
@@ -143,7 +171,7 @@ sub io_independent_tests {
     ok( Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after splice" );
     ok( Yote::ObjProvider::__is_dirty( $fetched_arry ), "array dirty after splice" );
     Yote::ObjProvider::stow( $fetched_arry );
-    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after splice and save" );    
+    ok( !Yote::ObjProvider::__is_dirty( $def_arry ), "array dirty after splice and save" );
     # - set in place
     my $last_set = $fetched_arry;
     @{$fetched_arry} = ("This Is","new");
@@ -151,7 +179,7 @@ sub io_independent_tests {
     Yote::ObjProvider::stow( $fetched_arry );
     $fetched_arry = Yote::ObjProvider::fetch( $aid );
     is_deeply( $fetched_arry, ["This Is","new"], "array after set in place" );
-    
+
 
 #                                      #
 # ----------- deep container tests ----#
@@ -265,7 +293,7 @@ sub io_independent_tests {
     $deep_cloner->set_txt_value( "This is text" );
     $deep_cloner->set_big_txt_value( "BIG" x 1.000 );
     $target_obj->set_deep_cloner( $deep_cloner );
-    my $shallow_cloner = new Yote::Test::TestNoDeepCloner();    
+    my $shallow_cloner = new Yote::Test::TestNoDeepCloner();
     $target_obj->set_shallow_cloner( $shallow_cloner );
     my $arry = $target_obj->get_reftest([]);
     $target_obj->set_reftest2( $arry );
@@ -273,7 +301,7 @@ sub io_independent_tests {
     is_deeply( $target_obj->get_reftest2(), $target_obj->get_reftest(), "ref test equivalency" );
     ok( Yote::Obj::_is( $target_obj->get_reftest2(), $target_obj->get_reftest() ), "ref test yote identity 2" );
     is( ''.$target_obj->get_reftest2(), ''.$target_obj->get_reftest(), "thingy identity" );
-    
+
     my $deep_clone = Yote::ObjProvider::power_clone( $target_obj );
     ok( $deep_clone->get_shallow_cloner()->_is( $shallow_cloner ), "deep clone did not clone NO CLONE object" );
     ok( ! $deep_clone->get_deep_cloner()->_is( $deep_cloner ), "did clone internal reference" );
@@ -283,7 +311,7 @@ sub io_independent_tests {
     ok( $deep_clone->get_deep_cloner()->get_array()->[1] ne $deep_cloner->get_array()->[1], "arrays are separate but identical" );
     is_deeply( $deep_clone->get_deep_cloner()->get_hash(), $deep_cloner->get_hash(), "hashes are separate but identical" );
     ok( $deep_clone->get_deep_cloner()->get_hash() ne $deep_cloner->get_hash(), "hashes are separate but identical" );
-    
+
 
 #
 #                                          #
@@ -292,7 +320,7 @@ sub io_independent_tests {
 #                                          #
     $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     Yote::ObjProvider::stow_all();
-    eval { 
+    eval {
         $root->create_login();
         fail( "Able to create account without handle or password" );
     };
@@ -306,16 +334,16 @@ sub io_independent_tests {
     is( $res->{l}->get_handle(), 'root', "handle for created root account" );
     is( $res->{l}->get_email(), 'foo@bar.com', "handle for created root account" );
     Yote::ObjProvider::stow_all();
-    my $root_acct = $root->_hash_fetch( "_handles", "root");
-    unless( $root_acct ) {
+    my $root_login = $root->_hash_fetch( "_handles", "root");
+    unless( $root_login ) {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
     }
     is( $root->_count("_handles"), 1, "1 handle stored");
-    is( $root_acct->get_handle(), 'root', 'handle set' );
-    is( $root_acct->get_email(), 'foo@bar.com', 'email set' );
-    isnt( $root_acct->get_password(), 'toor', 'password set' ); #password is encrypted
-    ok( ! $root_acct->get__is_root(), 'first account is not root anyore' );
+    is( $root_login->get_handle(), 'root', 'handle set' );
+    is( $root_login->get_email(), 'foo@bar.com', 'email set' );
+    isnt( $root_login->get_password(), 'toor', 'password set' ); #password is encrypted
+    ok( ! $root_login->get__is_root(), 'first account is not root anyore' );
 
     eval {
         $root->create_login( { h => 'root', p => 'toor', e => 'baz@bar.com' } );
@@ -331,8 +359,8 @@ sub io_independent_tests {
     is( $res->{l}->get_handle(), 'toot', "second account created" );
     ok( $res->{t}, "second account created with token" );
     Yote::ObjProvider::stow_all();
-    my $acct = $root->_hash_fetch( '_handles', 'toot' );
-    ok( ! $acct->get__is_root(), 'second account not root' );
+    my $login = $root->_hash_fetch( '_handles', 'toot' );
+    ok( ! $login->get__is_root(), 'second account not root' );
 
     my $rpass = Yote::ObjProvider::encrypt_pass( "realpass", 'realroot' );
     isnt( $rpass, "realpass", "password was encrypted" );
@@ -380,10 +408,10 @@ sub io_independent_tests {
     my $hf = $root->get_hashfoo( {} );
     $hf->{zort} = 'zot';
 
-    $ta->give_obj( [ "Fooo obj" ], $acct );
+    $ta->give_obj( [ "Fooo obj" ], $login );
 
     Yote::ObjProvider::stow_all();
-    
+
     is( $root->_list_fetch( 'rogers', '1'), "array", "list_fetch with array" );
     is( $root->_hash_fetch( "hashfoo", "zort"), "zot", "hash_fetch with hash" );
 
@@ -395,7 +423,7 @@ sub io_independent_tests {
     is(  $app->_hash_fetch( 'azzy', '2' ), 'C', "hash fetch from AppRoot object" );
     is(  $app->_hash_fetch( 'azzy', '0' ), 'A', "hash fetch from AppRoot object" );
 
-    # test hash fetch insert, _paginate 
+    # test hash fetch insert, _paginate
     $res = $app->_paginate( { name => 'azzy' } );
     is_deeply( $res, [ qw/A B C D/ ], 'paginate list without limits correct' );
     $res = $app->_paginate( { name => 'azzy', limit => 2, skip => 0 } );
@@ -412,14 +440,14 @@ sub io_independent_tests {
     is_deeply( $res, [ qw/A B C D E/ ], 'paginate list without limits correct' );
     $res = $app->_paginate( { name => 'azzy', limit => 2, skip => 4 } );
     is_deeply( $res, [ 'E' ], 'just the last of the paginate limit' );
-    
+
     $res = $app->_paginate( { name => 'azzy', return_hash => 1 } );
     is_deeply( $res, { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', 4 => 'E' }, 'paginate hash without limits correct' );
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 0 } );
     is_deeply( $res, { 0 => 'A', 1 => 'B' }, 'paginate list limits from 0 with 2 are correct' );
     $res = $app->_paginate( { name => 'azzy', return_hash => 1, limit => 2, skip => 4 } );
     is_deeply( $res, { 4 => 'E' }, 'just the last of the paginate limit returning hash' );
-        
+
     $app->_list_delete( 'azzy', 2 );
 
     # paginate_hash
@@ -432,7 +460,7 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'azzy' } );
     is_deeply( $res, [ qw(A B D E foo/bar ) ], 'added value with / in the name' );
 
-    Yote::ObjProvider::stow_all();    
+    Yote::ObjProvider::stow_all();
 
     my $hash = $app->get_hsh( {} );
     $hash->{'baz/bof'} = "FOOME";
@@ -442,7 +470,7 @@ sub io_independent_tests {
     is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash, with one key having a slash in its name' );
 
     # delete with key that has slash in the name
-    $app->_hash_delete( 'hsh', 'baz/bof' );    
+    $app->_hash_delete( 'hsh', 'baz/bof' );
     $res = $app->_paginate( { name => 'hsh', return_hash => 1 } );
     is_deeply( $res, { 'Bingo' => "BARFO" }, 'delete with key having a slash in its name' );
 
@@ -454,7 +482,7 @@ sub io_independent_tests {
     my $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
     is( $o->get_foof(), "BARBARBAR", "obj hash constructore" );
     is( $o->get_zeeble()->[2]{nine}, "ten", 'obj hash constructor deep value' );
-    
+
     # recursion testing
     my $o2 = new Yote::Obj( { recurse => $o } );
     $o->add_to_curse( $o2 );
@@ -514,7 +542,7 @@ sub io_independent_tests {
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
-    
+
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2, skip => 1 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
@@ -534,9 +562,9 @@ sub io_independent_tests {
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
-    
+
     is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } ), 3, "3 returned from count search" );
-    
+
 
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2 } );
     is( @$res, 2, "Two paginated search results" );
@@ -544,7 +572,7 @@ sub io_independent_tests {
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
     is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } ), 3, "3 returned from count search" );
-    
+
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2, skip => 1 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
@@ -571,7 +599,7 @@ sub io_independent_tests {
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
 
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
-    
+
     $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 4, skip => 2} );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
     is( 4, @$res, "lim sort 4 results" );
@@ -599,7 +627,7 @@ sub io_independent_tests {
     $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
-    
+
     $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 4, skip => 2 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
     is( 4, @$res, "lim sort 4 results" );
@@ -638,63 +666,300 @@ sub io_independent_tests {
 
     $root->_hash_delete( 'el_hash', 'FoO' );
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
-    
+
     # root acct test
-    $root_acct = $root->_check_root( "NEWROOT","NEWPW" ) ;
+    $root_login = $root->_check_root( "NEWROOT","NEWPW" ) ;
 
-    # have $acct, $root_acct
-    my $zoot_acct = $root->create_login( { h => 'zoot', p => 'naughty', e => "zoot\@tooz.com" } )->{l};
-    my $widget = $root->new_obj;
+    # have $login, $root_login
+    my $zoot_login = $root->create_login( { h => 'zoot', p => 'naughty', e => "zoot\@tooz.com" } )->{l};
+    my $widget = $root->new_obj( { zip => 'zish' } );
+    is( $widget->get_zip(), "zish", "root obj set something" );
 
-    Yote::ObjManager::register_object( $widget->{ID}, $zoot_acct->{ID} );
-    Yote::ObjManager::register_object( $widget->{ID}, $root_acct->{ID} );
-    Yote::ObjManager::register_object( $widget->{ID}, $acct->{ID} );
+    Yote::ObjManager::register_object( $widget->{ID}, $zoot_login->{ID} );
+    Yote::ObjManager::register_object( $widget->{ID}, $root_login->{ID} );
+    Yote::ObjManager::register_object( $widget->{ID}, $login->{ID} );
 
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [], "No dirty for acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ), [], "No dirty for root acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ), [], "No dirty for zoot acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [], "No dirty for acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $root_login ), [], "No dirty for root acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $zoot_login ), [], "No dirty for zoot acct" );
 
     $widget->set_thing( 22 );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{ID}], "Missing dirty for acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ),  [ $widget->{ID} ], "Missing dirty for root acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ),  [ $widget->{ID} ], "Missing dirty for zoot acct" );
-    
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ ], "dirty cleared for acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $root_acct ),  [ ], "dirty cleared for root acct" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $zoot_acct ),  [ ], "dirty cleared for zoot acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{ID}], "Missing dirty for acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $root_login ),  [ $widget->{ID} ], "Missing dirty for root acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $zoot_login ),  [ $widget->{ID} ], "Missing dirty for zoot acct" );
+
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ ], "dirty cleared for acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $root_login ),  [ ], "dirty cleared for root acct" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $zoot_login ),  [ ], "dirty cleared for zoot acct" );
 
     my $mylist = $widget->set_mylist( [] );
-    Yote::ObjManager::register_object( $widget->{DATA}{mylist}, $acct->{ID} );
+    Yote::ObjManager::register_object( $widget->{DATA}{mylist}, $login->{ID} );
     $widget->_add_to( 'mylist', "A", 2, "Gamma" );
     
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{ID}, $widget->{DATA}{mylist} ], "_add_to makes dirty" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{ID}, $widget->{DATA}{mylist} ], "_add_to makes dirty" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [  ], "dirty now cleaned" );
 
     is_deeply( $mylist, [ 'A', 2, 'Gamma' ], "list contents after add to" );
 
     $widget->_insert_at( 'mylist', "INTER", 1 );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_insert_at makes dirty" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{DATA}{mylist} ], "_insert_at makes dirty" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [  ], "dirty now cleaned" );
 
     $widget->_remove_from( 'mylist', 2, 'A' );
     is_deeply( $mylist, [ "INTER", "Gamma" ], "_remove_from works" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_remove_from makes dirty" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
-    
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{DATA}{mylist} ], "_remove_from makes dirty" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [  ], "dirty now cleaned" );
+
     $widget->_list_delete( 'mylist', 0 );
     is_deeply( $mylist, [ "Gamma" ], "_remove_from works" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [ $widget->{DATA}{mylist} ], "_list_delete makes dirty" );
-    is_deeply( Yote::ObjManager::fetch_dirty( $acct ), [  ], "dirty now cleaned" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{DATA}{mylist} ], "_list_delete makes dirty" );
+    compare_sets( Yote::ObjManager::fetch_dirty( $login ), [  ], "dirty now cleaned" );
+
+
+    #####################################################################################
+    #										        #
+    #   ----------------- permission tests on different object types. ----------------- #
+    #   									        #
+    #####################################################################################
+    my $root_acct = new Yote::Account( { login => $root_login } );
+    my $acct = new Yote::Account( { login => $login } );
+    my $zoot_acct = new Yote::Account( { login => $zoot_login } );
+
+    pass_permission( $widget, $root_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'Root may update public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'Root may update private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_fetch', { name => '_baz', index => 1 }, 'Root may list_fetch private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_fetch', { name => 'baz', index => 1 }, 'Root may list_fetch public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'Root may remove_from private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'Root may remove_from public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'paginate', { name => '_baz'}, 'Root may paginate private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'paginate', { name => 'baz'}, 'Root may paginate private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_fetch', { name => '_baz', index => 3 }, 'Root may list_fetch private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_fetch', { name => 'baz', index => 3 }, 'Root may list_fetch public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_delete', { name => 'baz', index => 3 }, 'Root may list_delete public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'list_delete', { name => '_baz', index => 3 }, 'Root may list_delete private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'Root may insert_at private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'Root may insert_at public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'count', { name => '_baz' }, 'Root may count private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'count', { name => 'baz' }, 'Root may count public var of plain obj' );
+
+    pass_permission( $widget, $root_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'Root may hash private var of plain obj' );
+    pass_permission( $widget, $root_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'Root may hash public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'delete_key', { name => 'zab', key => "KY" }, 'Root may delete_key public var of plain obj' );
+    pass_permission( $widget, $root_acct, 'delete_key', { name => '_zab', key => "KY" }, 'Root may delete_key private var of plain obj' );
+
+    pass_permission( $widget, $zoot_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'nonRoot may update public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'nonRoot may not update private var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'nonRoot may not add_to private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'nonRoot may add_to public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'list_fetch', { name => '_baz', index => 1 }, 'nonRoot may not list_fetch private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'list_fetch', { name => 'baz', index => 1 }, 'nonRoot may list_fetch public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'nonRoot may not remove_from private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'nonRoot may remove_from public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'paginate', { name => '_baz'}, 'nonRoot may not paginate private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'paginate', { name => 'baz'}, 'nonRoot may paginate private var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'list_fetch', { name => '_baz', index => 3 }, 'nonRoot may not list_fetch private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'list_fetch', { name => 'baz', index => 3 }, 'nonRoot may list_fetch public var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'list_delete', { name => 'baz', index => 3 }, 'nonRoot may list_delete public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'list_delete', { name => '_baz', index => 3 }, 'nonRoot may not list_delete private var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'nonRoot may not insert_at private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'nonRoot may insert_at public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'count', { name => '_baz' }, 'nonRoot may not count private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'count', { name => 'baz' }, 'nonRoot may count public var of plain obj' );
+
+    fail_permission( $widget, $zoot_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'nonRoot may not hash private var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'nonRoot may hash public var of plain obj' );
+    pass_permission( $widget, $zoot_acct, 'delete_key', { name => 'zab', key => "KY" }, 'nonRoot may delete_key public var of plain obj' );
+    fail_permission( $widget, $zoot_acct, 'delete_key', { name => '_zab', key => "KY" }, 'nonRoot may not delete_key private var of plain obj' );
+
+    pass_permission( $widget, $acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'other nonRoot may update public var of plain obj' );
+    fail_permission( $widget, $acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'other nonRoot may not update private var of plain obj' );
+    fail_permission( $widget, $acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may not add_to private var of plain obj' );
+    pass_permission( $widget, $acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may add_to public var of plain obj' );
+    fail_permission( $widget, $acct, 'list_fetch', { name => '_baz', index => 1 }, 'other nonRoot may not list_fetch private var of plain obj' );
+    pass_permission( $widget, $acct, 'list_fetch', { name => 'baz', index => 1 }, 'other nonRoot may list_fetch public var of plain obj' );
+    fail_permission( $widget, $acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'other nonRoot may not remove_from private var of plain obj' );
+    pass_permission( $widget, $acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'other nonRoot may remove_from public var of plain obj' );
+    fail_permission( $widget, $acct, 'paginate', { name => '_baz'}, 'other nonRoot may not paginate private var of plain obj' );
+    pass_permission( $widget, $acct, 'paginate', { name => 'baz'}, 'other nonRoot may paginate private var of plain obj' );
+    fail_permission( $widget, $acct, 'list_fetch', { name => '_baz', index => 3 }, 'other nonRoot may not list_fetch private var of plain obj' );
+    pass_permission( $widget, $acct, 'list_fetch', { name => 'baz', index => 3 }, 'other nonRoot may list_fetch public var of plain obj' );
+    pass_permission( $widget, $acct, 'list_delete', { name => 'baz', index => 3 }, 'other nonRoot may list_delete public var of plain obj' );
+    fail_permission( $widget, $acct, 'list_delete', { name => '_baz', index => 3 }, 'other nonRoot may not list_delete private var of plain obj' );
+    fail_permission( $widget, $acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'other nonRoot may not insert_at private var of plain obj' );
+    pass_permission( $widget, $acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'other nonRoot may insert_at public var of plain obj' );
+    fail_permission( $widget, $acct, 'count', { name => '_baz' }, 'other nonRoot may not count private var of plain obj' );
+    pass_permission( $widget, $acct, 'count', { name => 'baz' }, 'other nonRoot may count public var of plain obj' );
+
+    fail_permission( $widget, $acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'other nonRoot may not hash private var of plain obj' );
+    pass_permission( $widget, $acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'other nonRoot may hash public var of plain obj' );
+    pass_permission( $widget, $acct, 'delete_key', { name => 'zab', key => "KY" }, 'other nonRoot may delete_key public var of plain obj' );
+    fail_permission( $widget, $acct, 'delete_key', { name => '_zab', key => "KY" }, 'other nonRoot may not delete_key private var of plain obj' );
+
+
+    my $root_widget = $root->new_root_obj( { zip => "zash" }, $root_acct );
+    is( $root_widget->get_zip(), "zash", "root obj set something" );
+
+    pass_permission( $root_widget, $root_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'Root may update public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'Root may update private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_fetch', { name => '_baz', index => 1 }, 'Root may list_fetch private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_fetch', { name => 'baz', index => 1 }, 'Root may list_fetch public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'Root may remove_from private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'Root may remove_from public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'paginate', { name => '_baz'}, 'Root may paginate private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'paginate', { name => 'baz'}, 'Root may paginate private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_fetch', { name => '_baz', index => 3 }, 'Root may list_fetch private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_fetch', { name => 'baz', index => 3 }, 'Root may list_fetch public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_delete', { name => 'baz', index => 3 }, 'Root may list_delete public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'list_delete', { name => '_baz', index => 3 }, 'Root may list_delete private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'Root may insert_at private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'Root may insert_at public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'count', { name => '_baz' }, 'Root may count private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'count', { name => 'baz' }, 'Root may count public var of root obj' );
+
+    pass_permission( $root_widget, $root_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'Root may hash private var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'Root may hash public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'delete_key', { name => 'zab', key => "KY" }, 'Root may delete_key public var of root obj' );
+    pass_permission( $root_widget, $root_acct, 'delete_key', { name => '_zab', key => "KY" }, 'Root may delete_key private var of root obj' );
+
+
+    fail_permission( $root_widget, $zoot_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'nonRoot may not update public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'nonRoot may not update private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'nonRoot may not add_to private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'nonRoot may not add_to public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'list_fetch', { name => '_baz', index => 1 }, 'nonRoot may not list_fetch private var of root obj' );
+    pass_permission( $root_widget, $zoot_acct, 'list_fetch', { name => 'baz', index => 1 }, 'nonRoot may list_fetch public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'nonRoot may not remove_from private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'nonRoot may not remove_from public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'paginate', { name => '_baz'}, 'nonRoot may not paginate private var of root obj' );
+    pass_permission( $root_widget, $zoot_acct, 'paginate', { name => 'baz'}, 'nonRoot may paginate private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'list_fetch', { name => '_baz', index => 3 }, 'nonRoot may not list_fetch private var of root obj' );
+    pass_permission( $root_widget, $zoot_acct, 'list_fetch', { name => 'baz', index => 3 }, 'nonRoot may list_fetch public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'list_delete', { name => 'baz', index => 3 }, 'nonRoot may not list_delete public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'list_delete', { name => '_baz', index => 3 }, 'nonRoot may not list_delete private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'nonRoot may not insert_at private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'nonRoot may not insert_at public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'count', { name => '_baz' }, 'nonRoot may not count private var of root obj' );
+    pass_permission( $root_widget, $zoot_acct, 'count', { name => 'baz' }, 'nonRoot may count public var of root obj' );
+
+    fail_permission( $root_widget, $zoot_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'nonRoot may not hash private var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'nonRoot not may hash public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'delete_key', { name => 'zab', key => "KY" }, 'nonRoot may not delete_key public var of root obj' );
+    fail_permission( $root_widget, $zoot_acct, 'delete_key', { name => '_zab', key => "KY" }, 'nonRoot may not delete_key private var of root obj' );
+
+    fail_permission( $root_widget, $acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'other nonRoot may not update public var of root obj' );
+    fail_permission( $root_widget, $acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'other nonRoot may not update private var of root obj' );
+    fail_permission( $root_widget, $acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may not add_to private var of root obj' );
+    fail_permission( $root_widget, $acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may not add_to public var of root obj' );
+    fail_permission( $root_widget, $acct, 'list_fetch', { name => '_baz', index => 1 }, 'other nonRoot may not list_fetch private var of root obj' );
+    pass_permission( $root_widget, $acct, 'list_fetch', { name => 'baz', index => 1 }, 'other nonRoot may list_fetch public var of root obj' );
+    fail_permission( $root_widget, $acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'other nonRoot may not remove_from private var of root obj' );
+    fail_permission( $root_widget, $acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'other nonRoot may not remove_from public var of root obj' );
+    fail_permission( $root_widget, $acct, 'paginate', { name => '_baz'}, 'other nonRoot may not paginate private var of root obj' );
+    pass_permission( $root_widget, $acct, 'paginate', { name => 'baz'}, 'other nonRoot may paginate private var of root obj' );
+    fail_permission( $root_widget, $acct, 'list_fetch', { name => '_baz', index => 3 }, 'other nonRoot may not list_fetch private var of root obj' );
+    pass_permission( $root_widget, $acct, 'list_fetch', { name => 'baz', index => 3 }, 'other nonRoot may list_fetch public var of root obj' );
+    fail_permission( $root_widget, $acct, 'list_delete', { name => 'baz', index => 3 }, 'other nonRoot may not list_delete public var of root obj' );
+    fail_permission( $root_widget, $acct, 'list_delete', { name => '_baz', index => 3 }, 'other nonRoot may not list_delete private var of root obj' );
+    fail_permission( $root_widget, $acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'other nonRoot may not insert_at private var of root obj' );
+    fail_permission( $root_widget, $acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'other nonRoot may not insert_at public var of root obj' );
+    fail_permission( $root_widget, $acct, 'count', { name => '_baz' }, 'other nonRoot may not count private var of root obj' );
+    pass_permission( $root_widget, $acct, 'count', { name => 'baz' }, 'other nonRoot may count public var of root obj' );
+
+    fail_permission( $root_widget, $acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'other nonRoot may not hash private var of root obj' );
+    fail_permission( $root_widget, $acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'other nonRoot may not hash public var of root obj' );
+    fail_permission( $root_widget, $acct, 'delete_key', { name => 'zab', key => "KY" }, 'other nonRoot may not delete_key public var of root obj' );
+    fail_permission( $root_widget, $acct, 'delete_key', { name => '_zab', key => "KY" }, 'other nonRoot may not delete_key private var of root obj' );
+
+
+    my $user_widget = $root->new_user_obj( { zip => "zash" }, $zoot_acct );
+    is( $user_widget->get_zip(), "zash", "user obj set something" );
+
+    pass_permission( $user_widget, $root_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'Root may update public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'Root may update private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'Root may add_to public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => '_baz', index => 1 }, 'Root may list_fetch private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => 'baz', index => 1 }, 'Root may list_fetch public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'Root may remove_from private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'Root may remove_from public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'paginate', { name => '_baz'}, 'Root may paginate private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'paginate', { name => 'baz'}, 'Root may paginate private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => '_baz', index => 3 }, 'Root may list_fetch private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => 'baz', index => 3 }, 'Root may list_fetch public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_delete', { name => 'baz', index => 3 }, 'Root may list_delete public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_delete', { name => '_baz', index => 3 }, 'Root may list_delete private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'Root may insert_at private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'Root may insert_at public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'count', { name => '_baz' }, 'Root may count private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'count', { name => 'baz' }, 'Root may count public var of user obj' );
+
+    pass_permission( $user_widget, $root_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'Root may hash private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'Root may hash public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'delete_key', { name => 'zab', key => "KY" }, 'Root may delete_key public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'delete_key', { name => '_zab', key => "KY" }, 'Root may delete_key private var of user obj' );
+
+    pass_permission( $user_widget, $root_acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'User Acct  may update public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'User Acct  may update private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'User Acct  may add_to private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'User Acct  may add_to public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => '_baz', index => 1 }, 'User Acct  may list_fetch private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => 'baz', index => 1 }, 'User Acct  may list_fetch public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'User Acct  may remove_from private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'User Acct  may remove_from public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'paginate', { name => '_baz'}, 'User Acct  may paginate private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'paginate', { name => 'baz'}, 'User Acct  may paginate private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => '_baz', index => 3 }, 'User Acct  may list_fetch private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_fetch', { name => 'baz', index => 3 }, 'User Acct  may list_fetch public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_delete', { name => 'baz', index => 3 }, 'User Acct  may list_delete public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'list_delete', { name => '_baz', index => 3 }, 'User Acct  may list_delete private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'User Acct  may insert_at private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'User Acct  may insert_at public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'count', { name => '_baz' }, 'User Acct  may count private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'count', { name => 'baz' }, 'User Acct  may count public var of user obj' );
+
+    pass_permission( $user_widget, $root_acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'User Acct  may hash private var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'User Acct  may hash public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'delete_key', { name => 'zab', key => "KY" }, 'User Acct  may delete_key public var of user obj' );
+    pass_permission( $user_widget, $root_acct, 'delete_key', { name => '_zab', key => "KY" }, 'User Acct  may delete_key private var of user obj' );
+
+    fail_permission( $user_widget, $acct, 'update', { baz => [ 'bleqq' ], zab => {} }, 'other nonRoot may not update public var of user obj' );
+    fail_permission( $user_widget, $acct, 'update', { _baz => [ "bafff" ], _zab => {}  }, 'other nonRoot may not update private var of user obj' );
+    fail_permission( $user_widget, $acct, 'add_to', { name => '_baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may not add_to private var of user obj' );
+    fail_permission( $user_widget, $acct, 'add_to', { name => 'baz', items => [ "one", "Item", "Now" ] }, 'other nonRoot may not add_to public var of user obj' );
+    fail_permission( $user_widget, $acct, 'list_fetch', { name => '_baz', index => 1 }, 'other nonRoot may not list_fetch private var of user obj' );
+    pass_permission( $user_widget, $acct, 'list_fetch', { name => 'baz', index => 1 }, 'other nonRoot may list_fetch public var of user obj' );
+    fail_permission( $user_widget, $acct, 'remove_from', { name => '_baz', items => [ 3, 5 ] }, 'other nonRoot may not remove_from private var of user obj' );
+    fail_permission( $user_widget, $acct, 'remove_from', { name => 'baz', items => [ 3 ] }, 'other nonRoot may not remove_from public var of user obj' );
+    fail_permission( $user_widget, $acct, 'paginate', { name => '_baz'}, 'other nonRoot may not paginate private var of user obj' );
+    pass_permission( $user_widget, $acct, 'paginate', { name => 'baz'}, 'other nonRoot may paginate private var of user obj' );
+    fail_permission( $user_widget, $acct, 'list_fetch', { name => '_baz', index => 3 }, 'other nonRoot may not list_fetch private var of user obj' );
+    pass_permission( $user_widget, $acct, 'list_fetch', { name => 'baz', index => 3 }, 'other nonRoot may list_fetch public var of user obj' );
+    fail_permission( $user_widget, $acct, 'list_delete', { name => 'baz', index => 3 }, 'other nonRoot may not list_delete public var of user obj' );
+    fail_permission( $user_widget, $acct, 'list_delete', { name => '_baz', index => 3 }, 'other nonRoot may not list_delete private var of user obj' );
+    fail_permission( $user_widget, $acct, 'insert_at', { name => '_baz', index => 3, item => "NAZ" }, 'other nonRoot may not insert_at private var of user obj' );
+    fail_permission( $user_widget, $acct, 'insert_at', { name => 'baz', index => 3, item => "NAZ" }, 'other nonRoot may not insert_at public var of user obj' );
+    fail_permission( $user_widget, $acct, 'count', { name => '_baz' }, 'other nonRoot may not count private var of user obj' );
+    pass_permission( $user_widget, $acct, 'count', { name => 'baz' }, 'other nonRoot may count public var of user obj' );
+
+    fail_permission( $user_widget, $acct, 'hash', { name => '_zab', key => "KY", value => "ValU" }, 'other nonRoot may not hash private var of user obj' );
+    fail_permission( $user_widget, $acct, 'hash', { name => 'zab', key => "KY", value => "ValU" }, 'other nonRoot may not hash public var of user obj' );
+    fail_permission( $user_widget, $acct, 'delete_key', { name => 'zab', key => "KY" }, 'other nonRoot may not delete_key public var of user obj' );
+    fail_permission( $user_widget, $acct, 'delete_key', { name => '_zab', key => "KY" }, 'other nonRoot may not delete_key private var of user obj' );
+
 
     # cron tests
     my $cron = $root->get__crond();
     $cron->add_entry( new Yote::Obj( {
-	enabled => 1,
+ 	enabled => 1,
 	repeats => [
 	    { repeat_infinite => 1, repeat_interval => 14 },
 	    { repeat_times => 1, repeat_interval => 3 },
 	    ],
-	    
+
 				     } ) );
     my @dolist = $cron->entries();
     is( scalar( @dolist ), 0, "no cron entries yet ready" );
@@ -703,7 +968,7 @@ sub io_independent_tests {
     sleep(3);
     @dolist = $cron->entries;
     is( scalar( @dolist ), 1, "one cron entry still ready" );
-    $cron->mark_done( $dolist[0], $root_acct );
+    $cron->mark_done( $dolist[0], $root_login );
     sleep(3);
     is( scalar( $cron->entries ), 0, "no cron entries yet ready" );
     sleep(5);
@@ -738,5 +1003,3 @@ This module is free software; it can be used under the same terms as perl
 itself.
 
 =cut
-
-

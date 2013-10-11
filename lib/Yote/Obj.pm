@@ -178,6 +178,15 @@ sub _check_access {
     return ( $account && $account->get_login()->is_root() ) || index( $name, '_' ) != 0;
 } #_check_access
 
+# anyone may read and write public ( not starting with _ ) fields.
+sub _check_access_update {
+    my( $self, $account, $write_access, $data ) = @_;
+    for my $key ( keys %$data ) {
+	return 0 unless $self->_check_access( $account, $write_access, $key );
+    }
+    return 1;
+} #_check_access
+
 sub _count {
     my( $self, $args ) = @_;
     if( ref( $args ) ) {
@@ -297,7 +306,7 @@ sub _update {
 	}
     }
     else {
-	# catch anything tossed in
+	# catch anything tossed in that does not start with underscore
 	for my $fld ( keys %$datahash ) {
 	    my $set = "set_$fld";
 	    my $get = "get_$fld";
@@ -330,7 +339,7 @@ sub delete_key {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $key ) = @$args{'name','key'};
-    return $self->_hash_delete( $self->{DATA}{$args->{name}}, $key );
+    return $self->_hash_delete( $args->{name}, $key );
 } #delete_key
 
 sub hash {
@@ -350,14 +359,14 @@ sub insert_at {
 
 sub list_delete {
     my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
+    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     return $self->_list_delete( $args->{name}, $args->{index} );
 } #list_delete
 
 sub list_fetch {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    return $self->_list_fetch( $self->{DATA}{$args->{name}}, $args->{index} );
+    return $self->_list_fetch( $args->{name}, $args->{index} );
 } #list_fetch
 
 sub paginate {
@@ -369,8 +378,8 @@ sub paginate {
 sub remove_from {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $listname, $idxs, $items ) = @$args{'name','indexes','items'};
-    return $self->_remove_from( $listname, @{$idxs||[]}, @{$items||[]} );
+    my( $listname, $items ) = @$args{'name','items'};
+    return $self->_remove_from( $listname, @{$items||[]} );
 } #remove_from
 
 #
@@ -383,6 +392,7 @@ sub sync_all {}
 #
 sub update {
     my( $self, $data, $acct ) = @_;
+    die "Access Error" unless $self->_check_access_update( $acct, 1, $data );
     return $self->_update( $data );
 } #update
 

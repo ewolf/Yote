@@ -220,8 +220,8 @@ sub get_id {
 } #get_id
 
 sub hash_delete {
-    my( $hash_id, $key_or_val ) = @_;
-    return $DATASTORE->hash_delete( $hash_id, ref( $key_or_val ) ? get_id( $key_or_val ) : $key_or_val );
+    my( $hash_id, $key ) = @_;
+    return $DATASTORE->hash_delete( $hash_id, $key );
 }
 
 sub hash_fetch {

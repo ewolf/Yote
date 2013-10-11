@@ -80,6 +80,7 @@ Alpha 1
   * unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
   * cron reclaculate not working for scheduled times. fix
   * check to see if recycling needs the rest shut down. 
+      Looks like it does. Maybe have something that kills the server threads, recycles and then restarts the servers.      
  -* add tests for list_insert, list_delete, hash_insert, hash_delete ( done, needs test )
  -* make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
  -* make sure search and sort fields can both be given. update the tests for that.

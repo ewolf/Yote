@@ -17,7 +17,7 @@ use Yote::IO::TestUtil;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 248;
+use Test::More tests => 449;
 use Test::Pod;
 
 
@@ -91,6 +91,7 @@ my $client = MongoDB::MongoClient->new(
     );
 my $db = $client->get_database( 'yote_test' );
 $db->drop();
+$db = $client->get_database( 'yote_test' );
 
 Yote::ObjProvider::init(
     %yote_args
