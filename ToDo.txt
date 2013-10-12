@@ -3,6 +3,7 @@ Currently on my plate :
   * tests for cron
   * reset password and confirm account links
   * something to kill and restart server threads
+  * update madyote pages
 
 _________________________________________________
 
