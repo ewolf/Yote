@@ -30,6 +30,7 @@ sub add_entry {
 sub entries {
     my $self = shift;
     my $now_running = _time();
+    my( $e ) = @{ $self->get_entries() };
     return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() }];
 } #entries
 
@@ -104,16 +105,16 @@ sub _mark_done {
 	    $next_time = $rep->{ next_time } && $next_time >= $rep->{ next_time } ? $next_time :  $rep->{ next_time };
 	}
     } #if repeats
-    if( $entry->{ scheduled_times } ) {
-	my $times = $entry->{ scheduled_times };
+    my $times = $entry->get_scheduled_times();
+    if( $times ) {
 	my( @times ) = @$times;
  	for( my $i=$#times; $i>=0; $i-- ) {
 	    my $sched = $times[$i];
 	    if( $sched <= $ran_at ) {
 		splice @$times, $i, 1;
 	    }
-	    else {
-		$next_time = $next_time < $sched ? $sched : $next_time;
+	    elsif( $sched > $ran_at ) {
+		$next_time = $sched < $next_time ? $sched : $next_time;
 	    }
 	}
     }

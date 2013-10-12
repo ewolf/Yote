@@ -964,7 +964,6 @@ sub io_independent_tests {
     fail_permission( $user_widget, $acct, 'delete_key', { name => 'zab', key => "KY" }, 'other nonRoot may not delete_key public var of user obj' );
     fail_permission( $user_widget, $acct, 'delete_key', { name => '_zab', key => "KY" }, 'other nonRoot may not delete_key private var of user obj' );
 
-
     # cron tests
     my $cron = $root->get__crond();
     my $entries = $cron->get_entries();
@@ -976,9 +975,13 @@ sub io_independent_tests {
  	enabled => 1,
 	repeats => [
 	    { repeat_infinite => 1, repeat_interval => 14 },
-	    { repeat_times => 1, repeat_interval => 3 },
+	    { repeat_times => 1, repeat_interval => 3 }
 	    ],
-	    
+	scheduled_times => [
+	    88,
+	    44,
+	    99,
+	    ],
 			       } );
     $cron->add_entry( $entry );
 
@@ -997,9 +1000,11 @@ sub io_independent_tests {
     $entry->set_enabled( 1 );
     $dolist = $cron->entries();
     is( scalar( @$dolist ), 1, "reenabled now ready" );
+    is( scalar( @{ $entry->get_repeats() } ), 2, "two repeat entries" );
 
     $cron->_mark_done( $entry );
     is( $entry->get_next_time(), 14, "next time is ready" );
+    is( scalar( @{ $entry->get_repeats() } ), 1, "one repeat entries" );
 
     $TIMEVAR  = 11;
     $dolist = $cron->entries();
@@ -1016,6 +1021,40 @@ sub io_independent_tests {
     is( scalar( @$dolist ), 1, "one cron entry now ready" );
     $cron->_mark_done( $entry );
     is( $entry->get_next_time(), 42, "next time is ready" );
+    $entry->set_enabled( 0 );
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 0, "crons disabled" ); 
+
+    $entry->set_enabled( 1 );
+    $TIMEVAR = 88;
+    $dolist = $cron->entries();
+    is( scalar( @{ $entry->get_scheduled_times() } ), 3, "three scheduled entries" );
+    is( scalar( @$dolist ), 1, "one cron entry now ready" );
+    $cron->_mark_done( $entry );
+    is( $entry->get_next_time(), 99, "next scheduled times" );
+    is( scalar( @{ $entry->get_scheduled_times() } ), 1, "one scheduled entries" );
+
+    $TIMEVAR = 98;
+    $dolist = $cron->entries();
+    is( scalar( @{ $entry->get_scheduled_times() } ), 1, "one scheduled entries" );
+    is( scalar( @$dolist ), 0, "no cron entry not yet ready" );
+    $cron->_mark_done( $entry );
+    is( $entry->get_next_time(), 99, "next scheduled times" );
+
+    $TIMEVAR = 99;
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 1, "one cron entry now ready" );
+    $cron->_mark_done( $entry );
+    is( scalar( @{ $entry->get_scheduled_times() } ), 0, "no more scheduled entries" );
+    is( $entry->get_next_time(), 102, "next scheduled times" );
+
+    $entry->set_repeats([]);
+    $dolist = $cron->entries();
+    is( scalar( @{ $entry->get_scheduled_times() } ), 0, "three scheduled entries" );
+    is( scalar( @$dolist ), 0, "no more cron entries" );
+    
+
+    is( scalar( @{ $entry->get_scheduled_times() } ), 0, "no more scheduled entries" );
 
 } #io_independent_tests
 
