@@ -215,7 +215,7 @@ sub start_server {
     
     $self->{ threads } = {};
     
-    Yote::ObjProvider::make_server( $self );
+    Yote::ObjProvider::attach_server( $self );
     for( 1 .. $self->{args}{threads} ) {
 	$self->__start_server_thread;
     } #creating threads
@@ -238,11 +238,11 @@ sub start_server {
 	    $self->__start_server_thread;
 	}
 	
-	my @cron_entries = $cron->entries();
+	my $cron_entries = $cron->entries();
 	Yote::ObjProvider::flush_all_volatile();
 	$self->__unlock_all();
 
-	for my $entry (@cron_entries) {
+	for my $entry (@$cron_entries) {
 	    threads->new( sub {
 		$cron->_mark_done( $entry );
 		print STDERR "Starting cron thread " . threads->tid() . "\n";

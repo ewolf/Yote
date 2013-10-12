@@ -9,6 +9,19 @@ $VERSION = '0.001';
 
 use Test::More;
 
+use Aspect;
+
+#
+# To make the tests go faster and avoid having to use sleep for timing
+# of the cron, override its _time function.
+#
+my $TIMEVAR;
+after {
+    my $t = defined( $TIMEVAR ) ? $TIMEVAR : time();
+    $_->return_value( $t );
+} call qr/_time/;
+
+
 #
 #
 #
@@ -39,6 +52,7 @@ sub compare_sets {
 
 sub io_independent_tests {
     my( $root ) = @_;
+
     my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
@@ -953,26 +967,55 @@ sub io_independent_tests {
 
     # cron tests
     my $cron = $root->get__crond();
-    $cron->add_entry( new Yote::Obj( {
+    my $entries = $cron->get_entries();
+    shift @$entries;
+
+    $TIMEVAR = 0;
+
+    my $entry = new Yote::Obj( {
  	enabled => 1,
 	repeats => [
 	    { repeat_infinite => 1, repeat_interval => 14 },
 	    { repeat_times => 1, repeat_interval => 3 },
 	    ],
+	    
+			       } );
+    $cron->add_entry( $entry );
 
-				     } ) );
-    my @dolist = $cron->entries();
-    is( scalar( @dolist ), 0, "no cron entries yet ready" );
-    sleep(3);
-    is( scalar( $cron->entries ), 1, "one cron entry now ready" );
-    sleep(3);
-    @dolist = $cron->entries;
-    is( scalar( @dolist ), 1, "one cron entry still ready" );
-    $cron->mark_done( $dolist[0], $root_login );
-    sleep(3);
-    is( scalar( $cron->entries ), 0, "no cron entries yet ready" );
-    sleep(5);
-    is( scalar( $cron->entries ), 1, "one cron entry yet ready" );
+    is( $entry->get_next_time(), 3, "Cron entry 1" );
+
+    my $dolist = $cron->entries();
+    is( scalar( @$dolist ), 0, "no cron entries yet ready" );
+
+    $TIMEVAR  = 3;
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 1, "one cron entry now ready" );
+    is( $entry->get_next_time(), 3, "next time still 3." );
+    $entry->set_enabled( 0 );
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 0, "disabled not ready" );
+    $entry->set_enabled( 1 );
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 1, "reenabled now ready" );
+
+    $cron->_mark_done( $entry );
+    is( $entry->get_next_time(), 14, "next time is ready" );
+
+    $TIMEVAR  = 11;
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 0, "one cron entry not yet ready" );
+
+    $TIMEVAR  = 14;
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 1, "one cron entry now ready" );
+    $cron->_mark_done( $entry );
+    is( $entry->get_next_time(), 28, "next time is ready" );
+
+    $TIMEVAR  = 33;
+    $dolist = $cron->entries();
+    is( scalar( @$dolist ), 1, "one cron entry now ready" );
+    $cron->_mark_done( $entry );
+    is( $entry->get_next_time(), 42, "next time is ready" );
 
 } #io_independent_tests
 

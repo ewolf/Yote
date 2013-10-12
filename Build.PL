@@ -60,6 +60,7 @@ my $builder = Module::Build->new(
     test_files         => [ 't/sqlite.t', 't/cms.t', 't/docs.t', 't/pod-coverage.t', ],
     requires => {
 	'perl'                  => 'v5.12',
+#	'Aspect'                => 1.04,
 	'Crypt::Passwd::XS'     => 0.601,
 	'DateTime'              => 0.77,
 	'DBD::SQLite'           => 1.35,

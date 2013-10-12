@@ -29,8 +29,8 @@ sub add_entry {
 
 sub entries {
     my $self = shift;
-    my $now_running = time;
-    return grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() };
+    my $now_running = _time();
+    return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries() }];
 } #entries
 
 
@@ -78,43 +78,45 @@ sub _init {
 
 sub _mark_done {
     my( $self, $entry ) = @_;
-    my $ran_at = time;
+    my $ran_at = _time();
     my $next_time;
     $entry->set_last_run( $ran_at );
     my $repeats = $entry->get_repeats();
     if( $repeats ) {
-	for my $rep (@$repeats) {
+	my( @repeats ) = @$repeats;
+	for( my $i=$#repeats; $i>=0; $i-- ) {
+	    my $rep = $repeats[$i];
 	    if( $rep->{ next_time } <= $ran_at ) {
 		if( $rep->{ repeat_infinite } ) {
-		    $rep->{ next_time } = $ran_at + $rep->{ repeat_interval };
-		    $next_time ||= $rep->{ next_time };
-		    $next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };
+		    $rep->{ next_time } = $rep->{ next_time } + $rep->{ repeat_interval };
+		    $rep->{ next_time } = $ran_at + $rep->{ repeat_interval } if $rep->{ next_time } <= $ran_at;
 		}
-		else {
-		    $rep->{ repeat_times }--;
-		    if( $rep->{ repeat_times } ) {
+		elsif( $rep->{ next_time } <= $ran_at ) {
+		    if( --$rep->{ repeat_times } > 0 ) {
 			$rep->{ next_time } = $ran_at + $rep->{ repeat_interval };
-			$next_time ||= $rep->{ next_time };
-			$next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };
+		    }
+		    else {
+			splice @$repeats, $i, 1;
+			$rep->{ next_time } = 0;
 		    }
 		}
 	    }
-	    else {
-		$next_time ||= $rep->{ next_time };
-		$next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };
-	    }
+	    $next_time = $rep->{ next_time } && $next_time >= $rep->{ next_time } ? $next_time :  $rep->{ next_time };
 	}
     } #if repeats
     if( $entry->{ scheduled_times } ) {
-	$entry->{ scheduled_times } = [ grep { $_->{ next_time } <= $ran_at } @{ $entry->{ scheduled_times } } ];
-	for my $entry ( @{ $entry->{ scheduled_times } } ) {
-	    $next_time ||= ( $entry );
-	    if( $next_time > $entry ) {
-		$next_time = $entry;
+	my $times = $entry->{ scheduled_times };
+	my( @times ) = @$times;
+ 	for( my $i=$#times; $i>=0; $i-- ) {
+	    my $sched = $times[$i];
+	    if( $sched <= $ran_at ) {
+		splice @$times, $i, 1;
+	    }
+	    else {
+		$next_time = $next_time < $sched ? $sched : $next_time;
 	    }
 	}
     }
-
     $entry->set_next_time( $next_time );
     unless( $next_time ) {
 	$self->remove_from_entries( $entry );
@@ -122,13 +124,21 @@ sub _mark_done {
     }
 } #_mark_done
 
+#
+# Time is moved to its own sub in order to allow for modification for testing.
+#
+sub _time {
+    return time;
+} #_time
+
 sub _update_entry {
     my( $self, $entry ) = @_;
     my $repeats = $entry->get_repeats();
-    my $added_on = time;
+    my $added_on = _time();
     my $next_time;
     if( $repeats ) {
 	for my $rep (@$repeats) {
+	    next unless $rep->{ repeat_infinite } || $rep->{ repeat_times };
 	    $rep->{ next_time } = ( $added_on + $rep->{ repeat_interval } );
 	    $next_time ||= $rep->{ next_time };
 	    $next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };

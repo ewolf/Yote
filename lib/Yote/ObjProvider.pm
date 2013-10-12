@@ -35,7 +35,7 @@ sub new {
     my $ref = shift;
     my $class = ref( $ref ) || $ref;
     return bless {}, $class;
-}
+} #new
 
 sub init {
     my $args = ref( $_[0] ) ? $_[0] : { @_ };
@@ -51,7 +51,7 @@ sub init {
     $DATASTORE->ensure_datastore();
 } #init
 
-sub make_server {
+sub attach_server {
     $LOCKER = shift;
 }
 
@@ -540,7 +540,7 @@ It is the only module to directly interact with the datastore layer.
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
-=item make_server( datalocker )
+=item attach_server( datalocker )
 
 This links a datalocker to this objprovider. This is called automatically by Yote::WebAppServer 
 which also serves as the locker. The datalocker is responsible for locking and unlocking objects.
