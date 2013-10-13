@@ -652,14 +652,41 @@ This method is called each time an object is loaded from the data store.
 
 =over 4
 
+=item add_to( { name => '', items => [] } )
+
+Adds the items to the list attached to this object specified by name.
+
 =item count( field_name )
 
 Returns the number of items for the field of this object provided it is an array or hash.
 
+=item delete_key( { name => '', key => '' } )
+
+Removes the key from the hash attached to this object specified by name.
+
+=item hash( { name => '', key => '', value => item } )
+
+Hashes the item to the key to the hash attached to this object specified by name.
+
+=item insert_at( { name => '', index => '', item => item } )
+
+Insert the item at the index to the list attached to this object specified by name.
+
+=item list_delete( { name => '', index => '' } )
+
+Removes the item at the index postion from the list attached to this object specified by name.
+
+=item list_fetch( { name => '', index => '' } )
+
+Returns item at the index postion from the list attached to this object specified by name.
 
 =item paginate( args )
 
 Returns a paginated list or hash. Arguments are
+
+=item remove_from( { name => '', items => [] } )
+
+Removes the items ( by value ) from the list attached to this object specified by name.
 
 =over 4
 

@@ -120,6 +120,8 @@ Returns a token that is used by the client and server to sync up data for the ca
 
 =head1 OVERRIDABLE METHODS
 
+=over 4
+
 =item _init_account( $acct )
 
 This is called whenever a new account is created for this app. This can be overridden to perform any initialzation on the 

@@ -663,6 +663,10 @@ Returns a deep clone of the object. This will clone any object that is part of t
 
 Recycles all objects in the range given if they cannot trace back a path to root.
 
+=item remove_from( list_id, item )
+
+Removes the items ( by value ) from the list with the given id.
+
 =item start_transaction( )
 
 Requests that the underlying data store start a transaction.

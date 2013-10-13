@@ -462,6 +462,10 @@ Returns a new yote object, initialized with the optional has reference.
 
 Returns a new root yote object, initialized with the optional has reference.
 
+=item new_user_obj( optional_data_hash )
+
+Returns a new user yote object, initialized with the optional has reference.
+
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
 =item purge_app
@@ -488,6 +492,8 @@ Removes the root bit from the login.
 =back
 
 =head1 PRIVATE DATA FIELDS
+
+=over 4
 
 =item _apps
 
@@ -520,8 +526,6 @@ A hash of object ids to a hash of recipient ibds whos clients are allowed to acc
 =item __DIRTY
 
 A hash of recipient ids to a hash of objects ids that need refreshing for that recipient.
-
-=over 4
 
 =item _account_roots
 

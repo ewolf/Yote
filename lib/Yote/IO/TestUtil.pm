@@ -1070,6 +1070,28 @@ Yote::IO::TestUtil
 
 This package exists to provide IO engine independent tests for the different stores.
 
+=head1 METHODS
+
+=over 4
+
+=item compare_sets( set1,set2, message )
+
+Compares set1 and set2 
+
+=item fail_permission( obj, acct,cmd, data, msg )
+
+Checks to make sure the command fails for the object and account.
+
+=item io_independent_tests( root_obj )
+
+Runs a suite of tests
+
+=item pass_permission( obj, acct,cmd, data, msg )
+
+Checks to make sure the command passes for the object and account.
+
+=back
+
 =head1 AUTHOR
 
 Eric Wolf
