@@ -1,6 +1,5 @@
 
 Currently on my plate :
-  * tests for cron
   * reset password and confirm account links
   * something to kill and restart server threads
   * update madyote pages
@@ -35,6 +34,7 @@ Beta 3
   * add GRU module for searches against tag lists
   * yote objects that bridge to files an allow for editing.
   * For cron, a repeat_special - something like 'first tuesday of the month or something like that' ( can deal with this much later )
+  * Something to kill and restart all server threads to refresh classes
 
 Beta 2
  GET IT PRETTY
@@ -86,11 +86,10 @@ Alpha 2
  GET IT CORRECT
 
  Perl Side
-  -* unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
-  * cron reclaculate not working for scheduled times. fix
-  * Something to kill and restart all server threads to refresh classes
-  * check to see if recycling needs the rest shut down. 
-      Looks like it does. Maybe have something that kills the server threads, recycles and then restarts the servers.      
+ -* unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
+ -* cron reclaculate not working for scheduled times. fix
+ -* check to see if recycling needs the rest shut down. Actually fixed in the IO modules so that objects can only be recycled after being completely written to disk. 
+    May need more testing of course.
  -* add tests for list_insert, list_delete, hash_insert, hash_delete ( done, needs test )
  -* make sure dirty is marked for list_insert, list_delete, hash_insert, hash_delete. (add a dirty_if_present?)
  -* make sure search and sort fields can both be given. update the tests for that.

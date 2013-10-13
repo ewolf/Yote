@@ -45,7 +45,7 @@ my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
 
-unlink( $name );
+#unlink( $name );
 
 exit( 0 );
 
@@ -117,12 +117,16 @@ sub test_suite {
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, 21, "highest id in database is 21 after adding more objects" );
 
+    Yote::ObjProvider::stow_all();
+
     # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
-    my $recycled = Yote::ObjProvider::recycle_objects();
-    is( $recycled, 5, "recycled 5 objects" );
 
-    # the cool hash has been reset, resulting in 6 more objects, and 6 objects that no longer connect to the root
+    Yote::ObjProvider::stow_all();
+    my $recycled = Yote::ObjProvider::recycle_objects();
+    is( $recycled, 4, "recycled 4 objects" );
+
+    # the cool hash has been reset.  It has itself, an array, and newo and somehash inside it
     
 
 # 1 from accounts under root (default)
@@ -130,12 +134,12 @@ sub test_suite {
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 39, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), 38, "Number of db rows saved to database with stow all" );
 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
-    is( scalar(@$db_rows), 21, "Number of db rows saved to database not recycled" ); 
+    is( scalar(@$db_rows), 22, "Number of db rows saved to database not recycled" ); 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=1");
-    is( scalar(@$db_rows), 5, "Number of db rows recycled" ); 
+    is( scalar(@$db_rows), 4, "Number of db rows recycled" ); 
 
     Yote::IO::TestUtil::io_independent_tests( $root );
 } #test suite

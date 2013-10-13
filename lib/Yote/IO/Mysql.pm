@@ -76,6 +76,7 @@ sub ensure_datastore {
         objects => q~CREATE TABLE `objects` (
                      `id` int(11) NOT NULL AUTO_INCREMENT,
                      `class` varchar(255) DEFAULT NULL,
+                     `last_updated` timestamp,
                      `recycled` tinyint DEFAULT 0,
                       PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=latin1~
@@ -251,7 +252,7 @@ sub first_id {
 sub fetch {
     my( $self, $id ) = @_;
 
-    my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE id=?", {}, $id );
+    my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE recycled=0 AND last_updated IS NOT NULL AND id=?", {}, $id );
     print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
 
     return unless $class;
@@ -312,8 +313,10 @@ sub _has_path_to_root {
     my( $self, $obj_id, $seen ) = @_;
     return 1 if $obj_id == 1;
     $seen ||= { $obj_id => 1 };
-    my $res = $self->_selectall_arrayref( "SELECT obj_id FROM field WHERE ref_id=?", $obj_id );
-    for my $o_id (map { $_->[0] } @$res) {
+    my $res = $self->_selectall_arrayref( "SELECT obj_id,last_updated FROM field f,objects o WHERE o.id=obj_id AND ref_id=?", $obj_id );
+    for my $res ( @$res ) {
+	return 1 unless $res->[1];
+	my $o_id = $res->[0];
 	next if $seen->{ $o_id }++;
 	if( $self->_has_path_to_root( $o_id, $seen ) ) {
 	    return 1;
@@ -469,6 +472,7 @@ sub stow_all {
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
+    $self->{DBH}->do("UPDATE objects SET last_updated=now() WHERE id=?", {}, $id );
     if( $class eq 'ARRAY') {
 	$self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
 	print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();

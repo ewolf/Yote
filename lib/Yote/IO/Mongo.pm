@@ -392,7 +392,7 @@ sub recycle_object {
 sub recycle_objects {
     my $self = shift;
 
-    my $cursor = $self->{ OBJS }->find();
+    my $cursor = $self->{ OBJS }->find( { l => { '$gt' => 0 } } );
 
     my $rec_count = 0;
     while( my $obj = $cursor->next ) {
@@ -436,6 +436,7 @@ sub stow {
 				     d   => $data,
 				     c   => $class,
 				     r   => \@refs,
+				     l   => time, #last updated
 				 } );
     }
     else {
@@ -443,6 +444,7 @@ sub stow {
 					     d   => $data,
 					     c   => $class,
 					     r   => \@refs,
+					     l   => time, #last updated
 					   } );
     }
     return;
@@ -474,7 +476,8 @@ sub _connect {
 } #_connect
 
 #
-# Returns true if the given object traces back to the root.
+# Returns true if the given object traces back to the root. Objects that have not been completely
+# written to disk are considered to have a path to root ( at least a potential one ).
 #
 sub _has_path_to_root {
     my( $self, $obj_id, $seen ) = @_;
@@ -483,6 +486,7 @@ sub _has_path_to_root {
 
     my $curs = $self->{ OBJS }->find( { r => $obj_id } );
     while( my $obj = $curs->next ) {
+	return 1 unless $obj->{ l } > 0;
 	my $o_id = $obj->{ _id }{ value };
 	next if $seen->{ $o_id }++;
 	if( $self->_has_path_to_root( $o_id, $seen ) ) {
