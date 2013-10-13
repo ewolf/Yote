@@ -10,7 +10,7 @@ use warnings;
 no warnings 'uninitialized';
 
 use vars qw($VERSION);
-$VERSION = '0.013';
+$VERSION = '0.014';
 
 use DateTime;
 
