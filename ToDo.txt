@@ -1,24 +1,23 @@
 
 Currently on my plate :
+  * sendmail setup
   * reset password and confirm account links
-  * something to kill and restart server threads
   * update madyote pages
 
 _________________________________________________
 
 The Phases :
-  * GET IT WORKING        Alpha 0
-  * GET IT CORRECT        Alpha 1
-  * GET IT FAST           Alpha 2
+  * GET IT WORKING        Alpha 1
+  * GET IT CORRECT        Alpha 2
   * GET IT COMPREHENSIBLE BETA  1
   * GET IT PRETTY         BETA  2
   * ADD MORE FEATURES     BETA  3 / Release Candidate 1 
 
 Currently
-   Alpha 0 is complete
-   Alpha 1 is nearing completion
-   Alpha 2 is started in parallel
-   Beta  1 has a few things started   
+   Alpha 1 is complete
+   Alpha 2 is nearing completion
+   Beta  1 is started in parallel
+   Beta  2 has a few things started   
 
   * try/catch on the javscript side. dump the cache should there be exceptions that would warrent that.
 
@@ -86,6 +85,7 @@ Alpha 2
  GET IT CORRECT
 
  Perl Side
+  * sendmail setup
  -* unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
  -* cron reclaculate not working for scheduled times. fix
  -* check to see if recycling needs the rest shut down. Actually fixed in the IO modules so that objects can only be recycled after being completely written to disk. 

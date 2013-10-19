@@ -974,8 +974,8 @@ sub io_independent_tests {
     my $entry = new Yote::Obj( {
  	enabled => 1,
 	repeats => [
-	    { repeat_infinite => 1, repeat_interval => 14 },
-	    { repeat_times => 1, repeat_interval => 3 }
+	    new Yote::Obj( { repeat_infinite => 1, repeat_interval => 14 } ),
+	    new Yote::Obj( { repeat_times => 1, repeat_interval => 3 } ),
 	    ],
 	scheduled_times => [
 	    88,

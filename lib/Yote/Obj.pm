@@ -197,10 +197,13 @@ sub _count {
 
 sub _hash_delete {
     my( $self, $hashname, $key ) = @_;
-    Yote::ObjManager::mark_dirty( $self->{DATA}{$hashname} );
-    my $ret = Yote::ObjProvider::hash_delete( $self->{DATA}{$hashname}, $key );
+    my $hash_id = $self->{DATA}{$hashname};
+    if( $hash_id ) {
+	Yote::ObjManager::mark_dirty( $hash_id );
+    }
+    my $ret = Yote::ObjProvider::hash_delete( $hash_id, $key );
 
-    my $hash = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$hashname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$hashname} };
+    my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
     if( $hash ) {
 	delete $hash->{ $key };
     }
@@ -210,12 +213,13 @@ sub _hash_delete {
 
 sub _hash_insert {
     my( $self, $hashname, $key, $val ) = @_;
-    if( $self->{DATA}{$hashname} ) {
+    my $hash_id = $self->{DATA}{$hashname};
+    if( $hash_id ) {
 	# mark dirty here in case there are outstanding instances of that hash?
-	Yote::ObjManager::mark_dirty( $self->{DATA}{$hashname} );
+	Yote::ObjManager::mark_dirty( $hash_id );
 
-	my $ret = Yote::ObjProvider::hash_insert( $self->{DATA}{$hashname}, $key, $val );
-	my $hash = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$hashname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$hashname} };
+	my $ret = Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
+	my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
 	if( $hash ) {
 	    $hash->{ $key }= $val;
 	}
@@ -235,6 +239,7 @@ sub _list_delete {
     my( $self, $listname, $idx ) = @_;
     my $list_id = $self->{DATA}{$listname};
     return unless $list_id;
+    Yote::ObjManager::mark_dirty( $list_id );
     Yote::ObjProvider::list_delete( $list_id, $idx );
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
@@ -275,16 +280,19 @@ sub _power_clone {
 
 sub _remove_from {
     my( $self, $listname, @data ) = @_;
-    Yote::ObjManager::mark_dirty( $self->{DATA}{$listname} );
+    my $list_id = $self->{DATA}{$listname};
+    return unless $list_id;
+    
     for my $d (@data) {
-	Yote::ObjProvider::remove_from( $self->{DATA}{$listname}, $d );
+	Yote::ObjProvider::remove_from( $list_id, $d );
     }
-    my $list = $Yote::ObjProvider::DIRTY->{ $self->{DATA}{$listname} } || $Yote::ObjProvider::WEAK_REFS->{ $self->{DATA}{$listname} };
+    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
 	for( my $i=0; $i < @$list; $i++ ) {
 	    splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
 	}
     }    
+    Yote::ObjManager::mark_dirty( $list_id );
 } #_remove_from
 
 #
@@ -314,6 +322,8 @@ sub _update {
 	    $self->$set( $datahash->{ $fld } );
 	}
     }
+    Yote::ObjProvider::dirty( $self, $self->{ID} ) if $dirty;
+
     return $dirty;
 } #_update
 

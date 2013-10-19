@@ -108,13 +108,13 @@ $.yote.util = {
 	    val = val.replace( /[\n\r]/g, '<BR>' );
 	    $( '#' + div_id ).empty().append( val );
 	    go_normal();
-	    $.yote.util.implement_edit( item, field );
+	    $.yote.util.implement_edit( item, field, on_edit_function );
 	} //implement_edit.stop_edit
 
 	var apply_edit = function() {
 	    var val = $( '#' + txt_id ).val();
 	    if( on_edit_function ) 
-		on_edit_function(val); 
+		on_edit_function(val,item); 
 	    else
 		item.set( field, val );
 	    stop_edit();

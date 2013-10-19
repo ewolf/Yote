@@ -76,7 +76,7 @@ sub ensure_datastore {
         objects => q~CREATE TABLE `objects` (
                      `id` int(11) NOT NULL AUTO_INCREMENT,
                      `class` varchar(255) DEFAULT NULL,
-                     `last_updated` timestamp,
+                     `last_updated` datetime,
                      `recycled` tinyint DEFAULT 0,
                       PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=latin1~

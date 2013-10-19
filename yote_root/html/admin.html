@@ -204,6 +204,7 @@ if we are our experiences then we are both sides of them.
 		    list_name : 'entries',
 		    paginate_type : 'list',
 		    title : 'Crons',
+		    include_remove : true,
 		    column_headers : [ 'Name', 'Enabled', 'Script', 'Next Run', 'Repeat', 'Schedule' ],
 		    columns : [ $.yote.util.col_edit( 'name' ),
 				$.yote.util.check_edit( 'enabled' ),
@@ -238,10 +239,13 @@ if we are our experiences then we are both sides of them.
 					    include_remove : true,
 					    column_headers : [ 'interval', 'repeats' ],
 					    columns : [
-						$.yote.util.col_edit( 'repeat_interval' ),
+						$.yote.util.col_edit( 'repeat_interval', null, function( val, item ) {
+						    item.set( 'repeat_interval', val );
+						    cron.update_entry( item );
+						} ),
 						{
 						    render : function( item ) {
-							var buf = item.get_repeat_times() * 1  == 0 ? " Infinite Repeat <BR>" : "";
+							var buf = item.get( 'repeat_times' ) * 1  == 0 ? " Infinite Repeat <BR>" : "";
 							buf += $.yote.util.prep_edit( item, 'repeat_times' );
 							return buf;
 						    },
@@ -260,7 +264,7 @@ if we are our experiences then we are both sides of them.
 						'repeat_times'
 					    ],
 					    after_new_function : function( newitem ) {
-						if( 1*newitem.get_repeat_times() > 0 ) {
+						if( 1*newitem.get( 'repeat_times' ) > 0 ) {
 						    newitem.set( 'repeat_infinite', 1 );
 						}
 					    }
@@ -321,7 +325,7 @@ if we are our experiences then we are both sides of them.
 			'script'
 		    ],
 		    after_new_function : function( newitem ) {
-			this.item.init_entry( newitem );
+			this.item.update_entry( newitem );
 		    }
 		} ); //cron_ct
 		

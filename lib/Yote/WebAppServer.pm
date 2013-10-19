@@ -253,7 +253,6 @@ sub start_server {
 		if( $@ ) {
 		    print STDERR "Error in Cron : $@ $!\n";
 		} 
-		
 		$self->__check_locked_for_dirty();
 		Yote::ObjProvider::start_transaction();
 		Yote::ObjProvider::stow_all();

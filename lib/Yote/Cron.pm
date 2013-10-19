@@ -68,7 +68,7 @@ sub _init {
 	enabled => 1,
 	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
-	    { repeat_interval => 140000, repeat_infinite => 1, repeat_times => 0 },
+	    new Yote::Obj( { repeat_interval => 140000, repeat_infinite => 1, repeat_times => 0 } ),
 	    ],
 	    
 					} );
@@ -87,22 +87,23 @@ sub _mark_done {
 	my( @repeats ) = @$repeats;
 	for( my $i=$#repeats; $i>=0; $i-- ) {
 	    my $rep = $repeats[$i];
-	    if( $rep->{ next_time } <= $ran_at ) {
-		if( $rep->{ repeat_infinite } ) {
-		    $rep->{ next_time } = $rep->{ next_time } + $rep->{ repeat_interval };
-		    $rep->{ next_time } = $ran_at + $rep->{ repeat_interval } if $rep->{ next_time } <= $ran_at;
+	    if( $rep->get_next_time() <= $ran_at ) {
+		if( $rep->get_repeat_infinite() ) {
+		    $rep->set_next_time( $rep->get_next_time() + $rep->get_repeat_interval() );
+		    $rep->set_next_time( $ran_at + $rep->get_repeat_interval() ) if $rep->get_next_time() <= $ran_at;
 		}
-		elsif( $rep->{ next_time } <= $ran_at ) {
-		    if( --$rep->{ repeat_times } > 0 ) {
-			$rep->{ next_time } = $ran_at + $rep->{ repeat_interval };
+		elsif( $rep->get_next_time() <= $ran_at ) {
+		    $rep->set_repeat_times( $rep->get_repeat_times() - 1 );
+		    if( $rep->get_repeat_times() > 0 ) {
+			$rep->set_next_time( $ran_at + $rep->get_repeat_interval() );
 		    }
 		    else {
 			splice @$repeats, $i, 1;
-			$rep->{ next_time } = 0;
+			$rep->set_next_time( 0 );
 		    }
 		}
 	    }
-	    $next_time = $rep->{ next_time } && $next_time >= $rep->{ next_time } ? $next_time :  $rep->{ next_time };
+	    $next_time = $rep->get_next_time() && $next_time >= $rep->get_next_time() ? $next_time :  $rep->get_next_time();
 	}
     } #if repeats
     my $times = $entry->get_scheduled_times();
@@ -139,10 +140,10 @@ sub _update_entry {
     my $next_time;
     if( $repeats ) {
 	for my $rep (@$repeats) {
-	    next unless $rep->{ repeat_infinite } || $rep->{ repeat_times };
-	    $rep->{ next_time } = ( $added_on + $rep->{ repeat_interval } );
-	    $next_time ||= $rep->{ next_time };
-	    $next_time = $rep->{ next_time } if $next_time > $rep->{ next_time };
+	    next unless $rep->get_repeat_infinite() || $rep->get_repeat_times();
+	    $rep->set_next_time( $added_on + $rep->get_repeat_interval() );
+	    $next_time ||= $rep->get_next_time();
+	    $next_time = $rep->get_next_time() if $next_time > $rep->get_next_time();
 	}
     } #if repeats
     if( $entry->{ scheduled_times } ) {
