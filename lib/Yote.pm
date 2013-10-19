@@ -283,9 +283,8 @@ sub _get_configuration {
 	my $done;
 	until( $done ) {
 	    my( $dir, $store ) = ( _ask( "sqlite filename", undef, $current_config->{ store } ||  'yote.sqlite' ) =~ /(.*\/)?([^\/]+)$/ );
-	    print "$dir, $store\n";
 	    if( $store ) {
-		if( substr( $dir, 0, 1 ) eq '/' ) {
+		if( $dir && substr( $dir, 0, 1 ) eq '/' ) {
 		    if( -d $dir && -w $dir ) {
 			$done = 1;
 			$newconfig{ store } = "$dir$store";
@@ -328,7 +327,7 @@ sub _get_configuration {
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, $current_config->{ root_account} || 'root' );
-    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password", undef, $current_config->{ root_password } ),
+    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password", undef,  ),
 								   $newconfig{ root_account } );
 
     return \%newconfig;

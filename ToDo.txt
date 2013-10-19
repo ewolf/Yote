@@ -4,6 +4,7 @@ Currently on my plate :
   * reset password and confirm account links
   * update madyote pages
 
+
 _________________________________________________
 
 The Phases :
@@ -37,6 +38,7 @@ Beta 3
 
 Beta 2
  GET IT PRETTY
+  * Do not send whole object in a list if the client already is known to have it ( may just send the id in any case and the client would automatically fetch it )
   * Fix page counter
  -* Make simple WIKI for updating Yote News
   * build page editor
@@ -117,6 +119,7 @@ Alpha 2
 
 
  Javascript Side
+ -* javascript bug! if an object is returned in a list that already was in the client, bad things may happen
  -* test for pagination in unit_tests.html
  -* Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
  -* update control table widget to use new paginate
