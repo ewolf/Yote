@@ -68,7 +68,7 @@ sub _init {
 	enabled => 1,
 	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
-	    new Yote::Obj( { repeat_interval => 140000, repeat_infinite => 1, repeat_times => 0 } ),
+	    new Yote::Obj( { repeat_interval => 2333, repeat_infinite => 1, repeat_times => 0 } ),
 	    ],
 	    
 					} );
@@ -127,9 +127,10 @@ sub _mark_done {
 
 #
 # Time is moved to its own sub in order to allow for modification for testing.
+# Returns time in minutes
 #
 sub _time {
-    return time;
+    return time/60;
 } #_time
 
 sub _update_entry {
@@ -145,11 +146,13 @@ sub _update_entry {
 	    $next_time = $rep->get_next_time() if $next_time > $rep->get_next_time();
 	}
     } #if repeats
-    if( $entry->{ scheduled_times } ) {
-	$entry->{ scheduled_times } = [ grep { $_ <= $added_on } @{ $entry->{ scheduled_times } } ];
-	for my $sched ( @{ $entry->{ scheduled_times } } ) {
-	    $sched->{ next_time } = ( $added_on + $sched );
-	    $next_time ||= $sched;
+    my $times = $entry->get_scheduled_times();
+    if( $times ) {
+	for( my $i=$#$times; $i >= 0; $i-- ) {
+	    splice( @$times, $i, 1 ) unless $times->[$i] > $added_on;
+	}
+	for my $sched ( @$times ) {
+	    $next_time ||= ( $added_on + $sched );
 	    $next_time = $sched if $sched < $next_time;
 	}
     }

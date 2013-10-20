@@ -17,8 +17,8 @@
 
     <STYLE>
       .mainpanel { top:0px; width:900px; display:inline-block; }
-      .tabs {  
-	  position: relative;   
+      .tabs {
+	  position: relative;
 	  min-height: 300px; /* This part sucks */
 	  clear: both;
 	  margin: 25px 0;
@@ -27,15 +27,15 @@
 	  float: left;
       }
       .tab label {
-	  background: #eee; 
-	  padding: 10px; 
-	  border: 1px solid #ccc; 
-	  margin-left: -1px; 
+	  background: #eee;
+	  padding: 10px;
+	  border: 1px solid #ccc;
+	  margin-left: -1px;
 	  position: relative;
-	  left: 1px; 
+	  left: 1px;
       }
       .tab [type=radio] {
-	  display: none;   
+	  display: none;
       }
       .content {
 	  position: absolute;
@@ -45,7 +45,7 @@
 	  right: 0;
 	  bottom: 0;
 	  padding: 20px;
-	  border: 1px solid #ccc; 
+	  border: 1px solid #ccc;
       }
       [type=radio]:checked ~ label {
 	  background: white;
@@ -87,10 +87,10 @@ if we are our experiences then we are both sides of them.
 	function check_perms() {
 	    if( $.yote.is_root() ) {
 		$( '#errpanel' ).hide();
-		$( '#sidenav' ).empty().append( 
+		$( '#sidenav' ).empty().append(
 		    '<button class="sidenav" disabled id="app_b">Apps</button><BR>' +
 			'<button class="sidenav" disabled id="user_b">Users</button><BR>' +
-			'<button class="sidenav" disabled id="cron_b">Cron</button>' 
+			'<button class="sidenav" disabled id="cron_b">Cron</button>'
 		);
 
 		/************ App Panel ************/
@@ -145,7 +145,7 @@ if we are our experiences then we are both sides of them.
 		    after_load : function() {
 			$( '#user_b' ).prop('disabled', false);
 		    },
-		    
+
 		    attachpoint : '#apppanel_users',
 		    plimit : 10,
 		    item : root,
@@ -165,7 +165,7 @@ if we are our experiences then we are both sides of them.
 				    render : function( login, handle ) {
 					if( login.is_master_root() ) {
 					    return "master root";
-					} 
+					}
 					return '<input type="checkbox" id="lr_' + login.id + '" ' +
 					    ( login.is_root()*1 == 1 ? ' checked' : '' ) + '>';
 				    },
@@ -209,14 +209,12 @@ if we are our experiences then we are both sides of them.
 		    columns : [ $.yote.util.col_edit( 'name' ),
 				$.yote.util.check_edit( 'enabled' ),
 				$.yote.util.col_edit( 'script' ),
-				{ 
+				{
 				    render : function( entry ) {
 					if( entry.get( 'next_time' ) > 0 )
-					    return '<nobr>' +  $.yote.util.format_date( new Date( 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' +
-					    '<br><button id="recalc_' + entry.id + '" type="button">Recalculate</button>';
+					    return '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>';
 					else
-					    return "Not Scheduled"  +
-					    '<br><button id="recalc_' + entry.id + '" type="button">Recalculate</button>';
+					    return "Not Scheduled";
 				    },
 				    after_render : function( entry ) {
 					$( '#recalc_' + entry.id ).click( function() {
@@ -236,48 +234,33 @@ if we are our experiences then we are both sides of them.
 					    plimit : 100,
 					    item : entry,
 					    list_name : 'repeats',
+					    new_button : 'Add',
 					    include_remove : true,
-					    column_headers : [ 'interval', 'repeats' ],
+					    column_headers : [ 'Interval (mins)', 'Infinite Repeat', 'Repeats' ],
 					    columns : [
 						$.yote.util.col_edit( 'repeat_interval', null, function( val, item ) {
 						    item.set( 'repeat_interval', val );
 						    cron.update_entry( entry );
 						    cron_ct.refresh();
 						} ),
-						{
-						    render : function( item ) {
- 							var buf = '<input type="checkbox" ' + ( item.get('repeat_infinite') ? ' checked ' : '') + 
-							    'id="ed_' + item.id + '"> Infinite Repeat<BR>';
-							buf += $.yote.util.prep_edit( item, 'repeat_times' );
-							return buf;
-						    },
-						    after_render : function ( item, key ) {
-							$( '#ed_' + item.id ).click( function() {
-							    if( $( '#ed_' + item.id ).is( ':checked' ) ) {
-								item.set( 'repeat_infinite', 1 );
-							    }
-							    else {
-								item.set( 'repeat_infinite', 0 );
-							    }
-							    cron.update_entry( entry );
-							    cron_ct.refresh();
-							} );
-							$.yote.util.implement_edit( item, 'repeat_times', function() {
-							    cron_ct.refresh();
-							} );
-						    }
-						}
+						$.yote.util.check_edit( 'repeat_infinite', undefined, undefined, undefined,
+									function(val,item) {
+									    cron.update_entry( entry );
+									    cron_ct.refresh();
+									} ),
+						$.yote.util.col_edit( 'repeat_times', null, function( val, item ) {
+						    item.set( 'repeat_times', val );
+						    cron.update_entry( entry );
+						    cron_ct.refresh();
+						} )
 					    ],
 					    new_attachpoint : '#cron_rep_new_' + entry.id,
 					    new_column_titles : [
-						'interval (s)',
+						'interval (min)',
 						'infinite repeat',
 						'times'
 					    ],
 					    new_required_by_function : function( txts ) {
-						console.log( [ "XX", $( txts[ 0 ] ).val().match( /\S/ ),
-							       $( txts[ 1 ] ).is( ':checked' ), 
-							       $( txts[ 2 ] ).val().match( /\S/ )  ] );
 						return $( txts[ 0 ] ).val().match( /\S/ ) != null && ( $( txts[ 1 ] ).is( ':checked' ) ||
 												       $( txts[ 2 ] ).val().match( /\S/ ) != null );
 					    },
@@ -295,9 +278,8 @@ if we are our experiences then we are both sides of them.
 						'repeat_times'
 					    ],
 					    after_new_function : function( newitem ) {
-						if( 1*newitem.get( 'repeat_times' ) == 0 ) {
-						    newitem.set( 'repeat_infinite', 1 );
-						}
+						cron.update_entry( entry );
+						cron_ct.refresh();
 					    }
 					} );
 				    }
@@ -316,12 +298,13 @@ if we are our experiences then we are both sides of them.
 					    include_remove : true,
 					    column_headers : [ 'Scheduled Time' ],
 					    columns : [
-						{ render : function( txt ) { return $.yote.util.format_date( new Date( 1000 * txt ), "h:m Y-M-D" ) } }
+						{ render : function( txt ) { return $.yote.util.format_date( new Date( 60000 * txt ), "h:m Y-M-D" ) } }
 					    ],
+					    new_button : 'Add',
 					    new_attachpoint : '#cron_sched_new_' + entry.id,
 					    new_column_titles : [ 'when' ],
 					    remove_function : function( str, idx ) {
-						entry.remove_from( { name : 'scheduled_times', indexes : [ idx ] } );
+						entry.list_delete( { name : 'scheduled_times', index : idx } );
 						cron.update_entry( entry );
 						cron_ct.refresh();
 					    },
@@ -337,7 +320,9 @@ if we are our experiences then we are both sides of them.
 						    field : 'scheduled_time_' + $.yote.util.next_id(),
 						    on_create : function( str, id ) {
 							var do_when = new Date( $( '#' + id ).val() );
-							entry.add_to( { name : 'scheduled_times', items : [ do_when.valueOf()/1000 ] } );
+							entry.add_to( { name : 'scheduled_times', items : [ do_when.valueOf()/60000 ] } );
+							cron.update_entry( entry );
+							cron_ct.refresh();
 						    },
 						    render : function( id ) {
 							return '<input type="datetime-local" id="' + id + '">';
@@ -359,7 +344,7 @@ if we are our experiences then we are both sides of them.
 			this.item.update_entry( newitem );
 		    }
 		} ); //cron_ct
-		
+
 	    } //if is root
 	    else {
 		$( '#appwrapper' ).hide();
@@ -380,15 +365,15 @@ if we are our experiences then we are both sides of them.
 
 	    $( '#motd_div' ).empty().append( 'Click to Edit<BR>' + $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
 
-	    $.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed	
-	    
+	    $.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed
+
 	    var blog = madyote_app.get_news_blog();
 
 	    // edit the blog
 	    //  show the entries in an editable table
 	    //  allow for deletion
 	    // have a new entry add at the top
-	    
+
 	    $( '#news_div' ).empty().append(
 		'<div id="new_blog_div"></div><div id="news_list"></div>'
 	    );
@@ -407,9 +392,9 @@ if we are our experiences then we are both sides of them.
 		    function( row, is_html ) { if( is_html ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); } }
 		],
 		plimit          : 20,
-		
+
 		new_attachpoint : '#new_blog_div',
-		new_columns     : [ 'subject', 
+		new_columns     : [ 'subject',
 				    { html     : function( id ) { return '<TEXTAREA id="' + id + '" placeholder="Content"></TEXTAREA><BR>'; },
 				      field    : 'content'
 				    }
@@ -427,7 +412,7 @@ if we are our experiences then we are both sides of them.
 		item           : chat,
 		list_name      : 'posts',
 		attachpoint    : '#chat_div',
-		column_headers : [ 'Name', 'Message', 'Time' ], 
+		column_headers : [ 'Name', 'Message', 'Time' ],
 		remove_function : function( item ) {
 		    chat.remove_post( item );
 		},
@@ -449,7 +434,7 @@ if we are our experiences then we are both sides of them.
 		}
 	    } );
 
-	    $.yote.util.control_table( { 
+	    $.yote.util.control_table( {
 		item          : root,
 		paginate_type : 'hash',
 		list_name     : '_handles',
@@ -471,7 +456,7 @@ if we are our experiences then we are both sides of them.
 
 	function check_perms() {
 	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
-		$( '#logged_in_status' ).empty().append( 
+		$( '#logged_in_status' ).empty().append(
 		    'Logged in as ' + madyote_app.account().get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
 		);
 		$( '#logout' ).click( function() {
@@ -480,14 +465,14 @@ if we are our experiences then we are both sides of them.
 	    se.splash_screen( 'Logged Out');
 		    $( '#logged_in_status' ).empty();
 		} );
-		
+
 		fill_data();
 		$( '#mainpanel' ).show();
 		$( '#errpanel' ).hide();
 	    } else {
 		$( '#mainpanel' ).hide();
 		$( '#errpanel' ).show();
-	    } 
+	    }
 	}
 
 	attach_login( {
@@ -522,7 +507,7 @@ if we are our experiences then we are both sides of them.
       <DIV class="login logged_in" id="logged_in_status"></DIV>
       <DIV id="msg_div"></DIV>
     </DIV>
-    
+
     <DIV id="errpanel" class="err">
       Must be logged in with a root account to view this page.
     </DIV>
@@ -533,7 +518,7 @@ if we are our experiences then we are both sides of them.
 	    accounts, with pagination and search
 	    edit motd
             add and edit news
-	    show apps	    
+	    show apps
 	  -->
 
 	<SECTION>
@@ -541,8 +526,8 @@ if we are our experiences then we are both sides of them.
 	    <H1>Yote Admin Page (YAP)</H1>
 	  </DIV>
 	  <P>
-	    Welcome to the Yote Admin Page. 
-	    Let\'s control the apps and users and cron.	    
+	    Welcome to the Yote Admin Page.
+	    Let\'s control the apps and users and cron.
 	  </P>
 	</SECTION>
 

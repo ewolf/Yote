@@ -645,13 +645,13 @@ $.yote.util = {
 		$( '#' + div_id ).click( function() {
 		    if( $( '#' + div_id ).is( ':checked' ) ) {
 			if( checked_fun ) { 
-			    checked_fun();
+			    checked_fun(item);
 			} else {
 			    item.set( fld, 1 );
 			}
 		    } else {
 			if( unchecked_fun ) { 
-			    unchecked_fun();
+			    unchecked_fun(item);
 			} else {
 			    item.set( fld, 0 );
 			}
