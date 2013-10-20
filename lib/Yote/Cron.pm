@@ -121,8 +121,7 @@ sub _mark_done {
     }
     $entry->set_next_time( $next_time );
     unless( $next_time ) {
-	$self->remove_from_entries( $entry );
-	$self->add_to_completed_entries( $entry );
+	$entry->set_enabled( 0 );
     }
 } #_mark_done
 

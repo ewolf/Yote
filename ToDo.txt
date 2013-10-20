@@ -3,6 +3,7 @@ Currently on my plate :
   * sendmail setup
   * reset password and confirm account links
   * update madyote pages
+  * nicer cron crontrol. Decide how cron gets done. Use minute or second? I'm guessing minute.
 
 
 _________________________________________________
@@ -82,6 +83,7 @@ Beta 1
  Javascript Side
   * control table for scalar list entries ( javascript )
   * control_table sort
+  * nicer cron crontrol. Decide how cron gets done. Use minute or second? I'm guessing minute.
 
 Alpha 2
  GET IT CORRECT

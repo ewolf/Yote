@@ -33,32 +33,55 @@ $.yote.util = {
 	var on_escape   = args[ 'on_escape' ] || function(){};
 	var texts       = args[ 'texts'  ] || [];
 	var req_texts   = args[ 'required' ];
+	var req_indexes = args[ 'required_by_index' ];
+	var req_fun     = args[ 'required_by_function' ];
 	var exempt      = args[ 'cleanup_exempt' ] || {};
 	var extra_check = args[ 'extra_check' ] || function() { return true; }
 
-	var check_ready = (function(rt,te,ec) { return function() {
-	    var t = rt || te;
+	var check_ready = (function(rt,te,ec,re,rf) { return function() {
 	    var ecval = ec();
-	    for( var i=0; i<t.length; ++i ) {
-		if( ! $( t[i] ).val().match( /\S/ ) ) {
-	    	    $( but ).attr( 'disabled', 'disabled' );
+	    var t = rt || te;
+	    if( typeof rf === 'function' ) {
+		if( rf( te ) != true ) {
+		    $( but ).attr( 'disabled', 'disabled' );
 		    return false;
+		}
+	    }
+	    else if( typeof re !== 'undefined' ) {
+		for( var i=0; i<re.length; ++i ) {
+		    if( ! $( te[ re[ i ] ] ).val().match( /\S/ ) ) {
+	    		$( but ).attr( 'disabled', 'disabled' );
+			return false;
+		    }
+		}
+	    } 
+	    else {
+		for( var i=0; i<t.length; ++i ) {
+		    if( ! $( t[i] ).val().match( /\S/ ) ) {
+	    		$( but ).attr( 'disabled', 'disabled' );
+			return false;
+		    }
 		}
 	    }
 	    $( but ).attr( 'disabled', ! ecval );
 	    return ecval;
-	} } )( req_texts, texts, extra_check ) // check_ready
+	} } )( req_texts, texts, extra_check, req_indexes, req_fun ); // check_ready
 
 	for( var i=0; i<texts.length - 1; ++i ) {
-	    $( texts[i] ).keyup( function() { check_ready(); return true; } );
-	    $( texts[i] ).keypress( (function(box,oe) {
-		return function( e ) {
-		    if( e.which == 13 ) {
-			$( box ).focus();
-		    } else if( e.which == 27 ) {
-			oe();
-		    }
-		} } )( texts[i+1], on_escape ) );
+	    if( $( texts[i] ).prop('type') == 'checkbox' ) {
+		$( texts[i] ).click( function() { check_ready(); return true; } );
+	    }
+	    else {
+		$( texts[i] ).keyup( function() { check_ready(); return true; } );
+		$( texts[i] ).keypress( (function(box,oe) {
+		    return function( e ) {
+			if( e.which == 13 ) {
+			    $( box ).focus();
+			} else if( e.which == 27 ) {
+			    oe();
+			}
+		    } } )( texts[i+1], on_escape ) ); 
+	    }
 	}
 
 	act = (function( c_r, a_f, txts ) { return function() {
@@ -718,7 +741,9 @@ $.yote.util = {
 	                                                                                  // expects search item list as single parameter. This is run after after_render, if it is run.
 	    new_attachpoint	: args[ 'new_attachpoint' ],                              // selector for where to place new things
 	    new_columns		: args[ 'new_columns' ],                                  // A list of objects or strings that is used to build the input for new objects.
-	    new_columns_required : args[ 'new_columns_required' ], //defaults to new_columns. 
+	    new_columns_required     : args[ 'new_columns_required' ], //defaults to new_columns. 
+	    new_required_by_index    : args[ 'new_required_by_index' ], 
+	    new_required_by_function : args[ 'new_required_by_function' ], 
                                                                                           //  if strings, it creates a text input that is used to populate that field in the new object
 	                                                                                  //  if an object, it expect the following fields :
 	                                                                                  //     field - a string that may be anything as long as it is unique to this particular call to control_table
@@ -838,6 +863,8 @@ $.yote.util = {
 			button : '#_new_' + me.ct_id +'_' + me.item.id + '_b',
 			texts  : txts,
 			required : me.new_columns_required,
+			required_by_index : me.new_required_by_index,
+			required_by_function : me.new_required_by_function,
 			action : (function(it) { return function() {
 			    var newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
 			    for( var i=0; i < it.new_columns.length; i++ ) {
