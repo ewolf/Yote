@@ -10,7 +10,7 @@ use base 'Yote::Obj';
 
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
-    return $account->is_root() || ( index( $name, '_' ) != 0 && $write_access == 0 );
+    return $account && ( $account->is_root() || ( index( $name, '_' ) != 0 && $write_access == 0 ) );
 } #_check_access
 
 1;

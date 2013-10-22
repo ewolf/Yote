@@ -13,7 +13,7 @@ use MIME::Base64;
 use Yote::Account;
 use Yote::YoteRoot;
 
-use base 'Yote::Obj';
+use base 'Yote::RootObj';
 
 use vars qw($VERSION);
 $VERSION = '0.087';

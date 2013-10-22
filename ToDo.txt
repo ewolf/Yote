@@ -1,6 +1,7 @@
 
 Currently on my plate :
   * sendmail setup
+  * account enabling and disabling.
   * reset password and confirm account links
   * update madyote pages
   * nicer cron crontrol. Decide how cron gets done. Use minute or second? I'm guessing minute.

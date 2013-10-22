@@ -1,62 +1,11 @@
-var menu_list = [ [ 'About',      'index.html' ],
-		  [ 'Quickstart', 'quickstart.html' ],
-		  [ 'Install',    'install.html' ],
-		  [ 'Client',       'client_docs.html' ],
-		  [ 'Server',       'server_docs.html' ],
-		  [ 'Samples',    'samples.html' ],
-		  [ 'Wishlist',   'Todo.html' ],
-		  [ 'Download',   'Yote-current.tar.gz' ]
-		];
-var admin_menu_list = [ ['Admin', 'admin.html' ] ];
-
-
-var menu_attach_point;
-
-function make_menus( attach_point ) {
-    var current_page = document.URL.match( /\/([^\/]*?)(\#.*)?$/ )[ 1 ];
-    menu_attach_point = attach_point;
-    var buf = '';
-    for( var i=0; i<menu_list.length; i++ ) {
-	if( current_page == menu_list[ i ][ 1 ] ) {
-	    buf += '<LI><A class="active" HREF="' + menu_list[ i ][ 1 ] + '">' + menu_list[ i ][ 0 ] + '</A></LI>';
-	} else {
-	    buf += '<LI><A HREF="' + menu_list[ i ][ 1 ] + '">' + menu_list[ i ][ 0 ] + '</A></LI>';
-	}
-    }
-    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
-	for( var i=0; i<admin_menu_list.length; i++ ) {
-	    if( current_page == admin_menu_list[ i ][ 1 ] ) {
-		buf += '<LI><A class="active" HREF="' + admin_menu_list[ i ][ 1 ] + '">' + admin_menu_list[ i ][ 0 ] + '</A></LI>';
-	    } else {
-		buf += '<LI><A HREF="' + admin_menu_list[ i ][ 1 ] + '">' + admin_menu_list[ i ][ 0 ] + '</A></LI>';
-	    }
-	}	
-    }
-  
-    buf += '</UL>';
-
-    $( attach_point ).empty().append( buf );
-
-} //make_menus
-
 function attach_login( args ) {
     var attachpoint         = args[ 'attachpoint' ];
     var message_attachpoint = args[ 'message_attachpoint' ];
-    var a_login_f           = args[ 'after_login' ]  || function(){};
-    var a_logout_f          = args[ 'after_logout' ];
+    var after_login_f       = args[ 'after_login' ]  || function(){};
+    var after_logout_f      = args[ 'after_logout' ];
     var access_test_f       = args[ 'access_test' ];
     var logged_in_fail_msg  = args[ 'logged_in_fail_msg' ];
     var theapp              = args[ 'app' ];
-    if( a_logout_f ) {
-	var after_logout_f = function() { make_menus( menu_attach_point ); a_logout_f(); }
-    } else {
-	after_logout_f = function() { make_menus( menu_attach_point ); }
-    }
-    if( a_login_f ) {
-	var after_login_f = function() { make_menus( menu_attach_point ); a_login_f(); }
-    } else {
-	after_login_f = function() { make_menus( menu_attach_point ); }
-    }
 
     function msg( message, cls ) {
 	$( message_attachpoint ).empty();
@@ -86,3 +35,10 @@ function attach_login( args ) {
     } //not logged in
     
 } //attach_login
+
+function page_counter( page ) {
+    var page_counter = $.yote.fetch_app('Yote::Util::Counter');
+    page_counter.hash_insert( { name : page, 
+				key  : page, 
+				val  : (page_counter.hash_fetch( { name : page, key : page } )||0) + 1 } );
+} //page_counter
