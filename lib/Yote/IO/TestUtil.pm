@@ -689,14 +689,15 @@ sub io_independent_tests {
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
 
     # root acct test
-    $root_login = $root->_check_root( "NEWROOT","NEWPW" ) ;
+    my $master_login = $root->_check_root( "NEWROOT","NEWPW" );
+    my $master_account = new Yote::Account( { login => $master_login } );
 
     # have $login, $root_login
     my $zoot_login = $root->create_login( { h => 'zoot', p => 'naughty', e => "zoot\@tooz.com" } )->{l};
     my $zoot_acct = new Yote::Account( { login => $zoot_login } );
 
     # test account enable disable
-    my $login_test = $root->login( { h => 'zoot', p => 'naughty' } );
+    my $login_test = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
     ok( $login_test, "Login Test Zoot not disabled" );
     eval {
 	$root->disable_login( $login_test, $zoot_acct ); 
@@ -714,17 +715,16 @@ sub io_independent_tests {
     like( $@, qr/Access Error/, "Need root to enable login" );
     $root->enable_login( $login_test, $root_acct ); 
     $login_test = undef;
-    $login_test = $root->login( { h => 'zoot', p => 'naughty' } );
+    $login_test = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
     is( $login_test, $zoot_login, "Able to log in once reeanbled." );
 
-    $root_login->set__is_master_root( 1 );
     eval {
-	$root->disable_login( $root_login, $root_acct ); 
+	$root->disable_login( $master_login, $root_acct ); 
     };
     like( $@, qr/Cannot disable master root login/, "cannot disable master root login" );
     
     eval {
-	$root->disable_account( $root_acct, $root_acct ); 
+	$root->disable_account( $master_account, $root_acct ); 
     };
     like( $@, qr/Cannot disable master root account/, "cannot disable master root account" );
 
