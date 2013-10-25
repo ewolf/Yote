@@ -172,10 +172,13 @@ sub _get_id {
     return Yote::ObjProvider::get_id( $obj );
 } #_get_id
 
-# anyone may read and write public ( not starting with _ ) fields.
+# anyone may read and edit public ( not starting with _ ) fields.
+# only root may chnage the data field type ( like from scalar to containre )
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
-    return ( $account && $account->get_login()->is_root() ) || index( $name, '_' ) != 0;
+
+    return index( $name, '_' ) || ( $account && $account->get_login()->is_root() );
+
 } #_check_access
 
 # anyone may read and write public ( not starting with _ ) fields.

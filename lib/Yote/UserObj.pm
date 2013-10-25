@@ -9,9 +9,11 @@ use warnings;
 
 use base 'Yote::Obj';
 
+
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
-    return $account->_is( $self->get___creator() ) || $account->is_root() || ( index( $name, '_' ) != 0 && $write_access == 0 );
+    return ( index( $name, '_' ) != 0 && $write_access == 0 ) ||
+	$account && ( $account->_is( $self->get___creator() ) || $account->is_root() );
 } #_check_access
 
 1;

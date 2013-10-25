@@ -1,10 +1,11 @@
 
 Currently on my plate :
-  * sendmail setup
-  * account enabling and disabling.
-  * reset password and confirm account links
+  * add test for disabling / enabling accounts and logins
   * update madyote pages
-  * nicer cron crontrol. Decide how cron gets done. Use minute or second? I'm guessing minute.
+  * check logout link on mad yote index page
+  * madyote edit program - html in objects accessed from WebAppServer
+  * sendmail setup
+  * reset password and confirm account links
 
 
 _________________________________________________
@@ -40,6 +41,8 @@ Beta 3
 
 Beta 2
  GET IT PRETTY
+  * madyote edit program - html in objects accessed from WebAppServer. This means that YoteRoot will be checked for html files if the filesystem does not have them. This allows for easy editing of the web pages from the web, wiki style for admins. The files can be flushed to disk after editing. Controls to add pages should be there, etc.
+  -* account and login enabling and disabling.
   * Do not send whole object in a list if the client already is known to have it ( may just send the id in any case and the client would automatically fetch it )
   * Fix page counter
  -* Make simple WIKI for updating Yote News

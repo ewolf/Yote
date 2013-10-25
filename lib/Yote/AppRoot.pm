@@ -84,6 +84,8 @@ sub __get_account {
         $accts->{$login->{ID}} = $acct;
 	$self->_init_account( $acct );
     }
+    die "Access Error" if $acct->get__is_disabled();
+    
     return $acct;
 
 } #__get_account

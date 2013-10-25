@@ -106,6 +106,32 @@ sub cron {
     die "Permissions Error";
 } #cron
 
+sub disable_account {
+    my( $self, $account_to_be_disabled, $logged_in_account ) = @_;
+    die "Access Error" unless $logged_in_account->get_login()->is_root();
+    die "Cannot disable master root account" if $account_to_be_disabled->get_login()->get__is_master_root();
+    $account_to_be_disabled->set__is_disabled( 1 );
+} #disable_account
+
+sub disable_login {
+    my( $self, $login_to_be_disabled, $logged_in_account ) = @_;
+    die "Access Error" unless $logged_in_account->get_login()->is_root();
+    die "Cannot disable master root login" if $login_to_be_disabled->get__is_master_root();
+    $login_to_be_disabled->set__is_disabled( 1 );
+} #disable_login
+
+sub enable_account {
+    my( $self, $account_to_be_enabled, $logged_in_account ) = @_;
+    die "Access Error" unless $logged_in_account->get_login()->is_root();
+    $account_to_be_enabled->set__is_disabled( 0 );
+}  #enable_account
+
+sub enable_login {
+    my( $self, $login_to_be_enabled, $logged_in_account ) = @_;
+    die "Access Error" unless $logged_in_account->get_login()->is_root();
+    $login_to_be_enabled->set__is_disabled( 0 );
+}  #enable_login
+
 #
 # Fetches objects by id list
 #
@@ -147,7 +173,7 @@ sub fetch_root {
     }
     $Yote::YoteRoot::ROOT_INIT = 0;
     return $root;
-}
+} #fetch_root
 
 #
 # Returns a token for non-logging in use.
@@ -175,6 +201,7 @@ sub login {
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = $self->_hash_fetch( '_handles', $lc_h );
         if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
+	    die "Access Error" if $login->get__is_disabled();
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
         }
@@ -417,6 +444,26 @@ This is invoked by the javascript call $.yote.create_login( handle, password, em
 =item cron
 
 Returns the cron. Only a root login may call this.
+
+=item disable_account( account_to_be_disabled, logged_in_account )
+
+Marks the _is_disabled flag for the account to be disabled. Throws
+access exception unless the logged_in_account is a root one.
+
+=item disable_login( login_to_be_disabled, logged_in_account )
+
+Marks the _is_disabled flag for the login to be disabled. Throws
+access exception unless the logged_in_account is a root one.
+
+=item enable_account( account_to_be_enabled, logged_in_account )
+
+Removes the _is_disabled flag for the account to be enabled. Throws
+access exception unless the logged_in_account is a root one.
+
+=item enable_login( login_to_be_enabled, logged_in_account )
+
+Removes the _is_disabled flag for the login to be enabled. Throws
+access exception unless the logged_in_account is a root one.
 
 =item fetch( id_list )
 
