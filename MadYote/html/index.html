@@ -1,0 +1,69 @@
+<HTML>
+  <head>
+    <title></title>
+
+    <script>
+      <!--
+	  $().ready(function() {
+	      var yote_app = $.yote.fetch_app( 'MadYote' );
+	      var root = $.yote.fetch_root();
+	      
+	      function load_page( page_key ) {
+
+		  function display_page( page_key ) {
+		      var page, html;
+		      var pages = yote_app.get_hash_handle( 'pages' );
+		      if( pages ) {
+			  page = pages.get( page_key );
+			  if( page ) {
+			      html = page.get('html');
+			  }
+		      }
+		      if( $.yote.is_root() ) {
+			  if( ! page ) {
+			      page = pages.set( page_key, root.new_root_obj() );
+			      html = page.set( 'html', 'NO PAGE DEFINED' );
+			  }
+			  $( '#body_div' ).empty().append( $.yote.util.prep_edit( page, 'html' ) );
+			  $.yote.util.implement_edit( page, 'html' );
+		      }
+		      else {
+			  if( ! html ) {
+			      html = 'NO PAGE DEFINED';
+			  }
+			  $( '#body_div' ).empty().append( html );
+		      }
+		  } //display_page
+
+		  attach_login( {
+		      attachpoint         : '#logged_in_status',
+		      message_attachpoint : '#msg_div',
+		      after_login  : function() { display_page( page_key ) },
+		      after_logout : function() { display_page( page_key ) },
+		  } );
+
+	      } // load_page
+
+
+	      load_page( 'index.html' );
+	  } );
+	-->
+    </script>
+
+  </head>
+
+
+  <body>
+    <DIV class="header">
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="yotelogo.png">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="msg_div"></DIV>
+    </DIV>
+
+    <DIV id="body_div"></DIV>
+  </body>
+
+</HTML>
