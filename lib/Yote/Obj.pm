@@ -221,16 +221,16 @@ sub _hash_insert {
 	# mark dirty here in case there are outstanding instances of that hash?
 	Yote::ObjManager::mark_dirty( $hash_id );
 
-	my $ret = Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
+	Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
 	my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
 	if( $hash ) {
 	    $hash->{ $key }= $val;
 	}
-	return $ret;
+	return $val;
     }
     my $fun = "set_$hashname";
-    $self->$fun( { $key => $val } );
-    return;
+    
+    return $self->$fun( { $key => $val } );
 } #_hash_insert
 
 sub _hash_fetch {

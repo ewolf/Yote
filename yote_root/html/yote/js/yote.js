@@ -621,10 +621,47 @@ $.yote = {
 		return val.substring(1);
 	    };
 
+	    o.get_list_handle = function( key ) {
+		// this returns an object that is a handle to a container. It does not load the
+		// container contents at once, but provides get and set that contact the server to load
+		// or set things
+
+		var ret = {
+		    item          : this,
+		    container_key : key,
+		    get           : function( idx ) {
+			return this.item.list_fetch( { name : this.container_key, index : idx } );
+		    },
+		    push          : function( key, val ) {
+			return this.item.insert_at( { name : this.container_key, item : val } );			
+		    }
+		};
+		return ret;
+	    }; //get_list_handle
+
+	    o.get_hash_handle = function( key ) {
+		// this returns an object that is a handle to a container. It does not load the
+		// container contents at once, but provides get and set that contact the server to load
+		// or set things
+		var ret = {
+		    item          : this,
+		    container_key : key,
+		    get           : function( hkey ) {
+			return this.item.hash_fetch( { name : this.container_key, key : hkey } );
+		    },
+		    set           : function( hkey, val ) {
+			return this.item.hash( { name : this.container_key, key : hkey, value : val } );			
+		    }
+		};
+		return ret;
+	    }; //get_hash_handle
+
+
 	    o.set = function( key, val, failh, passh ) {
 		this._stage( key, val );
 		this._send_update( undefined, failh, passh );
 		delete this._staged[ key ];
+		return val;
 	    };
 
 	    // get fields

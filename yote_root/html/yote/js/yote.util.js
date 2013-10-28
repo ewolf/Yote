@@ -185,7 +185,6 @@ $.yote.util = {
 		$( '#' + div_id ).click( go_edit );
 	    }
 	}
-
 	$( '#' + div_id ).mouseleave( function() {go_normal() } ).mouseenter( function() { show_edit() } );
     }, //implement_edit
 
@@ -194,9 +193,10 @@ $.yote.util = {
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
 	val = val.replace( /[\n\r]/g, '<BR>' );
-	return '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
+	var txt = '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
+	//maybe something here to make sure the val does not contain certain tags, and contains valid tags
+	return txt;
     }, //prep_edit
-
 
     stage_text_field:function(attachpoint,yoteobj,fieldname) {
         var val = yoteobj.get(fieldname);
@@ -640,7 +640,7 @@ $.yote.util = {
 		lc.after_logout_fun();
 	}
 
-	return lc
+	return lc;
     }, //login_control
 
     check_edit:function( fld, checked_fun, unchecked_fun, extra_classes, on_edit_f ) {
