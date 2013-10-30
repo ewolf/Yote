@@ -41,6 +41,8 @@ Beta 3
 
 Beta 2
  GET IT PRETTY
+  * remove password display from launch
+  * do not show plaintext password when generating config
   * madyote edit program - html in objects accessed from WebAppServer. This means that YoteRoot will be checked for html files if the filesystem does not have them. This allows for easy editing of the web pages from the web, wiki style for admins. The files can be flushed to disk after editing. Controls to add pages should be there, etc.
   -* add test for disabling / enabling accounts and logins
   -* account and login enabling and disabling.

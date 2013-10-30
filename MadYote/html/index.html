@@ -1,51 +1,115 @@
 <HTML>
   <head>
     <title></title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
     <script>
       <!--
 	  $().ready(function() {
+	      $.yote.init();
 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 	      var root = $.yote.fetch_root();
 	      
-	      function load_page( page_key ) {
-
-		  function display_page( page_key ) {
-		      var page, html;
-		      var pages = yote_app.get_hash_handle( 'pages' );
-		      if( pages ) {
-			  page = pages.get( page_key );
-			  if( page ) {
-			      html = page.get('html');
-			  }
+	      function display_page( page_key, admin_mode ) {
+		  var page, body_html, header_html;
+		  var pages = yote_app.get_hash_handle( 'pages' );
+		  if( pages ) {
+		      page = pages.get( page_key );
+		      if( page ) {
+			  body_html = page.get('body_html');
+			  header_html = page.get('header_html');
 		      }
-		      if( $.yote.is_root() ) {
-			  if( ! page ) {
-			      page = pages.set( page_key, root.new_root_obj() );
-			      html = page.set( 'html', 'NO PAGE DEFINED' );
+		  }
+		  var default_body = 'NO PAGE DEFINED';
+		  var default_header = '<A href="/index.html" style="display:block">' +
+		      '  <img height="70px" width="151px" src="yotelogo.png">' +
+		      '</A>' +
+		      '<UL id="top_nav" class="nav"></UL>' +
+		      '<DIV class="login logged_in" id="logged_in_status"></DIV>' +
+		      '<DIV id="msg_div"></DIV>';
+
+		  if( $.yote.is_root() ) {
+		      if( ! page ) {
+			  page = pages.set( page_key, root.new_root_obj() );
+		      }
+		      if( ! body_html )
+			  body_html = page.set( 'body_html', default_body );
+		      if( ! header_html )
+			  header_html = page.set( 'header_html', default_header );
+		      
+		      // should write the admin control panel here.
+		      if( admin_mode ) {
+			  $( '#header_div' ).removeClass( 'header' );
+			  try {
+			      $( '#body_div' ).empty().append( 'Edit the Body <BR>' + $.yote.util.prep_edit( page, 'body_html' ) );
 			  }
-			  $( '#body_div' ).empty().append( $.yote.util.prep_edit( page, 'html' ) );
-			  $.yote.util.implement_edit( page, 'html' );
+			  catch( err ) {
+			      $( '#body_div' ).empty().append( 'Edit the Body <BR>' + $.yote.util.prep_edit( page, 'body_html', false, true ) );
+			  }
+
+			  try {
+			      $( '#header_div' ).empty().append( 'Edit the Header <BR>' + $.yote.util.prep_edit( page, 'header_html' ) );
+			  }
+			  catch( err ) {
+			      $( '#header_div' ).empty().append( 'Edit the Header <BR>' + $.yote.util.prep_edit( page, 'header_html', false, true ) );
+			  }
+			  $( '#header_div' ).append( '<BR><A href="#" id="leave_admin">Stop Editing</A>' );
+			  $.yote.util.implement_edit( page, 'header_html' );
+			  $.yote.util.implement_edit( page, 'body_html' );
+			  $( '#leave_admin' ).click(function(){
+			      display_page( page_key, false );
+			  });
 		      }
 		      else {
-			  if( ! html ) {
-			      html = 'NO PAGE DEFINED';
-			  }
-			  $( '#body_div' ).empty().append( html );
+			  $( '#header_div' ).addClass( 'header' );
+			  $( '#header_div' ).empty().append( header_html );
+			  $( '#body_div' ).empty().append( body_html );			  
 		      }
-		  } //display_page
+		  } //is root
+		  else {
+		      if( ! body_html ) {
+			  body_html = default_body;
+			  header_html = default_header;
+		      }
+			  console.log( "XX" );
+		      $( '#header_div' ).empty().append( header_html );
+		      $( '#body_div' ).empty().append( body_html );
+		  }
 
-		  attach_login( {
-		      attachpoint         : '#logged_in_status',
-		      message_attachpoint : '#msg_div',
-		      after_login  : function() { display_page( page_key ) },
-		      after_logout : function() { display_page( page_key ) },
-		  } );
+		  (function ( was_logged_in, was_root ) {
+		      attach_login( {
+			  attachpoint         : '#logged_in_status',
+			  message_attachpoint : '#msg_div',
+			  after_login         : function() {
+			      if( ! was_logged_in || was_root != $.yote.is_root() ) {				  
+				  display_page( page_key );
+			      }
+			      if( $.yote.is_root && $( "#go_admin" ).length == 0  ) {
+				  $( '#logged_in_status' ).append( '<BR><a href="#" id="go_admin">Admin Page Edit</a>' );
+				  $( '#go_admin' ).click(function() {
+				      display_page( page_key, true );
+				  } );
+			      }
+			  },
+			  after_logout        : function() {
+			      if( was_logged_in ) {
+				  display_page( page_key );
+			      }
+			  }
+		      } )
+		  } )( $.yote.is_logged_in(), $.yote.is_root() );
+	      } //display_page
 
-	      } // load_page
-
-
-	      load_page( 'index.html' );
+	      display_page( 'index.html' );
 	  } );
 	-->
     </script>
@@ -54,16 +118,9 @@
 
 
   <body>
-    <DIV class="header">
-      <A href="/index.html" style="display:block">
-	<img height="70px" width="151px" src="yotelogo.png">
-      </A>
-      <UL id="top_nav" class="nav"></UL>
-      <DIV class="login logged_in" id="logged_in_status"></DIV>
-      <DIV id="msg_div"></DIV>
-    </DIV>
-
+    <DIV class="header" id="header_div"></DIV>
     <DIV id="body_div"></DIV>
+
   </body>
 
 </HTML>

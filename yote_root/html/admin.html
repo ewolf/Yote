@@ -91,10 +91,37 @@ if we are our experiences then we are both sides of them.
 		$( '#sidenav' ).empty().append(
 		    '<button class="sidenav" disabled id="app_b">Apps</button><BR>' +
 			'<button class="sidenav" disabled id="user_b">Users</button><BR>' +
-			'<button class="sidenav" disabled id="cron_b">Cron</button>'
+			'<button class="sidenav" disabled id="cron_b">Cron</button>' +
+    			'<button class="sidenav" disabled id="page_b">Pages</button>'
 		);
 
 		/************ App Panel ************/
+		$( '#page_b' ).click(function(){
+		    var page_control = $.yote.fetch_app( 'Yote::Util::Pages' );
+
+		    function edit_page(url) {
+			var page_node = load_page_node( url );
+			$( '#apppanel_apps' ).empty().append(
+			    '<DIV id="page_admin_panel"></DIV>' + 
+				'<DIV id="page_editing_panel"></DIV>'
+			);
+		    }
+
+		    $( '#apppanel_apps' ).empty().append(
+			'<INPUT TYPE="TEXT" id="page_to_load" placeholder="Page to Load">' +
+			    '<BR><BUTTON TYPE="BUTTON" id="load_page_b">Load</BUTTON>'
+		    );
+		    $( '#load_page_b' ).click(function(){
+			edit_page( $( '#page_to_load' ).val() );
+		    } );
+		    $( '#page_to_load' ).keypress( function( e ) {
+			if( e.which == 13 ) {
+			    edit_page( $( '#page_to_load' ).val() );
+			}
+		    } );
+
+		} );
+
 		$( '#app_b' ).click(function(){
 		    $( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
 		    $( '#apppanel_apps' ).show();

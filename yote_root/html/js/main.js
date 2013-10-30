@@ -2,7 +2,7 @@ function attach_login( args ) {
     var attachpoint         = args[ 'attachpoint' ];
     var message_attachpoint = args[ 'message_attachpoint' ];
     var after_login_f       = args[ 'after_login' ]  || function(){};
-    var after_logout_f      = args[ 'after_logout' ];
+    var after_logout_f      = args[ 'after_logout' ]  || function(){};
     var access_test_f       = args[ 'access_test' ];
     var logged_in_fail_msg  = args[ 'logged_in_fail_msg' ];
     var theapp              = args[ 'app' ];

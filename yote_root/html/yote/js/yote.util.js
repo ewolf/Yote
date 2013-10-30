@@ -185,15 +185,17 @@ $.yote.util = {
 		$( '#' + div_id ).click( go_edit );
 	    }
 	}
-	$( '#' + div_id ).mouseleave( function() {go_normal() } ).mouseenter( function() { show_edit() } );
+	console.log( 'MOUSEEVEN #"' + div_id + '"' );
+	$( '#' + div_id ).mouseleave( function() { go_normal() } ).mouseenter( function() { show_edit() } );
     }, //implement_edit
 
-    prep_edit:function( item, fld, extra ) {
+    prep_edit:function( item, fld, extra, as_text_area ) {
 	var val = item.get( fld ) || '';
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
 	val = val.replace( /[\n\r]/g, '<BR>' );
-	var txt = '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
+	var txt = as_text_area ? '<textarea CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</textarea>' :
+	    '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
 	//maybe something here to make sure the val does not contain certain tags, and contains valid tags
 	return txt;
     }, //prep_edit
