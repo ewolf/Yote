@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<!-- Bootstrappy and meta. This page could replace itself -->
   <head>
     <title>Yote Admin</title>
     <script src="/yote/js/jquery-latest.js"></script>
@@ -92,27 +93,47 @@ if we are our experiences then we are both sides of them.
 		    '<button class="sidenav" disabled id="app_b">Apps</button><BR>' +
 			'<button class="sidenav" disabled id="user_b">Users</button><BR>' +
 			'<button class="sidenav" disabled id="cron_b">Cron</button>' +
-    			'<button class="sidenav" disabled id="page_b">Pages</button>'
+    			'<button class="sidenav" id="page_b">Pages</button>'
 		);
 
 		/************ App Panel ************/
 		$( '#page_b' ).click(function(){
 		    var page_control = $.yote.fetch_app( 'Yote::Util::Pages' );
 
-		    function edit_page(url) {
-			var page_node = load_page_node( url );
-			$( '#apppanel_apps' ).empty().append(
-			    '<DIV id="page_admin_panel"></DIV>' + 
-				'<DIV id="page_editing_panel"></DIV>'
+		    function edit_page(url,reload) {
+			var page_node = reload? page_control.reload_from_file( url ) : page_control.load_page_node( url );
+			$( '#edit_page' ).empty().append(
+			    'EDIT <BR>' +
+			    '<DIV id="page_admin_panel">' + 
+				// controls...info about page (last saved, creatd time, name )
+				// control to save this
+				// control to revert this( from working to html )
+				'</DIV>' + 
+				'<DIV id="page_editing_panel">' + $.yote.util.prep_edit( page_node, 'working_text', '', true ) + '</div>'
+//				'<DIV id="page_editing_panel"></div>'
 			);
+			$( '#save_page_b' ).show().click( function() {
+			    page_control.save_page_node( page_node );
+			} );
+//			$.yote.util.attach_edit_textarea( '#page_editing_panel', page_node, 'working_text' );
+			$.yote.util.implement_edit( page_node, 'working_text' );
 		    }
 
-		    $( '#apppanel_apps' ).empty().append(
+		    $( '#apppanel_pages' ).empty().append(
 			'<INPUT TYPE="TEXT" id="page_to_load" placeholder="Page to Load">' +
-			    '<BR><BUTTON TYPE="BUTTON" id="load_page_b">Load</BUTTON>'
-		    );
+			    '<div id="page_edit_button_div">' + 
+			    '<BR><BUTTON TYPE="BUTTON" id="load_page_b">Load</BUTTON><BR>' +
+			    '<BR><BUTTON TYPE="BUTTON" id="reload_page_b">Reload From File</BUTTON><BR>' +
+			    '<BR><BUTTON TYPE="BUTTON" id="save_page_b">Save to File</BUTTON><BR>' +
+			    '</div>' + 
+			    '<DIV id="edit_page"></DIV>'
+		    ).show();
+		    $( '#save_page_b' ).hide();
 		    $( '#load_page_b' ).click(function(){
 			edit_page( $( '#page_to_load' ).val() );
+		    } );
+		    $( '#reload_page_b' ).click(function(){
+			edit_page( $( '#page_to_load' ).val(), 1 );
 		    } );
 		    $( '#page_to_load' ).keypress( function( e ) {
 			if( e.which == 13 ) {
@@ -380,147 +401,6 @@ if we are our experiences then we are both sides of them.
 		$( '#errpanel' ).empty().append( 'Must be logged in with a root account to view this page.' );
 	    }
 	} //check_perms
-/*
-	make_menus( '#top_nav' );
-
-	var root = $.yote.fetch_root();
-
-	var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
-
-	function fill_data() {
-
-	    var chat = madyote_app.get_chat_board();
-
-	    $( '#motd_div' ).empty().append( 'Click to Edit<BR>' + $.yote.util.prep_edit( madyote_app, 'MOTD' ) );
-
-	    $.yote.util.implement_edit( madyote_app, 'MOTD' ); //called after the control is placed
-
-	    var blog = madyote_app.get_news_blog();
-
-	    // edit the blog
-	    //  show the entries in an editable table
-	    //  allow for deletion
-	    // have a new entry add at the top
-
-	    $( '#news_div' ).empty().append(
-		'<div id="new_blog_div"></div><div id="news_list"></div>'
-	    );
-
-	    $.yote.util.control_table( {
-		item            : blog,
-		list_name       : 'posts',
-		attachpoint     : '#news_list',
-		remove_function : function( item ) {
-		    blog.remove_post( item );
-		},
-		column_headers  : [ 'Subject', 'Content', 'Time' ],
-		columns         : [
-		    $.yote.util.col_edit( 'subject' ),
-		    $.yote.util.col_edit( 'content' ),
-		    function( row, is_html ) { if( is_html ) { var dt = new Date( 1000 * row.get_created_on() ); return dt.toLocaleTimeString(); } }
-		],
-		plimit          : 20,
-
-		new_attachpoint : '#new_blog_div',
-		new_columns     : [ 'subject',
-				    { html     : function( id ) { return '<TEXTAREA id="' + id + '" placeholder="Content"></TEXTAREA><BR>'; },
-				      field    : 'content'
-				    }
-				  ],
-		new_column_titles : [ 'Subject', 'Content' ],
-		new_button        : 'New News',
-		new_function      : function() {
-		    return blog.post( { content : '', subject : '' } )
-		}
-	    } );
-
-	    var cv = $.yote.util.col_edit;
-
-	    $.yote.util.control_table( {
-		item           : chat,
-		list_name      : 'posts',
-		attachpoint    : '#chat_div',
-		column_headers : [ 'Name', 'Message', 'Time' ],
-		remove_function : function( item ) {
-		    chat.remove_post( item );
-		},
-		columns        : [ 0, 1, 2 ],
-
-		//include delete or archive
-		plimit : 20
-	    } );
-
-	    $.yote.util.control_table( {
-		item           : madyote_app,
-		list_name      : '_suggestion_box',
-		attachpoint   : '#suggestion_div',
-		plimit         : 20,
-		column_headers : [ 'From', 'Message' ],
-		columns        : [ 'from', 'message' ],
-		remove_function : function( item ) {
-		    madyote_app.remove_suggestion( item );
-		}
-	    } );
-
-	    $.yote.util.control_table( {
-		item          : root,
-		paginate_type : 'hash',
-		list_name     : '_handles',
-		attachpoint   : '#accounts_div',
-		column_headers : [ 'Handle', 'Email', 'Is Root' ],
-		plimit  : 10,
-		columns : [ 'handle', 'email', function( acct, is_html ) { if( is_html ) { return acct.is_root() == '1' ? 'Y' : 'N';  } }  ]
-	    } );
-	    var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	    page_counter.increment( 'Admin Page',
-				    function( count ) {
-					$('#counter').empty().append( count );
-				    },
-				    function( err ) {},
-				    1
-				  );
-	}//fill_data
-
-
-	function check_perms() {
-	    if( $.yote.is_logged_in() && 1*$.yote.get_login().is_root() ) {
-		$( '#logged_in_status' ).empty().append(
-		    'Logged in as ' + madyote_app.account().get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
-		);
-		$( '#logout' ).click( function() {
-		    $.yote.logout();
-		    $( '#header_bar' ).empty();
-	    se.splash_screen( 'Logged Out');
-		    $( '#logged_in_status' ).empty();
-		} );
-
-		fill_data();
-		$( '#mainpanel' ).show();
-		$( '#errpanel' ).hide();
-	    } else {
-		$( '#mainpanel' ).hide();
-		$( '#errpanel' ).show();
-	    }
-	}
-
-	attach_login( {
-	    attachpoint         : '#logged_in_status',
-	    message_attachpoint : '#msg_div',
-	    after_login  : check_perms,
-	    after_logout : check_perms
-	} );
-
-	check_perms();
-
-	var tabs = [ '#motd_div', '#news_div', '#suggestion_div',
-		     '#chat_div', '#accounts_div' ];
-	var min = 0;
-	for( var i=0; i < tabs.length; i++ ) {
-	    min = min > $( tabs[ i ] ).height() ? min : $( tabs[ i ] ).height();
-	}
-	$( '.content' ).css( 'min-height', min + 'px' );
-	$( '#bottom_half' ).css( 'min-height', ( $('#bottom_header' ).height() + min + 100 ) + 'px' );
-*/
     });
     </script>
   </head>
@@ -571,7 +451,11 @@ if we are our experiences then we are both sides of them.
 
 	  <DIV id="apppanel_cron" class="apppanel">
 	  </DIV>
+
 	  <DIV id="appnewpanel_cron" class="apppanel">
+	  </DIV>
+
+	  <DIV id="apppanel_pages" class="apppanel">
 	  </DIV>
 
 	</DIV>

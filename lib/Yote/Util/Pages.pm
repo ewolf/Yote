@@ -18,15 +18,40 @@ sub _init {
     $self->set__pages({});
 }
 
+sub reload_from_file {
+    my( $self, $url, $acct ) = @_;
+    my $node = $self->_hash_fetch( { name => '_pages', key => $url } );
+
+    my $file_loc = "$ENV{YOTE_ROOT}/html/$url";
+    my $buf = '';
+    if( -e $file_loc ) {
+	open my $IN, '<', $file_loc;
+	while(<$IN>) {
+	    $buf .= $_;
+	}
+	close $IN;
+    }
+    unless( $node ) {
+	$node = new Yote::RootObj( {
+	    created_time => time,
+	    last_saved   => time,
+	    page_text    => $buf,
+	    file_loc     => $file_loc,
+				   } );
+    }
+    $node->set_working_text( $buf );
+    return $node;
+} #reload_from_file
+
 sub load_page_node {
     my( $self, $url, $acct ) = @_;
-    my $node = $self->hash_fetch( { name : '_pages', key : $url } );
+    my $node = $self->_hash_fetch( { name => '_pages', key => $url } );
     die "load_page_node takes a url string" unless $url && ! ref( $url );
     unless( $node ) {
 	my $file_loc = "$ENV{YOTE_ROOT}/html/$url";
 	my $buf = '';
-	if( -e $html_loc ) {
-	    open my $IN, '<', $html_loc;
+	if( -e $file_loc ) {
+	    open my $IN, '<', $file_loc;
 	    while(<$IN>) {
 		$buf .= $_;
 	    }
@@ -34,16 +59,19 @@ sub load_page_node {
 	}
 	$node = new Yote::RootObj( {
 	    created_time => time,
+	    last_saved   => time,
 	    page_text    => $buf,
 	    file_loc     => $file_loc,
 				   } );
     }
+    $node->set_working_text( $node->get_page_text() );
     return $node;
 } #load_page_node
 
 sub save_page_node {
     my( $self, $node, $acct ) = @_;
-    die "Argument must be a node obj" unless $node && ref( $node ) eq 'Obj::RootObj';
+    die "Argument must be a node obj" unless $node && ref( $node ) eq 'Yote::RootObj';
+    $node->set_page_text( $node->get_working_text() );
     open my $OUT, '>', $node->get_file_loc() or die "File Permissions Error";
     print $OUT $node->get_page_text();
     return "Saved";

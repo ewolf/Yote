@@ -116,89 +116,115 @@ $.yote.util = {
 
     implement_edit:function( item, field, on_edit_function ) {
 	var id_root  = item.id + '_' + field;
-	var div_id   = 'ed_'  + id_root;
-	var txt_id   = 'txt_' + id_root;
-	var canc_id  = 'txc_' + id_root;
-	var go_id    = 'txb_' + id_root;
 
-	var go_normal = function() {
-	    $( '#' + div_id ).removeClass( 'edit_ready' );
-	    $( '#' + div_id ).off( 'click' );
-	} //implement_edit.go_normal
+	var editor = {
+	    'item'  : item,
+	    'field' : field,
+	    'on_edit_function' : on_edit_function,
+	    div_id  : 'ed_'  + id_root,
+	    txt_id  : 'txt_' + id_root,
+	    canc_id : 'txc_' + id_root,
+	    go_id   : 'txb_' + id_root,
 
-	var stop_edit = function() {
-	    var val = item.get( field );
-	    val = val.replace( /[\n\r]/g, '<BR>' );
-	    $( '#' + div_id ).empty().append( val );
-	    go_normal();
-	    $.yote.util.implement_edit( item, field, on_edit_function );
-	} //implement_edit.stop_edit
+	    go_normal : function() {
+		$( '#' + this.div_id ).removeClass( 'edit_ready' );
+		$( '#' + this.div_id ).off( 'click' );
+	    }, //implement_edit.go_normal
 
-	var apply_edit = function() {
-	    var val = $( '#' + txt_id ).val();
-	    if( on_edit_function )
-		on_edit_function(val,item);
-	    else
-		item.set( field, val );
-	    stop_edit();
-	} //apply_edit
+	    stop_edit : function() {
+		var me = editor;
+		var val = item.get( field );
+		val = val.replace( /[\n\r]/g, '<BR>' );
+		$( '#' + me.div_id ).empty().append( val );
+		me.go_normal();
+		$.yote.util.implement_edit( me.item, me.field, me.on_edit_function );
+	    }, //implement_edit.stop_edit
 
-	var go_edit = function() {
-	    var rows = 2;
-	    var val = item.get( field ) || '';
-	    if( val != null ) {
-		rows = Math.round( val.length / 25 );
-	    }
-	    if( rows < 2 ) { rows = 2; }
-	    var w = $( '#' + div_id ).width() + 40;
-	    if( w < 100 ) w = 100;
-	    var h = $( '#' + div_id ).height() + 20;
-	    $( '#' + div_id ).empty().append( '<textarea STYLE="width:' + w + 'px;' +
-					      'height:' + h + 'px;" class="in_edit_same" id="' + txt_id + '">' + val + '</textarea><BR>' +
-					'<button class="cancel" type="button" id="' + canc_id + '">cancel</button> ' +
-					'<button class="go" type="button" id="' + go_id + '">Go</button> ' );
-	    $( '#' + txt_id ).keyup( function(e) {
-		if( item.get( field ) == $( '#' + txt_id ).val() ) {
-		    $( '#' + txt_id ).addClass( 'in_edit_same' );
-		    $( '#' + txt_id ).removeClass( 'in_edit_changed' );
-		} else {
-		    $( '#' + txt_id ).removeClass( 'in_edit_same' );
-		    $( '#' + txt_id ).addClass( 'in_edit_changed' );
+	    apply_edit : function() {
+		var me = editor;
+		var val = $( '#' + me.txt_id ).val();
+		if( me.on_edit_function )
+		    me.on_edit_function(val,item);
+		else
+		    me.item.set( me.field, val );
+		me.stop_edit();
+	    }, //apply_edit
+
+	    go_edit : function() {
+		var me = editor;
+		var rows = 2;
+		var val = item.get( field ) || '';
+		if( val != null ) {
+		    rows = Math.round( val.length / 25 );
 		}
-	    } );
-	    $( '#' + txt_id ).keypress( function(e) {
-		if( e.keyCode == 27 ) { //escape like cancel
-		    stop_edit();
-		}
-	    } );
-	    $( '#' + go_id ).click( apply_edit );
-	    $( '#' + canc_id ).click( stop_edit );
-	    $( '#' + txt_id ).focus();
-	    $( '#' + div_id ).off( 'click' );
-	    $( '#' + div_id ).off( 'mouseenter' );
-	    $( '#' + div_id ).off( 'mouseleave' );
-	} //implement_edit.go_edit
+		if( rows < 2 ) { rows = 2; }
+		var w = $( '#' + me.div_id ).width() + 40;
+		if( w < 100 ) w = 100;
+		var h = $( '#' + me.div_id ).height() + 20;
+		$( '#' + me.div_id ).empty().append( '<textarea STYLE="width:' + w + 'px;' +
+						  'height:' + h + 'px;" class="in_edit_same" id="' + me.txt_id + '"></textarea><BR>' +
+						  '<button class="cancel" type="button" id="' + me.canc_id + '">cancel</button> ' +
+						  '<button class="go" type="button" id="' + me.go_id + '">Go</button> ' );
+		$( '#' + me.txt_id ).val( val );
+		$( '#' + me.txt_id ).keyup( function(e) {
+		    if( item.get( field ) == $( '#' + me.txt_id ).val() ) {
+			$( '#' + me.txt_id ).addClass( 'in_edit_same' );
+			$( '#' + me.txt_id ).removeClass( 'in_edit_changed' );
+		    } else {
+			$( '#' + me.txt_id ).removeClass( 'in_edit_same' );
+			$( '#' + me.txt_id ).addClass( 'in_edit_changed' );
+		    }
+		} );
+		$( '#' + me.txt_id ).keypress( function(e) {
+		    if( e.keyCode == 27 ) { //escape like cancel
+			me.stop_edit();
+		    }
+		} );
+		$( '#' + me.go_id ).click( me.apply_edit );
+		$( '#' + me.canc_id ).click( me.stop_edit );
+		$( '#' + me.txt_id ).focus();
+		$( '#' + me.div_id ).off( 'click' );
+		$( '#' + me.div_id ).off( 'mouseenter' );
+		$( '#' + me.div_id ).off( 'mouseleave' );
+	    }, //implement_edit.go_edit
 
-	var show_edit = function() {
-	    if( $( '#' + canc_id ).length == 0 ) {
-		$( '#' + div_id ).addClass( 'edit_ready' );
-		$( '#' + div_id ).click( go_edit );
+	    show_edit : function() {
+		var me = editor;
+		if( $( '#' + me.canc_id ).length == 0 ) {
+		    $( '#' + me.div_id ).addClass( 'edit_ready' );
+		    $( '#' + me.div_id ).click( function() { console.log( ['click',me.go_edit] );me.go_edit() } );
+		}
+	    },
+
+	    init : function() {
+		var me = editor;
+		$( '#' + me.div_id ).mouseleave( function() { me.go_normal() } ).mouseenter( function() { me.show_edit() } );
 	    }
-	}
-	console.log( 'MOUSEEVEN #"' + div_id + '"' );
-	$( '#' + div_id ).mouseleave( function() { go_normal() } ).mouseenter( function() { show_edit() } );
+	}; //editor
+	editor.init();
+	return editor;
     }, //implement_edit
 
     prep_edit:function( item, fld, extra, as_text_area ) {
 	var val = item.get( fld ) || '';
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
-	val = val.replace( /[\n\r]/g, '<BR>' );
-	var txt = as_text_area ? '<textarea CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</textarea>' :
+//	val = val.replace( /[\n\r]/g, '<BR>' );
+	var txt = as_text_area ? '<div CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"><textarea>' + val + '</textarea></div>' :
 	    '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
 	//maybe something here to make sure the val does not contain certain tags, and contains valid tags
 	return txt;
     }, //prep_edit
+
+    attach_edit_textarea:function( anchor, item, fld, extra ) {
+	var val = item.get( fld ) || '';
+	var extr = extra || [];
+	var div_id   = 'ed_' + item.id + '_' + fld;
+//	val = val.replace( /[\n\r]/g, '<BR>' );
+	$( anchor ).empty().append( '<textarea CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"></textarea>' );
+	$( '#' + div_id ).val( val );
+	$.yote.util.implement_edit( item, fld ).go_edit();
+    }, //attach_edit_textarea
 
     stage_text_field:function(attachpoint,yoteobj,fieldname) {
         var val = yoteobj.get(fieldname);

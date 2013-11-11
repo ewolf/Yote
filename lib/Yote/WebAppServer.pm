@@ -393,7 +393,6 @@ sub __process_command {
 	    $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
 	    $login->add_once_to__accounts( $account );
         }
-
         my $ret = $app_object->$action( $data, $account, $command->{e} );
 
 	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
