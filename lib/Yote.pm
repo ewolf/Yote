@@ -101,6 +101,7 @@ sub get_args {
     # --------- find yote root directory and configuration file ---------
     my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
     $config{ yote_root } = $yote_root_dir;
+    $ENV{YOTE_ROOT} = $yote_root_dir;
 
     if( $config{ help } ) {
 	_soft_exit();
