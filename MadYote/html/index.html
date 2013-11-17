@@ -12,13 +12,49 @@
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
+    <STYLE>
+      .page_panel { width : 800px; background-color: rgb(79, 153, 88); margin: auto; }
+      .mainpanel { top:0px; width:500px; display:inline-block; }
+      .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
+      body       { margin-top:70px }
+      .news_time { font-family: monospace;
+                   font-size: small; }
+      .news_body { font-family: serif; margin-left: 10px; padding-left: 10px; }
+      .news_header{ font-family: sans-serif;
+                    font-style: italic;
+                    font-size: large; margin-top: 3px; margin-bottom: 3px; }
+
+    </STYLE>
+
     <script>
       <!--
+/* 
+  One could, for example have templates. One template for the frame of the page, one for the javascript
+  and one each for the panels.
+
+  Now what would the template look like?
+
+   
+*/
 	  $().ready(function() {
 	      $.yote.init();
 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 	      var root = $.yote.fetch_root();
-	      
+
+	      var chat_table = $.yote.util.control_table( {
+		  attachpoint : '',
+		  item : yote_app.get_chat(),
+		  list_name : 'foo',
+		  columns : [
+		      
+		  ],
+		  new_attachpoint : '#chat_mgs',
+		  new_columns : [
+		      
+		  ]
+		  new_column_placeholders : [],
+	      } );
+
 	      function display_page( page_key, admin_mode ) {
 		  var page, body_html, header_html;
 		  var pages = yote_app.get_hash_handle( 'pages' );
@@ -109,7 +145,6 @@
 		  } )( $.yote.is_logged_in(), $.yote.is_root() );
 	      } //display_page
 
-	      display_page( 'index.html' );
 	  } );
 	-->
     </script>
@@ -119,7 +154,21 @@
 
   <body>
     <DIV class="header" id="header_div"></DIV>
-    <DIV id="body_div"></DIV>
+    <DIV class="page_panel">
+      <DIV class="mainpanel">
+	      BLABLABLA
+      </DIV>
+      <DIV class="chatbar">
+	<div id="suggestion_box">
+	  <TEXTAREA id="suggestion" placeholder="Suggestion Box"></TEXTAREA><BR>
+	  <BUTTON type="BUTTON" id="place_suggestion">Send</BUTTON>
+          <DIV id="suggestion_msg"></DIV>
+	</div>
+	<BR>
+        <div id="chat_mgs"></div>
+	<div id="chat_box"></div>
+      </DIV>
+    </DIV>
 
   </body>
 

@@ -788,7 +788,8 @@ $.yote.util = {
 	                                                                                  //     render - a function that takes an id as an argument and returns html
 	                                                                                  //     after_render - a function called after the html is in the dom. Takes id as an argument
 	                                                                                  //     on_create - a function called after the item has been created. Takes the new item and the control id as arguments.
-	    new_column_titles	: args[ 'new_column_titles' ] || args[ 'new_columns' ],   // Titles for the data fields
+	    new_column_titles	: args[ 'new_column_titles' ] || [],                            // Titles for the data fields
+	    new_text_placeholders: args[ 'new_text_placeholders' ] || [],                       // Placeholder values for new data fields
 	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
 	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
 	    new_button		: args[ 'new_button' ] || 'New',                          // text that appears on the create new item button. Default is 'New'
@@ -881,7 +882,11 @@ $.yote.util = {
 			if( typeof nc === 'object' ) {
 			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			} else {
-			    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+			    if( me.new_column_titles[ i ] ) {
+				tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_text_placeholders[i] ? ' placeholder="' + me.new_text_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+			    } else {
+				tbl.add_row( [ '<INPUT TYPE="TEXT" ' + ( me.new_text_placeholders[i] ? ' placeholder="' + me.new_text_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+			    }
 			}
 			txts.push( '#' + id );
 		    }
