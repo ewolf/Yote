@@ -442,6 +442,8 @@ sub list_delete {
     my( $actual_index ) = $val ?
 	$self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
 	$idx;
+    $actual_index ||= 0;
+
     $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $actual_index );
     $self->_do( "UPDATE field SET field=field-1 WHERE obj_id=? AND field > ?", $list_id, $actual_index );
     return;

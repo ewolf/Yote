@@ -461,7 +461,7 @@ $.yote = {
         return i;
     },
 
-    _create_obj:function(data,app_id) {
+    _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
 	var root = this;
 
 	if( data.id != null && typeof data.id !== 'undefined' && root._is_in_cache( data.id ) ) {

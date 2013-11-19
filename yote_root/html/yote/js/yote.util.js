@@ -133,7 +133,7 @@ $.yote.util = {
 
 	    stop_edit : function() {
 		var me = editor;
-		var val = item.get( field );
+		var val = item.get( field ) || '';
 		val = val.replace( /[\n\r]/g, '<BR>' );
 		$( '#' + me.div_id ).empty().append( val );
 		me.go_normal();
@@ -209,7 +209,7 @@ $.yote.util = {
 	var val = item.get( fld ) || '';
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
-//	val = val.replace( /[\n\r]/g, '<BR>' );
+	val = val.replace( /[\n\r]/g, '<BR>' );
 	var txt = as_text_area ? '<div CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"><textarea>' + val + '</textarea></div>' :
 	    '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
 	//maybe something here to make sure the val does not contain certain tags, and contains valid tags
@@ -789,7 +789,7 @@ $.yote.util = {
 	                                                                                  //     after_render - a function called after the html is in the dom. Takes id as an argument
 	                                                                                  //     on_create - a function called after the item has been created. Takes the new item and the control id as arguments.
 	    new_column_titles	: args[ 'new_column_titles' ] || [],                            // Titles for the data fields
-	    new_text_placeholders: args[ 'new_text_placeholders' ] || [],                       // Placeholder values for new data fields
+	    new_column_placeholders: args[ 'new_column_placeholders' ] || [],                       // Placeholder values for new data fields
 	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
 	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
 	    new_button		: args[ 'new_button' ] || 'New',                          // text that appears on the create new item button. Default is 'New'
@@ -883,13 +883,13 @@ $.yote.util = {
 			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			} else {
 			    if( me.new_column_titles[ i ] ) {
-				tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_text_placeholders[i] ? ' placeholder="' + me.new_text_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			    } else {
-				tbl.add_row( [ '<INPUT TYPE="TEXT" ' + ( me.new_text_placeholders[i] ? ' placeholder="' + me.new_text_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				tbl.add_row( [ '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			    }
 			}
 			txts.push( '#' + id );
-		    }
+		    } //each new column
 		    bf += tbl.get_html();
 		    bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.ct_id + '_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
 		    $( me.new_attachpoint ).empty().append( bf );

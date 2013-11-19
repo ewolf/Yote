@@ -30,7 +30,6 @@ sub add_entry {
 sub entries {
     my $self = shift;
     my $now_running = _time();
-    print STDERR Data::Dumper->Dump([$self,$self->get_entries()]);
     return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries([]) }];
 } #entries
 
@@ -72,11 +71,7 @@ sub _init {
 	    ],
 	    
 					} );
-    print STDERR "Addin\n";
     $self->add_entry( $first_cron );
-    print STDERR Data::Dumper->Dump([$self,$self->get_entries(),"INIT"]);
-#    $self->add_to_entries( $first_cron );
-#    $self->_update_entry( $first_cron );
 
 } #_init
 

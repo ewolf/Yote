@@ -230,7 +230,9 @@ sub _hash_insert {
     }
     my $fun = "set_$hashname";
     
-    return $self->$fun( { $key => $val } );
+    $self->$fun( { $key => $val } );
+
+    return $val;
 } #_hash_insert
 
 sub _hash_fetch {
