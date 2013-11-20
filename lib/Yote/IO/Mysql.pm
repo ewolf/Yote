@@ -103,7 +103,6 @@ sub ensure_datastore {
                 $self->{DBH}->do( $definitions{$table} );
             }
         } else {
-            print STDERR "Creating table $table\n";
             $self->{DBH}->do( $definitions{$table} );
         }
     }
