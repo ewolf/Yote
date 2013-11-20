@@ -80,3 +80,37 @@ sub save_page_node {
 1;
 
 __END__
+
+
+=head1 NAME
+
+Yote::Util::Pages
+
+=head1 SYNOPSIS
+
+=head1 METHODS
+
+=over 4
+
+=item reload_from_file( page name )
+
+=item load_page_node( url )
+
+=item save_page_node( url )
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2013 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
