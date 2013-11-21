@@ -38,11 +38,67 @@
 
 */
 	  $().ready(function() {
+//	      console.log( ['EXTRA',$('#extra'),$('#extra').attr('foo')] );return;
 	      $.yote.init();
 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 	      var root = $.yote.fetch_root();
+	      bx = yote_app.get_suggestion_box();
+	      $( '.control_table' ).each( function() {
+		  var el = $( this );
+		  var ct_id = el.attr( 'id' );
+		  var item = el.attr( 'item' );
+		  var args = { attachpoint : '#' + ct_id };
+		  var fields = [
+		      'list_name', 'paginate_type', 'paginate_order', 'is_admin',
+		      'suppress_table', 'title', 'description', 'prefix_classname',
+		      'include_remove', 'remove_button_text', 'remove_column_text',
+		      'new_attachpoint', 
+		      'new_button', 'new_title', 'new_description'
+		  ];
+		  var list_fields = [ //could be a function that returns a list object
+		      'column_headers', 'columns', 'new_columns', 'new_columns_required', 
+		      'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
+		  ];
+		  var reference_fields = [ //fields that represent named javascript things
+		      'item',
+		      'after_load', 'after_render', 'show_when_empty','remove_function',
+		      'new_required_by_function', 'new_function', 'after_new_function'
+		      
+		  ];
+		  var attr, i, field;
+		  for( i in fields ) {
+		      field = fields[i];
+		      attr = el.attr( field );
+		      if( typeof attr !== 'undefined' ) {
+			  args[ field ] = attr;
+		      }
+		  }
+		  for( i in list_fields ) {
+		      field = list_fields[i];
+		      attr = el.attr( field );
+		      if( typeof attr !== 'undefined' ) {
+			  if( attr.charAt(0) == '[' || attr.charAt(0) == '{' ) {
+			      args[ field ] = eval( attr );
+console.log( ["RF",field,args[ field ]] );
+			  }
+			  else {
+			      args[ field ] = attr.split(/,/);
+			  }
+		      }
+		  }
 
-	      
+		  for( i in reference_fields ) {
+		      field = reference_fields[i];
+		      attr = el.attr( field );
+console.log( ["RF",i,reference_fields[i],attr,window[attr]] );
+		      if( typeof attr !== 'undefined' ) {
+			  args[ field ] = window[ attr ];
+		      }
+		  }
+		  console.log( ['CTA',args] );
+		  $.yote.util.control_table( args );
+		  
+	      } ); //each div
 
 	      function setup() {
 		  var box = yote_app.get_suggestion_box();
@@ -53,30 +109,30 @@
 		  if( $.yote.is_root() ) {
 		      if( ! page ) {
 			  page = yote_app.hash( { name : 'pages',  key : pagename, value : $.yote.fetch_root().new_root_obj() } );
-		      }
+		      }/*
 		      var box_table = $.yote.util.control_table( {
-			  attachpoint : '#suggestion_box', 
+			  attachpoint : '#suggestion_box',
 			  item : box,
 			  list_name : 'suggestions',
 			  include_remove : true,
 			  column_headers : [ 'Suggestion', 'Notes' ],
-			  columns : [ 
+			  columns : [
 			      'suggestion',
 			      $.yote.util.col_edit( 'notes' )
 			  ]
-		      } );
+		      } );*/
 		      $( '#mainpanel' ).empty().append( $.yote.util.prep_edit( page, 'main_panel' ) );
 		      $.yote.util.implement_edit( page, 'main_panel' );
 		      $( '#side_panel' ).empty().append( $.yote.util.prep_edit( page, 'side_panel' ) );
 		      $.yote.util.implement_edit( page, 'side_panel' );
-		  } 
+		  }
 		  else {
 		      if( !page ) { page = { get : function() { return '' } }; }
 		      $( '#mainpanel' ).empty().append( page.get( 'main_panel' ) || '' );
 		      $( '#side_panel' ).empty().append( page.get( 'side_panel' ) || '' );
 		      $( '#suggestion_box' ).empty().append(
 			      '<TEXTAREA id="suggestion" placeholder="Suggestion Box"></TEXTAREA><BR>' +
-			      '<BUTTON type="BUTTON" id="suggest_b">Send</BUTTON>' + 
+			      '<BUTTON type="BUTTON" id="suggest_b">Send</BUTTON>' +
 			      '<DIV id="suggestion_msg"></DIV>'
 		      );
 		      $( '#suggest_b' ).click(function() {
@@ -154,7 +210,11 @@
 	<div id="chat_box"></div>
       </DIV>
     </DIV>
-
+    <DIV class="control_table" id="sug_box_test"
+	 item="bx" list_name="suggestions", include_remove="true", column_headers="Suggestion,Notes"
+         columns="['suggestion',$.yote.util.col_edit( 'notes' )]"
+    ></div>
+    <DIV id="extra" foo="BAR"></DIV>
   </body>
 
 </HTML>

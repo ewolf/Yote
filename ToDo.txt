@@ -6,7 +6,24 @@ Currently on my plate :
   * madyote edit program - html in objects accessed from WebAppServer
   * sendmail setup
   * reset password and confirm account links
+________________________________________________
 
+It would be nice to have a <DIV> have information that links it to an editing session.
+Something like
+<DIV object="objname" field="somefield" editable="root||owner||all||none" editfilter="text|html|limitedhtml"></DIV>
+
+where limitedhtml disallows script tags and certain tags. It might whitelist a set of tags.
+
+It would be supernice to extend this to control tables
+
+<DIV object="objname"
+     list_name="foo"
+     fields="foo,bar,baz"
+     field_titles="Foo,Bar,Baz"
+     can_remove="true"
+     can_create="true"
+>
+</div>
 
 _________________________________________________
 

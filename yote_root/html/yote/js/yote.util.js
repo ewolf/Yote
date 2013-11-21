@@ -134,7 +134,8 @@ $.yote.util = {
 	    stop_edit : function() {
 		var me = editor;
 		var val = item.get( field ) || '';
-		val = val.replace( /[\n\r]/g, '<BR>' );
+		// do filtering here
+		//val = val.replace( /[\n\r]/g, '<BR>' );
 		$( '#' + me.div_id ).empty().append( val );
 		me.go_normal();
 		$.yote.util.implement_edit( me.item, me.field, me.on_edit_function );
