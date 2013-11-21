@@ -27,6 +27,14 @@ $.yote.util = {
 	return date.toUTCString();
     },
 
+    registered_items : {},
+
+    register_items:function( hashed_items ) {
+	for( var key in hashed_items ) {
+	    this.registered_items[ key ] = hashed_items[ key ];
+	}
+    },
+
     button_actions:function( args ) {
 	var but         = args[ 'button' ];
 	var action      = args[ 'action' ] || function(){};
@@ -701,6 +709,7 @@ $.yote.util = {
     },
 
     col_edit:function( fld, extra_classes, on_edit_f ) {
+alert( 'fucntion for ' + fld );
 	return function( item, is_prep ) {
 	    if( is_prep ) {
 		return $.yote.util.prep_edit( item, fld, extra_classes );
@@ -974,7 +983,7 @@ $.yote.util = {
 					  me.columns[ j ]( item, true ) :
 					  typeof me.columns[ j ] == 'object' ?
 					  me.columns[ j ][ 'render' ]( item, key )
-					  : item.get( me.columns[ j ] )
+					  : me.columns[ j ].charAt(0) == '*' ? function() {alert("foo");$.yote.util.col_edit( me.columns[j].substring(1) ) }() : item.get( me.columns[ j ] )
 					);
 			    }
 			    if( me.include_remove ) {

@@ -40,9 +40,15 @@
 	  $().ready(function() {
 //	      console.log( ['EXTRA',$('#extra'),$('#extra').attr('foo')] );return;
 	      $.yote.init();
+
+	      
+
 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 	      var root = $.yote.fetch_root();
-	      bx = yote_app.get_suggestion_box();
+	      
+	      $.yote.util.register_items( { 
+		  box : yote_app.get_suggestion_box()
+	      } );
 	      $( '.control_table' ).each( function() {
 		  var el = $( this );
 		  var ct_id = el.attr( 'id' );
@@ -90,9 +96,9 @@ console.log( ["RF",field,args[ field ]] );
 		  for( i in reference_fields ) {
 		      field = reference_fields[i];
 		      attr = el.attr( field );
-console.log( ["RF",i,reference_fields[i],attr,window[attr]] );
+console.log( ["RF",i,reference_fields[i],attr,$.yote.util.registered_items[attr]] );
 		      if( typeof attr !== 'undefined' ) {
-			  args[ field ] = window[ attr ];
+			  args[ field ] = $.yote.util.registered_items[ attr ];
 		      }
 		  }
 		  console.log( ['CTA',args] );
@@ -211,8 +217,8 @@ console.log( ["RF",i,reference_fields[i],attr,window[attr]] );
       </DIV>
     </DIV>
     <DIV class="control_table" id="sug_box_test"
-	 item="bx" list_name="suggestions", include_remove="true", column_headers="Suggestion,Notes"
-         columns="['suggestion',$.yote.util.col_edit( 'notes' )]"
+	 item="box" list_name="suggestions", include_remove="true", column_headers="Suggestion,Notes"
+         columns="['suggestion','*notes']" x="$.yote.util.col_edit( 'notes' )]"
     ></div>
     <DIV id="extra" foo="BAR"></DIV>
   </body>
