@@ -641,9 +641,9 @@ $.yote.util = {
 				      $( '#pw' ).val(),
 				      function( msg ) {
 					  if( thislc.access_test( thislc.app.account() ) ) {
-					      if( typeof thislc.on_login_fun === 'function' ) 
+					      if( typeof thislc.on_login_fun === 'function' )
 						  thislc.on_login_fun();
-					      if( typeof thislc.after_login_fun === 'function' ) 
+					      if( typeof thislc.after_login_fun === 'function' )
 						  thislc.after_login_fun();
 					  } else if( thislc.logged_in_fail_msg ) {
 					      thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
@@ -662,18 +662,18 @@ $.yote.util = {
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
 	if( lc.access_test( lc.app.account() ) ) {
-	    if( typeof lc.on_login_fun === 'function' ) 
+	    if( typeof lc.on_login_fun === 'function' )
 		lc.on_login_fun();
-	    if( typeof lc.after_login_fun === 'function' ) 
+	    if( typeof lc.after_login_fun === 'function' )
 		lc.after_login_fun();
 	} else {
 	    if( lc.logged_in_fail_msg ) {
 		lc.msg_function( lc.logged_in_fail_msg, 'error' );
 		$.yote.logout();
 	    }
-	    if( typeof lc.on_logout_fun === 'function' ) 
+	    if( typeof lc.on_logout_fun === 'function' )
 		lc.on_logout_fun();
-	    if( typeof lc.after_logout_fun === 'function' ) 
+	    if( typeof lc.after_logout_fun === 'function' )
 		lc.after_logout_fun();
 	}
 
@@ -709,7 +709,6 @@ $.yote.util = {
     },
 
     col_edit:function( fld, extra_classes, on_edit_f ) {
-alert( 'fucntion for ' + fld );
 	return function( item, is_prep ) {
 	    if( is_prep ) {
 		return $.yote.util.prep_edit( item, fld, extra_classes );
@@ -735,6 +734,66 @@ alert( 'fucntion for ' + fld );
 	    }
 	};
     }, //cols_edit
+
+    init_ui:function() {
+	$( '.control_table' ).each( function() {
+	    var el = $( this );
+	    var ct_id = el.attr( 'id' );
+	    var item = el.attr( 'item' );
+	    var args = { attachpoint : '#' + ct_id };
+
+	    if( el.attr( 'is_admin' ) == 'root' && ! $.yote.is_root() ) {
+		el.empty();
+		return;
+	    }
+
+	    var fields = [
+		'list_name', 'paginate_type', 'paginate_order', 'is_admin',
+		'suppress_table', 'title', 'description', 'prefix_classname',
+		'include_remove', 'remove_button_text', 'remove_column_text',
+		'new_attachpoint',
+		'new_button', 'new_title', 'new_description',
+
+		'column_headers', 'columns', 'new_columns', 'new_columns_required',
+		'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
+
+		'item',
+		'after_load', 'after_render', 'show_when_empty','remove_function',
+		'new_required_by_function', 'new_function', 'after_new_function'
+
+	    ];
+	    var attr, i, fld;
+	    for( i in fields ) {
+		fld = fields[i];
+		attr_val = el.attr( fld );
+		if( typeof attr_val == 'string' ) {
+		    // json
+		    console.log( [attr_val,fld,"SHOW"] );
+		    if( attr_val.charAt(0) == '[' || attr_val.charAt(0) == '{' ) {
+			args[ fld ] = eval( attr_val );
+		    }
+		    // function
+		    else if( attr_val.charAt(0) == '*' ) {
+			var fs = attr_val.substring(1);
+			console.log( "SUBS", fs );
+			var f = eval( '['+fs+']' );
+			args[ fld ] = f[0];
+		    }
+
+		    // reference
+		    else if( attr_val.charAt(0) == '$' ) {
+			args[ fld ] = $.yote.util.registered_items[ attr_val.substring(1) ];
+		    }
+		    else {
+			args[ fld ] = attr_val;
+		    }
+		}
+	    }
+	    console.log( ['CTA',args] );
+	    $.yote.util.control_table( args );
+
+	} ); //each div
+    }, //init_ui
 
     // this tool is to create a table where the rows correspond to a list in a target
     // objects and the end user can add or remove the rows, or manipulate them
@@ -979,11 +1038,16 @@ alert( 'fucntion for ' + fld );
 				      : key );
 
 			    for( var j = 1 ; j < me.columns.length; j++ ) {
-				row.push( typeof me.columns[ j ] == 'function' ?
+				var ctype = typeof me.columns[ j ];
+				if( ctype == 'string' && me.columns[ j ].charAt(0) == '*' ) {
+				    me.columns[j ] = $.yote.util.col_edit( me.columns[j].substring(1) );
+				    ctype = 'function';
+				}
+				row.push( ctype == 'function' ?
 					  me.columns[ j ]( item, true ) :
-					  typeof me.columns[ j ] == 'object' ?
+					  ctype == 'object' ?
 					  me.columns[ j ][ 'render' ]( item, key )
-					  : me.columns[ j ].charAt(0) == '*' ? function() {alert("foo");$.yote.util.col_edit( me.columns[j].substring(1) ) }() : item.get( me.columns[ j ] )
+					  :item.get( me.columns[ j ] )
 					);
 			    }
 			    if( me.include_remove ) {
@@ -1003,9 +1067,15 @@ alert( 'fucntion for ' + fld );
 			var item = items.get( i );
 			var row = [];
 			for( var j = 0 ; j < me.columns.length; j++ ) {
-			    row.push( typeof me.columns[ j ] == 'function' ?
+			    var ctype = typeof me.columns[ j ];
+			    if( ctype == 'string' && me.columns[ j ].charAt(0) == '*' ) {
+				me.columns[j ] = $.yote.util.col_edit( me.columns[j].substring(1) );
+				ctype = 'function';
+			    }
+
+			    row.push( ctype == 'function' ?
 				      me.columns[ j ]( item, true ) :
-				      typeof me.columns[ j ] == 'object' ?
+				      ctype == 'object' ?
 				      me.columns[ j ][ 'render' ]( item, me.start + i )
 				      : item.get( me.columns[ j ] )
 				    );
