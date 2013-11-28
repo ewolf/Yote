@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <HTML>
   <head>
     <title></title>
@@ -39,6 +40,9 @@
 */
 	  $().ready(function() {
 //	      console.log( ['EXTRA',$('#extra'),$('#extra').attr('foo')] );return;
+var f = eval(function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) });
+//alert( f );
+//return;
 	      $.yote.init();
 
 	      
@@ -85,31 +89,6 @@
 		      } );
 		  }
 
-/*		  var chat_table = $.yote.util.control_table( {
-		      attachpoint : '#chat_box',
-		      item : yote_app.get_chat(),
-		      list_name : 'messages',
-		      show_count : false,
-		      include_remove : $.yote.is_root(),
-		      columns : [
-			  function( item, is_prep ) {
-			      if( is_prep ) {
-				  return item.get_message() + '[' + item.get_name() + '] (' + new Date(1000*item.get_created_on()).toLocaleString() + ')';
-			      }
-			  }
-		      ],
-		      after_new_function : function( item ) {
-			  item.set( 'created_on', Math.round( new Date().getTime() / 1000 ) );
-		      },
-		      new_button : 'Say',
-		      new_attachpoint : '#chat_mgs',
-		      new_columns :  [
-			  'message',
-			  'name'
-		      ],
-		      new_column_placeholders : [ 'message', 'name' ],
-		  } );
-*/
 	      } //setup
 
 	      attach_login( {
@@ -146,7 +125,7 @@
       <DIV class="chatbar">
 	<DIV id="suggestion_box"></div>
 	<DIV class="control_table" id="suggestion_box_admin" is_admin="true"
-	     item="$box" list_name="suggestions", include_remove="true", column_headers="['Suggestion','Notes']"
+	     item="$box" container_name="suggestions", include_remove="true", column_headers="['Suggestion','Notes']"
 	     columns="['suggestion','*notes']" ></div>
 	<div id="suggestion_box">
 	</div>
@@ -154,16 +133,14 @@
         <h3>Chat</h3>
         <div id="chat_mgs"></div>
 	<div class="control_table" id="chat_box" item="$chat"
-	     list_name="messages" show_count="false" include_remove="*$.yote.is_root()"
+	     container_name="messages" show_count="false" include_remove="*$.yote.is_root()"
 	     columns="[function(item,is_prep){if(is_prep){return item.get_message()+'['+item.get_name()+'] ('+new Date(1000*item.get_created_on()).toLocaleString()+')'}}]"
-	     aafter_new_function="*function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) }"
-	     after_new_function="*function(){}"
-	     new_button="say" new_attachpoint="#chat_mgs" 
+	     after_new_function="*function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) }"
+	     new_button="say" new_attachpoint="#chat_mgs" paginate_order="reverse"
 	     new_columns="['message','name']" new_column_placeholders="['message','name']"
 	     ></div>
       </DIV>
     </DIV>
-    <DIV id="extra" foo="BAR"></DIV>
   </body>
 
 </HTML>

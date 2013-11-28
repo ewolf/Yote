@@ -58,7 +58,11 @@
       }
       .apppanel { margin-left: 150px; }
       .sidenav { float: left; text-align: center; }
-      button.sidenav { width : 120px; }
+      button.sidenav {     background:none!important;
+     border:none; 
+     padding:0!important;
+    /*border is optional*/
+     border-bottom:1px solid #444; ; }
       ._ct_row { vertical-align: top }
       ._ct_cell { border: 6px rgb(120,226,165) groove }
     </STYLE>
@@ -72,9 +76,210 @@ if we are our experiences then we are both sides of them.
 
     <script>
     $().ready(function(){
-
+	$( '#mainpanel' ).hide();
 	$.yote.init();
 	var root = $.yote.fetch_root();
+	var cron = root.cron();
+
+        $.yote.util.register_items( {
+	    root     : root,
+            cron     : cron,
+	    app_cols : [ 'x', //due to hash key..have to find a better solution TODO
+			 { render:function(app){ return app.count('_account_roots'); } },
+			 {
+			     render:function(app) {
+				 return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
+			     },
+			     after_render:function(app,name) {
+					$( '#reset_b_' + app.id ).click(function() {
+					    if( confirm( "This will remove all user accounts and app data. Are you sure?" ) ) {
+						alert( name );
+						root.purge_app( name,
+								function() { alert( "App '" + name + "' purged" ); },
+								function( err ) { alert( err ); }
+							      );
+					    }
+					} );
+			     }
+			 } ], //app_cols
+            user_cols : ['x', //due to hash key..have to find a better solution TODO
+			{ //email
+			    render:function(l,h){
+				var em=l.get('email');
+				return em?em:'n/a';
+			    },
+			    after_render:function(app){}
+			},
+			{ //is root
+			    render:function(l,h){
+				if(l.is_master_root()){
+				    return 'master root';
+				}
+				return '<input type="checkbox" id="lr_'+l.id+'" '+
+				    (l.is_root()*1==1?' checked':'')+'>';
+			    },
+			    after_render:function(l,h){
+				if(!l.is_master_root()){
+				    (function(li) {
+					$('#lr_'+li.id).click(
+					    function(){
+						if($('#lr_'+li.id).is(':checked')){
+						    if($('#lr_'+li.id).is(':checked')){
+							root.make_root(li);
+						    } else {
+							root.remove_root( li, function(){}, function(err) { alert(err)} );
+						    }
+						}
+					    }
+					);
+				    } )( l );
+				}
+			    }
+			} ], //user_cols
+	    cron_cols : [ '*name',
+			  $.yote.util.check_edit( 'enabled', undefined, undefined, undefined,
+						  function(val,item) {
+						      cron.update_entry( entry );
+						      cron_ct.refresh();
+						  } ),
+			  '*notes',
+			  '*script',
+			  {
+			      render : function( entry ) {
+				  if( entry.get( 'next_time' ) > 0 )
+				      return '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>';
+				  else
+				      return "Not Scheduled";
+			      },
+			      after_render : function( entry ) {
+				  $( '#recalc_' + entry.id ).click( function() {
+				      cron.update_entry( entry );
+				  } );
+			      }
+			  },
+			  {
+			      render : function( entry ) {
+				  return '<div id="cron_rep_' + entry.id + '"></div><div id="cron_rep_new_' + entry.id + '"></div>';
+				  //repeat
+			      },
+			      after_render : function( entry ) {
+				  var rep_ct = $.yote.util.control_table( {
+				      attachpoint : '#cron_rep_' + entry.id,
+				      show_count : false,
+				      plimit : 100,
+				      item : entry,
+				      container_name : 'repeats',
+				      new_button : 'Add',
+				      include_remove : true,
+				      column_headers : [ 'Interval (mins)', 'Infinite Repeat', 'Repeats' ],
+				      columns : [
+					  $.yote.util.col_edit( 'repeat_interval', null, function( val, item ) {
+					      item.set( 'repeat_interval', val );
+					      cron.update_entry( entry );
+					      cron_ct.refresh();
+					  } ),
+					  $.yote.util.check_edit( 'repeat_infinite', undefined, undefined, undefined,
+								  function(val,item) {
+								      cron.update_entry( entry );
+								      cron_ct.refresh();
+								  } ),
+					  $.yote.util.col_edit( 'repeat_times', null, function( val, item ) {
+					      item.set( 'repeat_times', val );
+					      cron.update_entry( entry );
+					      cron_ct.refresh();
+					  } )
+				      ],
+				      new_attachpoint : '#cron_rep_new_' + entry.id,
+				      new_column_titles : [
+					  'interval (min)',
+					  'infinite repeat',
+					  'times'
+				      ],
+				      new_required_by_function : function( txts ) {
+					  return $( txts[ 0 ] ).val().match( /\S/ ) != null && ( $( txts[ 1 ] ).is( ':checked' ) ||
+												 $( txts[ 2 ] ).val().match( /\S/ ) != null );
+				      },
+				      new_columns : [
+					  'repeat_interval',
+					  {
+					      field : 'repeat_infinite',
+					      render : function( cid ) {
+						  return '<input type="checkbox" id="' + cid + '">';
+					      },
+					      on_create : function( item, id ) {
+						  item.set( 'repeat_infinite', $( '#' + id ).val() );
+					      }
+					  },
+					  'repeat_times'
+				      ],
+				      after_new_function : function( newitem ) {
+					  cron.update_entry( entry );
+					  cron_ct.refresh();
+				      }
+				  } );
+			      }
+			  },
+			  {
+			      render : function( entry ) {
+				  return '<div id="cron_sched_' + entry.id + '"></div><div id="cron_sched_new_' + entry.id + '"></div>';
+			      },
+			      after_render : function( entry ) {
+				  var ct = $.yote.util.control_table( {
+				      attachpoint : '#cron_sched_' + entry.id,
+				      show_count : false,
+				      plimit : 100,
+				      item : entry,
+				      container_name : 'scheduled_times',
+				      include_remove : true,
+				      column_headers : [ 'Scheduled Time' ],
+				      columns : [
+					  { render : function( txt ) { return $.yote.util.format_date( new Date( 60000 * txt ), "h:m Y-M-D" ) } }
+				      ],
+				      new_button : 'Add',
+				      new_attachpoint : '#cron_sched_new_' + entry.id,
+				      new_column_titles : [ 'when' ],
+				      remove_function : function( str, idx ) {
+					  entry.list_delete( { name : 'scheduled_times', index : idx } );
+					  cron.update_entry( entry );
+					  cron_ct.refresh();
+				      },
+				      new_function : function() {
+					  return $( '#cron_new_rep_at' ).val();
+				      },
+				      after_new_function : function( it ) {
+					  cron.update_entry( entry );
+					  cron_ct.refresh();
+				      },
+				      new_columns : [
+					  {
+					      field : 'scheduled_time_' + $.yote.util.next_id(),
+					      on_create : function( str, id ) {
+						  var do_when = new Date( $( '#' + id ).val() );
+						  entry.add_to( { name : 'scheduled_times', items : [ do_when.valueOf()/60000 ] } );
+						  cron.update_entry( entry );
+						  cron_ct.refresh();
+					      },
+					      render : function( id ) {
+						  return '<input type="datetime-local" id="' + id + '">';
+					      }
+					  }
+				      ]
+				  } );
+				  //schedule
+			      }
+			  },
+			] //cron_cols
+
+	} ); //register_items
+
+	$.yote.util.init_ui();
+
+	$( 'button.sidenav' ).each( function( idx, domEl ) {
+	    $(this).click(function(){
+		$( '.apppanel' ).hide();
+		$( '#' + $(this).attr('id') + '_div' ).show();
+	    });
+	} );
 
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
@@ -89,318 +294,13 @@ if we are our experiences then we are both sides of them.
 	function check_perms() {
 	    if( $.yote.is_root() ) {
 		$( '#errpanel' ).hide();
-		$( '#sidenav' ).empty().append(
-		    '<button class="sidenav" disabled id="app_b">Apps</button><BR>' +
-			'<button class="sidenav" disabled id="user_b">Users</button><BR>' +
-			'<button class="sidenav" disabled id="cron_b">Cron</button>' +
-    			'<button class="sidenav" id="page_b">Pages</button>'
-		);
-
-		/************ App Panel ************/
-		$( '#page_b' ).click(function(){
-		    var page_control = $.yote.fetch_app( 'Yote::Util::Pages' );
-
-		    function edit_page(url,reload) {
-			var page_node = reload? page_control.reload_from_file( url ) : page_control.load_page_node( url );
-			$( '#edit_page' ).empty().append(
-			    'EDIT <BR>' +
-			    '<DIV id="page_admin_panel">' + 
-				// controls...info about page (last saved, creatd time, name )
-				// control to save this
-				// control to revert this( from working to html )
-				'</DIV>' + 
-				'<DIV id="page_editing_panel">' + $.yote.util.prep_edit( page_node, 'working_text', '', true ) + '</div>'
-//				'<DIV id="page_editing_panel"></div>'
-			);
-			$( '#save_page_b' ).show().click( function() {
-			    page_control.save_page_node( page_node );
-			} );
-//			$.yote.util.attach_edit_textarea( '#page_editing_panel', page_node, 'working_text' );
-			$.yote.util.implement_edit( page_node, 'working_text' );
-		    }
-
-		    $( '#apppanel_pages' ).empty().append(
-			'<INPUT TYPE="TEXT" id="page_to_load" placeholder="Page to Load">' +
-			    '<div id="page_edit_button_div">' + 
-			    '<BR><BUTTON TYPE="BUTTON" id="load_page_b">Load</BUTTON><BR>' +
-			    '<BR><BUTTON TYPE="BUTTON" id="reload_page_b">Reload From File</BUTTON><BR>' +
-			    '<BR><BUTTON TYPE="BUTTON" id="save_page_b">Save to File</BUTTON><BR>' +
-			    '</div>' + 
-			    '<DIV id="edit_page"></DIV>'
-		    ).show();
-		    $( '#save_page_b' ).hide();
-		    $( '#load_page_b' ).click(function(){
-			edit_page( $( '#page_to_load' ).val() );
-		    } );
-		    $( '#reload_page_b' ).click(function(){
-			edit_page( $( '#page_to_load' ).val(), 1 );
-		    } );
-		    $( '#page_to_load' ).keypress( function( e ) {
-			if( e.which == 13 ) {
-			    edit_page( $( '#page_to_load' ).val() );
-			}
-		    } );
-
-		} );
-
-		$( '#app_b' ).click(function(){
-		    $( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
-		    $( '#apppanel_apps' ).show();
-		} );
-		$.yote.util.control_table( {
-		    after_load : function() {
-			$( '#app_b' ).prop('disabled', false);
-		    },
-		    attachpoint : '#apppanel_apps',
-		    plimit : 10,
-		    item : root,
-		    list_name : '_apps',
-		    paginate_type : 'hash',
-		    title : 'Apps',
-		    column_headers : [ 'Name', 'Number of Users', 'Reset' ],
-		    columns : [ 'x',
-				{
-				    render : function( app ) {
-					return app.count( '_account_roots' );
-				    },
-				    after_render : function( app ) {}
-				},
-				{
-				    render : function( app ) {
-					return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
-				    },
-				    after_render : function( app, name ) {
-					$( '#reset_b_' + app.id ).click(function() {
-					    if( confirm( "This will remove all user accounts and app data. Are you sure?" ) ) {
-						alert( name );
-						root.purge_app( name,
-								function() { alert( "App '" + name + "' purged" ); },
-								function( err ) { alert( err ); }
-							      );
-					    }
-					} );
-				    }
-				}
-			      ],
-		} ); // app control table
-
-		/************ User Panel ************/
-		$( '#user_b' ).click(function(){
-		    $( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
-		    $( '#apppanel_users' ).show();
-		} );
-
-		$.yote.util.control_table( {
-		    after_load : function() {
-			$( '#user_b' ).prop('disabled', false);
-		    },
-
-		    attachpoint : '#apppanel_users',
-		    plimit : 10,
-		    item : root,
-		    list_name : '_handles',
-		    paginate_type : 'hash',
-		    title : 'Logins',
-		    column_headers : [ 'Handle', 'Email', 'Is Root' ],
-		    columns : [ 'x',
-				{
-				    render : function( login, handle ) {
-					var em = login.get( 'email' );
-					return em ? em : 'n/a';
-				    },
-				    after_render : function( app ) {}
-				},
-				{
-				    render : function( login, handle ) {
-					if( login.is_master_root() ) {
-					    return "master root";
-					}
-					return '<input type="checkbox" id="lr_' + login.id + '" ' +
-					    ( login.is_root()*1 == 1 ? ' checked' : '' ) + '>';
-				    },
-				    after_render : function( login, handle ) {
-					if( ! login.is_master_root() ) {
-					    (function( li ) {
-						$( '#lr_' + li.id ).click( function() {
-						    if( $( '#lr_' + li.id ).is( ':checked' ) ) {
-							root.make_root( li );
-						    } else {
-							root.remove_root( li, function(){},
-									  function(err) { alert(err)} );
-						    }
-						} )
-					    } )( login );
-					}
-				    }
-				}
-			      ],
-		} ); // user control table
-
-		/************ Cron Panel ************/
-		$( '#cron_b' ).click(function(){
-		    $( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
-		    $( '#apppanel_cron,#appnewpanel_cron' ).show();
-		} );
-
-		var cron = root.cron();
-		var cron_ct = $.yote.util.control_table( {
-		    after_load : function() {
-			$( '#cron_b' ).prop('disabled', false);
-		    },
-		    attachpoint : '#apppanel_cron',
-		    plimit : 10,
-		    item : cron,
-		    list_name : 'entries',
-		    paginate_type : 'list',
-		    title : 'Crons',
-		    include_remove : true,
-		    column_headers : [ 'Name', 'Enabled', 'Script', 'Next Run', 'Repeat', 'Schedule' ],
-		    columns : [ $.yote.util.col_edit( 'name' ),
-				$.yote.util.check_edit( 'enabled' ),
-				$.yote.util.col_edit( 'script' ),
-				{
-				    render : function( entry ) {
-					if( entry.get( 'next_time' ) > 0 )
-					    return '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>';
-					else
-					    return "Not Scheduled";
-				    },
-				    after_render : function( entry ) {
-					$( '#recalc_' + entry.id ).click( function() {
-					    cron.update_entry( entry );
-					} );
-				    }
-				},
-				{
-				    render : function( entry ) {
-					return '<div id="cron_rep_' + entry.id + '"></div><div id="cron_rep_new_' + entry.id + '"></div>';
-					//repeat
-				    },
-				    after_render : function( entry ) {
-					var rep_ct = $.yote.util.control_table( {
-					    attachpoint : '#cron_rep_' + entry.id,
-					    show_count : false,
-					    plimit : 100,
-					    item : entry,
-					    list_name : 'repeats',
-					    new_button : 'Add',
-					    include_remove : true,
-					    column_headers : [ 'Interval (mins)', 'Infinite Repeat', 'Repeats' ],
-					    columns : [
-						$.yote.util.col_edit( 'repeat_interval', null, function( val, item ) {
-						    item.set( 'repeat_interval', val );
-						    cron.update_entry( entry );
-						    cron_ct.refresh();
-						} ),
-						$.yote.util.check_edit( 'repeat_infinite', undefined, undefined, undefined,
-									function(val,item) {
-									    cron.update_entry( entry );
-									    cron_ct.refresh();
-									} ),
-						$.yote.util.col_edit( 'repeat_times', null, function( val, item ) {
-						    item.set( 'repeat_times', val );
-						    cron.update_entry( entry );
-						    cron_ct.refresh();
-						} )
-					    ],
-					    new_attachpoint : '#cron_rep_new_' + entry.id,
-					    new_column_titles : [
-						'interval (min)',
-						'infinite repeat',
-						'times'
-					    ],
-					    new_required_by_function : function( txts ) {
-						return $( txts[ 0 ] ).val().match( /\S/ ) != null && ( $( txts[ 1 ] ).is( ':checked' ) ||
-												       $( txts[ 2 ] ).val().match( /\S/ ) != null );
-					    },
-					    new_columns : [
-						'repeat_interval',
-						{
-						    field : 'repeat_infinite',
-						    render : function( cid ) {
-							return '<input type="checkbox" id="' + cid + '">';
-						    },
-						    on_create : function( item, id ) {
-							item.set( 'repeat_infinite', $( '#' + id ).val() );
-						    }
-						},
-						'repeat_times'
-					    ],
-					    after_new_function : function( newitem ) {
-						cron.update_entry( entry );
-						cron_ct.refresh();
-					    }
-					} );
-				    }
-				},
-				{
-				    render : function( entry ) {
-					return '<div id="cron_sched_' + entry.id + '"></div><div id="cron_sched_new_' + entry.id + '"></div>';
-				    },
-				    after_render : function( entry ) {
-					var ct = $.yote.util.control_table( {
-					    attachpoint : '#cron_sched_' + entry.id,
-					    show_count : false,
-					    plimit : 100,
-					    item : entry,
-					    list_name : 'scheduled_times',
-					    include_remove : true,
-					    column_headers : [ 'Scheduled Time' ],
-					    columns : [
-						{ render : function( txt ) { return $.yote.util.format_date( new Date( 60000 * txt ), "h:m Y-M-D" ) } }
-					    ],
-					    new_button : 'Add',
-					    new_attachpoint : '#cron_sched_new_' + entry.id,
-					    new_column_titles : [ 'when' ],
-					    remove_function : function( str, idx ) {
-						entry.list_delete( { name : 'scheduled_times', index : idx } );
-						cron.update_entry( entry );
-						cron_ct.refresh();
-					    },
-					    new_function : function() {
-						return $( '#cron_new_rep_at' ).val();
-					    },
-					    after_new_function : function( it ) {
-						cron.update_entry( entry );
-						cron_ct.refresh();
-					    },
-					    new_columns : [
-						{
-						    field : 'scheduled_time_' + $.yote.util.next_id(),
-						    on_create : function( str, id ) {
-							var do_when = new Date( $( '#' + id ).val() );
-							entry.add_to( { name : 'scheduled_times', items : [ do_when.valueOf()/60000 ] } );
-							cron.update_entry( entry );
-							cron_ct.refresh();
-						    },
-						    render : function( id ) {
-							return '<input type="datetime-local" id="' + id + '">';
-						    }
-						}
-					    ]
-					} );
-					//schedule
-				    }
-				},
-			      ],
-		    new_attachpoint : '#appnewpanel_cron',
-		    new_column_titles : [ 'Name', 'Script' ],
-		    new_columns : [
-			'name',
-			'script'
-		    ],
-		    after_new_function : function( newitem ) {
-			this.item.update_entry( newitem );
-		    }
-		} ); //cron_ct
-
-	    } //if is root
-	    else {
-		$( '#appwrapper' ).hide();
-		$( '#errpanel' ).show();
-		$( '#errpanel' ).empty().append( 'Must be logged in with a root account to view this page.' );
+		$( '#mainpanel' ).show();
 	    }
-	} //check_perms
+	    else {
+		$( '#errpanel' ).show();
+		$( '#mainpanel' ).hide();
+ 	    }
+	}
     });
     </script>
   </head>
@@ -434,26 +334,46 @@ if we are our experiences then we are both sides of them.
 	    <H1>Yote Admin Page (YAP)</H1>
 	  </DIV>
 	  <P>
-	    Welcome to the Yote Admin Page.
-	    Let\'s control the apps and users and cron.
+	    Welcome to the Yote Admin Page. This page manages
+            the users, apps and cron.
 	  </P>
 	</SECTION>
 
 	<DIV class="appwrapper">
 	  <DIV id="sidenav" class="sidenav">
+            <UL>
+	      <LI><BUTTON class="sidenav" disabled id="app_b">Apps</BUTTON></LI>
+	      <LI><BUTTON class="sidenav" disabled id="user_b">Users</BUTTON></LI>
+	      <LI><BUTTON class="sidenav" disabled id="cron_b">Cron</BUTTON></LI>
+            </UL>
 	  </DIV>
 
-	  <DIV id="apppanel_users" class="apppanel">
+	  <DIV id="user_b_div" class="control_table apppanel" is_admin="root"
+	       plimit="10" item="$root" container_name="_handles"
+	       paginate_type="hash" title="Logins"
+	       column_headers="['Handle','Email','Is Root']"
+	       columns="$user_cols" after_render="*function(){ $('#user_b').prop('disabled',false); }"
+	       >
 	  </DIV>
 
-	  <DIV id="apppanel_apps" class="apppanel">
+	  <DIV id="app_b_div" class="control_table apppanel" is_admin="root"
+	       plimit="10" item="$root" container_name="_apps" paginate_type="hash"
+	       title="Apps" 
+	       column_headers="['Name','Number of Users','Reset']"
+	       columns="$app_cols" after_render="*function(){ $('#app_b').prop('disabled',false); }"
+	       >
 	  </DIV>
 
-	  <DIV id="apppanel_cron" class="apppanel">
+	  <DIV id="cron_b_div" class="control_table apppanel" is_admin="root"
+	       plimit="10" item="$cron" container_name="entries"
+	       title="Crons" include_remove="true" 
+	       column_headers="['Name','Enabled','Notes','Script','Next Run','Repeat','Schedule']"
+	       columns="$cron_cols" after_render="*function(){ $('#cron_b').prop('disabled',false); }"
+               control_table_name="cron_ct"
+	       >
 	  </DIV>
 
-	  <DIV id="appnewpanel_cron" class="apppanel">
-	  </DIV>
+	  <DIV id="appnewpanel_cron" class="apppanel"></DIV>
 
 	  <DIV id="apppanel_pages" class="apppanel">
 	  </DIV>
@@ -461,47 +381,14 @@ if we are our experiences then we are both sides of them.
 	</DIV>
 
     </DIV>
-<!--
-	<SECTION id="bottom_half">
-	  <DIV class="page-header" id="bottom_header">
-	    <H1>News Control Panel</H1>
-	  </DIV>
 
-	  <DIV class="tabs">
+How about div tags that serve as templates? They could have a field for that so they are hidden
+Also a attr set on the tag if it has already been initialized...init tag
+<DIV class="template" id="cron_sched" show_count="false"
+     item="NEED HERE"
+     container_name : 'scheduled_times'
+</DIV>
 
-	    <DIV class="tab" id="sugbox">
-	      <input type="radio" id="sb-tab" name="tab-group-1" checked>
-	      <label for="sb-tab">Suggestion Box</label>
-	      <DIV class="content"><DIV id="suggestion_div"></DIV></DIV>
-	    </DIV>
-
-	    <DIV class="tab" id="motd">
-	      <input type="radio" id="motd-tab" name="tab-group-1">
-	      <label for="motd-tab">Edit the Message of the Day</label>
-	      <DIV class="content"><DIV id="motd_div"></DIV></DIV>
-	    </DIV>
-
-	    <DIV class="tab" id="newsblog">
-	      <input type="radio" id="newsblog-tab" name="tab-group-1">
-	      <label for="newsblog-tab">Edit News Blog</label>
-	      <DIV class="content"><DIV id="news_div"></DIV></DIV>
-	    </DIV>
-
-	    <DIV class="tab" id="chatadmin">
-	      <input type="radio" id="chatadmin-tab" name="tab-group-1">
-	      <label for="chatadmin-tab">Chat Admin</label>
-	      <DIV class="content"><DIV id="chat_div"></DIV></DIV>
-	    </DIV>
-
-	    <DIV class="tab" id="accts">
-	      <input type="radio" id="accts-tab" name="tab-group-1">
-	      <label for="accts-tab">Accounts Control Panel</label>
-              <DIV class="content"><DIV id="accounts_div"></DIV></DIV>
-	    </DIV>
-	  </DIV>
-        </SECTION>
-    </DIV>
--->
     <footer>
     </footer>
     <script src="/js/local.js"></script>

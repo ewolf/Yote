@@ -161,7 +161,7 @@ Alpha 1
  -* add option to yote_server to do a full reconfiguring of the server
  -* deadlock test cases
  -* cache clearning test cases
- ?x* refactor IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
+ ?x* refactor Mongo IO to include better back references. Object will have to take note. ( again, maybe not with the new paginate )
  -* Enable Cron
  -* Create program to reset root password
  -* Create program to reset whole config ( code for this is done as part of Yote.pm )
