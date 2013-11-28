@@ -691,6 +691,10 @@ Removes the key from the hash attached to this object specified by name.
 
 Hashes the item to the key to the hash attached to this object specified by name.
 
+=item hash_fetch( { name => '', key => '' } )
+
+Returns the item from the named hash by key.
+
 =item insert_at( { name => '', index => '', item => item } )
 
 Insert the item at the index to the list attached to this object specified by name.
