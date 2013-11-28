@@ -1,0 +1,40 @@
+
+
+ideas for templates
+
+given some template
+  <template>
+     <template item="needs some item">
+       <template item="needs some subitem. how do I cascade items from out to in?"></template>
+     </template>
+   </template>
+
+and a target destination
+
+   <div>
+     Title
+     <div item="item is just some data that is used by the templating engine as context" fill_with="template_name"
+        template_args="{key:value,key1:value1}"
+     >
+   </div>
+
+
+$.yote.util.template
+
+
+==idea 2==
+
+could just store the templates as strings and edit them. Could build in a template editor then, too. just give the 
+editor some test values and it will render with those values as you edit, as long as the change has valid html
+
+welcome_template( context ) : 
+
+  Hello $user.name, How are you? I see your email is $user.email
+      You have the following messages :
+           $$list_template( { item in user.email_list } )
+
+
+
+list_template( item ) :
+   item.foo | item.bar | $$baz_templte( { item } )
+  
