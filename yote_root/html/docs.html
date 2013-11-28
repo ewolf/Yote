@@ -20,9 +20,6 @@
 	make_menus( '#top_nav' );
 
 	$.yote.init();
-	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	var count = page_counter.increment( 'Document Page' );
-	$('#counter').empty().append( count );
     });
     </script>
   </head>
@@ -235,7 +232,6 @@ var login = $.yote.login( handle, password, email, passhandler, failhandler );
       </SECTION>
     
     <footer>
-      This page has been viewed <span id="counter"></span> times.
     </footer>
     
     <script src="/js/local.js"></script>

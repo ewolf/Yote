@@ -37,9 +37,3 @@ function attach_login( args ) {
     
 } //attach_login
 
-function page_counter( page ) {
-    var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-    page_counter.hash_insert( { name : page, 
-				key  : page, 
-				val  : (page_counter.hash_fetch( { name : page, key : page } )||0) + 1 } );
-} //page_counter

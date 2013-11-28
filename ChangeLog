@@ -1,5 +1,9 @@
 2013-11-27  Eric Wolf  <coyocanid@gmail.com>
 	* VERSION 0.1012
+	* removed Yote::Util::Counter. It doesn't fit in with the new Yote, which needs less classes for more bang.
+	
+2013-11-27  Eric Wolf  <coyocanid@gmail.com>
+	* VERSION 0.1012
 	* $.yote.util.init_ui method has been created. This will cause divs to become control tables, with attributes that mirror control table init arguments. These arguments can take functions ( for example columns="!colfunction" ) or json objecs ( column_names="['Foo','Bar','Baz']" ). Should a column be a string proceded with a star, it will become editable ( like columns=['foo','*bar','baz'] ).
 
 	

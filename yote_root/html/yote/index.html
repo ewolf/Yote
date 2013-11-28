@@ -80,21 +80,6 @@ $().ready( function() {
 	} );
     }
 
-    function to_stats() {
-	$.yote.util.make_paginatehash_table( {
-	    obj : $.yote.fetch_app('Yote::Util::Counter'),
-	    list_name : '_counts',
-	    size : 10,
-	    col_names : [ 'Page', 'Hits' ],
-	    title : '<h3>Page Views</h3>',
-	    col_functions : [ 
-		function( k, v ) { return k },
-		function( k, v ) { return v }
-	    ],
-	    attach_point : '#main_panel_div'
-	} );	
-    } //to_stats
-
     function on_login( login, acct ) {
 	make_side_menu( [ 'Accounts', 'Installed Apps', 'Edit News', 'Edit To Do', 'Stats' ] );
 	var news = cms.content( { path : 'news' } );

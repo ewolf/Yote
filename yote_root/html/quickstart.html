@@ -394,14 +394,6 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
 	    }
 	];
 
-	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	page_counter.increment( 'Quickstart Page',
-				function( count ) {
-				    $('#counter').empty().append( count );
-				},
-				function( err ) { },
-				1 );
-
 	var buf = '';
 	for( var i=0; i < lessons.length; i++ ) {
 	    var lesson = lessons[ i ];
@@ -500,7 +492,6 @@ my $from_ip =       $env-&gt;{ REMOTE_ADDR };\n\
       </DIV>
     </DIV>
     <footer>
-      This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
 </body>

@@ -22,14 +22,6 @@
 
 	make_menus( '#top_nav' );
 
-	var page_counter = $.yote.fetch_app('Yote::Util::Counter');
-	page_counter.increment( 'ToDo Page',
-				function( count ) {
-				    $('#counter').empty().append( count );
-				},
-				function( err ) {},
-				1
-			      );
 	attach_login( {
 	    attachpoint         : '#logged_in_status',
 	    message_attachpoint : '#msg_div'
@@ -68,7 +60,6 @@
     </SECTION>
 
     <footer>
-      This page has been viewed <span id="counter"></span> times.
     </footer>
     <script src="/js/local.js"></script>
   </body>

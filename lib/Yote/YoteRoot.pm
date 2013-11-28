@@ -36,6 +36,7 @@ sub _init {
     $self->set___ALLOWS( {} );
     $self->set___ALLOWS_REV( {} );
     $self->set___DIRTY( {} );
+    $self->set_page_counter( new Yote::Obj() );
 } #_init
 
 # ------------------------------------------------------------------------------------------
