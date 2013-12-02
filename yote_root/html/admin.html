@@ -290,7 +290,6 @@ if we are our experiences then we are both sides of them.
 
 	$( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
 
-	//var madyote_app = $.yote.fetch_app('Yote::Util::MadYote');
 	function check_perms() {
 	    if( $.yote.is_root() ) {
 		$( '#errpanel' ).hide();
@@ -302,7 +301,6 @@ if we are our experiences then we are both sides of them.
 	    else {
 		$( '#errpanel' ).show();
 		$( '#mainpanel' ).hide();
-		$.yote.util.init_ui();
  	    }
 	}
     });
@@ -386,15 +384,7 @@ if we are our experiences then we are both sides of them.
 
     </DIV>
 
-How about div tags that serve as templates? They could have a field for that so they are hidden
-Also a attr set on the tag if it has already been initialized...init tag
-<DIV class="template" id="cron_sched" show_count="false"
-     item="NEED HERE"
-     container_name : 'scheduled_times'
-</DIV>
-
     <footer>
     </footer>
-    <script src="/js/local.js"></script>
   </body>
 </html>

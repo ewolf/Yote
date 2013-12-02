@@ -131,7 +131,7 @@ $.yote = {
 			       function(res) {
 				   $.yote.token = res.get( 't' ) || 0;
 				   $.yote.login_obj = res.get( 'l' );
-				   $.cookie( 'yoken', $.yote.token );
+				   $.cookie( 'yoken', $.yote.token, { path : '/' } );
 				   if( typeof passhandler === 'function' ) {
 				       passhandler(res);
 				   }
@@ -195,7 +195,7 @@ $.yote = {
 			function(res) {
 			    $.yote.token = res.get( 't' ) || 0;
 			    $.yote.login_obj = res.get( 'l' );
-			    $.cookie( 'yoken', $.yote.token );
+			    $.cookie( 'yoken', $.yote.token, { path : '/' } );
 			    if( typeof passhandler === 'function' ) {
 				passhandler(res);
 			    }
@@ -213,7 +213,7 @@ $.yote = {
 	$.yote.fetch_root().logout();
 	$.yote.login_obj = undefined;
 	$.yote.token = 0;
-	$.cookie( 'yoken', '' );
+	$.cookie( 'yoken', '', { path : '/' } );
     }, //logout
 
     /* general functions */
