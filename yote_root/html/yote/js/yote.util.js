@@ -735,6 +735,11 @@ $.yote.util = {
 	};
     }, //cols_edit
 
+    reset_els:function(els) {
+	for( var i in  els ) {
+	    $( els[ i ] ).attr( 'has_init', 'false' );
+	}
+    }, //reset_els
 
     init_el:function(el) {
 	var ct_id = el.attr( 'id' );
@@ -742,15 +747,17 @@ $.yote.util = {
 	var args = { attachpoint : '#' + ct_id };
 
 
-	if( el.attr( 'is_admin' ) == 'root' && ! $.yote.is_root() ) {
+	if( el.attr( 'requires_root' ) == 'true' && ! $.yote.is_root() ) {
 	    el.empty();
 	    return;
 	}
 
 	var fields = [
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin',
+	    'plimit',
 	    'suppress_table', 'title', 'description', 'prefix_classname',
 	    'include_remove', 'remove_button_text', 'remove_column_text',
+
 	    'new_attachpoint',
 	    'new_button', 'new_title', 'new_description',
 
@@ -806,6 +813,7 @@ $.yote.util = {
 	    if( el.attr( 'has_init' ) == 'true' ) {
 		return;
 	    }
+
 	    el.attr( 'has_init', 'true' );
 	    $.yote.util.init_el(el);
 	    may_need_init = true;

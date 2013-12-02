@@ -39,24 +39,19 @@
 
 */
 	  $().ready(function() {
-//	      console.log( ['EXTRA',$('#extra'),$('#extra').attr('foo')] );return;
-var f = eval(function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) });
-//alert( f );
-//return;
+
 	      $.yote.init();
 
-	      
-
-	      var yote_app = $.yote.fetch_app( 'MadYote' );
-	      var root = $.yote.fetch_root();
-	      
-	      $.yote.util.register_items( { 
-		  box  : yote_app.get_suggestion_box(),
-		  chat : yote_app.get_chat(),
-	      } );
-
-
 	      function setup() {
+		  var yote_app = $.yote.fetch_app( 'MadYote' );
+		  var root = $.yote.fetch_root();
+		  var box = yote_app.get_suggestion_box();
+		  $.yote.util.register_items( { 
+		      box  : box,
+		      chat : yote_app.get_chat(),
+		  } );
+
+		  $.yote.util.reset_els( [ '#chat_box', '#suggestion_box_admin' ] );
 		  $.yote.util.init_ui();
 
 		  //url params to get current page
@@ -85,6 +80,7 @@ var f = eval(function(item){ item.set('created_on',Math.round( new Date().getTim
 			  var sug_obj = $.yote.fetch_root().new_obj();
 			  sug_obj.set( 'suggestion', sug );
 			  box.add_to( { name : 'suggestions', items : [ sug_obj ] } );
+			  $( '#suggestion' ).val( '' );
 			  $( '#suggestion_msg' ).empty().append( 'Added suggestion : ' + sug );
 		      } );
 		  }
@@ -95,9 +91,19 @@ var f = eval(function(item){ item.set('created_on',Math.round( new Date().getTim
 		  attachpoint         : '#logged_in_status',
 		  message_attachpoint : '#msg_div',
 		  after_login         : function() {
+		      if( $.yote.is_root() ) {
+			  $( '#suggestion_box' ).hide();
+			  $( '#suggestion_box_admin' ).show();
+		      }
+		      else {
+			  $( '#suggestion_box' ).show1();
+			  $( '#suggestion_box_admin' ).hide();
+		      }
 		      setup();
 		  },
 		  after_logout        : function() {
+		      $( '#suggestion_box_admin' ).hide();
+		      $( '#suggestion_box' ).show();
 		      setup();
 		  }
 	      } );
@@ -124,15 +130,14 @@ var f = eval(function(item){ item.set('created_on',Math.round( new Date().getTim
       </DIV>
       <DIV class="chatbar">
 	<DIV id="suggestion_box"></div>
-	<DIV class="control_table" id="suggestion_box_admin" is_admin="true"
+	<DIV class="control_table" id="suggestion_box_admin" is_admin="true" plimit="14" requires_root="true"
 	     item="$box" container_name="suggestions", include_remove="true", column_headers="['Suggestion','Notes']"
 	     columns="['suggestion','*notes']" ></div>
-	<div id="suggestion_box">
 	</div>
 	<HR>
         <h3>Chat</h3>
         <div id="chat_mgs"></div>
-	<div class="control_table" id="chat_box" item="$chat"
+	<div class="control_table" id="chat_box" item="$chat" plimit="15"
 	     container_name="messages" show_count="false" include_remove="*$.yote.is_root()"
 	     columns="[function(item,is_prep){if(is_prep){return item.get_message()+'['+item.get_name()+'] ('+new Date(1000*item.get_created_on()).toLocaleString()+')'}}]"
 	     after_new_function="*function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) }"

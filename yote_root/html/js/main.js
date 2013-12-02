@@ -32,7 +32,6 @@ function attach_login( args ) {
     }
     else {
 	lc.needs_login();
-	after_logout_f();
     } //not logged in
     
 } //attach_login
