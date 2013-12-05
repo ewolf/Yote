@@ -2,8 +2,8 @@
 Currently on my plate :
   * yote.js object handle objects
   * update madyote pages
-  * check logout link on mad yote index page
-  * madyote edit program - html in objects accessed from WebAppServer
+  * limited html widget that disallows invalid html and script.
+  * text only editor
   * sendmail setup
   * reset password and confirm account links
 ________________________________________________

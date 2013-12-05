@@ -1,3 +1,8 @@
+2013-12-05  Eric Wolf  <coyocanid@gamil.com>
+
+	* VERSION 0.1014
+	* Changes to the javascript widgets. Added the ability for yote javascript to look for control_table and yote_panel classed items and produce a control table or yote panel in that control. A yote panel is an editable panel, but has the property that it can be in an edit mode for root but display mode otherwise.
+
 2013-11-27  Eric Wolf  <coyocanid@gmail.com>
 	* VERSION 0.1012
 	* removed Yote::Util::Counter. It doesn't fit in with the new Yote, which needs less classes for more bang.

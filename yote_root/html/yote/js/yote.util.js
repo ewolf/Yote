@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.024
+ * Version 0.025
  */
 $.yote.util = {
     ids:0,
@@ -144,7 +144,11 @@ $.yote.util = {
 		var val = item.get( field ) || '';
 		// do filtering here
 		//val = val.replace( /[\n\r]/g, '<BR>' );
-		$( '#' + me.div_id ).empty().append( val );
+		if( $( '#' + me.div_id ).attr( 'as_html' ) == 'true' ) {
+		    $( '#' + me.div_id ).empty().append( val );
+		} else {
+		    $( '#' + me.div_id ).empty().text( val );
+		}
 		me.go_normal();
 		$.yote.util.implement_edit( me.item, me.field, me.on_edit_function );
 	    }, //implement_edit.stop_edit
@@ -208,20 +212,27 @@ $.yote.util = {
 	    init : function() {
 		var me = editor;
 		$( '#' + me.div_id ).mouseleave( function() { me.go_normal() } ).mouseenter( function() { me.show_edit() } );
+		var val = item.get( field ) || '';
+		if( $( '#' + me.div_id ).attr( 'as_html' ) == 'true' ) {
+		    $( '#' + me.div_id ).empty().append( val );
+		} else {
+		    $( '#' + me.div_id ).empty().text( val );
+		}
 	    }
 	}; //editor
 	editor.init();
 	return editor;
     }, //implement_edit
 
-    prep_edit:function( item, fld, extra, as_text_area ) {
-	var val = item.get( fld ) || '';
+    prep_edit:function( item, fld, extra, as_html ) {
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
-	val = val.replace( /[\n\r]/g, '<BR>' );
-	var txt = as_text_area ? '<div CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"><textarea>' + val + '</textarea></div>' :
-	    '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '">' + val + '</div>';
-	//maybe something here to make sure the val does not contain certain tags, and contains valid tags
+	var txt;
+	if( as_html ) {
+	    txt = '<DIV CLASS="input_div ' + extr.join(' ') + '" as_html="true" id="' + div_id + '"></div>';
+	} else {
+	    txt = '<DIV CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"></div>';
+	}
 	return txt;
     }, //prep_edit
 
@@ -229,7 +240,6 @@ $.yote.util = {
 	var val = item.get( fld ) || '';
 	var extr = extra || [];
 	var div_id   = 'ed_' + item.id + '_' + fld;
-//	val = val.replace( /[\n\r]/g, '<BR>' );
 	$( anchor ).empty().append( '<textarea CLASS="input_div ' + extr.join(' ') + '" id="' + div_id + '"></textarea>' );
 	$( '#' + div_id ).val( val );
 	$.yote.util.implement_edit( item, fld ).go_edit();
@@ -753,6 +763,7 @@ $.yote.util = {
 	}
 
 	var fields = [
+	    'edit_requires','field',
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin',
 	    'plimit',
 	    'suppress_table', 'title', 'description', 'prefix_classname',
@@ -797,16 +808,21 @@ $.yote.util = {
 	    } //if a string
 	} //each field
 
-	var ct = $.yote.util.control_table( args );
-	if( args[ 'control_table_name' ] ) {
-	    window[ args[ 'control_table_name' ] ] = ct;
+	if( el.hasClass( 'control_table' ) ) {
+	    var ct = $.yote.util.control_table( args );
+	    if( args[ 'control_table_name' ] ) {
+		window[ args[ 'control_table_name' ] ] = ct;
+	    }
+	}
+	else if( el.hasClass( 'yote_panel' ) ) {
+	    $.yote.util.yote_panel( args );
 	}
 	return;
     }, //init_el
 
     init_ui:function() {
 	var may_need_init = false;
-	$( '.control_table' ).each( function() {
+	$( '.control_table,.yote_panel' ).each( function() {
 	    var el = $( this );
 	    // init can be called multiple times, but only
 	    // inits on the first time
@@ -825,6 +841,35 @@ $.yote.util = {
 	    $.yote.util.init_ui();
 	}
     }, //init_ui
+
+    yote_panel:function( args ) {
+	var item = args[ 'item' ];
+	var field = args[ 'field' ];
+	var use_html = false;
+	if( field.charAt(0) == '#' ) {
+	    use_html = true;
+	    field = field.substring(1);
+	}
+	if( ( args[ 'edit_requires' ] == 'root' && $.yote.is_root() ) ) {
+	    $( args[ 'attachpoint' ] ).empty().append(
+		$.yote.util.prep_edit( item, field, '', use_html )
+	    );
+	    $.yote.util.implement_edit( item, field );
+	}
+	else {
+	    if( use_html ) {
+		$( args[ 'attachpoint' ] ).empty().append(
+		    item.get( field ) 
+		);
+	    }
+	    else {
+		$( args[ 'attachpoint' ] ).text(
+		    item.get( field ) 
+		);
+	    }
+	}
+    },
+
 
     // this tool is to create a table where the rows correspond to a list in a target
     // objects and the end user can add or remove the rows, or manipulate them

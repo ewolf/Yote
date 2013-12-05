@@ -15,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1013';
+$VERSION = '0.1014';
 
 use Carp;
 use File::Path;

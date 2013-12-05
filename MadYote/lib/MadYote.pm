@@ -12,6 +12,7 @@ sub _init {
     my $self = shift;
     $self->set_chat( new Yote::Obj() );
     $self->set_suggestion_box( new Yote::Obj() );
+    $self->set_yote_blog( new Yote::RootObj() );
 }
 
 1;
