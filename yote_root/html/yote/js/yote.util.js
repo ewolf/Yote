@@ -9,6 +9,20 @@
 $.yote.util = {
     ids:0,
 
+    url_params:function() {
+	if( window.location.href.indexOf('?') == -1 ) {
+	    return {};
+	}
+        var parts  = window.location.href.split('?');
+        var params = parts[1].split('&');
+        var ret = {};
+        for( var i=0; i<params.length; ++i ) {
+            var pair = params[i].split('=');
+	    ret[ pair[0] ] = pair[1];
+        }
+	return ret;
+    }, //url_params
+
     format_date: function( date, format ) {
 	if( format ) {
 	    var buf = '';

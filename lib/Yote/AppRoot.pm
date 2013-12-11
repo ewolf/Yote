@@ -39,23 +39,33 @@ sub create_login {
     }
 
     my $root = Yote::YoteRoot::fetch_root();
-    my $ret = $root->_create_login( $handle, $email, $password, $env );
+    my $login = $root->_create_login( $handle, $email, $password, $env );
 
     if( $self->get_requires_email_validation() ) {
-	Yote::IO::Mailer::send_email( { 
-	    to      => $email,
-	    from    => $self->get_login_email_from('yote@'.`hostname`),
-	    subject => $self->get_login_subject('Validate your Account'),
-	    msg     => $self->get_login_message(new Yote::SimpleTemplate({text=>"Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}"}))->fill( {
-		handle => $handle,
-		email  => $email,
-		app    => $self->get_app_name( ref( $self ) ),
-		link   => "FO",
-																					      } ),
-				      } );
-    }
+	my $rand_token = $root->_register_login_with_validation_token( $login );
 
-    return $ret;
+	Yote::IO::Mailer::send_email( 
+	    {
+		to      => $email,
+		from    => $self->get_login_email_from( 'yote@' . $self->get_host_name( `hostname` ) ),
+		subject => $self->get_login_subject('Validate your Account'),
+		msg     => $self->get_login_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}))->fill( 
+		    {
+			handle => $handle,
+			email  => $email,
+			app    => $self->get_app_name( ref( $self ) ),
+			link   => $self->get_validation_link_template(new Yote::SimpleTemplate(
+									  {
+									      text=>'${hosturl}/val.html?t=${t}'}))->fill( 
+			    {
+				t       => $rand_token,
+				hosturl => $self->get_host_url('http://' . $self->get_host_name( `hostname` ) ),
+			    } )
+		    } )
+	    } );
+    } #requires validation
+
+    return $login;
 } #create_login
 
 #
@@ -95,8 +105,8 @@ sub recover_password {
 				 subject => 'Password Recovery',
 				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
 			       } );
-	    
-		
+
+
         }
 	else {
             die "password recovery attempt failed";
@@ -122,6 +132,20 @@ sub token_login {
     return 0;
 } #token_login
 
+sub validate {
+    my( $self, $token ) = @_;
+    my $root = Yote::YoteRoot::fetch_root();
+    return $root->_validate( $token );
+} #validate
+
+# ------------------------------------------------------------------------------------------
+#      * PRIVATE METHODS *
+# ------------------------------------------------------------------------------------------
+
+###################################
+# These methods may be overridden #
+###################################
+
 #
 # Intializes the account object passed in.
 #
@@ -133,7 +157,6 @@ sub _init_account {}
 sub _new_account {
     return new Yote::Account();
 }
-
 
 
 #######################################################
@@ -155,7 +178,7 @@ sub __get_account {
 	$self->_init_account( $acct );
     }
     die "Access Error" if $acct->get__is_disabled();
-    
+
     return $acct;
 
 } #__get_account
@@ -172,7 +195,7 @@ Yote::AppRoot - Application Server Base Objects
 
 This is the root class for all Yote Apps. Extend it to create an App Object.
 
-Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class. 
+Each Web Application has a single container object as the entry point to that object which is an instance of the Yote::AppRoot class.
 A Yote::AppRoot extends Yote::Obj and provides some class methods and the following stub methods.
 
 
@@ -192,6 +215,10 @@ Returns the currently logged in account using this app.
 
 Returns a token that is used by the client and server to sync up data for the case of a user not being logged in.
 
+=item validate( rand_token )
+
+Validates and returns the login specified by the random token.
+
 =back
 
 =head1 OVERRIDABLE METHODS
@@ -200,7 +227,7 @@ Returns a token that is used by the client and server to sync up data for the ca
 
 =item _init_account( $acct )
 
-This is called whenever a new account is created for this app. This can be overridden to perform any initialzation on the 
+This is called whenever a new account is created for this app. This can be overridden to perform any initialzation on the
 account.
 
 =item _new_account()

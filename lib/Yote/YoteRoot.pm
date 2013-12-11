@@ -32,6 +32,7 @@ sub _init {
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
+    $self->set__validations( {} );
     $self->set___ALLOWS( {} );
     $self->set___ALLOWS_REV( {} );
     $self->set___DIRTY( {} );
@@ -413,6 +414,37 @@ sub _create_token {
     my $token = int( rand 9 x 10 );
     $login->set__token( $token."x$ip" );
     return $login->{ID}.'-'.$token;
+}
+
+#
+# This takes a login object and
+# generates a login token, associates it with 
+# the login and then returns it.
+#
+sub _register_login_with_validation_token {
+    my( $self, $login ) = @_;
+
+    my $validations = $self->get__validations();
+    my $rand_token = int( rand 9 x 10 );
+    while( $validations->{ $rand_token } ) {
+	$rand_token = int( rand 9 x 10 );
+    }
+
+    $validations->{ $rand_token } = $login;
+    $login->set__validation_token( $rand_token );
+
+    return $login;
+    
+} #_register_login_with_validation_token
+
+sub _validate {
+    my( $self, $token ) = @_;
+    my $validations = $self->get__validations();
+    my $login = $validations->{ $token };
+    if( $login ) {
+	$login->set__is_email_validated( 1 );
+    }
+    return $login;
 }
 
 1;
