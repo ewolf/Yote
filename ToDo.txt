@@ -1,5 +1,10 @@
+The stack :
+  Email validation.
+  It should the the apps that create logins rather than the root app. Or not. Depends. However, the app must be responsible for
+   generating the email.
 
 Currently on my plate :
+  * think about validation, login vs account.  would you have the case where one login would be valid in one app but not an other?  Of course, the app itself could override the token_login method to die if the desired configuration is not met.
   * yote.js object handle objects
   * update madyote pages
   * limited html widget that disallows invalid html and script.

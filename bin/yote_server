@@ -10,6 +10,10 @@ use Yote;
 use strict;
 use warnings;
 
+use vars qw($VERSION);
+
+$VERSION = '0.0002';
+
 
 my $args = Yote::get_args();
 my $config = $args->{ config };
@@ -17,9 +21,6 @@ my $cmd    = $args->{ command };
 if( $config->{ profile } ) {
     require Yote::PerfAspect;
 }
-
-my $yote_root_dir = $config->{ yote_root };
-
 
 eval {
     $SIG{ __DIE__ } = sub { 

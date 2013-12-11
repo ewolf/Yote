@@ -593,23 +593,26 @@ $.yote.util = {
 		    texts  : [ '#username', '#em', '#pw' ],
 		    required : [ '#username', '#pw' ],
 		    action : function() {
-			$.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
-					     function( msg ) {
-						 if( thislc.access_test( thislc.app.account() ) ) {
-						     thislc.msg_function( msg );
-						     if( typeof thislc.on_login_fun === 'function' )
-							 thislc.on_login_fun();
-						     if( typeof thislc.after_login_fun === 'function' )
-							 thislc.after_login_fun();
-						 } else if( thislc.logged_in_fail_msg ) {
-						     thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
-						     $.yote.logout();
-						 }
-					     },
-					     function( err ) {
-						 thislc.msg_function( err, 'error' );
-					     }  );
-		    }
+			var login = $.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
+							 function( msg ) {
+							     if( thislc.access_test( thislc.app.account() ) ) {
+								 thislc.msg_function( msg );
+								 if( typeof thislc.on_login_fun === 'function' )
+								     thislc.on_login_fun();
+								 if( typeof thislc.after_login_fun === 'function' )
+								     thislc.after_login_fun();
+							     } else if( thislc.logged_in_fail_msg ) {
+								 thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+								 $.yote.logout();
+							     }
+							 },
+							 function( err ) {
+							     thislc.msg_function( err, 'error' );
+							 }  );
+			if( thislc.app ) {
+			    thislc.app.register_login( login ); // the app may send out an email validation requirement.
+			}
+		    } //action
 		} );
 
 	    },
@@ -669,6 +672,10 @@ $.yote.util = {
 		$( '#create_account_b' ).click( function() { thislc.make_create_login(); } );
 	    } //make_login
 	};
+	if( ! lc.access_test( lc.app.account() ) ) {
+	    lc.make_login();
+	}
+ 
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
 	if( lc.access_test( lc.app.account() ) ) {
@@ -690,7 +697,7 @@ $.yote.util = {
 	return lc;
     }, //login_control
 
-    check_edit:function( fld, checked_fun, unchecked_fun, extra_classes, on_edit_f ) {
+    check_edit:function( fld, checked_fun, unchecked_fun, extra_classes ) {
 	return function( item, is_prep ) {
 	    var div_id = 'ed_' + item.id + '_' + fld;
 	    if( is_prep ) {
@@ -808,13 +815,13 @@ $.yote.util = {
 	    } //if a string
 	} //each field
 
-	if( el.hasClass( 'control_table' ) ) {
+	if( el.hasClass( 'control_table' ) && args['item']) {
 	    var ct = $.yote.util.control_table( args );
 	    if( args[ 'control_table_name' ] ) {
 		window[ args[ 'control_table_name' ] ] = ct;
 	    }
 	}
-	else if( el.hasClass( 'yote_panel' ) ) {
+	else if( el.hasClass( 'yote_panel' ) && args['item'] ) {
 	    $.yote.util.yote_panel( args );
 	}
 	return;
@@ -845,27 +852,29 @@ $.yote.util = {
     yote_panel:function( args ) {
 	var item = args[ 'item' ];
 	var field = args[ 'field' ];
-	var use_html = false;
-	if( field.charAt(0) == '#' ) {
-	    use_html = true;
-	    field = field.substring(1);
-	}
-	if( ( args[ 'edit_requires' ] == 'root' && $.yote.is_root() ) ) {
-	    $( args[ 'attachpoint' ] ).empty().append(
-		$.yote.util.prep_edit( item, field, '', use_html )
-	    );
-	    $.yote.util.implement_edit( item, field );
-	}
-	else {
-	    if( use_html ) {
+	if( item && field ) {
+	    var use_html = false;
+	    if( field.charAt(0) == '#' ) {
+		use_html = true;
+		field = field.substring(1);
+	    }
+	    if( ( args[ 'edit_requires' ] == 'root' && $.yote.is_root() ) ) {
 		$( args[ 'attachpoint' ] ).empty().append(
-		    item.get( field ) 
+		    $.yote.util.prep_edit( item, field, '', use_html )
 		);
+		$.yote.util.implement_edit( item, field );
 	    }
 	    else {
-		$( args[ 'attachpoint' ] ).text(
-		    item.get( field ) 
-		);
+		if( use_html ) {
+		    $( args[ 'attachpoint' ] ).empty().append(
+			item.get( field ) 
+		    );
+		}
+		else {
+		    $( args[ 'attachpoint' ] ).text(
+			item.get( field ) 
+		    );
+		}
 	    }
 	}
     },

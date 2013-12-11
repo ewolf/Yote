@@ -58,6 +58,13 @@ sub get_args {
 	P  => 'password',
 	p  => 'port',
 	R  => 'reset_password',
+	A  => 'smtp_auth',
+	D  => 'smtp_authdomain',
+	N  => 'smtp_auth_encoded',
+	I  => 'smtp_authid',
+	w  => 'smtp_authpwd',
+	T  => 'smtp_TLS_allowed',
+	q  => 'smtp_TLS_required',
 	s  => 'store',
 	u  => 'user',
 	r  => 'yote_root',
@@ -72,7 +79,7 @@ sub get_args {
 	);
     my %argnames = map { $_ => 1 } values %argmap;
 
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads/;
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads smtp_auth/;
 
     # ---------  run variables  -----------------
 
@@ -322,6 +329,29 @@ sub _get_configuration {
 	    $newconfig{ password } = _ask( "MysqlDB user acccount name", undef, $current_config->{ password } );
 	}
     }
+
+    $newconfig{ smtp_smtp }  = _ask( "SMPT Host", undef, $current_config->{ smtp_smtp } || 'localhost' );
+    $newconfig{ smtp_port }  = _ask( "SMPT Port", undef, $current_config->{ smtp_port } || 25 );
+    $newconfig{ smtp_auth }  = _ask( "SMPT Authentication Method", ['LOGIN','PLAIN','CRAM-MD5','NTLM'], $current_config->{ smtp_auth } || 'PLAIN' );
+    if( $newconfig{ smtp_auth } eq 'NTLM' ) {
+	$newconfig{ smtp_authdomain }  = _ask( "NTML Auth Domain", $current_config->{ smtp_authdomain } );
+    }
+    elsif( $newconfig{ smtp_auth } eq 'LOGIN' ) {
+	$newconfig{ smtp_auth_encoded }  = _ask( "Should the LOGIN protocoll assume authid and authpwd are already base64 encoded?", ['Yes','No' ],  $current_config->{ smtp_auth_encoded } ? 'Yes' : 'No' );
+	$newconfig{ smtp_auth_encoded } = $newconfig{ smtp_auth_encoded } ? 1 : 0;
+    }
+    if( $newconfig{ smtp_auth } eq 'PLAIN' ) {
+	$newconfig{ smtp_auth } = '';
+    }
+    else {
+	$newconfig{ smtp_authid }  = _ask( "Auth ID", undef, $current_config->{ smtp_authid } );
+	$newconfig{ smtp_authpwd } = _ask( "Auth Password", undef, $current_config->{ smtp_authpwd } );
+    }
+    $newconfig{ smtp_TLS_allowed } = _ask( "Should TLS ( SSL encrypted connection ) be used ", ['Yes','No'], $current_config->{ smtp_TLS_allowed } ? 'Yes' : 'No' );
+    $newconfig{ smtp_TLS_allowed } = $newconfig{ smtp_TLS_allowed } eq 'Yes' ? 1 : 0;
+    $newconfig{ smtp_TLS_required } = _ask( "Must TLS ( SSL encrypted connection ) be used", ['Yes','No'], $current_config->{ smtp_TLS_required } ? 'Yes' : 'No' );
+    $newconfig{ smtp_TLS_required } = $newconfig{ smtp_TLS_required } eq 'Yes' ? 1 : 0;
+
 
     $newconfig{ port } = _ask( "Port to run yote server on?",     undef, $current_config->{ port }    || 80 );
     $newconfig{ threads } = _ask( "Number of server processes :", undef, $current_config->{ threads } || 4 );

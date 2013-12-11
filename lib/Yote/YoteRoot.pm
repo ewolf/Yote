@@ -14,7 +14,6 @@ use Yote::RootObj;
 use Yote::UserObj;
 
 use Email::Valid;
-use Mail::Sender;
 
 use base 'Yote::AppRoot';
 
@@ -43,59 +42,6 @@ sub _init {
 # ------------------------------------------------------------------------------------------
 
 
-#
-# Creates a login with credentials provided
-#   (client side) use : create_login({h:'handle',e:'email',p:'password'});
-#             returns : { l => login object, t => token }
-#
-sub create_login {
-    my( $self, $args, $dummy, $env ) = @_;
-
-    #
-    # validate login args. Needs handle (,email at some point)
-    #
-    my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
-    if( $handle ) {
-	my $lc_handle = lc( $handle );
-        if( $HANDLE_CACHE->{$lc_handle} || $self->_hash_has_key( '_handles', $lc_handle ) ) {
-            die "handle already taken";
-        }
-        if( $email ) {
-            if( $EMAIL_CACHE->{$email} || $self->_hash_has_key( '_emails', $email ) ) {
-                die "email already taken";
-            }
-            unless( Email::Valid->address( $email ) ) {
-                die "invalid email '$email'";
-            }
-        }
-        unless( $password ) {
-            die "password required";
-        }
-
-	$EMAIL_CACHE->{$email}      = 1 if $email;
-	$HANDLE_CACHE->{$lc_handle} = 1;
-
-        my $new_login = new Yote::Login();
-
-	$new_login->set__is_root( 0 );
-        $new_login->set_handle( $handle );
-        $new_login->set_email( $email );
-	my $ip = $env->{REMOTE_ADDR};
-        $new_login->set__created_ip( $ip );
-
-        $new_login->set__time_created( time() );
-
-        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
-
-	$self->_hash_insert( '_emails', $email, $new_login ) if $email;
-	$self->_hash_insert( '_handles', $lc_handle, $new_login );
-	
-        return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
-    } #if handle
-
-    die "no handle given";
-
-} #create_login
 
 # returns cron object for root
 sub cron {
@@ -407,6 +353,56 @@ sub _check_root {
 
     return $root_login;
 } #_check_root
+
+#
+# Creates a login with credentials provided
+#   (client side) use : create_login({h:'handle',e:'email',p:'password'});
+#             returns : { l => login object, t => token }
+#
+sub _create_login {
+    my( $self, $handle, $email, $password, $env ) = @_;
+
+    if( $handle ) {
+	my $lc_handle = lc( $handle );
+        if( $HANDLE_CACHE->{$lc_handle} || $self->_hash_has_key( '_handles', $lc_handle ) ) {
+            die "handle already taken";
+        }
+        if( $email ) {
+            if( $EMAIL_CACHE->{$email} || $self->_hash_has_key( '_emails', $email ) ) {
+                die "email already taken";
+            }
+            unless( Email::Valid->address( $email ) ) {
+                die "invalid email '$email'";
+            }
+        }
+        unless( $password ) {
+            die "password required";
+        }
+
+	$EMAIL_CACHE->{$email}      = 1 if $email;
+	$HANDLE_CACHE->{$lc_handle} = 1;
+
+        my $new_login = new Yote::Login();
+
+	$new_login->set__is_root( 0 );
+        $new_login->set_handle( $handle );
+        $new_login->set_email( $email );
+	my $ip = $env->{REMOTE_ADDR};
+        $new_login->set__created_ip( $ip );
+
+        $new_login->set__time_created( time() );
+
+        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
+
+	$self->_hash_insert( '_emails', $email, $new_login ) if $email;
+	$self->_hash_insert( '_handles', $lc_handle, $new_login );
+	
+        return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
+    } #if handle
+
+    die "no handle given";
+
+} #_create_login
 
 
 #

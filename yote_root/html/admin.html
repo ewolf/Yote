@@ -79,7 +79,8 @@ if we are our experiences then we are both sides of them.
 	$( '#mainpanel' ).hide();
 	$.yote.init();
 	var root = $.yote.fetch_root();
-
+x = $.yote.fetch_app( 'Yote::Test::T' );
+x.foo();
 	var cron;
 
 	function register_items() {
@@ -88,6 +89,7 @@ if we are our experiences then we are both sides of them.
 		cron     : cron,
 		app_cols : [ 'x', //due to hash key..have to find a better solution TODO
 			     { render:function(app){ return app.count('_account_roots'); } },
+			     $.yote.util.check_edit( 'requires_email_validation' ),
 			     {
 				 render:function(app) {
 				     return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
@@ -361,7 +363,7 @@ if we are our experiences then we are both sides of them.
 	  <DIV id="app_b_div" class="control_table apppanel" is_admin="root"
 	       plimit="10" item="$root" container_name="_apps" paginate_type="hash"
 	       title="Apps" 
-	       column_headers="['Name','Number of Users','Reset']"
+	       column_headers="['Name','Number of Users','Requires Email Validation','Reset']"
 	       columns="$app_cols" after_render="*function(){ $('#app_b').prop('disabled',false); }"
 	       >
 	  </DIV>
