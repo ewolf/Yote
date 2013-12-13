@@ -249,8 +249,8 @@ sub recover_password {
 				 subject => 'Password Recovery',
 				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
 			       } );
-	    
-		
+
+
         }
 	else {
             die "password recovery attempt failed";
@@ -269,9 +269,9 @@ sub recovery_reset_password {
     my $newpass_verify = $args->{p2};
 
     die "Passwords don't match" unless $newpass eq $newpass_verify;
-    
+
     my $rand_token     = $args->{t};
-    
+
     my $recovery_hash = $self->get__recovery_logins({});
     my $login = $recovery_hash->{$rand_token};
     if( $login ) {
@@ -295,11 +295,11 @@ sub recovery_reset_password {
 sub remove_login {
     my( $self, $args, $acct, $env ) = @_;
     my $login = $acct->get_login();
-    if( $login && 
+    if( $login &&
         Yote::ObjProvider::encrypt_pass($args->{p}, $login->get_handle()) eq $login->get__password() &&
         $args->{h} eq $login->get_handle() &&
         $args->{e} eq $login->get_email() &&
-        ! $login->get_is__first_login() ) 
+        ! $login->get_is__first_login() )
     {
         delete $self->get__handles()->{$args->{h}};
         delete $self->get__emails()->{$args->{e}};
@@ -307,9 +307,9 @@ sub remove_login {
 	delete $EMAIL_CACHE->{$args->{e}};
         $self->add_to__removed_logins( $login );
         return "deleted account";
-    } 
+    }
     die "unable to remove account";
-    
+
 } #remove_login
 
 #
@@ -331,29 +331,40 @@ sub remove_root {
 #
 # Makes sure there is a root account with the given credentials.
 #
-sub _check_root {
-    my( $self, $root_name, $encr_passwd ) = @_;
-    
-    my $lc_handle = lc( $root_name );
+sub _update_master_root {
+    my( $self, $master_root_handle, $master_root_password_hashed ) = @_;
 
-    my $root_login = $self->_hash_fetch( '_handles', $lc_handle );
-    
-    unless( $root_login ) {
-	$root_login = new Yote::Login();
-	$root_login->set_handle( $root_name );
-	$root_login->set__is_master_root( 1 );
+    my $lc_handle = lc( $master_root_handle );
 
-        $root_login->set__time_created( time() );
-
-	$self->_hash_insert( '_handles', $lc_handle, $root_login );	
+    my $old_root = $self->get__master_root();
+    if( $old_root ) {
+	if( $old_root->get_handle() ne $master_root_handle ) {
+	    $self->_hash_delete( '_handles', lc( $old_root->get_handle() ) );
+	    $old_root->set_handle( $master_root_handle );
+	    $self->_hash_insert( '_handles', $lc_handle, $old_root );	
+	}
+	if( $old_root->get__password() ne $master_root_password_hashed ) {
+	    $old_root->set__password( $master_root_password_hashed );
+	}
+	return $old_root;
     }
+
+    my $root_login = new Yote::Login();
+    $root_login->set_handle( $master_root_handle );
+
+    $self->set__master_root( $root_login );
+
+    $root_login->set__time_created( time() );
+
+    $self->_hash_insert( '_handles', $lc_handle, $root_login );
+
     $root_login->set__is_root( 1 );
     $root_login->set__is_master_root( 1 );
 
-    $root_login->set__password( $encr_passwd );
+    $root_login->set__password( $master_root_password_hashed );
 
     return $root_login;
-} #_check_root
+} #_update_master_root
 
 #
 # Creates a login with credentials provided
@@ -397,7 +408,7 @@ sub _create_login {
 
 	$self->_hash_insert( '_emails', $email, $new_login ) if $email;
 	$self->_hash_insert( '_handles', $lc_handle, $new_login );
-	
+
         return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
     } #if handle
 
@@ -418,7 +429,7 @@ sub _create_token {
 
 #
 # This takes a login object and
-# generates a login token, associates it with 
+# generates a login token, associates it with
 # the login and then returns it.
 #
 sub _register_login_with_validation_token {
@@ -434,7 +445,7 @@ sub _register_login_with_validation_token {
     $login->set__validation_token( $rand_token );
 
     return $login;
-    
+
 } #_register_login_with_validation_token
 
 sub _validate {
@@ -442,7 +453,7 @@ sub _validate {
     my $validations = $self->get__validations();
     my $login = $validations->{ $token };
     if( $login ) {
-	$login->set__is_email_validated( 1 );
+	$login->set__is_validated( 1 );
     }
     return $login;
 }
@@ -466,7 +477,7 @@ This is the first object and the root of the object graph. It stores user logins
 =item create_login( args )
 
 Create a login with the given client supplied args : h => handle, e => email, p => password.
-This checks to make sure handle and email address are not already taken. 
+This checks to make sure handle and email address are not already taken.
 This is invoked by the javascript call $.yote.create_login( handle, password, email )
 
 =item cron
@@ -511,7 +522,7 @@ Creates and returns a guest token, associating it with the calling IP address.
 
 =item login( { h: handle, p : password } )
 
-Attempts to log the account in with the given credentials. Returns a data structre with 
+Attempts to log the account in with the given credentials. Returns a data structre with
 the login token and the login object.
 
 =item logout
@@ -569,7 +580,7 @@ Hash of classname to app singleton.
 
 =item _emails
 
-Hash of email to login object.    
+Hash of email to login object.
 
 =item _handles
 

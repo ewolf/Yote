@@ -1,3 +1,7 @@
+2013-12-13  Eric Wolf  <wolf@Talisman>
+
+	* updated _check_root to just change the handle and password of the existing master account rather than created a new one
+
 2013-12-05  Eric Wolf  <coyocanid@gamil.com>
 
 	* VERSION 0.1014

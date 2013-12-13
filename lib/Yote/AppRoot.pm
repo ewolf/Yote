@@ -34,14 +34,14 @@ sub create_login {
     my( $self, $args, $dummy, $env ) = @_;
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
 
-    if( $self->get_requires_email_validation() && ! $email ) {
+    if( $self->get_requires_validation() && ! $email ) {
 	die "Must specify valid email";
     }
 
     my $root = Yote::YoteRoot::fetch_root();
     my $login = $root->_create_login( $handle, $email, $password, $env );
 
-    if( $self->get_requires_email_validation() ) {
+    if( $self->get_requires_validation() ) {
 	my $rand_token = $root->_register_login_with_validation_token( $login );
 
 	Yote::IO::Mailer::send_email( 
@@ -240,9 +240,9 @@ This returns a new Yote::Account object to be used with this app. May be overrid
 
 =over 4
 
-=item requires_email_validation
+=item requires_validation
 
-When true, an account will not work until email validation of the login is achieved.
+When true, an account will not work until validation of the login is achieved, through email or other means.
 
 =back
 

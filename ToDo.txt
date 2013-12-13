@@ -1,5 +1,5 @@
 The stack :
-  bug in resetting the root account name?
+  update tests to accomidate new validations field in yoteroot
   Email validation.
   It should the the apps that create logins rather than the root app. Or not. Depends. However, the app must be responsible for
    generating the email.

@@ -88,7 +88,7 @@ if we are our experiences then we are both sides of them.
 		cron     : cron,
 		app_cols : [ 'x', //due to hash key..have to find a better solution TODO
 			     { render:function(app){ return app.count('_account_roots'); } },
-			     $.yote.util.check_edit( 'requires_email_validation' ),
+			     $.yote.util.check_edit( 'requires_validation' ),
 			     {
 				 render:function(app) {
 				     return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';

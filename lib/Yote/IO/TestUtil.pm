@@ -382,7 +382,8 @@ sub io_independent_tests {
 
     my $rpass = Yote::ObjProvider::encrypt_pass( "realpass", 'realroot' );
     isnt( $rpass, "realpass", "password was encrypted" );
-    $res = $root->_check_root( 'realroot', $rpass );
+    $res = $root->_update_master_root( 'realroot', $rpass );
+    my $master_account = new Yote::Account( { login => $res } );
     eval {
 	my $rrl = $root->login( { h => 'realroot', p => 'wrongpass' } );
     };
@@ -689,8 +690,8 @@ sub io_independent_tests {
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
 
     # root acct test
-    my $master_login = $root->_check_root( "NEWROOT","NEWPW" );
-    my $master_account = new Yote::Account( { login => $master_login } );
+    my $new_master_login = $root->_update_master_root( "NEWROOT","NEWPW" );
+    is( $new_master_login, $master_account->get_login(), "check root with new credentials does not change login" );
 
     # have $login, $root_login
     my $zoot_login = $root->create_login( { h => 'zoot', p => 'naughty', e => "zoot\@tooz.com" } )->{l};
@@ -719,10 +720,10 @@ sub io_independent_tests {
     is( $login_test, $zoot_login, "Able to log in once reeanbled." );
 
     eval {
-	$root->disable_login( $master_login, $root_acct ); 
+	$root->disable_login( $new_master_login, $root_acct ); 
     };
     like( $@, qr/Cannot disable master root login/, "cannot disable master root login" );
-    
+
     eval {
 	$root->disable_account( $master_account, $root_acct ); 
     };

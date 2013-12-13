@@ -139,7 +139,7 @@ sub get_args {
 	for my $key ( keys %$loaded_config ) {
 	    $config{ lc( $key ) } ||= $loaded_config->{ $key };
 	}
-	if( grep { ! $config{ $_ } } keys %required ) {
+	if( grep { ! defined( $config{ $_ } ) } keys %required ) {
 	    _log( "The configuration file is insufficient to run yote. Asking user to generate a new one.\n" );
 	    my $newconfig = _create_configuration( $yote_root_dir );
 	    for my $key ( keys %$newconfig ) {
@@ -255,9 +255,8 @@ sub _create_configuration {
     my( $yote_root_dir, $current_config ) = @_;
 
     my $newconfig = _get_configuration( $yote_root_dir, $current_config );
-
     open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
-    print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { $newconfig->{$_} } keys %$newconfig )."\n\n";
+    print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { defined($newconfig->{$_}) } keys %$newconfig )."\n\n";
     close( $OUT );
     return $newconfig;
 

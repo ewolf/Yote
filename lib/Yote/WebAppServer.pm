@@ -193,7 +193,7 @@ sub start_server {
     Yote::ObjProvider::stow_all();
 
     # check for default account and set its password from the config.
-    $root->_check_root( $args->{ root_account }, $args->{ root_password } );
+    $root->_update_master_root( $args->{ root_account }, $args->{ root_password } );
 
 
     # make sure the filehelper knows where the data directory is
@@ -392,7 +392,7 @@ sub __process_command {
         if( $login ) {
 	    die "Access Error" if $login->get__is_disabled();
             $account = $app->__get_account( $login );
-	    die "Access Error" if $app->get_requires_email_validation() && ! $login->get__is_email_validated();
+	    die "Access Error" if $app->get_requires_validation() && ! $login->get__is_validated();
 	    die "Access Error" if $account->get__is_disabled();
 	    $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
 	    $login->add_once_to__accounts( $account );
