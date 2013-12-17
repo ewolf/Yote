@@ -18,7 +18,6 @@ use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
 use Test::More tests => 481;
-use Test::Pod;
 
 
 use Carp;
@@ -109,19 +108,13 @@ sub test_suite {
     my $objcol = $db->get_collection( "objects" );
     
     Yote::YoteRoot->fetch_root();
-# -----------------------------------------------------
-#               start of yote tests
-# -----------------------------------------------------
+    my $ROOT_START = 13;
 
-
-#                                      #
-# ----------- simple object tests -----#
-#                                      #
-    is( $objcol->count(), 11, "number of objects after fetchroot" );
+    is( $objcol->count(), $ROOT_START, "number of objects after fetchroot" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), 14, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
+    is( $objcol->count(), $ROOT_START+3, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
@@ -140,7 +133,7 @@ sub test_suite {
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 14
     $root->set_hash( { "KEY" => "VALUE" } );                # 15
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), 22, "number of objects after adding a bunch" );
+    is( $objcol->count(), $ROOT_START+11, "number of objects after adding a bunch" );
 
     # this resets the cool hash, overwriting what is there, which was a hash, array, a new obj and a hash ( 4 things )
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
@@ -148,7 +141,7 @@ sub test_suite {
     my $recycled = Yote::ObjProvider->recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), 23, "number of objects after recycling" );
+    is( $objcol->count(), $ROOT_START+12, "number of objects after recycling" );
 
     Yote::IO::TestUtil::io_independent_tests( $root );
 } #test suite

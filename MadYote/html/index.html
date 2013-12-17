@@ -42,9 +42,9 @@
 	  $().ready(function() {
 
 	      $.yote.init();
+	      var yote_app = $.yote.fetch_app( 'MadYote' );
 
 	      function setup() {
-		  var yote_app = $.yote.fetch_app( 'MadYote' );
 		  var root = $.yote.fetch_root();
 		  var box = yote_app.get_suggestion_box();
 		  var pagename = 'index.html';
@@ -96,6 +96,7 @@
 	      attach_login( {
 		  attachpoint         : '#logged_in_status',
 		  message_attachpoint : '#msg_div',
+		  app                 : yote_app
 		  after_login         : function() {
 		      if( $.yote.is_root() ) {
 			  $( '#suggestion_box' ).hide();

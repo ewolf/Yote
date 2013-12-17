@@ -116,17 +116,17 @@ $().ready(function(){
             
             step('create account');
             // account creation. 
-            $.yote.create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
+            $.yote.fetch_root().create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
 				 pass("create first account"), pass("create first account already existed") );
 
-            $.yote.create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
+            $.yote.fetch_root().create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
 				 pass("create first account"), fail("create account") );
 	    
             step('create account with same handle');
-            $.yote.create_login( 'unit_test_account', 'ut', 'zobody@fenowyn.com',
+            $.yote.fetch_root().create_login( 'unit_test_account', 'ut', 'zobody@fenowyn.com',
 				 fail("created account with same handle"), pass("refused to create account with same handle") );
 
-            $.yote.create_login( 'nunit_test_account', 'ut', 'nobody@fenowyn.com',
+            $.yote.fetch_root().create_login( 'nunit_test_account', 'ut', 'nobody@fenowyn.com',
 				 fail("created account with same email"), pass("refused to create account with same email") );
 	    
             step('login with wrong password');

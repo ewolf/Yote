@@ -1,13 +1,12 @@
 package Yote::SimpleTemplate;
-
 use base 'Yote::Obj';
 
 sub _fill {
     my( $self, $context ) = @_;
     
     my $txt = $self->get_text('');
-    
-    $txt =~ s/([^\\])\$\{([^\}]+)/$1$context->{$2}/g;
+
+    $txt =~ s/([^\\]||^)\$\{([^\}]+)\}/$1$context->{$2}/g;
     $txt =~ s/([^\\])\\/$1/g;
 
     return $txt;

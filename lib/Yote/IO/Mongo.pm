@@ -145,6 +145,7 @@ sub get_id {
 sub hash_delete {
     my( $self, $hash_id, $key ) = @_;
     my $mid = MongoDB::OID->new( value => $hash_id );
+    $key =~ s/\./\\/g;
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
     if( $obj ) {
 	die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
@@ -156,7 +157,7 @@ sub hash_delete {
 
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
-
+    $key =~ s/\./\\/g;
     my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
     return $hash->{ d }->[ $key ] if $hash->{ c } ne 'HASH';
     return $hash->{ d }->{ $key } if $hash;
@@ -164,12 +165,14 @@ sub hash_fetch {
 
 sub hash_has_key {
     my( $self, $hash_id, $key ) = @_;
+    $key =~ s/\./\\/g;
     my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
     return defined( $hash->{ d }->{$key} );
 } #hash_has_key
 
 sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
+    $key =~ s/\./\\/g;
     my $mid = MongoDB::OID->new( value => $hash_id );
     my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
     if( $obj ) {

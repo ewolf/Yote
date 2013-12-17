@@ -7,9 +7,11 @@ package Yote::AppRoot;
 use strict;
 use warnings;
 
-use Yote::Obj;
 use MIME::Base64;
+
+use Yote::Obj;
 use Yote::Account;
+use Yote::SimpleTemplate;
 use Yote::YoteRoot;
 
 use base 'Yote::RootObj';
@@ -43,20 +45,21 @@ sub create_login {
 
     if( $self->get_requires_validation() ) {
 	my $rand_token = $root->_register_login_with_validation_token( $login );
-
+	my $hn = `hostname`;
+	chomp $hn;
 	Yote::IO::Mailer::send_email( 
 	    {
 		to      => $email,
-		from    => $self->get_login_email_from( 'yote@' . $self->get_host_name( `hostname` ) ),
+		from    => $self->get_login_email_from( 'yote@' . $self->get_host_name( $hn ) ),
 		subject => $self->get_login_subject('Validate your Account'),
-		msg     => $self->get_login_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}))->fill( 
+		msg     => $self->get_login_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}))->_fill( 
 		    {
 			handle => $handle,
 			email  => $email,
 			app    => $self->get_app_name( ref( $self ) ),
 			link   => $self->get_validation_link_template(new Yote::SimpleTemplate(
 									  {
-									      text=>'${hosturl}/val.html?t=${t}'}))->fill( 
+									      text=>'${hosturl}/val.html?t=${t}'}))->_fill( 
 			    {
 				t       => $rand_token,
 				hosturl => $self->get_host_url('http://' . $self->get_host_name( `hostname` ) ),
@@ -65,7 +68,7 @@ sub create_login {
 	    } );
     } #requires validation
 
-    return $login;
+    return { l => $login, t => $root->_create_token( $login, $env->{REMOTE_ADDR} ) };
 } #create_login
 
 #
@@ -114,6 +117,12 @@ sub recover_password {
     }
     return "password recovery initiated";
 } #recover_password
+
+sub remove_login {
+    my( $self, $args, $acct, $env ) = @_;
+    my $root = Yote::YoteRoot::fetch_root();
+    return $root->_remove_login( $args->{ l }, $args->{ p }, $acct );
+} #remove_login
 
 #
 # Used by the web app server to verify the login. Returns the login object belonging to the token.

@@ -124,28 +124,6 @@ $.yote = {
 	return ret;
     }, //init
 
-    create_login:function( handle, password, email, passhandler, failhandler ) {
-	var root = this.fetch_root();
-	if( typeof root === 'object' ) {
-	    root.create_login( { h:handle, p:password, e:email },
-			       function(res) {
-				   $.yote.token = res.get( 't' ) || 0;
-				   $.yote.login_obj = res.get( 'l' );
-				   $.cookie( 'yoken', $.yote.token, { path : '/' } );
-				   if( typeof passhandler === 'function' ) {
-				       passhandler(res);
-				   }
-			       },
-			       failhandler );
-	    return $.yote.login_obj;
-	} else if( typeof failhanlder === 'function' ) {
-	    failhandler('lost connection to yote server');
-	} else {
-	    _error('lost connection to yote server');
-	}
-    }, //create_login
-
-
     fetch_account:function() {
 	return this.fetch_root().account();
     },

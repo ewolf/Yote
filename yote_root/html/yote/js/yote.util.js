@@ -607,7 +607,7 @@ $.yote.util = {
 		    texts  : [ '#username', '#em', '#pw' ],
 		    required : [ '#username', '#pw' ],
 		    action : function() {
-			var login = $.yote.create_login( $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(),
+			var login = thislc.create_login( thislc.app, $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(), 
 							 function( msg ) {
 							     if( thislc.access_test( thislc.app.account() ) ) {
 								 thislc.msg_function( msg );
@@ -623,13 +623,9 @@ $.yote.util = {
 							 function( err ) {
 							     thislc.msg_function( err, 'error' );
 							 }  );
-			if( thislc.app ) {
-			    thislc.app.register_login( login ); // the app may send out an email validation requirement.
-			}
 		    } //action
 		} );
-
-	    },
+	    }, //make_create_login
 
 	    needs_login:function() {
 		var thislc = this;

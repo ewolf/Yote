@@ -17,9 +17,6 @@ use Email::Valid;
 
 use base 'Yote::AppRoot';
 
-our $HANDLE_CACHE = {};
-our $EMAIL_CACHE = {};
-
 $Yote::YoteRoot::ROOT_INIT = 0;
 
 # ------------------------------------------------------------------------------------------
@@ -28,6 +25,8 @@ $Yote::YoteRoot::ROOT_INIT = 0;
 sub _init {
     my $self = shift;
     $self->set__apps({});
+    $self->set__app_mutex( new Yote::Obj() );
+    $self->set__account_mutex( new Yote::Obj() );
     $self->set__handles({});
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
@@ -147,7 +146,7 @@ sub login {
 	my $lc_h = lc( $data->{h} );
 	my $ip = $env->{ REMOTE_ADDR };
         my $login = $self->_hash_fetch( '_handles', $lc_h );
-        if( $login && ($login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
+        if( $login && ( $login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
 	    die "Access Error" if $login->get__is_disabled();
 	    Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
@@ -292,28 +291,29 @@ sub recovery_reset_password {
 #   (client side) use : remove_login({h:'handle',e:'email',p:'password'});
 #             returns : "deleted account"
 #
-sub remove_login {
-    my( $self, $args, $acct, $env ) = @_;
-    my $login = $acct->get_login();
+sub _remove_login {
+    my( $self, $login, $password, $acct ) = @_;
     if( $login &&
-        Yote::ObjProvider::encrypt_pass($args->{p}, $login->get_handle()) eq $login->get__password() &&
-        $args->{h} eq $login->get_handle() &&
-        $args->{e} eq $login->get_email() &&
-        ! $login->get_is__first_login() )
+	$login._is( acct->get_login() ) &&
+        Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
+        ! $login->is_master_root() )
     {
-        delete $self->get__handles()->{$args->{h}};
-        delete $self->get__emails()->{$args->{e}};
-	delete $HANDLE_CACHE->{$args->{h}};
-	delete $EMAIL_CACHE->{$args->{e}};
+	my $account_mutex = $self->get__account_mutex();
+	$account_mutex->_lock();
+	my $handle = $login->get_handle();
+	my $email  = $login->get_email();
+        delete $self->get__handles()->{ $handle };
+        delete $self->get__emails()->{ $email };
         $self->add_to__removed_logins( $login );
+	$account_mutex->_unlock();
         return "deleted account";
     }
     die "unable to remove account";
 
-} #remove_login
+} #_remove_login
 
 #
-# Removes root privs from a login. Do not use lightly. Does not remove the last root if there is one
+# Removes root privs from a login. Does not remove the last root if there is one
 #
 sub remove_root {
     my( $self, $login, $acct ) = @_;
@@ -373,26 +373,29 @@ sub _update_master_root {
 #
 sub _create_login {
     my( $self, $handle, $email, $password, $env ) = @_;
-
     if( $handle ) {
+	my $account_mutex = $self->get__account_mutex();
+	$account_mutex->_lock();
+
 	my $lc_handle = lc( $handle );
-        if( $HANDLE_CACHE->{$lc_handle} || $self->_hash_has_key( '_handles', $lc_handle ) ) {
+        if( $self->_hash_has_key( '_handles', $lc_handle ) ) {
+	    $account_mutex->_unlock();
             die "handle already taken";
         }
         if( $email ) {
-            if( $EMAIL_CACHE->{$email} || $self->_hash_has_key( '_emails', $email ) ) {
+            if( $self->_hash_has_key( '_emails', $email ) ) {
+		$account_mutex->_unlock();
                 die "email already taken";
             }
-            unless( Email::Valid->address( $email ) ) {
-                die "invalid email '$email'";
+            unless( Email::Valid->address( $email ) || $email =~ /\@localhost$/ ) {
+		$account_mutex->_unlock();
+                die "invalid email '$email' $Email::Valid::Details";
             }
         }
         unless( $password ) {
+	    $account_mutex->_unlock();
             die "password required";
         }
-
-	$EMAIL_CACHE->{$email}      = 1 if $email;
-	$HANDLE_CACHE->{$lc_handle} = 1;
 
         my $new_login = new Yote::Login();
 
@@ -409,7 +412,9 @@ sub _create_login {
 	$self->_hash_insert( '_emails', $email, $new_login ) if $email;
 	$self->_hash_insert( '_handles', $lc_handle, $new_login );
 
-        return { l => $new_login, t => $self->_create_token( $new_login, $ip ) };
+	$account_mutex->_unlock();
+
+        return $new_login;
     } #if handle
 
     die "no handle given";
@@ -444,7 +449,7 @@ sub _register_login_with_validation_token {
     $validations->{ $rand_token } = $login;
     $login->set__validation_token( $rand_token );
 
-    return $login;
+    return $rand_token;
 
 } #_register_login_with_validation_token
 
