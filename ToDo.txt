@@ -1,5 +1,4 @@
 The stack :
-  Remove YoteRoot::HANDLE_CACHE and EMAIL_CACHE. create a login store yote object attached to the root instead, so that login store can be locked
   Email validation.
   It should the the apps that create logins rather than the root app. Or not. Depends. However, the app must be responsible for
    generating the email.

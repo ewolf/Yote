@@ -8,15 +8,14 @@
  body { background-color:wheat }
 </style>
 
-<!--
 <script src="/yote/js/jquery-1.10.1.min.js"></script>
 <script src="/yote/js/jquery.cookie.js"></script>
 <script src="/yote/js/jquery.base64.min.js"></script>
 <script src="/yote/js/json2.js"></script>
 <script src="/yote/js/yote.js"></script>
 <script src="/yote/js/yote.util.js"></script>
--->
-<script src="/yote/js/yote.unified.min.js"></script>
+
+<!-- <script src="/yote/js/yote.unified.min.js"></script>-->
 <script>
     var tests = 0;
 var failed = 0;
@@ -66,7 +65,7 @@ function wrap_up() {
     }
     var d = new Date();
     var t2 = d.getTime();
-    $.yote.remove_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com', 
+    $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
 			 pass( "remove login" ), fail( "remove login" ) );
     var d2 = new Date();
     $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
@@ -116,17 +115,17 @@ $().ready(function(){
             
             step('create account');
             // account creation. 
-            $.yote.fetch_root().create_login( 'unit_test_account0', 'ut', 'nobodyelse@fenowyn.com',
+            $.yote.fetch_root().create_login( { h: 'unit_test_account0', p: 'ut',e: 'nobodyelse@fenowyn.com' },
 				 pass("create first account"), pass("create first account already existed") );
 
-            $.yote.fetch_root().create_login( 'unit_test_account', 'ut', 'nobody@fenowyn.com',
+            $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
 				 pass("create first account"), fail("create account") );
 	    
             step('create account with same handle');
-            $.yote.fetch_root().create_login( 'unit_test_account', 'ut', 'zobody@fenowyn.com',
+            $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'zobody@fenowyn.com' },
 				 fail("created account with same handle"), pass("refused to create account with same handle") );
 
-            $.yote.fetch_root().create_login( 'nunit_test_account', 'ut', 'nobody@fenowyn.com',
+            $.yote.fetch_root().create_login( { h: 'nunit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
 				 fail("created account with same email"), pass("refused to create account with same email") );
 	    
             step('login with wrong password');

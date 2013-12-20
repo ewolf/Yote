@@ -8,6 +8,7 @@
 	* account can be created on mail now
 	* added mutexes in YoteRoot. These are just empty yote objects with their _lock and _unlock called at appropriate times.
 	* updated tests
+	* removed create_login and remove_login from yote.js
 
 2013-12-05  Eric Wolf  <coyocanid@gamil.com>
 

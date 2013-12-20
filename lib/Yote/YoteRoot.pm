@@ -294,7 +294,7 @@ sub recovery_reset_password {
 sub _remove_login {
     my( $self, $login, $password, $acct ) = @_;
     if( $login &&
-	$login._is( acct->get_login() ) &&
+	$login->_is( $acct->get_login() ) &&
         Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
         ! $login->is_master_root() )
     {

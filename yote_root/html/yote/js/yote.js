@@ -294,23 +294,6 @@ $.yote = {
         }
     }, //message
 
-    remove_login:function( handle, password, email, passhandler, failhandler ) {
-	var root = this.fetch_root();
-	if( typeof root === 'object' ) {
-	    root.remove_login( { h:handle, p:password, e:email },
-			       function(res) {
-				   $.yote.token = 0;
-				   $.yote.login_obj = undefined;
-				   passhandler(res);
-			       },
-			       failhandler );
-	} else if( typeof failhanlder === 'function' ) {
-	    failhandler('lost connection to yote server');
-	} else {
-	    _error('lost connection to yote server');
-	}
-    }, //remove_login
-
     /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
        which corresponds to the parameter name in the inputs.
        For example some_yote_obj->do_something( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
