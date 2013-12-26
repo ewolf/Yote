@@ -32,6 +32,10 @@ Yote::SipmleTemplate - A very simple templating system on the server side.
 
 =over 4
 
+=item fill( context_data )
+
+Returns the template filled with the context data, which is a hash of keyname to value.
+
 =back
 
 =head1 PUBLIC DATA FIELDS

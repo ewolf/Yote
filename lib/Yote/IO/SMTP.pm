@@ -40,6 +40,10 @@ Uses Mail::Sender to send messages with SMTP.
 
 =head1 PUBLIC API METHODS
 
+=over 4
+ 
+=item new
+
 =item send_email( opts )
 
 Sends a simple ( not html ) email. The opts is a hash and must contain to, from, subject and message fields.

@@ -418,12 +418,6 @@ This is the first object and the root of the object graph. It stores user logins
 
 =over 4
 
-=item create_login( args )
-
-Create a login with the given client supplied args : h => handle, e => email, p => password.
-This checks to make sure handle and email address are not already taken.
-This is invoked by the javascript call $.yote.create_login( handle, password, email )
-
 =item cron
 
 Returns the cron. Only a root login may call this.
@@ -485,6 +479,10 @@ Returns a new yote object, initialized with the optional has reference.
 
 Returns a new root yote object, initialized with the optional has reference.
 
+=item new_template()
+
+Returns a new Yote::SimpleTemplate object and marks its creator.
+
 =item new_user_obj( optional_data_hash )
 
 Returns a new user yote object, initialized with the optional has reference.
@@ -499,14 +497,6 @@ This method may only be invoked by a login with the root bit set. This clears ou
 
 Causes an email with a recovery link sent to the email in question, if it is associated with an account.
 
-=item recovery_reset_password( { p : newpassword, p2 : newpasswordverify, t : recovery_token } )
-
-Resets the password ( kepts hashed in the database ) for the account that the recovery token belongs to.
-Returns the url_the_person_requested_recovery that was given in the recover_password call.
-
-=item remove_login( { h : handle, e : email, p : password } )
-
-Purges the login account from the system if its credentials are verified. It moves the account to a special removed logins hidden field under the yote root.
 
 =item remove_root( login )
 

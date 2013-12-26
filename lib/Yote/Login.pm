@@ -76,13 +76,17 @@ container objects that store state data for the users.
 
 =over 4
 
-=item is_root
-
-Returns trus if the account has root privileges.
-
 =item is_master_root
 
-Returns trus if the account is the original root account
+Returns true if the account is the original root account
+
+=item is_root
+
+Returns true if the account has root privileges.
+
+=item is_validated
+
+Returns true if the account has validated.
 
 =item reset_password
 

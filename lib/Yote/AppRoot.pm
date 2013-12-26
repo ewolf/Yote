@@ -268,11 +268,27 @@ A Yote::AppRoot extends Yote::Obj and provides some class methods and the follow
 
 =item account()
 
+
+=item create_login( args )
+
+Create a login with the given client supplied args : h => handle, e => email, p => password.
+This checks to make sure handle and email address are not already taken.
+This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
 =item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
 
 Causes an email with a recovery link sent to the email in question, if it is associated with an account.
 
 Returns the currently logged in account using this app.
+
+=item recovery_reset_password( { p : newpassword, p2 : newpasswordverify, t : recovery_token } )
+
+Resets the password ( kepts hashed in the database ) for the account that the recovery token belongs to.
+Returns the url_the_person_requested_recovery that was given in the recover_password call.
+
+=item remove_login( { h : handle, e : email, p : password } )
+
+Purges the login account from the system if its credentials are verified. It moves the account to a special removed logins hidden field under the yote root.
 
 =item token_login()
 
