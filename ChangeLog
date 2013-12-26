@@ -1,3 +1,8 @@
+2013-12-26  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1015
+	* updated tests
+
 2013-12-13  Eric Wolf  <wolf@Talisman>
 
 	* updated _check_root to just change the handle and password of the existing master account rather than created a new one
