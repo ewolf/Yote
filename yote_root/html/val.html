@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<!-- Bootstrappy and meta. This page could replace itself -->
+  <head>
+    <title>Validation</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <META NAME="Author" CONTENT="Eric Wolf, coyocanid@gmail.com">
+
+    <STYLE>
+    </STYLE>
+
+    <script>
+    $().ready(function(){
+	$( '#mainpanel' ).hide();
+	$.yote.init();
+	var root = $.yote.fetch_root();
+	var params = $.yote.util.url_params();
+	root.validate( params['t'] );
+	$( '#body' ).text( "Your account is now registered." );
+    });
+    </script>
+  </head>
+
+  <BODY>
+    <header>
+      <h1>Yote registration page</h1>
+    </header>
+    <div id="body"></div>	   
+  </body>
+</html>

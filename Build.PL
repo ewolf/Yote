@@ -59,8 +59,8 @@ my $builder = Module::Build->new(
     script_files       => [ 'bin/yote_server' ],
     test_files         => [ 't/sqlite.t', 't/docs.t', 't/pod-coverage.t', ],
     recommends         => {
-	Digest::HMAC_MD5 => 1,
-	Authen::NTLM     => 1,
+	'Digest::HMAC_MD5' => 1,
+	'Authen::NTLM'     => 1,
     },
     requires => {
 	'perl'                  => 'v5.12',
