@@ -584,6 +584,39 @@ $.yote.util = {
 		} );
 	    }, //on_login
 
+	    make_recovery:function() {
+		var thislc = this;
+		thislc.msg_function('');
+		$( thislc.attachpoint ).empty().append(
+		    '<div class="panel core" id="recover_acct_div">' +
+			'<DIV id="recover_acct_msg"></DIV>' +
+			'<P>' +
+			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
+			'<A id="recover_acct_b" class="hotlink" href="#">Recover</A> <A HREF="#" id="cancel_b">[X]</A>' +
+			'</div>'
+		);
+		$( '#em' ).focus();
+		$( '#cancel_b' ).click( function() {
+		    thislc.msg_function('');
+		    thislc.needs_login();
+		} );
+
+		$.yote.util.button_actions( {
+		    button : '#recover_acct_b',
+		    texts  : [ '#em' ],
+		    action : function() {
+			thislc.app.recover_password( 
+			    $( '#em' ).val(),
+			    function( msg ) {
+				thislc.msg_function( msg );
+			    },
+			    function( err ) {
+				thislc.msg_function( err, 'error' );
+			    } );
+		    } //action
+		} );
+	    }, //make_recovery
+	    
 	    make_create_login:function() {
 		var thislc = this;
 		thislc.msg_function('');
@@ -607,22 +640,26 @@ $.yote.util = {
 		    texts  : [ '#username', '#em', '#pw' ],
 		    required : [ '#username', '#pw' ],
 		    action : function() {
-			var login = thislc.create_login( thislc.app, $( '#username' ).val(), $( '#pw' ).val(), $( '#em' ).val(), 
-							 function( msg ) {
-							     if( thislc.access_test( thislc.app.account() ) ) {
-								 thislc.msg_function( msg );
-								 if( typeof thislc.on_login_fun === 'function' )
-								     thislc.on_login_fun();
-								 if( typeof thislc.after_login_fun === 'function' )
-								     thislc.after_login_fun();
-							     } else if( thislc.logged_in_fail_msg ) {
-								 thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
-								 $.yote.logout();
-							     }
-							 },
-							 function( err ) {
-							     thislc.msg_function( err, 'error' );
-							 }  );
+			var login = thislc.app.create_login(
+			    { 
+				h : $( '#username' ).val(), 
+				p : $( '#pw' ).val(),
+				e : $( '#em' ).val() },
+			    function( msg ) {
+				if( thislc.access_test( thislc.app.account() ) ) {
+				    thislc.msg_function( msg );
+				    if( typeof thislc.on_login_fun === 'function' )
+					thislc.on_login_fun();
+				    if( typeof thislc.after_login_fun === 'function' )
+					thislc.after_login_fun();
+				} else if( thislc.logged_in_fail_msg ) {
+				    thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
+				    $.yote.logout();
+				}
+			    },
+			    function( err ) {
+				thislc.msg_function( err, 'error' );
+			    }  );
 		    } //action
 		} );
 	    }, //make_create_login
@@ -644,8 +681,9 @@ $.yote.util = {
 			'<DIV id="login_msg"></DIV>' +
 			'Log In' +
 			'<input type="text" id="username" placeholder="Name" size="6">' +
-			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON></P> ' +
-			'<A id="create_account_b" class="hotlink" href="#">Create an Account</A> <A id="cancel_b" href="#">[X]</A>' +
+			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON> <A id="cancel_b" href="#">[X]</A></P> ' +
+			'<A id="reset_password_b" class="hotlink" href="#">Forgot Password</A><BR>' +
+			'<A id="create_account_b" class="hotlink" href="#">Create an Account</A> ' +
 			'</div>'
 		);
 		$( '#username' ).focus();
@@ -679,6 +717,7 @@ $.yote.util = {
 		    }
 		} );
 
+		$( '#reset_password_b' ).click( function() { thislc.make_recovery(); } );
 		$( '#create_account_b' ).click( function() { thislc.make_create_login(); } );
 	    } //make_login
 	};
@@ -721,6 +760,7 @@ $.yote.util = {
 			if( checked_fun ) {
 			    checked_fun(item);
 			} else {
+
 			    item.set( fld, 1 );
 			}
 		    } else {
@@ -731,6 +771,20 @@ $.yote.util = {
 			}
 		    }
 		} );
+	    }
+	};
+    },
+
+    template_edit:function( template_name, extra_classes, on_edit_f ) {
+	return function( item, is_prep ) {
+	    var tmplt = item.get( template_name );
+	    if( ! tmplt ) {
+		tmplt = $.yote.fetch_root().new_template();
+	    }
+	    if( is_prep ) {
+		return $.yote.util.prep_edit( tmplt, 'text', extra_classes );
+	    } else {
+		$.yote.util.implement_edit( tmplt, 'text', on_edit_f );
 	    }
 	};
     },
@@ -1107,9 +1161,14 @@ $.yote.util = {
 		    tab.add_header_row( ch, me._classes_array( 'row' ), me._classes_array( 'cell' ) );
 		}
 
-		var items = paginate_function();
+		try {
+		    var items = paginate_function();
+		    var max = items.length() > me.plimit ? me.plimit : items.length();
+		}
+		catch( err ) {
+		    return;
+		}
 
-		var max = items.length() > me.plimit ? me.plimit : items.length();
 
 		if( me.show_count ) {
 		    if( max == count ) {

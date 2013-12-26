@@ -155,7 +155,7 @@ $.yote = {
     }, //fetch_root
 
     is_root:function() {
-	return this.is_logged_in() && this.get_login().is_root();
+	return this.is_logged_in() && 1*this.get_login().is_root();
     },
 
     get_login:function() {

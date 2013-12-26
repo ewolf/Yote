@@ -1,5 +1,5 @@
 package Yote::SimpleTemplate;
-use base 'Yote::Obj';
+use base 'Yote::RootObj';
 
 sub _fill {
     my( $self, $context ) = @_;
@@ -11,6 +11,11 @@ sub _fill {
 
     return $txt;
 } #_fill
+
+sub fill {
+    my( $self, $data, $acct, $env ) = @_;
+    return $self->_fill( $data );
+} #fill
 
 1;
 

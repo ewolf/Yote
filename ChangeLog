@@ -4,11 +4,16 @@
 	* javascript create_login changed to be called on the app, and also removed defunct register_login method (called from javascript).
 	* removed EMAIL and HANDLE cache vars from Yote::YoteRoot. These were buggy, given the threaded nature of Yote. This also revealed a bug in the hash function of mongo db. It was not escaping the periods in the keys properly.
 	* added a Yote::SimpleTemplate class with a _fill method
+	* $.yote.util.template_edit to edit templates
 	* added mail configuration options
 	* account can be created on mail now
 	* added mutexes in YoteRoot. These are just empty yote objects with their _lock and _unlock called at appropriate times.
 	* updated tests
 	* removed create_login and remove_login from yote.js
+	* new requires_validation field for Apps. If true, a validation must be given for account to work.
+	* validation logic
+	* recover password base logic
+
 
 2013-12-05  Eric Wolf  <coyocanid@gamil.com>
 

@@ -87,8 +87,45 @@ if we are our experiences then we are both sides of them.
 		root     : root,
 		cron     : cron,
 		app_cols : [ 'x', //due to hash key..have to find a better solution TODO
+			     $.yote.util.col_edit( 'host_name' ),			     
+			     $.yote.util.col_edit( 'host_url' ),			     
 			     { render:function(app){ return app.count('_account_roots'); } },
-			     $.yote.util.check_edit( 'requires_validation' ),
+			     { 
+				 req_val : $.yote.util.check_edit( 'requires_validation' ),
+				 lef     : $.yote.util.col_edit( 'validation_email_from' ),
+				 lmt     : $.yote.util.template_edit( 'validation_message_template' ),
+				 lst     : $.yote.util.template_edit( 'validation_subject_template' ),
+				 lvt     : $.yote.util.template_edit( 'validation_link_template' ),
+
+				 ref     : $.yote.util.col_edit( 'recovery_email_from' ),
+				 rst     : $.yote.util.template_edit( 'recovery_subject_template' ),
+				 rmt     : $.yote.util.template_edit( 'recovery_message_template' ),
+				 rvt     : $.yote.util.template_edit( 'recovery_link_template' ),
+
+				 render:function(app) {
+				     var buf = 
+					 '<BR><NOBR>Email Validation Required</NOBR>' + this.req_val( app, true ) +
+					 '<BR><NOBR>Validation Email From</NOBR>' + this.lef( app, true ) +
+					 '<BR><NOBR>Validation Subject Template</NOBR>' + this.lst( app, true ) +
+					 '<BR><NOBR>Validation Message Template</NOBR>' + this.lmt( app, true ) +
+					 '<BR><NOBR>Validation Link Template</NOBR>' + this.lvt( app, true );
+
+					 '<BR><NOBR>Recovery Email From</NOBR>' + this.ref( app, true ) +
+					 '<BR><NOBR>Recovery Subject Template</NOBR>' + this.rst( app, true ) +
+					 '<BR><NOBR>Recovery Message Template</NOBR>' + this.rmt( app, true ) +
+					 '<BR><NOBR>Recovery Link Template</NOBR>' + this.rvt( app, true );
+
+				     return buf;
+				 },
+				 after_render:function( app, name ) {
+				     this.req_val( app, false );
+				     this.lef( app, false );
+				     this.ref( app, false );
+				     this.lmt( app, false );
+				     this.lst( app, false );
+				     this.lvt( app, false );
+				 }
+			     }, 
 			     {
 				 render:function(app) {
 				     return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
@@ -126,18 +163,22 @@ if we are our experiences then we are both sides of them.
 					     $('#lr_'+li.id).click(
 						 function(){
 						     if($('#lr_'+li.id).is(':checked')){
-							 if($('#lr_'+li.id).is(':checked')){
-							     root.make_root(li);
-							 } else {
-							     root.remove_root( li, function(){}, function(err) { alert(err)} );
-							 }
+							 root.make_root(li);
+						     } else {
+							 root.remove_root( li, function(){}, function(err) { alert(err)} );
 						     }
 						 }
 					     );
 					 } )( l );
 				     }
 				 }
-			     } ], //user_cols
+			     },
+			     {
+				 render: function( l ) {
+				     return l.is_validated() ? 'Yes' : 'No';
+				 }
+			     }
+			    ], //user_cols
 		cron_cols : [ '*name',
 			      $.yote.util.check_edit( 'enabled', undefined, undefined, undefined,
 						      function(val,item) {
@@ -354,7 +395,7 @@ if we are our experiences then we are both sides of them.
 	  <DIV id="user_b_div" class="control_table apppanel" is_admin="root"
 	       plimit="10" item="$root" container_name="_handles"
 	       paginate_type="hash" title="Logins"
-	       column_headers="['Handle','Email','Is Root']"
+	       column_headers="['Handle','Email','Is Root','Is Validated']"
 	       columns="$user_cols" after_render="*function(){ $('#user_b').prop('disabled',false); }"
 	       >
 	  </DIV>
@@ -362,7 +403,7 @@ if we are our experiences then we are both sides of them.
 	  <DIV id="app_b_div" class="control_table apppanel" is_admin="root"
 	       plimit="10" item="$root" container_name="_apps" paginate_type="hash"
 	       title="Apps" 
-	       column_headers="['Name','Number of Users','Requires Email Validation','Reset']"
+	       column_headers="['Name','Host','Host URL','Number of Users','Email Settings','Reset']"
 	       columns="$app_cols" after_render="*function(){ $('#app_b').prop('disabled',false); }"
 	       >
 	  </DIV>

@@ -13,6 +13,7 @@ sub _init {
     $self->set_chat( new Yote::Obj() );
     $self->set_suggestion_box( new Yote::Obj() );
     $self->set_yote_blog( new Yote::RootObj() );
+    $self->SUPER::_init();
 }
 
 1;

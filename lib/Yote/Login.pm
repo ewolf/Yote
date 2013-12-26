@@ -22,6 +22,11 @@ sub is_master_root {
     return $self->get__is_master_root();    
 }
 
+sub is_validated {
+    my $self = shift;
+    return $self->get__is_validated();
+}
+
 #
 # Can either be reset by logged in account, or by a recovery link.
 #

@@ -7,6 +7,8 @@ package Yote::AppRoot;
 use strict;
 use warnings;
 
+no warnings 'uninitialized';
+
 use MIME::Base64;
 
 use Yote::Obj;
@@ -18,6 +20,28 @@ use base 'Yote::RootObj';
 
 use vars qw($VERSION);
 $VERSION = '0.087';
+
+sub _init {
+    my $self = shift;
+
+    my $hn = `hostname`;
+    chomp $hn;
+
+    $self->set_app_name( ref( $self ) );
+    $self->set_host_name( $hn );
+    $self->set_host_url( "http://$hn" );
+
+    $self->set_validation_email_from( 'yote@' . $hn );
+    $self->set_validation_link_template(new Yote::SimpleTemplate( { text=>'${hosturl}/val.html?t=${t}&app=${app}' } ) );
+    $self->set_validation_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}));
+    $self->set_validation_subject_template(new Yote::SimpleTemplate( { text => 'Validate Your Account' } ) );
+
+    $self->set_recovery_email_from( 'yote@' . $hn );
+    $self->set_recovery_subject_template(new Yote::SimpleTemplate( { text => 'Recover Your Account' } ) );
+    $self->set_recovery_link_template(new Yote::SimpleTemplate( { text => '${hosturl}/recover.html?t=${t}&app=${app}' } ) );
+    $self->set_recovery_message_template(new Yote::SimpleTemplate({text=>'Click on <a href="${link}">${link}</a> to recover your account' } ) );
+    $self->SUPER::_init();
+} #_init
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC API Methods *
@@ -45,26 +69,23 @@ sub create_login {
 
     if( $self->get_requires_validation() ) {
 	my $rand_token = $root->_register_login_with_validation_token( $login );
-	my $hn = `hostname`;
-	chomp $hn;
-	Yote::IO::Mailer::send_email( 
+	my $link = $self->get_validation_link_template()->_fill( {
+	    t       => $rand_token,
+	    hosturl => $self->get_host_url(),
+								 } );
+	my $context = {
+	    handle => $handle,
+	    email  => $email,
+	    app    => $self->get_app_name( ref( $self ) ),
+	    link   => $link,
+	};
+
+	Yote::IO::Mailer::send_email(
 	    {
 		to      => $email,
-		from    => $self->get_login_email_from( 'yote@' . $self->get_host_name( $hn ) ),
-		subject => $self->get_login_subject('Validate your Account'),
-		msg     => $self->get_login_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}))->_fill( 
-		    {
-			handle => $handle,
-			email  => $email,
-			app    => $self->get_app_name( ref( $self ) ),
-			link   => $self->get_validation_link_template(new Yote::SimpleTemplate(
-									  {
-									      text=>'${hosturl}/val.html?t=${t}'}))->_fill( 
-			    {
-				t       => $rand_token,
-				hosturl => $self->get_host_url('http://' . $self->get_host_name( `hostname` ) ),
-			    } )
-		    } )
+		from    => $self->get_validation_email_from( 'yote@' . $self->get_host_name() ),
+		subject => $self->get_validation_subject_template()->_fill( $context ),
+		msg     => $self->get_validation_message_template()->_fill( $context ),
 	    } );
     } #requires validation
 
@@ -75,19 +96,15 @@ sub create_login {
 # Sends an email to the address containing a link to reset password.
 #
 sub recover_password {
-    my( $self, $args ) = @_;
+    my( $self, $email ) = @_;
 
-    my $email    = $args->{e};
-    my $from_url = $args->{u};
-    my $to_reset = $args->{t};
-
-    my $login = $self->_hash_fetch( '_emails', $email );
-
+    my $root = Yote::YoteRoot::fetch_root();
+    my $login = $root->_hash_fetch( '_emails', $email );
     if( $login ) {
         my $now = time();
         if( $now - $login->get__last_recovery_time() > (60*15) ) { #need to wait 15 mins
             my $rand_token = int( rand 9 x 10 );
-            my $recovery_hash = $self->get__recovery_logins({});
+            my $recovery_hash = $root->get__recovery_logins({});
             my $times = 0;
             while( $recovery_hash->{$rand_token} && ++$times < 100 ) {
                 $rand_token = int( rand 9 x 10 );
@@ -95,28 +112,65 @@ sub recover_password {
             if( $recovery_hash->{$rand_token} ) {
                 die "error recovering password";
             }
-            $login->set__recovery_from_url( $from_url );
+
+	    $login->set__recovery_token( $rand_token );
             $login->set__last_recovery_time( $now );
             $login->set__recovery_tries( $login->get__recovery_tries() + 1 );
+
             $recovery_hash->{$rand_token} = $login;
-            my $link = "$to_reset?t=$rand_token";
-	    my $sender = new Mail::Sender( {
-		smtp => 'localhost',
-		from => 'yote@localhost',
-					   } );
-	    $sender->MailMsg( { to => $email,
-				 subject => 'Password Recovery',
-				 msg => "<h1>Yote password recovery</h1> Click the link <a href=\"$link\">$link</a>",
-			       } );
 
+	    my $link = $self->get_recovery_link_template()->_fill(
+		{
+		    t       => $rand_token,
+		    hosturl => $self->get_host_url(),
+		    app     => ref( $self ),
+		} );
 
+	    my $context = {
+		handle => $login->get_handle(),
+		email  => $email,
+		app    => $self->get_app_name(),
+		link   => $link,
+		app    => ref( $self ),
+	    };
+	    Yote::IO::Mailer::send_email(
+		{
+		    to      => $email,
+		    from    => $self->get_recovery_email_from(),
+		    subject => $self->get_recovery_subject_template()->_fill( $context ),
+		    msg     => $self->get_recovery_message_template()->_fill( $context ),
+		} );
         }
 	else {
             die "password recovery attempt failed";
         }
-    }
+    } #if login
     return "password recovery initiated";
 } #recover_password
+
+#
+# reset by a recovery link.
+#
+sub recovery_reset_password {
+    my( $self, $args ) = @_;
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $newpass        = $args->{p};
+    my $rand_token     = $args->{t};
+    my $recovery_hash  = $root->get__recovery_logins({});
+    my $login = $recovery_hash->{$rand_token};
+
+    if( $login ) {
+        my $now = $login->get__last_recovery_time();
+        delete $recovery_hash->{$rand_token};
+        if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
+            $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+            return $login->get__recovery_from_url();
+        }
+    }
+    die "Recovery Link Expired or not valid";
+
+} #recovery_reset_password
 
 sub remove_login {
     my( $self, $args, $acct, $env ) = @_;

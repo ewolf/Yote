@@ -20,7 +20,6 @@ sub send_email {
     my( $self, $opts ) = @_;
 
     my $sender = new Mail::Sender( $self->{options} );
-
     $sender->MailMsg( $opts );
 	
 } #send_email

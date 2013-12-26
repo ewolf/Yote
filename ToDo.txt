@@ -1,16 +1,19 @@
 The stack :
-  Email validation.
-  It should the the apps that create logins rather than the root app. Or not. Depends. However, the app must be responsible for
-   generating the email.
+  make sure yote_root http pages are not overwritten during install/upgrade
 
 Currently on my plate :
   * think about validation, login vs account.  would you have the case where one login would be valid in one app but not an other?  Of course, the app itself could override the token_login method to die if the desired configuration is not met.
   * yote.js object handle objects
+  * template 
   * update madyote pages
   * limited html widget that disallows invalid html and script.
   * text only editor
+  * object editor
+  * object command line
   * sendmail setup
   * reset password and confirm account links
+  * better error messages for javascript when permissions errors occur
+  * log in with email as well as handle
 ________________________________________________
 
 It would be nice to have a <DIV> have information that links it to an editing session.
@@ -119,7 +122,7 @@ Alpha 2
  GET IT CORRECT
 
  Perl Side
-  * sendmail setup
+ -* sendmail setup
  -* unit tests for new permissions models for Yote::Obj, Yote::UserObj, Yote::RootObj
  -* cron reclaculate not working for scheduled times. fix
  -* check to see if recycling needs the rest shut down. Actually fixed in the IO modules so that objects can only be recycled after being completely written to disk. 
@@ -155,7 +158,7 @@ Alpha 2
  -* test for pagination in unit_tests.html
  -* Control table : make sure that html tags it creates have appropriate classes. Use the new 'prefix_classname' variable
  -* update control table widget to use new paginate
-  * UI - account change password and request password reset link [ note - may need configuration for mail. may not need anything fancy, just something to pipe to sendmail or telnet to port 25
+ -* UI - account change password and request password reset link [ note - may need configuration for mail. may not need anything fancy, just something to pipe to sendmail or telnet to port 25
 
 
 Alpha 1

@@ -96,7 +96,7 @@
 	      attach_login( {
 		  attachpoint         : '#logged_in_status',
 		  message_attachpoint : '#msg_div',
-		  app                 : yote_app
+		  app                 : yote_app,
 		  after_login         : function() {
 		      if( $.yote.is_root() ) {
 			  $( '#suggestion_box' ).hide();
@@ -136,7 +136,7 @@
 
     <DIV class="page_panel">
       <DIV id="mainpanel" class="mainpanel yote_panel" item="$page" field="#main_panel" edit_requires="root"> </DIV>
-      <DIV id="blogpanel" class="mainpanel control_table" item="$blog" field="#entry" edit_requires="root"> </DIV>
+      <DIV id="blogpanel" class="mainpanel yote_panel" item="$blog" field="#entry" edit_requires="root"> </DIV>
 
 	<DIV class="chatbar">
 	  <DIV id="suggestion_box"></div>

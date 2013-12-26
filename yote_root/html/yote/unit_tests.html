@@ -188,7 +188,7 @@ $().ready(function(){
             o3._send_update();
             is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
-	    //Text is writable, zap doesn't exist and so it not, and bext is not writeable\
+	    //Text is writable, zap doesn't exist and so it not, and bext is not writeable
 	    is( login.get_Text(), 'inity', "TANL initied text" );
 	    is( login.get_zap(), 'zappy', "TANL initied zap" );
 	    ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );

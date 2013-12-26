@@ -226,7 +226,6 @@ sub start_server {
     my $cron = $root->get__crond();
     Yote::ObjProvider::flush_all_volatile();
     $self->__unlock_all();
-    
 
     while( 1 ) {
 	sleep( 5 );
@@ -240,7 +239,6 @@ sub start_server {
 	while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
 	    $self->__start_server_thread;
 	}
-	
 	my $cron_entries = $cron->entries();
 	Yote::ObjProvider::flush_all_volatile();
 	$self->__unlock_all();
