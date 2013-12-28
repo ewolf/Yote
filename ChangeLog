@@ -1,3 +1,8 @@
+2013-12-27  Eric Wolf  <wolf@Talisman>
+	* Version 0.1016
+	* count and paginate will return appropriate things by ObjProvider if they are operating on an empty field
+	* fixed a bug in mongo where the paginate was incorrect for hashed things
+
 2013-12-26  Eric Wolf  <wolf@Talisman>
 
 	* Version 0.1015

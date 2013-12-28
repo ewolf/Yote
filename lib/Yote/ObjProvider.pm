@@ -65,6 +65,7 @@ sub commit_transaction {
 
 sub count {
     my( $container_id, $args ) = @_;
+    return 0 unless $container_id;
     return $DATASTORE->count( $container_id, $args );
 }
 
@@ -287,8 +288,10 @@ sub paginate {
     my( $obj_id, $args ) = @_;
     if( $args->{ return_hash } ) {
 	my $res = $DATASTORE->paginate( $obj_id, $args );
+	return {} unless $obj_id;
 	return { map { $_ => xform_out( $res->{$_} ) } keys %$res };
     }
+    return [] unless $obj_id;
     return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
 } #paginate
 

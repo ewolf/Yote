@@ -368,15 +368,15 @@ sub paginate {
     }
 
     my( @hash_keys ) = sort keys %hash_items;
+
     if( $args->{ reverse } ) {
 	@hash_keys = reverse @hash_keys;
     }
     if( $limit ) {
 	my $end = $skip + $limit - 1;
-	$end = $end > $#list_items ? $#list_items : $end;		    
+	$end = $end > $#hash_keys ? $#hash_keys : $end;		    
 	@hash_keys = @hash_keys[ $skip..$end ]; # < --- make sure there is a test for this TODO
     }
-
     if( $args->{ return_hash } ) {
 	return { map { $_ => $hash_items{$_} } @hash_keys };
     }
