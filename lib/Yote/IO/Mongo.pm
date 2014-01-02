@@ -8,7 +8,6 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 no warnings 'recursion';
-use feature ':5.10';
 
 use MongoDB;
 
@@ -307,7 +306,7 @@ sub paginate {
 
 	if( $args->{ return_hash } ) {
 	    my %id2key = reverse %{ $obj->{ d } };
-	    return { map { $id2key{ $_->{ _id }{ value } } => $_->{ _id }{ value } } $curs->all };  #david sean from ms to call
+	    return { map { $id2key{ $_->{ _id }{ value } } => $_->{ _id }{ value } } $curs->all };
 	}
 
 	return [map { $_->{ _id }{ value } } $curs->all];
@@ -567,10 +566,6 @@ Removes the key from the hash given by the id
 
 Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 
-=item max_id( ) 
-
-Returns the max ID in the yote system. Used for testing.
-
 =item new 
 
 =item paginate( container_id, args )
@@ -597,10 +592,6 @@ Sets the available for recycle mark on the object entry in the database by objec
 =item recycle_objects( start_id, end_id )
 
 Recycles all objects in the range given if they cannot trace back a path to root.
-
-=item search_list
-
-Returns a paginated search list
 
 =item start_transaction( )
 

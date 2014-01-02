@@ -45,23 +45,24 @@
 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 
 	      function setup() {
-		  var root = $.yote.fetch_root();
-		  var box = yote_app.get_suggestion_box();
+		  var root     = $.yote.fetch_root();
+		  var box      = yote_app.get_suggestion_box();
 		  var pagename = 'index.html';
-		  var page = yote_app.hash_fetch( { name : 'pages', key : pagename } );
-		  var blog = yote_app.get_yote_blog();
+		  var page     = yote_app.hash_fetch( { name : 'pages', key : pagename } );
+		  var blog     = yote_app.get_yote_blog();
+		  var login    = $.yote.get_login();
 		  
 		  if( $.yote.is_root() && ! page ) {
-		      page = yote_app.hash( { name : 'pages',  
-					      key : pagename, 
+		      page = yote_app.hash( { name  : 'pages',  
+					      key   : pagename, 
 					      value : $.yote.fetch_root().new_root_obj() } );
 		  }
-
 		  $.yote.util.register_items( { 
-		      box  : box,
-		      chat : yote_app.get_chat(),
-		      page : page,
-		      blog : blog
+		      box     : box,
+		      chat    : yote_app.get_chat(),
+		      page    : page,
+                      account : yote_app.account(),
+		      blog    : blog
 		  } );
 
 		  //$.yote.util.reset_els( [ '#chat_box', '#suggestion_box_admin', '#side_panel' ] );
@@ -103,7 +104,7 @@
 			  $( '#suggestion_box_admin' ).show();
 		      }
 		      else {
-			  $( '#suggestion_box' ).show1();
+			  $( '#suggestion_box' ).show();
 			  $( '#suggestion_box_admin' ).hide();
 		      }
 		      setup();

@@ -104,7 +104,7 @@ $.yote = {
     port:null,
     err:null,
     objs:{},
-    debug:true,
+    debug:false,
 
     init:function() {
         var t = $.cookie('yoken');

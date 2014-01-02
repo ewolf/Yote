@@ -13,7 +13,6 @@ function attach_login( args ) {
 	if( message ) {
 	    $( message_attachpoint ).append( '<nobr class="' + cls + '">' + message + '</nobr>' );
 	}
-	after_logout_f();
     }
 
     var lc = $.yote.util.login_control( { 

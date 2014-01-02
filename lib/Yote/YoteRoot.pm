@@ -203,7 +203,6 @@ sub new_user_obj {
     my $ret = new Yote::UserObj( ref( $data ) ? $data : undef );
     $ret->set___creator( $acct );
     return $ret;
-
 } #new_user_obj
 
 #

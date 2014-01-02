@@ -102,7 +102,10 @@ sub recover_password {
     my $login = $root->_hash_fetch( '_emails', $email );
     if( $login ) {
         my $now = time();
-        if( $now - $login->get__last_recovery_time() > (60*15) ) { #need to wait 15 mins
+        unless( $login || ( $now - $login->get__last_recovery_time() ) < (60*15) ) { #need to wait 15 mins
+            die "password recovery attempt failed";
+        }
+	else {
             my $rand_token = int( rand 9 x 10 );
             my $recovery_hash = $root->get__recovery_logins({});
             my $times = 0;
@@ -140,9 +143,6 @@ sub recover_password {
 		    subject => $self->get_recovery_subject_template()->_fill( $context ),
 		    msg     => $self->get_recovery_message_template()->_fill( $context ),
 		} );
-        }
-	else {
-            die "password recovery attempt failed";
         }
     } #if login
     return "password recovery initiated";

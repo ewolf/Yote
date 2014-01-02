@@ -12,6 +12,8 @@ $VERSION = '0.05';
 
 use base 'Yote::Obj';
 
+use Yote::UserObj;
+
 sub upload_avatar {
     my( $self, $data, $acct ) = @_;
     my $login = $acct->get_login();
@@ -20,7 +22,7 @@ sub upload_avatar {
 	return "set avatar";
     }
     die "incorrect password";
-}
+} #upload_avatar
 
 sub is_root {
     my $self = shift;
@@ -31,6 +33,13 @@ sub is_master_root {
     my $self = shift;
     return $self->get_login()->get__is_master_root();    
 }
+
+sub new_user_obj {
+    my( $self, $data, $acct ) = @_;
+    my $ret = new Yote::UserObj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_user_obj
 
 1;
 
@@ -61,6 +70,9 @@ Called to reveal if the login behind this account is a root login.
 
 Returns trus if the account is the original root account
 
+=item new_obj( optional_data_hash )
+
+Returns a new yote object, initialized with the optional has reference.
 
 =back
 

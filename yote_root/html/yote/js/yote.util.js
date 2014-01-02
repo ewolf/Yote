@@ -576,8 +576,10 @@ $.yote.util = {
 		$( '#logout' ).click( function() {
 		    thislc.msg_function( 'logged out' );
 		    $( thislc.log_in_status ).empty();
-		    if( typeof thislc.on_logout_fun === 'function' )
+
+		    if( typeof thislc.on_logout_fun === 'function' ) {
 			thislc.on_logout_fun();
+		    }
 		    $.yote.logout();
 		    if( typeof thislc.after_logout_fun === 'function' )
 			thislc.after_logout_fun();
@@ -818,7 +820,9 @@ $.yote.util = {
 
     reset_els:function(els) {
 	for( var i in  els ) {
-	    $( els[ i ] ).attr( 'has_init', 'false' );
+	    $( els[ i ] ).each(  function() {
+		$( this ).attr( 'has_init', 'false' );
+	    } );
 	}
     }, //reset_els
 
@@ -845,6 +849,7 @@ $.yote.util = {
 
 	    'column_headers', 'columns', 'new_columns', 'new_columns_required',
 	    'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
+	    'new_requires', 'new_object_type',
 
 	    'item',
 	    'after_load', 'after_render', 'show_when_empty','remove_function',
@@ -879,14 +884,24 @@ $.yote.util = {
 	    } //if a string
 	} //each field
 
-	if( el.hasClass( 'control_table' ) && args['item']) {
-	    var ct = $.yote.util.control_table( args );
-	    if( args[ 'control_table_name' ] ) {
-		window[ args[ 'control_table_name' ] ] = ct;
+	if( el.hasClass( 'control_table' ) ) {
+	    if( item ) {
+		var ct = $.yote.util.control_table( args );
+		if( args[ 'control_table_name' ] ) {
+		    window[ args[ 'control_table_name' ] ] = ct;
+		}
+	    }
+	    else {
+		$( args[ 'attachpoint' ] ).empty();
 	    }
 	}
-	else if( el.hasClass( 'yote_panel' ) && args['item'] ) {
-	    $.yote.util.yote_panel( args );
+	else if( el.hasClass( 'yote_panel' ) ) {
+	    if( item ) {
+		$.yote.util.yote_panel( args );
+	    }
+	    else {
+		$( args[ 'attachpoint' ] ).empty();
+	    }
 	}
 	return;
     }, //init_el
@@ -916,13 +931,16 @@ $.yote.util = {
     yote_panel:function( args ) {
 	var item = args[ 'item' ];
 	var field = args[ 'field' ];
-	if( item && field ) {
+
+	if( field ) {
 	    var use_html = false;
 	    if( field.charAt(0) == '#' ) {
 		use_html = true;
 		field = field.substring(1);
 	    }
-	    if( ( args[ 'edit_requires' ] == 'root' && $.yote.is_root() ) ) {
+	    if( args[ 'edit_requires' ] == 'none' || 
+		( args[ 'edit_requires' ] == 'root'  && $.yote.is_root() ) || 
+		( args[ 'edit_requires' ] == 'login' && $.yote.is_logged_in() ) ) {
 		$( args[ 'attachpoint' ] ).empty().append(
 		    $.yote.util.prep_edit( item, field, '', use_html )
 		);
@@ -931,12 +949,12 @@ $.yote.util = {
 	    else {
 		if( use_html ) {
 		    $( args[ 'attachpoint' ] ).empty().append(
-			item.get( field ) 
+			item.get( field )
 		    );
 		}
 		else {
 		    $( args[ 'attachpoint' ] ).text(
-			item.get( field ) 
+			item.get( field )
 		    );
 		}
 	    }
@@ -999,9 +1017,11 @@ $.yote.util = {
 	    new_columns		: args[ 'new_columns' ],                                  // A list of objects or strings that is used to build the input for new objects.
 	    new_columns_required     : args[ 'new_columns_required' ], //defaults to new_columns.
 	    new_required_by_index    : args[ 'new_required_by_index' ],
+	    new_object_type          : args[ 'new_object_type' ] || 'obj',
 	    new_required_by_function : args[ 'new_required_by_function' ],
+	    new_requires             : args[ 'new_requires' ] || 'login',
                                                                                           //  if strings, it creates a text input that is used to populate that field in the new object
-	                                                                                  //  if an object, it expect the following fields :
+	                                                                                  //  if :nodsIan object, it expect the following fields :
 	                                                                                  //     field - a string that may be anything as long as it is unique to this particular call to control_table
 	                                                                                  //     render - a function that takes an id as an argument and returns html
 	                                                                                  //     after_render - a function called after the html is in the dom. Takes id as an argument
@@ -1087,7 +1107,9 @@ $.yote.util = {
 		}
 
 
-		if( me.new_attachpoint ) {
+		if( me.new_attachpoint && ( me.new_requires == 'none' || 
+					    ( me.new_requires == 'root'  && $.yote.is_root() ) || 
+					    ( me.new_requires == 'login' && $.yote.is_logged_in() ) ) ) {
 		    var bf = me.new_title ? '<div class="' + me._classes( '_new_title' ) + '">' + me.new_title + '</div>' : '';
 		    bf    += me.new_description ? '<div class="' + me._classes( '_new_description' ) + '">' + me.new_description + '</div>' : '';
 
@@ -1127,7 +1149,10 @@ $.yote.util = {
 			required_by_index : me.new_required_by_index,
 			required_by_function : me.new_required_by_function,
 			action : (function(it) { return function() {
-			    var newitem = it.new_function ? it.new_function() : it.is_admin ? $.yote.fetch_root().new_root_obj() : $.yote.fetch_root().new_obj();
+			    var newitem = it.new_function ? it.new_function() : 
+				it.new_object_type == 'obj'  ? $.yote.fetch_root().new_obj() :
+				it.new_object_type == 'root' ? $.yote.fetch_root().new_root_obj() :
+				it.new_object_type == 'user' ? $.yote.fetch_root().new_user_obj() : null;
 			    for( var i=0; i < it.new_columns.length; i++ ) {
 				var nc = it.new_columns[ i ];
 
@@ -1229,7 +1254,6 @@ $.yote.util = {
 				me.columns[j ] = $.yote.util.col_edit( me.columns[j].substring(1) );
 				ctype = 'function';
 			    }
-
 			    row.push( ctype == 'function' ?
 				      me.columns[ j ]( item, true ) :
 				      ctype == 'object' ?
