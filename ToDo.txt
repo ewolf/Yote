@@ -10,8 +10,6 @@ Currently on my plate :
   * text only editor
   * object editor
   * object command line
-  * sendmail setup
-  * reset password and confirm account links
   * better error messages for javascript when permissions errors occur
   * log in with email as well as handle
 ________________________________________________
