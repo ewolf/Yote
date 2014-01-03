@@ -1,5 +1,8 @@
 2014-01-02  Eric Wolf  <wolf@Talisman>
 
+	* Version 0.1018
+	* fixed bug in yote_panel refresh
+
 	* Version 0.1017
 	* added Yote::Account::new_user_obj
 	* added new_object_type and new_requires to yote.util.js control_table method for controlling access to creating new objecs and specifying which object types those are.

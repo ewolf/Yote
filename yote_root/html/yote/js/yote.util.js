@@ -830,12 +830,10 @@ $.yote.util = {
 	var ct_id = el.attr( 'id' );
 	var item = el.attr( 'item' );
 	var args = { attachpoint : '#' + ct_id };
-
 	if( el.attr( 'requires_root' ) == 'true' && ! $.yote.is_root() ) {
 	    el.empty();
 	    return;
 	}
-
 	var fields = [
 	    'edit_requires','field',
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin',
@@ -884,7 +882,7 @@ $.yote.util = {
 	} //each field
 
 	if( el.hasClass( 'control_table' ) ) {
-	    if( item ) {
+	    if( args[ 'item' ] ) {
 		var ct = $.yote.util.control_table( args );
 		if( args[ 'control_table_name' ] ) {
 		    window[ args[ 'control_table_name' ] ] = ct;
@@ -895,7 +893,7 @@ $.yote.util = {
 	    }
 	}
 	else if( el.hasClass( 'yote_panel' ) ) {
-	    if( item ) {
+	    if( args[ 'item' ] ) {
 		$.yote.util.yote_panel( args );
 	    }
 	    else {
