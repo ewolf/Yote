@@ -70,9 +70,9 @@ Called to reveal if the login behind this account is a root login.
 
 Returns trus if the account is the original root account
 
-=item new_obj( optional_data_hash )
+=item new_user_obj( optional_data_hash )
 
-Returns a new yote object, initialized with the optional has reference.
+Returns a new user yote object, initialized with the optional has reference.
 
 =back
 

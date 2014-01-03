@@ -831,7 +831,6 @@ $.yote.util = {
 	var item = el.attr( 'item' );
 	var args = { attachpoint : '#' + ct_id };
 
-
 	if( el.attr( 'requires_root' ) == 'true' && ! $.yote.is_root() ) {
 	    el.empty();
 	    return;
@@ -912,10 +911,10 @@ $.yote.util = {
 	    var el = $( this );
 	    // init can be called multiple times, but only
 	    // inits on the first time
+
 	    if( el.attr( 'has_init' ) == 'true' ) {
 		return;
 	    }
-
 	    el.attr( 'has_init', 'true' );
 	    $.yote.util.init_el(el);
 	    may_need_init = true;

@@ -1,3 +1,9 @@
+2014-01-02  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1017
+	* added Yote::Account::new_user_obj
+	* added new_object_type and new_requires to yote.util.js control_table method for controlling access to creating new objecs and specifying which object types those are.
+
 2013-12-27  Eric Wolf  <wolf@Talisman>
 	* Version 0.1016
 	* count and paginate will return appropriate things by ObjProvider if they are operating on an empty field
