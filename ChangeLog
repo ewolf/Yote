@@ -1,3 +1,12 @@
+2014-01-06  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1019
+	* Mongo db tries 3 reconnects if it errors out connecting to mongo
+	* wrap cron actions in eval so it doesn't crash the server.
+	* added $.yote.util.refresh_ui function
+	* added _account_handles in Yote::AppRoot
+	* fixed bug in Yote::UserObj permissions.
+
 2014-01-02  Eric Wolf  <wolf@Talisman>
 
 	* Version 0.1018

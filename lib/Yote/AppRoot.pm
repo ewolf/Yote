@@ -231,13 +231,13 @@ sub _new_account {
 #
 sub __get_account {
     my( $self, $login ) = @_;
-    my $accts = $self->get__account_roots({});
-    my $acct = $accts->{$login->{ID}};
+    my $acct = $self->_hash_fetch( '_account_roots', $login->{ID} );
     unless( $acct ) {
         $acct = $self->_new_account();
         $acct->set_login( $login );
 	$acct->set_handle( $login->get_handle() );
-        $accts->{$login->{ID}} = $acct;
+	$self->_hash_insert( '_account_roots', $login->{ID}, $acct );
+	$self->_hash_insert( '_account_handles', lc( $login->get_handle() ), $acct );
 	$self->_init_account( $acct );
     }
     die "Access Error" if $acct->get__is_disabled();

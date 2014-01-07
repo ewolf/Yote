@@ -237,7 +237,9 @@ sub _hash_insert {
 
 sub _hash_fetch {
     my( $self, $hashname, $key ) = @_;
-    return Yote::ObjProvider::hash_fetch( $self->{DATA}{$hashname}, $key );
+    my $hash_id = $self->{DATA}{$hashname};
+    return unless $hash_id;
+    return Yote::ObjProvider::hash_fetch( $hash_id, $key );
 }
 
 sub _list_delete {
@@ -710,6 +712,21 @@ Returns item at the index postion from the list attached to this object specifie
 =item paginate( args )
 
 Returns a paginated list or hash. Arguments are
+
+=over 4
+
+* limit
+* name ( of container )
+* return_hash
+* reverse
+* reversed_orders list of sort fields that should be reversed
+* skip
+* search_fields
+* search_terms
+* sort
+* sort_fields list of fields to sort objects by. Only works on collection of Yote::Obj objects.
+
+=back
 
 =item remove_from( { name => '', items => [] } )
 

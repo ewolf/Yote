@@ -287,8 +287,8 @@ sub package_methods {
 sub paginate {
     my( $obj_id, $args ) = @_;
     if( $args->{ return_hash } ) {
-	my $res = $DATASTORE->paginate( $obj_id, $args );
 	return {} unless $obj_id;
+	my $res = $DATASTORE->paginate( $obj_id, $args );
 	return { map { $_ => xform_out( $res->{$_} ) } keys %$res };
     }
     return [] unless $obj_id;

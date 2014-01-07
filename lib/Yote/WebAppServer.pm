@@ -239,30 +239,33 @@ sub start_server {
 	while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
 	    $self->__start_server_thread;
 	}
-	my $cron_entries = $cron->entries();
-	Yote::ObjProvider::flush_all_volatile();
-	$self->__unlock_all();
+	eval { 
+	    my $cron_entries = $cron->entries();
+	    Yote::ObjProvider::flush_all_volatile();
+	    $self->__unlock_all();
 
-	for my $entry (@$cron_entries) {
-	    threads->new( sub {
-		$cron->_mark_done( $entry );
-		print STDERR "Starting cron thread " . threads->tid() . "\n";
-		my $script = $entry->get_script();
-		print STDERR "EVAL $script\n";
-		eval "$script";
-		print STDERR "Done EVAL\n";
-		if( $@ ) {
-		    print STDERR "Error in Cron : $@ $!\n";
-		} 
-		$self->__check_locked_for_dirty();
-		Yote::ObjProvider::start_transaction();
-		Yote::ObjProvider::stow_all();
-		Yote::ObjProvider::flush_all_volatile();
-		Yote::ObjProvider::commit_transaction();
-		$self->__unlock_all();
-		print STDERR "Done cron thread " . threads->tid() . "\n";
-			  } ); #done with cron entry thread
-	} #each cron entry
+	    for my $entry (@$cron_entries) {
+		threads->new( sub {
+		    $cron->_mark_done( $entry );
+		    print STDERR "Starting cron thread " . threads->tid() . "\n";
+		    my $script = $entry->get_script();
+		    print STDERR "EVAL $script\n";
+		    eval "$script";
+		    print STDERR "Done EVAL\n";
+		    if( $@ ) {
+			print STDERR "Error in Cron : $@ $!\n";
+		    } 
+		    $self->__check_locked_for_dirty();
+		    Yote::ObjProvider::start_transaction();
+		    Yote::ObjProvider::stow_all();
+		    Yote::ObjProvider::flush_all_volatile();
+		    Yote::ObjProvider::commit_transaction();
+		    $self->__unlock_all();
+		    print STDERR "Done cron thread " . threads->tid() . "\n";
+			      } ); #done with cron entry thread
+	    } #each cron entry
+	};
+	print STDERR "ERROR IN CRON : $@ $!" if $@;
     } #endless loop
 
     __stop_threads();

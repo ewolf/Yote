@@ -861,12 +861,22 @@ $.yote.util = {
 	    if( typeof attr_val == 'string' ) {
 		// json
 		if( attr_val.charAt(0) == '[' || attr_val.charAt(0) == '{' ) {
-		    args[ fld ] = eval( attr_val );
+		    try { 
+			args[ fld ] = eval( attr_val );
+		    } catch(err) {
+			console.log( [ "ERR IN EVAL", err, attr_val ] );
+			throw err;
+		    }
 		}
 		// function
 		else if( attr_val.charAt(0) == '*' ) {
 		    var fs = attr_val.substring(1);
-		    var f = eval( '['+fs+']' );
+		    try {
+			var f = eval( '['+fs+']' );
+		    } catch(err) {
+			console.log( [ "ERR IN EVAL", err, attr_val ] );
+			throw err;
+		    }
 		    args[ fld ] = f[0];
 		}
 
@@ -903,6 +913,13 @@ $.yote.util = {
 	return;
     }, //init_el
 
+    refresh_ui:function() {
+	$( '.control_table,.yote_panel' ).each( function() {
+	    $( this ).attr( 'has_init', 'false' );
+	} );
+	$.yote.util.init_ui();
+    }, //refresh_ui
+    
     init_ui:function() {
 	var may_need_init = false;
 	$( '.control_table,.yote_panel' ).each( function() {
@@ -1104,72 +1121,77 @@ $.yote.util = {
 		}
 
 
-		if( me.new_attachpoint && ( me.new_requires == 'none' || 
-					    ( me.new_requires == 'root'  && $.yote.is_root() ) || 
-					    ( me.new_requires == 'login' && $.yote.is_logged_in() ) ) ) {
-		    var bf = me.new_title ? '<div class="' + me._classes( '_new_title' ) + '">' + me.new_title + '</div>' : '';
-		    bf    += me.new_description ? '<div class="' + me._classes( '_new_description' ) + '">' + me.new_description + '</div>' : '';
-
-		    var txts = [];
-		    var tbl = $.yote.util.make_table( me._classes_array( 'new_item_table' ) );
-		    for( var i=0; i < me.new_columns.length; i++ ) {
-			var nc = me.new_columns[ i ];
-			var field = typeof nc === 'object' ? nc.field : nc;
-			var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
-			if( typeof nc === 'object' ) {
-			    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
-			} else {
-			    if( me.new_column_titles[ i ] ) {
-				tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+		if( me.new_attachpoint ) {
+		    if( me.new_requires == 'none' || 
+			( me.new_requires == 'root'  && $.yote.is_root() ) || 
+			( me.new_requires == 'login' && $.yote.is_logged_in() ) ) {
+			var bf = me.new_title ? '<div class="' + me._classes( '_new_title' ) + '">' + me.new_title + '</div>' : '';
+			bf    += me.new_description ? '<div class="' + me._classes( '_new_description' ) + '">' + me.new_description + '</div>' : '';
+			
+			var txts = [];
+			var tbl = $.yote.util.make_table( me._classes_array( 'new_item_table' ) );
+			for( var i=0; i < me.new_columns.length; i++ ) {
+			    var nc = me.new_columns[ i ];
+			    var field = typeof nc === 'object' ? nc.field : nc;
+			    var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
+			    if( typeof nc === 'object' ) {
+				tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
 			    } else {
-				tbl.add_row( [ '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				if( me.new_column_titles[ i ] ) {
+				    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				} else {
+				    tbl.add_row( [ '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				}
+			    }
+			    txts.push( '#' + id );
+			} //each new column
+			bf += tbl.get_html();
+			bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.ct_id + '_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
+			$( me.new_attachpoint ).empty().append( bf );
+
+
+			for( var i=0; i < me.new_columns.length; i++ ) {
+			    var nc = me.new_columns[ i ];
+			    if( typeof nc === 'object' && nc[ 'after_render' ] ) {
+				nc.after_render( '_new_' + me.ct_id + '_' + me.item.id + '_' + nc.field );
 			    }
 			}
-			txts.push( '#' + id );
-		    } //each new column
-		    bf += tbl.get_html();
-		    bf += '<BUTTON type="BUTTON" class="' + me.prefix_classname + '_new_item_btn _ct_new_item_btn" id="_new_' + me.ct_id + '_' + me.item.id + '_b">' + me.new_button + '</BUTTON>';
-		    $( me.new_attachpoint ).empty().append( bf );
 
+			$.yote.util.button_actions( {
+			    button : '#_new_' + me.ct_id +'_' + me.item.id + '_b',
+			    texts  : txts,
+			    required : me.new_columns_required,
+			    required_by_index : me.new_required_by_index,
+			    required_by_function : me.new_required_by_function,
+			    action : (function(it) { return function() {
+				var newitem = it.new_function ? it.new_function() : 
+				    it.new_object_type == 'obj'  ? $.yote.fetch_root().new_obj() :
+				    it.new_object_type == 'root' ? $.yote.fetch_root().new_root_obj() :
+				    it.new_object_type == 'user' ? $.yote.fetch_root().new_user_obj() : null;
+				for( var i=0; i < it.new_columns.length; i++ ) {
+				    var nc = it.new_columns[ i ];
 
-		    for( var i=0; i < me.new_columns.length; i++ ) {
-			var nc = me.new_columns[ i ];
-			if( typeof nc === 'object' && nc[ 'after_render' ] ) {
-			    nc.after_render( '_new_' + me.ct_id + '_' + me.item.id + '_' + nc.field );
-			}
+				    var field = typeof nc === 'object' ? nc.field : nc;
+				    var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
+				    if( typeof nc === 'object' ) {
+					nc.on_create( newitem, id );
+				    }
+				    else {
+					var val = $( '#' + id  ).val();
+					newitem.set( nc, val );
+				    }
+				} //each column
+				it.item.add_to( { name : it.container_name, items : [ newitem ] } );
+				if( it.after_new_fun ) {
+				    it.after_new_fun( newitem );
+				}
+				it.refresh();
+			    } } )( me )
+			} );
 		    }
-
-		    $.yote.util.button_actions( {
-			button : '#_new_' + me.ct_id +'_' + me.item.id + '_b',
-			texts  : txts,
-			required : me.new_columns_required,
-			required_by_index : me.new_required_by_index,
-			required_by_function : me.new_required_by_function,
-			action : (function(it) { return function() {
-			    var newitem = it.new_function ? it.new_function() : 
-				it.new_object_type == 'obj'  ? $.yote.fetch_root().new_obj() :
-				it.new_object_type == 'root' ? $.yote.fetch_root().new_root_obj() :
-				it.new_object_type == 'user' ? $.yote.fetch_root().new_user_obj() : null;
-			    for( var i=0; i < it.new_columns.length; i++ ) {
-				var nc = it.new_columns[ i ];
-
-				var field = typeof nc === 'object' ? nc.field : nc;
-				var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
-				if( typeof nc === 'object' ) {
-				    nc.on_create( newitem, id );
-				}
-				else {
-				    var val = $( '#' + id  ).val();
-				    newitem.set( nc, val );
-				}
-			    } //each column
-			    it.item.add_to( { name : it.container_name, items : [ newitem ] } );
-			    if( it.after_new_fun ) {
-				it.after_new_fun( newitem );
-			    }
-			    it.refresh();
-			} } )( me )
-		    } );
+		    else {
+			$( me.new_attachpoint ).empty();
+		    }
 		} //new attacher
 
 		if( me.column_headers && ! me.suppress_table ) {

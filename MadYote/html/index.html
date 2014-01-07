@@ -151,7 +151,8 @@
           <div id="chat_mgs"></div>
 	  <div class="control_table" id="chat_box" item="$chat" plimit="15"
 	       container_name="messages" show_count="false" include_remove="*$.yote.is_root()"
-	       columns="[function(item,is_prep){if(is_prep){return item.get_message()+'['+item.get_name()+'] ('+new Date(1000*item.get_created_on()).toLocaleString()+')'}}]"
+	       columns="[function(item,is_prep){if(is_prep){return item.get_message()+'['+item.get_name()+
+			'] ('+new Date(1000*item.get_created_on()).toLocaleString()+')'}}]"
 	       after_new_function="*function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) }"
 	       new_button="say" new_attachpoint="#chat_mgs" paginate_order="reverse"
 	       new_columns="['message','name']" new_column_placeholders="['message','name']"

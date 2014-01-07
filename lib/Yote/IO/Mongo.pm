@@ -39,13 +39,53 @@ sub new {
 
 sub commit_transaction {}
 
+sub _db_act {
+    my( $self, $act, @args ) = @_;
+    for(0..2) {
+	my $res;
+	eval {
+	    $res = $self->{ OBJS }->$act( @args );
+	};
+	if( $@=~ /not connected/ ) {
+	    $self->_connect;
+	}
+	else {
+	    die $@ if $@ && $@ !~ /^missed|error gettind database response/;
+	}
+	return $res unless $@;
+	sleep(1);
+    }
+} #_db_act
+
+sub _find_one {
+    my( $self, @args ) = @_;
+    return $self->_db_act( 'find_one', @args );
+} #_find_one
+sub _find {
+    my( $self, @args ) = @_;
+    return $self->_db_act( 'find', @args );
+} #_find
+sub _insert {
+    my( $self, @args ) = @_;
+    return $self->_db_act( 'insert', @args );
+} #_insert
+sub _remove {
+    my( $self, @args ) = @_;
+    return $self->_db_act( 'remove', @args );
+} #_remove
+sub _update {
+    my( $self, @args ) = @_;
+    return $self->_db_act( 'update', @args );
+} #_update
+
+
 #
 # Returns the number of entries in the list of the given id.
 #
 sub count {
     my( $self, $container_id, $args ) = @_;
     my $mid = MongoDB::OID->new( value => $container_id );
-    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    my $obj = $self->_find_one( { _id => $mid } );
     if( $args->{search_fields} && $args->{search_terms} ) {
 	my @ors;
 	for my $field ( @{ $args->{ search_fields } } ) {
@@ -58,9 +98,9 @@ sub count {
 	    _id => { '$in' => [ map { MongoDB::OID->new( value => $_ )  } grep { index( $_, 'v' ) != 0 } @$cands] },
 	    '$or' => \@ors,
 	};
-	my $curs = $self->{ OBJS }->find( $query );
+	my $curs = $self->_find( $query );
 
-	return $self->{ OBJS }->find( $query )->count();
+	return $self->_find( $query )->count();
     }
     if( $obj->{ c } eq 'ARRAY' ) {
 	return scalar( @{$obj->{ d } } );
@@ -91,7 +131,6 @@ sub ensure_datastore {
     my $self = shift;
     $self->{ OBJS } = $self->{ DB }->get_collection( "objects" );
     $self->{ OBJS }->ensure_index( { 'r' => 1 } );
-
     my $root = $self->{ DB }->get_collection( "root" );
     my $root_node = $root->find_one( { root => 1 } );
     if( $root_node ) {
@@ -108,7 +147,7 @@ sub ensure_datastore {
 #
 sub fetch {
     my( $self, $id ) = @_;
-    my $data = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $id ) } );
+    my $data = $self->_find_one( { _id => MongoDB::OID->new( value => $id ) } );
     return unless $data;
     if( $data->{ c } eq 'ARRAY' ) {
 	return [ $id, $data->{ c }, $data->{d} ];
@@ -145,11 +184,11 @@ sub hash_delete {
     my( $self, $hash_id, $key ) = @_;
     my $mid = MongoDB::OID->new( value => $hash_id );
     $key =~ s/\./\\/g;
-    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
 	die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
 	delete $obj->{ d }{ $key };
-	$self->{ OBJS }->update( { _id => $mid, }, $obj );
+	$self->_update( { _id => $mid, }, $obj );
     }
     return;
 } #hash_delete
@@ -157,7 +196,7 @@ sub hash_delete {
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
     $key =~ s/\./\\/g;
-    my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+    my $hash = $self->_find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
     return $hash->{ d }->[ $key ] if $hash->{ c } ne 'HASH';
     return $hash->{ d }->{ $key } if $hash;
 } #hash_fetch
@@ -165,7 +204,7 @@ sub hash_fetch {
 sub hash_has_key {
     my( $self, $hash_id, $key ) = @_;
     $key =~ s/\./\\/g;
-    my $hash = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
+    my $hash = $self->_find_one( { _id => MongoDB::OID->new( value => $hash_id ) } );
     return defined( $hash->{ d }->{$key} );
 } #hash_has_key
 
@@ -173,18 +212,18 @@ sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
     $key =~ s/\./\\/g;
     my $mid = MongoDB::OID->new( value => $hash_id );
-    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
 	die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
 	$obj->{ d }{ $key } = $val;
 	if( $obj ) {
-	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
+	    $self->_update( { _id => $mid, }, $obj );
 	}
     }
     else {
-	$self->{ OBJS }->insert( { _id => $mid, d => { $key => $val },
-				   c => 'HASH', refs => index( $val, 'v' ) == 0 ? [] :
-				       [ $val ] } );
+	$self->_insert( { _id => $mid, d => { $key => $val },
+			  c => 'HASH', refs => index( $val, 'v' ) == 0 ? [] :
+			      [ $val ] } );
     }
     return;
 } #hash_insert
@@ -193,7 +232,7 @@ sub hash_insert {
 sub list_delete {
     my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
-    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
 	die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
 	my $actual_index;
@@ -204,7 +243,7 @@ sub list_delete {
 	}
 	if( defined( $actual_index ) ) {
 	    splice @{$obj->{ d }}, $actual_index, 1;
-	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
+	    $self->_update( { _id => $mid, }, $obj );
 	}
     }
     return;
@@ -213,7 +252,7 @@ sub list_delete {
 
 sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
-    my $list = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
+    my $list = $self->_find_one( { _id => MongoDB::OID->new( value => $list_id ) } );
 
     return undef unless $list;
 
@@ -228,7 +267,7 @@ sub list_fetch {
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
-    my $obj = $self->{ OBJS }->find_one( { _id => $mid } );
+    my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) { 
 	die "list_insert must be called for list" if $obj->{ c } ne 'ARRAY';
 	if( $obj ) {
@@ -238,7 +277,7 @@ sub list_insert {
 	    else {
 		push @{$obj->{ d }}, $val;
 	    }
-	    $self->{ OBJS }->update( { _id => $mid, }, $obj );
+	    $self->_update( { _id => $mid, }, $obj );
 	}
     }
     else {
@@ -250,7 +289,7 @@ sub list_insert {
 sub paginate {
     my( $self, $obj_id, $args ) = @_;
 
-    my $obj = $self->{ OBJS }->find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
+    my $obj = $self->_find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
     die "data structure $obj_id not found" unless $obj;
 
     # must cover the cases of 
@@ -295,7 +334,7 @@ sub paginate {
 	    }
 	}
 
-	my $curs = $self->{ OBJS }->find( $query, $query_args );
+	my $curs = $self->_find( $query, $query_args );
 
 	if( defined( $limit ) ) {
 	    if( $skip ) {
@@ -386,7 +425,7 @@ sub paginate {
 
 sub recycle_object {
     my( $self, $obj_id ) = @_;
-    $self->{ OBJS }->remove( { _id => MongoDB::OID->new( value => $obj_id ) } );
+    $self->_remove( { _id => MongoDB::OID->new( value => $obj_id ) } );
     # not going to remove the referenced links from a recycled object, as those links
     # by definition show up in other recycleable objects.
 } #recycle_object
@@ -394,7 +433,7 @@ sub recycle_object {
 sub recycle_objects {
     my $self = shift;
 
-    my $cursor = $self->{ OBJS }->find( { l => { '$gt' => 0 } } );
+    my $cursor = $self->_find( { l => { '$gt' => 0 } } );
 
     my $rec_count = 0;
     while( my $obj = $cursor->next ) {
@@ -432,22 +471,22 @@ sub stow {
     }
 
     my $mid = MongoDB::OID->new( value => $id );
-    if( $self->{ OBJS }->find_one( { _id => $mid } ) ) {
-	$self->{ OBJS }->update( { _id => $mid, },
-				 {
-				     d   => $data,
-				     c   => $class,
-				     r   => \@refs,
-				     l   => time, #last updated
-				 } );
+    if( $self->_find_one( { _id => $mid } ) ) {
+	$self->_update( { _id => $mid, },
+			{
+			    d   => $data,
+			    c   => $class,
+			    r   => \@refs,
+			    l   => time, #last updated
+			} );
     }
     else {
-	my $ins = $self->{ OBJS }->insert( { _id => $mid,
-					     d   => $data,
-					     c   => $class,
-					     r   => \@refs,
-					     l   => time, #last updated
-					   } );
+	my $ins = $self->_insert( { _id => $mid,
+				    d   => $data,
+				    c   => $class,
+				    r   => \@refs,
+				    l   => time, #last updated
+				  } );
     }
     return;
 } #stow
@@ -465,7 +504,8 @@ sub stow_all {
 
 sub _connect {
     my $self  = shift;
-    my $args  = ref( $_[0] ) ? $_[0] : { @_ };
+    $self->{args} ||= ref( $_[0] ) ? $_[0] : { @_ };
+    my $args = $self->{args};
     my $host = $args->{ host } || 'localhost';
     $host .= ':' . ($args->{ engine_port } || 27017);
     my %mongo_args = (
@@ -486,7 +526,7 @@ sub _has_path_to_root {
     return 1 if $obj_id eq $self->first_id();
     $seen ||= { $obj_id => 1 };
 
-    my $curs = $self->{ OBJS }->find( { r => $obj_id } );
+    my $curs = $self->_find( { r => $obj_id } );
     while( my $obj = $curs->next ) {
 	return 1 unless $obj->{ l } > 0;
 	my $o_id = $obj->{ _id }{ value };

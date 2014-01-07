@@ -1,4 +1,9 @@
 The stack :
+  Ugh, more todo? Well, I want to have a good way to update the UI when a list even happens. The UI does not usually keep list objects in it, just slices of them, 
+   and those slices do not get updated when things get added to the list ( or hash ) object.
+
+  Also, how about an even handler for when an object does receive an update, and an update to its list.
+  
   make sure yote_root http pages are not overwritten during install/upgrade
 
 Currently on my plate :
