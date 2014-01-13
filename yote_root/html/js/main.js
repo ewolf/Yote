@@ -26,8 +26,8 @@ function attach_login( args ) {
 	app : theapp
     } );
     if( $.yote.is_logged_in() ) {
-	lc.on_login();
-	after_login_f();
+//	lc.on_login();
+//	after_login_f();
     }
     else {
 	lc.needs_login();

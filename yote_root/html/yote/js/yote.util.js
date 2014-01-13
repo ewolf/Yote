@@ -848,7 +848,7 @@ $.yote.util = {
 	    'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
 	    'new_requires', 'new_object_type',
 
-	    'item',
+	    'item', 'show_count',
 	    'after_load', 'after_render', 'show_when_empty','remove_function',
 	    'new_required_by_function', 'new_function', 'after_new_function',
 
@@ -986,7 +986,7 @@ $.yote.util = {
 	    /* PAGINATION */
 	    start		: 0,                                      // pagination start
 	    plimit		: args[ 'plimit' ],                       // pagination limit
-	    show_count          : typeof args[ 'show_count' ] === 'undefined' ? true : args[ 'show_count' ],
+	    show_count          : typeof args[ 'show_count' ] === 'undefined' ? true : args[ 'show_count' ] && args[ 'show_count' ] != 'false',
 
 	    search_fun		: args[ 'search_function' ],              // optional alternate search function. Uses the default. which is search_list
 	    search_on		: args[ 'search_on' ],                    // List of what search fields to use for the item. This may or may not be used by the item's search function depending on how it is defined. If this is included, search will be activated.
