@@ -51,13 +51,17 @@ sub clear_login {
     my $root = Yote::YoteRoot::fetch_root();    
     my $DIRTY = $root->get___DIRTY();
     my $ALLOWS_REV = $root->get___ALLOWS_REV();
+    my $REGISTERED_CONTAINERS = $root->get___REGISTERED_CONTAINERS();
+
     if( $login ) {
 	delete $DIRTY->{ $login->{ID} };
 	delete $ALLOWS_REV->{ $login->{ID} };
+	delete $REGISTERED_CONTAINERS->{ $login->{ID} };
     }
     delete $DIRTY->{ $guest_token };
     delete $ALLOWS_REV->{ $guest_token };
 
+    delete $REGISTERED_CONTAINERS->{ $guest_token };
 }
 
 # return a list of object ids whos data should be sent to the caller.
@@ -75,14 +79,30 @@ sub fetch_dirty {
     push @$ids, keys %{ $DIRTY->{ $guest_token } };
     delete $DIRTY->{ $guest_token };
     return $ids;
-}
+} #fetch_dirty
+
+# return a list of object ids => [ container ids ] that reference containers that need updating for pagination purposes
+sub fetch_updated_container_holders {
+    my( $login, $guest_token ) = @_;
+    my $root = Yote::YoteRoot::fetch_root();
+    my $DIRTY_CONTAINER = $root->get___DIRTY_CONTAINER();
+    my %ret;
+    if( $login ) {
+	%ret = map { $_ => [ keys %{$DIRTY_CONTAINER->{ $login->{ID} }{ $_ } } ] } keys %{ $DIRTY_CONTAINER->{ $login->{ID} } || {} };
+	delete $DIRTY_CONTAINER->{ $login->{ID} };
+    }
+#    return { %{ $DIRTY_CONTAINER
+} #update_container_holders
 
 sub mark_dirty {
-    my( $obj_id ) = @_;
     if( $Yote::YoteRoot::ROOT_INIT ) {
 	return;
     }
+    my( $obj_id, $is_container ) = @_;
+
     my $root = Yote::YoteRoot::fetch_root();
+
+    # mark this obj dirty for any client watching it
     my $DIRTY = $root->get___DIRTY();
     my $ALLOWS = $root->get___ALLOWS();
     my $obj_hash = $ALLOWS->{ $obj_id };
@@ -91,7 +111,20 @@ sub mark_dirty {
 	#must be or, so that DIRTY doesn't become dirty and start an infinite loop
 	$DIRTY->{ $recip_id }{ $obj_id } ||= 1;  
     }
-}
+
+    # if this is a container not on a client but paginated by the client, note that
+    # the pagination needs update
+    if( $is_container ) {
+	my $DIRTY_CONTAINER = $root->get___DIRTY_CONTAINER();
+	my $REGISTERED_CONTAINERS = $root->get__REGISTERED_CONTAINERS();
+	for my $recip_id ( keys %{ $REGISTERED_CONTAINERS->{ $obj_id } || {} } ) {
+	    for my $attached_to_obj ( keys %{ $REGISTERED_CONTAINERS->{ $recip_id } } ) {
+		$DIRTY_CONTAINER->{ $recip_id }{ $attached_to_obj }{ $obj_id } ||= 1;
+	    }
+	}
+    }    
+    
+} #mark_dirty
 
 sub register_object {
     my( $obj_id, $recipient_id ) = @_;
@@ -106,6 +139,12 @@ sub register_object {
 
 } #register_object
 
+sub register_container {
+    my( $container_id, $obj_holding_container_id, $recip_id ) = @_;
+    my $root = Yote::YoteRoot::fetch_root();
+    my $REGISTERED_CONTAINERS = $root->get___REGISTERED_CONTAINERS();
+    $REGISTERED_CONTAINERS->{ $recip_id }{ $container_id }{ $obj_holding_container_id } ||= 1;
+} #register_container
 
 
 1;
