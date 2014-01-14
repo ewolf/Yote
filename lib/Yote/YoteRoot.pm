@@ -492,11 +492,6 @@ Returns a new user yote object, initialized with the optional has reference.
 
 This method may only be invoked by a login with the root bit set. This clears out the app entirely.
 
-=item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
-
-Causes an email with a recovery link sent to the email in question, if it is associated with an account.
-
-
 =item remove_root( login )
 
 Removes the root bit from the login.

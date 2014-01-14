@@ -165,6 +165,7 @@ sub recovery_reset_password {
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
             $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+	    $login->set__is_validated(1);
             return $login->get__recovery_from_url();
         }
     }

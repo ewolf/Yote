@@ -8,6 +8,9 @@ use vars qw($VERSION);
 $VERSION = '0.001';
 
 use Test::More;
+use Yote::RootObj;
+use Yote::Obj;
+use Yote::UserObj;
 
 use Aspect;
 
@@ -690,7 +693,8 @@ sub io_independent_tests {
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
 
     # root acct test
-    my $new_master_login = $root->_update_master_root( "NEWROOT","NEWPW" );
+    my $new_master_login = $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+
     is( $new_master_login, $master_account->get_login(), "check root with new credentials does not change login" );
 
     # have $login, $root_login

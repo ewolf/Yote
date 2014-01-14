@@ -1,9 +1,14 @@
 The stack :
+  
+ How about admin making accounts validated. Also account change its email now validates.
   Ugh, more todo? Well, I want to have a good way to update the UI when a list even happens. The UI does not usually keep list objects in it, just slices of them, 
    and those slices do not get updated when things get added to the list ( or hash ) object.
      [ so, my thought for the above is to register an object/list pairing using ObjManager, then mark the lists as a list dirty when updated
        The objmanager will know which account is tracking which lists.
        On the client side, there can be event handlers that fire when objects or those lists are updated ]
+
+
+
 
   Testing : need a test for the web app server.
 
