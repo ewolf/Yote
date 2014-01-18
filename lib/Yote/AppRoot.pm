@@ -23,14 +23,12 @@ $VERSION = '0.087';
 
 sub _init {
     my $self = shift;
-
     my $hn = `hostname`;
     chomp $hn;
 
     $self->set_app_name( ref( $self ) );
     $self->set_host_name( $hn );
     $self->set_host_url( "http://$hn" );
-
     $self->set_validation_email_from( 'yote@' . $hn );
     $self->set_validation_link_template(new Yote::SimpleTemplate( { text=>'${hosturl}/val.html?t=${t}&app=${app}' } ) );
     $self->set_validation_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}));

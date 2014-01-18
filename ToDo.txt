@@ -1,5 +1,7 @@
 The stack :
   
+ Control table filter/search
+
  How about admin making accounts validated. Also account change its email now validates.
   Ugh, more todo? Well, I want to have a good way to update the UI when a list even happens. The UI does not usually keep list objects in it, just slices of them, 
    and those slices do not get updated when things get added to the list ( or hash ) object.

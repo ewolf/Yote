@@ -1101,6 +1101,52 @@ sub io_independent_tests {
 
     is( scalar( @{ $entry->get_scheduled_times() } ), 0, "no more scheduled entries" );
 
+    # zoot,  toot, realroot, NEWROOT ( master )
+
+    # the following block is copied from above
+    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+    my $master_root = $root->login( { h => 'NEWROOT', p => 'NEWPW' } )->{l};
+    ok( $master_root->is_root(), "Master root is root" );
+    my $master_acct = $root->__get_account( $master_root );
+    my $zl = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
+    $zl->set__is_root( 1 );
+
+
+    my $toot_notroot = $root->login( { h => 'toot', p => 'toor' } )->{l};
+    ok( ! $toot_notroot->is_root(), "Toot notroot is not root" );
+    my $toot_notroot_acct = $root->__get_account( $toot_notroot );
+    my $zoot_root = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
+    ok( $zoot_root, "Zoot is root" );
+    my $zoot_root_acct = $root->__get_account( $zoot_root );
+
+    my $cute_login = $root->create_login( { h => 'cute', p => 'naughty', e => "cute\@tooz.com" } )->{l};
+    my $cute_notroot_acct = $root->__get_account( $cute_login );
+
+    my $ro = new Yote::RootObj();
+    is_deeply( $ro->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate root obj private container" );
+    is_deeply( $ro->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate root obj private container" );
+    eval { 
+	$ro->paginate( { name => "_foo", }, $toot_notroot_acct );
+	fail( "nonroot account able to paginate root obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot account unable to paginate root obj private container" );
+
+    my $uo = new Yote::UserObj( { _creator =>  $toot_notroot_acct } );
+    is_deeply( $uo->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "_foo", }, $toot_notroot_acct ), [], "creator can paginate user obj private container" );
+    eval { 
+	$ro->paginate( { name => "_foo", }, $cute_notroot_acct );
+	fail( "nonroot account able to paginate root obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot nonowner account unable to paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "foo", }, $cute_notroot_acct ), [], "nonroot, noncreator can paginate user obj public container" );
+    eval { 
+	$ro->hash( { name => "foo", value => 'bar' }, $cute_notroot_acct );
+	fail( "nonroot, nocreator account able to insert into into user obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot nonowner account unable to insert data into  user obj public container" );
 } #io_independent_tests
 
 1;

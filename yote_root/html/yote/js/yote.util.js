@@ -48,6 +48,9 @@ $.yote.util = {
 	    this.registered_items[ key ] = hashed_items[ key ];
 	}
     },
+    register_item:function( name, val ) {
+	this.registered_items[ name ] = val;
+    },
 
     button_actions:function( args ) {
 	var but         = args[ 'button' ];
@@ -496,7 +499,7 @@ $.yote.util = {
 	    };
 
 	    ptab[ 'build_html' ] = function(start_pos) {
-		var start = start_pos ? start_pos : 0;
+		var start = start_pos ? 1*start_pos : 0;
 		var tab = $.yote.util.make_table();
 		if( ptab.col_names ) {
 		    tab.add_header_row( ptab.col_names );
@@ -981,7 +984,7 @@ $.yote.util = {
     control_table:function( args ) {
 	var ct = {
 	    ct_id		: this.next_id(),                         // a unique ID to make sure the namespace here is unique
-	    terms		: [],                                     // used by search to keep track if search should be invoked or not
+	    search_terms	: args[ 'search_terms'] || [],                                     // used by search to keep track if search should be invoked or not
 
 	    /* PAGINATION */
 	    start		: 0,                                      // pagination start
@@ -990,6 +993,7 @@ $.yote.util = {
 
 	    search_fun		: args[ 'search_function' ],              // optional alternate search function. Uses the default. which is search_list
 	    search_on		: args[ 'search_on' ],                    // List of what search fields to use for the item. This may or may not be used by the item's search function depending on how it is defined. If this is included, search will be activated.
+	    display_search_box  : args[ 'display_search_box' ] || false,
 
 	    /* DATA */
 	    item		: args[ 'item' ],                          // item that contains the list
@@ -1068,7 +1072,7 @@ $.yote.util = {
 		}
 	    },
 	    clear_search : function() {
-		this.terms = [];
+		this.search_terms = [];
 		this.refresh();
 	    },
 
@@ -1079,14 +1083,14 @@ $.yote.util = {
 		var paginate_function;
 
 		(function(it) {
-		    if( it.search_on && it.terms.length > 0 ) {
+		    if( it.search_on && it.search_terms.length > 0 ) {
 			paginate_function = function() {
 			    if( it.search_fun ) {
 				// TODO : make these into an argument list
-				return it.search_fun( [ it.container_name, it.search_on, it.terms, it.plimit + 1, it.start ] );
+				return it.search_fun( [ it.container_name, it.search_on, it.search_terms, it.plimit + 1, it.start ] );
 			    } else {
 				return it.item.paginate( { name : it.container_name, limit : it.plimit + 1, skip : it.start,
-							   search_fields : it.search_on, search_terms : it.terms,
+							   search_fields : it.search_on, search_terms : it.search_terms,
 							   return_hash : it.paginate_type != 'list' ? 1 : 0,
 							   reverse : it.paginate_order != 'forward' ? 1 : 0 } );
 			    }
@@ -1101,13 +1105,13 @@ $.yote.util = {
 
 
 		// calculated
-		var count          = me.item.count( me.container_name );
+		var count          = me.item.count( me.container_name ) * 1;
 		me.plimit          = me.plimit ? me.plimit : count;
 		var buf = me.title ? '<span class="' + me._classes( '_title' ) + '">' + me.title + '</span>' : '';
 		buf    += me.description ? '<span class="' + me._classes( '_description' ) + '">' + me.description + '</span>' : '';
 
-		if( me.search_on ) {
-		    buf += '<div id="_search_div_' + me.ct_id + '" class="' + me._classes( '_search_div' ) + '">Search <input class="' + me._classes( '_search_input' ) + '"  type="text" id="_search_txt_' + me.ct_id + '" value="' + me.terms.join(' ') + '"> ' +
+		if( me.dipslay_search_box ) {
+		    buf += '<div id="_search_div_' + me.ct_id + '" class="' + me._classes( '_search_div' ) + '">Search <input class="' + me._classes( '_search_input' ) + '"  type="text" id="_search_txt_' + me.ct_id + '" value="' + me.search_terms.join(' ') + '"> ' +
 			'<button type="button" id="_search_btn_' + me.ct_id + '">Search</button>' +
 			'</div>';
 
@@ -1218,7 +1222,7 @@ $.yote.util = {
 		    if( max == count ) {
 			buf += '<BR>Showing all items<BR>';
 		    } else {
-			buf += '<BR>Showing ' + max + ' of ' + count + ' items<BR>';
+			buf += '<BR>Showing ' + (1+me.start)*1 + ' to ' + ( 1*me.start + 1*max ) + ' of ' + count + ' items<BR>';
 		    }
 		}
 		if( me.paginate_type == 'hash' ) {
@@ -1279,10 +1283,11 @@ $.yote.util = {
 				      me.columns[ j ][ 'render' ]( item, me.start + i )
 				      : item.get( me.columns[ j ] )
 				    );
-			}
-			if( me.include_remove && ! me.suppress_table ) {
+			} //each col			
+			if( me.include_remove ) {// && ! me.suppress_table ) {
 			    row.push( '<BUTTON class="' + me._classes( '_delete_btn' ) + '" type="BUTTON" id="remove_' + me.ct_id + '_' + i + '_b">' + me.remove_btn_txt + '</BUTTON>' );
 			}
+
 			if( me.suppress_table ) {
 			    buf += row.join('');
 			}
@@ -1293,7 +1298,7 @@ $.yote.util = {
 		} //list pagination
 
 		if( items.length() == 0 && me.show_when_empty ) {
-		    buf += me.show_when_empty( me.terms );
+		    buf += me.show_when_empty( me.search_terms );
 		}
 		else {
 		    buf += me.suppress_table ? '' : tab.get_html();
@@ -1321,19 +1326,21 @@ $.yote.util = {
 		}
 
 		if( items.length() > me.plimit ) {
-		    var e = me.start + me.plimit;
+		    var e = 1 * ( me.start + me.plimit );
 		    if( e > count ) {
 			e = count - me.plimit;
 		    }
-		    $( '#forward_' + me.ct_id + '_b' ).click(function() { me.start = e; me.refresh() } );
-		    $( '#to_end_' + me.ct_id + '_b' ).click(function() { me.start = count - me.plimit; me.refresh(); } );
+		    $( '#forward_' + me.ct_id + '_b' ).click(function() { 
+			me.start = e; me.refresh() 
+		    } );
+		    $( '#to_end_' + me.ct_id + '_b' ).click(function() { me.start = 1 * (count - me.plimit); me.refresh(); } );
 		}
 		else {
 		    $( '#to_end_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
 		    $( '#forward_' + me.ct_id + '_b' ).attr( 'disabled', 'disabled' );
 		}
 
-		if( me.search_on ) {
+		if( me.display_search_box ) {
 		    var srch_txt = '#_search_txt_' + me.ct_id;
 		    var clnup_ex = {};
 		    clnup_ex[ srch_txt ] = 1;
@@ -1345,9 +1352,9 @@ $.yote.util = {
 			action : (function(it) { return function() {
 			    var searching = $( srch_txt ).val();
 			    if( searching.match( /\S/ ) ) {
-				it.terms = $( srch_txt ).val().split( /[ ,;]+/ );
+				it.search_terms = $( srch_txt ).val().split( /[ ,;]+/ );
 			    } else {
-				it.terms = [];
+				it.search_terms = [];
 			    }
 			    it.refresh();
 			} } )( me )
@@ -1419,7 +1426,7 @@ $.yote.util = {
 		me.after_render( items );
 
 		if( items.length() == 0 && me.after_render_when_empty ) {
-		    me.after_render_when_empty( me.terms );
+		    me.after_render_when_empty( me.search_terms );
 		}
 	    } //refresh
 	}; //define cgt
