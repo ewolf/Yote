@@ -1,4 +1,8 @@
 The stack :
+
+ attrs for html entities : maybe prefix these with 'yote' and catch all attrs that begin with yote ( see init_el function ( aroun dline 839 ) of yote.util.js
+
+ Reset cron
   
  Control table filter/search
 

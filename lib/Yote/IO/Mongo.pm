@@ -50,7 +50,7 @@ sub _db_act {
 	    $self->_connect;
 	}
 	else {
-	    die $@ if $@ && $@ !~ /^missed|error gettind database response/;
+	    die $@ if $@ && $@ !~ /^missed|error getting database response|couldn.t get response to throw out/;
 	}
 	return $res unless $@;
 	sleep(1);

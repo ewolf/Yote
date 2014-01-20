@@ -105,6 +105,7 @@ $.yote = {
     err:null,
     objs:{},
     debug:false,
+    app:null,
 
     init:function() {
         var t = $.cookie('yoken');
@@ -125,7 +126,10 @@ $.yote = {
     }, //init
 
     fetch_account:function() {
-	return this.fetch_root().account();
+	if( this.app && ! this.acct_obj ) {
+	    this.acct_obj = this.app.account();
+	}
+	return this.acct_obj;
     },
 
     fetch_app:function(appname,passhandler,failhandler) {
@@ -133,6 +137,7 @@ $.yote = {
 	if( typeof root === 'object' ) {
 	    var ret = root.fetch_app_by_class( appname );
 	    ret._app_id = ret.id;
+	    this.app = ret;
 	    return ret;
 	} else if( typeof failhanlder === 'function' ) {
 	    failhandler('lost connection to yote server');

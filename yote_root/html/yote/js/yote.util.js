@@ -650,7 +650,7 @@ $.yote.util = {
 				p : $( '#pw' ).val(),
 				e : $( '#em' ).val() },
 			    function( msg ) {
-				if( thislc.access_test( thislc.app.account() ) ) {
+				if( thislc.access_test( $.yote.fetch_account() ) ) {
 				    thislc.msg_function( msg );
 				    if( typeof thislc.on_login_fun === 'function' )
 					thislc.on_login_fun();
@@ -705,7 +705,7 @@ $.yote.util = {
 			$.yote.login( $( '#username' ).val(),
 				      $( '#pw' ).val(),
 				      function( msg ) {
-					  if( thislc.access_test( thislc.app.account() ) ) {
+					  if( thislc.access_test( $.yote.fetch_account() ) ) {
 					      if( typeof thislc.on_login_fun === 'function' )
 						  thislc.on_login_fun();
 					      if( typeof thislc.after_login_fun === 'function' )
@@ -725,13 +725,13 @@ $.yote.util = {
 		$( '#create_account_b' ).click( function() { thislc.make_create_login(); } );
 	    } //make_login
 	};
-	if( ! lc.access_test( lc.app.account() ) ) {
+	if( ! lc.access_test( $.yote.fetch_account() ) ) {
 	    lc.make_login();
 	}
  
 	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
 	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
-	if( lc.access_test( lc.app.account() ) ) {
+	if( lc.access_test( $.yote.fetch_account() ) ) {
 	    if( typeof lc.on_login_fun === 'function' )
 		lc.on_login_fun();
 	    if( typeof lc.after_login_fun === 'function' )
@@ -839,14 +839,14 @@ $.yote.util = {
 	var fields = [
 	    'edit_requires','field',
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin',
-	    'plimit',
+	    'plimit','paginate_override',
 	    'suppress_table', 'title', 'description', 'prefix_classname',
 	    'include_remove', 'remove_button_text', 'remove_column_text',
 
 	    'new_attachpoint',
 	    'new_button', 'new_title', 'new_description',
 
-	    'column_headers', 'columns', 'new_columns', 'new_columns_required',
+	    'column_headers', 'column_placeholders', 'columns', 'new_columns', 'new_columns_required',
 	    'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
 	    'new_requires', 'new_object_type',
 
@@ -954,7 +954,7 @@ $.yote.util = {
 		use_html = true;
 		field = field.substring(1);
 	    }
-	    if( args[ 'edit_requires' ] == 'none' || 
+	    if(   args[ 'edit_requires' ] == 'none'  || 
 		( args[ 'edit_requires' ] == 'root'  && $.yote.is_root() ) || 
 		( args[ 'edit_requires' ] == 'login' && $.yote.is_logged_in() ) ) {
 		$( args[ 'attachpoint' ] ).empty().append(
@@ -977,6 +977,29 @@ $.yote.util = {
 	}
     },
 
+    make_list_paginator:function( lst_obj ) {
+	return function( args ) {
+	    var limit   = args[ 'limit' ];
+	    var skip    = args[ 'skip' ];
+	    var reverse = args[ 'reverse' ];
+	    var ret = [];
+	    var lst = lst_obj.to_list();
+	    if( reverse ) {
+		lst.reverse();
+	    }
+	    var max = lst.length < ( skip + limit ) ? lst.length : ( skip + limit );
+	    for( var idx=skip; idx < max; idx++ ) {
+		ret[ ret.length ] = lst[ idx ];
+	    }
+	    if( reverse ) {
+		lst.reverse();
+	    }
+	    return {
+		length:function() { return ret.length },
+		get:function(i) { return ret[i]; }
+	    };
+	};
+    }, //make_list_paginator
 
     // this tool is to create a table where the rows correspond to a list in a target
     // objects and the end user can add or remove the rows, or manipulate them
@@ -999,6 +1022,8 @@ $.yote.util = {
 	    container_name      : args[ 'container_name' ],                     //   name of list attached to item
 	    paginate_type	: args[ 'paginate_type' ] || 'list',       //   list or hash
 	    paginate_order	: args[ 'paginate_order' ] || 'forward',   //   forward or backwards
+	    paginate_override   : args[ 'paginate_override' ],
+	    _paginate_override_fun : null,
 	    is_admin            : args[ 'is_admin' ] || false,
 
 	    /* HTML */
@@ -1029,6 +1054,9 @@ $.yote.util = {
 	    show_when_empty     : args[ 'show_when_empty' ],                              // run this function if there were no items found for pagination. Function shold
 	                                                                                  // return html that goes _IN PLACE_ of the table. Expects search item list as single parameter and passes the list of search terms as the single argument.
 	    after_render_when_empty : args[ 'after_render_when_empty' ],                  // run this function if there were no items found for pagination. Function shold
+
+
+
 	                                                                                  // expects search item list as single parameter. This is run after after_render, if it is run.
 	    new_attachpoint	: args[ 'new_attachpoint' ],                              // selector for where to place new things
 	    new_columns		: args[ 'new_columns' ],                                  // A list of objects or strings that is used to build the input for new objects.
@@ -1078,7 +1106,6 @@ $.yote.util = {
 	    refresh : function() {
 		var me = this;
 
-
 		var paginate_function;
 
 		(function(it) {
@@ -1095,16 +1122,22 @@ $.yote.util = {
 			    }
 			}
 		    }
+		    else if( it.paginate_override ) {
+			if( ! it._paginate_override_fun ) {
+			    it._paginate_override_fun = $.yote.util.make_list_paginator( it.item.get( it.container_name ) );
+			}
+			paginate_function = function() { return it._paginate_override_fun( { limit : 1*it.plimit + 1, skip : it.start, reverse : it.paginate_order != 'forward' ? 1 : 0 } ) };
+		    }
 		    else {
 			paginate_function = function() {
-			    return it.item.paginate( { name : it.container_name, limit : it.plimit + 1, return_hash : it.paginate_type != 'list' ? 1 : 0, skip : it.start, reverse : it.paginate_order != 'forward' ? 1 : 0 } );
+			    return it.item.paginate( { name : it.container_name, limit : 1*it.plimit + 1, return_hash : it.paginate_type != 'list' ? 1 : 0, skip : it.start, reverse : it.paginate_order != 'forward' ? 1 : 0 } );
 			}
 		    }
 		} )( me );
 
 
 		// calculated
-		var count          = me.item.count( me.container_name ) * 1;
+		var count          = me.paginate_override ? me.item.get(me.container_name).length() : me.item.count( me.container_name ) * 1;
 		me.plimit          = me.plimit ? me.plimit : count;
 		var buf = me.title ? '<span class="' + me._classes( '_title' ) + '">' + me.title + '</span>' : '';
 		buf    += me.description ? '<span class="' + me._classes( '_description' ) + '">' + me.description + '</span>' : '';
@@ -1256,6 +1289,19 @@ $.yote.util = {
 					me.columns[j] = $.yote.util.col_edit( me.columns[j].substring(1) );
 					ctype = 'function';
 				    }
+				    else if( me.columns[ j ].charAt(0) == '~' ) {
+					(function(str) {
+					    me.columns[j] = function( item, is_prep ) {
+						if( is_prep ) {
+						    var nm = "__ItemReg_" + item.id;
+						    $.yote.util.register_item( nm, item );
+						    str.replace( /$$/g, nm );
+						    return str;
+						}
+					    }
+					})( me.columns[j].substring(1) );
+					ctype = 'function';
+				    }
 				}
 				row.push( ctype == 'function' ?
 					  me.columns[ j ]( item, true ) :
@@ -1282,9 +1328,26 @@ $.yote.util = {
 			var row = [];
 			for( var j = 0 ; j < me.columns.length; j++ ) {
 			    var ctype = typeof me.columns[ j ];
-			    if( ctype == 'string' && me.columns[ j ].charAt(0) == '*' ) {
-				me.columns[j ] = $.yote.util.col_edit( me.columns[j].substring(1) );
-				ctype = 'function';
+			    if( ctype == 'string') {
+				if( me.columns[ j ].charAt(0) == '*' ) {
+				    me.columns[j ] = $.yote.util.col_edit( me.columns[j].substring(1) );
+				    ctype = 'function';
+				}
+ 				else if( me.columns[ j ].charAt(0) == '~' ) {
+				    (function(str) {
+					me.columns[j] = function( item, is_prep ) {
+						if( is_prep ) {
+						    var nm = "__ItemReg_" + item.id;
+						    $.yote.util.register_item( nm, item );
+						    alert( 'afore : ' + str );
+						    str = str.replace( /\$\$([^\$]|$)/gm, nm + "$1" );
+						    alert( 'ar : ' + str );
+						    return str;
+						}
+					}
+				    })( me.columns[j].substring(1) );
+				    ctype = 'function';
+				}
 			    }
 			    row.push( ctype == 'function' ?
 				      me.columns[ j ]( item, true ) :

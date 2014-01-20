@@ -411,6 +411,7 @@ sub remove_from {
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
 #
 sub sync_all {}
+sub sync_changed {}
 
 #
 # Stub method to apply update to an object. Throws an error by default. Override and call _update with input data and a list of allowed fields to update.
