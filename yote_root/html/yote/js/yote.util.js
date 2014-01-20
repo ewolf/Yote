@@ -558,7 +558,6 @@ $.yote.util = {
 	})( arg );
     }, //make_paginatehash_table
 
-
     login_control:function( args ) {
 	var lc = {
 	    attachpoint      : args[ 'attachpoint' ],
@@ -1047,7 +1046,7 @@ $.yote.util = {
 	    new_column_titles	: args[ 'new_column_titles' ] || [],                            // Titles for the data fields
 	    new_column_placeholders: args[ 'new_column_placeholders' ] || [],                       // Placeholder values for new data fields
 	    new_function	: args[ 'new_function' ],                                 // function that return a new item for this pagination. Takes a hash ref of preoperties
-	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a single argument : the newly created thing.
+	    after_new_fun	: args[ 'after_new_function' ],                           // function this is run after new_function and takes a as arguments : the newly created thing and a hash of key value pairs that were set for it.
 	    new_button		: args[ 'new_button' ] || 'New',                          // text that appears on the create new item button. Default is 'New'
 	    new_title		: args[ 'new_title' ],                                    // title for the new items widget that appears on top of it. If it is defined, it is put in a span with <prefix_classname>_new_title class
 	    new_description	: args[ 'new_description' ],                              // description for new items for the widget that appears under the title. If it is defined, it is put in a span with <prefix_classname>_new_description class
@@ -1139,7 +1138,11 @@ $.yote.util = {
 			    var field = typeof nc === 'object' ? nc.field : nc;
 			    var id = '_new_' + me.ct_id + '_' + me.item.id + '_' + field;
 			    if( typeof nc === 'object' ) {
-				tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				if( me.new_column_titles[i] ) {
+				    tbl.add_row( [ me.new_column_titles[ i ], nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				} else {
+				    tbl.add_row( [ nc.render( id ) ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
+				}
 			    } else {
 				if( me.new_column_titles[ i ] ) {
 				    tbl.add_param_row( [ me.new_column_titles[ i ], '<INPUT TYPE="TEXT" ' + ( me.new_column_placeholders[i] ? ' placeholder="' + me.new_column_placeholders[i] + '"' : '') + ' class="' + me._classes( '_new_item_field' ) + '" id="' + id + '">' ], me._classes_array( 'new_item_row' ), me._classes_array( 'new_item_cell' ) );
@@ -1172,6 +1175,7 @@ $.yote.util = {
 				    it.new_object_type == 'obj'  ? $.yote.fetch_root().new_obj() :
 				    it.new_object_type == 'root' ? $.yote.fetch_root().new_root_obj() :
 				    it.new_object_type == 'user' ? $.yote.fetch_root().new_user_obj() : null;
+				var data_hash = {};
 				for( var i=0; i < it.new_columns.length; i++ ) {
 				    var nc = it.new_columns[ i ];
 
@@ -1182,12 +1186,17 @@ $.yote.util = {
 				    }
 				    else {
 					var val = $( '#' + id  ).val();
-					newitem.set( nc, val );
+					data_hash[ nc ] = val;
+					if( newitem ) { 
+					    newitem.set( nc, val );
+					}
 				    }
 				} //each column
-				it.item.add_to( { name : it.container_name, items : [ newitem ] } );
+				if( newitem ) { 
+				    it.item.add_to( { name : it.container_name, items : [ newitem ] } );
+				}
 				if( it.after_new_fun ) {
-				    it.after_new_fun( newitem );
+				    it.after_new_fun( newitem, data_hash );
 				}
 				it.refresh();
 			    } } )( me )
@@ -1267,7 +1276,7 @@ $.yote.util = {
 			}
 		    }
 		} //hash pagination
-		else {
+		else { //list pagination
 		    for( var i = 0 ; i < max ; i++ ) {
 			var item = items.get( i );
 			var row = [];

@@ -3,6 +3,7 @@
 	* Version 0.1020
 	* reset password link activation also validates email
 	* fixed bug in client side pagination
+	* after_new_fun javascript function also takes data hash as an argument.
 
 2014-01-06  Eric Wolf  <wolf@Talisman>
 
