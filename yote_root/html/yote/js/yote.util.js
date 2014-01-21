@@ -882,6 +882,22 @@ $.yote.util = {
 		    args[ fld ] = f[0];
 		}
 
+		// return values of function
+		else if( attr_val.charAt(0) == '!' ) {
+		    var fs = attr_val.substring(1);
+		    try {
+			var f = eval( '['+fs+']' );
+		    } catch(err) {
+			console.log( [ "ERR IN EVAL", err, attr_val ] );
+			throw err;
+		    }
+		    args[ fld ] = f[0]();
+		}
+
+		else if( attr_val.charAt(0) == '#' ) {
+		    
+		}
+
 		// reference
 		else if( attr_val.charAt(0) == '$' ) {
 		    args[ fld ] = $.yote.util.registered_items[ attr_val.substring(1) ];
