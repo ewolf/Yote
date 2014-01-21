@@ -894,10 +894,6 @@ $.yote.util = {
 		    args[ fld ] = f[0]();
 		}
 
-		else if( attr_val.charAt(0) == '#' ) {
-		    
-		}
-
 		// reference
 		else if( attr_val.charAt(0) == '$' ) {
 		    args[ fld ] = $.yote.util.registered_items[ attr_val.substring(1) ];
@@ -947,6 +943,9 @@ $.yote.util = {
 
 	    if( el.attr( 'has_init' ) == 'true' ) {
 		return;
+	    }
+	    if( ! el.attr( 'id' ) ) {
+		el.attr( 'id', '__CNTROL_ID_' + $.yote.util.next_id() );
 	    }
 	    el.attr( 'has_init', 'true' );
 	    $.yote.util.init_el(el);
@@ -1355,9 +1354,7 @@ $.yote.util = {
 						if( is_prep ) {
 						    var nm = "__ItemReg_" + item.id;
 						    $.yote.util.register_item( nm, item );
-						    alert( 'afore : ' + str );
 						    str = str.replace( /\$\$([^\$]|$)/gm, nm + "$1" );
-						    alert( 'ar : ' + str );
 						    return str;
 						}
 					}
