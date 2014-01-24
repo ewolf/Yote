@@ -232,9 +232,13 @@ $.yote = {
     logout:function() {
 	$.yote.fetch_root().logout();
 	$.yote.login_obj = undefined;
+	$.yote.acct_obj = undefined;
 	$.yote.token = 0;
 	$.yote._dump_cache();
 	$.cookie( 'yoken', '', { path : '/' } );
+	if( $.yote.util ) {
+	    $.yote.util.registered_items = {};
+	}
     }, //logout
 
     /* general functions */
