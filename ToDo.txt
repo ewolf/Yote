@@ -1,5 +1,39 @@
 The stack :
 
+ Preload objects as the pages are served by the server. paginator override is causing problems due to things cached maybe?
+
+ Clear out obj manager cache and guest token by checking who logged in times. Good thing for cron.
+
+
+ rewrite yote_util and define special characters better ( scaffold this...replace one piece at a time since its largely working )
+
+   First thing - the flow of execution
+       * variables are registered
+       * ui_init is called
+       *   init checks for yote_panel and control_panel classes to run el_init on
+       *   el_init is called for each of those that are not marked as completed
+       *         el init fills in the anchor points ( the div or other element that has the class name ) by analyzing the attribute values of the element.
+       *         if part of the fill in includes an other yote_panel or control_panel that appears in a cell of an item row ( control_panels show lists of items in rows ), then the magic $$ variable is assigned to that item.
+ ( talk about how $$ is the default item and is assigned if there is no item attribute )
+       *   if el_init had been called, it may have written more yote_panel and control_panel elements so ui_init is called again
+
+   options :
+
+    
+
+          - wrap the value in a javascript function as the return and invoke it..thus
+                      prop="$variable"  looks in registered variables for the value and places it in during INIT 
+                      prop="&some_app.get_foo()"  would return the value of foo for some_app immediately during INIT
+                      prop="&function() { return some_app.get_foo(); }" would return a function that would return the value of foo for some_app
+                      prop="~html" puts the html value into the propery or column value
+                      prop="[....]" assign the value of the data structure to prop. This is eval'd
+                      prop="{....}" assign the value of the data structure to prop
+		      
+     OK, this is hard to at first wrap ones head around. At the time of writing I don't copmletely yet either.  
+     Have to meditate on the flow of exectution :
+           
+
+		      
  hash_paginator in js like list_paginator
 
  attrs for html entities : maybe prefix these with 'yote' and catch all attrs that begin with yote ( see init_el function ( aroun dline 839 ) of yote.util.js

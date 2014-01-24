@@ -940,8 +940,7 @@ $.yote.util = {
 	    var el = $( this );
 	    // init can be called multiple times, but only
 	    // inits on the first time
-
-	    if( el.attr( 'has_init' ) == 'true' ) {
+	    if( el.attr( 'has_init' ) == 'true' || el.attr( 'disabled' ) == 'true' ) {
 		return;
 	    }
 	    if( ! el.attr( 'id' ) ) {
@@ -969,7 +968,8 @@ $.yote.util = {
 		use_html = true;
 		field = field.substring(1);
 	    }
-	    if(   args[ 'edit_requires' ] == 'none'  || 
+	    if(   ! args[ 'edit_requires' ] ||
+		  args[ 'edit_requires' ] == 'none'  || 
 		( args[ 'edit_requires' ] == 'root'  && $.yote.is_root() ) || 
 		( args[ 'edit_requires' ] == 'login' && $.yote.is_logged_in() ) ) {
 		$( args[ 'attachpoint' ] ).empty().append(

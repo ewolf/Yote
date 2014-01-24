@@ -87,8 +87,8 @@ if we are our experiences then we are both sides of them.
 		root     : root,
 		cron     : cron,
 		app_cols : [ 'x', //due to hash key..have to find a better solution TODO
-			     $.yote.util.col_edit( 'host_name' ),			     
-			     $.yote.util.col_edit( 'host_url' ),			     
+			     '*host_name',
+			     '*host_url',
 			     { render:function(app){ return app.count('_account_roots'); } },
 			     { 
 				 req_val : $.yote.util.check_edit( 'requires_validation' ),

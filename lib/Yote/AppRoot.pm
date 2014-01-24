@@ -19,7 +19,7 @@ use Yote::YoteRoot;
 use base 'Yote::RootObj';
 
 use vars qw($VERSION);
-$VERSION = '0.087';
+$VERSION = '0.088';
 
 sub _init {
     my $self = shift;
@@ -40,6 +40,10 @@ sub _init {
     $self->set_recovery_message_template(new Yote::SimpleTemplate({text=>'Click on <a href="${link}">${link}</a> to recover your account' } ) );
     $self->SUPER::_init();
 } #_init
+
+sub precache {
+    my( $self, $data, $account ) = @_;
+} #_precache
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC API Methods *
@@ -191,7 +195,7 @@ sub token_login {
 	    return $login;
 	}
     }
-    return 0;
+    return;
 } #token_login
 
 sub validate {

@@ -23,7 +23,7 @@ use Yote::IO::Mailer;
 
 use vars qw($VERSION);
 
-$VERSION = '0.099';
+$VERSION = '0.1';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
@@ -377,6 +377,7 @@ sub __process_command {
 
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
 	my $guest_token = $command->{gt};
+
 	$command->{e}{GUEST_TOKEN} = $guest_token;
 
 	# security check
@@ -394,7 +395,7 @@ sub __process_command {
 	    die "Access Error" if $login->get__is_disabled();
             $account = $app->__get_account( $login );
 	    die "Access Error" if $app->get_requires_validation() && ! $login->get__is_validated();
-	    die "Access Error" if $account->get__is_disabled();
+	    die "Access Error" if $account->get__is_disabled() || $login->get__is_disabled();
 	    $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
 	    $login->add_once_to__accounts( $account );
         }
@@ -459,21 +460,20 @@ sub __process_command {
 } #__process_command
 
 sub __process_http_request {
-    my( $self, $soc ) = @_;
+    my( $self, $socket ) = @_;
 
-    my $req = <$soc>;
+    my $req = <$socket>;
 
-    while( my $hdr = <$soc> ) {
+    while( my $hdr = <$socket> ) {
 	$hdr =~ s/\s*$//s;
 	last unless $hdr =~ /\S/;
 	my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
 	$ENV{ "HTTP_" . uc( $key ) } = $val;
     }
-
     my $content_length = $ENV{CONTENT_LENGTH};
-    if( $content_length > 5_000_000 ) { #make this into a configurable field
+    if( $content_length > 5_000_000 ) { #TODO : make this into a configurable field
 	$self->_do404();
-	close( $soc );
+	close( $socket );
 	return;
     }
 
@@ -522,7 +522,7 @@ sub __process_http_request {
 	    $app_id ||= Yote::ObjProvider::first_id();
 	}
 	else {
-	    my $vars = Yote::FileHelper::__ingest( __parse_form( $soc ) );
+	    my $vars = Yote::FileHelper::__ingest( __parse_form( $socket ) );
 	    $data        = $vars->{d};
 	    $token       = $vars->{t};
 	    $guest_token = $vars->{gt};
@@ -531,7 +531,6 @@ sub __process_http_request {
 	    $obj_id      = pop( @path );
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
 	}
-
         my $result = $self->__process_command( {
             a  => $action,
             ai => $app_id,
@@ -543,19 +542,14 @@ sub __process_http_request {
             w  => $wait,
         } );
 
-	print $soc "HTTP/1.0 200 OK\015\012";
+	print $socket "HTTP/1.0 200 OK\015\012";
 	push( @return_headers, "Content-Type: text/json; charset=utf-8" );
 	push( @return_headers,  "Access-Control-Allow-Origin: *" );
-	print $soc join( "\n", @return_headers )."\n\n";
+	print $socket join( "\n", @return_headers )."\n\n";
 	utf8::encode( $result );
-	print $soc "$result";
+	print $socket "$result";
 	
     } #if a command on an object
-
-    elsif( $path[0] eq '_c' ) {
-	# modify the file helper ingest method, splitting out the part that returns the form
-	# call the method that returns the form ( maybe move that method here )
-    } #if a 'cgi' is requested
 
     else { #serve up a web page
 	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
@@ -573,8 +567,8 @@ sub __process_http_request {
 	} 
 	if( open( my $IN, '<', "$root/$dest" ) ) {
 
-	    print $soc "HTTP/1.0 200 OK\015\012";
-	    my $binary = 0;
+	    print $socket "HTTP/1.0 200 OK\015\012";
+	    my $is_html = 0;
 	    if( $dest =~ /\.js$/i ) {
 		push( @return_headers, "Content-Type: text/javascript" );
 	    }
@@ -589,17 +583,65 @@ sub __process_http_request {
 	    }
 	    else {
 		push( @return_headers, "Content-Type: text/html" );
+		$is_html = 1;
 	    }
 	    push( @return_headers, "Server: Yote" );
-	    print $soc join( "\n", @return_headers )."\n\n";
+	    print $socket join( "\n", @return_headers )."\n\n";
 
 	    my $size = -s "<$root/$dest";
 	    push( @return_headers, "Content-length: $size" );
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
 
 	    my $buf;
+	    my $precache_done;
             while( read( $IN,$buf, 8 * 2**10 ) ) {
-                print $soc $buf;
+		if( $is_html && $buf =~ /\<\?YOTE_PRECACHE\s+(\S+)\s*\?\>/ && ! $precache_done ) { 
+		    # a web page is almost certainly under the size where the chunking matters.
+		    # TODO : cover all cases here
+		    # if PRECACHE is checked and $ENV{HTTP_COOKIE} is set
+		    ++$precache_done;
+		    my $root = Yote::YoteRoot::fetch_root();
+		    my $app_name = $1;
+
+		    my $app = $root->fetch_app_by_class( $app_name );
+		    if( $app ) {
+			my( $acct, $login, $login_token );
+			if( $ENV{HTTP_COOKIE} =~ /yoken=([a-f0-9-]+)/ ) {
+			    $login_token = $1;
+			    $login = $app->token_login( $login_token, undef, \%ENV );
+			    if( $login ) {
+				$acct = $app->__get_account( $login );
+				if( $acct && ( ( $app->get_requires_validation() && ! $login->get__is_validated() ) || $acct->get__is_disabled() ) ) {
+				    undef $acct;
+				    undef $login;
+				} else {
+#				    $login_token = $root->_create_token( $login, $ENV{IP} );
+				}
+			    }
+			}
+			my $ret = $app->precache( undef, $acct );
+			if( $ret ) {
+			    my $guest_token = $login_token ? undef : $root->guest_token( $ENV{REMOTE_ADDR} );
+			    my $resp = { a  => $app->{ID}, 
+					 ap => __obj_to_response( $app, $login, $guest_token ),
+					 r  => __obj_to_response( $ret, $login, $guest_token ),
+					 gt => $guest_token,
+					 t  => $login_token,
+					 an => $app_name,
+					 ro => __obj_to_response( $root, $login, $guest_token ),
+					 lo => $acct ? __obj_to_response( $login, $login, $guest_token ) : undef,
+					 ac => $acct ? __obj_to_response( $acct, $login, $guest_token ) : undef,
+			    };
+			    Yote::ObjProvider::start_transaction();
+			    Yote::ObjProvider::stow_all();
+			    Yote::ObjProvider::flush_all_volatile();
+			    Yote::ObjProvider::commit_transaction();
+			    my $json_resp = "window['yote_precache'] = " . to_json( $resp ) . ";";
+			    $buf =~ s/(\<\?YOTE_PRECACHE\s+\S+\s*\?\>)/$json_resp/;
+			}
+		    }
+		} #if there is a precache
+                print $socket $buf;
             }
             close( $IN );
 	    #accesslog( "200 : $dest");
@@ -607,7 +649,7 @@ sub __process_http_request {
 	    accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
 	    $self->_do404();
 	}
-	close( $soc );
+	close( $socket );
 	return;
     } #serve html
 
@@ -617,7 +659,7 @@ sub __process_http_request {
 # 
 #
 sub __parse_form {
-    my $soc = shift;
+    my $socket = shift;
     my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
     my $boundary_header = $ENV{HTTP_CONTENT_TYPE} || $ENV{'HTTP_CONTENT-TYPE'} || $ENV{CONTENT_TYPE};
@@ -626,7 +668,7 @@ sub __parse_form {
 	my $counter = 0;
 	# find boundary parts
 	while($counter < $content_length) {
-	    $_ = <$soc>;
+	    $_ = <$socket>;
 	    if( /$boundary/s ) {
 		last if $1;
 		$finding_headers = 1;
