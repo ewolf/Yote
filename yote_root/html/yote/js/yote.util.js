@@ -1457,21 +1457,61 @@ $.yote.util = {
 	    }
 	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), context||{}, default_var, default_parent ) + text_val.substring( end+2 );
 	}
+	while( text_val.indexOf( '<@' ) > -1 ) {
+	    var start = text_val.indexOf( '<@' );
+	    var end   = text_val.indexOf( '@>' );
+	    if( end < start ) {
+		console.log( "Template error for '"+template_name+"' : unable to find close of <@" );
+		return;
+	    }
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_list( text_val.substring( start+2, end ).trim(), context||{}, default_var, default_parent ) + text_val.substring( end+2 );
+	}
 	return text_val;
     }, //fill_template
-
-    fill_template_variable:function( varcmd, context, default_var, default_parent ) {
-	var cmdl = varcmd.split(/ /,4);
-	var cmd  = cmdl[0].toLowerCase();
-	var subj = cmdl[1];
-	var fld  = cmdl[2];
-	var subobj;
+    
+    fill_template_list:function( varpart, context, default_var, default_parent ) {
+	var parts         = varpart.split(/ /);
+	var template_name = parts[ 0 ].trim();
+	if( parts.length == 2 ) {
+	    var list_obj = $.yote.util._template_var( parts[ 1 ].trim(), context, default_var, default_parent );
+	    if( list_obj ) {
+		if( list_obj.to_list ) //its a yote object that is an array
+		    return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+		else //it actually is an array
+		    return list_obj.map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+	    }
+	    console.log( "List '" + varpart + "' unable to parse correctly." );
+	    return '';
+	}
+	else if( parts.length == 3 ) {
+	    var parent_obj = $.yote.util._template_var( parts[ 1 ].trim(), context, default_var, default_parent );
+	    var list_obj   = parent_obj.get( parts[ 2 ].trim() );
+	    if( list_obj ) {
+		return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+	    }
+	    console.log( "List '" + varpart + "' unable to parse correctly." );
+	    return '';
+	}
+	console.log( "List template part not understood '" + varpart + "'" );
+	return '';
+    }, //fill_template_list
+    
+    _template_var:function( subj, context, default_var, default_parent ) {
 	if( subj == 'acct' ) subjobj = $.yote.fetch_account();
 	else if( subj == 'root' ) subjobj = $.yote.fetch_root();
 	else if( subj == 'app' )  subjobj = $.yote.fetch_app();
 	else if( subj == '_' )    subjobj = default_var;
 	else if( subj == '__' )   subjobj = default_parent;
 	else                      subjobj = context[ subj ];
+	return subjobj;
+    },
+
+    fill_template_variable:function( varcmd, context, default_var, default_parent ) {
+	var cmdl = varcmd.split(/ /,4);
+	var cmd  = cmdl[0].toLowerCase();
+	var subj = cmdl[1];
+	var fld  = cmdl[2];
+	var subobj = $.yote.util._template_var( subj, context, default_var, default_parent );
 	if( cmd == 'edit' ) {
 	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';
 	}
@@ -1512,7 +1552,15 @@ $.yote.util = {
       * switch  object  field  makes checkbox
       * radio   field ( like select with choose 1 ... implement at some point )
 
-  ( default var as _ , parent as __ ? )
+  ( default var as _ , parent as __  )
+
+
+     <@ templatename list @>
+     <@ templatename obj field @>
+      
+   Applies the template to each item in the list, concatinating the results together.
+
+
 */
 
 }//$.yote.util
