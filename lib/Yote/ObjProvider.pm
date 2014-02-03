@@ -9,6 +9,7 @@ no warnings 'recursion';
 use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
+use Yote::ObjManager;
 use Yote::YoteRoot;
 
 use Crypt::Passwd::XS;
@@ -25,7 +26,7 @@ our $FIRST_ID;
 
 use vars qw($VERSION);
 
-$VERSION = '0.072';
+$VERSION = '0.073';
 
 
 # ------------------------------------------------------------------------------------------
@@ -126,7 +127,7 @@ sub fetch {
 	}
 	else {
 	    eval("require $class");
-	    print STDERR Data::Dumper->Dump([$class,$!,$@]) if $@;
+	    print STDERR Data::Dumper->Dump([$class,$!,$@,$obj_arry]) if $@;
 	    die $@ if $@;
 
 	    my $obj = $class->new( $id );

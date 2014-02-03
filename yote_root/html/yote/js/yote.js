@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.11
+ * Version 0.12
  */
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19
@@ -107,6 +107,7 @@ $.yote = {
     apps:{},
     debug:false,
     app:null,
+    root:null,
 
     init:function() {
         var t = $.cookie('yoken');
@@ -161,10 +162,13 @@ $.yote = {
     },
 
     fetch_account:function() {
-	if( this.app && ! this.acct_obj ) {
-	    this.acct_obj = this.app.account();
+	if( this.app ) {
+	    if( ! this.acct_obj ) {
+		this.acct_obj = this.app.account();
+	    }
+	    return this.acct_obj;
 	}
-	return this.acct_obj;
+	return undefined;
     },
 
     fetch_app:function(appname,passhandler,failhandler) {
@@ -192,9 +196,14 @@ $.yote = {
 		wait:true
 	    } );
 	    this.objs['root'] = r;
+	    this.root = r;
 	}
 	return r;
     }, //fetch_root
+
+    get_by_id:function( id ) {
+	return $.yote.objs[id+''] || $.yote.fetch_root().fetch(id).get(0);
+    },
 
     is_root:function() {
 	return this.is_logged_in() && 1*this.get_login().is_root();
@@ -621,6 +630,7 @@ $.yote = {
 		if( typeof val === 'undefined' ) return false;
 		if( typeof val === 'object' ) return val;
 		if( typeof val === 'function' ) return val;
+
 		if( val.substring(0,1) != 'v' ) {
 		    var obj = root.objs[val+''] || $.yote.fetch_root().fetch(val).get(0);
 		    obj._app_id = this._app_id;

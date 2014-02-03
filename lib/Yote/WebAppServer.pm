@@ -23,7 +23,7 @@ use Yote::IO::Mailer;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1';
+$VERSION = '0.101';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
@@ -223,7 +223,6 @@ sub start_server {
 	$self->__start_server_thread;
     } #creating threads
 
-    my $cron = $root->get__crond();
     Yote::ObjProvider::flush_all_volatile();
     $self->__unlock_all();
 
@@ -240,10 +239,10 @@ sub start_server {
 	    $self->__start_server_thread;
 	}
 	eval { 
+	    my $cron = $root->_cron();
 	    my $cron_entries = $cron->entries();
 	    Yote::ObjProvider::flush_all_volatile();
 	    $self->__unlock_all();
-
 	    for my $entry (@$cron_entries) {
 		threads->new( sub {
 		    $cron->_mark_done( $entry );

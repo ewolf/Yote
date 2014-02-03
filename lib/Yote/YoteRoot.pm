@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '0.052';
+$VERSION = '0.053';
 
 no warnings 'uninitialized';
 
@@ -49,10 +49,19 @@ sub _init {
 sub cron {
     my( $self, $data, $acct ) = @_;
     if( $acct->is_root() ) {
-	return $self->get__crond();
+	return $self->_cron();
     }
     die "Permissions Error";
 } #cron
+sub _cron {
+    my $self = shift;
+    my $c = $self->get__crond();
+    unless( $c ) {
+	$c = new Yote::Cron();
+	$self->set__crond( $c );
+    }
+    return $c;
+}
 
 sub disable_account {
     my( $self, $account_to_be_disabled, $logged_in_account ) = @_;
@@ -259,6 +268,13 @@ sub remove_root {
     return;
 } #remove_root
 
+#
+# Resets the cron, emptying it with the default items
+#
+sub reset_cron {
+    my( $self, $data, $acct ) = @_;
+    $self->set__crond( new Yote::Cron() );
+} #reset_cron
 
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *

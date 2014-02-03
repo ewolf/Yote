@@ -75,12 +75,13 @@ if we are our experiences then we are both sides of them.
 -->
 
     <script>
+      var root;
     $().ready(function(){
 	$( '#mainpanel' ).hide();
 	$.yote.init();
-	var root = $.yote.fetch_root();
+	root = $.yote.fetch_root();
 
-	var cron;
+	var cron = root.cron();
 
 	function register_items() {
             $.yote.util.register_items( {
@@ -310,7 +311,7 @@ if we are our experiences then we are both sides of them.
 				      } );
 				      //schedule
 				  }
-			      },
+			      }
 			    ] //cron_cols
 
 	    } );
@@ -408,13 +409,20 @@ if we are our experiences then we are both sides of them.
 	       >
 	  </DIV>
 
-	  <DIV id="cron_b_div" class="control_table apppanel" is_admin="root"
-	       plimit="10" item="$cron" container_name="entries"
-	       title="Crons" include_remove="true" 
-	       column_headers="['Name','Enabled','Notes','Script','Next Run','Repeat','Schedule']"
-	       columns="$cron_cols" after_render="*function(){ $('#cron_b').prop('disabled',false); }"
-               control_table_name="cron_ct"
-	       >
+	  <DIV id="cron_b_div" class="apppanel">
+	    <DIV id="cron_entry_div" class="control_table" is_admin="root"
+		 plimit="10" item="$cron" container_name="entries"
+		 title="Crons" include_remove="true" 
+		 column_headers="['Name','Enabled','Notes','Script','Next Run','Repeat','Schedule']"
+		 columns="$cron_cols" after_render="*function(){ $('#cron_b').prop('disabled',false); }"
+		 control_table_name="cron_ct"
+		 >
+	    </DIV>
+
+            <DIV id="reset_cron_panel" class="yote_panel" show="return '<BUTTON TYPE=button ID=reset_cron>Reset Cron</BUTTON>';"
+                 after_show="$('#reset_cron').click(function(){root.reset_cron()});"
+            ></DIV>
+
 	  </DIV>
 
 	  <DIV id="appnewpanel_cron" class="apppanel"></DIV>
