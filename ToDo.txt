@@ -1,6 +1,9 @@
 The stack :
 
- Preload objects as the pages are served by the server. paginator override is causing problems due to things cached maybe?
+ new templating system : add select boxes
+ new templating system : add radio boxes
+
+ Cron still has problems?
 
  Clear out obj manager cache and guest token by checking who logged in times. Good thing for cron.
 
