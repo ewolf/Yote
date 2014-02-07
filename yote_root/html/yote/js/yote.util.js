@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.026
+ * Version 0.027
  */
 $.yote.util = {
     ids:0,
@@ -167,7 +167,7 @@ $.yote.util = {
 		    $( '#' + me.div_id ).empty().text( val );
 		}
 		me.go_normal();
-		$.yote.util.implement_edit( me.item, me.field, me.on_edit_function );
+		$.yote.util.implement_edit( me.item, me.field, me.on_edit_function, id_root );
 	    }, //implement_edit.stop_edit
 
 	    apply_edit : function() {
