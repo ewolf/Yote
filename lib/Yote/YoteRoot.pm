@@ -512,6 +512,10 @@ This method may only be invoked by a login with the root bit set. This clears ou
 
 Removes the root bit from the login.
 
+=item reset_cron
+
+Removes and rebuilds the cron.
+
 =back
 
 =head1 PRIVATE DATA FIELDS

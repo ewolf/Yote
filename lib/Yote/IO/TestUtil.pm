@@ -1104,7 +1104,7 @@ sub io_independent_tests {
     # zoot,  toot, realroot, NEWROOT ( master )
 
     # the following block is copied from above
-    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
     my $master_root = $root->login( { h => 'NEWROOT', p => 'NEWPW' } )->{l};
     ok( $master_root->is_root(), "Master root is root" );
@@ -1132,7 +1132,7 @@ sub io_independent_tests {
     };
     like( $@, qr/^Access Error/,"nonroot account unable to paginate root obj private container" );
 
-    my $uo = new Yote::UserObj( { _creator =>  $toot_notroot_acct } );
+    my $uo = new Yote::UserObj( { __creator =>  $toot_notroot_acct } );
     is_deeply( $uo->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate user obj private container" );
     is_deeply( $uo->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate user obj private container" );
     is_deeply( $uo->paginate( { name => "_foo", }, $toot_notroot_acct ), [], "creator can paginate user obj private container" );

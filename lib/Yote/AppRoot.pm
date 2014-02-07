@@ -278,6 +278,10 @@ Create a login with the given client supplied args : h => handle, e => email, p 
 This checks to make sure handle and email address are not already taken.
 This is invoked by the javascript call $.yote.create_login( handle, password, email )
 
+=item precache
+
+Meant to be overridden. Returns all data to the client or html page that the app in order to not need lazy loading.
+
 =item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
 
 Causes an email with a recovery link sent to the email in question, if it is associated with an account.

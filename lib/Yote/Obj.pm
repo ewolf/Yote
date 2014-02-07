@@ -752,6 +752,10 @@ Removes the items ( by value ) from the list attached to this object specified b
 
 This method is actually a no-op, but has the effect of syncing the state of client and server.
 
+=item sync_changed
+
+This method is actually a no-op, but has the effect of syncing the state of client and server.
+
 =item update
 
 This method is called automatically by a client javascript objet when its _send_update method is called.
