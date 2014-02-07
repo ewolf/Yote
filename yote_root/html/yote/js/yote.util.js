@@ -548,7 +548,7 @@ $.yote.util = {
 	    else {
 		$( '#' + div_id ).change( function() {
 		    item.set( fld, list_obj.get( $(this).val() * 1 ) );
-		    if( after_change_fun ) after_change_fun(item);
+		    if( after_change_fun ) after_change_fun(item,list_obj);
 		} );
 	    }
 	};
@@ -635,7 +635,7 @@ $.yote.util = {
 	    return;
 	}
 	var fields = [
-	    'edit_requires','field','no_edit','after_edit_function','use_checkbox', 'use_select','use_select_obj','show','new_addto_function',
+	    'edit_requires','field','no_edit','after_edit_function','use_checkbox', 'use_select','use_select_obj','show','new_addto_function','action',
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin','sel_list','list_field','list_obj',
 	    'plimit','paginate_override',
 	    'suppress_table', 'title', 'description', 'prefix_classname',
@@ -648,7 +648,7 @@ $.yote.util = {
 	    'new_required_by_index', 'new_column_titles', 'new_column_placeholders',
 	    'new_requires', 'new_object_type',
 
-	    'item', 'show_count',
+	    'item', 'parent', 'show_count',
 	    'after_load', 'after_render', 'show_when_empty','remove_function',
 	    'new_required_by_function', 'new_function', 'after_new_function',
 
@@ -724,12 +724,25 @@ $.yote.util = {
 	    else {
 		$( args[ 'attachpoint' ] ).empty();
 	    }
-	}
+	} //yote_panel
+	else if( el.hasClass( 'yote_button' ) ) {
+	    if( args[ 'action' ] ) {
+		$( args[ 'attachpoint' ] ).click(function(){
+		    if( $.yote.util.functions[ args[ 'action' ] ] ) {
+			$.yote.util.functions[ args[ 'action' ] ]( args[ 'item' ], args[ 'parent' ] ); 
+		    } else {
+			console.log( "'" + args['action'] + "' not found for button." );
+		    }
+		} );
+	    } else {
+		console.log( "No action found for button." );
+	    }
+	} //yote_button
 	return;
     }, //init_el
 
     refresh_ui:function(sel) {
-	$( sel || '.control_table,.yote_panel' ).each( function() {
+	$( sel || '.control_table,.yote_panel,.yote_button' ).each( function() {
 	    $( this ).attr( 'has_init', 'false' );
 	} );
 	$.yote.util.init_ui();
@@ -737,7 +750,7 @@ $.yote.util = {
     
     init_ui:function() {
 	var may_need_init = false;
-	$( '.control_table,.yote_panel' ).each( function() {
+	$( '.control_table,.yote_panel,.yote_button' ).each( function() {
 	    var el = $( this );
 	    // init can be called multiple times, but only
 	    // inits on the first time
@@ -829,10 +842,10 @@ $.yote.util = {
 	    }
 	    else {
 		if( use_html ) {
-		    $( args[ 'attachpoint' ] ).empty().append( item.get( field ) );
+		    $( args[ 'attachpoint' ] ).empty().append( item.get( field ) || '' );
 		}
 		else {
-		    $( args[ 'attachpoint' ] ).text( item.get( field ) );
+		    $( args[ 'attachpoint' ] ).text( item.get( field ) || '' );
 		}
 	    }
 	}
@@ -1418,6 +1431,7 @@ $.yote.util = {
 */
 
     templates : {},
+    functions : {},
     default_value_stack : [],
     iter_value_stack : [],
     recursive_block : [], //TODO
@@ -1433,9 +1447,22 @@ $.yote.util = {
 	}
     }, //register_template
 
-    fill_template:function( template_name, context, default_var, default_parent ) {
+    register_function:function( key, value ) {
+	$.yote.util.functions[ key ] = value;
+    },
+
+    register_functions:function( hash ) {
+	var name, val;
+	for( name in hash ) {
+	    $.yote.util.register_function( name, hash[ name ] );
+	}
+    }, //register_function
+
+    fill_template:function( template_name, default_var, default_parent ) {
 	var template = $.yote.util.templates[ template_name ];
 	if( ! template ) { return ''; }
+
+	var template_id = $.yote.util.next_id();
 
 	var text_val = typeof template === 'function' ? template() : template;
 
@@ -1446,7 +1473,7 @@ $.yote.util = {
 		console.log( "Template error for '"+template_name+"' : unable to find close of <%" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template( text_val.substring( start+2, end ).trim(), context||{}, default_var, default_parent ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
 	}
 	while( text_val.indexOf( '<$' ) > -1 ) {
 	    var start = text_val.indexOf( '<$' );
@@ -1455,7 +1482,7 @@ $.yote.util = {
 		console.log( "Template error for '"+template_name+"' : unable to find close of <$" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), context||{}, default_var, default_parent ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), default_var, default_parent, template_id ) + text_val.substring( end+2 );
 	}
 	while( text_val.indexOf( '<@' ) > -1 ) {
 	    var start = text_val.indexOf( '<@' );
@@ -1464,75 +1491,106 @@ $.yote.util = {
 		console.log( "Template error for '"+template_name+"' : unable to find close of <@" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_list( text_val.substring( start+2, end ).trim(), context||{}, default_var, default_parent ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_list( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
+	}
+	while( text_val.indexOf( '<?' ) > -1 ) {
+	    var start = text_val.indexOf( '<?' );
+	    var end   = text_val.indexOf( '?>' );
+	    if( end < start ) {
+		console.log( "Template error for '"+template_name+"' : unable to find close of <?" );
+		return;
+	    }
+	    text_val = text_val.substring( 0, start ) + $.yote.util.run_template_function( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
 	}
 	return text_val;
     }, //fill_template
+
+    run_template_function:function( varpart, default_var, default_parent ) {
+	var f = $.yote.util.functions[ varpart.trim() ];
+	if( f ) 
+	    return f( default_var, default_parent );
+	console.log( "Template error. Function '" + varpart + "' not found." );
+	return '';	
+    }, //run_template_function
     
-    fill_template_list:function( varpart, context, default_var, default_parent ) {
+    fill_template_list:function( varpart, default_var, default_parent ) {
 	var parts         = varpart.split(/ /);
 	var template_name = parts[ 0 ].trim();
 	if( parts.length == 2 ) {
-	    var list_obj = $.yote.util._template_var( parts[ 1 ].trim(), context, default_var, default_parent );
+	    var list_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
 	    if( list_obj ) {
 		if( list_obj.to_list ) //its a yote object that is an array
-		    return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+		    return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, it, list_obj )}).join('');
 		else //it actually is an array
-		    return list_obj.map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+		    return list_obj.map(function(it,idx){return $.yote.util.fill_template( template_name, it, list_obj )}).join('');
 	    }
-	    console.log( "List '" + varpart + "' unable to parse correctly." );
 	    return '';
 	}
 	else if( parts.length == 3 ) {
-	    var parent_obj = $.yote.util._template_var( parts[ 1 ].trim(), context, default_var, default_parent );
+	    var parent_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
 	    var list_obj   = parent_obj.get( parts[ 2 ].trim() );
 	    if( list_obj ) {
-		return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, context, it, default_var )}).join('');
+		return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, it, parent_obj )}).join('');
 	    }
-	    console.log( "List '" + varpart + "' unable to parse correctly." );
 	    return '';
 	}
-	console.log( "List template part not understood '" + varpart + "'" );
 	return '';
     }, //fill_template_list
     
-    _template_var:function( subj, context, default_var, default_parent ) {
-	if( subj == 'acct' ) subjobj = $.yote.fetch_account();
+    _template_var:function( targ, default_var, default_parent, template_id ) {
+	var tlist = targ.split(/[\.]/);
+	var subj = tlist[0];
+	var subjobj;
+	if( subj == 'acct' )      subjobj = $.yote.fetch_account();
 	else if( subj == 'root' ) subjobj = $.yote.fetch_root();
 	else if( subj == 'app' )  subjobj = $.yote.fetch_app();
+	else if( subj == 'id' )   subjobj = template_id;
 	else if( subj == '_' )    subjobj = default_var;
 	else if( subj == '__' )   subjobj = default_parent;
-	else                      subjobj = context[ subj ];
-	return subjobj;
+
+	if( subjobj ) {
+	    for( i=1; i<tlist.length; i++ ) {
+		subjobj = subjobj.get( tlist[i] );
+	    }
+	    return subjobj;
+	}
     },
 
-    fill_template_variable:function( varcmd, context, default_var, default_parent ) {
-	var cmdl = varcmd.split(/ /,4);
+    fill_template_variable:function( varcmd, default_var, default_parent ) {
+	var cmdl = varcmd.split(/ /); //yikes, this split suxx.use regex
 	var cmd  = cmdl[0].toLowerCase();
 	var subj = cmdl[1];
 	var fld  = cmdl[2];
-	var subobj = $.yote.util._template_var( subj, context, default_var, default_parent );
+	var subjobj = $.yote.util._template_var( subj, default_var, default_parent );
 	if( cmd == 'edit' ) {
 	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';
 	}
 	else if( cmd == 'show' ) {
 	    return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '"></span>';
-//	    return subjobj.get( cmdl[2] );
 	}
 	else if( cmd == 'switch' ) {
 	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
 	}
 	else if( cmd == 'select' ) {
-	    return '<span class="yote_panel" use_select="true" sel_list="' + cmdl[3].trim() + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
+	    parts = /^\s*\S+\s+\S+\s+\S+\s+(.*)/.exec( varcmd );
+	    listblock = parts[ 1 ];
+	    return '<span class="yote_panel" use_select="true" sel_list="' + listblock + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
 	}
 	else if( cmd == 'selectobj' ) {
 	    cmdl = varcmd.split(/ /);
-	    var lst = context[ cmdl[3].trim() ];
+	    var lst = $.yote.util._template_var( cmdl[3].trim(), default_var, default_parent );
 	    if( lst ) {
 		return '<span class="yote_panel" use_select_obj="true" list_field="' + cmdl[4].trim() + '" list_obj="$$' + lst.id + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
 	    }
-	    console.log( "Could not find '" + cmdl[3] + "' in context" );
+	    console.log( "Could not find '" + cmdl[3] + "'" );
 	    return '';
+	}
+	else if( cmd == 'button' ) {
+	    parts = /^\s*(\S+)\s+(\S+)\s*(.*)/.exec( varcmd );
+	    var item   = default_var;
+	    var parent = default_parent;
+	    return '<button type="BUTTON" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'">' + cmdl[2].trim() + '</button>'; //needs to insert an id for itself and register the action
+	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return '';
@@ -1545,20 +1603,25 @@ $.yote.util = {
 
    Inside the variable fill is a particular syntax
 
+      * id                     ( id of this template _instance_ )
       * show    item   field   ( prepend field with # if it is to be as html )
       * edit    item   field   ( prepend field with # if it is to be as html )
       * select     object field [json list]
       * selectobj  object field list_of_objs field_of_list_objs
       * switch  object  field  makes checkbox
+      * button templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
+
       * radio   field ( like select with choose 1 ... implement at some point )
+       
 
   ( default var as _ , parent as __  )
 
 
      <@ templatename list @>
      <@ templatename obj field @>
-      
+     <? command ?>   run the restigered function and include its text result in the html
    Applies the template to each item in the list, concatinating the results together.
+
 
 
 */

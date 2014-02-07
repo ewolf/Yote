@@ -1,6 +1,7 @@
 The stack :
 
- new templating system : add select boxes
+ new templating system : range for template lists for pagination
+ new templating system : better error messages
  new templating system : add radio boxes
 
  Cron still has problems?
