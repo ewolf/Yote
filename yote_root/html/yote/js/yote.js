@@ -517,6 +517,109 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
+
+		wrap_list:function( args ) {
+		    var me = this;
+		    var obj = me.get( args[ 'collection_name' ] );
+		    return {
+			obj     : obj,
+			id      : me.id,
+			start   : args[ 'start' ] || 0,
+			page_size    : args[ 'size' ],
+			search_values : args[ 'search_value'  ] || undefined,
+			search_fields : args[ 'search_field'  ] || undefined,
+			sort_field    : args[ 'sort_fields'   ] || undefined,
+			sort_reverse  : args[ 'sort_reverse'  ] || false,
+			length : obj.length(),
+			to_list : function() {
+			    var ret = [];
+			    if( ! this.obj ) return ret;
+			    var olist = this.obj.to_list();
+
+			    if( this.sort_field ) {
+				olist = olist.sort( this.sort );
+			    }
+
+			    this.length = 0;
+			    for( var i=0; i < olist.length; i++ ) {
+				if( this.search_values && this.search_fields && this.search_values.length > 0 && this.search_fields.length > 0 ) {
+				    if( this.search_fields && this.search_fields.length > 0 ) {
+					var match = false;
+					for( var j=0; j<this.search_values.length; j++ ) {
+					    for( var k=0; k<this.search_fields.length; k++ ) {
+						match = match || olist[ i ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
+					    }
+					}
+					if( match ) {
+					    this.length++;
+					    if( i >= this.start && ret.length < this.page_size ) 
+						ret.push( olist[i] );
+					}
+				    }
+				}
+				else {
+				    this.length++;
+				    if( i >= this.start && ret.length < this.page_size ) 
+					ret.push( olist[i] );
+				}
+			    }
+			    return ret;
+			},
+			sort:function( a, b ) {
+			    return a.toLowerCase().localeCompare( b.toLowerCase() );
+			},
+			set_search_criteria:function( fields, values ) {
+			    if( ! values ) {
+				this.search_fields = undefined;
+				return;
+			    }
+			    var has_val = false;
+			    for( var i=0; i<values.length; i++ ) {
+				has_val = has_val || (values[ i ] && values[ i ] != '' );
+			    }
+			    if( has_val ) {
+				this.search_fields = fields;
+				this.search_values = values;
+			    }
+			    else {
+				this.search_fields = undefined;
+			    }
+			},
+			get : function( idx ) {
+			    return this.obj.get( idx );
+			},
+			add_to : function( data ) {
+			    return this.obj.add_to( data );
+			},
+			remove_from : function( data ) {
+			    return this.obj.remove_from( data );
+			},
+			seek:function(topos) {
+			    this.start = topos;
+			},
+			forwards:function(){
+			    var towards = this.start + this.page_size;
+			    this.start = towards > (this.length-1) ? (this.length-1) : towards;
+			},
+			can_rewind : function() {
+			    return this.start > 0;
+			},
+			can_fast_forward : function() {
+			    return this.start + this.page_size <= this.length;
+			},
+			back:function(){
+			    var towards = this.start - (this.page_size);
+ 			    this.start = towards < 0 ? 0 : towards;
+			},
+			first:function(){
+			    this.start = 0;
+			},
+			last:function(){
+			    this.start = this.length - this.page_size;
+			}
+		    };
+		}, //wrap list
+
 		paginator:function( fieldname, is_hash, size, start ) {
 		    var obj = this;
 		    var st = start || 0;

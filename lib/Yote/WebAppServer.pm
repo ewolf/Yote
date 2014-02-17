@@ -544,6 +544,7 @@ sub __process_http_request {
 	print $socket "HTTP/1.0 200 OK\015\012";
 	push( @return_headers, "Content-Type: text/json; charset=utf-8" );
 	push( @return_headers,  "Access-Control-Allow-Origin: *" );
+	push( @return_headers,  "Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control " );
 	print $socket join( "\n", @return_headers )."\n\n";
 	utf8::encode( $result );
 	print $socket "$result";
@@ -590,6 +591,7 @@ sub __process_http_request {
 	    my $size = -s "<$root/$dest";
 	    push( @return_headers, "Content-length: $size" );
 	    push( @return_headers,  "Access-Control-Allow-Origin: *" );
+	    push( @return_headers,  "Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control " );
 
 	    my $buf;
 	    my $precache_done;

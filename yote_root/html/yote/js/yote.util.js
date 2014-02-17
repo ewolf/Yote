@@ -53,85 +53,95 @@ $.yote.util = {
     },
 
     button_actions:function( args ) {
-	var but         = args[ 'button' ];
-	var action      = args[ 'action' ] || function(){};
-	var on_escape   = args[ 'on_escape' ] || function(){};
-	var texts       = args[ 'texts'  ] || [];
-	var req_texts   = args[ 'required' ];
-	var req_indexes = args[ 'required_by_index' ];
-	var req_fun     = args[ 'required_by_function' ];
-	var exempt      = args[ 'cleanup_exempt' ] || {};
-	var extra_check = args[ 'extra_check' ] || function() { return true; }
+	var ba = {
+	    but         : args[ 'button' ],
+	    action      : args[ 'action' ] || function(){},
+	    on_escape   : args[ 'on_escape' ] || function(){},
+	    texts       : args[ 'texts'  ] || [],
+	    t_values    : args[ 'texts' ].map( function(it,idx){ return $( it ).val(); } ),
+	    req_texts   : args[ 'required' ],
+	    req_indexes : args[ 'required_by_index' ],
+	    req_fun     : args[ 'required_by_function' ],
+	    exempt      : args[ 'cleanup_exempt' ] || {},
+	    extra_check : args[ 'extra_check' ] || function() { return true; },
 
-	var check_ready = (function(rt,te,ec,re,rf) { return function() {
-	    var ecval = ec();
-	    var t = rt || te;
-	    if( typeof rf === 'function' ) {
-		if( rf( te ) != true ) {
-		    $( but ).attr( 'disabled', 'disabled' );
-		    return false;
-		}
-	    }
-	    else if( typeof re !== 'undefined' ) {
-		for( var i=0; i<re.length; ++i ) {
-		    if( ! $( te[ re[ i ] ] ).val().match( /\S/ ) ) {
-	    		$( but ).attr( 'disabled', 'disabled' );
+	    check_ready : function() {
+		var me = this;
+		var ecval = me.extra_check();
+		var t = me.req_texts || me.texts;
+		if( typeof me.req_fun === 'function' ) {
+		    if( req_fun( me.texts ) != true ) {
+			$( me.but ).attr( 'disabled', 'disabled' );
 			return false;
 		    }
 		}
-	    }
-	    else {
-		for( var i=0; i<t.length; ++i ) {
-		    if( ! $( t[i] ).val().match( /\S/ ) ) {
-	    		$( but ).attr( 'disabled', 'disabled' );
-			return false;
-		    }
-		}
-	    }
-	    $( but ).attr( 'disabled', ! ecval );
-	    return ecval;
-	} } )( req_texts, texts, extra_check, req_indexes, req_fun ); // check_ready
-
-	for( var i=0; i<texts.length - 1; ++i ) {
-	    if( $( texts[i] ).prop('type') == 'checkbox' ) {
-		$( texts[i] ).click( function() { check_ready(); return true; } );
-	    }
-	    else {
-		$( texts[i] ).keyup( function() { check_ready(); return true; } );
-		$( texts[i] ).keypress( (function(box,oe) {
-		    return function( e ) {
-			if( e.which == 13 ) {
-			    $( box ).focus();
-			} else if( e.which == 27 ) {
-			    oe();
+		else if( typeof me.req_indexes !== 'undefined' ) {
+		    for( var i=0; i<me.req_indexes.length; ++i ) {
+			if( $( me.texts[ me.req_indexes[ i ] ] ).val() == me.t_values[ i ] ) {
+	    		    $( me.but ).attr( 'disabled', 'disabled' );
+			    return false;
 			}
-		    } } )( texts[i+1], on_escape ) );
-	    }
-	}
-
-	act = (function( c_r, a_f, txts ) { return function() {
-	    if( c_r() ) {
-		a_f();
-		for( var i=0; i<txts.length; ++i ) {
-		    if( ! exempt[ txts[i] ] ) {
-			$( txts[i] ).val( '' );
 		    }
 		}
-	    }
-	} } ) ( check_ready, action, texts );
+		else {
+		    for( var i=0; i<t.length; ++i ) {
+			if( $( t[ i ] ).val() == me.t_values[ i ] ) {
+	    		    $( me.but ).attr( 'disabled', 'disabled' );
+			    return false;
+			}
+		    }
+		}
+		$( me.but ).attr( 'disabled', ! ecval );
+		return ecval;
+	    }, //check_ready
 
-	$( texts[texts.length - 1] ).keyup( function() { check_ready(); return true; } );
-	$( texts[texts.length - 1] ).keypress( (function(a,oe) { return function( e ) {
-	    if( e.which == 13 ) {
-		a();
-	    } else if( e.which == 27 ) {
-		eo();
-	    } } } )(act,on_escape) );
+	    init:function() {
+		var me = this;
+		for( var i=0; i<me.texts.length - 1; ++i ) {
+		    if( $( me.texts[i] ).prop('type') == 'checkbox' ) {
+			$( me.texts[i] ).click( function() { me.check_ready(); return true; } );
+		    }
+		    else {
+			$( me.texts[i] ).keyup( function() { me.check_ready(); return true; } );
+			$( me.texts[i] ).keypress( (function(box,oe) {
+			    return function( e ) {
+				if( e.which == 13 ) {
+				    $( box ).focus();
+				} else if( e.which == 27 ) {
+				    oe();
+				}
+			    } } )( me.texts[i+1], me.on_escape ) );
+		    }
+		}
+		$( me.texts[me.texts.length - 1] ).keyup( function() { me.check_ready(); return true; } );
+		$( me.texts[me.texts.length - 1] ).keypress( function( e ) {
+		    if( e.which == 13 ) {
+			me.act();
+		    } else if( e.which == 27 ) {
+			me.on_escape();
+		    }
+		} );
+		$( me.but ).click( function() { me.act() } );
+		me.check_ready();
+	    }, //init
 
-	$( but ).click( act );
-	check_ready();
+	    act : function() {
+		var me = this;
+		if( me.check_ready() ) {
+		    me.action();
+		    for( var i=0; i<me.texts.length; ++i ) {
+			if( ! me.exempt[ me.texts[i] ] ) {
+			    $( me.texts[i] ).val( '' );
+			}
+		    }
+		    me.t_values    = me.texts.map( function(it,idx){ return $( it ).val(); } );
+		}
+	    } //act
+	} // ba
 
-	return check_ready;
+	ba.init();
+
+	return ba;
 
     }, //button_actions
 
@@ -849,7 +859,7 @@ $.yote.util = {
 		}
 	    }
 	}
-    },
+    }, //yote_panel
 
     make_list_paginator:function( lst_obj ) {
 	return function( args ) {
@@ -1516,17 +1526,19 @@ $.yote.util = {
     fill_template_list:function( varpart, default_var, default_parent ) {
 	var parts         = varpart.split(/ /);
 	var template_name = parts[ 0 ].trim();
-	if( parts.length == 2 ) {
+	if( parts.length == 2 ) { // <@ templatename list_object @>
 	    var list_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
 	    if( list_obj ) {
 		if( list_obj.to_list ) //its a yote object that is an array
-		    return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, it, list_obj )}).join('');
+		    return list_obj.to_list().map(function(it,idx){
+			return $.yote.util.fill_template( template_name, it, list_obj )}
+						 ).join('');
 		else //it actually is an array
 		    return list_obj.map(function(it,idx){return $.yote.util.fill_template( template_name, it, list_obj )}).join('');
 	    }
 	    return '';
 	}
-	else if( parts.length == 3 ) {
+	else if( parts.length == 3 ) { // <@ templatename parent_object list_in_parent_object @>
 	    var parent_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
 	    var list_obj   = parent_obj.get( parts[ 2 ].trim() );
 	    if( list_obj ) {
@@ -1547,6 +1559,7 @@ $.yote.util = {
 	else if( subj == 'id' )   subjobj = template_id;
 	else if( subj == '_' )    subjobj = default_var;
 	else if( subj == '__' )   subjobj = default_parent;
+	else subjobj = this.registered_items[ subj ];
 
 	if( subjobj ) {
 	    for( i=1; i<tlist.length; i++ ) {
