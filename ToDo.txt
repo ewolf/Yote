@@ -1,7 +1,8 @@
 The stack :
 
- new templating system : sorting for lists w/ pagination
- new templating system : search in lists w/ pagination
+ caching 
+
+ new templating system : sorting for lists w/ pagination ( example )
 
  new templating system : better error messages
  new templating system : add radio boxes

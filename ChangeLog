@@ -4,6 +4,9 @@
 	* added wrap_list method to javascript yote object. This returns an object that paginates a wholly loaded list.
 	* refactored button_actions to create and return a manager object.
 	* added allowable return headers for javascript.
+	* changed requests from GET to POST due to size of request reasons.
+	* fixed bug where request sockets were not being handled properly.
+	* added search and sort to template pagination via a list wrapper object (from yote obj)
 
 2014-02-07  Eric Wolf  <wolf@Talisman>
 

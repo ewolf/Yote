@@ -553,7 +553,7 @@ $.yote.util = {
 	var div_id = '__' + $.yote.util.next_id();
 	return function( item, is_prep ) {
 	    if( is_prep ) {
-		return '<SELECT id="' + div_id + '">' + list_obj.to_list().map(function(it,idx){return '<option ' + ( item.get(fld) && item.get(fld).id == it.id ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it.get(list_item_field)+'</option>'}).join('') + '</SELECT>';
+		return '<SELECT id="' + div_id + '">' + list_obj.to_list().map(function(it,idx){if( typeof it !== 'object' ) return '<option value="' + it + '">' + it + '</option>'; return '<option ' + ( item.get(fld) && item.get(fld).id == it.id ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it.get(list_item_field)+'</option>'}).join('') + '</SELECT>';
 	    }
 	    else {
 		$( '#' + div_id ).change( function() {
@@ -1576,15 +1576,19 @@ $.yote.util = {
 	var fld  = cmdl[2];
 	var subjobj = $.yote.util._template_var( subj, default_var, default_parent );
 	if( cmd == 'edit' ) {
+	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';
 	}
 	else if( cmd == 'show' ) {
+	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '"></span>';
 	}
 	else if( cmd == 'switch' ) {
+	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
 	}
 	else if( cmd == 'select' ) {
+	    if( ! subjobj ) return '';
 	    parts = /^\s*\S+\s+\S+\s+\S+\s+(.*)/.exec( varcmd );
 	    listblock = parts[ 1 ];
 	    return '<span class="yote_panel" use_select="true" sel_list="' + listblock + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
@@ -1593,6 +1597,7 @@ $.yote.util = {
 	    cmdl = varcmd.split(/ /);
 	    var lst = $.yote.util._template_var( cmdl[3].trim(), default_var, default_parent );
 	    if( lst ) {
+		if( ! subjobj ) return '';
 		return '<span class="yote_panel" use_select_obj="true" list_field="' + cmdl[4].trim() + '" list_obj="$$' + lst.id + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
 	    }
 	    console.log( "Could not find '" + cmdl[3] + "'" );

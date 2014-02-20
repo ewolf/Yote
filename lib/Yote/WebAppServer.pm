@@ -425,7 +425,7 @@ sub __process_command {
     };
     if( $@ ) {
 	my $err = $@;
-	print STDERR Data::Dumper->Dump(["ERRRR $@"]);
+	print STDERR Data::Dumper->Dump(["ERRRR $@",$command]);
 	if( $err =~ /^__DEADLOCK__/ ) {
 	    iolog( "DEADLOCK TO RETRY $$ : $@" );
 	    # if a deadlock condition was detected. back out of any changes and retry
@@ -460,20 +460,26 @@ sub __process_command {
 
 sub __process_http_request {
     my( $self, $socket ) = @_;
-
     my $req = <$socket>;
 
+    delete $ENV{'HTTP_CONTENT-LENGTH'};
     while( my $hdr = <$socket> ) {
 	$hdr =~ s/\s*$//s;
 	last unless $hdr =~ /\S/;
 	my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
 	$ENV{ "HTTP_" . uc( $key ) } = $val;
     }
-    my $content_length = $ENV{CONTENT_LENGTH};
+    my $content_length = $ENV{'HTTP_CONTENT-LENGTH'};
     if( $content_length > 5_000_000 ) { #TODO : make this into a configurable field
 	$self->_do404();
 	close( $socket );
 	return;
+    }
+
+    # read certain length from socket ( as many bytes as content length
+    my $data;
+    if( $content_length && ! eof $socket) {
+	my $read = read $socket, $data, $content_length;
     }
 
     #
@@ -512,12 +518,12 @@ sub __process_http_request {
 	errlog( $uri );
 	my $path_start = shift @path;
 
-	my( $data, $wait, $guest_token, $token, $action, $obj_id, $app_id );
+	my( $wait, $guest_token, $token, $action, $obj_id, $app_id );
 
 	push( @return_headers, "Content-Type: text/json; charset=utf-8");
 	push( @return_headers, "Server: Yote" );
 	if( $path_start eq '_' ) {
-	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait, $data ) = @path;
+	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
 	}
 	else {
@@ -540,7 +546,6 @@ sub __process_http_request {
 	    gt => $guest_token,
             w  => $wait,
         } );
-
 	print $socket "HTTP/1.0 200 OK\015\012";
 	push( @return_headers, "Content-Type: text/json; charset=utf-8" );
 	push( @return_headers,  "Access-Control-Allow-Origin: *" );
@@ -650,10 +655,9 @@ sub __process_http_request {
 	    accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
 	    $self->_do404();
 	}
-	close( $socket );
-	return;
     } #serve html
-
+    close( $socket );
+    return;
 } #__process_http_request
 
 #
@@ -720,7 +724,6 @@ sub __parse_form {
 
 	} #while
     } #if has a boundary content type
-
     return ( \%post_data, \%file_helpers );
 } #parse_form
 

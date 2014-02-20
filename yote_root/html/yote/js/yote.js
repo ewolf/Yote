@@ -275,7 +275,8 @@ $.yote = {
         if( async == 0 ) {
             root._disable();
         }
-        var get_data = $.yote.token + "/" + $.yote.guest_token + "/" + wait + "/" + $.base64.encode( JSON.stringify( { d : data } ) );
+	var encoded_data = $.base64.encode( JSON.stringify( { d : data } ) );
+        var get_data = $.yote.token + "/" + $.yote.guest_token + "/" + wait;
 	var resp;
 
         if( $.yote.debug == true ) {
@@ -288,6 +289,7 @@ $.yote = {
 	    async:async,
 	    cache: false,
 	    contentType: "application/json; charset=utf-8",
+	    data : encoded_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
 		    console.log('incoming '); console.log( a );
@@ -341,7 +343,7 @@ $.yote = {
                     console.log( "Success reported but no response data received" );
                 }
 	    },
-	    type:'GET',
+	    type:'POST',
 	    url:url + '/' + get_data
 	} );
         if( ! async ) {
@@ -521,6 +523,7 @@ $.yote = {
 		wrap_list:function( args ) {
 		    var me = this;
 		    var obj = me.get( args[ 'collection_name' ] );
+		    var ol = obj ? obj.length() : 0;
 		    return {
 			obj     : obj,
 			id      : me.id,
@@ -528,16 +531,23 @@ $.yote = {
 			page_size    : args[ 'size' ],
 			search_values : args[ 'search_value'  ] || undefined,
 			search_fields : args[ 'search_field'  ] || undefined,
-			sort_field    : args[ 'sort_fields'   ] || undefined,
+			sort_fields   : args[ 'sort_fields'   ] || undefined,
 			sort_reverse  : args[ 'sort_reverse'  ] || false,
-			length : obj.length(),
+			length : ol,
 			to_list : function() {
+			    var me = this;
 			    var ret = [];
 			    if( ! this.obj ) return ret;
 			    var olist = this.obj.to_list();
 
-			    if( this.sort_field ) {
-				olist = olist.sort( this.sort );
+			    if( this.sort_fields ) {
+				olist = olist.sort( function( a, b ) { 
+				    for( var i=0; i<me.sort_fields.length; i++ ) {
+					if( typeof a === 'object' && typeof b === 'object' ) 
+					    return a.get( me.sort_fields[i] ).toLowerCase().localeCompare( b.get( me.sort_fields[i] ).toLowerCase() );
+					return 0;
+				    }
+				} );
 			    }
 
 			    this.length = 0;
@@ -547,7 +557,7 @@ $.yote = {
 					var match = false;
 					for( var j=0; j<this.search_values.length; j++ ) {
 					    for( var k=0; k<this.search_fields.length; k++ ) {
-						match = match || olist[ i ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
+						match = match || typeof olist[ i ] === 'object' && olist[ i ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
 					    }
 					}
 					if( match ) {
@@ -564,9 +574,6 @@ $.yote = {
 				}
 			    }
 			    return ret;
-			},
-			sort:function( a, b ) {
-			    return a.toLowerCase().localeCompare( b.toLowerCase() );
 			},
 			set_search_criteria:function( fields, values ) {
 			    if( ! values ) {
