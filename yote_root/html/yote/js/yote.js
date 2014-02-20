@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.12
+ * Version 0.2
  */
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19
@@ -606,13 +606,13 @@ $.yote = {
 			},
 			forwards:function(){
 			    var towards = this.start + this.page_size;
-			    this.start = towards > (this.length-1) ? (this.length-1) : towards;
+			    this.start = towards > this.length ? (this.length-1) : towards;
 			},
 			can_rewind : function() {
 			    return this.start > 0;
 			},
 			can_fast_forward : function() {
-			    return this.start + this.page_size <= this.length;
+			    return this.start + this.page_size < this.length;
 			},
 			back:function(){
 			    var towards = this.start - (this.page_size);

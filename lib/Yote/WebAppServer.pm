@@ -23,7 +23,7 @@ use Yote::IO::Mailer;
 
 use vars qw($VERSION);
 
-$VERSION = '0.101';
+$VERSION = '0.2';
 
 # %oid2lockdata stores object id to a string containg locking process id, and last saved time.
 #   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
