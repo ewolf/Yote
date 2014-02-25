@@ -1,5 +1,13 @@
 The stack :
 
+ need a wrap_hash like there is a wrap list ( might wind out becomming the same thing )
+
+ redo admin page with new templates
+
+ special pagination links/buttons
+
+ bug where things from testy known icecreams is getting undeffed out.
+
  caching 
 
  new templating system : sorting for lists w/ pagination ( example )

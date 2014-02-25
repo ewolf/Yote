@@ -667,6 +667,25 @@ sub io_independent_tests {
     #set root back to root admin
     $root_login->set__is_root( 1 );
 
+    #
+    # Make sure named list operations properly integrate with recycling/garbage collection.
+    #
+    Yote::ObjProvider::recycle_objects();
+    {
+	my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
+	my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
+	$root->_add_to( 'o_list', $o2a );
+	$root->_add_to( 'o_list', $o2b );
+	Yote::ObjProvider::stow_all();
+	my $objs = Yote::ObjProvider::recycle_objects();
+	is( $objs, 0, 'add_to(  not recycled' );
+	$root->_remove_from( 'o_list', $o2a );
+	$root->_remove_from( 'o_list', $o2b );
+	Yote::ObjProvider::stow_all();
+    }
+    my $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 2, 'remove_from(  is recycled' );
+
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
 

@@ -78,10 +78,24 @@ if we are our experiences then we are both sides of them.
       var root;
     $().ready(function(){
 	$( '#mainpanel' ).hide();
+      $.yote.debug = true;
 	$.yote.init();
 	root = $.yote.fetch_root();
 
 	var cron = root.cron();
+
+	var apps = root.wrap_list( { 
+	    collection_name : '_apps',
+	    size            : 3
+	} );
+
+	$.yote.util.register_item( 'apps', apps );
+
+        $.yote.util.register_templates( {
+	    apps  : '<h3>Apps</h3><@ apps name @>',
+	    users : '',
+	    cron  : ''
+	} );
 
 	function register_items() {
             $.yote.util.register_items( {

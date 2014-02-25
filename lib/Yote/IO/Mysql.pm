@@ -435,7 +435,7 @@ sub recycle_objects {
     $start_id ||= 2;
     $end_id   ||= $self->max_id();
 
-    my $recycled;
+    my $recycled = 0;
     
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
 	my $obj = $self->fetch( $id );

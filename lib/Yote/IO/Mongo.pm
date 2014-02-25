@@ -267,18 +267,16 @@ sub list_fetch {
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
-    my $obj = $self->_find_one( { _id => $mid } );
-    if( $obj ) { 
-	die "list_insert must be called for list" if $obj->{ c } ne 'ARRAY';
-	if( $obj ) {
-	    if( defined( $idx ) && $idx <= @{$obj->{d}} ) {
-		splice @{$obj->{ d }}, $idx > @{$obj->{d}} ? scalar(@{$obj->{d}}) : $idx, 0, $val;
-	    }
-	    else {
-		push @{$obj->{ d }}, $val;
-	    }
-	    $self->_update( { _id => $mid, }, $obj );
+    my $list_obj = $self->_find_one( { _id => $mid } );
+    if( $list_obj ) { 
+	die "list_insert must be called for list" if $list_obj->{ c } ne 'ARRAY';
+	if( defined( $idx ) && $idx <= @{$list_obj->{d}} ) {
+	    splice @{$list_obj->{ d }}, $idx > @{$list_obj->{d}} ? scalar(@{$list_obj->{d}}) : $idx, 0, $val;
 	}
+	else {
+	    push @{$list_obj->{ d }}, $val;
+	}
+	$self->stow( $list_id, 'ARRAY', $list_obj->{ d } );
     }
     else {
 	$self->stow( $list_id, 'ARRAY', [ $val ] );

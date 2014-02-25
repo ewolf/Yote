@@ -70,7 +70,7 @@ $.yote.util = {
 		var ecval = me.extra_check();
 		var t = me.req_texts || me.texts;
 		if( typeof me.req_fun === 'function' ) {
-		    if( req_fun( me.texts ) != true ) {
+		    if( me.req_fun( me.texts ) != true ) {
 			$( me.but ).attr( 'disabled', 'disabled' );
 			return false;
 		    }
@@ -645,6 +645,7 @@ $.yote.util = {
 	    return;
 	}
 	var fields = [
+	    'yote_button', 'yote_action_link',
 	    'edit_requires','field','no_edit','after_edit_function','use_checkbox', 'use_select','use_select_obj','show','new_addto_function','action',
 	    'container_name', 'paginate_type', 'paginate_order', 'is_admin','sel_list','list_field','list_obj',
 	    'plimit','paginate_override',
@@ -748,6 +749,20 @@ $.yote.util = {
 		console.log( "No action found for button." );
 	    }
 	} //yote_button
+	else if( el.hasClass( 'yote_action_link' ) ) {
+	    if( args[ 'action' ] ) {
+		$( args[ 'attachpoint' ] ).click(function(ev){
+		    ev.preventDefault();
+		    if( $.yote.util.functions[ args[ 'action' ] ] ) {
+			$.yote.util.functions[ args[ 'action' ] ]( args[ 'item' ], args[ 'parent' ] ); 
+		    } else {
+			console.log( "'" + args['action'] + "' not found for button." );
+		    }
+		} );
+	    } else {
+		console.log( "No action found for button." );
+	    }
+	} //yote_action_link
 	return;
     }, //init_el
 
@@ -760,7 +775,7 @@ $.yote.util = {
     
     init_ui:function() {
 	var may_need_init = false;
-	$( '.control_table,.yote_panel,.yote_button' ).each( function() {
+	$( '.control_table,.yote_panel,.yote_button,.yote_action_link' ).each( function() {
 	    var el = $( this );
 	    // init can be called multiple times, but only
 	    // inits on the first time
@@ -1610,6 +1625,13 @@ $.yote.util = {
 	    return '<button type="BUTTON" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'">' + cmdl[2].trim() + '</button>'; //needs to insert an id for itself and register the action
 	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
 	}
+	else if( cmd == 'action_link' ) {
+	    parts = /^\s*(\S+)\s+(\S+)\s*(.*)/.exec( varcmd );
+	    var item   = default_var;
+	    var parent = default_parent;
+	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'">' + cmdl[2].trim() + '</a>'; //needs to insert an id for itself and register the action
+	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
+	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return '';
     }, //fill_template_variable
@@ -1628,6 +1650,7 @@ $.yote.util = {
       * selectobj  object field list_of_objs field_of_list_objs
       * switch  object  field  makes checkbox
       * button templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
+      * action_link templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
 
       * radio   field ( like select with choose 1 ... implement at some point )
        
