@@ -686,6 +686,21 @@ sub io_independent_tests {
     my $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'remove_from(  is recycled' );
 
+    {
+	my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling" } );
+	my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling" } );
+	$root->_hash_insert( 'o_hash', "KEYA", $o2a );
+	$root->_hash_insert( 'o_hash', "KEYB", $o2b );
+	Yote::ObjProvider::stow_all();
+	my $objs = Yote::ObjProvider::recycle_objects();
+	is( $objs, 0, 'hash(  not recycled' );
+	$root->_hash_delete( 'o_hash', "KEYA" );
+	$root->_hash_delete( 'o_hash', "KEYB" );
+	Yote::ObjProvider::stow_all();	
+    }
+    $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 2, 'hash delete  is recycled' );
+
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
 
@@ -1131,7 +1146,7 @@ sub io_independent_tests {
     my $zl = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
     $zl->set__is_root( 1 );
 
-
+    Yote::ObjProvider::stow_all();
     my $toot_notroot = $root->login( { h => 'toot', p => 'toor' } )->{l};
     ok( ! $toot_notroot->is_root(), "Toot notroot is not root" );
     my $toot_notroot_acct = $root->__get_account( $toot_notroot );

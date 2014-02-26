@@ -67,6 +67,7 @@ function wrap_up() {
     var t2 = d.getTime();
     $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
 			 pass( "remove login" ), fail( "remove login" ) );
+    $.yote.logout();
     var d2 = new Date();
     $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
 } //wrap_up

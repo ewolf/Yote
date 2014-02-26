@@ -522,10 +522,10 @@ $.yote = {
 
 		wrap_list:function( args ) {
 		    var me = this;
-		    var obj = me.get( args[ 'collection_name' ] );
-		    var ol = obj ? obj.length() : 0;
+		    var collection_obj = me.get( args[ 'collection_name' ] );
+		    var ol = collection_obj ? collection_obj.length() : 0;
 		    return {
-			obj     : obj,
+			collection_obj     : collection_obj,
 			id      : me.id,
 			start   : args[ 'start' ] || 0,
 			page_size    : args[ 'size' ],
@@ -537,8 +537,8 @@ $.yote = {
 			to_list : function() {
 			    var me = this;
 			    var ret = [];
-			    if( ! this.obj ) return ret;
-			    var olist = this.obj.to_list();
+			    if( ! this.collection_obj ) return ret;
+			    var olist = this.collection_obj.to_list();
 
 			    if( this.sort_fields ) {
 				olist = olist.sort( function( a, b ) { 
@@ -548,6 +548,7 @@ $.yote = {
 					return 0;
 				    }
 				} );
+				if( this.sort_reverse ) olist.reverse();
 			    }
 
 			    this.length = 0;
@@ -593,13 +594,13 @@ $.yote = {
 			    }
 			},
 			get : function( idx ) {
-			    return this.obj.get( idx );
+			    return this.collection_obj.get( idx );
 			},
 			add_to : function( data ) {
-			    return this.obj.add_to( data );
+			    return this.collection_obj.add_to( data );
 			},
 			remove_from : function( data ) {
-			    return this.obj.remove_from( data );
+			    return this.collection_obj.remove_from( data );
 			},
 			seek:function(topos) {
 			    this.start = topos;

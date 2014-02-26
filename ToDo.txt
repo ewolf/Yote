@@ -6,16 +6,10 @@ The stack :
 
  special pagination links/buttons
 
- bug where things from testy known icecreams is getting undeffed out.
-
  caching 
-
- new templating system : sorting for lists w/ pagination ( example )
 
  new templating system : better error messages
  new templating system : add radio boxes
-
- Cron still has problems?
 
  Clear out obj manager cache and guest token by checking who logged in times. Good thing for cron.
 
