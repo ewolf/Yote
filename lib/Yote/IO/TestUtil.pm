@@ -677,6 +677,7 @@ sub io_independent_tests {
 	$root->_add_to( 'o_list', $o2a );
 	$root->_add_to( 'o_list', $o2b );
 	Yote::ObjProvider::stow_all();
+	is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
 	my $objs = Yote::ObjProvider::recycle_objects();
 	is( $objs, 0, 'add_to(  not recycled' );
 	$root->_remove_from( 'o_list', $o2a );
@@ -686,12 +687,18 @@ sub io_independent_tests {
     my $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'remove_from(  is recycled' );
 
+    $root->set_o_list( undef );
+    Yote::ObjProvider::stow_all();	
+    is( Yote::ObjProvider::recycle_objects(), 1, "one recycled list obj" );
+    is( $root->_container_type( 'o_list' ), '', 'container type detect no class once list removed' );
+
     {
 	my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling" } );
 	my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling" } );
 	$root->_hash_insert( 'o_hash', "KEYA", $o2a );
 	$root->_hash_insert( 'o_hash', "KEYB", $o2b );
 	Yote::ObjProvider::stow_all();
+	is( $root->_container_type( 'o_hash' ), 'HASH', 'container type detect hash' );
 	my $objs = Yote::ObjProvider::recycle_objects();
 	is( $objs, 0, 'hash(  not recycled' );
 	$root->_hash_delete( 'o_hash', "KEYA" );
@@ -700,6 +707,10 @@ sub io_independent_tests {
     }
     $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'hash delete  is recycled' );
+
+    $root->set_o_hash( undef );
+    Yote::ObjProvider::stow_all();	
+    is( $root->_container_type( 'o_hash' ), '', 'container type detect no class once hash removed' );
 
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );

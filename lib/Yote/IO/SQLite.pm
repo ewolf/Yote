@@ -358,6 +358,13 @@ sub _engage_queries {
     }
 } #_engage_queries
 
+sub container_type {
+    my( $self, $host_id, $container_name ) = @_;
+
+    my( $ans ) = $self->_selectrow_array( "SELECT o.class FROM field f,objects o WHERE f.obj_id=? AND f.field=? AND o.id=f.ref_id", $host_id, $container_name );
+    return $ans;
+} #container_type;
+
 #
 # Returns the number of entries in the list of the given id.
 #
@@ -568,6 +575,10 @@ Yote::ObjProvider::init( datastore => 'Yote::IO::SQLite', db => 'yote_db', uname
 =over 4
 
 =item commit_transaction( )
+
+=item container_type( host_id, container_name )
+
+returns the class name of the given container from a host class.
 
 =item count( container_id )
 

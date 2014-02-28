@@ -4,6 +4,15 @@ The stack :
 
  redo admin page with new templates
 
+ server side determination of container type
+
+ template pagination : showing x of y or all y items to appear.
+
+ make special template for login. Make a sort of package for template. An obj that 
+  has the text of the template plus methods that can be activated on it. This so that the
+  login box can respond to user input and morph into the correct state.
+
+
  special pagination links/buttons
 
  caching 

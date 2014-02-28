@@ -16,7 +16,7 @@ use Yote::Test::TestNoDeepCloner;
 
 use Data::Dumper;
 use DBI;
-use Test::More tests => 511;
+use Test::More tests => 516;
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };

@@ -78,6 +78,19 @@ sub _update {
     return $self->_db_act( 'update', @args );
 } #_update
 
+sub container_type {
+    my( $self, $host_id, $container_name ) = @_;
+
+    my $mid = MongoDB::OID->new( value => $host_id );
+    my $obj = $self->_find_one( { _id => $mid } );
+    return '' if $obj->{ c } eq 'ARRAY';
+    my $c_obj = $self->_find_one( { _id => MongoDB::OID->new( value => $obj->{ d }{$container_name} )  } );
+    if( $c_obj ) {
+	return $c_obj->{ c };
+    }
+    return '';
+} #container_type;
+
 
 #
 # Returns the number of entries in the list of the given id.
@@ -559,6 +572,10 @@ Yote::ObjProvider::init( engine => 'Yote::IO::Mongo', engine_port => 27017, stor
 =over 4
 
 =item commit_transaction( )
+
+=item container_type( host_id, container_name )
+
+returns the class name of the given container from a host class.
 
 =item count( container_id )
 

@@ -522,12 +522,22 @@ $.yote = {
 
 		wrap_list:function( args ) {
 		    var me = this;
-		    var collection_obj = me.get( args[ 'collection_name' ] );
-		    var ol = collection_obj ? collection_obj.length() : 0;
+		    var fld = args[ 'collection_name' ]
+		    var ol = me.count( fld );
+
+		    var use_full_list = ol < 200;
+		    
+		    if( use_full_list ) {
+			
+		    }
+		    else {
+			var collection_obj = me.get( fld );
+		    }
 		    return {
 			collection_obj     : collection_obj,
 			id      : me.id,
 			start   : args[ 'start' ] || 0,
+			use_full_list : use_full_list,
 			page_size    : args[ 'size' ],
 			search_values : args[ 'search_value'  ] || undefined,
 			search_fields : args[ 'search_field'  ] || undefined,
