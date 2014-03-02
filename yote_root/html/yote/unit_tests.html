@@ -267,31 +267,26 @@ $().ready(function(){
 	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
 	    // testing pagination
-	    var pag = hello_app.list_paginator( 'foo_array', 5 );
+//	    var pag = hello_app.list_paginator( 'foo_array', 5 );
+	    var pag = hello_app.wrap_list( { collection_name : 'foo_array', size : 5 } );
 
-	    is( pag.full_size, 26, "26 letters of the alphabet" );
+	    is( pag.full_size(), 26, "26 letters of the alphabet" );
 	    is( pag.get( 0 ), "A", "first letter" );
 	    is( pag.page_size, 5, "Size of 5" );
-	    is( pag.page_count(), 5, "5 in buffer" );
 	    is( pag.get( 4 ), "E", "fifth letter" );
-	    pag.fast_forward();
-	    is( pag.page_count(), 5, "5 in buffer" );
+	    pag.forwards();
 	    is( pag.get( 0 ), "F", " first after forward" );
 	    is( pag.get( 4 ), "J", " first after forward" );
 	    pag.seek( 22 );
 	    is( pag.get( 0 ), "W", "Starting at w" );
 	    is( pag.get( 3 ), "Z", "Ending with Z" );
-	    is( pag.page_count(), 4, "starting at w, just four letters left" );
-	    pag.to_end();
-	    is( pag.page_count(), 5, "Page count at the end with 5" );
+	    pag.last();
 	    is( pag.get( 4 ), "Z", "Z is last" );
 	    is( pag.get( 0 ), "V", "start with V" );
-	    pag.rewind();
-	    is( pag.page_count(), 5, "Page count after rewind" );
+	    pag.back();
 	    is( pag.get( 0 ), "Q", "Q is for Rewind" );
 	    is( pag.get( 4 ), "U", "U is for U Rewind" );
-	    pag.to_beginning();
-	    is( pag.page_count(), 5, "Page count after to beginning" );
+	    pag.first();
 	    is( pag.get( 0 ), "A", "Back to A" );
 	    is( pag.get( 4 ), "E", "Back to E" );
 

@@ -526,7 +526,7 @@ $.yote = {
 		    var ol = host_obj.count( fld );
 
 		    // see if the whole list can be obtained at once
-		    var page_out_list = fld.charAt( 0 ) == '_'  || ol > 200;
+		    var page_out_list = fld.charAt( 0 ) == '_'  || ol > (args[ 'threshhold' ] || 200);
 
 		    if( ! page_out_list ) {
 			var collection_obj = host_obj.get( fld );
@@ -544,10 +544,16 @@ $.yote = {
 			search_fields : args[ 'search_field'  ] || undefined,
 			sort_fields   : args[ 'sort_fields'   ] || undefined,
 			sort_reverse  : args[ 'sort_reverse'  ] || false,
-			length : ol,
+			full_size : function() {
+			    var me = this;
+			    if( me.page_out_list ) {
+				return me.host_obj.count( me.field );
+			    }
+			    return this.collection_obj.length();
+			},
 			to_list : function() {
 			    var me = this;
-			    if( 1||me.page_out_list ) {
+			    if( me.page_out_list ) {
 				var res = me.host_obj.paginate( { 
 				    name  : me.field, 
 				    limit : me.page_size,
@@ -601,6 +607,55 @@ $.yote = {
 				return ret;
 			    }
 			},
+			to_hash : function() {
+			    var me = this;
+			    if( me.page_out_list ) {
+				var res = me.host_obj.paginate( { 
+				    name  : me.field, 
+				    limit : me.page_size,
+				    skip  : me.start,
+				    search_fields : me.search_fields,
+				    search_terms  : me.search_values,
+				    reverse : me.sort_reverse,
+				    sort_fields : me.sort_fields,
+				    return_hash : true,
+				} );
+				return res.to_hash();
+			    }
+			    else {
+				var ret = {};
+				if( ! this.collection_obj ) return ret;
+				var ohash  = this.collection_obj.to_hash();
+				var hkeys = this.collection_obj.keys();
+				hkeys.sort();
+				if( this.sort_reverse ) hkeys.reverse();
+
+				this.length = 0;
+				for( var i=0; i < hkeys.length; i++ ) {
+				    if( this.search_values && this.search_fields && this.search_values.length > 0 && this.search_fields.length > 0 ) {
+					if( this.search_fields && this.search_fields.length > 0 ) {
+					    var match = false;
+					    for( var j=0; j<this.search_values.length; j++ ) {
+						for( var k=0; k<this.search_fields.length; k++ ) {
+						    match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
+						}
+					    }
+					    if( match ) {
+						this.length++;
+						if( i >= this.start && ret.length < this.page_size ) 
+						    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+					    }
+					}
+				    }
+				    else {
+					this.length++;
+					if( i >= this.start && ret.length < this.pag_size ) 
+					    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+				    }
+				}
+				return ret;
+			    }
+			},
 			set_search_criteria:function( fields, values ) {
 			    if( ! values ) {
 				this.search_fields = undefined;
@@ -619,7 +674,10 @@ $.yote = {
 			    }
 			},
 			get : function( idx ) {
-			    return this.collection_obj.get( idx );
+			    if( this.page_out_lists ) {
+				this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );
+			    }
+			    return this.collection_obj.get( this.start + idx );
 			},
 			add_to : function( data ) {
 			    return this.collection_obj.add_to( data );
@@ -644,11 +702,11 @@ $.yote = {
 			    var towards = this.start - (this.page_size);
  			    this.start = towards < 0 ? 0 : towards;
 			},
-			first:function(){
+			first:function(){         
 			    this.start = 0;
 			},
 			last:function(){
-			    this.start = this.length - this.page_size;
+			    this.start = this.full_size() - this.page_size;
 			}
 		    };
 		}, //wrap list
@@ -705,7 +763,7 @@ $.yote = {
 				this.seek( to );
 			    }
 			},
-			to_end: function() {
+			end: function() {
 			    this.seek( this.full_size - this.page_size );
 			},
 			to_beginning : function() { 
