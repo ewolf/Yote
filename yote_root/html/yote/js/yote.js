@@ -506,7 +506,7 @@ $.yote = {
 		},
 		keys:function() {
 		    var k = []
-		    for( key in this._d ) {
+		    for( var key in this._d ) {
 			k.push( key );
 		    }
 		    return k;
@@ -519,8 +519,13 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
-
 		wrap_list:function( args ) {
+		    return this.wrap( args, false ); 
+		},
+		wrap_hash:function( args ) {
+		    return this.wrap( args, true );
+		},
+		wrap:function( args, is_hash ) {
 		    var host_obj = this;
 		    var fld = args[ 'collection_name' ]
 		    var ol = host_obj.count( fld );
@@ -544,12 +549,16 @@ $.yote = {
 			search_fields : args[ 'search_field'  ] || undefined,
 			sort_fields   : args[ 'sort_fields'   ] || undefined,
 			sort_reverse  : args[ 'sort_reverse'  ] || false,
+			is_hash       : is_hash,
 			full_size : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
 				return me.host_obj.count( me.field );
 			    }
-			    return this.collection_obj.length();
+			    if( me.is_hash ) {
+ 				 return Object.size( me.collection_obj._d );
+			    }
+			    return me.collection_obj.length();
 			},
 			to_list : function() {
 			    var me = this;
@@ -567,8 +576,8 @@ $.yote = {
 			    }
 			    else {
 				var ret = [];
-				if( ! this.collection_obj ) return ret;
-				var olist = this.collection_obj.to_list();
+				if( ! me.collection_obj ) return ret;
+				var olist = me.collection_obj.to_list();
 
 				if( this.sort_fields ) {
 				    olist = olist.sort( function( a, b ) { 
@@ -607,6 +616,15 @@ $.yote = {
 				return ret;
 			    }
 			},
+			keys : function() {
+			    var me = this;
+			    var ret = [];
+			    var hash = me.to_hash();
+			    for( var key in hash ) {
+				ret[ ret.length ] = key;
+			    }
+			    return ret;
+			}, //keys
 			to_hash : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
@@ -624,33 +642,35 @@ $.yote = {
 			    }
 			    else {
 				var ret = {};
-				if( ! this.collection_obj ) return ret;
-				var ohash  = this.collection_obj.to_hash();
-				var hkeys = this.collection_obj.keys();
+				if( ! me.collection_obj ) return ret;
+				var ohash  = me.collection_obj.to_hash();
+				var hkeys = me.collection_obj.keys();
+				
 				hkeys.sort();
-				if( this.sort_reverse ) hkeys.reverse();
+				if( me.sort_reverse ) hkeys.reverse();
 
-				this.length = 0;
-				for( var i=0; i < hkeys.length; i++ ) {
-				    if( this.search_values && this.search_fields && this.search_values.length > 0 && this.search_fields.length > 0 ) {
-					if( this.search_fields && this.search_fields.length > 0 ) {
+				me.length = 0;
+				for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
+				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
+					if( me.search_fields && me.search_fields.length > 0 ) {
 					    var match = false;
-					    for( var j=0; j<this.search_values.length; j++ ) {
-						for( var k=0; k<this.search_fields.length; k++ ) {
-						    match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
+					    for( var j=0; j<me.search_values.length; j++ ) {
+						for( var k=0; k<me.search_fields.length; k++ ) {
+						    match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
 						}
 					    }
 					    if( match ) {
-						this.length++;
-						if( i >= this.start && ret.length < this.page_size ) 
+						me.length++;
+						if( i >= me.start && me.length < me.page_size ) 
 						    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
 					    }
 					}
 				    }
 				    else {
-					this.length++;
-					if( i >= this.start && ret.length < this.pag_size ) 
+					if( i >= me.start && me.length < me.page_size ) {
 					    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+					    me.length++;
+					}
 				    }
 				}
 				return ret;
@@ -672,10 +692,15 @@ $.yote = {
 			    else {
 				this.search_fields = undefined;
 			    }
-			},
+			}, //set_search_criteria
 			get : function( idx ) {
 			    if( this.page_out_lists ) {
-				this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );
+				if( this.is_hash )
+				    return this.host_obj.hash_fetch( { name : this.field, index : idx + this.start } );
+				return this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );
+			    }
+			    if( this.is_hash ) {
+				return this.collection_obj.get( idx );
 			    }
 			    return this.collection_obj.get( this.start + idx );
 			},
@@ -709,7 +734,7 @@ $.yote = {
 			    this.start = this.full_size() - this.page_size;
 			}
 		    };
-		}, //wrap list
+		}, //wrap
 
 		paginator:function( fieldname, is_hash, size, start ) {
 		    var obj = this;

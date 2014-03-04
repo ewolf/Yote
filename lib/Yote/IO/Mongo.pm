@@ -476,7 +476,7 @@ sub stow {
 	for my $key (keys %$data ) {
 	    my $val = $data->{$key};
 	    $key =~ s/\./\\/g;
-	    $escaped_data->{$key} = $val if $key;
+	    $escaped_data->{$key} = $val if defined($key);
 	}
 	$data = $escaped_data;
     }

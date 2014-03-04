@@ -1,6 +1,6 @@
 The stack :
 
- need a wrap_hash like there is a wrap list ( might wind out becomming the same thing )
+ have tests for wrap hash
 
  redo admin page with new templates
 

@@ -97,7 +97,7 @@ sub fetch {
     die "Access Error" unless Yote::ObjManager::allows_access( $data, $self, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
     if( ref( $data ) eq 'ARRAY' ) {
 	my $login = $account->get_login();
-	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { $Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ } } @$data ];
+	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { defined($Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ }) } @$data ];
     } 
     return [ Yote::ObjProvider::fetch( $data ) ];
 
