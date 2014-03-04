@@ -1,5 +1,7 @@
 The stack :
 
+ SCRIPT TAG : id registers self <SCRIPT type="text/template" id="template_name">...</script>
+
  have tests for wrap hash
 
  redo admin page with new templates
