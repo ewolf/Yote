@@ -48,7 +48,7 @@ sub _init {
 # returns cron object for root
 sub cron {
     my( $self, $data, $acct ) = @_;
-    if( $acct->is_root() ) {
+    if( $acct && $acct->is_root() ) {
 	return $self->_cron();
     }
     die "Permissions Error";

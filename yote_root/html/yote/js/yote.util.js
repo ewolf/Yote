@@ -1483,7 +1483,7 @@ $.yote.util = {
 	}
     }, //register_function
 
-    fill_template:function( template_name, default_var, default_parent ) {
+    fill_template:function( template_name, default_var, default_parent, hash_key ) {
 	var template = $.yote.util.templates[ template_name ];
 	if( ! template ) { return ''; }
 
@@ -1491,14 +1491,14 @@ $.yote.util = {
 
 	var text_val = typeof template === 'function' ? template() : template;
 
-	while( text_val.indexOf( '<%' ) > -1 ) {
-	    var start = text_val.indexOf( '<%' );
-	    var end   = text_val.indexOf( '%>' );
+	while( text_val.indexOf( '<$$' ) > -1 ) {
+	    var start = text_val.indexOf( '<$$' );
+	    var end   = text_val.indexOf( '$$>' );
 	    if( end < start ) {
-		console.log( "Template error for '"+template_name+"' : unable to find close of <%" );
+		console.log( "Template error for '"+template_name+"' : unable to find close of <$$" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template( text_val.substring( start+3, end ).trim(), default_var, default_parent ) + text_val.substring( end+3 );
 	}
 	while( text_val.indexOf( '<$' ) > -1 ) {
 	    var start = text_val.indexOf( '<$' );
@@ -1507,7 +1507,7 @@ $.yote.util = {
 		console.log( "Template error for '"+template_name+"' : unable to find close of <$" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), default_var, default_parent, template_id ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), default_var, default_parent, template_id, hash_key ) + text_val.substring( end+2 );
 	}
 	while( text_val.indexOf( '<@' ) > -1 ) {
 	    var start = text_val.indexOf( '<@' );
@@ -1517,6 +1517,15 @@ $.yote.util = {
 		return;
 	    }
 	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_list( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
+	}
+	while( text_val.indexOf( '<%' ) > -1 ) {
+	    var start = text_val.indexOf( '<%' );
+	    var end   = text_val.indexOf( '%>' );
+	    if( end < start ) {
+		console.log( "Template error for '"+template_name+"' : unable to find close of <%" );
+		return;
+	    }
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_hash( text_val.substring( start+2, end ).trim(), default_var, default_parent ) + text_val.substring( end+2 );
 	}
 	while( text_val.indexOf( '<?' ) > -1 ) {
 	    var start = text_val.indexOf( '<?' );
@@ -1564,6 +1573,41 @@ $.yote.util = {
 	return '';
     }, //fill_template_list
     
+
+    fill_template_hash:function( varpart, default_var, default_parent ) {
+	var parts         = varpart.split(/ /);
+	var template_name = parts[ 0 ].trim();
+	if( parts.length == 2 ) { // <@ templatename hash_object @>
+	    var hash_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
+	    if( hash_obj ) {
+		if( hash_obj.to_hash ) { //its a yote object that is an array
+		    var keys = hash_obj.keys();
+		    var hash = hash_obj.to_hash();
+		    return keys.map(function(it,idx){
+			return $.yote.util.fill_template( template_name, hash[it], hash_obj, it )}
+						 ).join('');
+		}
+		else { //it actually is an array
+		    var keys = [];
+		    for( var key in hash_obj ) {
+			keys[ keys.length ] = key;
+		    }
+		    return keys.map(function(it,idx){return $.yote.util.fill_template( template_name, hash_obj[ it ], list_obj, it )}).join('');
+		}
+	    }
+	    return '';
+	}
+	else if( parts.length == 3 ) { // <@ templatename parent_object list_in_parent_object @>
+	    var parent_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
+	    var list_obj   = parent_obj.get( parts[ 2 ].trim() );
+	    if( list_obj ) {
+		return list_obj.to_list().map(function(it,idx){return $.yote.util.fill_template( template_name, it, parent_obj )}).join('');
+	    }
+	    return '';
+	}
+	return '';
+    }, //fill_template_hash
+
     _template_var:function( targ, default_var, default_parent, template_id ) {
 	var tlist = targ.split(/[\.]/);
 	var subj = tlist[0];
@@ -1584,7 +1628,7 @@ $.yote.util = {
 	}
     },
 
-    fill_template_variable:function( varcmd, default_var, default_parent ) {
+    fill_template_variable:function( varcmd, default_var, default_parent, hash_key ) {
 	var cmdl = varcmd.split(/ /); //yikes, this split suxx.use regex
 	var cmd  = cmdl[0].toLowerCase();
 	var subj = cmdl[1];
@@ -1632,14 +1676,19 @@ $.yote.util = {
 	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'">' + cmdl[2].trim() + '</a>'; //needs to insert an id for itself and register the action
 	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
 	}
+	else if( cmd == 'hashkey' ) {
+	    return hash_key;
+	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return '';
     }, //fill_template_variable
 
 /*
   Template sigils :
-     <% template name %>  <--- fills with template
-     <$               $>  <--- fills with variable
+     <$$ template name $$>  <--- fills with template
+     <$                 $>  <--- fills with variable
+     <% templatename registered_host_object hashname_in_host_object %>  <--- fills with template
+     <@ templatename registered_host_object listname_in_host_object @>  <--- fills with template
 
    Inside the variable fill is a particular syntax
 

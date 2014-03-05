@@ -347,24 +347,6 @@ if we are our experiences then we are both sides of them.
 		$( '#mainpanel' ).hide();
  	    }
 	} //check_perms
-
-	var apps;
-	function update_templates() {
-	    if( !apps || !apps.collection_obj ) {
-		apps = root.wrap_list( { collection_name : '_apps', size : 3 } );
-	    }
-	    $.yote.util.register_templates( {
-		Apps : '<H3>Apps</H3><BR>' + 
-		    '<table><tr>' + [ 'Name', 'Host', 'Host URL', 'Number of Users', 'Email Settings', 'Reset' ].map( function(h) { return '<td>' + h + '</td>' } ).join('') + '</tr>' + 
-		    '<@ apps App_row@>' + 
-		    '</table>',
-		App_row : '<tr><td><$ show _ host_name>' //<< EEEK, that's right, it is the hash key that we are after
-	    } );
-	} //update_templates
-	function fill_templates() {
-	    $( '#admin_parts' ).empty().append( $.yote.util.fill_template( "Apps" );
-	    $.yote.util.init_ui();
-	} //fill_templates
     });
     </script>
   </head>
