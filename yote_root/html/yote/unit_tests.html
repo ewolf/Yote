@@ -336,7 +336,7 @@ $().ready(function(){
 	    pag_keys.sort();
 	    // A B  K L   M    N  O  P  Q  R    S  T  C  U  V    W  X  Y  Z   D E  F G H   I J
 	    // 0 1 10 11 12   13 14 15 16 17   18 19  2 20 21   22 23 24 25   3 4  5 6 7   8 9
-            //     * seek 2                                                        22 seek
+            // 0   * seek 2                                                          22 seek
 
 	    console.log( [pag_keys,pag_hash,'start'] );
 	    is( pag.full_size(), 26, "26 letters of the alphabet" );
@@ -358,7 +358,7 @@ $().ready(function(){
 	    pag_keys.sort();
 	    console.log( [pag_keys,pag_hash,'after seek'] );
 	    is( pag_hash[ pag_keys[ 0 ] ], "K", "small seek k start" );
-	    is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o eend" );
+	    is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o end" );
 
 
 	    pag.seek( 22 );
@@ -366,8 +366,9 @@ $().ready(function(){
 	    pag_keys = pag.keys();
 	    pag_keys.sort();
 	    console.log( [pag_keys,pag_hash,'after seek'] );
-	    is( pag_hash[ pag_keys[ 0 ] ], "D", "big seek Starting at D" );
-	    is( pag_hash[ pag_keys[ 3 ] ], "F", "big seek Ending with F" );
+	    is( pag_hash[ pag_keys[ 0 ] ], "G", "big seek Starting at G" );
+	    is( pag_hash[ pag_keys[ 3 ] ], "J", "big seek Ending with J" );
+	    is( pag_keys.length, 4, "keys length after seek" );
 	    pag.last();
 	    pag_hash = pag.to_hash();
 	    pag_keys = pag.keys();
@@ -375,14 +376,14 @@ $().ready(function(){
 
 	    console.log( [pag_keys,pag_hash,'after last'] );
 	    is( pag_hash[ pag_keys[ 4 ] ], "J", "J is last" );
-	    is( pag_hash[ pag_keys[ 0 ] ], "F", "last start withF" );
+	    is( pag_hash[ pag_keys[ 0 ] ], "F", "last start with F" );
 	    pag.back();
 	    pag_hash = pag.to_hash();
 	    pag_keys = pag.keys();
 	    pag_keys.sort();
 
-	    is( pag_hash[ pag_keys[ 0 ] ], "T", "T is for Rewind" );
-	    is( pag_hash[ pag_keys[ 4 ] ], "X", "X is for Rewind" );
+	    is( pag_hash[ pag_keys[ 0 ] ], "X", "X is for Rewind first" );
+	    is( pag_hash[ pag_keys[ 4 ] ], "E", "E is for Rewind last" );
 	    pag.first();
 	    pag_hash = pag.to_hash();
 	    pag_keys = pag.keys();
