@@ -563,6 +563,11 @@ $.yote = {
 			to_list : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
+				me.length = me.host_obj.count( {
+				    name  : me.field, 
+				    search_fields : me.search_fields,
+				    search_terms  : me.search_values,
+				} );
 				var res = me.host_obj.paginate( { 
 				    name  : me.field, 
 				    limit : me.page_size,
@@ -617,17 +622,18 @@ $.yote = {
 			    }
 			},
 			keys : function() {
-			    var me = this;
-			    var ret = [];
-			    var hash = me.to_hash();
-			    for( var key in hash ) {
-				ret[ ret.length ] = key;
-			    }
-			    return ret;
+			    if( ! this.hash_keys ) this.to_hash();
+			    return this.hash_keys;
 			}, //keys
 			to_hash : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
+				me.length = me.host_obj.count( {
+				    name  : me.field, 
+				    search_fields : me.search_fields,
+				    search_terms  : me.search_values,
+				} );
+
 				var res = me.host_obj.paginate( { 
 				    name  : me.field, 
 				    limit : me.page_size,
@@ -638,7 +644,12 @@ $.yote = {
 				    sort_fields : me.sort_fields,
 				    return_hash : true,
 				} );
-				return res.to_hash();
+				var h = res.to_hash();
+				me.hash_keys = [];
+				for( var key in h ) {
+				    me.hash_keys[ me.hash_keys.length ] = key;
+				}
+				return h;
 			    }
 			    else {
 				var ret = {};
@@ -650,6 +661,7 @@ $.yote = {
 				if( me.sort_reverse ) hkeys.reverse();
 
 				me.length = 0;
+				me.hash_keys = [];
 				for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
 				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
 					if( me.search_fields && me.search_fields.length > 0 ) {
@@ -661,14 +673,17 @@ $.yote = {
 					    }
 					    if( match ) {
 						me.length++;
-						if( i >= me.start && me.length < me.page_size ) 
+						if( i >= me.start && me.length < me.page_size ) {
 						    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+						    me.hash_keys[ me.hash_keys.length ] = hkeys[ i ];
+						}
 					    }
 					}
 				    }
 				    else {
 					if( i >= me.start && me.length < me.page_size ) {
 					    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+					    me.hash_keys[ me.hash_keys.length ] = hkeys[ i ];
 					    me.length++;
 					}
 				    }

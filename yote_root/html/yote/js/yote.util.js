@@ -1507,7 +1507,7 @@ $.yote.util = {
 		console.log( "Template error for '"+template_name+"' : unable to find close of <$" );
 		return;
 	    }
-	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), default_var, default_parent, template_id, hash_key ) + text_val.substring( end+2 );
+	    text_val = text_val.substring( 0, start ) + $.yote.util.fill_template_variable( text_val.substring( start+2, end ).trim(), default_var, default_parent, undefined, hash_key ) + text_val.substring( end+2 );
 	}
 	while( text_val.indexOf( '<@' ) > -1 ) {
 	    var start = text_val.indexOf( '<@' );
@@ -1581,8 +1581,8 @@ $.yote.util = {
 	    var hash_obj = $.yote.util._template_var( parts[ 1 ].trim(), default_var, default_parent );
 	    if( hash_obj ) {
 		if( hash_obj.to_hash ) { //its a yote object that is an array
-		    var keys = hash_obj.keys();
 		    var hash = hash_obj.to_hash();
+		    var keys = hash_obj.keys();
 		    return keys.map(function(it,idx){
 			return $.yote.util.fill_template( template_name, hash[it], hash_obj, it )}
 						 ).join('');
@@ -1628,12 +1628,15 @@ $.yote.util = {
 	}
     },
 
-    fill_template_variable:function( varcmd, default_var, default_parent, hash_key ) {
+    fill_template_variable:function( varcmd, default_var, default_parent, template_id, hash_key ) {
 	var cmdl = varcmd.split(/ /); //yikes, this split suxx.use regex
 	var cmd  = cmdl[0].toLowerCase();
 	var subj = cmdl[1];
 	var fld  = cmdl[2];
-	var subjobj = $.yote.util._template_var( subj, default_var, default_parent );
+	if( cmd == 'hash_key' ) {
+	    return hash_key;
+	}
+	var subjobj = $.yote.util._template_var( subj, default_var, default_parent, template_id );
 	if( cmd == 'edit' ) {
 	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';
@@ -1654,7 +1657,7 @@ $.yote.util = {
 	}
 	else if( cmd == 'selectobj' ) {
 	    cmdl = varcmd.split(/ /);
-	    var lst = $.yote.util._template_var( cmdl[3].trim(), default_var, default_parent );
+	    var lst = $.yote.util._template_var( cmdl[3].trim(), default_var, default_parent, template_id );
 	    if( lst ) {
 		if( ! subjobj ) return '';
 		return '<span class="yote_panel" use_select_obj="true" list_field="' + cmdl[4].trim() + '" list_obj="$$' + lst.id + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
@@ -1675,9 +1678,6 @@ $.yote.util = {
 	    var parent = default_parent;
 	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'">' + cmdl[2].trim() + '</a>'; //needs to insert an id for itself and register the action
 	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
-	}
-	else if( cmd == 'hashkey' ) {
-	    return hash_key;
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return '';
