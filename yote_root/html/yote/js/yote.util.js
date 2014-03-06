@@ -1582,16 +1582,16 @@ $.yote.util = {
 	    if( hash_obj ) {
 		if( hash_obj.to_hash ) { //its a yote object that is an array
 		    var hash = hash_obj.to_hash();
-		    var keys = hash_obj.keys();
+		    var keys = Object.keys( hash );
+		    keys.sort();
+		    if( hash_obj.sort_reverse ) keys.reverse();
+
 		    return keys.map(function(it,idx){
 			return $.yote.util.fill_template( template_name, hash[it], hash_obj, it )}
 						 ).join('');
 		}
 		else { //it actually is an array
-		    var keys = [];
-		    for( var key in hash_obj ) {
-			keys[ keys.length ] = key;
-		    }
+		    var keys = Object.keys( hash_obj );
 		    return keys.map(function(it,idx){return $.yote.util.fill_template( template_name, hash_obj[ it ], list_obj, it )}).join('');
 		}
 	    }

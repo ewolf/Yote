@@ -80,13 +80,24 @@ if (!Array.prototype.map) {
     };
 } //map definition
 
-Object.size = function(obj) {
-    var size = 0, key;
-    for (key in obj) {
-        if (obj.hasOwnProperty(key)) size++;
+if( ! Object.size ) {
+    Object.size = function(obj) {
+	var size = 0, key;
+	for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+	}
+	return size;
+    };
+}
+if( ! Object.keys ) {
+    Object.keys = function( t ) {
+    	var k = []
+	for( var key in t ) {
+	    k.push( key );
+	}
+	return k;
     }
-    return size;
-};
+}
 
 
 /*
@@ -505,11 +516,7 @@ $.yote = {
 		    return typeof oth === 'object' && oth.id && oth.id == this.id;
 		},
 		keys:function() {
-		    var k = []
-		    for( var key in this._d ) {
-			k.push( key );
-		    }
-		    return k;
+		    return Object.keys( this._d.keys );
 		},
 		values:function() {
 		    var thing = this;
@@ -621,10 +628,6 @@ $.yote = {
 				return ret;
 			    }
 			},
-			keys : function() {
-			    if( ! this.hash_keys ) this.to_hash();
-			    return this.hash_keys;
-			}, //keys
 			to_hash : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
@@ -644,12 +647,7 @@ $.yote = {
 				    sort_fields : me.sort_fields,
 				    return_hash : true,
 				} );
-				var h = res.to_hash();
-				me.hash_keys = [];
-				for( var key in h ) {
-				    me.hash_keys[ me.hash_keys.length ] = key;
-				}
-				return h;
+				return res.to_hash();
 			    }
 			    else {
 				var ret = {};
@@ -661,7 +659,6 @@ $.yote = {
 				if( me.sort_reverse ) hkeys.reverse();
 
 				me.length = 0;
-				me.hash_keys = [];
 				for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
 				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
 					if( me.search_fields && me.search_fields.length > 0 ) {
@@ -675,7 +672,6 @@ $.yote = {
 						me.length++;
 						if( i >= me.start && me.length < me.page_size ) {
 						    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
-						    me.hash_keys[ me.hash_keys.length ] = hkeys[ i ];
 						}
 					    }
 					}
@@ -683,7 +679,6 @@ $.yote = {
 				    else {
 					if( i >= me.start && me.length < me.page_size ) {
 					    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
-					    me.hash_keys[ me.hash_keys.length ] = hkeys[ i ];
 					    me.length++;
 					}
 				    }
