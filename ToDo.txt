@@ -3,6 +3,11 @@ The stack :
  update tests to test for 4 pagination types : list direct, list with host, hash direct, hash with host
 
   need to implement hash key search in server
+
+  hash key search test
+
+  hash key search PLUS other search test
+
   
   test if mysql queries too big ( fixed in sqlite )
 

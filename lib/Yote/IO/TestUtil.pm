@@ -491,6 +491,22 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'hsh', return_hash => 1 } );
     is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash, with one key having a slash in its name' );
 
+    # test paginate with hashkey_search
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "o" ] } );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with one multiple hit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "B", '/' ] } );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with two separate hit search terms' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "g","Q" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with nonhit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "O" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "O" ], hashkey_search => [ "" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
+
     # delete with key that has slash in the name
     $app->_hash_delete( 'hsh', 'baz/bof' );
     $res = $app->_paginate( { name => 'hsh', return_hash => 1 } );
