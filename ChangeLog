@@ -4,6 +4,7 @@
 	* Finally a dot release increment.
 	* The client side templating system is complete, though more debugging is certainly needed.
 	* The next huge thing to do is to write the documents.
+	* Fixed bug in sqlite where queries were too big
 
 2014-02-26  Eric Wolf  <wolf@Talisman>
 

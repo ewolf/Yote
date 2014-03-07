@@ -23,6 +23,8 @@ sub _init {
     my( @arry ) = ( "A" .. "Z" );
     $self->set_foo_array( [ @arry ] );
     $self->set_foo_hash( { map { $_ => $arry[$_] } ( 0..$#arry ) } );
+    $self->set__foo_array( [ @arry ] );
+    $self->set__foo_hash( { map { $_ => $arry[$_] } ( 0..$#arry ) } );
 }
 
 sub _load {
@@ -30,9 +32,14 @@ sub _load {
     $self->set_my_hash( { store => { AnObject => new Yote::Obj( { flavor => 'blueberry' } ) } } );
     my( @arry ) = ( "A" .. "Z" );
     $self->get_foo_array( [ @arry ] );
-    $self->set_foo_hash( { map { $_ => $arry[$_] } ( 0..$#arry ) } );
+    $self->get_foo_hash( { map { $_ => $arry[$_] } ( 0..$#arry ) } );
+    $self->get__foo_array( [ @arry ] );
+    $self->get__foo_hash( { map { $_ => $arry[$_] } ( 0..$#arry ) } );
     $self->get_bar_hash( { map { $_ => 1 }  @arry } );
 }
+
+# needed to test non-room access of underscore variables.
+sub _check_access { return 1; }
 
 sub hello {
     my( $self, $data, $acct ) = @_;

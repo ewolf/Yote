@@ -543,6 +543,7 @@ $.yote = {
 		    if( ! page_out_list ) {
 			var collection_obj = host_obj.get( fld );
 		    }
+console.log( [ "ARGS", args ] );
 		    return {
 			page_out_list      : page_out_list,
 			collection_obj     : collection_obj,
@@ -550,18 +551,17 @@ $.yote = {
 			host_obj           : host_obj,
 			field              : fld,
 			start              : args[ 'start' ] || 0,
-			page_out_list      : page_out_list,
 			page_size     : args[ 'size' ],
 			search_values : args[ 'search_value'  ] || undefined,
 			search_fields : args[ 'search_field'  ] || undefined,
 			sort_fields   : args[ 'sort_fields'   ] || undefined,
-			hash_search_value : args[ 'hash_search_value' ] || undefined,
-			sort_reverse  : args[ 'sort_reverse'  ] || false,
+			hashkey_search_value : args[ 'hashkey_search_value' ] || undefined,
+			sort_reverse  : args[ 'sort_reverse'  ] || undefined,
 			is_hash       : is_hash,
 			full_size : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
-				return me.host_obj.count( me.field );
+				return 1 * me.host_obj.count( me.field );
 			    }
 			    if( me.is_hash ) {
  				 return Object.size( me.collection_obj._d );
@@ -571,6 +571,7 @@ $.yote = {
 			to_list : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
+				console.log( [ "BBEEEEP", me ]  );
 				me.length = me.host_obj.count( {
 				    name  : me.field, 
 				    search_fields : me.search_fields,
@@ -670,9 +671,13 @@ $.yote = {
 						}
 					    }
 					    if( match ) {
-						me.length++;
-						if( i >= me.start && me.length < me.page_size ) {
-						    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
+						var k = hkeys[ i ];
+						if( i >= me.start && me.length < me.page_size &&
+						    ( ! me.hashkey_search_value || 
+						      k.toLowerCase().indexOf( this.hashkey_search_value ) != -1 ) )
+						{
+						    ret[ k ] = ohash[ k ];
+						    me.length++;
 						}
 					    }
 					}
@@ -680,7 +685,7 @@ $.yote = {
 				    else {
 					if( i >= me.start && me.length < me.page_size ) {
 					    var k = hkeys[ i ];
-					    if( ! me.hash_search_value || key.toLowerCase().indexOf( this.hash_search_value ) != -1 ) {
+					    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( this.hashkey_search_value ) != -1 ) {
 						ret[ k ] = ohash[ k ];
 						me.length++;
 					    }
@@ -690,8 +695,8 @@ $.yote = {
 				return ret;
 			    }
 			},
-			set_hash_search_criteria:function( hash_search ) {
-			    this.hash_search_value = hash_search;
+			set_hashkey_search_criteria:function( hashkey_search ) {
+			    this.hashkey_search_value = hashkey_search;
 			},
 			set_search_criteria:function( fields, values ) {
 			    if( ! values ) {
@@ -711,7 +716,7 @@ $.yote = {
 			    }
 			}, //set_search_criteria
 			get : function( idx ) {
-			    if( this.page_out_lists ) {
+			    if( this.page_out_list ) {
 				if( this.is_hash )
 				    return this.host_obj.hash_fetch( { name : this.field, index : idx + this.start } );
 				return this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );

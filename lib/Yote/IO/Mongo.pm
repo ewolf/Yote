@@ -50,9 +50,12 @@ sub _db_act {
 	    $self->_connect;
 	}
 	else {
-	    die $@ if $@ && $@ !~ /^missed|error getting database response|couldn.t get response to throw out/;
+	    print STDERR Data::Dumper->Dump(["MongoDB error: $@",$act,\@args]) if $@;
+	    die $@ if $@ && $@ !~ /^missed|error getting database response|temporarily|please try again|couldn.t get response to throw out/;
 	}
+	print STDERR Data::Dumper->Dump([$act,\@args,$@]) unless $res;
 	return $res unless $@;
+	die "MongoDB attempt 3 failed with error : $@ ( giving up )" if $_ == 2;
 	sleep(1);
     }
 } #_db_act
