@@ -1,3 +1,10 @@
+2014-03-06  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.2
+	* Finally a dot release increment.
+	* The client side templating system is complete, though more debugging is certainly needed.
+	* The next huge thing to do is to write the documents.
+
 2014-02-26  Eric Wolf  <wolf@Talisman>
 
 	* Version 0.1023

@@ -516,7 +516,7 @@ $.yote = {
 		    return typeof oth === 'object' && oth.id && oth.id == this.id;
 		},
 		keys:function() {
-		    return Object.keys( this._d.keys );
+		    return Object.keys( this._d );
 		},
 		values:function() {
 		    var thing = this;
@@ -555,6 +555,7 @@ $.yote = {
 			search_values : args[ 'search_value'  ] || undefined,
 			search_fields : args[ 'search_field'  ] || undefined,
 			sort_fields   : args[ 'sort_fields'   ] || undefined,
+			hash_search_value : args[ 'hash_search_value' ] || undefined,
 			sort_reverse  : args[ 'sort_reverse'  ] || false,
 			is_hash       : is_hash,
 			full_size : function() {
@@ -678,13 +679,19 @@ $.yote = {
 				    }
 				    else {
 					if( i >= me.start && me.length < me.page_size ) {
-					    ret[ hkeys[ i ] ] = ohash[ hkeys[ i ] ];
-					    me.length++;
+					    var k = hkeys[ i ];
+					    if( ! me.hash_search_value || key.toLowerCase().indexOf( this.hash_search_value ) != -1 ) {
+						ret[ k ] = ohash[ k ];
+						me.length++;
+					    }
 					}
 				    }
 				}
 				return ret;
 			    }
+			},
+			set_hash_search_criteria:function( hash_search ) {
+			    this.hash_search_value = hash_search;
 			},
 			set_search_criteria:function( fields, values ) {
 			    if( ! values ) {
