@@ -505,7 +505,7 @@ sub io_independent_tests {
     is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
 
     $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
-    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using search terma and hashkey_search with nonhit search term' );
+    is_deeply( $res, { 'baz/bof' => "FOOME" }, ' search_terms for hash using search terma and hashkey_search with nonhit search term' );
     my $count = $app->_count( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
     is( $count, 1, "one results for count using hash and hashkey and search terms" );
 

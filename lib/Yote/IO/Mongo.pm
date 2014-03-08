@@ -50,10 +50,8 @@ sub _db_act {
 	    $self->_connect;
 	}
 	else {
-	    print STDERR Data::Dumper->Dump(["MongoDB error: $@",$act,\@args]) if $@;
-	    die $@ if $@ && $@ !~ /^missed|error getting database response|temporarily|please try again|couldn.t get response to throw out/;
+            die $@ if $@ && $@ !~ /^missed|error getting database response|temporarily|please try again|couldn.t get response to throw out/;
 	}
-	print STDERR Data::Dumper->Dump([$act,\@args,$@]) unless $res;
 	return $res unless $@;
 	die "MongoDB attempt 3 failed with error : $@ ( giving up )" if $_ == 2;
 	sleep(1);
@@ -109,6 +107,9 @@ sub count {
 		push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
 	    }
 	}
+        for my $hash_term ( @{ $args->{ hashkey_search } || [] } ) {
+            push @ors, { "d.$hash_term" => { '$regex'=> "/./"  } };
+        }
 	my $cands = $obj->{ c } eq 'ARRAY' ? [ @{$obj->{ d }} ] : [ values %{$obj->{ d }} ];
 	my $query = {
 	    _id => { '$in' => [ map { MongoDB::OID->new( value => $_ )  } grep { index( $_, 'v' ) != 0 } @$cands] },
@@ -118,6 +119,17 @@ sub count {
 
 	return $self->_find( $query )->count();
     }
+    
+    if( @search_terms || @hashkey_search ) {
+        if( $obj->{ c } eq 'ARRAY' ) {
+            my $count = 0;
+            for my $o ( @{ $obj->{ d } } ) {
+                ++$count if scalar( grep { $ }  @search_terms );
+            }
+            return scalar( grep {  } 
+        }
+    }
+
     if( $obj->{ c } eq 'ARRAY' ) {
 	return scalar( @{$obj->{ d } } );
     }
@@ -130,17 +142,17 @@ sub database {
 
 sub disconnect {} #there is no way to explicitly disconnect from the database, see perldoc for MongoDB
 
-sub ensure_datastore { 
+sub ensure_datastore {
     # we use a single mongo collection, objects
     # The documents in this database have the following structure :
-    #  { 
+    #  {
     #   _id : mongo id for this document ( indexed by default )
     #    d   : JSONDATA of object
     #    r   : [] list of referenced ids ( indexed )
     #    c   : class of object
     #  }
-    #    
-    # There is also a collection that exists soley to have a single document that 
+    #
+    # There is also a collection that exists soley to have a single document that
     # contains the id of the root object. This collection is called 'root'.
     #
     #
@@ -275,7 +287,7 @@ sub list_fetch {
     if( $list->{ c } ne 'ARRAY' ) {
 	return $list->{ d }{ $idx };
     }
-    
+
 
     return $list->{ d }->[ $idx ] if $list;
 }  #list_fetch
@@ -284,7 +296,7 @@ sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my $mid = MongoDB::OID->new( value => $list_id );
     my $list_obj = $self->_find_one( { _id => $mid } );
-    if( $list_obj ) { 
+    if( $list_obj ) {
 	die "list_insert must be called for list" if $list_obj->{ c } ne 'ARRAY';
 	if( defined( $idx ) && $idx <= @{$list_obj->{d}} ) {
 	    splice @{$list_obj->{ d }}, $idx > @{$list_obj->{d}} ? scalar(@{$list_obj->{d}}) : $idx, 0, $val;
@@ -306,22 +318,23 @@ sub paginate {
     my $obj = $self->_find_one( { _id => MongoDB::OID->new( value => $obj_id ) } );
     die "data structure $obj_id not found" unless $obj;
 
-    # must cover the cases of 
+    # must cover the cases of
     #  args has search fields
     #  args has search terms but no fields
 
     my $search_fields = $args->{ search_fields };
-    my $search_terms = $args->{ search_terms };
+    my @search_terms = @{ $args->{ search_terms } || [] };
+    my @hashkey_search = @{ $args->{ hashkey_search } || [] };
 
     my $sort_fields = $args->{ sort_fields };
     my $reversed_orders = $args->{ reversed_orders } || [];
 
     my $limit = $args->{ limit };
     my $skip = $args->{ skip } || 0;
-    
+
     my( @list_items, %hash_items );
 
-    if( $sort_fields || $search_terms ) {  #must be searching through or sorting by objects
+    if( $sort_fields || ($search_fields && @search_terms) ) {  #must be searching through or sorting by objects
 	my( $query, $query_args );
 
 	if( $obj->{c} eq 'ARRAY' ) {
@@ -331,23 +344,25 @@ sub paginate {
 	    $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } values %{$obj->{d}} ] } };
 	}
 
-
-	if( $search_fields && $search_terms) { #search fields must be objects
-	    my @ors;
+        my @ors;
+	if( $search_fields && @search_terms) { #search fields must be objects
 	    for my $field ( @$search_fields ) {
-		for my $term ( @$search_terms ) {
+		for my $term ( @search_terms ) {
 		    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
 		}
 	    }
-	    $query->{'$or'} = \@ors;
 	} # if search fields
+        for my $hash_term ( @hashkey_search ) {
+            push @ors, { "d.$hash_term" => { '$regex'=> "/./"  } };
+        }
+        $query->{'$or'} = \@ors;
 
 	if( $sort_fields ) {
 	    for my $i (0..$#$sort_fields) {
 		$query_args->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
 	    }
 	}
-
+        print STDERR Data::Dumper->Dump([$query,"QQ"]);
 	my $curs = $self->_find( $query, $query_args );
 
 	if( defined( $limit ) ) {
@@ -367,33 +382,34 @@ sub paginate {
     } #if searching through or sorting by objects
 
 
-    if( $search_terms ) {  
+    if( @search_terms || @hashkey_search ) {
 	if( $obj->{c} eq 'ARRAY' ) {
 	    for my $item (grep { index( $_, 'v' ) == 0 } @{ $obj->{ d } } ) {
-		for my $term ( @$search_terms ) {
-		    if( $item =~ /$term/ ) {
+		for my $term ( @search_terms ) {
+		    if( $item =~ /$term/i ) {
 			push @list_items, $item;
 			last;
 		    }
-		}		
+		}
 	    }
 	}
 	else { #hash
-	    for my $key (grep { index( $obj->{ d }{ $_ }, 'v' ) == 0 } keys %{ $obj->{ d } } ) {
-		for my $term ( @$search_terms ) {
-		    if( $obj->{ d }{ $key } =~ /$term/ ) {
-			$hash_items{ $key } = $obj->{ d }{ $key };
-			last;
-		    }
-		}		
-	    }	    
+	    for my $key (keys %{ $obj->{ d } } ) {
+                if( grep { $key =~ /$_/i } @hashkey_search ) {
+                    $hash_items{ $key } = $obj->{ d }{ $key };
+                }
+                elsif( grep { $obj->{ d }{ $key } =~ /^v.*$_/i } ( @search_terms ) ) {
+                    $hash_items{ $key } = $obj->{ d }{ $key };
+                }
+	    }
+            print STDERR Data::Dumper->Dump(["NOW",\%hash_items]);
 	}
     } #with search terms
 
     elsif( $obj->{c} eq 'ARRAY' ) {
 	@list_items = @{ $obj->{ d } };
     }
- 
+
     else {
 	%hash_items = %{ $obj->{ d } };
     }
@@ -426,7 +442,7 @@ sub paginate {
     }
     if( $limit ) {
 	my $end = $skip + $limit - 1;
-	$end = $end > $#hash_keys ? $#hash_keys : $end;		    
+	$end = $end > $#hash_keys ? $#hash_keys : $end;
 	@hash_keys = @hash_keys[ $skip..$end ]; # < --- make sure there is a test for this TODO
     }
     if( $args->{ return_hash } ) {
@@ -474,7 +490,7 @@ sub stow {
     if( $class eq 'ARRAY' ) {
 	@refs = grep { index( $_, 'v' ) != 0 } @$data;
     } else {
-	@refs = grep { index( $_, 'v' ) != 0 } values %$data;	
+	@refs = grep { index( $_, 'v' ) != 0 } values %$data;
 	my $escaped_data = {};
 	for my $key (keys %$data ) {
 	    my $val = $data->{$key};
@@ -624,11 +640,11 @@ Removes the key from the hash given by the id
 
 Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 
-=item new 
+=item new
 
 =item paginate( container_id, args )
 
-Returns a paginated list or hash. Arguments are 
+Returns a paginated list or hash. Arguments are
 
 =over 4
 
