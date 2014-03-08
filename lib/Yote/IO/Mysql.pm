@@ -468,7 +468,7 @@ sub paginate {
 	else {
 	    if( $args->{ hashkey_search } ) {
                 if( @search_terms ) {
-                    $query .= ' AND ((' . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ') OR (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . '))';
+                    $query .= ' AND ((' . join( ' OR ', map { ' value LIKE ? ' } @search_terms ) . ') OR (' . join( " OR ", map { ' field LIKE ? ' } @{ $args->{ hashkey_search } }  ) . '))';
                 }
                 else {
                     $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';

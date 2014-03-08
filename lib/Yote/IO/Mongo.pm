@@ -100,10 +100,11 @@ sub count {
     my( $self, $container_id, $args ) = @_;
     my $mid = MongoDB::OID->new( value => $container_id );
     my $obj = $self->_find_one( { _id => $mid } );
-    if( $args->{search_fields} && $args->{search_terms} ) {
+    my @search_terms = @{ $args->{search_terms} || [] };
+    if( $args->{search_fields} && @search_terms ) {
 	my @ors;
 	for my $field ( @{ $args->{ search_fields } } ) {
-	    for my $term ( @{ $args->{ search_terms } } ) {
+	    for my $term ( @search_terms ) {
 		push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
 	    }
 	}
@@ -119,14 +120,21 @@ sub count {
 
 	return $self->_find( $query )->count();
     }
-    
+    my @hashkey_search = @{ $args->{ hashkey_search } || [] };
     if( @search_terms || @hashkey_search ) {
         if( $obj->{ c } eq 'ARRAY' ) {
             my $count = 0;
-            for my $o ( @{ $obj->{ d } } ) {
-                ++$count if scalar( grep { $ }  @search_terms );
+            for my $key ( keys %{ $obj->{ d } } ) {
+                ++$count if scalar( grep { $obj->{ d }{ $_ } } @search_terms );
             }
-            return scalar( grep {  } 
+            return $count;
+        }
+        elsif( $obj->{ c } eq 'HASH' ) {
+            my $count = 0;
+            for my $key ( keys %{ $obj->{ d } } ) {
+                ++$count if  scalar( grep { $key =~ /$_/i } @hashkey_search ) || scalar( grep { $obj->{ d }{ $key } =~ /$_/i } @search_terms );
+            }
+            return $count;
         }
     }
 
@@ -355,14 +363,13 @@ sub paginate {
         for my $hash_term ( @hashkey_search ) {
             push @ors, { "d.$hash_term" => { '$regex'=> "/./"  } };
         }
-        $query->{'$or'} = \@ors;
+        $query->{'$or'} = \@ors if @ors;
 
 	if( $sort_fields ) {
 	    for my $i (0..$#$sort_fields) {
 		$query_args->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
 	    }
 	}
-        print STDERR Data::Dumper->Dump([$query,"QQ"]);
 	my $curs = $self->_find( $query, $query_args );
 
 	if( defined( $limit ) ) {
