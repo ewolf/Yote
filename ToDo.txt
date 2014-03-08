@@ -2,7 +2,7 @@ The stack :
 
  update tests to test for 4 pagination types : list direct, list with host, hash direct, hash with host
 
-  need to implement hash key search in server
+  need to implement hash key search in server. also for count as well as paginate
 
   hash key search test
 

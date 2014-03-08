@@ -501,11 +501,13 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "g","Q" ] } );
     is_deeply( $res, { 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with nonhit search term' );
 
-    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "O" ] } );
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "R" ] } );
     is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
 
-    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "O" ], hashkey_search => [ "" ] } );
-    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using search terma and hashkey_search with nonhit search term' );
+    my $count = $app->_count( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
+    is( $count, 1, "one results for count using hash and hashkey and search terms" );
 
     # delete with key that has slash in the name
     $app->_hash_delete( 'hsh', 'baz/bof' );
@@ -554,6 +556,8 @@ sub io_independent_tests {
 	);
     Yote::ObjProvider::stow_all();
 
+    $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
+    is( $res, 2, "Two search resultscount" );
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
     is( @$res, 2, "Two search results" );
     my $searchlist = $o->get_searchlist();
@@ -561,6 +565,8 @@ sub io_independent_tests {
     my %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
+    $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ], sort_fields => [ 'n' ] } );
+    is( $res, 2, "Two search results count" );
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ], sort_fields => [ 'n' ] } );
     is( @$res, 2, "Two search results" );
     $searchlist = $o->get_searchlist();

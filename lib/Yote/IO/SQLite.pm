@@ -189,13 +189,13 @@ sub paginate {
     }
 
     my( $orstr, @params ) = ( '', $obj_id );
-    my $search_terms = $args->{ search_terms };
+    my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
     my $search_fields = $args->{ search_fields };
-    if( $search_terms ) {
+    if( @search_terms ) {
 	if( $search_fields ) {
 	    my( @ors );
 	    for my $field ( @$search_fields ) {
-		for my $term (@$search_terms) {
+		for my $term (@search_terms) {
 		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
 		}
@@ -203,9 +203,7 @@ sub paginate {
 	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
 	}
 	else {
-# the next line is wrong
-	    $orstr = " AND value IN (".join('',map { '?' } @$search_terms ).")";
-	    push @params, map { "\%$_\%" } @$search_terms;
+	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
 	}
     }
 
@@ -219,8 +217,8 @@ sub paginate {
     }
     elsif( $search_fields ) {
 	if( $args->{ hashkey_search } ) {
-	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND " . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } || [] } ) . " GROUP BY 1,2 ";
-	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } || [] };
+	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
+	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
 	}
 	else {
 	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
@@ -236,7 +234,11 @@ sub paginate {
     }
     else {
 	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
+        push @params, map { "\%$_\%" } @search_terms;
 	if( $type eq 'ARRAY' ) {
+            if( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
 	    if( $args->{ sort } ) {
 		$query .= ' ORDER BY value ';
 	    }
@@ -246,9 +248,17 @@ sub paginate {
 	}
 	else {
 	    if( $args->{ hashkey_search } ) {
-		$query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } || [] } ) . ')';
-		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } || [] };
+                if( @search_terms ) {
+                    $query .= ' AND ((' . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ') OR (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . '))';
+                }
+                else {
+                    $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
+                }
+		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
 	    }
+            elsif( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
 	    $query .= ' ORDER BY field ';
 	}
 	$query .= ' DESC' if $args->{ reverse };
@@ -388,25 +398,64 @@ sub container_type {
 # Returns the number of entries in the list of the given id.
 #
 sub count {
-    my( $self, $container_id, $args ) = @_;
-    my $count;
-    if( $args->{search_fields} && $args->{search_terms} ) {
-	my( @ors );
-	my( @params ) = $container_id;
-	for my $field ( @{$args->{search_fields}} ) {
-	    for my $term (@{$args->{search_terms}}) {
-		push @ors, " (f.field=? AND f.value LIKE ?) ";
-		push @params, $field, "\%$term\%";
-	    }
-	}
-	my $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
-	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM (SELECT bar.field,fi.obj_id FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2) foo", @params );
-    } #if count with search
-    else {
-	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
-    }
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    my( $self, $obj_id, $args ) = @_;
 
+    my( $orstr, @params ) = ( '', $obj_id );
+    my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
+    my $search_fields = $args->{ search_fields };
+    if( @search_terms ) {
+	if( $search_fields ) {
+	    my( @ors );
+	    for my $field ( @$search_fields ) {
+		for my $term (@search_terms) {
+		    push @ors, " (f.field=? AND f.value LIKE ?) ";
+		    push @params, $field, "\%$term\%";
+		}
+	    }
+	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	}
+	else {
+	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
+	}
+    }
+
+    my $query;
+    my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+
+    if( $search_fields ) {
+#        push @params, map { "\%$_\%" } @search_terms;
+	if( $args->{ hashkey_search } ) {
+	    $query = "SELECT count( distinct bar.field || fi.obj_id ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";
+	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
+	}
+	else {
+	    $query = "SELECT count( distinct bar.field || fi.obj_id ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id ";
+	}
+    }
+    else {
+	$query = "SELECT count(*) FROM field WHERE obj_id=?";
+        push @params, map { "\%$_\%" } @search_terms;
+	if( $type eq 'ARRAY' ) {
+            if( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
+	}
+	else {
+	    if( $args->{ hashkey_search } ) {
+                if( @search_terms ) {
+                    $query .= ' AND ((' . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ') OR (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . '))';
+                }
+                else {
+                    $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
+                }
+		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
+	    }
+            elsif( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
+	}
+    }
+    my( $count ) = $self->_selectrow_array( $query, @params );
     return $count;
 } #count
 
