@@ -543,7 +543,6 @@ $.yote = {
 		    if( ! page_out_list ) {
 			var collection_obj = host_obj.get( fld );
 		    }
-console.log( [ "ARGS", args ] );
 		    return {
 			page_out_list      : page_out_list,
 			collection_obj     : collection_obj,
@@ -571,7 +570,6 @@ console.log( [ "ARGS", args ] );
 			to_list : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
-				console.log( [ "BBEEEEP", me ]  );
 				me.length = me.host_obj.count( {
 				    name  : me.field, 
 				    search_fields : me.search_fields,
@@ -638,13 +636,13 @@ console.log( [ "ARGS", args ] );
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
 				} );
-
 				var res = me.host_obj.paginate( { 
 				    name  : me.field, 
 				    limit : me.page_size,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
+				    hashkey_search : me.hashkey_search_value,
 				    reverse : me.sort_reverse,
 				    sort_fields : me.sort_fields,
 				    return_hash : true,

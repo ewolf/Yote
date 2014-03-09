@@ -94,7 +94,7 @@ $().ready(function(){
         $.yote.logout();
         $.yote.debug = false;
 
-//	try {
+	try {
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
             var nologin = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
@@ -452,12 +452,10 @@ $().ready(function(){
 
 	    // check to see if hash search function works. Search for all 3 keys :
 	    //   13 : N, 23 : X, 3 : D
-		$.yote.debug = true;
-	    pag.set_hashkey_search_criteria( '3' );
+	    pag.set_hashkey_search_criteria( [ '3' ] );
 	    pag_hash = pag.to_hash();
 	    pag_keys = Object.keys( pag_hash );
 	    pag_keys.sort();
-		$.yote.debug = false;
 	    is( pag_keys.length, 3, '3 pag keys matching the string 3' );
 	    is( pag_hash[ pag_keys[ 0 ] ], "N", "first matched 3 key" );
 	    is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key" );
@@ -526,13 +524,10 @@ $().ready(function(){
 
 	    // check to see if hash search function works. Search for all 3 keys :
 	    //   13 : N, 23 : X, 3 : D
-		$.yote.debug = true;
 
-	    pag.set_hashkey_search_criteria( '3' );
+	    pag.set_hashkey_search_criteria( [ '3' ] );
 	    pag_hash = pag.to_hash();
 	    pag_keys = Object.keys( pag_hash );
-	console.log( [ 'pag hash', pag_hash, pag_keys] );
-		$.yote.debug = false;
 
 	    pag_keys.sort();
 	    is( pag_keys.length, 3, '3 pag keys matching the string 3' );
@@ -581,13 +576,11 @@ $().ready(function(){
 	    login.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
 	    login.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
 	    login.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
-/*
 	}
 	catch( err ) {
 	    fail( err )();
 	    wrap_up();
 	}
-*/
     } //do_tests
 
     do_tests();
