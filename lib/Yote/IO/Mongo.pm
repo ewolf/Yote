@@ -409,7 +409,6 @@ sub paginate {
                     $hash_items{ $key } = $obj->{ d }{ $key };
                 }
 	    }
-            print STDERR Data::Dumper->Dump(["NOW",\%hash_items]);
 	}
     } #with search terms
 
