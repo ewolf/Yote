@@ -1495,6 +1495,10 @@ $.yote.util = {
 
 	var template_id = $.yote.util.next_id();
 
+	return $.yote.util.fill_template_text( template, default_var, default_parent, hash_key_or_index );
+    }, //fill_template
+
+    fill_template_text:function( template, default_var, default_parent, hash_key_or_index ) {
 	var text_val = typeof template === 'function' ? template() : template;
 
 	while( text_val.indexOf( '<$$' ) > -1 ) {
@@ -1543,12 +1547,12 @@ $.yote.util = {
 	    text_val = text_val.substring( 0, start ) + $.yote.util.run_template_function( text_val.substring( start+2, end ).trim(), default_var, default_parent, hash_key_or_index ) + text_val.substring( end+2 );
 	}
 	return text_val;
-    }, //fill_template
+    }, //fill_template_text
 
     run_template_function:function( varpart, default_var, default_parent, hash_key_or_index ) {
 	var f = $.yote.util.functions[ varpart.trim() ];
 	if( f ) 
-	    return f( default_var, default_parent, hash_key_or_index );
+	    return $.yote.util.fill_template_text( f( default_var, default_parent, hash_key_or_index ), default_var, default_parent, hash_key_or_index );
 	console.log( "Template error. Function '" + varpart + "' not found." );
 	return '';	
     }, //run_template_function
@@ -1688,6 +1692,10 @@ $.yote.util = {
 	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '"></span>';
 	}
+	else if( cmd == 'checkbox' ) {
+	    if( ! subjobj ) return '';
+	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
+	}
 	else if( cmd == 'switch' ) {
 	    if( ! subjobj ) return '';
 	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '"></span>';	    
@@ -1740,7 +1748,8 @@ $.yote.util = {
       * edit    item   field   ( prepend field with # if it is to be as html )
       * select     object field [json list]
       * selectobj  object field list_of_objs field_of_list_objs
-      * switch  object  field  makes checkbox
+      * checkbox  object  field  (  makes checkbox for a field on an object
+      * switch  object  function  ( runs function on change )
       * button templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
       * action_link templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
 

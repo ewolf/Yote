@@ -1,6 +1,8 @@
 The stack :
 
- edit or show
+ edit or show control depending on who's logged in
+
+ checkbox control that hooks to functions rather than ( on change, current value functions )
 
  update tests to test for 4 pagination types : list direct, list with host, hash direct, hash with host
   
