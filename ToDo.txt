@@ -1,15 +1,10 @@
 The stack :
 
+ edit or show
+
  update tests to test for 4 pagination types : list direct, list with host, hash direct, hash with host
-
-  need to implement hash key search in server. also for count as well as paginate
-
-  hash key search test
-
-  hash key search PLUS other search test
-
   
-  test if mysql queries too big ( fixed in sqlite )
+ test if mysql queries too big ( fixed in sqlite )
 
  SCRIPT TAG : id registers self <SCRIPT type="text/template" id="template_name">...</script>
 

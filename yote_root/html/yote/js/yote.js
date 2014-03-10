@@ -635,6 +635,7 @@ $.yote = {
 				    name  : me.field, 
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
+				    hashkey_search : me.hashkey_search_value,
 				} );
 				var res = me.host_obj.paginate( { 
 				    name  : me.field, 
@@ -694,7 +695,12 @@ $.yote = {
 			    }
 			},
 			set_hashkey_search_criteria:function( hashkey_search ) {
-			    this.hashkey_search_value = hashkey_search;
+			    hs = hashkey_search || '';
+			    this.hashkey_search_value = hs.split(/ +/);
+			},
+			get_hashkey_search_criteria:function() {
+			    alert( this.hashkey_search_value ? this.hashkey_search_value.join(' ') : '' );
+			    return this.hashkey_search_value ? this.hashkey_search_value.join(' ') : '';
 			},
 			set_search_criteria:function( fields, values ) {
 			    if( ! values ) {
