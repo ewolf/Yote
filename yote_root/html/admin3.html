@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<!-- Bootstrappy and meta. This page could replace itself -->
+  <head>
+    <title>Yote Admin 3</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <META NAME="Author" CONTENT="Eric Wolf, coyocanid@gmail.com">
+
+    <STYLE>
+      .mainpanel { top:0px; width:900px; display:inline-block; }
+      .tabs {
+	  position: relative;
+	  min-height: 300px; /* This part sucks */
+	  clear: both;
+	  margin: 25px 0;
+      }
+      .tab {
+	  float: left;
+      }
+      .tab label {
+	  background: #eee;
+	  padding: 10px;
+	  border: 1px solid #ccc;
+	  margin-left: -1px;
+	  position: relative;
+	  left: 1px;
+      }
+      .tab [type=radio] {
+	  display: none;
+      }
+      .content {
+	  position: absolute;
+	  top: 28px;
+	  left: 0;
+	  background: white;
+	  right: 0;
+	  bottom: 0;
+	  padding: 20px;
+	  border: 1px solid #ccc;
+      }
+      [type=radio]:checked ~ label {
+	  background: white;
+	  border-bottom: 1px solid white;
+	  z-index: 2;
+      }
+      [type=radio]:checked ~ label ~ .content {
+	  z-index: 1;
+      }
+      .apppanel { margin-left: 150px; }
+      .sidenav { float: left; text-align: center; }
+      button.sidenav {     background:none!important; cursor:pointer;
+     border:none;
+     padding:0!important;
+    /*border is optional*/
+     border-bottom:1px solid #444; ; }
+      ._ct_row { vertical-align: top }
+      ._ct_cell { border: 6px rgb(120,226,165) groove }
+    </STYLE>
+
+<!--
+there is a beauty that we experience as kids that only leaves tiny hints of itself when we are older.
+it hides in smells and in the whispered wind.
+if we are our experiences then we are both sides of them.
+
+-->
+
+    <script>
+      var root;
+      $().ready(function(){
+	  $( '#mainpanel' ).hide();
+	  $.yote.debug = false;
+	  $.yote.init();
+
+	  $( 'button.sidenav' ).each( function( idx, domEl ) {
+	      $(this).click(function(){
+		  $( '.apppanel' ).hide();
+		  $( '#' + $(this).attr('id') + '_div' ).show();
+	      });
+	  } );
+
+	  attach_login( {
+	      attachpoint         : '#logged_in_status',
+	      message_attachpoint : '#msg_div',
+	      after_login  : refresh_all,
+	      after_logout : refresh_all
+	  } );
+
+	  // -------------------------------------
+
+	  $.yote.util.register_functions( {
+	      cron_entry_next_time : function( entry ) {
+		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
+	      },
+	      init_paginator : function( entry ) {
+		  var pag_begin_button_id = $.yote.util.get_registered_item( 'register_name' ),
+                      pag_back_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
+                      pag_forward_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
+                      pag_end_button_id =  $.yote.util.get_registered_item( 'paginate_to_end_button' );
+		  // this works, when the <@@ method gets called, the @@ method is stored with the registration stack for the template in question
+		  if( apps.can_rewind() ) {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_begin_button_id ).click( function() { apps.first(); refresh_all(); } );
+		      $( '#' + pag_back_button_id ).click( function() { apps.back(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
+		  }
+		  if( apps.can_fast_forward() ) {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_forward_button_id ).click( function() { apps.forwards(); refresh_all(); } );
+		      $( '#' + pag_end_button_id ).click( function() { apps.last(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
+		  }		  
+	      }, //init_paginator
+	      
+	  } );
+
+	  var cron, root, apps, users;
+
+	  function refresh_all() {
+	      if( $.yote.is_root() ) {
+		  $( '#errpanel' ).hide();
+		  $( '#mainpanel' ).show();
+		  root = $.yote.fetch_root();
+	      }
+	      else {
+		  $( '#errpanel' ).show();
+		  $( '#mainpanel' ).hide();
+		  return;
+ 	      }
+	      $.yote.util.register_template_variable( 'cron', root.cron() );
+	      $.yote.util.register_template_variable( 'root', root );
+
+	      $.yote.util.refresh_ui();
+	  }//refresh_all
+      });
+    </script>
+
+<script type="text/template" class="yote_template_definition" template_name="Empty">
+   None Found
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron">
+ <H3>Crons</H3>
+ <$@ Cron_Table Empty @$>
+ <$ newbutton _ entries Add Cron $> // <--- need to implement newbutton here
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Table">  // <--- gets registered, other registration methods still work
+
+  <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>  
+                        <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
+                        <th>Schedule</th> <th>Delete</th>
+                  </tr>
+      <@ Cron_Row _ entries 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+  </table>
+  <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Row">
+  <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
+    <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry $> </tdb> 
+  </tr>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Paginator">
+  // _ <-- default variable passed in. Would be cron for cron_table, but is overwritten 
+  //   NEED to pass in the field name for the list
+  <$$$ register_name <$ button paginate_to_beginning &lt;&lt; $> $$$>  //register this button with the _ / field name control. make _get_wrap_hash( item, field, template_context ) method.  // register_name + template_id  ---> button is registered with those two things ( maybe the function that makes the button takes a parameter that causes it to return the button *and* the id as a list.
+
+//  ( or, each template has a registration stack )  <<--- kind of like this
+
+// use regex to tokeinzie the input streams?
+  <$$$  paginate_back_button <$ button paginate_back &lt; $> $$$>
+  <$$$  paginate_forward_button  <$ button paginate_forward &gt; $> $$$>
+  <$$$  paginate_to_end_button  <$ button paginate_to_end &gt;&gt; $> $$$>
+
+  <?? init_paginator ??> //called after the rest are placed. maybe serialize functions and call them as things are rendered. ?? means call after render.
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
+ <$@ Entry_Repeat_Table Empty $@> // _ is a cron entry
+ Interval (min) : <$$$ repeat_interval new <input type="text"> $$$> <BR>
+ Infinite Repeat : <$$$ repeat_infinite new <input type="checkbox"> $$$> <BR>
+ Number Repeat Times : <$$$ repeat_times new <input type="text"> $$$> <BR>
+ <$ newbutton _ repeats Add Repeat $> // < --------- NEEd new button for hashtable
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat_Table">  // <--- gets registered, other registration methods still work
+
+  <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>  
+                        <th>Delete</th>
+                        <th>Schedule</th> <th>Delete</th>
+                  </tr>
+      <@ Cron_Repeat_Row _ repeats 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+  </table>
+  <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Repeat_Row">
+  <tr>  <td><$ edit _ repeat_interval $></td>  <td><$ checkbox _ repeat_infinite ></td>  <td><$ edit _ repeat_times $></td>  <td><$ button delete_repeat Delete $></td>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
+ <$@ Entry_Schedule_Table Empty $@> // _ is a cron entry
+ <$$$ new_schedule_time <input type="datetime-local"> $$$> // <----------- will register existing id or generate new id for the control. The new provides this for new
+ <$ button new_schedule Schedule Time $> // < --------- NEEd new button for hashtable. Now how do I pass new_schedule_time to this?
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">  // <--- gets registered, other registration methods still work
+
+  <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
+      <@ Cron_Schedule_Row _ repeats 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+  </table>
+  <$$ Paginator _.scheduled_times $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Schedule_Row">
+  <tr>  <td><$ show $></td> <td><$ button remove_scheduled_time Delete $></td> </tr>  // << the <$ show $> just shows the raw text
+</script>
+
+<!-- ------------------------------ -->
+
+
+<script type="text/template" class="yote_template_definition" template_name="Apps">
+ <H3>Applications Installed</H3>
+ <$@ App_Table Empty @$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="App_Table">
+  <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>  
+                        <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
+                  </tr>
+      <@ App_Row _ _apps 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+  </table>
+  <$$ Paginator _._apps $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="App_Row">
+    <tr>   <th><$ edit _ name $></th>     <th><$ _ host $></th>   <th>Host URL</th>  
+                        <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
+                  </tr>
+</script>
+
+<!-- ------------------------------ -->
+
+<script type="text/template" class="yote_template_definition" template_name="Users">
+</script>
+
+
+<!-- ------------------------------ -->
+
+  </head>
+
+  <BODY>
+
+    <DIV class="header">
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="yotelogo.png">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="msg_div"></DIV>
+    </DIV>
+
+    <DIV id="errpanel" class="err">
+      Must be logged in with a root account to view this page.
+    </DIV>
+
+    <DIV class="mainpanel" id="mainpanel">
+	<SECTION>
+	  <DIV class="page-header">
+	    <H1>Yote Admin Page (YAP)</H1>
+	  </DIV>
+	  <P>
+	    Welcome to the Yote Admin Page. This page manages
+            the users, apps and cron.
+	  </P>
+	</SECTION>
+
+	<DIV class="appwrapper">
+	  <DIV id="sidenav" class="sidenav">
+            <UL>
+	      <LI><BUTTON class="sidenav" disabled id="app_b">Apps</BUTTON></LI>
+	      <LI><BUTTON class="sidenav" disabled id="user_b">Users</BUTTON></LI>
+	      <LI><BUTTON class="sidenav" disabled id="cron_b">Cron</BUTTON></LI>
+            </UL>
+	  </DIV>
+
+	  <DIV id="user_b_div" class="yote_template" template="Cron" default_variable="cron"></div>
+
+	  <DIV id="user_b_div" class="yote_template" template="Apps" default_variable="root"></div>
+
+	  <DIV id="user_b_div" class="yote_template" template="Users" default_variable="root"></div>
+
+	</DIV>
+
+    </DIV>
+
+    <hr>
+
+    <div id="admin_parts"></div>
+    <div id="admin_parts_2"></div>
+    <div id="admin_parts_3"></div>
+
+    <footer>
+    </footer>
+  </body>
+</html>
