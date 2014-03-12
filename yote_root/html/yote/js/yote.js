@@ -699,7 +699,6 @@ $.yote = {
 			    this.hashkey_search_value = hs.split(/ +/);
 			},
 			get_hashkey_search_criteria:function() {
-			    alert( this.hashkey_search_value ? this.hashkey_search_value.join(' ') : '' );
 			    return this.hashkey_search_value ? this.hashkey_search_value.join(' ') : '';
 			},
 			set_search_criteria:function( fields, values ) {

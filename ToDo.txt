@@ -1,5 +1,9 @@
 The stack :
 
+renew old world bakery biz?
+
+ args hash for template functions rather than argument lists? Way to pack data into template? Something like json is looking good
+
  edit or show control depending on who's logged in
 
  checkbox control that hooks to functions rather than ( on change, current value functions )
