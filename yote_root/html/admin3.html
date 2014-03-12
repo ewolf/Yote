@@ -97,6 +97,14 @@ if we are our experiences then we are both sides of them.
 	      app_user_count : function( app ) {
 		  return app.count('_account_roots');
 	      },
+	      make_root : function( is_checked, user ) {
+		  if( is_checked ) {
+		      root.make_root( user );
+		  }
+		  else {
+		      root.remove_root( user, function(){},function(err){ alert(err)} );
+		  }
+	      },
 	      root_status : function( login ) {
 		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
 	      },
@@ -275,11 +283,11 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="Email_Settings">
     <table>
-      <tr> <td>Email Validation Required </td> <td> </td> <$ checkbox _ requires_validation $> </tr>
-      <tr> <td>Validation Email From </td> <td> </td> <$ edit _ validation_email_from $> </tr>
-      <tr> <td>Validation Subject Template </td> <td> </td> <$ edit _.validation_subject_template text $> </tr>
-      <tr> <td>Validation Message Template </td> <td> </td> <$ edit _.validation_message_template text $> </tr>
-      <tr> <td>Validation Link Template </td> <td> </td> <$ edit _.validation_link_template text $> </tr>
+      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$ checkbox _ requires_validation $> </td> </tr>
+      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$ edit _ validation_email_from $> </td> </tr>
+      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$ edit _.validation_subject_template text $> </td> </tr>
+      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$ edit _.validation_message_template text $> </td> </tr>
+      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$ edit _.validation_link_template text $> </td> </tr>
     </table>
 </script>
 
@@ -333,12 +341,11 @@ if we are our experiences then we are both sides of them.
 	</SECTION>
 
 	<DIV class="appwrapper">
-<!--
+
 	  <DIV id="user_b_div" class="yote_template" template="Cron" default_variable="cron"></div>
 
-
 	  <DIV id="user_b_div" class="yote_template" template="Users" default_variable="root"></div>
--->
+
 	  <DIV id="user_b_div" class="yote_template" template="Apps" default_variable="root"></div>
 
 	</DIV>

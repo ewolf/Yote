@@ -792,7 +792,8 @@ $.yote.util = {
 	$( '.yote_template_definition' ).each( function() {
 	    $.yote.util.register_template( $( this ).attr( 'template_name' ), $( this ).text() );
 	} );
-
+	
+	$.yote.util.after_render_functions = [];
 	// ACTIVATE templates
 	$( '.yote_template' ).each( function() {
 	    var el = $( this );
@@ -820,7 +821,9 @@ $.yote.util = {
 	    $.yote.util.init_el(el);
 	    may_need_init = true;
 	} ); //each div
-
+	for( var i = 0 ; i <  $.yote.util.after_render_functions.length; i++ ) {
+	    $.yote.util.after_render_functions[ i ]();
+	}
 	// run this to make sure no new control tables were created
 	// as part of the next round
 	if( may_need_init ) {
@@ -1596,6 +1599,22 @@ $.yote.util = {
 	    text_val = parts[ 0 ] + 
 		$.yote.util.fill_template_hash_rows( parts[ 1 ], default_var, default_parent, hash_key_or_index ) +
 		parts[ 2 ];
+	}
+	while( text_val.indexOf( '<??' ) > -1 ) {
+	    // functions to be run after rendering is done
+	    var parts = $.yote.util._template_parts( text_val, '??', template );
+	    (function(fn,dv,dp,hki) {
+		$.yote.util.after_render_functions.push( function() {
+		    alert(1);
+		    var f = $.yote.util.functions[ fn ];
+		    if( f ) {
+			f( dvn, dp, hki );
+		    } else {
+			console.log( "Template in after render function. Function '" + fn + "' not found." );
+		    }
+		} );
+	    } )( parts[ 1 ].trim(), default_var, default_parent, hash_key_or_index );
+	    text_val = parts[ 0 ] + parts[ 2 ];
 	}
 	while( text_val.indexOf( '<?' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '?', template );
