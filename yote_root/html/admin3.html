@@ -88,25 +88,28 @@ if we are our experiences then we are both sides of them.
 	      });
 	  } );
 
-	  attach_login( {
-	      attachpoint         : '#logged_in_status',
-	      message_attachpoint : '#msg_div',
-	      after_login  : refresh_all,
-	      after_logout : refresh_all
-	  } );
-
 	  // -------------------------------------
 
 	  $.yote.util.register_functions( {
 	      cron_entry_next_time : function( entry ) {
 		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
 	      },
+	      app_user_count : function( app ) {
+		  return app.count('_account_roots');
+	      },
+	      root_status : function( login ) {
+		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
+	      },
+	      is_validated : function( login ) {
+		  return login.is_validated() ? "Yes" : "No";
+	      },
 	      init_paginator : function( entry ) {
 		  var pag_begin_button_id = $.yote.util.get_registered_item( 'register_name' ),
                       pag_back_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
                       pag_forward_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
                       pag_end_button_id =  $.yote.util.get_registered_item( 'paginate_to_end_button' );
-		  // this works, when the <@@ method gets called, the @@ method is stored with the registration stack for the template in question
+		  // this works, when the <?? method gets called, the ?? method is stored with the registration stack 
+		  //   for the template in question
 		  if( apps.can_rewind() ) {
 		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
 		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
@@ -130,6 +133,14 @@ if we are our experiences then we are both sides of them.
 	  } );
 
 	  var cron, root, apps, users;
+
+
+	  attach_login( {
+	      attachpoint         : '#logged_in_status',
+	      message_attachpoint : '#msg_div',
+	      after_login  : refresh_all,
+	      after_logout : refresh_all
+	  } );
 
 	  function refresh_all() {
 	      if( $.yote.is_root() ) {
@@ -156,7 +167,7 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="Cron">
  <H3>Crons</H3>
- <$@ Cron_Table Empty @$>
+ <$@ Cron_Table Empty _ entries @$>
  <$ newbutton _ entries Add Cron $> // <--- need to implement newbutton here
 </script>
 
@@ -166,7 +177,8 @@ if we are our experiences then we are both sides of them.
                         <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
                         <th>Schedule</th> <th>Delete</th>
                   </tr>
-      <@ Cron_Row _ entries 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+      <@ Cron_Row 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+    
   </table>
   <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
@@ -175,7 +187,7 @@ if we are our experiences then we are both sides of them.
 <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
   <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
     <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
-    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry $> </tdb> 
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry $> </td> 
   </tr>
 </script>
 
@@ -195,7 +207,7 @@ if we are our experiences then we are both sides of them.
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
- <$@ Entry_Repeat_Table Empty $@> // _ is a cron entry
+ <$@ Entry_Repeat_Table Empty  _ repeats $@> // _ is a cron entry
  Interval (min) : <$$$ repeat_interval new <input type="text"> $$$> <BR>
  Infinite Repeat : <$$$ repeat_infinite new <input type="checkbox"> $$$> <BR>
  Number Repeat Times : <$$$ repeat_times new <input type="text"> $$$> <BR>
@@ -208,7 +220,7 @@ if we are our experiences then we are both sides of them.
                         <th>Delete</th>
                         <th>Schedule</th> <th>Delete</th>
                   </tr>
-      <@ Cron_Repeat_Row _ repeats 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+      <@ Cron_Repeat_Row 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
   </table>
   <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
@@ -220,7 +232,7 @@ if we are our experiences then we are both sides of them.
 
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
- <$@ Entry_Schedule_Table Empty $@> // _ is a cron entry
+ <$@ Entry_Schedule_Table Empty _ sheduled_times $@> // _ is a cron entry
  <$$$ new_schedule_time <input type="datetime-local"> $$$> // <----------- will register existing id or generate new id for the control. The new provides this for new
  <$ button new_schedule Schedule Time $> // < --------- NEEd new button for hashtable. Now how do I pass new_schedule_time to this?
 </script>
@@ -228,7 +240,7 @@ if we are our experiences then we are both sides of them.
 <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">  // <--- gets registered, other registration methods still work
 
   <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
-      <@ Cron_Schedule_Row _ repeats 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+      <@ Cron_Schedule_Row 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
   </table>
   <$$ Paginator _.scheduled_times $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
@@ -243,30 +255,53 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="Apps">
  <H3>Applications Installed</H3>
- <$@ App_Table Empty @$>
+ <$% App_Table Empty _ _apps %$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Table">
   <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>  
                         <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
                   </tr>
-      <@ App_Row _ _apps 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+      <% App_Row 10 %>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
   </table>
   <$$ Paginator _._apps $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
-    <tr>   <th><$ edit _ name $></th>     <th><$ _ host $></th>   <th>Host URL</th>  
-                        <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
+    <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>  
+                        <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$ button reset_app Reset $></th>
                   </tr>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Email_Settings">
+    <table>
+      <tr> <td>Email Validation Required </td> <td> </td> <$ checkbox _ requires_validation $> </tr>
+      <tr> <td>Validation Email From </td> <td> </td> <$ edit _ validation_email_from $> </tr>
+      <tr> <td>Validation Subject Template </td> <td> </td> <$ edit _.validation_subject_template text $> </tr>
+      <tr> <td>Validation Message Template </td> <td> </td> <$ edit _.validation_message_template text $> </tr>
+      <tr> <td>Validation Link Template </td> <td> </td> <$ edit _.validation_link_template text $> </tr>
+    </table>
 </script>
 
 <!-- ------------------------------ -->
 
 <script type="text/template" class="yote_template_definition" template_name="Users">
+ <H3>Users</H3>
+ <$% User_Table Empty _ _handles %$>
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="User_Table">
+  <table border=1><tr>  <th>Handle</th>     <th>Email</th>   <th>Is Root</th>  
+                        <th>Was Validated</th>
+                  </tr>
+  <% User_Row 10 %>
+  </table>
+</script>
 
+<script type="text/template" class="yote_template_definition" template_name="User_Row">
+    <tr>   <th><$ hash_key $></th> <th><$ show _ email $></th>   <th><? root_status ?></th>  
+                        <th><? is_validated ?></th> </tr>
+</script>
 <!-- ------------------------------ -->
 
   </head>
@@ -298,29 +333,19 @@ if we are our experiences then we are both sides of them.
 	</SECTION>
 
 	<DIV class="appwrapper">
-	  <DIV id="sidenav" class="sidenav">
-            <UL>
-	      <LI><BUTTON class="sidenav" disabled id="app_b">Apps</BUTTON></LI>
-	      <LI><BUTTON class="sidenav" disabled id="user_b">Users</BUTTON></LI>
-	      <LI><BUTTON class="sidenav" disabled id="cron_b">Cron</BUTTON></LI>
-            </UL>
-	  </DIV>
-
+<!--
 	  <DIV id="user_b_div" class="yote_template" template="Cron" default_variable="cron"></div>
 
-	  <DIV id="user_b_div" class="yote_template" template="Apps" default_variable="root"></div>
 
 	  <DIV id="user_b_div" class="yote_template" template="Users" default_variable="root"></div>
+-->
+	  <DIV id="user_b_div" class="yote_template" template="Apps" default_variable="root"></div>
 
 	</DIV>
 
     </DIV>
 
     <hr>
-
-    <div id="admin_parts"></div>
-    <div id="admin_parts_2"></div>
-    <div id="admin_parts_3"></div>
 
     <footer>
     </footer>

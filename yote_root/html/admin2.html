@@ -178,7 +178,7 @@ if we are our experiences then we are both sides of them.
 	    } );
 
 	    $.yote.util.register_templates( {
-		Apps : '<% App_row_top App_row App_row_bottom No_Apps apps %>',
+		Apps : '<%% App_row_top App_row App_row_bottom No_Apps apps %%>',
 		Beep : '<$ button beep BeEp $>',
 		App_row_top : '<H3>Apps</H3><BR>' +
 		    '<table border=1><tr>' + [ 'Name', 'Host', 'Host URL', 'Number of Users', 'Email Settings', 'Reset' ].map( function(h) { return '<td>' + h + '</td>' } ).join('') + '</tr>',
@@ -205,7 +205,7 @@ if we are our experiences then we are both sides of them.
 		    '<td><$ button reset_app Reset $></td></tr>',
 		No_Apps : "<? no_apps ?>",
 
-		Users : '<% Users_top Users_row Users_bottom No_Users users %>',
+		Users : '<%% Users_top Users_row Users_bottom No_Users users %%>',
 
 		No_users : '<div id="app_pagination"></div>',
 
@@ -215,11 +215,11 @@ if we are our experiences then we are both sides of them.
 
 		Users_bottom : '</table><div id="app_pagination"></div>',
 
-		Cron : '<h3>Crons</h3>All Cron Progrms<BR><@ Cron_top Cron_row Cron_bottom No_Cron cron_list @>',
+		Cron : '<h3>Crons</h3>All Cron Progrms<BR><@@ Cron_top Cron_row Cron_bottom No_Cron cron_list @@>',
 
 		Cron_top : '<table border=1><tr>  <th>Name</th>  <th>Enabled</th>  <th>Notes</th>  <th>Script</th>  <th>Next Run</th>  <th>Repeat</th> <th>Schedule</th> <th>Delete</th></tr>',
 		
-		Cron_row : '<tr> <td><$ edit _ name $></td> <td><$ checkbox _ enabled $></td> <td><$ edit _ notes $></td> <td><$ edit _ script $></td> <td><? cron_entry_next_time ?></td> <td><@ Repeat_top Repeat_row Repeat_bottom Repeat_None _ repeats @></td>   <td><@ Schedule_top Schedule_row Schedule_bottom Schedule_None _ scheduled_times @></td>   <td><$ button delete_cron Delete $></td> </tr>',
+		Cron_row : '<tr> <td><$ edit _ name $></td> <td><$ checkbox _ enabled $></td> <td><$ edit _ notes $></td> <td><$ edit _ script $></td> <td><? cron_entry_next_time ?></td> <td><@@ Repeat_top Repeat_row Repeat_bottom Repeat_None _ repeats @@></td>   <td><@@ Schedule_top Schedule_row Schedule_bottom Schedule_None _ scheduled_times @@></td>   <td><$ button delete_cron Delete $></td> </tr>',
 
 		Cron_bottom : '</table> <$ button add_cron New Entry $>',
 		
