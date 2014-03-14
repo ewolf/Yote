@@ -98,7 +98,15 @@ if( ! Object.keys ) {
 	return k;
     }
 }
-
+if( ! Object.clone ) {
+    Object.clone = function() {
+        var clone = {};
+        for( var key in this ) {
+            clone[ key ] = this[ key ];
+        }
+        return clone;
+    }
+}
 
 /*
   Upon script load, find the port that the script came from, if any.

@@ -801,10 +801,12 @@ $.yote.util = {
 		return;
 	    }
 	    el.attr( 'has_init', 'true' );
- 	    var def_var    = $.yote.util._template_var( $( this ).attr( 'default_variable' ) );
+ 	    var def_var    = $.yote.util._template_var( { default_var : $( this ).attr( 'default_variable' ) } );
 	    var parent_var = el.attr( 'default_parent' );
 	    var templ_name = el.attr( 'template' );
-	    el.empty().append( $.yote.util.fill_template( templ_name, def_var, parent_var ) );	    
+	    el.empty().append( $.yote.util.fill_template( { template_name : templ_name, 
+                                                            default_var : def_var, 
+                                                            parent_var  : parent_var } ) );	    
 	} );
 	
 	$( '.control_table,.yote_panel,.yote_button,.yote_action_link' ).each( function() {
@@ -1533,13 +1535,15 @@ $.yote.util = {
 	}
     }, //register_function
 
-    fill_template:function( template_name, default_var, default_parent, hash_key_or_index ) {
-	var template = $.yote.util.templates[ template_name ];
+    fill_template:function( args ) {
+	var template = $.yote.util.templates[ args[ 'template_name' ] ];
 	if( ! template ) { return ''; }
 
-	var template_id = $.yote.util.next_id();
+        args = args.clone();
+        args[ 'template' ] = template;
+	args[ 'template_id' ] = $.yote.util.next_id();
 
-	return $.yote.util.fill_template_text( template, default_var, default_parent, hash_key_or_index );
+	return $.yote.util.fill_template_text( args );
     }, //fill_template
 
     _template_parts:function( txt, sigil, template ) {
@@ -1555,31 +1559,37 @@ $.yote.util = {
 		 txt.substring( end+len ) ];
     }, //_template_parts
 
-    fill_template_text:function( template, default_var, default_parent, hash_key_or_index ) {
+    fill_template_text:function( args ) {
+        var template = args[ 'template' ]
 	var text_val = typeof template === 'function' ? template() : template;
+        args = args.clone();
 
 	while( text_val.indexOf( '<$$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$$', template );
+            args[ 'template_name' ] = parts[ 1 ];
 	    text_val = parts[ 0 ] + 
-		$.yote.util.fill_template( parts[ 1 ], default_var, default_parent, hash_key_or_index ) +
+		$.yote.util.fill_template( args ) +
 		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<$@' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$@', template );
+            args[ 'template_body' ] = parts[ 1 ];
 	    text_val = parts[ 0 ] + 
-		$.yote.util.fill_template_container( parts[ 1 ], default_var, default_parent, hash_key_or_index, false ) +
+		$.yote.util.fill_template_container( args, false ) +
 		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<$%' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$%', template );
+            args[ 'template_body' ] = parts[ 1 ];
 	    text_val = parts[ 0 ] + 
-		$.yote.util.fill_template_container( parts[ 1 ], default_var, default_parent, hash_key_or_index, true ) +
+		$.yote.util.fill_template_container( args, true ) +
 		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$', template );
+            args[ 'template_body' ] = parts[ 1 ];
 	    text_val = parts[ 0 ] + 
-		$.yote.util.fill_template_variable( parts[ 1 ], default_var, default_parent, undefined, hash_key_or_index ) +
+		$.yote.util.fill_template_variable( args ) +
 		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<@' ) > -1 ) {
@@ -1627,14 +1637,17 @@ $.yote.util = {
 
     run_template_function:function( varpart, default_var, default_parent, hash_key_or_index ) {
 	var f = $.yote.util.functions[ varpart.trim() ];
-	if( f )
+	if( f ) {
 	    return $.yote.util.fill_template_text( f( default_var, default_parent, hash_key_or_index ), default_var, default_parent, hash_key_or_index );
+        }
 	console.log( "Template error. Function '" + varpart + "' not found." );
 	return '';
     }, //run_template_function
 
-    fill_template_container:function( varpart, default_var, default_parent, hash_key_or_index, is_hash ) {
-	var parts = varpart.split(/ +/);
+    fill_template_container:function( args, is_hash ) {
+        // PENDING
+        //varpart, default_var, default_parent, hash_key_or_index, is_hash ) {
+	var parts = args[ 'template_body' ].split(/ +/);
 	
 	var main_template     = parts[ 0 ].trim(), 
 	    on_empty_template = parts[ 1 ].trim(),
@@ -1702,7 +1715,9 @@ $.yote.util = {
 	return subj;
     },
 
-    fill_template_variable:function( varcmd, default_var, default_parent, template_id, hash_key_or_index ) {
+    fill_template_variable:function( args ) {
+        // PENDING
+        // varcmd, default_var, default_parent, template_id, hash_key_or_index ) {
 	var cmdl = varcmd.split(/ +/); //yikes, this split suxx.use regex
 	var cmd  = cmdl[0].toLowerCase();
 	var subj = cmdl[1];
