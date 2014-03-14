@@ -15,3 +15,7 @@ Yote*gz
 *.bak
 yote_root/html/js/local.js
 lib/Yote/ConfigData.pm
+yote_root/html/cc
+yote_root/html/madyote
+yote_root/html/se
+yote_root/html/testy.html
