@@ -99,10 +99,10 @@ if( ! Object.keys ) {
     }
 }
 if( ! Object.clone ) {
-    Object.clone = function() {
+    Object.clone = function( h ) {
         var clone = {};
-        for( var key in this ) {
-            clone[ key ] = this[ key ];
+        for( var key in h ) {
+            clone[ key ] = h[ key ];
         }
         return clone;
     }
@@ -127,6 +127,7 @@ $.yote = {
     debug:false,
     app:null,
     root:null,
+    wrap_cache:{},
 
     init:function() {
         var t = $.cookie('yoken');
@@ -542,7 +543,18 @@ $.yote = {
 		},
 		wrap:function( args, is_hash ) {
 		    var host_obj = this;
-		    var fld = args[ 'collection_name' ]
+		    var fld = args[ 'collection_name' ];
+
+		    if( ! $.yote.wrap_cache[ host_obj.id ] ) {
+			$.yote.wrap_cache[ host_obj.id ] = {};
+		    }
+		    if( ! $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] ) {
+			$.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] = {};
+		    }
+		    if( $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] ) {
+			return $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ];
+		    }
+
 		    var ol = host_obj.count( fld );
 
 		    // see if the whole list can be obtained at once
@@ -550,15 +562,19 @@ $.yote = {
 
 		    if( ! page_out_list ) {
 			var collection_obj = host_obj.get( fld );
+			if( ! collection_obj ) {
+			    console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
+			    page_out_list = true;
+			}
 		    }
-		    return {
+		    var ret = {
 			page_out_list      : page_out_list,
 			collection_obj     : collection_obj,
 			id                 : host_obj.id,
 			host_obj           : host_obj,
 			field              : fld,
 			start              : args[ 'start' ] || 0,
-			page_size     : args[ 'size' ],
+			page_size     : 1*args[ 'size' ],
 			search_values : args[ 'search_value'  ] || undefined,
 			search_fields : args[ 'search_field'  ] || undefined,
 			sort_fields   : args[ 'sort_fields'   ] || undefined,
@@ -578,7 +594,7 @@ $.yote = {
 			to_list : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
-				me.length = me.host_obj.count( {
+				me.length = 1*me.host_obj.count( {
 				    name  : me.field, 
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -599,7 +615,7 @@ $.yote = {
 				if( ! me.collection_obj ) return ret;
 				var olist = me.collection_obj.to_list();
 
-				if( this.sort_fields ) {
+				if( me.sort_fields ) {
 				    olist = olist.sort( function( a, b ) { 
 					for( var i=0; i<me.sort_fields.length; i++ ) {
 					    if( typeof a === 'object' && typeof b === 'object' ) 
@@ -607,30 +623,31 @@ $.yote = {
 					    return 0;
 					}
 				    } );
-				    if( this.sort_reverse ) olist.reverse();
+				    if( me.sort_reverse ) olist.reverse();
 				}
 
-				this.length = 0;
+				me.length = 0;
 				for( var i=0; i < olist.length; i++ ) {
-				    if( this.search_values && this.search_fields && this.search_values.length > 0 && this.search_fields.length > 0 ) {
-					if( this.search_fields && this.search_fields.length > 0 ) {
+				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
+					if( me.search_fields && me.search_fields.length > 0 ) {
 					    var match = false;
-					    for( var j=0; j<this.search_values.length; j++ ) {
-						for( var k=0; k<this.search_fields.length; k++ ) {
-						    match = match || typeof olist[ i ] === 'object' && olist[ i ].get( this.search_fields[k] ).toLowerCase().indexOf( this.search_values[ j ].toLowerCase() ) != -1;
+					    for( var j=0; j<me.search_values.length; j++ ) {
+						for( var k=0; k<me.search_fields.length; k++ ) {
+						    match = match || typeof olist[ i ] === 'object' && olist[ i ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
 						}
 					    }
 					    if( match ) {
-						this.length++;
-						if( i >= this.start && ret.length < this.page_size ) 
+						me.length++;
+						if( i >= me.start && ret.length < me.page_size ) 
 						    ret.push( olist[i] );
 					    }
 					}
 				    }
 				    else {
-					this.length++;
-					if( i >= this.start && ret.length < this.page_size ) 
+					if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
+					    me.length++;
 					    ret.push( olist[i] );
+					}
 				    }
 				}
 				return ret;
@@ -639,7 +656,7 @@ $.yote = {
 			to_hash : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
-				me.length = me.host_obj.count( {
+				me.length = 1*me.host_obj.count( {
 				    name  : me.field, 
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -681,7 +698,7 @@ $.yote = {
 						var k = hkeys[ i ];
 						if( i >= me.start && me.length < me.page_size &&
 						    ( ! me.hashkey_search_value || 
-						      k.toLowerCase().indexOf( this.hashkey_search_value ) != -1 ) )
+						      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
 						{
 						    ret[ k ] = ohash[ k ];
 						    me.length++;
@@ -692,7 +709,7 @@ $.yote = {
 				    else {
 					if( i >= me.start && me.length < me.page_size ) {
 					    var k = hkeys[ i ];
-					    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( this.hashkey_search_value ) != -1 ) {
+					    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
 						ret[ k ] = ohash[ k ];
 						me.length++;
 					    }
@@ -738,9 +755,11 @@ $.yote = {
 			    return this.collection_obj.get( this.start + idx );
 			},
 			add_to : function( data ) {
+			    if( this.page_out_list ) alert( 'implement me' );
 			    return this.collection_obj.add_to( data );
 			},
 			remove_from : function( data ) {
+			    if( this.page_out_list ) alert( 'implement me' );
 			    return this.collection_obj.remove_from( data );
 			},
 			seek:function(topos) {
@@ -767,6 +786,8 @@ $.yote = {
 			    this.start = this.full_size() - this.page_size;
 			}
 		    };
+		    $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] = ret;
+		    return ret;
 		}, //wrap
 
 		paginator:function( fieldname, is_hash, size, start ) {

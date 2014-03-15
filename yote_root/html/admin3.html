@@ -91,10 +91,12 @@ if we are our experiences then we are both sides of them.
 	  // -------------------------------------
 
 	  $.yote.util.register_functions( {
-	      cron_entry_next_time : function( entry ) {
+	      cron_entry_next_time : function( args ) {
+		  var entry = args[ 'default_var' ];
 		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
 	      },
-	      app_user_count : function( app ) {
+	      app_user_count : function( args ) {
+		  var app = args[ 'default_var' ];
 		  return app.count('_account_roots');
 	      },
 	      make_root : function( is_checked, user ) {
@@ -105,33 +107,38 @@ if we are our experiences then we are both sides of them.
 		      root.remove_root( user, function(){},function(err){ alert(err)} );
 		  }
 	      },
-	      root_status : function( login ) {
+	      root_status : function( args ) {
+		  var login = args[ 'default_var' ];
 		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
 	      },
-	      is_validated : function( login ) {
+	      is_validated : function( args ) {
+		  var login = args[ 'default_var' ];
 		  return login.is_validated() ? "Yes" : "No";
 	      },
-	      init_paginator : function( entry ) {
-		  var pag_begin_button_id = $.yote.util.get_registered_item( 'register_name' ),
-                      pag_back_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
-                      pag_forward_button_id =  $.yote.util.get_registered_item( 'paginate_back_button' ),
-                      pag_end_button_id =  $.yote.util.get_registered_item( 'paginate_to_end_button' );
-		  // this works, when the <?? method gets called, the ?? method is stored with the registration stack 
-		  //   for the template in question
-		  if( apps.can_rewind() ) {
+	      init_paginator : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
+                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
+                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
+                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
+
+		  if( collection.can_rewind() ) {
 		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
 		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_begin_button_id ).click( function() { apps.first(); refresh_all(); } );
-		      $( '#' + pag_back_button_id ).click( function() { apps.back(); refresh_all(); } );
+		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
+		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
 		  } else {
 		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
 		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
 		  }
-		  if( apps.can_fast_forward() ) {
+		  if( collection.can_fast_forward() ) {
 		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
 		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_forward_button_id ).click( function() { apps.forwards(); refresh_all(); } );
-		      $( '#' + pag_end_button_id ).click( function() { apps.last(); refresh_all(); } );
+		      $( '#' + pag_forward_button_id ).click( function() { 
+			  collection.forwards(); 
+			  refresh_all(); 
+		      } );
+		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
 		  } else {
 		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
 		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
@@ -139,9 +146,6 @@ if we are our experiences then we are both sides of them.
 	      }, //init_paginator
 	      
 	  } );
-
-	  var cron, root, apps, users;
-
 
 	  attach_login( {
 	      attachpoint         : '#logged_in_status',
@@ -154,7 +158,7 @@ if we are our experiences then we are both sides of them.
 	      if( $.yote.is_root() ) {
 		  $( '#errpanel' ).hide();
 		  $( '#mainpanel' ).show();
-		  root = $.yote.fetch_root();
+		  var root = $.yote.fetch_root();
 	      }
 	      else {
 		  $( '#errpanel' ).show();
@@ -176,61 +180,55 @@ if we are our experiences then we are both sides of them.
 <script type="text/template" class="yote_template_definition" template_name="Cron">
  <H3>Crons</H3>
  <$@ Cron_Table Empty _ entries @$>
- <$ newbutton _ entries Add Cron $> // <--- need to implement newbutton here
+ <$ newbutton _ entries Add Cron $>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Cron_Table">  // <--- gets registered, other registration methods still work
+<script type="text/template" class="yote_template_definition" template_name="Cron_Table">
 
   <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>  
                         <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
                         <th>Schedule</th> <th>Delete</th>
                   </tr>
-      <@ Cron_Row 10 @>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+      <@ Cron_Row 2 @> 
     
   </table>
-  <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <$$ Paginator $$>
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
   <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
     <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
-    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry $> </td> 
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td> 
   </tr>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
-  // _ <-- default variable passed in. Would be cron for cron_table, but is overwritten 
-  //   NEED to pass in the field name for the list
-  <$$$ register_name <$ button paginate_to_beginning &lt;&lt; $> $$$>  //register this button with the _ / field name control. make _get_wrap_hash( item, field, template_context ) method.  // register_name + template_id  ---> button is registered with those two things ( maybe the function that makes the button takes a parameter that causes it to return the button *and* the id as a list.
+  <$$$ paginate_to_beginning_button <button type="button">&lt;&lt;</button> $$$>
+  <$$$  paginate_back_button <button type="button">&lt;</butotn> $$$>
+  <$$$  paginate_forward_button  <button type="Button"> &gt;</button> $$$>
+  <$$$  paginate_to_end_button  <button type="Button">&gt;&gt;</button> $$$>
 
-//  ( or, each template has a registration stack )  <<--- kind of like this
-
-// use regex to tokeinzie the input streams?
-  <$$$  paginate_back_button <$ button paginate_back &lt; $> $$$>
-  <$$$  paginate_forward_button  <$ button paginate_forward &gt; $> $$$>
-  <$$$  paginate_to_end_button  <$ button paginate_to_end &gt;&gt; $> $$$>
-
-  <?? init_paginator ??> //called after the rest are placed. maybe serialize functions and call them as things are rendered. ?? means call after render.
+  <?? init_paginator ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
- <$@ Entry_Repeat_Table Empty  _ repeats $@> // _ is a cron entry
+ <$@ Entry_Repeat_Table Empty  _ repeats @$>
  Interval (min) : <$$$ repeat_interval new <input type="text"> $$$> <BR>
  Infinite Repeat : <$$$ repeat_infinite new <input type="checkbox"> $$$> <BR>
  Number Repeat Times : <$$$ repeat_times new <input type="text"> $$$> <BR>
- <$ newbutton _ repeats Add Repeat $> // < --------- NEEd new button for hashtable
+ <$ newbutton _ repeats Add Repeat $>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat_Table">  // <--- gets registered, other registration methods still work
+<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat_Table"> 
 
   <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>  
                         <th>Delete</th>
                         <th>Schedule</th> <th>Delete</th>
                   </tr>
-      <@ Cron_Repeat_Row 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+      <@ Cron_Repeat_Row 2 @> 
   </table>
-  <$$ Paginator _.entries $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <$$ Paginator $$> 
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
@@ -240,22 +238,22 @@ if we are our experiences then we are both sides of them.
 
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
- <$@ Entry_Schedule_Table Empty _ sheduled_times $@> // _ is a cron entry
- <$$$ new_schedule_time <input type="datetime-local"> $$$> // <----------- will register existing id or generate new id for the control. The new provides this for new
- <$ button new_schedule Schedule Time $> // < --------- NEEd new button for hashtable. Now how do I pass new_schedule_time to this?
+ <$@ Entry_Schedule_Table Empty _ scheduled_times @$> 
+ <$$$ new_schedule_time <input type="datetime-local"> $$$>
+ <$ button new_schedule Schedule Time $>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">  // <--- gets registered, other registration methods still work
+<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">
 
   <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
-      <@ Cron_Schedule_Row 10 @>  // _get_wrap_hash( _, repeats, template_context is called to get the wrapped data structure 
+      <@ Cron_Schedule_Row 2 @>
   </table>
-  <$$ Paginator _.scheduled_times $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <$$ Paginator $$>
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Schedule_Row">
-  <tr>  <td><$ show $></td> <td><$ button remove_scheduled_time Delete $></td> </tr>  // << the <$ show $> just shows the raw text
+  <tr>  <td><$ show $></td> <td><$ button remove_scheduled_time Delete $></td> </tr> 
 </script>
 
 <!-- ------------------------------ -->
@@ -270,9 +268,9 @@ if we are our experiences then we are both sides of them.
   <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>  
                         <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
                   </tr>
-      <% App_Row 10 %>  // _get_wrap_hash( _, entries, template_context is called to get the wrapped data structure 
+      <% App_Row 2 %>
   </table>
-  <$$ Paginator _._apps $$>  // _.entries is tagged with the templates id variable  the entry is wrapped
+  <$$ Paginator $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
@@ -302,8 +300,9 @@ if we are our experiences then we are both sides of them.
   <table border=1><tr>  <th>Handle</th>     <th>Email</th>   <th>Is Root</th>  
                         <th>Was Validated</th>
                   </tr>
-  <% User_Row 10 %>
+  <% User_Row 1 %>
   </table>
+  <$$ Paginator $$>  
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="User_Row">
