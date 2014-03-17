@@ -74,6 +74,10 @@ sub new {
     return $obj;
 } #new
 
+sub new_with_same_permissions {
+    return new Yote::Obj();
+} #new_with_same_permissions
+
 #
 # Called the very first time this object is created. It is not called
 # when object is loaded from storage.

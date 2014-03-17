@@ -9,6 +9,12 @@ use warnings;
 
 use base 'Yote::Obj';
 
+sub new_with_same_permissions {
+    my( $self, $dummy, $account ) = @_;
+    die "Permissions Error" unless $self->_check_access( $account, 1, '' );
+    return new Yote::UserObj();
+} #new_with_same_permissions
+
 
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;

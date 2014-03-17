@@ -8,6 +8,12 @@ use warnings;
 
 use base 'Yote::Obj';
 
+sub new_with_same_permissions {
+    my( $self, $dummy, $account ) = @_;
+    die "Permissions Error" unless $self->_check_access( $account, 1, '' );
+    return new Yote::RootObj();
+} #new_with_same_permissions
+
 # only root may edit any fields. public fields are readable by all.
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;

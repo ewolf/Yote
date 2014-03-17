@@ -107,6 +107,10 @@ if we are our experiences then we are both sides of them.
 		      root.remove_root( user, function(){},function(err){ alert(err)} );
 		  }
 	      },
+	      delete_repeat : function( args ) {
+		  args[ 'default_parent' ].remove_from( { name : 'repeats', items : [ args[ 'default_var' ] ] } );
+		  $.yote.util.refresh_ui();
+	      },
 	      root_status : function( args ) {
 		  var login = args[ 'default_var' ];
 		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
@@ -144,7 +148,9 @@ if we are our experiences then we are both sides of them.
 		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
 		  }		  
 	      }, //init_paginator
-	      
+	      Delete_Cron_Entry:function( args ) {
+		  console.log( [ 'ARGS', args ] );
+	      },
 	  } );
 
 	  attach_login( {
@@ -158,7 +164,7 @@ if we are our experiences then we are both sides of them.
 	      if( $.yote.is_root() ) {
 		  $( '#errpanel' ).hide();
 		  $( '#mainpanel' ).show();
-		  var root = $.yote.fetch_root();
+		  root = $.yote.fetch_root();
 	      }
 	      else {
 		  $( '#errpanel' ).show();
@@ -208,7 +214,11 @@ if we are our experiences then we are both sides of them.
   <$$$  paginate_back_button <button type="button">&lt;</butotn> $$$>
   <$$$  paginate_forward_button  <button type="Button"> &gt;</button> $$$>
   <$$$  paginate_to_end_button  <button type="Button">&gt;&gt;</button> $$$>
-
+<BR>
+Need to register the registered values in a way that can be accessed from anywhere in $.yote.util.  
+A template id is stored along with the control. In this way no need for new variables, as anything registered
+will be visible during the function call.
+<BR>
   <?? init_paginator ??>
 </script>
 
@@ -226,14 +236,14 @@ if we are our experiences then we are both sides of them.
                         <th>Delete</th>
                         <th>Schedule</th> <th>Delete</th>
                   </tr>
-      <@ Cron_Repeat_Row 2 @> 
+      <@ Cron_Repeat_Row 20 @> 
   </table>
   <$$ Paginator $$> 
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Repeat_Row">
-  <tr>  <td><$ edit _ repeat_interval $></td>  <td><$ checkbox _ repeat_infinite ></td>  <td><$ edit _ repeat_times $></td>  <td><$ button delete_repeat Delete $></td>
+  <tr>  <td><$ edit _ repeat_interval $></td>  <td><$ checkbox _ repeat_infinite $></td>  <td><$ edit _ repeat_times $></td>  <td><$ button delete_repeat Delete $></td>
 </script>
 
 

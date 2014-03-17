@@ -754,14 +754,6 @@ $.yote = {
 			    }
 			    return this.collection_obj.get( this.start + idx );
 			},
-			add_to : function( data ) {
-			    if( this.page_out_list ) alert( 'implement me' );
-			    return this.collection_obj.add_to( data );
-			},
-			remove_from : function( data ) {
-			    if( this.page_out_list ) alert( 'implement me' );
-			    return this.collection_obj.remove_from( data );
-			},
 			seek:function(topos) {
 			    this.start = topos;
 			},

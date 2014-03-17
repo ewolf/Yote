@@ -1,16 +1,12 @@
 The stack :
+ 
+ users/app search in admin page
 
-renew old world bakery biz?
-
- list adder?
+ redo login with templates
 
  for js..just package up all the js and send it across as one.
 
  consider getting rid of Yote::SimpleTemplate and replacing that with functions ( the fill )
-
- Maybe a version for the object, or a way to register a list from an obj, like obj.register_container( '_some_data_structure' )
-
- also, list and hash template things should automatically do the wrapping.
 
  args hash for template functions rather than argument lists? Way to pack data into template? Something like json is looking good
 
