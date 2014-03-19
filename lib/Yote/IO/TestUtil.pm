@@ -682,6 +682,39 @@ sub io_independent_tests {
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
+    is( $o->count( { name => 'searchlist', search_fields => [], search_terms=> [] } ), @$searchlist, "count gets correct count with empty search fields and search terms" );
+    is( $o->count( { name => 'searchlist', search_fields=> [] } ), @$searchlist, "count gets correct count with empty search fields  terms" );
+    is( $o->count( { name => 'searchlist', search_terms=> [] } ), @$searchlist, "count gets correct count with empty  search terms" );
+
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [], search_terms=> [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty search fields and search terms no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [], search_terms=> [], sort_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty search fields and search terms and sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_terms => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [], search_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search fields and sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [], search_terms => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms and sort_fields no problemo" );
+
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
     $o = new Yote::Obj( { anonymous => "guest" } );
     Yote::ObjProvider::stow_all();

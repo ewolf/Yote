@@ -1511,7 +1511,7 @@ $.yote.util = {
 
 
   In each case, you have an object in focus. How do you get the first object?
-  how is this bootstrapped??
+  how is this bootstrapped?
 
   Editing templates as yote variables, too?
 
@@ -1616,20 +1616,19 @@ $.yote.util = {
 	while( text_val.indexOf( '<$$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$$', template );
 	    var args = Object.clone( params );
-	    var template_pieces = parts[ 1 ].split(/ +/);
-            args[ 'template_name' ] = template_pieces[ 0 ];
-	    if( template_pieces.length == 2 ) {
-		args[ 'target' ] = template_pieces[ 1 ];
-		args[ 'default_var' ] = $.yote.util._template_var( args );
+	    var funparts = parts[1].match( /^\s*(\S+)(\s+.*)?\s*$/ );
+	    if( funparts ) {
+		if( funparts.length == 3 && funparts[2] ) {
+		    args[ 'extra' ] = funparts[2].trim();
+		}
+		args[ 'template_name' ] = funparts[ 1 ];
+		text_val = parts[ 0 ] +
+		    $.yote.util.fill_template( args ) +
+		    parts[ 2 ];
+	    } else {
+		text_val = parts[ 0 ] + parts[ 2 ];
+		console.log( 'Warning .. empty template given' );
 	    }
-	    if( template_pieces.length == 3 ) {
-		args[ 'target' ] = template_pieces[ 2 ];
-		args[ 'default_parent' ] = $.yote.util._template_var( args );
-	    }
-	    // WOLF : check to see if a default var or parent should go here.
-	    text_val = parts[ 0 ] +
-		$.yote.util.fill_template( args ) +
-		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<$@' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$@', template );
@@ -1675,16 +1674,20 @@ $.yote.util = {
 	    // functions to be run after rendering is done
 	    var parts = $.yote.util._template_parts( text_val, '??', template );
 	    var args = Object.clone( params );
-	    (function(fn, args ) {
+	    var funparts = parts[1].match( /^\s*(\S+)(\s+.*)?\s*$/ );
+	    if( funparts.length == 3 && funparts[2] ) {
+		args[ 'extra' ] = funparts[2].trim();
+	    }
+	    (function(fn, arg ) {
 		$.yote.util.after_render_functions.push( function() {
 		    var f = $.yote.util.functions[ fn ];
 		    if( f ) {
-			f( args );
+			f( arg );
 		    } else {
 			console.log( "Template in after render function. Function '" + fn + "' not found." );
 		    }
 		} );
-	    } )( parts[ 1 ].trim(), args );
+	    } )( funparts[ 1 ].trim(), args );
 	    text_val = parts[ 0 ] + parts[ 2 ];
 	}
 	while( text_val.indexOf( '<?' ) > -1 ) {
@@ -1826,6 +1829,7 @@ $.yote.util = {
 	else if( subj == 'id' )   subjobj = args[ 'template_id' ];
 	else if( subj == '_' )    subjobj = args[ 'default_var' ];
 	else if( subj == '__' )   subjobj = args[ 'default_parent' ];
+	else if( subj == '___' )   subjobj = args[ 'extra' ];
 	else subjobj = $.yote.util.registered_items[ subj ];
 
 	if( subjobj ) {
@@ -1945,6 +1949,7 @@ $.yote.util = {
      <@ templatename list @>
      <@ templatename obj field @>
      <? command ?>   run the restigered function and include its text result in the html
+     <?? after_template_renders_command arbitrary_args_as_a_single_string ??>  runs after the template this is in has been rendered.
    Applies the template to each item in the list, concatinating the results together.
 
 

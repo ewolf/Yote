@@ -19,158 +19,182 @@
 
     </STYLE>
 
+    <script type="text/template" class="yote_template_definition" template_name="known_icecream_row">
+      <tr><td><$ edit _ flavor $></td><td><$ show _ color $></td><td><$ list_remove_button _ known_icecreams $></td></tr>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="known_icecreams">
+      <h2>Ice Creams I know</h2>
+      <table><tr><th><$ button flav_sort Flavor$></th><th><$ button color_sort Color$></th><th>Action</th></tr>
+        <@ known_icecream_row 5 @>
+      </table>
+      <$$ SearchList flavor color $$><BR>
+      <$$ Paginator $$>
+       <?? init_sorts ??>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="empty">
+      No icecreams found
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="demo">
+      <H1>Template Demo for : <$ show _ nickname $></H1><HR>
+      <STYLE>.panel { margin-left:25px; vertical-align:top; margin-top: 25px; display:inline-block }</style>
+      <DIV>
+        <DIV class="panel"><h2>Info</h2>
+          Name : <$ edit _ nickname $><br>
+          Favorite Ice Cream : <$ selectobj _ icecream _.known_icecreams flavor $><br>
+          Favorite Season : <$ select sandbox season ['Winter','Summer','Spring','Autumn' ] $><br>
+          likes checkboxes : <$ checkbox _ likes_checkboxes $><br>
+          you sure  : <$ checkbox _ likes_checkboxes $><br>
+         <$ button reset_sandbox Reset This Sandbox $>
+        </DIV><DIV class="panel">
+          <$@ known_icecreams empty _ known_icecreams  @$>
+          <div>Add Icecream
+            <$$$ flavor new <input type="text" placeholder="Flavor"> $$$>
+	    <$$$ color new <input type="text" placeholder="Color"> $$$>
+          </div><HR>
+	  <$ newbutton _ known_icecreams Learn Icecream $>
+          <? rand ?>
+       </div>
+          
+     </div>
+    </script>
+
     <script>
       $().ready(function(){
-	  $.yote.debug = true;
-	  $.yote.init();
+          $.yote.include_templates( '/templates.html' );
 
-	  var known_icecreams, search_ctrl, sandbox;
-	  var app = $.yote.fetch_app( 'MadYote' );
-	  
-	  try {
-	      sandbox = app.get_sandbox();
-	  } catch( err ) {
-	      console.log( ['err',app] );
-	      app.reset_sandbox();
-	  }
-	  $.yote.util.register_item( 'sandbox', sandbox );
+          $.yote.debug = false;
+          $.yote.init();
 
-	  $.yote.util.register_functions( {
- 	      reset_sandbox : function() { app.reset_sandbox(); 
-					   sandbox = app.get_sandbox();
-					   $.yote.util.register_item( 'sandbox', sandbox );
-					   known_icecreams = null;
-					   refresh_all(); },
-	      'delete_icecream' : function( ic, parent ) { 
-		  parent.remove_from( { name : 'known_icecreams', items : [ ic ]   } ); 
-		  refresh_all();
-	      },
-	      'rand' : function( ic, parent ) {
-		  return $.yote.util.fill_template( Math.random() < 0.5 ? 'rand_A' : 'rand_B' );
-	      },
-	      pag_right : function( ic, parent ) {
-		  known_icecreams.forwards();
-		  refresh_all();
-	      },
-	      pag_left : function( ic, parent ) {
-		  known_icecreams.back();
-		  refresh_all();
-	      },
-	      flav_sort : function() { ice_cream_sort( 'flavor' ) },
-	      color_sort : function() { ice_cream_sort( 'color' ) }
-	  } );
+          var known_icecreams, search_ctrl, sandbox;
+          var app = $.yote.fetch_app( 'MadYote' );
 
-	  function ice_cream_sort( fld ) {
-	      if( fld == known_icecreams[ 'sort_field' ] ) {
-		  known_icecreams.sort_reverse = ! known_icecreams.sort_reverse;
-	      }
-	      else {		      
-		  known_icecreams.sort_field = fld;
-		  known_icecreams.sort_fields = [ fld ];
-		  known_icecreams.sort_reverse = false;
-	      }
-	      refresh_all();
-	  };
+          try {
+              sandbox = app.get_sandbox();
+          } catch( err ) {
+              console.log( ['err',app] );
+              app.reset_sandbox();
+          }
+
+          $.yote.util.register_item( 'sandbox', sandbox );
+
+          $.yote.util.register_functions( {
+	      init_search_hash : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
+                  search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
+		  $.yote.util.button_actions( {
+		      button :  '#' + search_button_id,
+		      texts : [ '#' + search_val_id  ],
+		      action : function() {
+			  collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ];
+			  refresh_all();
+		      }
+		  } )
+		  
+	      }, //init_search_hash
+	      init_search_list : function( args ) {
+		  console.log( [ 'ISL', args ] );
+		  var collection = args[ 'default_var' ];
+		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
+                  search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  $( '#' + search_val_id ).val( collection.search_values.join(' ') );
+		  $.yote.util.button_actions( {
+		      button :  '#' + search_button_id,
+		      texts : [ '#' + search_val_id  ],
+		      action : function() {
+			  collection.search_fields = args[ 'extra' ].split(/ +/);
+			  collection.search_values = $( '#' + search_val_id ).val().split(/ +/);
+			  refresh_all();
+		      }
+		  } )
+		  
+	      }, //init_search_list
+
+              reset_sandbox : function() { app.reset_sandbox();
+                                           sandbox = app.get_sandbox();
+                                           $.yote.util.register_item( 'sandbox', sandbox );
+                                           known_icecreams = null;
+                                           refresh_all(); },
+              'rand' : function( ic, parent ) {
+                  return $.yote.util.fill_template( Math.random() < 0.5 ? 'rand_A' : 'rand_B' );
+              },
+              flav_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'flavor' ) },
+              color_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'color' ) },
+
+	      init_paginator : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
+                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
+                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
+                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
+
+		  if( collection.can_rewind() ) {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
+		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
+		  }
+		  if( collection.can_fast_forward() ) {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_forward_button_id ).click( function() {
+			  collection.forwards();
+			  refresh_all();
+		      } );
+		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
+		  }
+	      } //init_paginator
+
+          } );
+
+          function ice_cream_sort( known_icecreams, fld ) {
+              if( fld == known_icecreams[ 'sort_field' ] ) {
+                  known_icecreams.sort_reverse = ! known_icecreams.sort_reverse;
+              }
+              else {
+                  known_icecreams.sort_field = fld;
+                  known_icecreams.sort_fields = [ fld ];
+                  known_icecreams.sort_reverse = false;
+              }
+              refresh_all();
+          };
 
           $.yote.util.register_templates( {
-	      icecream : '<tr><td><$ edit _ flavor $></td><td><$ show _ color $></td><td><$ action_link delete_icecream Delete $></td></tr>',
-	      rand_A : 'Random A',
-	      rand_B : 'Random B',
-	      demo : "<H1>Template Demo for : <$ show sandbox nickname $></H1><HR>" + 
-		  '<STYLE>.panel { margin-left:25px; vertical-align:top; margin-top: 25px; display:inline-block }</style>' + 
-		  '<DIV>' + 
-		  '<DIV class="panel"><h2>Info</h2>' + 
-		  'Name : <$ edit sandbox nickname $><br>' + 
-		  'Favorite Ice Cream : <$ selectobj sandbox icecream sandbox.known_icecreams flavor $><br>' + 
-		  "Favorite Season : <$ select sandbox season ['Winter','Summer','Spring','Autumn' ] $><br>" + 
-		  'likes checkboxes : <$ checkbox sandbox likes_checkboxes $><br>' + 
-		  'you sure  : <$ checkbox sandbox likes_checkboxes $><br>' + 
-		  '<$ button reset_sandbox Reset This Sandbox $>' + 
-		  '</DIV><DIV class="panel">' +
-                  '<h2>Ice Creams I know</h2>' + 
-		  '<div id="knownbox"><$$ knownicecreams $$></div>' + 
-		  '<div>Search for Icecream <input type="text" id="ic_search"> <button type="button" id="do_ic_search">Search</button><BR>' + 
-		  '<div>Add Icecream ' + 
-		  '<input type="text" id="newflav" placeholder="Flavor"> <input type="text" id="newcolor" placeholder="Color">' +
-		  '<button type="Button" id="newicecream">Learn Icecream</button>' + 
-		  '</div><HR>' +
-		  '<? rand ?>' +
-		  '</div>' + 
-		  '</div>',
-	      blank : '',
-	      knownicecreams : '<table><tr><th><$ button flav_sort Flavor$></th><th><$ button color_sort Color$></th><th>Action</th></tr>' + 
-		  '<@@  blank icecream blank blank known_icecreams @@>' +
-		  '</table>' +
-		  '<button type="Button" id="pag_begin">&lt;&lt;</button> ' + 
-		  '<button type="Button" id="pag_left">&lt;</button> ' + 
-		  '<button type="Button" id="pag_right">&gt;</button>' +
-		  '<button type="Button" id="pag_end">&gt;&gt;</button>',
-	      ident : '<$ show sandbox #template_text$><BR><$ edit sandbox #template_text$><br>',
-	  } );
+              rand_A : 'Random A',
+              rand_B : 'Random B',
+          } );
 
-	  function refresh_all() {
-	      if( ! known_icecreams || ! known_icecreams.collection_obj ) {
-		  known_icecreams = sandbox.wrap_list( { collection_name : 'known_icecreams', size : 3 } );
-	      }
-	      
-	      var looking_for = $( '#ic_search' ).val();
-	      known_icecreams.set_search_criteria( [ fld ], [ looking_for ] );
-	      
-	      $.yote.util.register_item( 'known_icecreams', known_icecreams );
-	      $( '#testplace' ).empty().append( $.yote.util.fill_template( "demo" ) );
-	      $( '#explain' ).empty().append( $.yote.util.fill_template( "ident" ) );
+          function refresh_all() {
+              if( ! known_icecreams || ! known_icecreams.collection_obj ) {
+                  known_icecreams = sandbox.wrap_list( { collection_name : 'known_icecreams', size : 3 } );
+              }
 
-	      $.yote.util.button_actions( {
-		  button : '#newicecream',
-		  texts  : [ '#newflav', '#newcolor' ],
-		  action : function() {
-		      var ic = $.yote.fetch_root().new_obj( { color  : $('#newcolor').val(),
-							      flavor : $('#newflav').val() } );
-		      sandbox.add_to( { name : 'known_icecreams', items : [ ic ] } ); 
-		      refresh_all();
-		  }
-	      } );
-	      if( known_icecreams.can_rewind() ) {
-		  $( '#pag_left' ).attr( 'disabled', false );
-		  $( '#pag_begin' ).attr( 'disabled', false );
-		  $( '#pag_left' ).click( function() { known_icecreams.back(); refresh_all(); } );
-		  $( '#pag_begin' ).click( function() { known_icecreams.first(); refresh_all(); } );
-	      } else {
-		  $( '#pag_left' ).attr( 'disabled', true ); 
-		  $( '#pag_begin' ).attr( 'disabled', true );
-	      }
-	      if( known_icecreams.can_fast_forward() ) {
-		  $( '#pag_right' ).attr( 'disabled', false );
-		  $( '#pag_end' ).attr( 'disabled', false );
-		  $( '#pag_right' ).click( function() { known_icecreams.forwards(); refresh_all(); } );
-		  $( '#pag_end' ).click( function() { known_icecreams.last(); refresh_all(); } );
-	      } else { 
-		  $( '#pag_right' ).attr( 'disabled', true ); 
-		  $( '#pag_end' ).attr( 'disabled', true ); 
-	      }
-	      if( search_ctrl ) {
-		  search_ctrl.init();
-	      }
-	      else {
-		  search_ctrl = $.yote.util.button_actions( {
-		      button : '#do_ic_search',
-		      texts  : [ '#ic_search' ],
-		      cleanup_exempt : [ '#ic_search' ],
-		      action : refresh_all
-		  } );
-	      }
-	      $.yote.util.init_ui();
-	      $( '#ic_search' ).val( looking_for );
-	  }//refresh_all
+              var looking_for = $( '#ic_search' ).val();
+              known_icecreams.set_search_criteria( [ fld ], [ looking_for ] );
 
+	      $.yote.util.refresh_ui();              
+	  } //refresh_all
 	  refresh_all();
       });
     </script>
   </head>
 
   <BODY>
-
+   <h1>Client Side Template Demo</h1>
     <div id="explain"></div>
     <div id="testplace"></div>
+
+    <DIV id="some_div" class="yote_template" template="demo" default_variable="sandbox"></div>
+
   </body>
 </html>

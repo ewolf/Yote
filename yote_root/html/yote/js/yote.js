@@ -270,6 +270,26 @@ $.yote = {
 	}
     }, //logout
 
+    include_templates:function( url ) {
+	  $.ajax( {
+	    async:false,
+	    cache: false,
+	    contentType: "text/html",
+	    dataFilter:function(a,b) {
+		if( $.yote.debug == true ) {
+		    console.log('incoming '); console.log( a );
+		}
+		return a;
+	    },
+	    error:function(a,b,c) { root._error(a); },
+	    success:function( data ) {
+		$( 'body' ).append( data );
+	    },
+	    type:'GET',
+	    url: url
+	} );	
+    }, //include_templates
+
     /* general functions */
     message:function( params ) {
         var root   = this;
@@ -575,9 +595,9 @@ $.yote = {
 			field              : fld,
 			start              : args[ 'start' ] || 0,
 			page_size     : 1*args[ 'size' ],
-			search_values : args[ 'search_value'  ] || undefined,
-			search_fields : args[ 'search_field'  ] || undefined,
-			sort_fields   : args[ 'sort_fields'   ] || undefined,
+			search_values : args[ 'search_value'  ] || [],
+			search_fields : args[ 'search_field'  ] || [],
+			sort_fields   : args[ 'sort_fields'   ] || [],
 			hashkey_search_value : args[ 'hashkey_search_value' ] || undefined,
 			sort_reverse  : args[ 'sort_reverse'  ] || undefined,
 			is_hash       : is_hash,

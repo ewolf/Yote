@@ -80,6 +80,8 @@ if we are our experiences then we are both sides of them.
     <script>
       var root;
       $().ready(function(){
+	  $.yote.include_templates( '/templates.html' );
+	  
 	  $( '#mainpanel' ).hide();
 	  $.yote.debug = false;
 	  $.yote.init();
@@ -200,7 +202,7 @@ if we are our experiences then we are both sides of them.
 		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
 		  }
 	      }, //init_paginator
-	      init_search : function( args ) {
+	      init_search_hash : function( args ) {
 		  var collection = args[ 'default_var' ];
 		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
                       search_val_id =  args[ 'vars' ][ 'search_val' ];
@@ -214,7 +216,7 @@ if we are our experiences then we are both sides of them.
 		      }
 		  } )
 		  
-	      }, //init_search
+	      }, //init_search_hash
 	      refresh_all: refresh_all
 	  } );
 
@@ -262,53 +264,12 @@ if we are our experiences then we are both sides of them.
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
- <? check_login_status ?>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Logged_in">
-   Logged in as <$ show acct handle $><BR>
-   <$ action_link logout Log Out $>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Logged_out">
-   <$$$ messages <span>This page requires a root login.</span> $$$><BR>
-   <$$$ handle <input placeholder="handle" type="text"> $$$>
-   <$$$ password <input placeholder="password" type="password"> $$$>
-   <$$$ login_button <button type="BUTTON">Log In</button> $$$>
-<BR>
-   <$ action_link forgot Forgot Password $>
-   <?? init_login ??>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Recover_Login">
-   <$$$ messages <span></span> $$$><BR>
-   <$$$ email <input placeholder="email" type="text"> $$$>
-   <$ button recover Recover Password $>
-   <$ action_link refresh_all [X] $>
-   <?? init_recover ??>
-</script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
   <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
     <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
     <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td>
   </tr>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Paginator">
-  <$$$ paginate_to_beginning_button <button type="button">&lt;&lt;</button> $$$>
-  <$$$  paginate_back_button <button type="button">&lt;</butotn> $$$>
-  <$$$  paginate_forward_button  <button type="Button"> &gt;</button> $$$>
-  <$$$  paginate_to_end_button  <button type="Button">&gt;&gt;</button> $$$>
-<BR>
-  <?? init_paginator ??>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Search">
-  <$$$ search_val <input type="text"> $$$>
-  <$$$ search_btn <button type="button">Search</button> $$$>
-  <?? init_search ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
@@ -357,7 +318,7 @@ if we are our experiences then we are both sides of them.
 
 <!-- ------------------------------ -->
 
-
+<section id="templates">
 <script type="text/template" class="yote_template_definition" template_name="Apps">
  <H3>Applications Installed</H3>
  <$% App_Table Empty _ _apps %$>
@@ -371,7 +332,7 @@ if we are our experiences then we are both sides of them.
   </table>
   <$$ Paginator $$>
 <BR>
- <$$ Search $$>
+ <$$ SearchHash $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
@@ -404,13 +365,15 @@ if we are our experiences then we are both sides of them.
   <% User_Row 10 %>
   </table>
   <$$ Paginator $$>
-  <$$ Search $$>
+  <$$ SearchHash $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="User_Row">
     <tr>   <th><$ hash_key $></th> <th><$ show _ email $></th>   <th><? root_status ?></th>
                         <th><? is_validated ?></th> </tr>
 </script>
+
+</section>
 <!-- ------------------------------ -->
 
   </head>
