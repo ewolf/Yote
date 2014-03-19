@@ -729,6 +729,10 @@ Removes the item at the index postion from the list attached to this object spec
 
 Returns item at the index postion from the list attached to this object specified by name.
 
+=item new_with_same_permissions()
+
+Returns a new yote object with the same permissions as this.
+
 =item paginate( args )
 
 Returns a paginated list or hash. Arguments are

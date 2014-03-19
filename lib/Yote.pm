@@ -494,6 +494,16 @@ return until the yote server has shut down.
 
 There are likely bugs to be discovered. This is alpha software.
 
+=head2 METHODS
+
+=over 4
+
+=item fetch_root()
+
+Returns the Yote Root singleton. Used for some tests.
+
+=back
+
 =head1 AUTHOR
 
 Eric Wolf

@@ -34,6 +34,16 @@ This is a subclass of Yote::Obj that allows root access of its public and privat
 and allows read access of its public fields for non root users. The Yote::YoteRoot instance method new_root_obj
 returns a new object of this type.
 
+=head2 METHODS
+
+=over 4
+
+=item new_with_same_permissions()
+
+Returns a new yote object with the same permissions as this.
+
+=back
+
 =head1 AUTHOR
 
 Eric Wolf

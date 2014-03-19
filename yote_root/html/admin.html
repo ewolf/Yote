@@ -2,7 +2,7 @@
 <html>
 <!-- Bootstrappy and meta. This page could replace itself -->
   <head>
-    <title>Yote Admin</title>
+    <title>Yote Admin 3</title>
     <script src="/yote/js/jquery-latest.js"></script>
     <script src="/yote/js/jquery.cookie.js"></script>
     <script src="/yote/js/jquery.base64.min.js"></script>
@@ -59,12 +59,15 @@
       .apppanel { margin-left: 150px; }
       .sidenav { float: left; text-align: center; }
       button.sidenav {     background:none!important; cursor:pointer;
-     border:none; 
+     border:none;
      padding:0!important;
     /*border is optional*/
      border-bottom:1px solid #444; ; }
       ._ct_row { vertical-align: top }
       ._ct_cell { border: 6px rgb(120,226,165) groove }
+
+     
+      tr { vertical-align: top }
     </STYLE>
 
 <!--
@@ -76,279 +79,340 @@ if we are our experiences then we are both sides of them.
 
     <script>
       var root;
-    $().ready(function(){
-	$( '#mainpanel' ).hide();
-      $.yote.debug = true;
-	$.yote.init();
-	root = $.yote.fetch_root();
+      $().ready(function(){
+	  $( '#mainpanel' ).hide();
+	  $.yote.debug = false;
+	  $.yote.init();
+	  root = $.yote.fetch_root();
+	  $.yote.app = root;
 
-	var cron = root.cron();
+	  $( 'button.sidenav' ).each( function( idx, domEl ) {
+	      $(this).click(function(){
+		  $( '.apppanel' ).hide();
+		  $( '#' + $(this).attr('id') + '_div' ).show();
+	      });
+	  } );
 
-	function register_items() {
-            $.yote.util.register_items( {
-		root     : root,
-		cron     : cron,
-		app_cols : [ 'x', //due to hash key..have to find a better solution TODO
-			     '*host_name',
-			     '*host_url',
-			     { render:function(app){ return app.count('_account_roots'); } },
-			     { 
-				 req_val : $.yote.util.check_edit( 'requires_validation' ),
-				 lef     : $.yote.util.col_edit( 'validation_email_from' ),
-				 lmt     : $.yote.util.template_edit( 'validation_message_template' ),
-				 lst     : $.yote.util.template_edit( 'validation_subject_template' ),
-				 lvt     : $.yote.util.template_edit( 'validation_link_template' ),
+	  // -------------------------------------
 
-				 ref     : $.yote.util.col_edit( 'recovery_email_from' ),
-				 rst     : $.yote.util.template_edit( 'recovery_subject_template' ),
-				 rmt     : $.yote.util.template_edit( 'recovery_message_template' ),
-				 rvt     : $.yote.util.template_edit( 'recovery_link_template' ),
-
-				 render:function(app) {
-				     var buf = 
-					 '<BR><NOBR>Email Validation Required</NOBR>' + this.req_val( app, true ) +
-					 '<BR><NOBR>Validation Email From</NOBR>' + this.lef( app, true ) +
-					 '<BR><NOBR>Validation Subject Template</NOBR>' + this.lst( app, true ) +
-					 '<BR><NOBR>Validation Message Template</NOBR>' + this.lmt( app, true ) +
-					 '<BR><NOBR>Validation Link Template</NOBR>' + this.lvt( app, true );
-
-					 '<BR><NOBR>Recovery Email From</NOBR>' + this.ref( app, true ) +
-					 '<BR><NOBR>Recovery Subject Template</NOBR>' + this.rst( app, true ) +
-					 '<BR><NOBR>Recovery Message Template</NOBR>' + this.rmt( app, true ) +
-					 '<BR><NOBR>Recovery Link Template</NOBR>' + this.rvt( app, true );
-
-				     return buf;
-				 },
-				 after_render:function( app, name ) {
-				     this.req_val( app, false );
-				     this.lef( app, false );
-				     this.ref( app, false );
-				     this.lmt( app, false );
-				     this.lst( app, false );
-				     this.lvt( app, false );
-				 }
-			     }, 
-			     {
-				 render:function(app) {
-				     return '<button type="button" id="reset_b_' + app.id + '">Reset</button>';
-				 },
-				 after_render:function(app,name) {
-				     $( '#reset_b_' + app.id ).click(function() {
-					 if( confirm( "This will remove all user accounts and app data. Are you sure?" ) ) {
-					     root.purge_app( name,
-							     function() {  },
-							     function( err ) { alert( err ); }
-							   );
-					 }
-				     } );
-				 }
-			     } ], //app_cols
-		user_cols : ['x', //due to hash key..have to find a better solution TODO
-			     { //email
-				 render:function(l,h){
-				     var em=l.get('email');
-				     return em?em:'n/a';
-				 },
-				 after_render:function(app){}
-			     },
-			     { //is root
-				 render:function(l,h){
-				     if(l.is_master_root()){
-					 return 'master root';
-				     }
-				     return '<input type="checkbox" id="lr_'+l.id+'" '+
-					 (l.is_root()*1==1?' checked':'')+'>';
-				 },
-				 after_render:function(l,h){
-				     if(!l.is_master_root()){
-					 (function(li) {
-					     $('#lr_'+li.id).click(
-						 function(){
-						     if($('#lr_'+li.id).is(':checked')){
-							 root.make_root(li);
-						     } else {
-							 root.remove_root( li, function(){}, function(err) { alert(err)} );
+	  $.yote.util.register_functions( {
+	      check_login_status:function(args) {
+		  return $.yote.is_root() ? "<$$ Logged_in $$>" : "<$$ Logged_out $$>";
+	      },
+	      logout:function(args) {
+		  $.yote.logout();
+		  refresh_all();
+	      },
+	      forgot:function(args) {
+		  $( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Recover_Login" } ) );
+		  $.yote.util.init_ui();
+	      },
+	      init_recover:function(args) {
+		  if( args['vars'] ){
+		      var e = '#' + args[ 'vars' ][ 'email' ];
+		      $.yote.util.button_actions({
+			  button : '#' + vars[ 'recover' ],
+			  texts : [ e ],
+			  action : function() {
+			      root.recover_password( $(e).val(),
+						     function(msg) {
+							 $(m).empty().append("ERROR : " + msg );
+						     },
+						     function(err) {
+							 $(m).empty().append("ERROR : " + err );
 						     }
-						 }
-					     );
-					 } )( l );
-				     }
-				 }
-			     },
-			     {
-				 render: function( l ) {
-				     return l.is_validated() ? 'Yes' : 'No';
-				 }
-			     }
-			    ], //user_cols
-		cron_cols : [ '*name',
-			      $.yote.util.check_edit( 'enabled', undefined, undefined, undefined,
-						      function(val,item) {
-							  cron.update_entry( entry );
-							  cron_ct.refresh();
-						      } ),
-			      '*notes',
-			      '*script',
-			      {
-				  render : function( entry ) {
-				      if( entry.get( 'next_time' ) > 0 )
-					  return '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>';
-				      else
-					  return "Not Scheduled";
-				  },
-				  after_render : function( entry ) {
-				      $( '#recalc_' + entry.id ).click( function() {
-					  cron.update_entry( entry );
-				      } );
-				  }
-			      },
-			      {
-				  render : function( entry ) {
-				      return '<div id="cron_rep_' + entry.id + '"></div><div id="cron_rep_new_' + entry.id + '"></div>';
-				      //repeat
-				  },
-				  after_render : function( entry ) {
-				      var rep_ct = $.yote.util.control_table( {
-					  attachpoint : '#cron_rep_' + entry.id,
-					  show_count : false,
-					  plimit : 100,
-					  item : entry,
-					  container_name : 'repeats',
-					  new_button : 'Add',
-					  include_remove : true,
-					  column_headers : [ 'Interval (mins)', 'Infinite Repeat', 'Repeats' ],
-					  columns : [
-					      $.yote.util.col_edit( 'repeat_interval', null, function( val, item ) {
-						  item.set( 'repeat_interval', val );
-						  cron.update_entry( entry );
-						  cron_ct.refresh();
-					      } ),
-					      $.yote.util.check_edit( 'repeat_infinite', undefined, undefined, undefined,
-								      function(val,item) {
-									  cron.update_entry( entry );
-									  cron_ct.refresh();
-								      } ),
-					      $.yote.util.col_edit( 'repeat_times', null, function( val, item ) {
-						  item.set( 'repeat_times', val );
-						  cron.update_entry( entry );
-						  cron_ct.refresh();
-					      } )
-					  ],
-					  new_attachpoint : '#cron_rep_new_' + entry.id,
-					  new_column_titles : [
-					      'interval (min)',
-					      'infinite repeat',
-					      'times'
-					  ],
-					  new_required_by_function : function( txts ) {
-					      return $( txts[ 0 ] ).val().match( /\S/ ) != null && ( $( txts[ 1 ] ).is( ':checked' ) ||
-												     $( txts[ 2 ] ).val().match( /\S/ ) != null );
-					  },
-					  new_columns : [
-					      'repeat_interval',
-					      {
-						  field : 'repeat_infinite',
-						  render : function( cid ) {
-						      return '<input type="checkbox" id="' + cid + '">';
-						  },
-						  on_create : function( item, id ) {
-						      item.set( 'repeat_infinite', $( '#' + id ).val() );
-						  }
-					      },
-					      'repeat_times'
-					  ],
-					  after_new_function : function( newitem ) {
-					      cron.update_entry( entry );
-					      cron_ct.refresh();
-					  }
-				      } );
-				  }
-			      },
-			      {
-				  render : function( entry ) {
-				      return '<div id="cron_sched_' + entry.id + '"></div><div id="cron_sched_new_' + entry.id + '"></div>';
-				  },
-				  after_render : function( entry ) {
-				      var ct = $.yote.util.control_table( {
-					  attachpoint : '#cron_sched_' + entry.id,
-					  show_count : false,
-					  plimit : 100,
-					  item : entry,
-					  container_name : 'scheduled_times',
-					  include_remove : true,
-					  column_headers : [ 'Scheduled Time' ],
-					  columns : [
-					      { render : function( txt ) { return $.yote.util.format_date( new Date( 60000 * txt ), "h:m Y-M-D" ) } }
-					  ],
-					  new_button : 'Add',
-					  new_attachpoint : '#cron_sched_new_' + entry.id,
-					  new_column_titles : [ 'when' ],
-					  remove_function : function( str, idx ) {
-					      entry.list_delete( { name : 'scheduled_times', index : idx } );
-					      cron.update_entry( entry );
-					      cron_ct.refresh();
-					  },
-					  new_function : function() {
-					      return $( '#cron_new_rep_at' ).val();
-					  },
-					  after_new_function : function( it ) {
-					      cron.update_entry( entry );
-					      cron_ct.refresh();
-					  },
-					  new_columns : [
-					      {
-						  field : 'scheduled_time_' + $.yote.util.next_id(),
-						  on_create : function( str, id ) {
-						      var do_when = new Date( $( '#' + id ).val() );
-						      entry.add_to( { name : 'scheduled_times', items : [ do_when.valueOf()/60000 ] } );
-						      cron.update_entry( entry );
-						      cron_ct.refresh();
-						  },
-						  render : function( id ) {
-						      return '<input type="datetime-local" id="' + id + '">';
-						  }
-					      }
-					  ]
-				      } );
-				      //schedule
-				  }
-			      }
-			    ] //cron_cols
+						   );
+			  } } );
+		  }
+	      },
+	      init_login:function(args) {
+		  if( args['vars'] ) {
+		      var vars = args['vars'];
+		      var h = '#' + vars[ 'handle' ],
+		          p = '#' + vars[ 'password' ],
+                          m = '#' + vars[ 'messages' ];
 
-	    } );
-	} //register_items
+		      $.yote.util.button_actions({
+			  button : '#' + vars[ 'login_button' ],
+			  texts : [ h, p ],
+			  action : function() {
+			      $.yote.login( $(h).val(),
+					    $(p).val(),
+					    function(msg) {
+						if( $.yote.is_root() ) {
+						    refresh_all();
+ 						}
+						else if( $.yote.is_logged_in() ) {
+						    $(m).empty().append( "ERROR : this account does not have root privileges" );
+						}
+					    },
+					    function(err) {
+						$(m).empty().append("ERROR : " + err );
+					    }
+					  );
+			  } } );
+		  }
+	      }, //init_login
+	      cron_entry_next_time : function( args ) {
+		  var entry = args[ 'default_var' ];
+		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
+	      },
+	      app_user_count : function( args ) {
+		  return args[ 'default_var' ].count('_account_roots');
+	      },
+	      make_root : function( is_checked, user ) {
+		  if( is_checked ) return root.make_root( user );
+		  root.remove_root( user, function(){},function(err){ alert(err)} );
+	      },
+	      root_status : function( args ) {
+		  var login = args[ 'default_var' ];
+		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
+	      },
+	      is_validated : function( args ) {
+		  return args[ 'default_var' ].is_validated() ? "Yes" : "No";
+	      },
+	      init_paginator : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
+                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
+                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
+                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
 
-	$( 'button.sidenav' ).each( function( idx, domEl ) {
-	    $(this).click(function(){
-		$( '.apppanel' ).hide();
-		$( '#' + $(this).attr('id') + '_div' ).show();
-	    });
-	} );
+		  if( collection.can_rewind() ) {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
+		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
+		  }
+		  if( collection.can_fast_forward() ) {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_forward_button_id ).click( function() {
+			  collection.forwards();
+			  refresh_all();
+		      } );
+		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
+		  }
+	      }, //init_paginator
+	      init_search : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
+                      search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
+		  $.yote.util.button_actions( {
+		      button :  '#' + search_button_id,
+		      texts : [ '#' + search_val_id  ],
+		      action : function() {
+			  collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ],
+			  refresh_all();
+		      }
+		  } )
+		  
+	      }, //init_search
+	      refresh_all: refresh_all
+	  } );
 
-	attach_login( {
-	    attachpoint         : '#logged_in_status',
-	    message_attachpoint : '#msg_div',
-	    after_login  : check_perms,
-	    after_logout : check_perms
-	} );
+	  function refresh_all() {
+	      if( $.yote.is_root() ) {
+		  $( '#errpanel' ).hide();
+		  $( '#mainpanel' ).show();
+	      }
+	      else {
+		  $( '#errpanel' ).show();
+		  $( '#mainpanel' ).hide();
+		  $.yote.util.refresh_ui();
+		  return;
+ 	      }
+	      $.yote.util.register_template_variable( 'cron', root.cron() );
+	      $.yote.util.register_template_variable( 'root', root );
 
-	$( '.apppanel' ).each( function( idx, domEl ) { $( this ).hide(); } );
+	      $.yote.util.refresh_ui();
+	  }//refresh_all
 
-	function check_perms() {
-	    if( $.yote.is_root() ) {
-		$( '#errpanel' ).hide();
-		$( '#mainpanel' ).show();
-		cron = root.cron();
-		register_items();
-		$.yote.util.init_ui();
-	    }
-	    else {
-		$( '#errpanel' ).show();
-		$( '#mainpanel' ).hide();
- 	    }
-	} //check_perms
-    });
+	  refresh_all();
+      });
     </script>
+
+<script type="text/template" class="yote_template_definition" template_name="Empty">
+   None Found
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron">
+ <H3>Crons</H3>
+ <$@ Cron_Table Empty _ entries @$>
+ <$ newbutton _ entries Add Cron $>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Table">
+
+  <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>
+                        <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
+                        <th>Schedule</th> <th>Delete</th>
+                  </tr>
+      <@ Cron_Row 5 @>
+
+  </table>
+  <$$ Paginator $$>
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
+ <? check_login_status ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_in">
+   Logged in as <$ show acct handle $><BR>
+   <$ action_link logout Log Out $>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_out">
+   <$$$ messages <span>This page requires a root login.</span> $$$><BR>
+   <$$$ handle <input placeholder="handle" type="text"> $$$>
+   <$$$ password <input placeholder="password" type="password"> $$$>
+   <$$$ login_button <button type="BUTTON">Log In</button> $$$>
+<BR>
+   <$ action_link forgot Forgot Password $>
+   <?? init_login ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Recover_Login">
+   <$$$ messages <span></span> $$$><BR>
+   <$$$ email <input placeholder="email" type="text"> $$$>
+   <$ button recover Recover Password $>
+   <$ action_link refresh_all [X] $>
+   <?? init_recover ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Row">
+  <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
+    <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td>
+  </tr>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Paginator">
+  <$$$ paginate_to_beginning_button <button type="button">&lt;&lt;</button> $$$>
+  <$$$  paginate_back_button <button type="button">&lt;</butotn> $$$>
+  <$$$  paginate_forward_button  <button type="Button"> &gt;</button> $$$>
+  <$$$  paginate_to_end_button  <button type="Button">&gt;&gt;</button> $$$>
+<BR>
+  <?? init_paginator ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Search">
+  <$$$ search_val <input type="text"> $$$>
+  <$$$ search_btn <button type="button">Search</button> $$$>
+  <?? init_search ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
+ <$@ Entry_Repeat_Table Empty  _ repeats @$>
+ Interval (min) : <$$$ repeat_interval new <input type="text"> $$$> <BR>
+ Infinite Repeat : <$$$ repeat_infinite new <input type="checkbox"> $$$> <BR>
+ Number Repeat Times : <$$$ repeat_times new <input type="text"> $$$> <BR>
+ <$ newbutton _ repeats Add Repeat $>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Repeat_Table">
+
+  <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>
+                        <th>Delete</th>
+                        <th>Schedule</th> <th>Delete</th>
+                  </tr>
+      <@ Cron_Repeat_Row 20 @>
+  </table>
+  <$$ Paginator $$>
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Repeat_Row">
+  <tr>  <td><$ edit _ repeat_interval $></td>  <td><$ checkbox _ repeat_infinite $></td>  <td><$ edit _ repeat_times $></td>  <td><$ list_remove_button _ repeats $></td>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
+ <$@ Entry_Schedule_Table Empty _ scheduled_times @$>
+ <$$$ new_schedule_time <input type="datetime-local"> $$$>
+ <$ button new_schedule Schedule Time $>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">
+
+  <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
+      <@ Cron_Schedule_Row 2 @>
+  </table>
+  <$$ Paginator $$>
+  <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Schedule_Row">
+  <tr>  <td><$ show $></td> <td><$ button remove_scheduled_time Delete $></td> </tr>
+</script>
+
+<!-- ------------------------------ -->
+
+
+<script type="text/template" class="yote_template_definition" template_name="Apps">
+ <H3>Applications Installed</H3>
+ <$% App_Table Empty _ _apps %$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="App_Table">
+  <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
+                        <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
+                  </tr>
+      <% App_Row 2 %>
+  </table>
+  <$$ Paginator $$>
+<BR>
+ <$$ Search $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="App_Row">
+    <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>
+                        <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$ button reset_app Reset $></th>
+                  </tr>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Email_Settings">
+    <table>
+      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$ checkbox _ requires_validation $> </td> </tr>
+      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$ edit _ validation_email_from $> </td> </tr>
+      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$ edit _.validation_subject_template text $> </td> </tr>
+      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$ edit _.validation_message_template text $> </td> </tr>
+      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$ edit _.validation_link_template text $> </td> </tr>
+    </table>
+</script>
+
+<!-- ------------------------------ -->
+
+<script type="text/template" class="yote_template_definition" template_name="Users">
+ <H3>Users</H3>
+ <$% User_Table Empty _ _handles %$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="User_Table">
+  <table border=1><tr>  <th>Handle</th>     <th>Email</th>   <th>Is Root</th>
+                        <th>Was Validated</th>
+                  </tr>
+  <% User_Row 10 %>
+  </table>
+  <$$ Paginator $$>
+  <$$ Search $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="User_Row">
+    <tr>   <th><$ hash_key $></th> <th><$ show _ email $></th>   <th><? root_status ?></th>
+                        <th><? is_validated ?></th> </tr>
+</script>
+<!-- ------------------------------ -->
+
   </head>
 
   <BODY>
@@ -358,23 +422,16 @@ if we are our experiences then we are both sides of them.
 	<img height="70px" width="151px" src="yotelogo.png">
       </A>
       <UL id="top_nav" class="nav"></UL>
-      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="login_div" class="yote_template login" template="Log_in_box"></div>
       <DIV id="msg_div"></DIV>
     </DIV>
+
 
     <DIV id="errpanel" class="err">
       Must be logged in with a root account to view this page.
     </DIV>
-
+    
     <DIV class="mainpanel" id="mainpanel">
-
-	<!--
-	    accounts, with pagination and search
-	    edit motd
-            add and edit news
-	    show apps
-	  -->
-
 	<SECTION>
 	  <DIV class="page-header">
 	    <H1>Yote Admin Page (YAP)</H1>
@@ -386,58 +443,18 @@ if we are our experiences then we are both sides of them.
 	</SECTION>
 
 	<DIV class="appwrapper">
-	  <DIV id="sidenav" class="sidenav">
-            <UL>
-	      <LI><BUTTON class="sidenav" disabled id="app_b">Apps</BUTTON></LI>
-	      <LI><BUTTON class="sidenav" disabled id="user_b">Users</BUTTON></LI>
-	      <LI><BUTTON class="sidenav" disabled id="cron_b">Cron</BUTTON></LI>
-            </UL>
-	  </DIV>
 
-	  <DIV id="user_b_div" class="control_table apppanel" is_admin="root"
-	       plimit="10" item="$root" container_name="_handles"
-	       paginate_type="hash" title="Logins"
-	       column_headers="['Handle','Email','Is Root','Is Validated']"
-	       columns="$user_cols" after_render="*function(){ $('#user_b').prop('disabled',false); }"
-	       >
-	  </DIV>
+	  <DIV id="cron_div" class="yote_template" template="Cron" default_variable="cron"></div>
 
-	  <DIV id="app_b_div" class="control_table apppanel" is_admin="root"
-	       plimit="10" item="$root" container_name="_apps" paginate_type="hash"
-	       title="Apps" 
-	       column_headers="['Name','Host','Host URL','Number of Users','Email Settings','Reset']"
-	       columns="$app_cols" after_render="*function(){ $('#app_b').prop('disabled',false); }"
-	       >
-	  </DIV>
+	  <DIV id="user_div" class="yote_template" template="Users" default_variable="root"></div>
 
-	  <DIV id="cron_b_div" class="apppanel">
-	    <DIV id="cron_entry_div" class="control_table" is_admin="root"
-		 plimit="10" item="$cron" container_name="entries"
-		 title="Crons" include_remove="true" 
-		 column_headers="['Name','Enabled','Notes','Script','Next Run','Repeat','Schedule']"
-		 columns="$cron_cols" after_render="*function(){ $('#cron_b').prop('disabled',false); }"
-		 control_table_name="cron_ct"
-		 >
-	    </DIV>
-
-            <DIV id="reset_cron_panel" class="yote_panel" show="return '<BUTTON TYPE=button ID=reset_cron>Reset Cron</BUTTON>';"
-                 after_show="$('#reset_cron').click(function(){root.reset_cron()});"
-            ></DIV>
-
-	  </DIV>
-
-	  <DIV id="appnewpanel_cron" class="apppanel"></DIV>
-
-	  <DIV id="apppanel_pages" class="apppanel">
-	  </DIV>
+	  <DIV id="apps_div" class="yote_template" template="Apps" default_variable="root"></div>
 
 	</DIV>
 
     </DIV>
 
     <hr>
-
-    <div id="admin_parts"></div>
 
     <footer>
     </footer>
