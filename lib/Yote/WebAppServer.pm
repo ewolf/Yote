@@ -191,7 +191,6 @@ sub start_server {
 
     my $root = Yote::YoteRoot::fetch_root();
     Yote::ObjProvider::stow_all();
-
     # check for default account and set its password from the config.
     $root->_update_master_root( $args->{ root_account }, $args->{ root_password } );
 

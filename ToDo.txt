@@ -1,43 +1,19 @@
 The stack :
  
- users/app search in admin page
-
- redo login with templates
-
  for js..just package up all the js and send it across as one.
 
- consider getting rid of Yote::SimpleTemplate and replacing that with functions ( the fill )
-
- args hash for template functions rather than argument lists? Way to pack data into template? Something like json is looking good
+ more data into the template with json?
 
  edit or show control depending on who's logged in
 
  checkbox control that hooks to functions rather than ( on change, current value functions )
 
- update tests to test for 4 pagination types : list direct, list with host, hash direct, hash with host
-  
  test if mysql queries too big ( fixed in sqlite )
-
- SCRIPT TAG : id registers self <SCRIPT type="text/template" id="template_name">...</script>
-
- template for hashes ( like <@ for lists... <%  )
 
  redo admin page with new templates
 
  server side determination of container type
 
- template pagination : showing x of y or all y items to appear.
-
- make special template for login. Make a sort of package for template. An obj that 
-  has the text of the template plus methods that can be activated on it. This so that the
-  login box can respond to user input and morph into the correct state.
-
-
- special pagination links/buttons
-
- caching 
-
- new templating system : better error messages
  new templating system : add radio boxes
 
  Clear out obj manager cache and guest token by checking who logged in times. Good thing for cron.
@@ -45,63 +21,16 @@ The stack :
 
  rewrite yote_util and define special characters better ( scaffold this...replace one piece at a time since its largely working )
 
-   First thing - the flow of execution
-       * variables are registered
-       * ui_init is called
-       *   init checks for yote_panel and control_panel classes to run el_init on
-       *   el_init is called for each of those that are not marked as completed
-       *         el init fills in the anchor points ( the div or other element that has the class name ) by analyzing the attribute values of the element.
-       *         if part of the fill in includes an other yote_panel or control_panel that appears in a cell of an item row ( control_panels show lists of items in rows ), then the magic $$ variable is assigned to that item.
- ( talk about how $$ is the default item and is assigned if there is no item attribute )
-       *   if el_init had been called, it may have written more yote_panel and control_panel elements so ui_init is called again
-
-   options :
-
-    
-
-          - wrap the value in a javascript function as the return and invoke it..thus
-                      prop="$variable"  looks in registered variables for the value and places it in during INIT 
-                      prop="&some_app.get_foo()"  would return the value of foo for some_app immediately during INIT
-                      prop="&function() { return some_app.get_foo(); }" would return a function that would return the value of foo for some_app
-                      prop="~html" puts the html value into the propery or column value
-                      prop="[....]" assign the value of the data structure to prop. This is eval'd
-                      prop="{....}" assign the value of the data structure to prop
-		      
-     OK, this is hard to at first wrap ones head around. At the time of writing I don't copmletely yet either.  
-     Have to meditate on the flow of exectution :
-           
-
-		      
- hash_paginator in js like list_paginator
-
- attrs for html entities : maybe prefix these with 'yote' and catch all attrs that begin with yote ( see init_el function ( aroun dline 839 ) of yote.util.js
-
- Reset cron
-  
- Control table filter/search
-
- How about admin making accounts validated. Also account change its email now validates.
-  Ugh, more todo? Well, I want to have a good way to update the UI when a list even happens. The UI does not usually keep list objects in it, just slices of them, 
-   and those slices do not get updated when things get added to the list ( or hash ) object.
-     [ so, my thought for the above is to register an object/list pairing using ObjManager, then mark the lists as a list dirty when updated
-       The objmanager will know which account is tracking which lists.
-       On the client side, there can be event handlers that fire when objects or those lists are updated ]
-
-
-
 
   Testing : need a test for the web app server.
 
-  Idea for updating things...Use something cron like - a program that is run once and does things like $root->get_foo(afdasdf);
-
-  Also, how about an even handler for when an object does receive an update, and an update to its list.
+  Also, how about an event handler for when an object does receive an update, and an update to its list.
   
   make sure yote_root http pages are not overwritten during install/upgrade
 
 Currently on my plate :
   * think about validation, login vs account.  would you have the case where one login would be valid in one app but not an other?  Of course, the app itself could override the token_login method to die if the desired configuration is not met.
   * yote.js object handle objects
-  * template 
   * update madyote pages
   * limited html widget that disallows invalid html and script.
   * text only editor
@@ -109,24 +38,7 @@ Currently on my plate :
   * object command line
   * better error messages for javascript when permissions errors occur
   * log in with email as well as handle
-________________________________________________
 
-It would be nice to have a <DIV> have information that links it to an editing session.
-Something like
-<DIV object="objname" field="somefield" editable="root||owner||all||none" editfilter="text|html|limitedhtml"></DIV>
-
-where limitedhtml disallows script tags and certain tags. It might whitelist a set of tags.
-
-It would be supernice to extend this to control tables
-
-<DIV object="objname"
-     list_name="foo"
-     fields="foo,bar,baz"
-     field_titles="Foo,Bar,Baz"
-     can_remove="true"
-     can_create="true"
->
-</div>
 
 _________________________________________________
 

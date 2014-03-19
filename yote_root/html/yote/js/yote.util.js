@@ -47,14 +47,14 @@ $.yote.util = {
 
     register_items:function( hashed_items ) {
 	for( var key in hashed_items ) {
-	    this.registered_items[ key ] = hashed_items[ key ];
+	     $.yote.util.registered_items[ key ] = hashed_items[ key ];
 	}
     },
     register_item:function( name, val ) {
-	this.registered_items[ name ] = val;
+	 $.yote.util.registered_items[ name ] = val;
     },
     register_template_variable:function( name, val ) {
-	this.registered_items[ name ] = val;
+	 $.yote.util.registered_items[ name ] = val;
     },
     button_actions:function( args ) {
 	var cue = {};
@@ -760,6 +760,8 @@ $.yote.util = {
 		    }
 		    else if( $.yote.util.functions[ args[ 'action' ] ] ) {
 			$.yote.util.functions[ args[ 'action' ] ]( args )
+		    } else if( typeof window[ args[ 'action' ] ] === 'function' ) {
+			window[ args[ 'action' ] ]( args );
 		    } else {
 			console.log( "'" + args['action'] + "' not found for button." );
 		    }
@@ -770,10 +772,14 @@ $.yote.util = {
 	} //yote_button
 	else if( el.hasClass( 'yote_action_link' ) ) {
 	    if( args[ 'action' ] ) {
+		if( ! args[ 'default_var' ] ) args[ 'default_var' ] = args[ 'item' ];
+		if( ! args[ 'default_parent' ] ) args[ 'default_parent' ] = args[ 'parent' ];
 		$( args[ 'attachpoint' ] ).click(function(ev){
 		    ev.preventDefault();
 		    if( $.yote.util.functions[ args[ 'action' ] ] ) {
 			$.yote.util.functions[ args[ 'action' ] ]( args[ 'item' ], args[ 'parent' ] );
+		    } else if( typeof window[ args[ 'action' ] ] === 'function' ) {
+			window[ args[ 'action' ] ]( args );
 		    } else {
 			console.log( "'" + args['action'] + "' not found for button." );
 		    }
@@ -1516,7 +1522,6 @@ $.yote.util = {
     template_context : {},
     intrinsic_functions : {
 	new_with_same_permissions : function( args ) {
-	    console.log( [ "NWSP", args ] );
 	    if( args[ 'default_var' ] && args[ 'field' ] ) {
 		var newv = args[ 'default_var' ].new_with_same_permissions();
 		if( newv ) {
@@ -1544,7 +1549,13 @@ $.yote.util = {
 	    }
 	    console.log( 'warning : intrinsic new_with_same_permissions called without both default_var and field' );
 	    return null;
-	},
+	}, //new_with_same_permissions
+	remove_from_list : function( args ) {
+	    if( args[ 'default_parent' ] && args[ 'default_var' ] && args[ 'field' ] ) {
+		args[ 'default_parent' ].remove_from( { name : args[ 'field' ], items : [ args[ 'default_var' ] ] } );
+		$.yote.util.refresh_ui();
+	    }
+	}, //remove_from_list
     },
 
     register_template:function( key, value ) {
@@ -1712,7 +1723,7 @@ $.yote.util = {
 	    } 
 	    else {
 		ctrl_id = '__' + $.yote.util.next_id();
-		ctrl = ctrl.replace( /^\s*(<\s*\S+) /, '$1 id="' + ctrl_id + '" ' );
+		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
 	    if( parts[ 2 ] == 'new' ) {
 		if( ! params[ 'new_vars' ] ) params[ 'new_vars' ] = {};
@@ -1744,7 +1755,7 @@ $.yote.util = {
             host_obj          = $.yote.util._template_var( args ),
 	    container_name    = parts[ 3 ].trim();
 
-	if( host_obj && container_name ) {
+	if( typeof host_obj === 'object' && container_name ) {
 	    var container = host_obj.wrap( { collection_name : container_name, 
 					     size : args[ 'size' ],
 					     wrap_key : params[ 'template_name' ],
@@ -1805,6 +1816,7 @@ $.yote.util = {
     },
 
     _template_var:function( args ) {
+	if( ! args[ 'target' ] ) return null;
         var tlist = args[ 'target' ].split(/[\.]/);
 	var subj = tlist[0];
 	var subjobj;
@@ -1814,7 +1826,7 @@ $.yote.util = {
 	else if( subj == 'id' )   subjobj = args[ 'template_id' ];
 	else if( subj == '_' )    subjobj = args[ 'default_var' ];
 	else if( subj == '__' )   subjobj = args[ 'default_parent' ];
-	else subjobj = this.registered_items[ subj ];
+	else subjobj = $.yote.util.registered_items[ subj ];
 
 	if( subjobj ) {
 	    for( i=1; i<tlist.length; i++ ) {
@@ -1864,7 +1876,6 @@ $.yote.util = {
 	    return '<span class="yote_panel" use_select="true" sel_list="' + listblock + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
 	}
 	else if( cmd == 'selectobj' ) {
-	    cmdl = varcmd.split(/ +/);
             args[ 'target' ] = cmdl[3].trim();
 	    var lst = $.yote.util._template_var( args );
 	    if( lst ) {
@@ -1878,21 +1889,29 @@ $.yote.util = {
 	    parts = /^\s*(\S+)\s+(\S+)\s*(.*)/.exec( varcmd );
 	    var item   = default_var;
 	    var parent = default_parent;
-	    var txt = cmdl.length > 2 ? cmdl[2].trim() : '';
+	    var txt = parts ? parts[3].trim() : '';
 	    return '<button type="BUTTON" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>'; //needs to insert an id for itself and register the action
 	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
 	}
 	else if( cmd == 'action_link' ) {
-	    parts = /^\s*(\S+)\s+(\S+)\s*(.*)/.exec( varcmd );
+	    parts = /^\s*\S+\s+\S+\s*(.*)/.exec( varcmd );
 	    var item   = default_var;
 	    var parent = default_parent;
-	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + cmdl[2].trim() + '</a>';r
+	    txt = parts ? parts[1].trim() : '';
+	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</a>';
 	}
 	else if( cmd == 'newbutton' ) {
+	    parts = /^\s*\S+\s+\S+\s+\S+\s*(.*)/.exec( varcmd );
 	    var subjobj = $.yote.util._template_var( args );
-	    if( ! txt ) txt = 'New';
-	    return '<button type="BUTTON" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__new_with_same_permissions" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>'; //needs to insert an id for itself and register the action
-	    
+	    txt = parts ? parts[1].trim() : 'New';
+	    return '<button type="BUTTON" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__new_with_same_permissions" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
+	}
+	else if( cmd == 'list_remove_button' ) {	    
+	    parts = /^\s*\S+\s+\S+\s+\S+\s*(.*)/.exec( varcmd );
+	    var subjobj = $.yote.util._template_var( args );
+	    txt = parts && parts[1] ? parts[1].trim() : 'Delete';
+	    var parent = default_parent;
+	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';	    
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return varcmd;
