@@ -189,13 +189,13 @@ sub paginate {
     }
 
     my( $orstr, @params ) = ( '', $obj_id );
-    my $search_terms = $args->{ search_terms };
+    my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
     my $search_fields = $args->{ search_fields };
-    if( $search_terms ) {
-	if( $search_fields ) {
+    if( @search_terms ) {
+	if( $search_fields && @$search_fields ) {
 	    my( @ors );
 	    for my $field ( @$search_fields ) {
-		for my $term (@$search_terms) {
+		for my $term (@search_terms) {
 		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
 		}
@@ -203,21 +203,26 @@ sub paginate {
 	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
 	}
 	else {
-	    $orstr = " AND value IN (".join('',map { '?' } @$search_terms ).")";
-	    push @params, map { "\%$_\%" } @$search_terms;
+	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
 	}
     }
 
     my $query;
     my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
 
-    if( $args->{ sort_fields } ) {
+    if( @{ $args->{ sort_fields }||[] } ) {
 	my $sort_fields = $args->{ sort_fields };
 	my $reversed_orders = $args->{ reversed_orders } || [];
 	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
     }
     elsif( $search_fields ) {
-	$query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
+	if( @{ $args->{ hashkey_search } || [] } ) {
+	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
+	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
+	}
+	else {
+	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
+	}
 	if( $type eq 'ARRAY' ) {
 	    $query .= ' ORDER BY cast( bar.field as int ) ';
 	}
@@ -229,7 +234,11 @@ sub paginate {
     }
     else {
 	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
+        push @params, map { "\%$_\%" } @search_terms;
 	if( $type eq 'ARRAY' ) {
+            if( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
 	    if( $args->{ sort } ) {
 		$query .= ' ORDER BY value ';
 	    }
@@ -238,11 +247,24 @@ sub paginate {
 	    }
 	}
 	else {
+	    if( @{ $args->{ hashkey_search } || [] } ) {
+                if( @search_terms ) {
+                    $query .= ' AND ((' . join( ' OR ', map { ' value LIKE ? ' } @search_terms ) . ') OR (' . join( " OR ", map { ' field LIKE ? ' } @{ $args->{ hashkey_search } }  ) . '))';
+                }
+                else {
+                    $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
+                }
+		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
+	    }
+            elsif( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
 	    $query .= ' ORDER BY field ';
 	}
 	$query .= ' DESC' if $args->{ reverse };
 	$query .= $PAG;
     }
+
     my $ret = $self->_selectall_arrayref( $query, @params );
     if( $args->{return_hash} ) {
 	if( $type eq 'ARRAY' ) {
@@ -263,7 +285,7 @@ sub recycle_objects {
     $start_id ||= 2;
     $end_id   ||= $self->max_id();
 
-    my $recycled;
+    my $recycled = 0;
 
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
 	my $obj = $self->fetch( $id );
@@ -295,12 +317,16 @@ sub _stow_now {
 	$self->_do( @$upd );
 	die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     }
-    my $first_data = shift @$udata;
-    if( $first_data ) {
-	$self->_do( qq~INSERT INTO field
+    while( @$udata ) {
+	my( $first_data, @chunk );
+	( $first_data, @chunk[0..200], @$udata ) = @$udata;
+	(@chunk) = (grep { $_ } @chunk);
+	if( $first_data ) {
+	    $self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-		    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
-		    map { @$_ } $first_data, @$udata );
+			join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @chunk ),
+			map { @$_ } $first_data, @chunk );
+	}
     }
 } #_stow_now
 
@@ -348,39 +374,89 @@ sub _engage_queries {
 	    $self->_do( @$upd );
 	    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 	}
-	my $first_data = shift @$udata;
-	if( $first_data ) {
-	    $self->_do( qq~INSERT INTO field
+	while( @$udata ) {
+	    my( $first_data, @chunk );
+	    ( $first_data, @chunk[0..200], @$udata ) = @$udata;
+	    (@chunk) = (grep { $_ } @chunk);
+	    if( $first_data ) {
+		$self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-			join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
-			map { @$_ } $first_data, @$udata );
+			    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @chunk ),
+			    map { @$_ } $first_data, @chunk );
+	    }
 	}
     }
 } #_engage_queries
+
+sub container_type {
+    my( $self, $host_id, $container_name ) = @_;
+
+    my( $ans ) = $self->_selectrow_array( "SELECT o.class FROM field f,objects o WHERE f.obj_id=? AND f.field=? AND o.id=f.ref_id", $host_id, $container_name );
+    return $ans;
+} #container_type;
 
 #
 # Returns the number of entries in the list of the given id.
 #
 sub count {
-    my( $self, $container_id, $args ) = @_;
-    my $count;
-    if( $args->{search_fields} && $args->{search_terms} ) {
-	my( @ors );
-	my( @params ) = $container_id;
-	for my $field ( @{$args->{search_fields}} ) {
-	    for my $term (@{$args->{search_terms}}) {
-		push @ors, " (f.field=? AND f.value LIKE ?) ";
-		push @params, $field, "\%$term\%";
-	    }
-	}
-	my $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
-	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM (SELECT bar.field,fi.obj_id FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2) foo", @params );
-    } #if count with search
-    else {
-	( $count ) = $self->_selectrow_array( "SELECT count(*) FROM field WHERE obj_id=?",  $container_id );
-    }
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    my( $self, $obj_id, $args ) = @_;
 
+    my( $orstr, @params ) = ( '', $obj_id );
+    my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
+    my $search_fields = $args->{ search_fields };
+    if( @search_terms ) {
+	if( $search_fields ) {
+	    my( @ors );
+	    for my $field ( @$search_fields ) {
+		for my $term (@search_terms) {
+		    push @ors, " (f.field=? AND f.value LIKE ?) ";
+		    push @params, $field, "\%$term\%";
+		}
+	    }
+	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+	}
+	else {
+	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
+	}
+    }
+
+    my $query;
+    my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+
+    if( $search_fields ) {
+#        push @params, map { "\%$_\%" } @search_terms;
+	if( $args->{ hashkey_search } ) {
+	    $query = "SELECT count( distinct bar.field || '-' || fi.obj_id ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";
+	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
+	}
+	else {
+	    $query = "SELECT count( distinct bar.field || '-' || fi.obj_id ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id ";
+	}
+    }
+    else {
+	$query = "SELECT count(*) FROM field WHERE obj_id=?";
+        push @params, map { "\%$_\%" } @search_terms;
+	if( $type eq 'ARRAY' ) {
+            if( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
+	}
+	else {
+	    if( $args->{ hashkey_search } ) {
+                if( @search_terms ) {
+                    $query .= ' AND ((' . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ') OR (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . '))';
+                }
+                else {
+                    $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
+                }
+		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
+	    }
+            elsif( @search_terms ) {
+                $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
+            }
+	}
+    }
+    my( $count ) = $self->_selectrow_array( $query, @params );
     return $count;
 } #count
 
@@ -568,6 +644,10 @@ Yote::ObjProvider::init( datastore => 'Yote::IO::SQLite', db => 'yote_db', uname
 =over 4
 
 =item commit_transaction( )
+
+=item container_type( host_id, container_name )
+
+returns the class name of the given container from a host class.
 
 =item count( container_id )
 

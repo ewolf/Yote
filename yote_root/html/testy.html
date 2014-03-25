@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test ground</title>
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/js/main.js"></script>
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <META NAME="Author" CONTENT="Eric Wolf, coyocanid@gmail.com">
+
+    <STYLE>
+
+    </STYLE>
+
+    <script type="text/template" class="yote_template_definition" template_name="known_icecream_row">
+      <tr><td><$ edit _ flavor $></td><td><$ show _ color $></td><td><$ list_remove_button _ known_icecreams $></td></tr>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="known_icecreams">
+      <h2>Ice Creams I know</h2>
+    <table><tr><th><$ button flav_sort Flavor$><th><$ button color_sort Color $><th>Action</th></tr>
+        <@ known_icecream_row 5 @>
+      </table>
+      <$$ SearchList flavor color $$><BR>
+      <$$ Paginator $$>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="empty">
+      No icecreams found
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="demo">
+      <H1>Template Demo for : <$ show _ nickname $></H1><HR>
+      <STYLE>.panel { margin-left:25px; vertical-align:top; margin-top: 25px; display:inline-block }</style>
+      <DIV>
+        <DIV class="panel"><h2>Info</h2>
+          Name : <$ edit _ nickname $><br>
+          Favorite Ice Cream : <$ selectobj _ icecream _.known_icecreams flavor $><br>
+          Favorite Season : <$ select sandbox season ['Winter','Summer','Spring','Autumn' ] $><br>
+          likes checkboxes : <$ checkbox _ likes_checkboxes $><br>
+          you sure  : <$ checkbox _ likes_checkboxes $><br>
+         <$ button reset_sandbox Reset This Sandbox $>
+        </DIV><DIV class="panel">
+          <$@ known_icecreams empty _ known_icecreams  @$>
+          <div>Add Icecream
+            <$$$ flavor new <input type="text" placeholder="Flavor"> $$$>
+	    <$$$ color new <input type="text" placeholder="Color"> $$$>
+          </div><HR>
+	  <$ newbutton _ known_icecreams Learn Icecream $>
+          <? rand ?>
+       </div>
+          
+     </div>
+    </script>
+
+    <script>
+      $().ready(function(){
+          $.yote.include_templates( '/templates.html' );
+
+          $.yote.debug = false;
+          $.yote.init();
+
+          var known_icecreams, search_ctrl, sandbox;
+          var app = $.yote.fetch_app( 'MadYote' );
+
+          try {
+              sandbox = app.get_sandbox();
+          } catch( err ) {
+              console.log( ['err',app] );
+              app.reset_sandbox();
+          }
+
+          $.yote.util.register_item( 'sandbox', sandbox );
+
+          $.yote.util.register_functions( {
+	      init_search_hash : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
+                  search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
+		  $.yote.util.button_actions( {
+		      button :  '#' + search_button_id,
+		      texts : [ '#' + search_val_id  ],
+		      action : function() {
+			  collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ];
+			  refresh_all();
+		      }
+		  } )
+		  
+	      }, //init_search_hash
+	      init_search_list : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
+                  search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  $( '#' + search_val_id ).val( collection.search_values.join(' ') );
+		  $.yote.util.button_actions( {
+		      button :  '#' + search_button_id,
+		      texts : [ '#' + search_val_id  ],
+		      action : function() {
+			  collection.search_fields = args[ 'extra' ].split(/ +/);
+			  collection.search_values = $( '#' + search_val_id ).val().split(/ +/);
+			  refresh_all();
+		      }
+		  } )
+		  
+	      }, //init_search_list
+
+              reset_sandbox : function() { app.reset_sandbox();
+                                           sandbox = app.get_sandbox();
+                                           $.yote.util.register_item( 'sandbox', sandbox );
+                                           known_icecreams = null;
+                                           refresh_all(); },
+              'rand' : function( ic, parent ) {
+                  return $.yote.util.fill_template( Math.random() < 0.5 ? 'rand_A' : 'rand_B' );
+              },
+	      init_sorts : function( args ) {
+		  var color_b_id = args[ 'vars' ][ 'color_b' ],
+		       flav_b_id = args[ 'vars' ][ 'flav_b' ];
+		  $( '#' + color_b_id ).click( function() { color_sort( args ) } );
+		  $( '#' + flav_b_id ).click( function() { flav_sort( args ) } );
+	      },
+              flav_sort : function( args ) { console.log( args ); ice_cream_sort( args[ 'default_var' ], 'flavor' ) },
+              color_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'color' ) },
+
+	      init_paginator : function( args ) {
+		  var collection = args[ 'default_var' ];
+		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
+                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
+                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
+                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
+
+		  if( collection.can_rewind() ) {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
+		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
+		  }
+		  if( collection.can_fast_forward() ) {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
+		      $( '#' + pag_forward_button_id ).click( function() {
+			  collection.forwards();
+			  refresh_all();
+		      } );
+		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
+		  } else {
+		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
+		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
+		  }
+	      } //init_paginator
+
+          } );
+
+          function ice_cream_sort( known_icecreams, fld ) {
+	      console.log( [ "ICS", known_icecreams, fld ] );
+              if( fld == known_icecreams[ 'sort_field' ] ) {
+                  known_icecreams.sort_reverse = ! known_icecreams.sort_reverse;
+              }
+              else {
+                  known_icecreams.sort_field = fld;
+                  known_icecreams.sort_fields = [ fld ];
+                  known_icecreams.sort_reverse = false;
+              }
+              refresh_all();
+          };
+
+          $.yote.util.register_templates( {
+              rand_A : 'Random A',
+              rand_B : 'Random B',
+          } );
+
+          function refresh_all() {
+              if( ! known_icecreams || ! known_icecreams.collection_obj ) {
+                  known_icecreams = sandbox.wrap_list( { collection_name : 'known_icecreams', size : 3 } );
+              }
+
+              var looking_for = $( '#ic_search' ).val();
+              known_icecreams.set_search_criteria( [ fld ], [ looking_for ] );
+
+	      $.yote.util.refresh_ui();              
+	  } //refresh_all
+	  refresh_all();
+      });
+    </script>
+  </head>
+
+  <BODY>
+   <h1>Client Side Template Demo</h1>
+    <div id="explain"></div>
+    <div id="testplace"></div>
+
+    <DIV id="some_div" class="yote_template" template="demo" default_variable="sandbox"></div>
+
+  </body>
+</html>

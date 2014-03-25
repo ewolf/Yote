@@ -1,3 +1,45 @@
+2014-03-06  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.2
+	* Finally a dot release increment.
+	* The client side templating system is complete, though more debugging is certainly needed.
+	* The next huge thing to do is to write the documents.
+	* Fixed bug in sqlite where queries were too big
+	* updated hash template to include a before and after list part.
+
+2014-02-26  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1023
+	* fixed bug in mongo db list_insert
+	* updated tests
+	* added sort example to templte testy.html page
+	* implemented reverse is wrapped list sort
+
+2014-02-17  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1022
+	* added wrap_list method to javascript yote object. This returns an object that paginates a wholly loaded list.
+	* refactored button_actions to create and return a manager object.
+	* added allowable return headers for javascript.
+	* changed requests from GET to POST due to size of request reasons.
+	* fixed bug where request sockets were not being handled properly.
+	* added search and sort to template pagination via a list wrapper object (from yote obj)
+
+2014-02-07  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1021
+	* fixed bug in edit field
+
+2014-01-14  Eric Wolf  <wolf@Talisman>
+
+	* Version 0.1020
+	* reset password link activation also validates email
+	* fixed bug in client side pagination
+	* after_new_fun javascript function also takes data hash as an argument.
+	* new element designation in columns : ~ indicates just html to follow
+	* $$ item..the item in question
+	* new client server side templating
+
 2014-01-06  Eric Wolf  <wolf@Talisman>
 
 	* Version 0.1019

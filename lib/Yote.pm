@@ -15,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.1019';
+$VERSION = '0.2';
 
 use Carp;
 use File::Path;
@@ -182,6 +182,22 @@ sub run {
     $s->start_server( %config );
 
 } #run
+
+#
+# Convenience method to return the Yote::YoteRoot singleton, connected to the db as outlined by
+# the config file.
+#
+# Warning : do not do any write operations while a Yote server is running. This could cause havoc 
+#           if that server is also doing write operations.
+#
+sub fetch_root {
+    my $args = get_args();
+    my $config = $args->{ config };
+    Yote::ObjProvider::init( $config );
+    Data::Dumper->Dump([ $config ]);
+    require Yote::YoteRoot;
+    return Yote::YoteRoot::fetch_root();
+} #fetch_root
 
 ###################
 # Private Methods #
@@ -477,6 +493,16 @@ return until the yote server has shut down.
 =head1 BUGS
 
 There are likely bugs to be discovered. This is alpha software.
+
+=head2 METHODS
+
+=over 4
+
+=item fetch_root()
+
+Returns the Yote Root singleton. Used for some tests.
+
+=back
 
 =head1 AUTHOR
 

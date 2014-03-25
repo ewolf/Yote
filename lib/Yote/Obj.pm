@@ -74,6 +74,10 @@ sub new {
     return $obj;
 } #new
 
+sub new_with_same_permissions {
+    return new Yote::Obj();
+} #new_with_same_permissions
+
 #
 # Called the very first time this object is created. It is not called
 # when object is loaded from storage.
@@ -189,6 +193,11 @@ sub _check_access_update {
     }
     return 1;
 } #_check_access
+
+sub _container_type {
+    my( $self, $args ) = @_;
+    return Yote::ObjProvider::container_type( $self->{ID}, $args );
+} #_container_type
 
 sub _count {
     my( $self, $args ) = @_;
@@ -346,6 +355,12 @@ sub add_to {
     return $self->_add_to( $listname, @$items );
 } #add_to
 
+sub container_type {
+    my( $self, $data, $account ) = @_;
+    die "Access Error" unless $self->_check_access( $account, 0, ref( $data ) ? $data->{ name } : $data );
+    return $self->_container_type( $data );
+} #container_type
+
 sub count {
     my( $self, $data, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 0, ref( $data ) ? $data->{ name } : $data );
@@ -411,6 +426,7 @@ sub remove_from {
 # This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
 #
 sub sync_all {}
+sub sync_changed {}
 
 #
 # Stub method to apply update to an object. Throws an error by default. Override and call _update with input data and a list of allowed fields to update.
@@ -681,6 +697,10 @@ This method is called each time an object is loaded from the data store.
 
 Adds the items to the list attached to this object specified by name.
 
+=item container_type( container_name )
+
+returns the class name of the given container from this host object.
+
 =item count( field_name )
 
 Returns the number of items for the field of this object provided it is an array or hash.
@@ -708,6 +728,10 @@ Removes the item at the index postion from the list attached to this object spec
 =item list_fetch( { name => '', index => '' } )
 
 Returns item at the index postion from the list attached to this object specified by name.
+
+=item new_with_same_permissions()
+
+Returns a new yote object with the same permissions as this.
 
 =item paginate( args )
 
@@ -748,6 +772,10 @@ Removes the items ( by value ) from the list attached to this object specified b
 
 
 =item sync_all
+
+This method is actually a no-op, but has the effect of syncing the state of client and server.
+
+=item sync_changed
 
 This method is actually a no-op, but has the effect of syncing the state of client and server.
 

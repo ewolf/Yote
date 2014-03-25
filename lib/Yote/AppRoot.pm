@@ -19,18 +19,16 @@ use Yote::YoteRoot;
 use base 'Yote::RootObj';
 
 use vars qw($VERSION);
-$VERSION = '0.087';
+$VERSION = '0.088';
 
 sub _init {
     my $self = shift;
-
     my $hn = `hostname`;
     chomp $hn;
 
     $self->set_app_name( ref( $self ) );
     $self->set_host_name( $hn );
     $self->set_host_url( "http://$hn" );
-
     $self->set_validation_email_from( 'yote@' . $hn );
     $self->set_validation_link_template(new Yote::SimpleTemplate( { text=>'${hosturl}/val.html?t=${t}&app=${app}' } ) );
     $self->set_validation_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}));
@@ -42,6 +40,10 @@ sub _init {
     $self->set_recovery_message_template(new Yote::SimpleTemplate({text=>'Click on <a href="${link}">${link}</a> to recover your account' } ) );
     $self->SUPER::_init();
 } #_init
+
+sub precache {
+    my( $self, $data, $account ) = @_;
+} #_precache
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC API Methods *
@@ -165,6 +167,7 @@ sub recovery_reset_password {
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
             $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+	    $login->set__is_validated(1);
             return $login->get__recovery_from_url();
         }
     }
@@ -192,7 +195,7 @@ sub token_login {
 	    return $login;
 	}
     }
-    return 0;
+    return;
 } #token_login
 
 sub validate {
@@ -274,6 +277,10 @@ A Yote::AppRoot extends Yote::Obj and provides some class methods and the follow
 Create a login with the given client supplied args : h => handle, e => email, p => password.
 This checks to make sure handle and email address are not already taken.
 This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
+=item precache
+
+Meant to be overridden. Returns all data to the client or html page that the app in order to not need lazy loading.
 
 =item recover_password( { e : email, u : a_url_the_person_requested_recovery, t : reset_url_for_system } )
 

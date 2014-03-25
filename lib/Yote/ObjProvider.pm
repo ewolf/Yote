@@ -9,6 +9,7 @@ no warnings 'recursion';
 use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
+use Yote::ObjManager;
 use Yote::YoteRoot;
 
 use Crypt::Passwd::XS;
@@ -25,7 +26,7 @@ our $FIRST_ID;
 
 use vars qw($VERSION);
 
-$VERSION = '0.072';
+$VERSION = '0.073';
 
 
 # ------------------------------------------------------------------------------------------
@@ -62,6 +63,12 @@ sub attach_server {
 sub commit_transaction {
     return $DATASTORE->commit_transaction();
 }
+
+sub container_type {
+    my( $host_id, $container_name ) = @_;
+    return '' unless $host_id;
+    return $DATASTORE->container_type( $host_id, $container_name ) || '';
+} #container_type
 
 sub count {
     my( $container_id, $args ) = @_;
@@ -126,7 +133,7 @@ sub fetch {
 	}
 	else {
 	    eval("require $class");
-	    print STDERR Data::Dumper->Dump([$class,$!,$@]) if $@;
+	    print STDERR Data::Dumper->Dump([$class,$!,$@,$obj_arry]) if $@;
 	    die $@ if $@;
 
 	    my $obj = $class->new( $id );
@@ -557,6 +564,10 @@ which also serves as the locker. The datalocker is responsible for locking and u
 =item commit_transaction( )
 
 Requests the data store used commit the transaction.
+
+=item container_type( host_id, container_name )
+
+returns the class name of the given container from a host class.
 
 =item count( container_id, args )
 

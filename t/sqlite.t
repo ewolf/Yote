@@ -17,7 +17,7 @@ use Yote::IO::TestUtil;
 use Data::Dumper;
 use File::Temp qw/ :mktemp /;
 use File::Spec::Functions qw( catdir updir );
-use Test::More tests => 495;
+use Test::More tests => 534;
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };

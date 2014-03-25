@@ -8,6 +8,9 @@ use vars qw($VERSION);
 $VERSION = '0.001';
 
 use Test::More;
+use Yote::RootObj;
+use Yote::Obj;
+use Yote::UserObj;
 
 use Aspect;
 
@@ -488,6 +491,24 @@ sub io_independent_tests {
     $res = $app->_paginate( { name => 'hsh', return_hash => 1 } );
     is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash, with one key having a slash in its name' );
 
+    # test paginate with hashkey_search
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "o" ] } );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with one multiple hit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "B", '/' ] } );
+    is_deeply( $res, { 'baz/bof' => "FOOME", 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with two separate hit search terms' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, hashkey_search => [ "g","Q" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with nonhit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "R" ] } );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
+
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
+    is_deeply( $res, { 'baz/bof' => "FOOME" }, ' search_terms for hash using search terma and hashkey_search with nonhit search term' );
+    my $count = $app->_count( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
+    is( $count, 1, "one results for count using hash and hashkey and search terms" );
+
     # delete with key that has slash in the name
     $app->_hash_delete( 'hsh', 'baz/bof' );
     $res = $app->_paginate( { name => 'hsh', return_hash => 1 } );
@@ -535,6 +556,8 @@ sub io_independent_tests {
 	);
     Yote::ObjProvider::stow_all();
 
+    $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
+    is( $res, 2, "Two search resultscount" );
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
     is( @$res, 2, "Two search results" );
     my $searchlist = $o->get_searchlist();
@@ -542,6 +565,8 @@ sub io_independent_tests {
     my %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
+    $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ], sort_fields => [ 'n' ] } );
+    is( $res, 2, "Two search results count" );
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ], sort_fields => [ 'n' ] } );
     is( @$res, 2, "Two search results" );
     $searchlist = $o->get_searchlist();
@@ -657,12 +682,90 @@ sub io_independent_tests {
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
+    is( $o->count( { name => 'searchlist', search_fields => [], search_terms=> [] } ), @$searchlist, "count gets correct count with empty search fields and search terms" );
+    is( $o->count( { name => 'searchlist', search_fields=> [] } ), @$searchlist, "count gets correct count with empty search fields  terms" );
+    is( $o->count( { name => 'searchlist', search_terms=> [] } ), @$searchlist, "count gets correct count with empty  search terms" );
+
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [], search_terms=> [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty search fields and search terms no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [], search_terms=> [], sort_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty search fields and search terms and sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', search_terms => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [], search_fields => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search fields and sort_fields no problemo" );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [], search_terms => [] } );
+    @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
+    is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms and sort_fields no problemo" );
+
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
     $o = new Yote::Obj( { anonymous => "guest" } );
     Yote::ObjProvider::stow_all();
 
     #set root back to root admin
     $root_login->set__is_root( 1 );
+
+    #
+    # Make sure named list operations properly integrate with recycling/garbage collection.
+    #
+    Yote::ObjProvider::recycle_objects();
+    {
+	my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
+	my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
+	$root->_add_to( 'o_list', $o2a );
+	$root->_add_to( 'o_list', $o2b );
+	Yote::ObjProvider::stow_all();
+	is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
+	my $objs = Yote::ObjProvider::recycle_objects();
+	is( $objs, 0, 'add_to(  not recycled' );
+	$root->_remove_from( 'o_list', $o2a );
+	$root->_remove_from( 'o_list', $o2b );
+	Yote::ObjProvider::stow_all();
+    }
+    my $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 2, 'remove_from(  is recycled' );
+
+    $root->set_o_list( undef );
+    Yote::ObjProvider::stow_all();	
+    is( Yote::ObjProvider::recycle_objects(), 1, "one recycled list obj" );
+    is( $root->_container_type( 'o_list' ), '', 'container type detect no class once list removed' );
+
+    {
+	my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling" } );
+	my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling" } );
+	$root->_hash_insert( 'o_hash', "KEYA", $o2a );
+	$root->_hash_insert( 'o_hash', "KEYB", $o2b );
+	Yote::ObjProvider::stow_all();
+	is( $root->_container_type( 'o_hash' ), 'HASH', 'container type detect hash' );
+	my $objs = Yote::ObjProvider::recycle_objects();
+	is( $objs, 0, 'hash(  not recycled' );
+	$root->_hash_delete( 'o_hash', "KEYA" );
+	$root->_hash_delete( 'o_hash', "KEYB" );
+	Yote::ObjProvider::stow_all();	
+    }
+    $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 2, 'hash delete  is recycled' );
+
+    $root->set_o_hash( undef );
+    Yote::ObjProvider::stow_all();	
+    is( $root->_container_type( 'o_hash' ), '', 'container type detect no class once hash removed' );
 
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
@@ -690,7 +793,8 @@ sub io_independent_tests {
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
 
     # root acct test
-    my $new_master_login = $root->_update_master_root( "NEWROOT","NEWPW" );
+    my $new_master_login = $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+
     is( $new_master_login, $master_account->get_login(), "check root with new credentials does not change login" );
 
     # have $login, $root_login
@@ -1097,6 +1201,52 @@ sub io_independent_tests {
 
     is( scalar( @{ $entry->get_scheduled_times() } ), 0, "no more scheduled entries" );
 
+    # zoot,  toot, realroot, NEWROOT ( master )
+
+    # the following block is copied from above
+    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+    my $master_root = $root->login( { h => 'NEWROOT', p => 'NEWPW' } )->{l};
+    ok( $master_root->is_root(), "Master root is root" );
+    my $master_acct = $root->__get_account( $master_root );
+    my $zl = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
+    $zl->set__is_root( 1 );
+
+    Yote::ObjProvider::stow_all();
+    my $toot_notroot = $root->login( { h => 'toot', p => 'toor' } )->{l};
+    ok( ! $toot_notroot->is_root(), "Toot notroot is not root" );
+    my $toot_notroot_acct = $root->__get_account( $toot_notroot );
+    my $zoot_root = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
+    ok( $zoot_root, "Zoot is root" );
+    my $zoot_root_acct = $root->__get_account( $zoot_root );
+
+    my $cute_login = $root->create_login( { h => 'cute', p => 'naughty', e => "cute\@tooz.com" } )->{l};
+    my $cute_notroot_acct = $root->__get_account( $cute_login );
+
+    my $ro = new Yote::RootObj();
+    is_deeply( $ro->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate root obj private container" );
+    is_deeply( $ro->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate root obj private container" );
+    eval { 
+	$ro->paginate( { name => "_foo", }, $toot_notroot_acct );
+	fail( "nonroot account able to paginate root obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot account unable to paginate root obj private container" );
+
+    my $uo = new Yote::UserObj( { __creator =>  $toot_notroot_acct } );
+    is_deeply( $uo->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "_foo", }, $toot_notroot_acct ), [], "creator can paginate user obj private container" );
+    eval { 
+	$ro->paginate( { name => "_foo", }, $cute_notroot_acct );
+	fail( "nonroot account able to paginate root obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot nonowner account unable to paginate user obj private container" );
+    is_deeply( $uo->paginate( { name => "foo", }, $cute_notroot_acct ), [], "nonroot, noncreator can paginate user obj public container" );
+    eval { 
+	$ro->hash( { name => "foo", value => 'bar' }, $cute_notroot_acct );
+	fail( "nonroot, nocreator account able to insert into into user obj private container" );
+    };
+    like( $@, qr/^Access Error/,"nonroot nonowner account unable to insert data into  user obj public container" );
 } #io_independent_tests
 
 1;

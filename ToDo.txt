@@ -1,22 +1,36 @@
 The stack :
-  Ugh, more todo? Well, I want to have a good way to update the UI when a list even happens. The UI does not usually keep list objects in it, just slices of them, 
-   and those slices do not get updated when things get added to the list ( or hash ) object.
-     [ so, my thought for the above is to register an object/list pairing using ObjManager, then mark the lists as a list dirty when updated
-       The objmanager will know which account is tracking which lists.
-       On the client side, there can be event handlers that fire when objects or those lists are updated ]
+ 
+  for js..just package up all the js and send it across as one.
+
+ having template files that are reusable across runs.  A 'load template' if you were.
+
+ edit or show control depending on who's logged in
+
+ checkbox control that hooks to functions rather than ( on change, current value functions )
+
+ test if mysql queries too big ( fixed in sqlite )
+
+ redo admin page with new templates
+
+ server side determination of container type
+
+ new templating system : add radio boxes
+
+ Clear out obj manager cache and guest token by checking who logged in times. Good thing for cron.
+
+
+ rewrite yote_util and define special characters better ( scaffold this...replace one piece at a time since its largely working )
+
 
   Testing : need a test for the web app server.
 
-  Idea for updating things...Use something cron like - a program that is run once and does things like $root->get_foo(afdasdf);
-
-  Also, how about an even handler for when an object does receive an update, and an update to its list.
+  Also, how about an event handler for when an object does receive an update, and an update to its list.
   
   make sure yote_root http pages are not overwritten during install/upgrade
 
 Currently on my plate :
   * think about validation, login vs account.  would you have the case where one login would be valid in one app but not an other?  Of course, the app itself could override the token_login method to die if the desired configuration is not met.
   * yote.js object handle objects
-  * template 
   * update madyote pages
   * limited html widget that disallows invalid html and script.
   * text only editor
@@ -24,24 +38,7 @@ Currently on my plate :
   * object command line
   * better error messages for javascript when permissions errors occur
   * log in with email as well as handle
-________________________________________________
 
-It would be nice to have a <DIV> have information that links it to an editing session.
-Something like
-<DIV object="objname" field="somefield" editable="root||owner||all||none" editfilter="text|html|limitedhtml"></DIV>
-
-where limitedhtml disallows script tags and certain tags. It might whitelist a set of tags.
-
-It would be supernice to extend this to control tables
-
-<DIV object="objname"
-     list_name="foo"
-     fields="foo,bar,baz"
-     field_titles="Foo,Bar,Baz"
-     can_remove="true"
-     can_create="true"
->
-</div>
 
 _________________________________________________
 
