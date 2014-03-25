@@ -25,12 +25,11 @@
 
     <script type="text/template" class="yote_template_definition" template_name="known_icecreams">
       <h2>Ice Creams I know</h2>
-      <table><tr><th><$ button flav_sort Flavor$></th><th><$ button color_sort Color$></th><th>Action</th></tr>
+    <table><tr><th><$ button flav_sort Flavor$><th><$ button color_sort Color $><th>Action</th></tr>
         <@ known_icecream_row 5 @>
       </table>
       <$$ SearchList flavor color $$><BR>
       <$$ Paginator $$>
-       <?? init_sorts ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="empty">
@@ -97,7 +96,6 @@
 		  
 	      }, //init_search_hash
 	      init_search_list : function( args ) {
-		  console.log( [ 'ISL', args ] );
 		  var collection = args[ 'default_var' ];
 		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
                   search_val_id =  args[ 'vars' ][ 'search_val' ];
@@ -122,7 +120,13 @@
               'rand' : function( ic, parent ) {
                   return $.yote.util.fill_template( Math.random() < 0.5 ? 'rand_A' : 'rand_B' );
               },
-              flav_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'flavor' ) },
+	      init_sorts : function( args ) {
+		  var color_b_id = args[ 'vars' ][ 'color_b' ],
+		       flav_b_id = args[ 'vars' ][ 'flav_b' ];
+		  $( '#' + color_b_id ).click( function() { color_sort( args ) } );
+		  $( '#' + flav_b_id ).click( function() { flav_sort( args ) } );
+	      },
+              flav_sort : function( args ) { console.log( args ); ice_cream_sort( args[ 'default_var' ], 'flavor' ) },
               color_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'color' ) },
 
 	      init_paginator : function( args ) {
@@ -158,6 +162,7 @@
           } );
 
           function ice_cream_sort( known_icecreams, fld ) {
+	      console.log( [ "ICS", known_icecreams, fld ] );
               if( fld == known_icecreams[ 'sort_field' ] ) {
                   known_icecreams.sort_reverse = ! known_icecreams.sort_reverse;
               }
