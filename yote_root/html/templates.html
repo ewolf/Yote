@@ -1,0 +1,33 @@
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
+ <? check_login_status ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_in">
+   Logged in as <$ show acct handle $><BR>
+   <$ action_link logout Log Out $>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_out">
+   <$$$ messages <span>This page requires a root login.</span> $$$><BR>
+   <$$$ handle <input placeholder="handle" type="text"> $$$>
+   <$$$ password <input placeholder="password" type="password"> $$$>
+   <$$$ login_button <button type="BUTTON">Log In</button> $$$>
+<BR>
+   <$ action_link forgot Forgot Password $>
+   <?? init_login ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Recover_Login">
+   <$$$ messages <span></span> $$$><BR>
+   <$$$ email <input placeholder="email" type="text"> $$$>
+   <$ button recover Recover Password $>
+   <$ action_link refresh_all [X] $>
+   <?? init_recover ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Cron_Row">
+  <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
+    <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td>
+  </tr>
+</script>

@@ -195,9 +195,11 @@ $().ready(function(){
 	    ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );
 	    ok( typeof o3[ 'set_bext' ] !== undefined, "bext is there" );
 	    is( o3[ 'set_zap' ], undefined, "zap is not there" );
+
             login._send_update({Text:'baf',bext:'Again',zip:'zap'});
 	    is( login.get_Text(), 'baf', "TANL changed text" ); 
 	    is( login.get_zap(), 'zappy', "TANL unchnaged zap" );
+
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
             is( o3.get('zip'), false, 'correct object 2 text directly' );
@@ -267,8 +269,7 @@ $().ready(function(){
 	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
 	    // testing pagination
-
-	    var pag = hello_app.wrap_list( { collection_name : 'foo_array', size : 5 } );
+	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : 'foo_array', size : 5 } );
 	    
 	    var pag_list = pag.to_list();
 
@@ -329,11 +330,8 @@ $().ready(function(){
 	    is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
 	    ok( pag_ok, "all letters are present and there are no extra ones" );
 
-
 	    pag = hello_app.wrap_list( { collection_name : '_foo_array', size : 5 } );
-
 	    var pag_list = pag.to_list();
-
 	    is( pag.full_size(), 26, "26 letters of the alphabet" );
 	    is( pag.get( 0 ), "A", "first letter" );
 	    is( pag_list[ 0 ], "A", "first letter output list" );
@@ -354,6 +352,7 @@ $().ready(function(){
 	    is( pag.get( 3 ), "Z", "Ending with Z" );
 	    is( pag_list[ 3 ], "Z", "output list; ending with Z" );
 	    pag.last();
+	    pag.sort_fields = [];
 	    pag_list = pag.to_list();
 	    is( pag_list[ 4 ], "Z", "output list; Z is last" );
 	    is( pag.get( 4 ), "Z", "Z is last" );
@@ -361,10 +360,16 @@ $().ready(function(){
 	    is( pag_list[ 0 ], "V", "output list after last, start with V" );
 	    pag.back();
 	    pag_list = pag.to_list();
+	    pag.sort_fields = undefined;
+	    pag.search_fields = [];
 	    is( pag_list[ 0 ], "Q", "output list after last, start with Q" );
 	    is( pag.get( 0 ), "Q", "Q is for Rewind" );
 	    is( pag.get( 4 ), "U", "U is for U Rewind" );
 	    pag.first();
+	    pag_list = pag.to_list();
+	    pag.search_values = [];
+	    is( pag_list[ 0 ], "A", "first in list after first" );
+	    is( pag_list[ 4 ], "E", "last in list after first" );
 	    is( pag.get( 0 ), "A", "Back to A" );
 	    is( pag.get( 4 ), "E", "Back to E" );
 

@@ -753,19 +753,20 @@ $.yote.util = {
 		if( ! args[ 'default_var' ] ) args[ 'default_var' ] = args[ 'item' ];
 		if( ! args[ 'default_parent' ] ) args[ 'default_parent' ] = args[ 'parent' ];
 //WOLF - here is here the args get introduced to the template id instance
-
-		$( args[ 'attachpoint' ] ).click(function(){
-		    if( args[ 'action' ].indexOf('__') == 0 && $.yote.util.intrinsic_functions[ args[ 'action' ].substring(2) ] ) {
-			$.yote.util.intrinsic_functions[ args[ 'action' ].substring(2) ]( args );
+		(function(a) { 
+		$( a[ 'attachpoint' ] ).click(function(){
+		    if( a[ 'action' ].indexOf('__') == 0 && $.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ] ) {
+			$.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ]( a );
 		    }
-		    else if( $.yote.util.functions[ args[ 'action' ] ] ) {
-			$.yote.util.functions[ args[ 'action' ] ]( args )
-		    } else if( typeof window[ args[ 'action' ] ] === 'function' ) {
-			window[ args[ 'action' ] ]( args );
+		    else if( $.yote.util.functions[ a[ 'action' ] ] ) {
+			$.yote.util.functions[ a[ 'action' ] ]( a )
+		    } else if( typeof window[ a[ 'action' ] ] === 'function' ) {
+			window[ a[ 'action' ] ]( a );
 		    } else {
-			console.log( "'" + args['action'] + "' not found for button." );
+			console.log( "'" + a['action'] + "' not found for button." );
 		    }
 		} );
+		} )( args );
 	    } else {
 		console.log( "No action found for button." );
 	    }
@@ -1761,10 +1762,11 @@ $.yote.util = {
 	if( typeof host_obj === 'object' && container_name ) {
 	    var container = host_obj.wrap( { collection_name : container_name, 
 					     size : args[ 'size' ],
-					     wrap_key : params[ 'template_name' ],
+					     wrap_key : main_template,
 					   }, is_hash );
             args[ 'template_name' ] = container.full_size() == 0 ? on_empty_template : main_template;
 	    args[ 'default_var' ] = container;
+	    args[ 'container_name' ] = container_name;
 	    return $.yote.util.fill_template( args );
 	}
 	return '';
@@ -1894,7 +1896,7 @@ $.yote.util = {
 	    var item   = default_var;
 	    var parent = default_parent;
 	    var txt = parts ? parts[3].trim() : '';
-	    return '<button type="BUTTON" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>'; //needs to insert an id for itself and register the action
+	    return '<button type="BUTTON" ' + ( args[ 'container_name' ] ? 'container_name="' + args[ 'container_name' ] + '"'  : '' ) + ' ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>'; //needs to insert an id for itself and register the action
 	    // also need a pagination object which will work with the tempates and we can finally rid ourselves of control_table bigcodyness
 	}
 	else if( cmd == 'action_link' ) {

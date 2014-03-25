@@ -215,7 +215,7 @@ sub paginate {
 	my $reversed_orders = $args->{ reversed_orders } || [];
 	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
     }
-    elsif( $search_fields ) {
+    elsif( $search_fields && @$search_fields ) {
 	if( @{ $args->{ hashkey_search } || [] } ) {
 	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
 	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
@@ -307,7 +307,7 @@ sub recycle_object {
 sub start_transaction {
     my $self = shift;
 #    $self->_do( "BEGIN IMMEDIATE TRANSACTION" );
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+#    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 sub _stow_now {
@@ -403,11 +403,11 @@ sub count {
 
     my( $orstr, @params ) = ( '', $obj_id );
     my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
-    my $search_fields = $args->{ search_fields };
+    my( @search_fields ) = @{ $args->{ search_fields } || [] };
     if( @search_terms ) {
-	if( $search_fields ) {
+	if( @search_fields ) {
 	    my( @ors );
-	    for my $field ( @$search_fields ) {
+	    for my $field ( @search_fields ) {
 		for my $term (@search_terms) {
 		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
@@ -423,7 +423,7 @@ sub count {
     my $query;
     my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
 
-    if( $search_fields ) {
+    if( @search_fields) {
 #        push @params, map { "\%$_\%" } @search_terms;
 	if( $args->{ hashkey_search } ) {
 	    $query = "SELECT count( distinct bar.field || '-' || fi.obj_id ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";

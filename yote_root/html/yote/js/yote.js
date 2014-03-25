@@ -271,7 +271,8 @@ $.yote = {
     }, //logout
 
     include_templates:function( url ) {
-	  $.ajax( {
+	var root = this;
+	$.ajax( {
 	    async:false,
 	    cache: false,
 	    contentType: "text/html",
@@ -565,14 +566,16 @@ $.yote = {
 		    var host_obj = this;
 		    var fld = args[ 'collection_name' ];
 
-		    if( ! $.yote.wrap_cache[ host_obj.id ] ) {
-			$.yote.wrap_cache[ host_obj.id ] = {};
+		    var cache_key = host_obj.id;
+
+		    if( ! $.yote.wrap_cache[ cache_key ] ) {
+			$.yote.wrap_cache[ cache_key ] = {};
 		    }
-		    if( ! $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] ) {
+		    if( ! $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] ) {
 			$.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] = {};
 		    }
-		    if( $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] ) {
-			return $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ];
+		    if( $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] ) {
+			return $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ];
 		    }
 
 		    var ol = host_obj.count( fld );
@@ -635,7 +638,7 @@ $.yote = {
 				if( ! me.collection_obj ) return ret;
 				var olist = me.collection_obj.to_list();
 
-				if( me.sort_fields ) {
+				if( me.sort_fields.length > 0 ) {
 				    olist = olist.sort( function( a, b ) { 
 					for( var i=0; i<me.sort_fields.length; i++ ) {
 					    if( typeof a === 'object' && typeof b === 'object' ) 
@@ -798,7 +801,7 @@ $.yote = {
 			    this.start = this.full_size() - this.page_size;
 			}
 		    };
-		    $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] = ret;
+		    $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] = ret;
 		    return ret;
 		}, //wrap
 
