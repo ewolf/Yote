@@ -2,8 +2,6 @@ The stack :
  
   for js..just package up all the js and send it across as one.
 
- having template files that are reusable across runs.  A 'load template' if you were.
-
  edit or show control depending on who's logged in
 
  checkbox control that hooks to functions rather than ( on change, current value functions )
