@@ -271,7 +271,8 @@ $.yote = {
     }, //logout
 
     include_templates:function( url ) {
-	  $.ajax( {
+	var root = this;
+	$.ajax( {
 	    async:false,
 	    cache: false,
 	    contentType: "text/html",
