@@ -638,7 +638,7 @@ $.yote = {
 				if( ! me.collection_obj ) return ret;
 				var olist = me.collection_obj.to_list();
 
-				if( me.sort_fields ) {
+				if( me.sort_fields.length > 0 ) {
 				    olist = olist.sort( function( a, b ) { 
 					for( var i=0; i<me.sort_fields.length; i++ ) {
 					    if( typeof a === 'object' && typeof b === 'object' ) 

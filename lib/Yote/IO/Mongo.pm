@@ -330,11 +330,11 @@ sub paginate {
     #  args has search fields
     #  args has search terms but no fields
 
-    my $search_fields = $args->{ search_fields };
+    my @search_fields = @{ $args->{ search_fields } || [] };
     my @search_terms = @{ $args->{ search_terms } || [] };
     my @hashkey_search = @{ $args->{ hashkey_search } || [] };
 
-    my $sort_fields = $args->{ sort_fields };
+    my @sort_fields = @{ $args->{ sort_fields } || [] };
     my $reversed_orders = $args->{ reversed_orders } || [];
 
     my $limit = $args->{ limit };
@@ -342,7 +342,7 @@ sub paginate {
 
     my( @list_items, %hash_items );
 
-    if( $sort_fields || ($search_fields && @search_terms) ) {  #must be searching through or sorting by objects
+    if( @sort_fields || (@search_fields && @search_terms) ) {  #must be searching through or sorting by objects
 	my( $query, $query_args );
 
 	if( $obj->{c} eq 'ARRAY' ) {
@@ -353,8 +353,8 @@ sub paginate {
 	}
 
         my @ors;
-	if( $search_fields && @search_terms) { #search fields must be objects
-	    for my $field ( @$search_fields ) {
+	if( @search_fields && @search_terms) { #search fields must be objects
+	    for my $field ( @search_fields ) {
 		for my $term ( @search_terms ) {
 		    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
 		}
@@ -365,9 +365,9 @@ sub paginate {
         }
         $query->{'$or'} = \@ors if @ors;
 
-	if( $sort_fields ) {
-	    for my $i (0..$#$sort_fields) {
-		$query_args->{ sort_by }{ "d.$sort_fields->[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
+	if( @sort_fields ) {
+	    for my $i (0..$#sort_fields) {
+		$query_args->{ sort_by }{ "d.$sort_fields[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
 	    }
 	}
 	my $curs = $self->_find( $query, $query_args );

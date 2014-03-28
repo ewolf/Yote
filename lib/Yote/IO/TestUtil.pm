@@ -258,6 +258,10 @@ sub io_independent_tests {
     is_deeply( $root_3->_paginate( { name => 'array', limit => 1, skip => 4, reverse => 1 } ), [ 'With more than one thing' ], 'paginate limit 1 from 4' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, skip => 4 } ), [ 'MORE STUFF','MORE STUFF' ], 'paginate limit 3 from 4' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, skip => 4, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
+    is_deeply( $root_3->_paginate( { sort_fields => [], name => 'array', limit => 3, skip => 4, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
+    is_deeply( $root_3->_paginate( { search_fields => [], name => 'array', limit => 3, skip => 4, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
+    is_deeply( $root_3->_paginate( { search_values => [], name => 'array', limit => 3, skip => 4, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
+    is_deeply( $root_3->_paginate( { search_values => [], name => 'array', limit => 3, skip => 4, reverse => 1 } ), [ 'With more than one thing', 'THIS IS AN ARRAY' ], 'paginate limit 3 from 4 reversed' );
 
     # unified pagination test
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3 } ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate with length limit' );
