@@ -565,14 +565,16 @@ $.yote = {
 		    var host_obj = this;
 		    var fld = args[ 'collection_name' ];
 
-		    if( ! $.yote.wrap_cache[ host_obj.id ] ) {
-			$.yote.wrap_cache[ host_obj.id ] = {};
+		    var cache_key = host_obj.id;
+
+		    if( ! $.yote.wrap_cache[ cache_key ] ) {
+			$.yote.wrap_cache[ cache_key ] = {};
 		    }
-		    if( ! $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] ) {
+		    if( ! $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] ) {
 			$.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] = {};
 		    }
-		    if( $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] ) {
-			return $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ];
+		    if( $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] ) {
+			return $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ];
 		    }
 
 		    var ol = host_obj.count( fld );
@@ -798,7 +800,7 @@ $.yote = {
 			    this.start = this.full_size() - this.page_size;
 			}
 		    };
-		    $.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ][ fld ] = ret;
+		    $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] = ret;
 		    return ret;
 		}, //wrap
 
