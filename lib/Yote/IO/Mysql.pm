@@ -41,10 +41,12 @@ sub _connect {
     my $pword = $args->{ password };
     my $host  = $args->{ host };
     my $port  = $args->{ engine_port };
-    my $connect = "DBI:mysql:$db";
+    my $connect = "DBI:mysql";
     $connect .= ":host=$host" if $host;
     $connect .= ":port=$port" if $port;
     $self->{DBH} = DBI->connect( $connect, $uname, $pword );
+    $self->{DBH}->do( "CREATE DATABASE IF NOT EXISTS $db" );
+    $self->{DBH} = DBI->connect( "$connect:$db", $uname, $pword );
 } #_connect
 
 sub database {
@@ -610,12 +612,15 @@ sub _engage_queries {
 	    $self->_do( @$upd );
 	    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 	}
-	my $first_data = shift @$udata;
-	if( $first_data ) {
-	    $self->_do( qq~INSERT INTO field
+	while( @$udata ) {
+	    my( $first_data, @chunk );
+	    ( $first_data, @chunk[0..200], @$udata ) = @$udata;
+	    if( $first_data ) {
+		$self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-			join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @$udata ),
-			map { @$_ } $first_data, @$udata );
+			    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @chunk ),
+			    map { @$_ } $first_data, @chunk );
+	    }
 	}
     }
 } #_engage_queries
