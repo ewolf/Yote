@@ -307,7 +307,7 @@ sub recycle_object {
 sub start_transaction {
     my $self = shift;
 #    $self->_do( "BEGIN IMMEDIATE TRANSACTION" );
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+#    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 sub _stow_now {

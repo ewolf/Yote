@@ -29,24 +29,41 @@ sub new {
         args => $args,
     };
     bless $self, $class;
+    $args->{ check_database } = 1;
     $self->_connect( $args );
     return $self;
 } #new
 
+sub _ensure_connection {
+    my $self = shift;
+    unless( $self->{DBH} && $self->{DBH}->ping() ) {
+	$self->_connect();
+    }
+}
+
 sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
-    my $db    = $args->{ store };
-    my $uname = $args->{ user };
-    my $pword = $args->{ password };
-    my $host  = $args->{ host };
-    my $port  = $args->{ engine_port };
-    my $connect = "DBI:mysql";
-    $connect .= ":host=$host" if $host;
-    $connect .= ":port=$port" if $port;
-    $self->{DBH} = DBI->connect( $connect, $uname, $pword );
-    $self->{DBH}->do( "CREATE DATABASE IF NOT EXISTS $db" );
-    $self->{DBH} = DBI->connect( "$connect:$db", $uname, $pword );
+    for my $arg (keys %$args) {
+	$self->{ $arg } = $args->{ $arg };
+    }
+
+    if( $args->{ check_database } ) {
+	my $connect = "DBI:mysql";
+	$connect .= ":host=$self->{ host }" if $self->{ host };
+	$connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
+	$self->{DBH} = DBI->connect( "$connect", $args->{ user }, $args->{ password } );
+	$self->{DBH}->do( "CREATE DATABASE IF NOT EXISTS $self->{ store }" );
+	$self->disconnect;
+	$self->{DBH} = DBI->connect( "$connect:$self->{ store }", $args->{ user }, $args->{ password } );
+    }
+    else {
+	my $connect = "DBI:mysql:$self->{ store }";
+	$connect .= ":host=$self->{ host }" if $self->{ host };
+	$connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
+	$self->{DBH} = DBI->connect( $connect, $self->{ user }, $self->{ password } );
+    }
+    die "Unable to connect : " . $self->{DBH}->errstr() if $self->{DBH}->errstr() || ! $self->{DBH}->ping();
 } #_connect
 
 sub database {
@@ -74,47 +91,50 @@ sub ensure_datastore {
                        `obj_id` int(10) unsigned NOT NULL,
                        `text` text,
                        PRIMARY KEY (`obj_id`)
-                      ) ENGINE=InnoDB CHARSET=latin1~,
+                      ) ENGINE=InnoDB DEFAULT CHARSET=latin1~,
         objects => q~CREATE TABLE `objects` (
                      `id` int(11) NOT NULL AUTO_INCREMENT,
                      `class` varchar(255) DEFAULT NULL,
-                     `last_updated` datetime,
-                     `recycled` tinyint DEFAULT 0,
+                     `last_updated` datetime DEFAULT NULL,
+                     `recycled` tinyint(4) DEFAULT '0',
                       PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=latin1~
         );
-    $self->{DBH}->do( "START TRANSACTION" );
-    my $today = $self->{DBH}->selectrow_array( "SELECT now()" );
+    $self->_do( "START TRANSACTION" );
+    my( $today ) = $self->_query_line( "SELECT now()" );
     $today =~ s/[^0-9]+//g;
     for my $table (keys %definitions ) {
-        my( $t ) = $self->{DBH}->selectrow_array( "SHOW TABLES LIKE '$table'" );
+        my( $t ) = $self->_query_line( "SHOW TABLES LIKE '$table'" );
         if( $t ) {
-            my $existing_def = $self->{DBH}->selectall_arrayref( "SHOW CREATE TABLE $table" );
+            my $existing_def_ref = $self->_selectall_arrayref( "SHOW CREATE TABLE $table" );
+	    my $existing_def = $existing_def_ref->[0][1];
             my $current_def = $definitions{$table};
 
             #normalize whitespace for comparison
             $current_def =~ s/[\s\n\r]+/ /gs;
+            $current_def =~ s/.*\(.*\).*/$1/gs;
             $existing_def =~ s/[\s\n\r]+/ /gs;
-
+            $existing_def =~ s/.*\(.*\).*/$1/gs;
             if( lc( $current_def ) eq lc( $existing_def ) ) {
                 print STDERR "Table '$table' exists and is the same version\n";
             } else {
+		print STDERR Data::Dumper->Dump([$current_def,$existing_def]);
                 my $backup = "${table}_$today";
                 print STDERR "Table definition mismatch for $table. Rename old table '$table' to '$backup' and creating new one.\n";
-                $self->{DBH}->do("RENAME TABLE $table TO $backup\n");
-                $self->{DBH}->do( $definitions{$table} );
+                $self->_do("RENAME TABLE $table TO $backup\n");
+                $self->_do( $definitions{$table} );
             }
         } else {
-            $self->{DBH}->do( $definitions{$table} );
+            $self->_do( $definitions{$table} );
         }
     }
-    $self->{DBH}->do( "COMMIT" );
+    $self->_do( "COMMIT" );
 } #ensure_datastore
 
 sub container_type {
     my( $self, $host_id, $container_name ) = @_;
 
-    my( $container_class ) = $self->_selectrow_array( "SELECT o.class FROM field f,objects o WHERE f.obj_id=? AND f.field=? AND o.id=f.ref_id", $host_id, $container_name );
+    my( $container_class ) = $self->_query_line( "SELECT o.class FROM field f,objects o WHERE f.obj_id=? AND f.field=? AND o.id=f.ref_id", $host_id, $container_name );
     return $container_class;
 } #container_type;
 
@@ -127,11 +147,11 @@ sub count {
 
     my( $orstr, @params ) = ( '', $obj_id );
     my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
-    my $search_fields = $args->{ search_fields };
+    my( @search_fields ) = @{ $args->{ search_fields } || [] };
     if( @search_terms ) {
-	if( $search_fields ) {
+	if( @search_fields ) {
 	    my( @ors );
-	    for my $field ( @$search_fields ) {
+	    for my $field ( @search_fields ) {
 		for my $term (@search_terms) {
 		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
@@ -145,9 +165,9 @@ sub count {
     }
 
     my $query;
-    my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+    my( $type ) = $self->_query_line( "SELECT class FROM objects WHERE id=?", $obj_id );
 
-    if( $search_fields ) {
+    if( @search_fields ) {
 #        push @params, map { "\%$_\%" } @search_terms;
 	if( $args->{ hashkey_search } ) {
 	    $query = "SELECT count( distinct concat( bar.field, '-', fi.obj_id ) ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";
@@ -180,13 +200,13 @@ sub count {
             }
 	}
     }
-    my( $count ) = $self->_selectrow_array( $query, @params );
+    my( $count ) = $self->_query_line( $query, @params );
     return $count;
 } #count
 
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
-    my( $last_idx ) = $self->{DBH}->selectrow_array( "SELECT max( cast( field as unsigned ) ) FROM field WHERE obj_id=?", {}, $list_id );
+    my( $last_idx ) = $self->_query_line( "SELECT max( cast( field as unsigned ) ) FROM field WHERE obj_id=?", $list_id );
     if( defined( $idx ) ) { 
 	if( !defined( $last_idx ) ) {
 	    $idx = 0;
@@ -195,9 +215,9 @@ sub list_insert {
 	    $idx = $last_idx + 1;
 	}
 	else {
-	    my( $occupied ) = $self->{DBH}->selectrow_array( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", {}, $list_id, $idx );
+	    my( $occupied ) = $self->_query_line( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
 	    if( $occupied ) {
-		$self->{DBH}->do( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", {}, $list_id, $idx );
+		$self->_do( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", $list_id, $idx );
 	    }
 	}
     }
@@ -227,7 +247,7 @@ sub hash_delete {
 sub list_delete {
     my( $self, $list_id, $val, $idx ) = @_;
     my( $actual_index ) = $val ? 
-	$self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
+	$self->_query_line( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
 	$idx;
     $actual_index ||= 0;
 
@@ -244,46 +264,54 @@ sub hash_insert {
     } else {
 	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $hash_id, $key, $val );
     }
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
     return;
 } #hash_insert
 
 # return single item from a list
 sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
-    my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+    my( $val, $ref_id ) = $self->_query_line( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
     return $ref_id || "v$val";
 } 
 
 # return single item from a hash
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
-    my( $val, $ref_id ) = $self->_selectrow_array( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
+    my( $val, $ref_id ) = $self->_query_line( "SELECT value, ref_id FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
     return $ref_id || "v$val";
 } 
 
 sub hash_has_key {
     my( $self, $hash_id, $key ) = @_;
-    my( $fld ) = $self->_selectrow_array( "SELECT field FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
+    my( $fld ) = $self->_query_line( "SELECT field FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
     return defined( $fld );
 }
 sub _do {
     my( $self, $query, @args ) = @_;
-    return $self->{DBH}->do( $query, {}, @args );
+    $self->_ensure_connection();
+    my $ret = $self->{DBH}->do( $query, {}, @args );
+    if( $self->{DBH}->errstr() ) {
+	print STDERR Data::Dumper->Dump([$query,\@args,$self->{DBH}->errstr()]);
+	die $self->{DBH}->errstr();
+    }
+    return $ret;
 }
 
-sub _selectrow_array {
+sub _query_line {
     my( $self, $query, @args ) = @_;
 #    print STDERR "QUERY> $query : ".join(',',@args)."\n";
-    return $self->{DBH}->selectrow_array( $query, {}, @args );
+    $self->_ensure_connection();
+    my $stat = $self->{DBH}->prepare( $query );
+    $stat->execute( @args );
+    return $stat->fetchrow_array();
 }
 
 sub _selectall_arrayref {
     my( $self, $query, @args ) = @_;
 #    print STDERR "QUERY> $query : ".join(',',@args)."\n";
+    $self->_ensure_connection();
     return $self->{DBH}->selectall_arrayref( $query, {}, @args );
 }
-
 
 #
 # Returns the first ID that is associated with the root YoteRoot object
@@ -302,21 +330,18 @@ sub first_id {
 sub fetch {
     my( $self, $id ) = @_;
 
-    my( $class ) = $self->{DBH}->selectrow_array( "SELECT class FROM objects WHERE recycled=0 AND last_updated IS NOT NULL AND id=?", {}, $id );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    my( $class ) = $self->_query_line( "SELECT class FROM objects WHERE recycled=0 AND last_updated IS NOT NULL AND id=?", $id );
 
     return unless $class;
     my $obj = [$id,$class];
     if( $class eq 'ARRAY') {
 	$obj->[DATA] = [];
-	my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-	print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+	my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
 
 	for my $row (@$res) {
 	    my( $idx, $ref_id, $value ) = @$row;
 	    if( $ref_id && $value ) {
-		my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
-		print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
 
 		( $obj->[DATA][$idx] ) = "v$val";
 	    } else {
@@ -326,15 +351,12 @@ sub fetch {
     }
     else {
 	$obj->[DATA] = {};
-	my $res = $self->{DBH}->selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", {}, $id );
-	print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+	my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
 
 	for my $row (@$res) {
 	    my( $field, $ref_id, $value ) = @$row;
 	    if( $ref_id && $value ) {
-		my( $val ) = $self->{DBH}->selectrow_array( "SELECT text FROM big_text WHERE obj_id=?", {}, $ref_id );
-		print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+		my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
 		( $obj->[DATA]{$field} ) = "v$val";
 	    } else {
 		$obj->[DATA]{$field} = $ref_id || "v$value";
@@ -350,8 +372,7 @@ sub fetch {
 sub get_id {
     my( $self, $class ) = @_;
 
-    my $res = $self->{DBH}->do( "INSERT INTO objects (class) VALUES (?)", {}, $class );
-    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+    my $res = $self->_do( "INSERT INTO objects (class) VALUES (?)", $class );
 
     return $self->{DBH}->last_insert_id(undef,undef,undef,undef);
 } #get_id
@@ -379,7 +400,7 @@ sub _has_path_to_root {
 # returns the max id (mostly used for diagnostics)
 sub max_id {
     my $self = shift;
-    my( $highd ) = $self->_selectrow_array( "SELECT max(ID) FROM objects" );
+    my( $highd ) = $self->_query_line( "SELECT max(ID) FROM objects" );
     return $highd;
 }
 
@@ -387,13 +408,11 @@ sub commit_transaction {
     my $self = shift;
 
     $self->_do( "COMMIT" );
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 }
 
 sub start_transaction {
     my $self = shift;
-    $self->_do( "BEGIN" );
-    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
+    $self->_do( "START TRANSACTION" );
 }
 
 sub paginate {
@@ -411,11 +430,12 @@ sub paginate {
 
     my( $orstr, @params ) = ( '', $obj_id );
     my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
-    my $search_fields = $args->{ search_fields } || [];
+    my( @search_fields ) = @{ $args->{ search_fields } || [] };
+    my( @sort_fields ) = @{ $args->{ sort_fields } || [] };
     if( @search_terms ) {
-	if( @$search_fields ) {
+	if( @search_fields ) {
 	    my( @ors );
-	    for my $field ( @$search_fields ) {
+	    for my $field ( @search_fields ) {
 		for my $term (@search_terms) {
 		    push @ors, " (f.field=? AND f.value LIKE ?) ";
 		    push @params, $field, "\%$term\%";
@@ -429,14 +449,13 @@ sub paginate {
     }
 
     my $query;
-    my( $type ) = $self->_selectrow_array( "SELECT class FROM objects WHERE id=?", $obj_id );
+    my( $type ) = $self->_query_line( "SELECT class FROM objects WHERE id=?", $obj_id );
 
-    if( @{ $args->{ sort_fields } || [] } ) {
-	my $sort_fields = $args->{ sort_fields };
+    if( @sort_fields ) {
 	my $reversed_orders = $args->{ reversed_orders } || [];
-        $query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
+        $query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#sort_fields) ) . $PAG;
     }
-    elsif( @$search_fields ) {
+    elsif( @search_fields ) {
 	if( $args->{ hashkey_search } ) {
 	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
 	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
@@ -544,58 +563,46 @@ sub stow_all {
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
-    $self->{DBH}->do("UPDATE objects SET last_updated=now() WHERE id=?", {}, $id );
+    $self->_do("UPDATE objects SET last_updated=now() WHERE id=?", $id );
     if( $class eq 'ARRAY') {
-	$self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-	print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+	$self->_do( "DELETE FROM field WHERE obj_id=?", $id );
 
 	for my $i (0..$#$data) {
 	    my $val = $data->[$i];
 	    if( index( $val, 'v' ) == 0 ) {
 		if( length( $val ) > MAX_LENGTH ) {
 		    my $big_id = $self->get_id( "BIGTEXT" );
-		    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $i, $big_id );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $i, $big_id );
 
-		    $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
 
 		} else {
-		    $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $i, substr($val,1) );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $i, substr($val,1) );
 
 		}
 	    } else {
-		$self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $i, $val );
-		print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $i, $val );
 
 	    }
 	}
     }
     else {
-	$self->{DBH}->do( "DELETE FROM field WHERE obj_id=?", {}, $id );
-	print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+	$self->_do( "DELETE FROM field WHERE obj_id=?", $id );
 	for my $key (keys %$data) {
 	    my $val = $data->{$key};
 	    if( index( $val, 'v' ) == 0 ) {
 		if( length( $val ) > MAX_LENGTH ) {
 		    my $big_id = $self->get_id( "BIGTEXT" );
-		    $self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", {}, $id, $key, $big_id );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
+		    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $key, $big_id );
 
-		    $self->{DBH}->do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", {}, $big_id, substr($val,1) );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
-		} else {
-		    $self->{DBH}->do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", {}, $id, $key, substr($val,1) );
-		    print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+		    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
+		} 
+		else {
+		    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $key, substr($val,1) );
 		}
 	    }
 	    else {
-		$self->{DBH}->do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", {}, $id, $key, $val );
-		print STDERR Data::Dumper->Dump(["db __LINE__",$self->{DBH}->errstr()]) if $self->{DBH}->errstr();
-
+		$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $key, $val );
 	    }
 	} #each key
     }
@@ -610,11 +617,10 @@ sub _engage_queries {
 	my $udata   = $uds->[ $i ];
 	for my $upd (@$updates) {
 	    $self->_do( @$upd );
-	    die $self->{DBH}->errstr() if $self->{DBH}->errstr();
 	}
 	while( @$udata ) {
 	    my( $first_data, @chunk );
-	    ( $first_data, @chunk[0..200], @$udata ) = @$udata;
+	    ( $first_data, @chunk[0..100], @$udata ) = @$udata;
 	    if( $first_data ) {
 		$self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.

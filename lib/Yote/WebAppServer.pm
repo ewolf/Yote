@@ -181,6 +181,7 @@ sub start_server {
     open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
 		      && $Yote::WebAppServer::ERR->autoflush;
 
+    $self->{ init_args } = $args;
     Yote::ObjProvider::init( %$args );
     Yote::IO::Mailer::init( %$args );
 
@@ -324,6 +325,7 @@ sub __start_server_thread {
 
     my $new_thread = threads->new(
 	sub {
+	    Yote::ObjProvider::init( %{$self->{ init_args } } );
 	    print STDERR "Starting server thread " . threads->tid() . "\n";
 	    $SIG{PIPE} = sub { 
 		print STDERR "Thread $$ got sig pipe. Exiting\n";

@@ -30,7 +30,8 @@ sub add_entry {
 sub entries {
     my $self = shift;
     my $now_running = _time();
-    return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @{ $self->get_entries([]) }];
+    my $entries = $self->get_entries([]);
+    return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @$entries ];
 } #entries
 
 
