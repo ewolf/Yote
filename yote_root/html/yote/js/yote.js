@@ -602,7 +602,7 @@ $.yote = {
 			search_fields : args[ 'search_field'  ] || [],
 			sort_fields   : args[ 'sort_fields'   ] || [],
 			hashkey_search_value : args[ 'hashkey_search_value' ] || undefined,
-			sort_reverse  : args[ 'sort_reverse'  ] || undefined,
+			sort_reverse  : args[ 'sort_reverse'  ] || false,
 			is_hash       : is_hash,
 			full_size : function() {
 			    var me = this;
@@ -628,7 +628,7 @@ $.yote = {
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
-				    reverse : me.sort_reverse,
+				    reverse : me.sort_reverse ? 1 : 0,
 				    sort_fields : me.sort_fields
 				} );
 				return res.to_list();
