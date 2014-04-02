@@ -81,8 +81,8 @@
           $.yote.util.register_functions( {
 	      init_search_hash : function( args ) {
 		  var collection = args[ 'default_var' ];
-		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
-                  search_val_id =  args[ 'vars' ][ 'search_val' ];
+		  var search_button_id = args[ 'controls' ][ 'search_btn' ],
+                  search_val_id =  args[ 'controls' ][ 'search_val' ];
 		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
 		  $.yote.util.button_actions( {
 		      button :  '#' + search_button_id,
@@ -103,8 +103,8 @@
                   return $.yote.util.fill_template( Math.random() < 0.5 ? 'rand_A' : 'rand_B' );
               },
 	      init_sorts : function( args ) {
-		  var color_b_id = args[ 'vars' ][ 'color_b' ],
-		       flav_b_id = args[ 'vars' ][ 'flav_b' ];
+		  var color_b_id = args[ 'controls' ][ 'color_b' ],
+		       flav_b_id = args[ 'controls' ][ 'flav_b' ];
 		  $( '#' + color_b_id ).click( function() { color_sort( args ) } );
 		  $( '#' + flav_b_id ).click( function() { flav_sort( args ) } );
 	      },
@@ -113,10 +113,10 @@
 
 	      init_paginator : function( args ) {
 		  var collection = args[ 'default_var' ];
-		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
-                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
-                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
-                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
+		  var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
+                      pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
+                      pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],
+                      pag_end_button_id =  args[ 'controls' ][ 'paginate_to_end_button' ];
 
 		  if( collection.can_rewind() ) {
 		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );

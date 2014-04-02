@@ -753,7 +753,7 @@ $.yote.util = {
 		if( ! args[ 'default_var' ] ) args[ 'default_var' ] = args[ 'item' ];
 		if( ! args[ 'default_parent' ] ) args[ 'default_parent' ] = args[ 'parent' ];
 //WOLF - here is here the args get introduced to the template id instance
-		(function(a) { 
+		(function(a) {
 		$( a[ 'attachpoint' ] ).click(function(){
 		    if( a[ 'action' ].indexOf('__') == 0 && $.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ] ) {
 			$.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ]( a );
@@ -1538,8 +1538,8 @@ $.yote.util = {
 			}
 		    }
 		    if( args[ 'new_hashkey' ] ) {
-			args[ 'default_var' ].hash( { key   : args[ 'new_hashkey' ], 
-						      name  : args[ 'field' ], 
+			args[ 'default_var' ].hash( { key   : args[ 'new_hashkey' ],
+						      name  : args[ 'field' ],
 						      items : [ newv ] } );
 		    }
 		    else {
@@ -1716,19 +1716,61 @@ $.yote.util = {
     }, //run_template_function
 
     register_template_value:function( text_val, params ) { //expects "_name_ (new(_hashkey)?)? <control>"
-	var parts = text_val.match( /^\s*(\S+)\s+(new[\S]*)?\s*(<.*)/i );
+
+        // now about we change this around so that the following are legit :
+        /*
+          <$$$ var varname value $$$>
+          <$$$ control ctlname <..html control..> $$$>
+          <$$$ new ctlname <..html control..> $$$>
+          <$$$ new_hashkey <..html control..> $$$>
+         */
+	var parts = text_val.match( /^\s*(var|control|new|new_hashkey)\s+((\S+)(.*))?/i );
 	if( parts ) {
-	    var control = parts.length == 3 ? parts[ 2 ] : parts[ 3 ];
+            var cmd = parts[ 1 ];
+            var varname = parts[ 3 ];
+            if( lc(cmd) == 'var' ) {
+		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
+                var val = $.yote.util.fill_template_text( parts[ 4 ] );
+                params[ 'vars' ][ varname ] = val;
+                $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
+                return '';
+            }
+
+            var control = lc(cmd) == 'new_hashkey' ? parts[ 2 ] : parts[ 4 ];
 	    var ctrl_parts = /\*\<.* id\s*=\s*['"]?(\S+)['"]? /.exec( control );
 	    var ctrl_id;
 	    var ctrl = control;
 	    if( ctrl_parts ) {
 		ctrl_id = ctrl_parts[ 1 ];
-	    } 
+	    }
 	    else {
 		ctrl_id = '__' + $.yote.util.next_id();
 		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
+            if( lc(cmd) == 'new_hashkey' ) {
+                params[ 'new_hashkey' ] = ctrl_id;
+	        $.yote.util.template_context[ params[ 'template_id' ] ][ 'new_hashkey' ] = ctrl_id;
+            }
+            else {
+                var tvar =  lc( cmd ) == '' ? 'controls' : '';
+                params[ tvar ][ varname ] = ctrl_id;
+                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = ctrl_id;     
+            }
+            return control;
+        } //has parts
+        return '';
+/*
+	var control = parts.length == 3 ? parts[ 2 ] : parts[ 3 ];
+	var ctrl_parts = /\*\<.* id\s*=\s*['"]?(\S+)['"]? /.exec( control );
+	var ctrl_id;
+	var ctrl = control;
+	if( ctrl_parts ) {
+	    ctrl_id = ctrl_parts[ 1 ];
+	}
+	else {
+	    ctrl_id = '__' + $.yote.util.next_id();
+	    ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
+	}
 	    if( parts[ 2 ] == 'new' ) {
 		if( ! params[ 'new_vars' ] ) params[ 'new_vars' ] = {};
 		params[ 'new_vars' ][ parts [ 1 ] ] = ctrl_id;
@@ -1747,6 +1789,7 @@ $.yote.util = {
 	}
 	console.log( "Template error for registering '"+text_val+"' : not understood." );
 	return '';
+*/
     }, //register_template_value
 
     fill_template_container:function( params, is_hash ) {
@@ -1760,7 +1803,7 @@ $.yote.util = {
 	    container_name    = parts[ 3 ].trim();
 
 	if( typeof host_obj === 'object' && container_name ) {
-	    var container = host_obj.wrap( { collection_name : container_name, 
+	    var container = host_obj.wrap( { collection_name : container_name,
 					     size : args[ 'size' ],
 					     wrap_key : main_template,
 					   }, is_hash );
@@ -1912,12 +1955,12 @@ $.yote.util = {
 	    txt = parts ? parts[1].trim() : 'New';
 	    return '<button type="BUTTON" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__new_with_same_permissions" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
 	}
-	else if( cmd == 'list_remove_button' ) {	    
+	else if( cmd == 'list_remove_button' ) {
 	    parts = /^\s*\S+\s+\S+\s+\S+\s*(.*)/.exec( varcmd );
 	    var subjobj = $.yote.util._template_var( args );
 	    txt = parts && parts[1] ? parts[1].trim() : 'Delete';
 	    var parent = default_parent;
-	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';	    
+	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
 	}
 	else if( cmd == 'show_or_edit' ) {
 	    if( ! subjobj ) return '';
@@ -1925,7 +1968,7 @@ $.yote.util = {
 		return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
 	    }
 	    else {
-		return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';		
+		return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
 	    }
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
