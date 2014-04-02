@@ -7,6 +7,8 @@
     <script src="/yote/js/jquery.base64.min.js"></script>
     <script src="/yote/js/json2.js"></script>
 
+    <script src="/templates/templates.js"></script>
+
     <script src="/js/main.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
@@ -50,8 +52,8 @@
         </DIV><DIV class="panel">
           <$@ known_icecreams empty _ known_icecreams  @$>
           <div>Add Icecream
-            <$$$ flavor new <input type="text" placeholder="Flavor"> $$$>
-	    <$$$ color new <input type="text" placeholder="Color"> $$$>
+            <$$$ new flavor <input type="text" placeholder="Flavor"> $$$>
+	    <$$$ new color <input type="text" placeholder="Color"> $$$>
           </div><HR>
 	  <$ newbutton _ known_icecreams Learn Icecream $>
           <? rand ?>
@@ -62,7 +64,8 @@
 
     <script>
       $().ready(function(){
-          $.yote.include_templates( '/templates.html' );
+          $.yote.include_templates( '/templates/templates.html' );
+	  $.yote.util.register_functions( base_templates );
 
           $.yote.debug = false;
           $.yote.init();
@@ -79,22 +82,6 @@
           $.yote.util.register_item( 'sandbox', sandbox );
 
           $.yote.util.register_functions( {
-	      init_search_hash : function( args ) {
-		  var collection = args[ 'default_var' ];
-		  var search_button_id = args[ 'controls' ][ 'search_btn' ],
-                  search_val_id =  args[ 'controls' ][ 'search_val' ];
-		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
-		  $.yote.util.button_actions( {
-		      button :  '#' + search_button_id,
-		      texts : [ '#' + search_val_id  ],
-		      action : function() {
-			  collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ];
-			  refresh_all();
-		      }
-		  } )
-
-	      }, //init_search_hash
-
               reset_sandbox : function() { app.reset_sandbox();
                                            sandbox = app.get_sandbox();
                                            $.yote.util.register_item( 'sandbox', sandbox );
@@ -110,36 +97,6 @@
 	      },
               flav_sort : function( args ) { ice_cream_sort( args[ 'default_var' ], 'flavor', 'known_icecreams' ) },
               color_sort : function( args ) {console.log( args ); ice_cream_sort( args[ 'default_var' ], 'color', 'known_icecreams' ) },
-
-	      init_paginator : function( args ) {
-		  var collection = args[ 'default_var' ];
-		  var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
-                      pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
-                      pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],
-                      pag_end_button_id =  args[ 'controls' ][ 'paginate_to_end_button' ];
-
-		  if( collection.can_rewind() ) {
-		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
-		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
-		  } else {
-		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
-		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
-		  }
-		  if( collection.can_fast_forward() ) {
-		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_forward_button_id ).click( function() {
-			  collection.forwards();
-			  refresh_all();
-		      } );
-		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
-		  } else {
-		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
-		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
-		  }
-	      } //init_paginator
 
           } );
 
@@ -166,6 +123,7 @@
 	      $.yote.util.refresh_ui();
 	      
 	  } //refresh_all
+	  $.yote.util.register_function( refresh_all );
 	  refresh_all();
       });
     </script>

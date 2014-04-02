@@ -1738,6 +1738,7 @@ $.yote.util = {
                 var val = $.yote.util.fill_template_text( parts[ 4 ] );
                 params[ 'vars' ][ varname ] = val;
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
+		alert( 1 );
                 return '';
             }
 
@@ -1766,37 +1767,7 @@ $.yote.util = {
             return ctrl;
         } //has parts
         return '';
-/*
-	var control = parts.length == 3 ? parts[ 2 ] : parts[ 3 ];
-	var ctrl_parts = /\*\<.* id\s*=\s*['"]?(\S+)['"]? /.exec( control );
-	var ctrl_id;
-	var ctrl = control;
-	if( ctrl_parts ) {
-	    ctrl_id = ctrl_parts[ 1 ];
-	}
-	else {
-	    ctrl_id = '__' + $.yote.util.next_id();
-	    ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
-	}
-	    if( parts[ 2 ] == 'new' ) {
-		if( ! params[ 'new_fields' ] ) params[ 'new_fields' ] = {};
-		params[ 'new_fields' ][ parts [ 1 ] ] = ctrl_id;
-		$.yote.util.template_context[ params[ 'template_id' ] ][ 'newfields' ][ parts[ 1 ] ] = ctrl_id;
-	    }
-	    else if( parts[ 2 ] == 'new_hashkey' ) {
-		params[ 'new_hashkey' ] = ctrl_id;
-		$.yote.util.template_context[ params[ 'template_id' ] ][ 'new_hashkey' ] = ctrl_id;
-	    }
-	    if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
-	    params[ 'vars' ][ parts [ 1 ] ] = ctrl_id;
 
-	    $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ parts[ 1 ] ] = ctrl_id;
-
-	    return ctrl;
-	}
-	console.log( "Template error for registering '"+text_val+"' : not understood." );
-	return '';
-*/
     }, //register_template_value
 
     fill_template_container:function( params, is_hash ) {
@@ -1979,7 +1950,7 @@ $.yote.util = {
 	    }
 	}
 	else if( cmd == 'val' ) {
-	    return params[ 'vars' ][ subj ];
+	    return args[ 'vars' ][ subj ];
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return varcmd;

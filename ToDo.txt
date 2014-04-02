@@ -1,7 +1,12 @@
 The stack :
 
- - templates - implement $$$$ define non input variable. for things like storing messages for 
-   templates
+
+
+
+ - templates
+         fix new variable bug
+         test $$$$ define non input variable. for things like storing messages for templates
+
 
  - client side object permission detection. "Can I edit the given object" - if root, yes, but also if
     the object is a UserObj and you are the user that owns it
