@@ -8,28 +8,28 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_out">
-   <$$$ messages <span>This page requires a root login.</span> $$$><BR>
-   <$$$ handle <input placeholder="handle" type="text"> $$$>
-   <$$ password <input placeholder="password" type="password"> $$$>
-   <$$$ login_button <button type="BUTTON">Log In</button> $$$>
+   <$$$  control messages <span><$ val default_login_message $></span> $$$><BR>
+   <$$$ control handle <input placeholder="handle" type="text"> $$$>
+   <$$$ control password <input placeholder="password" type="password"> $$$>
+   <$$$ control login_button <button type="BUTTON">Log In</button> $$$>
 <BR>
    <$ action_link forgot Forgot Password $>
    <?? init_login ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Recover_Login">
-   <$$$ messages <span></span> $$$><BR>
-   <$$$ email <input placeholder="email" type="text"> $$$>
+   <$$$ control messages <span></span> $$$><BR>
+   <$$$ control email <input placeholder="email" type="text"> $$$>
    <$ button recover Recover Password $>
    <$ action_link refresh_all [X] $>
    <?? init_recover ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
- <$$$ paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
- <$$$ paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
- <$$$ paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
- <$$$ paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
+ <$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
+ <$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
+ <$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
+ <$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
  <?? init_paginator ??>
 </script>
 

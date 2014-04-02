@@ -138,12 +138,14 @@ if we are our experiences then we are both sides of them.
 	      $.yote.util.refresh_ui();
 	  }//refresh_all
 
+	  $.yote.util.register_function( 'refresh_all', refresh_all );
+
 	  refresh_all();
       });
     </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
-  <$$$$ default_login_message This page requires a root login. $$$$>
+  <$$$$ var default_login_message This page requires a root login. $$$$>
   <$$ Log_in_box $$>
 </script>
 
@@ -181,9 +183,9 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
  <$@ Entry_Repeat_Table Empty  _ repeats @$>
- Interval (min) : <$$$ repeat_interval new <input type="text"> $$$> <BR>
- Infinite Repeat : <$$$ repeat_infinite new <input type="checkbox"> $$$> <BR>
- Number Repeat Times : <$$$ repeat_times new <input type="text"> $$$> <BR>
+ Interval (min) : <$$$ new repeat_interval <input type="text"> $$$> <BR>
+ Infinite Repeat : <$$$ new repeat_infinite <input type="checkbox"> $$$> <BR>
+ Number Repeat Times : <$$$ new repeat_times <input type="text"> $$$> <BR>
  <$ newbutton _ repeats Add Repeat $>
 </script>
 
@@ -206,7 +208,7 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
  <$@ Entry_Schedule_Table Empty _ scheduled_times @$>
- <$$$ new_schedule_time <input type="datetime-local"> $$$>
+ <$$$ control new_schedule_time <input type="datetime-local"> $$$>
  <$ button new_schedule Schedule Time $>
 </script>
 

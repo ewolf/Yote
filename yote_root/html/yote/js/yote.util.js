@@ -1526,7 +1526,7 @@ $.yote.util = {
 	    if( args[ 'default_var' ] && args[ 'field' ] ) {
 		var newv = args[ 'default_var' ].new_with_same_permissions();
 		if( newv ) {
-		    var newf = $.yote.util.template_context[ args[ 'template_id' ] ][ 'newfields' ] || {};
+		    var newf = $.yote.util.template_context[ args[ 'template_id' ] ][ 'new_fields' ] || {};
 		    for( var k in newf ) {
 			var f = $( '#' + newf[ k ] );
 			if( f ) {
@@ -1572,6 +1572,11 @@ $.yote.util = {
 
     register_function:function( key, value ) {
 	$.yote.util.functions[ key ] = value;
+    },
+    
+    run_function:function( fun, args ) {
+	if( $.yote.util.functions[ fun ] )
+	    $.yote.util.functions[ fun ]( args );
     },
 
     register_functions:function( hash ) {
@@ -1728,7 +1733,7 @@ $.yote.util = {
 	if( parts ) {
             var cmd = parts[ 1 ];
             var varname = parts[ 3 ];
-            if( lc(cmd) == 'var' ) {
+            if( cmd.toLowerCase() == 'var' ) {
 		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
                 var val = $.yote.util.fill_template_text( parts[ 4 ] );
                 params[ 'vars' ][ varname ] = val;
@@ -1736,7 +1741,7 @@ $.yote.util = {
                 return '';
             }
 
-            var control = lc(cmd) == 'new_hashkey' ? parts[ 2 ] : parts[ 4 ];
+            var control = cmd.toLowerCase() == 'new_hashkey' ? parts[ 2 ] : parts[ 4 ];
 	    var ctrl_parts = /\*\<.* id\s*=\s*['"]?(\S+)['"]? /.exec( control );
 	    var ctrl_id;
 	    var ctrl = control;
@@ -1747,16 +1752,18 @@ $.yote.util = {
 		ctrl_id = '__' + $.yote.util.next_id();
 		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
-            if( lc(cmd) == 'new_hashkey' ) {
+            if( cmd.toLowerCase() == 'new_hashkey' ) {
                 params[ 'new_hashkey' ] = ctrl_id;
 	        $.yote.util.template_context[ params[ 'template_id' ] ][ 'new_hashkey' ] = ctrl_id;
             }
             else {
-                var tvar =  lc( cmd ) == '' ? 'controls' : '';
+                var tvar =  cmd.toLowerCase() == 'control' ? 'controls' : 'new_fields';
+		if( ! params[ tvar ] ) params[ tvar ] = {};
                 params[ tvar ][ varname ] = ctrl_id;
-                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = ctrl_id;     
+                if( ! $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] ) $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] = {};
+                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = ctrl_id;
             }
-            return control;
+            return ctrl;
         } //has parts
         return '';
 /*
@@ -1772,8 +1779,8 @@ $.yote.util = {
 	    ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	}
 	    if( parts[ 2 ] == 'new' ) {
-		if( ! params[ 'new_vars' ] ) params[ 'new_vars' ] = {};
-		params[ 'new_vars' ][ parts [ 1 ] ] = ctrl_id;
+		if( ! params[ 'new_fields' ] ) params[ 'new_fields' ] = {};
+		params[ 'new_fields' ][ parts [ 1 ] ] = ctrl_id;
 		$.yote.util.template_context[ params[ 'template_id' ] ][ 'newfields' ][ parts[ 1 ] ] = ctrl_id;
 	    }
 	    else if( parts[ 2 ] == 'new_hashkey' ) {
@@ -1970,6 +1977,9 @@ $.yote.util = {
 	    else {
 		return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
 	    }
+	}
+	else if( cmd == 'val' ) {
+	    return params[ 'vars' ][ subj ];
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return varcmd;

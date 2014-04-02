@@ -1,6 +1,9 @@
 base_templates = {
 
     /** LOGIN FUNCTIONS **/
+    refresh_all:function(args) {
+	$.yote.util.refresh_ui();	
+    },
 
     check_login_status:function(args) {
 	return $.yote.is_root() ? "<$$ Logged_in $$>" : "<$$ Logged_out $$>";
@@ -12,7 +15,7 @@ base_templates = {
 
     init_login:function(args) {
 	if( args['vars'] ) {
-	    var vars = args['vars'];
+	    var vars = args['controls'];
 	    var h = '#' + vars[ 'handle' ],
 	    p = '#' + vars[ 'password' ],
             m = '#' + vars[ 'messages' ];
@@ -25,7 +28,7 @@ base_templates = {
 				  $(p).val(),
 				  function(msg) {
 				      if( $.yote.is_root() ) {
-					  refresh_all();
+					  $.yote.util.run_function( 'refresh_all' );
  				      }
 				      else if( $.yote.is_logged_in() ) {
 					  $(m).empty().append( "ERROR : this account does not have root privileges" );
@@ -39,8 +42,8 @@ base_templates = {
 	}
     }, //init_login
     init_recover:function(args) {
-	if( args['vars'] ){
-	    var e = '#' + args[ 'vars' ][ 'email' ];
+	if( args['controls'] ){
+	    var e = '#' + args[ 'controls' ][ 'email' ];
 	    $.yote.util.button_actions({
 		button : '#' + vars[ 'recover' ],
 		texts : [ e ],
@@ -58,24 +61,26 @@ base_templates = {
     },
     logout:function(args) {
 	$.yote.logout();
-	refresh_all();
+	$.yote.util.run_function( 'refresh_all' );
     },
 
 
     /** PAGE NAVIGATION FUNCTIONS **/
 
     init_paginator : function( args ) {
+	
 	var collection = args[ 'default_var' ];
-	var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
-	pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
-	pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
-	pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
+	
+	var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
+	pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
+	pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],
+	pag_end_button_id =  args[ 'controls' ][ 'paginate_to_end_button' ];
 
 	if( collection.can_rewind() ) {
 	    $( '#' + pag_begin_button_id ).attr( 'disabled', false );
 	    $( '#' + pag_back_button_id ).attr( 'disabled', false );
-	    $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
-	    $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
+	    $( '#' + pag_begin_button_id ).click( function() { collection.first(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $( '#' + pag_back_button_id ).click( function() { collection.back(); $.yote.util.run_function( 'refresh_all' ); } );
 	} else {
 	    $( '#' + pag_begin_button_id ).attr( 'disabled', true );
 	    $( '#' + pag_back_button_id ).attr( 'disabled', true );
@@ -85,9 +90,9 @@ base_templates = {
 	    $( '#' + pag_end_button_id ).attr( 'disabled', false );
 	    $( '#' + pag_forward_button_id ).click( function() {
 		collection.forwards();
-		refresh_all();
+		$.yote.util.run_function( 'refresh_all' );
 	    } );
-	    $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
+	    $( '#' + pag_end_button_id ).click( function() { collection.last(); $.yote.util.run_function( 'refresh_all' ); } );
 	} else {
 	    $( '#' + pag_forward_button_id ).attr( 'disabled', true );
 	    $( '#' + pag_end_button_id ).attr( 'disabled', true );
@@ -96,15 +101,15 @@ base_templates = {
 
     init_search_hash : function( args ) {
 	var collection = args[ 'default_var' ];
-	var search_button_id = args[ 'vars' ][ 'search_btn' ],
-	search_val_id =  args[ 'vars' ][ 'search_val' ];
+	var search_button_id = args[ 'controls' ][ 'search_btn' ],
+	search_val_id =  args[ 'controls' ][ 'search_val' ];
 	$( '#' + search_val_id ).val( collection.hashkey_search_value );
 	$.yote.util.button_actions( {
 	    button :  '#' + search_button_id,
 	    texts : [ '#' + search_val_id  ],
 	    action : function() {
 		collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ],
-		refresh_all();
+		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
 	
@@ -112,8 +117,8 @@ base_templates = {
 
     init_search_list : function( args ) {
 	var collection = args[ 'default_var' ];
-	var search_button_id = args[ 'vars' ][ 'search_btn' ],
-        search_val_id =  args[ 'vars' ][ 'search_val' ];
+	var search_button_id = args[ 'controls' ][ 'search_btn' ],
+        search_val_id =  args[ 'controls' ][ 'search_val' ];
 	$( '#' + search_val_id ).val( collection.search_values.join(' ') );
 	$.yote.util.button_actions( {
 	    button :  '#' + search_button_id,
@@ -121,7 +126,7 @@ base_templates = {
 	    action : function() {
 		collection.search_fields = args[ 'extra' ].split(/ +/);
 		collection.search_values = $( '#' + search_val_id ).val().split(/ +/);
-		refresh_all();
+		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
 
