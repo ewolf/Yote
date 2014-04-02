@@ -667,8 +667,9 @@ $.yote = {
 					}
 				    }
 				    else {
+					me.length = olist.length;
+
 					if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
-					    me.length++;
 					    ret.push( olist[i] );
 					}
 				    }
@@ -719,22 +720,23 @@ $.yote = {
 					    }
 					    if( match ) {
 						var k = hkeys[ i ];
+						me.length++;
 						if( i >= me.start && me.length < me.page_size &&
 						    ( ! me.hashkey_search_value || 
 						      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
 						{
 						    ret[ k ] = ohash[ k ];
-						    me.length++;
 						}
 					    }
 					}
 				    }
 				    else {
+					me.length = Object.size( ohash );
+
 					if( i >= me.start && me.length < me.page_size ) {
 					    var k = hkeys[ i ];
 					    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
 						ret[ k ] = ohash[ k ];
-						me.length++;
 					    }
 					}
 				    }
@@ -798,7 +800,7 @@ $.yote = {
 			    this.start = 0;
 			},
 			last:function(){
-			    this.start = this.full_size() - this.page_size;
+			    this.start = this.length - this.page_size;
 			}
 		    };
 		    $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] = ret;

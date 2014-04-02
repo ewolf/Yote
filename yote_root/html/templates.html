@@ -25,6 +25,14 @@
    <?? init_recover ??>
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="Paginator">
+ <$$$ paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
+ <$$$ paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
+ <$$$ paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
+ <$$$ paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
+ <?? init_paginator ??>
+</script>
+
 <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
   <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
     <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
