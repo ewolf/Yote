@@ -1,10 +1,16 @@
 The stack :
+
+ - templates - implement $$$$ define non input variable. for things like storing messages for 
+   templates
+
+ - client side object permission detection. "Can I edit the given object" - if root, yes, but also if
+    the object is a UserObj and you are the user that owns it
  
  - mysql cron problems? check other stores cron.  Am seeing database connection errors
                 my best guess is its due to the threadedness.  each thread then should have a separate connection to the database
           LOOKS like this is  solved. Just have to make sure mongo and sqlite have sensible query methods. more worried about sqlite
 
- for js..just package up all the js and send it across as one.
+ for js..just package up all the js and send it across as one. How about a js directory --> minified --> returned and a cron that does the minifying
 
  edit or show control depending on who's logged in
 

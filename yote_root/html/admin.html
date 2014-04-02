@@ -8,7 +8,8 @@
     <script src="/yote/js/jquery.base64.min.js"></script>
     <script src="/yote/js/json2.js"></script>
 
-    <script src="/js/main.js"></script>
+    <script src="/templates/templates.js"></script>
+
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
@@ -80,7 +81,8 @@ if we are our experiences then we are both sides of them.
     <script>
       var root;
       $().ready(function(){
-	  $.yote.include_templates( '/templates.html' );
+	  $.yote.include_templates( '/templates/templates.html' );
+	  $.yote.util.register_functions( base_templates );
 	  
 	  $( '#mainpanel' ).hide();
 	  $.yote.debug = false;
@@ -98,63 +100,6 @@ if we are our experiences then we are both sides of them.
 	  // -------------------------------------
 
 	  $.yote.util.register_functions( {
-	      check_login_status:function(args) {
-		  return $.yote.is_root() ? "<$$ Logged_in $$>" : "<$$ Logged_out $$>";
-	      },
-	      logout:function(args) {
-		  $.yote.logout();
-		  refresh_all();
-	      },
-	      forgot:function(args) {
-		  $( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Recover_Login" } ) );
-		  $.yote.util.init_ui();
-	      },
-	      init_recover:function(args) {
-		  if( args['vars'] ){
-		      var e = '#' + args[ 'vars' ][ 'email' ];
-		      $.yote.util.button_actions({
-			  button : '#' + vars[ 'recover' ],
-			  texts : [ e ],
-			  action : function() {
-			      root.recover_password( $(e).val(),
-						     function(msg) {
-							 $(m).empty().append("ERROR : " + msg );
-						     },
-						     function(err) {
-							 $(m).empty().append("ERROR : " + err );
-						     }
-						   );
-			  } } );
-		  }
-	      },
-	      init_login:function(args) {
-		  if( args['vars'] ) {
-		      var vars = args['vars'];
-		      var h = '#' + vars[ 'handle' ],
-		          p = '#' + vars[ 'password' ],
-                          m = '#' + vars[ 'messages' ];
-
-		      $.yote.util.button_actions({
-			  button : '#' + vars[ 'login_button' ],
-			  texts : [ h, p ],
-			  action : function() {
-			      $.yote.login( $(h).val(),
-					    $(p).val(),
-					    function(msg) {
-						if( $.yote.is_root() ) {
-						    refresh_all();
- 						}
-						else if( $.yote.is_logged_in() ) {
-						    $(m).empty().append( "ERROR : this account does not have root privileges" );
-						}
-					    },
-					    function(err) {
-						$(m).empty().append("ERROR : " + err );
-					    }
-					  );
-			  } } );
-		  }
-	      }, //init_login
 	      cron_entry_next_time : function( args ) {
 		  var entry = args[ 'default_var' ];
 		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
@@ -173,50 +118,6 @@ if we are our experiences then we are both sides of them.
 	      is_validated : function( args ) {
 		  return args[ 'default_var' ].is_validated() ? "Yes" : "No";
 	      },
-	      init_paginator : function( args ) {
-		  var collection = args[ 'default_var' ];
-		  var pag_begin_button_id = args[ 'vars' ][ 'paginate_to_beginning_button' ],
-                      pag_back_button_id =  args[ 'vars' ][ 'paginate_back_button' ],
-                      pag_forward_button_id =  args[ 'vars' ][ 'paginate_forward_button' ],
-                      pag_end_button_id =  args[ 'vars' ][ 'paginate_to_end_button' ];
-
-		  if( collection.can_rewind() ) {
-		      $( '#' + pag_begin_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_back_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_begin_button_id ).click( function() { collection.first(); refresh_all(); } );
-		      $( '#' + pag_back_button_id ).click( function() { collection.back(); refresh_all(); } );
-		  } else {
-		      $( '#' + pag_begin_button_id ).attr( 'disabled', true );
-		      $( '#' + pag_back_button_id ).attr( 'disabled', true );
-		  }
-		  if( collection.can_fast_forward() ) {
-		      $( '#' + pag_forward_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_end_button_id ).attr( 'disabled', false );
-		      $( '#' + pag_forward_button_id ).click( function() {
-			  collection.forwards();
-			  refresh_all();
-		      } );
-		      $( '#' + pag_end_button_id ).click( function() { collection.last(); refresh_all(); } );
-		  } else {
-		      $( '#' + pag_forward_button_id ).attr( 'disabled', true );
-		      $( '#' + pag_end_button_id ).attr( 'disabled', true );
-		  }
-	      }, //init_paginator
-	      init_search_hash : function( args ) {
-		  var collection = args[ 'default_var' ];
-		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
-                      search_val_id =  args[ 'vars' ][ 'search_val' ];
-		  $( '#' + search_val_id ).val( collection.hashkey_search_value );
-		  $.yote.util.button_actions( {
-		      button :  '#' + search_button_id,
-		      texts : [ '#' + search_val_id  ],
-		      action : function() {
-			  collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ],
-			  refresh_all();
-		      }
-		  } )
-		  
-	      }, //init_search_hash
 	      refresh_all: refresh_all
 	  } );
 
@@ -241,11 +142,17 @@ if we are our experiences then we are both sides of them.
       });
     </script>
 
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
+  <$$$$ default_login_message This page requires a root login. $$$$>
+  <$$ Log_in_box $$>
+</script>
+
 <script type="text/template" class="yote_template_definition" template_name="Empty">
    None Found
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron">
+ <A NAME="Cron">
  <H3>Crons</H3>
  <$@ Cron_Table Empty _ entries @$>
  <$ newbutton _ entries Add Cron $>
@@ -320,6 +227,7 @@ if we are our experiences then we are both sides of them.
 
 <section id="templates">
 <script type="text/template" class="yote_template_definition" template_name="Apps">
+ <A NAME="App">
  <H3>Applications Installed</H3>
  <$% App_Table Empty _ _apps %$>
 </script>
@@ -354,6 +262,7 @@ if we are our experiences then we are both sides of them.
 <!-- ------------------------------ -->
 
 <script type="text/template" class="yote_template_definition" template_name="Users">
+ <A NAME="Users">
  <H3>Users</H3>
  <$% User_Table Empty _ _handles %$>
 </script>
@@ -385,10 +294,11 @@ if we are our experiences then we are both sides of them.
 	<img height="70px" width="151px" src="yotelogo.png">
       </A>
       <UL id="top_nav" class="nav"></UL>
-      <DIV id="login_div" class="yote_template login" template="Log_in_box"></div>
+      <DIV id="login_div" class="yote_template login" template="Log_in_box_admin"></div>
       <DIV id="msg_div"></DIV>
     </DIV>
 
+    <A NAME="Top">
 
     <DIV id="errpanel" class="err">
       Must be logged in with a root account to view this page.
@@ -401,20 +311,18 @@ if we are our experiences then we are both sides of them.
 	  </DIV>
 	  <P>
 	    Welcome to the Yote Admin Page. This page manages
-            the users, apps and cron.
+            the <A HREF="#Users">users</A>, <A HREF="#App">apps</A> and <A HREF="#Cron">cron</A>.
 	  </P>
 	</SECTION>
 
+	<hr>
+
 	<DIV class="appwrapper">
-
 	  <DIV id="cron_div" class="yote_template" template="Cron" default_variable="cron"></div>
-
 	  <DIV id="user_div" class="yote_template" template="Users" default_variable="root"></div>
-
 	  <DIV id="apps_div" class="yote_template" template="Apps" default_variable="root"></div>
-
+	  <A HREF="#Top">Back to Top</A>
 	</DIV>
-
     </DIV>
 
     <hr>

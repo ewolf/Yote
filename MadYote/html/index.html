@@ -8,7 +8,7 @@
     <script src="/yote/js/jquery.base64.min.js"></script>
     <script src="/yote/js/json2.js"></script>
 
-    <script src="/js/main.js"></script>
+    <script src="/templates/templates.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
@@ -31,18 +31,12 @@
 
     <script>
       <!--
-/*
-  One could, for example have templates. One template for the frame of the page, one for the javascript
-  and one each for the panels.
-
-  Now what would the template look like?
-
-
-*/
 	  $().ready(function() {
+	      $.yote.include_templates( '/templates/templates.html' );
+	      $.yote.util.register_functions( base_templates );
 
 	      $.yote.init();
-	      var yote_app = $.yote.fetch_app( 'MadYote' );
+ 	      var yote_app = $.yote.fetch_app( 'MadYote' );
 
 	      function setup() {
 		  var root     = $.yote.fetch_root();
@@ -129,7 +123,7 @@
         <img height="70px" width="151px" src="yotelogo.png">
       </A>
       <UL id="top_nav" class="nav"></UL>
-      <DIV class="login logged_in" id="logged_in_status"></DIV>
+      <DIV id="login_div" class="yote_template login" template="Log_in_box"></div>
       <DIV id="msg_div"></DIV>
     </DIV>
 

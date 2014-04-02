@@ -94,22 +94,6 @@
 		  } )
 
 	      }, //init_search_hash
-	      init_search_list : function( args ) {
-		  var collection = args[ 'default_var' ];
-		  var search_button_id = args[ 'vars' ][ 'search_btn' ],
-                  search_val_id =  args[ 'vars' ][ 'search_val' ];
-		  $( '#' + search_val_id ).val( collection.search_values.join(' ') );
-		  $.yote.util.button_actions( {
-		      button :  '#' + search_button_id,
-		      texts : [ '#' + search_val_id  ],
-		      action : function() {
-			  collection.search_fields = args[ 'extra' ].split(/ +/);
-			  collection.search_values = $( '#' + search_val_id ).val().split(/ +/);
-			  refresh_all();
-		      }
-		  } )
-
-	      }, //init_search_list
 
               reset_sandbox : function() { app.reset_sandbox();
                                            sandbox = app.get_sandbox();

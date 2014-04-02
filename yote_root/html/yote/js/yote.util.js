@@ -1919,6 +1919,15 @@ $.yote.util = {
 	    var parent = default_parent;
 	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';	    
 	}
+	else if( cmd == 'show_or_edit' ) {
+	    if( ! subjobj ) return '';
+	    if( $.yote.is_root() ) {
+		return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+	    }
+	    else {
+		return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';		
+	    }
+	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return varcmd;
     }, //fill_template_variable
