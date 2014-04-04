@@ -1735,10 +1735,9 @@ $.yote.util = {
             var varname = parts[ 3 ];
             if( cmd.toLowerCase() == 'var' ) {
 		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
-                var val = $.yote.util.fill_template_text( parts[ 4 ] );
+                var val = $.yote.util.fill_template_text( { template : parts[ 4 ] } );
                 params[ 'vars' ][ varname ] = val;
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
-		alert( 1 );
                 return '';
             }
 
