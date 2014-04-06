@@ -80,13 +80,18 @@ if we are our experiences then we are both sides of them.
 
     <script>
       var root;
+	  function msg( args, message ) {
+	      $( '#' + args[ 'controls' ][ 'messages' ] ).empty().append( message );
+	  }
+
       $().ready(function(){
 	  $.yote.include_templates( '/templates/templates.html' );
 	  $.yote.util.register_functions( base_templates );
 
 	  $( '#mainpanel' ).hide();
-	  $.yote.debug = false;
+	  $.yote.debug = true;
 	  $.yote.init();
+	  $.yote.debug = false;
 	  root = $.yote.fetch_root();
 	  $.yote.app = root;
 
@@ -98,11 +103,38 @@ if we are our experiences then we are both sides of them.
 	  } );
 
 	  // -------------------------------------
-	  function msg( args, message ) {
-	      $( '#' + args[ 'controls' ][ 'messages' ] ).val( message );
-	  }
 
 	  $.yote.util.register_functions( {
+	      ref : function( args ) {
+		  return args[ 'default_var' ][ 'class' ];
+	      },
+	      remove_attached : function( args ) {
+		  alert( args[ 'hash_key' ] );
+		  $.yote.debug = true;
+		  args[ 'default_parent' ].set( args[ 'hash_key' ], undefined );
+		  $.yote.debug = false;
+		  
+	      },
+	      setup_attached : function( args ) {
+		  $.yote.util.button_actions( 
+		      {
+			  button : '#' + args[ 'controls' ][ 'add_attached_b' ],
+			  texts  : [ '#' + args[ 'controls' ][ 'field' ] ],
+			  action : function() {
+			      var k  = $( '#' + args[ 'controls' ][ 'field' ] ).val();
+			      var ot = $( '#' + args[ 'controls' ][ 'objtype' ] ).val();
+			      var o = ot == 1 ? $.yote.fetch_root().new_obj() :
+				  ot == 2 ? $.yote.fetch_root().new_user_obj() :
+				  ot == 3 ? $.yote.fetch_root().new_root_obj() : null;
+			      if( o ) {
+				  args[ 'default_var' ].set( k, o );
+				  args[ 'default_var' ].hash( {  name  : '_attached_objects',
+								 key   : k,
+								 value : o } );
+			      }
+			  } //action
+		      } );
+	      }, //setup_attached
 	      PurgedApps : function( args ) {
 		  var pc = args[ 'default_var' ].count( '_purged_apps' );
 		  if( pc > 0 ) {
@@ -126,8 +158,7 @@ if we are our experiences then we are both sides of them.
 		  (function( arg ) {
 		      $.yote.util.button_actions( {
 			  button :   '#' + arg[ 'controls' ][ 'new_app_b' ],
-			  texts  : [ '#' + arg[ 'controls' ][ 'name' ],
-				     '#' + arg[ 'controls' ][ 'class' ] ],
+			  texts  : [ '#' + arg[ 'controls' ][ 'name' ] ],
 			  action : function() {
 			      var newapp = arg[ 'default_var' ].register_app(
 				  { name    : $( '#' + arg[ 'controls' ][ 'name' ] ).val(),
@@ -288,7 +319,8 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="App_Table">
   <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
-                        <th>Number of Users</th>   <th>Email Settings</th>  <th>Reset</th>
+                        <th>Number of Users</th>   <th>Email Settings</th> 
+                        <th>Attached Objects</th>  <th>Reset</th>
                   </tr>
       <% App_Row 2 %>
   </table>
@@ -309,8 +341,35 @@ if we are our experiences then we are both sides of them.
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
   <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>
-    <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$ button reset_app Reset $></th>
+    <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$$ Attached_Objects $$></th>
+    <th><$ button reset_app Reset $></th>
   </tr>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Attached_Objects">
+    <$% Attached_ObjTab Empty _ _attached_objects %$>
+    <$$ Add_Attached $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Add_Attached">
+  <$$$ control field <input type="text" placeholder="field"> $$$>
+  <$$$ control objtype <select> <option value="1">All May Edit</option> <option value="2">User and Root May Edit</option> <option value="3">Root May Edit</option></select> $$$>
+  <$$$ control add_attached_b <BUTTON type="BUTTON">Attach Object</BUTTON> $$$>
+  <?? setup_attached ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Attached_Obj_Row">
+    <TR>
+      <TD><$ hash_key $></TD>
+      <TD><? ref ?></TD>
+      <TD><$ button remove_attached Remove $></TD>
+    </TR>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Attached_ObjTab">
+    <table> <TR> <TH> </TH> <TH> </TH> <TH> </TH> </TR>
+    <% Attached_Obj_Row 10 %>
+    </table>    
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Email_Settings">

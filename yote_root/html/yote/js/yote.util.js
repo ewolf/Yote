@@ -734,8 +734,9 @@ $.yote.util = {
 	    var ctx = $.yote.util.template_context[ args[ 'template_id' ] ];
 	    if( ctx ) {
 		for( fld in ctx ) {
-		    if( args[ fld ] ) { console.log( [ "ALERTY ARGS", fld, args ] ); }
-		    else {
+		    if( args[ fld ] ) { 
+			console.log( [ "Tries to overrite '" + fld + "' for context '" + args[ 'template_id' ] ] ); 
+		    } else {
 			args[ fld ] = ctx[ fld ];
 		    }
 		}
@@ -1619,14 +1620,24 @@ $.yote.util = {
 	return clone;
     }, //clone_template_args
 
-    fill_template:function( params ) {
+    fill_template:function( params, old_context ) {
 	var template = $.yote.util.templates[ params[ 'template_name' ] ];
 	if( ! template ) { return ''; }
 
         var args = $.yote.util.clone_template_args( params );
         args[ 'template' ] = template;
 	args[ 'template_id' ] = $.yote.util.next_id();
-	$.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {} };
+	var oc = $.yote.util.template_context[ old_context ];
+	if( oc ) {
+	    $.yote.util.template_context[ args[ 'template_id' ] ] = { 
+		vars : oc[ 'vars' ] ? Object.clone( oc[ 'vars' ] ) : {},
+		newfields : oc[ 'newfields' ] ? Object.clone( oc[ 'newfields' ] ) : {},
+		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {}
+	    };
+	}
+	else {
+	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {} };
+	}
 
 	return $.yote.util.fill_template_text( args );
     }, //fill_template
@@ -1662,7 +1673,7 @@ $.yote.util = {
 		}
 		args[ 'template_name' ] = funparts[ 1 ];
 		text_val = parts[ 0 ] +
-		    $.yote.util.fill_template( args ) +
+		    $.yote.util.fill_template( args, args[ 'template_id' ] ) +
 		    parts[ 2 ];
 	    } else {
 		text_val = parts[ 0 ] + parts[ 2 ];
