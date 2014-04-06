@@ -70,7 +70,6 @@ base_templates = {
     init_paginator : function( args ) {
 	var collection = args[ 'default_var' ];
 
-//	alert( args[ 'controls' ][ 'paginate_to_beginning_button' ] );
 	var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
 	pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
 	pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],

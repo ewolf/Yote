@@ -1706,11 +1706,9 @@ $.yote.util = {
 		args[ 'extra' ] = funparts[2].trim();
 	    }
 	    (function(fn, arg ) {
-		console.log( "ARF : " + arg[ 'controls' ][ 'paginate_to_beginning_button' ] );
 		$.yote.util.after_render_functions.push( function() {
 		    var f = $.yote.util.functions[ fn ];
 		    if( f ) {
-		console.log( "YARF : " + arg[ 'controls' ][ 'paginate_to_beginning_button' ] );
 			f( arg );
 		    } else {
 			console.log( "Template in after render function. Function '" + fn + "' not found." );

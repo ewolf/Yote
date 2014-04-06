@@ -787,7 +787,7 @@ $.yote = {
 			    return this.start > 0;
 			},
 			can_fast_forward : function() {
-			    return this.start + this.page_size < this.length;
+			    return this.start + this.page_size < this.full_size();
 			},
 			back:function(){
 			    var towards = this.start - (this.page_size);
