@@ -140,7 +140,7 @@ if we are our experiences then we are both sides of them.
 	      PurgedApps : function( args ) {
 		  var pc = args[ 'default_var' ].count( '_purged_apps' );
 		  if( pc > 0 ) {
-		      return pc + ' apps have been purged <$$$ var ac ' + pc + ' $$$> <$ button purge_apps Purge All $>';
+		      return pc + ' apps have been reset <$$$ var ac ' + pc + ' $$$> <$ button purge_apps Purge All $>';
 		  } 
 		  return '';
 	      }, //PurgedApps
@@ -370,7 +370,7 @@ if we are our experiences then we are both sides of them.
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Attached_ObjTab">
-    <table> <TR> <TH> </TH> <TH> </TH> <TH> </TH> </TR>
+    <table> <TR> <TH>Object Name</TH> <TH>Class</TH> <TH>Remove</TH> </TR>
     <% Attached_Obj_Row 10 %>
     </table>    
 </script>
