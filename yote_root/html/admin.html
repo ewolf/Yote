@@ -109,11 +109,12 @@ if we are our experiences then we are both sides of them.
 		  return args[ 'default_var' ][ 'class' ];
 	      },
 	      remove_attached : function( args ) {
-		  alert( args[ 'hash_key' ] );
 		  $.yote.debug = true;
-		  args[ 'default_parent' ].set( args[ 'hash_key' ], undefined );
+		  var dh = args[ 'vars' ][ 'fieldname' ];
+		  args[ 'default_parent' ].set( dh, null );
+		  args[ 'default_parent' ].delete_key( { name : '_attached_objects', key : dh } );
 		  $.yote.debug = false;
-		  
+		  refresh_all();
 	      },
 	      setup_attached : function( args ) {
 		  $.yote.util.button_actions( 
@@ -131,6 +132,7 @@ if we are our experiences then we are both sides of them.
 				  args[ 'default_var' ].hash( {  name  : '_attached_objects',
 								 key   : k,
 								 value : o } );
+				  refresh_all();
 			      }
 			  } //action
 		      } );
@@ -359,6 +361,7 @@ if we are our experiences then we are both sides of them.
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Attached_Obj_Row">
+    <$$$ var fieldname <$ hash_key $> $$$>
     <TR>
       <TD><$ hash_key $></TD>
       <TD><? ref ?></TD>

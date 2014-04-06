@@ -1779,7 +1779,9 @@ $.yote.util = {
             var varname = parts[ 3 ];
             if( cmd.toLowerCase() == 'var' ) {
 		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
-                var val = $.yote.util.fill_template_text( { template : parts[ 4 ] } );
+		var args = $.yote.util.clone_template_args( params );
+		args[ 'template' ] = parts[ 4 ];
+                var val = $.yote.util.fill_template_text( args ).trim();
                 params[ 'vars' ][ varname ] = val;
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
                 return '';

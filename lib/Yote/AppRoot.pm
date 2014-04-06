@@ -45,6 +45,7 @@ sub _init {
 } #_init
 
 sub _load {
+    my $self = shift;
     $self->get__attached_objects( {} ); # field -> obj parings, set aside here as a duplicate data structure to track items that may be editable on the admin page
 }
 
