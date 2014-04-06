@@ -390,6 +390,15 @@ sub hash_fetch {
     return $self->_hash_fetch( $name, $key );
 } #hash_fetch
 
+
+sub hash_has_key {
+    my( $self, $args, $account ) = @_;
+    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
+    my( $name, $key ) = @$args{'name','key'};
+
+    return $self->_hash_has_key( $name, $key );
+} #hash_has_key
+
 sub insert_at {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );

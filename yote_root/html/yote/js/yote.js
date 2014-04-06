@@ -99,10 +99,11 @@ if( ! Object.keys ) {
     }
 }
 if( ! Object.clone ) {
+    // shallow clone
     Object.clone = function( h ) {
         var clone = {};
         for( var key in h ) {
-            clone[ key ] = h[ key ];
+	    clone[ key ] = h[ key ];
         }
         return clone;
     }
@@ -265,9 +266,6 @@ $.yote = {
 	$.yote.token = 0;
 	$.yote._dump_cache();
 	$.cookie( 'yoken', '', { path : '/' } );
-	if( $.yote.util ) {
-	    $.yote.util.registered_items = {};
-	}
     }, //logout
 
     include_templates:function( url ) {
@@ -378,6 +376,7 @@ $.yote = {
 			    }
 		        }
 		    } else if( typeof params.failhandler === 'function' ) {
+			console.log( data.err );
 		        params.failhandler(data.err);
                     } //error case. no handler defined
                 } else {
@@ -922,7 +921,12 @@ $.yote = {
 		if( typeof val === 'function' ) return val;
 
 		if( val.substring(0,1) != 'v' ) {
-		    var obj = root.objs[val+''] || $.yote.fetch_root().fetch(val).get(0);
+		    var obj = root.objs[val+''];
+		    if( ! obj ) {
+			var ret = $.yote.fetch_root().fetch(val);
+			if( ! ret ) return undef; //this can happen if an authorized user logs out
+			obj = ret.get(0);
+		    }
 		    obj._app_id = this._app_id;
                     return obj;
 		}

@@ -87,6 +87,7 @@ if we are our experiences then we are both sides of them.
 	  $( '#mainpanel' ).hide();
 	  $.yote.debug = false;
 	  $.yote.init();
+	  $.yote.debug = true;
 	  root = $.yote.fetch_root();
 	  $.yote.app = root;
 
@@ -98,8 +99,27 @@ if we are our experiences then we are both sides of them.
 	  } );
 
 	  // -------------------------------------
+	  function msg( args, message ) {
+	      
+	  }
 
 	  $.yote.util.register_functions( {
+	      create_app : function( args ) {
+		  if( args[ 'default_var' ] ) {
+		      var newapp = $.yote.util._new_with_same_permissions( args );
+		      if( newapp ) {
+			  args[ 'default_var' ].hash( { key : args[ newapp.get( '_key' ) ],
+							name : '_apps',
+							value : newapp } );
+			  $.yote.util.refresh_ui();			  
+		      } else { 
+			  if( args[ 'default_var' ] ) {
+			      msg( args, "Error : an app is already registered with this name" ); 
+			  }
+			  else { msg( args, "Unknonw Error from server" ); }
+		      }
+		  } else { msg( args, 'Error in admin.html. No default variable' ); }
+	      },
 	      cron_entry_next_time : function( args ) {
 		  var entry = args[ 'default_var' ];
 		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
@@ -144,6 +164,13 @@ if we are our experiences then we are both sides of them.
       });
     </script>
 
+<script type="text/template" class="yote_template_definition" template_name="Cron_Row">
+  <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
+    <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
+    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td>
+  </tr>
+</script>
+
 <script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
   <$$$ var default_login_message This page requires a root login. $$$>
   <$$ Log_in_box $$>
@@ -156,8 +183,8 @@ if we are our experiences then we are both sides of them.
 <script type="text/template" class="yote_template_definition" template_name="Cron">
  <A NAME="Cron">
  <H3>Crons</H3>
- <$@ Cron_Table Empty _ entries @$>
- <$ newbutton _ entries Add Cron $>
+ <$@ Cron_Table Empty cron entries @$>
+ <$ newbutton cron entries Add Cron $>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Table">
@@ -232,6 +259,7 @@ if we are our experiences then we are both sides of them.
  <A NAME="App">
  <H3>Applications Installed</H3>
  <$% App_Table Empty _ _apps %$>
+ <$$ NewApp $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Table">
@@ -243,6 +271,15 @@ if we are our experiences then we are both sides of them.
   <$$ Paginator $$>
 <BR>
  <$$ SearchHash $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="NewApp">
+<div class="newapp">
+ <h3>Create a new App</h3>
+ App Name <$$$ control _key <input type="text"> $$$><BR>
+ App Class <$$$ control class <input type="text"> $$$><BR>
+ <$ button create_app Register App $>
+</div>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
@@ -284,6 +321,14 @@ if we are our experiences then we are both sides of them.
                         <th><? is_validated ?></th> </tr>
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="MainAdmin">
+    <$$$ control messages <span class="message"></span> $$$>
+    <$$ Apps $$>
+    <$$ Cron $$>
+    <$$ Users $$>
+    <A HREF="#Top">Back to Top</A>
+</script>
+
 </section>
 <!-- ------------------------------ -->
 
@@ -318,12 +363,8 @@ if we are our experiences then we are both sides of them.
 
 	<hr>
 
-	<DIV class="appwrapper">
-	  <DIV id="cron_div" class="yote_template" template="Cron" default_variable="cron"></div>
-	  <DIV id="user_div" class="yote_template" template="Users" default_variable="root"></div>
-	  <DIV id="apps_div" class="yote_template" template="Apps" default_variable="root"></div>
-	  <A HREF="#Top">Back to Top</A>
-	</DIV>
+        <DIV class="yote_template side_panel" template="MainAdmin" default_variable="root"></div>
+
     </DIV>
 
     <hr>

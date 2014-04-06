@@ -1,6 +1,3 @@
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
- <? check_login_status ?>
-</script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_in">
    Logged in as <$ show acct handle $><BR>
@@ -8,7 +5,7 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_out">
-   <$$$ control messages <span><$ val default_login_message $></span> $$$><BR>
+   <$$$ control messages <span><$ val default_login_message Please Log In $></span> $$$><BR>
    <$$$ control handle <input placeholder="handle" type="text"> $$$>
    <$$$ control password <input placeholder="password" type="password"> $$$>
    <$$$ control login_button <button type="BUTTON">Log In</button> $$$>
@@ -33,9 +30,21 @@
  <?? init_paginator ??>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Cron_Row">
-  <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  <td> <$ edit _ notes $> </td>
-    <td> <$ edit _ script $> </td>  <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
-    <td> <$$ Entry_Schedule $$> </td>  <td> <$ button Delete_Cron_Entry Delete $> </td>
-  </tr>
+
+<script type="text/template" class="yote_template_definition" template_name="SearchList">
+ <$$$ control search_val <input type="TEXT" placeholder="Search"> $$$>
+ <$$$ control search_btn <button type="BUTTON">Search</button> $$$>
+ <?? init_search_list ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="YoteHeader">
+  <DIV class="header" id="header_div">
+    <A href="/index.html" style="display:block">
+      <img height="70px" width="151px" src="yotelogo.png">
+    </A>
+    <UL id="top_nav" class="nav"></UL>
+    <div class="login">
+      <? check_login_status ?>
+    </div>
+  </DIV>
 </script>

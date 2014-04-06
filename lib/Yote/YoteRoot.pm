@@ -248,7 +248,13 @@ sub purge_app {
     die "Permissions Error";
 } #purge_app
 
-
+sub register_app {
+    my( $self, $appdata, $acct ) = @_;
+    my $name = $appdata->{ name };
+    my $apps = $self->get__apps({});
+    die "App '$name' already registered" if $apps->{ $name };
+    
+} #register_app
 
 #
 # Removes a login. Need not only to be logged in, but present all credentials
@@ -526,6 +532,10 @@ Returns a new user yote object, initialized with the optional has reference.
 =item purge_app
 
 This method may only be invoked by a login with the root bit set. This clears out the app entirely.
+
+=item register_app
+
+Registers the app object with the app key. This means there can be generic apps.
 
 =item remove_root( login )
 

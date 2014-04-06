@@ -1,7 +1,8 @@
 The stack :
 
+How should MadYote look?
 
-
+ - version - yote version should be able to be queried from the server.
 
  - templates
          fix new variable bug

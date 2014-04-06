@@ -12,15 +12,13 @@
 
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
-    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
-    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <link rel="stylesheet" type="text/css" href="/css/main.css"/>
 
     <STYLE>
-      .page_panel { width : 800px; background-color: rgb(79, 153, 88); margin-left: 300px; }
-      .side_panel { float: left; padding: 15px; margin: 100px 4px 0px 4px; max-width: 262px; }
-      .mainpanel { top:0px; width:500px; display:inline-block; }
-      .chatbar   { top:0px; width:200px; display:inline-block; vertical-align:top; margin : 10px; padding : 10px }
-      body       { margin-top:70px }
+      .side_panel { float: left; padding: 15px; margin-top:2em; max-width: 262px; }
+      .main       { padding: 15px; margin-top:2em; }
+      body       { margin-top:70px; font-family: sans-serif }
       .news_time { font-family: monospace;
                    font-size: small; }
       .news_body { font-family: serif; margin-left: 10px; padding-left: 10px; }
@@ -38,121 +36,42 @@
 
 	      $.yote.init();
  	      var yote_app = $.yote.fetch_app( 'MadYote' );
-
-	      function setup() {
-		  var root     = $.yote.fetch_root();
-		  var box      = yote_app.get_suggestion_box();
-		  var pagename = 'index.html';
-		  var page     = yote_app.hash_fetch( { name : 'pages', key : pagename } );
-		  var blog     = yote_app.get_yote_blog();
-		  var login    = $.yote.get_login();
-		  
-		  if( $.yote.is_root() && ! page ) {
-		      page = yote_app.hash( { name  : 'pages',  
-					      key   : pagename, 
-					      value : $.yote.fetch_root().new_root_obj() } );
-		  }
-		  $.yote.util.register_items( { 
-		      box     : box,
-		      chat    : yote_app.get_chat(),
-		      page    : page,
-                      account : yote_app.account(),
-		      blog    : blog
-		  } );
-
-		  //$.yote.util.reset_els( [ '#chat_box', '#suggestion_box_admin', '#side_panel' ] );
-		  $.yote.util.reset_els( [ '.control_table', '.yote_panel' ] );
-		  $.yote.util.init_ui();
-
-		  //url params to get current page
-		  if( $.yote.is_root() ) {
-		      if( ! page ) {
-			  page = yote_app.hash( { name : 'pages',  key : pagename, value : $.yote.fetch_root().new_root_obj() } );
-		      }
-		  }
-		  else {
-		      if( !page ) { page = { get : function() { return '' } }; }
-		      $( '#suggestion_box' ).empty().append(
-			      '<TEXTAREA id="suggestion" placeholder="Suggestion Box"></TEXTAREA><BR>' +
-			      '<BUTTON type="BUTTON" id="suggest_b">Send</BUTTON>' +
-			      '<DIV id="suggestion_msg"></DIV>'
-		      );
-		      $( '#suggest_b' ).click(function() {
-			  var sug =  $( '#suggestion' ).val();
-			  var sug_obj = $.yote.fetch_root().new_obj();
-			  sug_obj.set( 'suggestion', sug );
-			  box.add_to( { name : 'suggestions', items : [ sug_obj ] } );
-			  $( '#suggestion' ).val( '' );
-			  $( '#suggestion_msg' ).empty().append( 'Added suggestion : ' + sug );
-		      } );
-		  }
-
-	      } //setup
-
-	      attach_login( {
-		  attachpoint         : '#logged_in_status',
-		  message_attachpoint : '#msg_div',
-		  app                 : yote_app,
-		  after_login         : function() {
-		      if( $.yote.is_root() ) {
-			  $( '#suggestion_box' ).hide();
-			  $( '#suggestion_box_admin' ).show();
-		      }
-		      else {
-			  $( '#suggestion_box' ).show();
-			  $( '#suggestion_box_admin' ).hide();
-		      }
-		      setup();
-		  },
-		  after_logout        : function() {
-		      $( '#suggestion_box_admin' ).hide();
-		      $( '#suggestion_box' ).show();
-		      setup();
-		  }
-	      } );
+	      $.yote.util.register_item( 'yote', yote_app );
+	      
+	      $.yote.util.refresh_ui();		  
 	  } );
 	-->
     </script>
 
   </head>
 
+  <script type="text/template" class="yote_template_definition" template_name="SideBar">
+    <$ show_or_edit _.page #news  $>
+      <BR>
+    <$ show_or_edit _.page #yoteversion $>
+    <ul class="navlink">
+      <li>Thing</li>
+    </ul>
+  </script>
+
+  <script type="text/template" class="yote_template_definition" template_name="Main">
+    <$ show_or_edit _.page #whatis  $> <BR>
+    <$ show_or_edit _.page #features  $> <BR>
+    <$ show_or_edit _.page #demo  $>
+  </script>
+
+  <script type="text/template" class="yote_template_definition" template_name="Header">
+    <$$$ var default_login_message  $$$>
+    <$$ YoteHeader $$>
+  </script>
 
   <body>
 
-    <DIV class="header" id="header_div">
-      <A href="/index.html" style="display:block">
-        <img height="70px" width="151px" src="yotelogo.png">
-      </A>
-      <UL id="top_nav" class="nav"></UL>
-      <DIV id="login_div" class="yote_template login" template="Log_in_box"></div>
-    </DIV>
+    <DIV class="yote_template" template="YoteHeader"></div>
 
-    <DIV id="side_panel" class="side_panel yote_panel" item="$page"    field="#side_panel" edit_requires="root"> </DIV>
+    <DIV class="yote_template side_panel" template="SideBar" default_variable="yote"></div>
 
-    <DIV id="down_panel" class="side_panel yote_panel" item="$account" field="#log"        edit_requires="login"> </DIV>
+    <DIV class="yote_template main" template="Main" default_variable="yote"></div>
 
-    <DIV class="page_panel">
-      <DIV id="mainpanel" class="mainpanel yote_panel" item="$page" field="#main_panel" edit_requires="root"> </DIV>
-      <DIV id="blogpanel" class="mainpanel yote_panel" item="$blog" field="#entry"      edit_requires="root"> </DIV>
-
-	<DIV class="chatbar">
-	  <DIV id="suggestion_box"></div>
-	  <DIV class="control_table" id="suggestion_box_admin" is_admin="true" plimit="14" requires_root="true"
-	       item="$box" container_name="suggestions", include_remove="true", column_headers="['Suggestion','Notes']"
-	       columns="['suggestion','*notes']" ></div>
-
-          <h3>Chat</h3>
-          <div id="chat_mgs"></div>
-	  <div class="control_table" id="chat_box" item="$chat" plimit="15"
-	       container_name="messages" show_count="false" include_remove="*$.yote.is_root()"
-	       columns="[function(item,is_prep){if(is_prep){return item.get_message()+'['+item.get_name()+
-			'] ('+new Date(1000*item.get_created_on()).toLocaleString()+')'}}]"
-	       after_new_function="*function(item){ item.set('created_on',Math.round( new Date().getTime()/1000)) }"
-	       new_button="say" new_attachpoint="#chat_mgs" paginate_order="reverse"
-	       new_columns="['message','name']" new_column_placeholders="['message','name']"
-	       >
-	  </div>
-	</DIV>
-    </DIV>
   </body>
 </HTML>

@@ -14,7 +14,7 @@ base_templates = {
     },
 
     init_login:function(args) {
-	if( args['vars'] ) {
+	if( args['controls'] ) {
 	    var vars = args['controls'];
 	    var h = '#' + vars[ 'handle' ],
 	    p = '#' + vars[ 'password' ],
@@ -68,9 +68,9 @@ base_templates = {
     /** PAGE NAVIGATION FUNCTIONS **/
 
     init_paginator : function( args ) {
-	
 	var collection = args[ 'default_var' ];
-	
+
+//	alert( args[ 'controls' ][ 'paginate_to_beginning_button' ] );
 	var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
 	pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
 	pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],
@@ -116,6 +116,7 @@ base_templates = {
     }, //init_search_hash
 
     init_search_list : function( args ) {
+	console.log( [ 'SEARCH ARGS', args ] );
 	var collection = args[ 'default_var' ];
 	var search_button_id = args[ 'controls' ][ 'search_btn' ],
         search_val_id =  args[ 'controls' ][ 'search_val' ];
@@ -124,8 +125,8 @@ base_templates = {
 	    button :  '#' + search_button_id,
 	    texts : [ '#' + search_val_id  ],
 	    action : function() {
-		collection.search_fields = args[ 'extra' ].split(/ +/);
-		collection.search_values = $( '#' + search_val_id ).val().split(/ +/);
+		collection.search_fields = args[ 'vars' ][ 'search_fields' ].trim().split(/ +/);
+		collection.search_values = $( '#' + search_val_id ).val().trim().split(/ +/);
 		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
