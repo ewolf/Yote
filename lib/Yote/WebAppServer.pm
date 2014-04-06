@@ -400,9 +400,13 @@ sub __process_command {
 	    $login->add_once_to__accounts( $account );
         }
         my $ret = $app_object->$action( $data, $account, $command->{e} );
+	
+	# prepare the response object
+	$resp = { r =>  __obj_to_response( $ret, $login, $guest_token ) };
 
+	# check if there are object updates that should be included. This means objects that have changed on the server side
+	# since the last time the client was updated
 	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
-
 	my( $dirty_data );
 	if( @$dirty_delta ) {
 	    $dirty_data = {};
@@ -412,17 +416,26 @@ sub __process_command {
 		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
 		} elsif( ref( $dobj ) eq 'HASH' ) {
 		    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
-		} else {
+		} else { # Yote::Obj
 		    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
 		}
 		for my $val (values %{ $dirty_data->{$d_id} } ) {
+		    # this registers the objects that were introduced via data structure to the client
 		    if( index( $val, 'v' ) != 0 ) {
 			Yote::ObjManager::register_object( $val, $login ? $login->{ID} : $guest_token );
 		    }
 		}
 	    }
+	    $resp->{d} = $dirty_data;
 	} #if there was a dirty delta
-        $resp = $dirty_data ? { r => __obj_to_response( $ret, $login, $guest_token ), d => $dirty_data } : { r => __obj_to_response( $ret, $login, $guest_token ) };
+	
+	# Check to see if the client was watching for any containers attached to an object they have. If so, indicate
+	# to the client which containers those are ( do not include their data ) and the client may have events that
+	# fire when those are updated.
+	my $container_updates = Yote::ObjManager::fetch_updated_container_holders( $login, $guest_token );
+	if( $container_updates ) {
+	    $resp->{l} = $container_updates;
+	}
     };
     if( $@ ) {
 	my $err = $@;

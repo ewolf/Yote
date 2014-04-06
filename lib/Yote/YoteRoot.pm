@@ -36,6 +36,8 @@ sub _init {
     $self->set___ALLOWS( {} );
     $self->set___ALLOWS_REV( {} );
     $self->set___DIRTY( {} );
+    $self->set___DIRTY_CONTAINER( {} );
+    $self->set___REGISTERED_CONTAINERS( {} );
     $self->SUPER::_init();
 } #_init
 
@@ -325,7 +327,6 @@ sub _update_master_root {
 	}
 	return $old_root;
     }
-
     my $root_login = new Yote::Login();
     $root_login->set_handle( $master_root_handle );
     $root_login->set__is_validated(1);
@@ -582,6 +583,14 @@ A hash of object ids to a hash of recipient ibds whos clients are allowed to acc
 =item __DIRTY
 
 A hash of recipient ids to a hash of objects ids that need refreshing for that recipient.
+
+=item___DIRTY_CONTAINER
+
+A hash of recipient ids to a hash of yote object ids that have a container that was made dirty. The client may not have the dirty container directly, but may be paginating it.
+
+=item __REGISTERED_CONTAINERS
+
+A hash of recipient ids to a hash of container object ids that hash to a hash of yote object ids that reference those containers.
 
 =item _account_roots
 

@@ -65,8 +65,8 @@ sub test_suite {
 # ----------- simple object tests -----#
 #                                      #
     Yote::YoteRoot->fetch_root();
-    my $ROOT_START = 22;
-    my $ROOT_FIELD_START = 30;
+    my $ROOT_START = 24;
+    my $ROOT_FIELD_START = 32;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, $ROOT_START, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
