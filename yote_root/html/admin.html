@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-<!-- Bootstrappy and meta. This page could replace itself -->
   <head>
-    <title>Yote Admin 3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Yote Admin Page (YAP)</title>
     <script src="/yote/js/jquery-latest.js"></script>
     <script src="/yote/js/jquery.cookie.js"></script>
     <script src="/yote/js/jquery.base64.min.js"></script>
@@ -67,7 +67,7 @@
       ._ct_row { vertical-align: top }
       ._ct_cell { border: 6px rgb(120,226,165) groove }
 
-     
+
       tr { vertical-align: top }
     </STYLE>
 
@@ -83,11 +83,10 @@ if we are our experiences then we are both sides of them.
       $().ready(function(){
 	  $.yote.include_templates( '/templates/templates.html' );
 	  $.yote.util.register_functions( base_templates );
-	  
+
 	  $( '#mainpanel' ).hide();
 	  $.yote.debug = false;
 	  $.yote.init();
-	  $.yote.debug = true;
 	  root = $.yote.fetch_root();
 	  $.yote.app = root;
 
@@ -100,25 +99,45 @@ if we are our experiences then we are both sides of them.
 
 	  // -------------------------------------
 	  function msg( args, message ) {
-	      
+	      $( '#' + args[ 'controls' ][ 'messages' ] ).val( message );
 	  }
 
 	  $.yote.util.register_functions( {
-	      create_app : function( args ) {
-		  if( args[ 'default_var' ] ) {
-		      var newapp = $.yote.util._new_with_same_permissions( args );
-		      if( newapp ) {
-			  args[ 'default_var' ].hash( { key : args[ newapp.get( '_key' ) ],
-							name : '_apps',
-							value : newapp } );
-			  $.yote.util.refresh_ui();			  
-		      } else { 
-			  if( args[ 'default_var' ] ) {
-			      msg( args, "Error : an app is already registered with this name" ); 
+	      PurgedApps : function( args ) {
+		  var pc = args[ 'default_var' ].count( '_purged_apps' );
+		  if( pc > 0 ) {
+		      return pc + ' apps have been purged <$$$ var ac ' + pc + ' $$$> <$ button purge_apps Purge All $>';
+		  } 
+		  return '';
+	      }, //PurgedApps
+	      purge_apps : function( args ) {
+		  if( confirm( 'Really purge ' + args[ 'vars' ][ 'ac' ] + ' removed apps?' ) ) {
+		      console.log( [ "DB", args ] );
+		      args[ 'default_var' ].reset_purged_apps(undefined,function(){ msg( args, 'purged apps' ) },function(err){ msg( args, err ) } );
+		  }
+	      },
+	      reset_app : function( args ) {
+		  $.yote.debug = true;
+		  root.purge_app( args[ 'default_var' ] );
+		  $.yote.debug = false;
+		  refresh_all();
+	      },
+	      init_create_app : function( args ) {
+		  (function( arg ) {
+		      $.yote.util.button_actions( {
+			  button :   '#' + arg[ 'controls' ][ 'new_app_b' ],
+			  texts  : [ '#' + arg[ 'controls' ][ 'name' ],
+				     '#' + arg[ 'controls' ][ 'class' ] ],
+			  action : function() {
+			      var newapp = arg[ 'default_var' ].register_app(
+				  { name    : $( '#' + arg[ 'controls' ][ 'name' ] ).val(),
+				    'class' : $( '#' + arg[ 'controls' ][ 'class' ] ).val() },
+				  $.yote.util.refresh_ui,
+				  function(err) { msg( arg, err ); }
+			      );
 			  }
-			  else { msg( args, "Unknonw Error from server" ); }
-		      }
-		  } else { msg( args, 'Error in admin.html. No default variable' ); }
+		      } );
+		  } )( args );
 	      },
 	      cron_entry_next_time : function( args ) {
 		  var entry = args[ 'default_var' ];
@@ -259,7 +278,12 @@ if we are our experiences then we are both sides of them.
  <A NAME="App">
  <H3>Applications Installed</H3>
  <$% App_Table Empty _ _apps %$>
+ <? PurgedApps ?>
  <$$ NewApp $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="PurgedApps">
+  <$$$ control pcount <span></span> $$$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Table">
@@ -276,16 +300,17 @@ if we are our experiences then we are both sides of them.
 <script type="text/template" class="yote_template_definition" template_name="NewApp">
 <div class="newapp">
  <h3>Create a new App</h3>
- App Name <$$$ control _key <input type="text"> $$$><BR>
+ App Name <$$$ control name <input type="text"> $$$><BR>
  App Class <$$$ control class <input type="text"> $$$><BR>
- <$ button create_app Register App $>
+ <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
+ <?? init_create_app  ??>
 </div>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
-    <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>
-                        <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$ button reset_app Reset $></th>
-                  </tr>
+  <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>
+    <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$ button reset_app Reset $></th>
+  </tr>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Email_Settings">
@@ -349,7 +374,7 @@ if we are our experiences then we are both sides of them.
     <DIV id="errpanel" class="err">
       Must be logged in with a root account to view this page.
     </DIV>
-    
+
     <DIV class="mainpanel" id="mainpanel">
 	<SECTION>
 	  <DIV class="page-header">

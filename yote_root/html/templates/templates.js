@@ -115,7 +115,6 @@ base_templates = {
     }, //init_search_hash
 
     init_search_list : function( args ) {
-	console.log( [ 'SEARCH ARGS', args ] );
 	var collection = args[ 'default_var' ];
 	var search_button_id = args[ 'controls' ][ 'search_btn' ],
         search_val_id =  args[ 'controls' ][ 'search_val' ];
