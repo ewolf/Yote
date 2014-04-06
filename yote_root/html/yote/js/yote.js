@@ -666,8 +666,6 @@ $.yote = {
 					}
 				    }
 				    else {
-					me.length = olist.length;
-
 					if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
 					    me.length++;
 					    ret.push( olist[i] );
