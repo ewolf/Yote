@@ -366,13 +366,8 @@ sub paginate {
         $query->{'$or'} = \@ors if @ors;
 
 	if( @sort_fields ) {
-	    if( @sort_fields == 1 && ( $reversed_orders->[ 0 ] || $args->{ reverse } ) ) {
-		$query_args->{ sort_by }{ "d.$sort_fields[ 0 ]" } = -1;
-	    }
-	    else {
-		for my $i (0..$#sort_fields) {
-		    $query_args->{ sort_by }{ "d.$sort_fields[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
-		}
+	    for my $i (0..$#sort_fields) {
+		$query_args->{ sort_by }{ "d.$sort_fields[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
 	    }
 	}
 	my $curs = $self->_find( $query, $query_args );
