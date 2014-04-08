@@ -36,8 +36,6 @@ sub _init {
     $self->set___ALLOWS( {} );
     $self->set___ALLOWS_REV( {} );
     $self->set___DIRTY( {} );
-    $self->set___DIRTY_CONTAINER( {} );
-    $self->set___REGISTERED_CONTAINERS( {} );
     $self->SUPER::_init();
 } #_init
 
@@ -230,11 +228,11 @@ sub purge_app {
 	    $app = $app_or_name;
 	    my $aname = $app->get__key();
 	    if( $aname ) {
-		$app = delete $apps->{ $app_or_name };
+		delete $apps->{ $aname };
 	    }
 	    else {
 		for my $key (keys %$apps) {
-		    if( $app_or_name->_is( $apps->{ $key } ) ) {
+		    if( $app->_is( $apps->{ $key } ) ) {
 			delete $apps->{ $key };
 			last;
 		    }
@@ -245,18 +243,31 @@ sub purge_app {
 	    $app = delete $apps->{ $app_or_name };
 	}
 	$self->add_to__purged_apps( $app );
-	return "Purged " . ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name;
+	return "Purged " . (ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name );
     }
     die "Permissions Error";
 } #purge_app
 
 sub register_app {
-    my( $self, $appdata, $acct ) = @_;
-    my $name = $appdata->{ name };
+    my( $self, $data, $acct ) = @_;
+    die "Register app requires name and class fields" unless $data->{ name } && $data->{ class };
+    eval( "require $data->{ class }" );
+    die $@ if $@;
+    my $name = $data->{ name };
     my $apps = $self->get__apps({});
     die "App '$name' already registered" if $apps->{ $name };
-    
+    my $app = $data->{ class }->new( { _key => $name } );
+    die 'Register_app class must subclass Yote::AppRoot' unless $app->isa( 'Yote::AppRoot' );
+    $apps->{ $name } = $app;
+    return $app;
 } #register_app
+
+sub flush_purged_apps {
+    my( $self, $data, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    $self->set__purged_apps( [] );
+    return 1;
+} #flush_purged_apps
 
 #
 # Removes a login. Need not only to be logged in, but present all credentials
@@ -327,6 +338,7 @@ sub _update_master_root {
 	}
 	return $old_root;
     }
+
     my $root_login = new Yote::Login();
     $root_login->set_handle( $master_root_handle );
     $root_login->set__is_validated(1);
@@ -495,6 +507,10 @@ Returns the app object singleton of the given package name.
 
 Returns the singleton root object. It creates it if it has not been created.
 
+=item flush_purged_apps
+
+Removes the backups of purged apps.
+
 =item guest_token
 
 Creates and returns a guest token, associating it with the calling IP address.
@@ -583,14 +599,6 @@ A hash of object ids to a hash of recipient ibds whos clients are allowed to acc
 =item __DIRTY
 
 A hash of recipient ids to a hash of objects ids that need refreshing for that recipient.
-
-=item___DIRTY_CONTAINER
-
-A hash of recipient ids to a hash of yote object ids that have a container that was made dirty. The client may not have the dirty container directly, but may be paginating it.
-
-=item __REGISTERED_CONTAINERS
-
-A hash of recipient ids to a hash of container object ids that hash to a hash of yote object ids that reference those containers.
 
 =item _account_roots
 

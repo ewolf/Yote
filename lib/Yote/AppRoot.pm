@@ -38,8 +38,16 @@ sub _init {
     $self->set_recovery_subject_template(new Yote::SimpleTemplate( { text => 'Recover Your Account' } ) );
     $self->set_recovery_link_template(new Yote::SimpleTemplate( { text => '${hosturl}/recover.html?t=${t}&app=${app}' } ) );
     $self->set_recovery_message_template(new Yote::SimpleTemplate({text=>'Click on <a href="${link}">${link}</a> to recover your account' } ) );
+
+    $self->set__attached_objects( {} ); # field -> obj parings, set aside here as a duplicate data structure to track items that may be editable on the admin page
+
     $self->SUPER::_init();
 } #_init
+
+sub _load {
+    my $self = shift;
+    $self->get__attached_objects( {} ); # field -> obj parings, set aside here as a duplicate data structure to track items that may be editable on the admin page
+}
 
 sub precache {
     my( $self, $data, $account ) = @_;

@@ -729,6 +729,20 @@ $.yote.util = {
 	    } //if a string
 	} //each field
 
+	// if the control has a template id, then grab values from that stored template context.
+	if( args[ 'template_id' ] ) {
+	    var ctx = $.yote.util.template_context[ args[ 'template_id' ] ];
+	    if( ctx ) {
+		for( fld in ctx ) {
+		    if( args[ fld ] ) { 
+			console.log( [ "Tries to overrite '" + fld + "' for context '" + args[ 'template_id' ] ] ); 
+		    } else {
+			args[ fld ] = ctx[ fld ];
+		    }
+		}
+	    }
+	}
+
 	if( el.hasClass( 'control_table' ) ) {
 	    if( args[ 'item' ] ) {
 		var ct = $.yote.util.control_table( args );
@@ -816,7 +830,6 @@ $.yote.util = {
 	    }
 	    el.attr( 'has_init', 'true' );
  	    var def_var    = $.yote.util._template_var( { target : $( this ).attr( 'default_variable' ) } );
-	    console.log( [ $( this ).attr( 'default_variable' ) + '', def_var ] );
 	    var parent_var = el.attr( 'default_parent' );
 	    var templ_name = el.attr( 'template' );
 	    el.empty().append( $.yote.util.fill_template( { template_name : templ_name,
@@ -1526,7 +1539,7 @@ $.yote.util = {
 	if( args[ 'default_var' ] ) { 
 	    var newv = args[ 'default_var' ].new_with_same_permissions();
 	    if( newv ) {
-		var newf = $.yote.util.template_context[ args[ 'template_id' ] ][ 'new_fields' ] || {};
+		var newf = args[ 'new_fields' ] || {};
 		for( var k in newf ) {
 		    var f = $( '#' + newf[ k ] );
 		    if( f ) {
@@ -1607,14 +1620,24 @@ $.yote.util = {
 	return clone;
     }, //clone_template_args
 
-    fill_template:function( params ) {
+    fill_template:function( params, old_context ) {
 	var template = $.yote.util.templates[ params[ 'template_name' ] ];
 	if( ! template ) { return ''; }
 
         var args = $.yote.util.clone_template_args( params );
         args[ 'template' ] = template;
 	args[ 'template_id' ] = $.yote.util.next_id();
-	$.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {} };
+	var oc = $.yote.util.template_context[ old_context ];
+	if( oc ) {
+	    $.yote.util.template_context[ args[ 'template_id' ] ] = { 
+		vars : oc[ 'vars' ] ? Object.clone( oc[ 'vars' ] ) : {},
+		newfields : oc[ 'newfields' ] ? Object.clone( oc[ 'newfields' ] ) : {},
+		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {}
+	    };
+	}
+	else {
+	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {} };
+	}
 
 	return $.yote.util.fill_template_text( args );
     }, //fill_template
@@ -1650,7 +1673,7 @@ $.yote.util = {
 		}
 		args[ 'template_name' ] = funparts[ 1 ];
 		text_val = parts[ 0 ] +
-		    $.yote.util.fill_template( args ) +
+		    $.yote.util.fill_template( args, args[ 'template_id' ] ) +
 		    parts[ 2 ];
 	    } else {
 		text_val = parts[ 0 ] + parts[ 2 ];
@@ -1756,7 +1779,9 @@ $.yote.util = {
             var varname = parts[ 3 ];
             if( cmd.toLowerCase() == 'var' ) {
 		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
-                var val = $.yote.util.fill_template_text( { template : parts[ 4 ] } );
+		var args = $.yote.util.clone_template_args( params );
+		args[ 'template' ] = parts[ 4 ];
+                var val = $.yote.util.fill_template_text( args ).trim();
                 params[ 'vars' ][ varname ] = val;
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
                 return '';
@@ -1783,7 +1808,6 @@ $.yote.util = {
                 params[ tvar ][ varname ] = ctrl_id;
                 if( ! $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] ) $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] = {};
                 $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = ctrl_id;
-//if( varname == 'paginate_to_beginning_button' ) alert( [ varname, ctrl_id ] );
             }
             return ctrl;
         } //has parts
