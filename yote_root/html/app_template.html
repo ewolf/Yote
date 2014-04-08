@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title></title>
+
+    <script src="/yote/js/jquery-latest.js"></script>
+    <script src="/yote/js/jquery.cookie.js"></script>
+    <script src="/yote/js/jquery.base64.min.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script src="/templates/templates.js"></script>
+
+    <script src="/yote/js/yote.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <STYLE>
+    </STYLE>
+
+    <script>
+    $().ready(function(){
+	$.yote.include_templates( '/templates/templates.html' );
+	$.yote.util.register_functions( base_templates );
+
+	$.yote.init();
+	var app = $.yote.fetch_app( MYAPP );
+    });
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="RENAME_ME_1">
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="RENAME_ME_2">
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="RENAME_ME_3">
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="RENAME_ME_4">
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="RENAME_ME_5">
+    </script>
+
+  </head>
+
+  <BODY>
+    
+  </body>
+</html>
