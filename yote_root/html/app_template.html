@@ -27,6 +27,7 @@
 
 	$.yote.init();
 	var app = $.yote.fetch_app( MYAPP );
+	$.yote.util.register_template_variable( 'app', app );
     });
     </script>
 
@@ -48,6 +49,6 @@
   </head>
 
   <BODY>
-    
+     <DIV class="yote_template side_panel" template="RENAME_ME_1" default_variable="app"></div>        
   </body>
 </html>

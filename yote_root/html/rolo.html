@@ -26,7 +26,7 @@
        <$$$ new email     <input type="email" placeholder="Email Address"> $$$>   <BR>
        <$$$ new cell      <input type="phone" placeholder="Cellphone"    > $$$>   <BR>
        <$$$ new homepage  <input type="text"  placeholder="Homepage URL" > $$$>   <BR>
-       <$ newbutton _ entries New Rolodex Entry $>
+       <$ newbutton _.rolodex entries New Rolodex Entry $>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Show_Rolodex_Entry">
@@ -58,7 +58,7 @@
     <script type="text/template" class="yote_template_definition" template_name="Rolodex">
        <h2>Rolodex App</h2>
        <DIV class="box">
-	 <$@ Show_Rolodex Empty _ entries @$> <BR>
+	 <$@ Show_Rolodex Empty _.rolodex entries @$> <BR>
        </DIV>
        <DIV class="box">
 	 <$$ New_Rolodex $$>
@@ -73,17 +73,7 @@
           $.yote.init();
 
           var app = $.yote.fetch_app( 'Rolo' );
-
-          try {
-              var rolodex = app.get_rolodex();
-	      $.yote.util.register_item( 'rolodex', rolodex );
-          } catch( err ) {
-              console.log( ['err',err] );
-          }
-
-
-          $.yote.util.register_functions( {
-          } );
+          $.yote.util.register_item( 'rolo_app', app );
 
 	  $.yote.util.refresh_ui();
       });
@@ -92,7 +82,7 @@
 
   <BODY>
 
-    <DIV id="some_div" class="yote_template" template="Rolodex" default_variable="rolodex"></div>
+    <DIV id="some_div" class="yote_template" template="Rolodex" default_variable="rolo_app"></div>
 
   </BODY>
 </html>

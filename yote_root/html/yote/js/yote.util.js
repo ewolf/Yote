@@ -1893,7 +1893,6 @@ $.yote.util = {
 	var subjobj;
 	if( subj == 'acct' )      subjobj = $.yote.fetch_account();
 	else if( subj == 'root' ) subjobj = $.yote.fetch_root();
-	else if( subj == 'app' )  subjobj = $.yote.fetch_app();
 	else if( subj == 'id' )   subjobj = args[ 'template_id' ];
 	else if( subj == '_' )    subjobj = args[ 'default_var' ];
 	else if( subj == '__' )   subjobj = args[ 'default_parent' ];
