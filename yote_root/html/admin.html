@@ -94,7 +94,7 @@ if we are our experiences then we are both sides of them.
 	  $.yote.debug = false;
 	  root = $.yote.fetch_root();
 	  $.yote.app = root;
-
+	  $.yote.util.register_item( 'root', root );
 	  $( 'button.sidenav' ).each( function( idx, domEl ) {
 	      $(this).click(function(){
 		  $( '.apppanel' ).hide();
@@ -165,7 +165,7 @@ if we are our experiences then we are both sides of them.
 			      var newapp = arg[ 'default_var' ].register_app(
 				  { name    : $( '#' + arg[ 'controls' ][ 'name' ] ).val(),
 				    'class' : $( '#' + arg[ 'controls' ][ 'class' ] ).val() },
-				  $.yote.util.refresh_ui,
+				  function() { $.yote.util.refresh_ui() },
 				  function(err) { msg( arg, err ); }
 			      );
 			  }
