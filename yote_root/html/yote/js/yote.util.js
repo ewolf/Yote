@@ -1891,9 +1891,10 @@ $.yote.util = {
         var tlist = args[ 'target' ].split(/[\.]/);
 	var subj = tlist[0];
 	var subjobj;
-	if( subj == 'acct' )      subjobj = $.yote.fetch_account();
-	else if( subj == 'root' ) subjobj = $.yote.fetch_root();
-	else if( subj == 'id' )   subjobj = args[ 'template_id' ];
+	if( subj == '_acct_' )      subjobj = $.yote.fetch_account();
+	else if( subj == '_root_' ) subjobj = $.yote.fetch_root();
+	else if( subj == '_app_' ) subjobj = $.yote.default_app();
+	else if( subj == '_id_' )   subjobj = args[ 'template_id' ];
 	else if( subj == '_' )    subjobj = args[ 'default_var' ];
 	else if( subj == '__' )   subjobj = args[ 'default_parent' ];
 	else if( subj == '___' )   subjobj = args[ 'extra' ];

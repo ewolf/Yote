@@ -21,6 +21,7 @@ die "Unable to create root directory" unless -w $yote_root;
 
 mkdir "$yote_root/holding";
 mkdir "$yote_root/html";
+mkdir "$yote_root/html/templates";
 mkdir "$yote_root/html/uploads";
 mkdir "$yote_root/data";
 mkdir "$yote_root/lib";
@@ -61,6 +62,8 @@ my $builder = Module::Build->new(
     recommends         => {
 	'Digest::HMAC_MD5' => 1,
 	'Authen::NTLM'     => 1,
+	'MongoDB'          => 1,
+	'DBD::mysql'       => 1,
     },
     requires => {
 	'perl'                  => 'v5.12',

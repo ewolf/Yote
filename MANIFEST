@@ -5,6 +5,7 @@ bin/yote_classpath_updater.pl
 bin/yote_server
 Build.PL
 ChangeLog
+doc/DocumentationIdeas.txt
 extra_test/email.t
 extra_test/mongo.t
 extra_test/mysql.t
@@ -57,6 +58,8 @@ tasklog
 ToDo.txt
 VERSIONS
 yote_root/html/admin.html
+yote_root/html/admin2.html
+yote_root/html/app_template.html
 yote_root/html/apple-touch-icon.png
 yote_root/html/client_docs.html
 yote_root/html/css/main.css
@@ -64,6 +67,9 @@ yote_root/html/docs.html
 yote_root/html/favicon.ico
 yote_root/html/foo.html
 yote_root/html/ideas.txt
+yote_root/html/images/add_object.png
+yote_root/html/images/completed.png
+yote_root/html/images/create_app.png
 yote_root/html/install.html
 yote_root/html/js/main.js
 yote_root/html/js/raphael-min.js
@@ -71,12 +77,19 @@ yote_root/html/program.html
 yote_root/html/quickstart.html
 yote_root/html/recover.html
 yote_root/html/robots.txt
+yote_root/html/rolo.html
 yote_root/html/samples.html
 yote_root/html/server_docs.html
+yote_root/html/templates/templates.html
+yote_root/html/templates/templates.js
+yote_root/html/testy.html
 yote_root/html/Todo.html
 yote_root/html/val.html
 yote_root/html/yote.css
 yote_root/html/yote/index.html
+yote_root/html/yote/js/jquery-2.0.3.js
+yote_root/html/yote/js/jquery-2.0.3.min.js
+yote_root/html/yote/js/jquery-2.0.3.min.map
 yote_root/html/yote/js/jquery-latest.js
 yote_root/html/yote/js/jquery.base64.min.js
 yote_root/html/yote/js/jquery.cookie.js

@@ -192,6 +192,11 @@ $.yote = {
 	return undefined;
     },
 
+    default_app:function() {
+	// returns the last app fetched.
+	return this.app;
+    },
+
     fetch_app:function(appname,passhandler,failhandler) {
 	if( $.yote.apps[ appname ] ) return $.yote.apps[ appname ];
 	var root = this.fetch_root();

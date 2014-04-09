@@ -190,6 +190,10 @@ if we are our experiences then we are both sides of them.
 	      is_validated : function( args ) {
 		  return args[ 'default_var' ].is_validated() ? "Yes" : "No";
 	      },
+	      new_schedule:function( args ) {
+		  var id = '#' + args[ 'controls' ][ 'new_schedule_time' ];
+		  alert( $(id).val() );
+	      },
 	      refresh_all: refresh_all
 	  } );
 
@@ -342,9 +346,9 @@ if we are our experiences then we are both sides of them.
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="App_Row">
-  <tr>   <th><$ hash_key $></th>     <th><$ edit _ host_name $></th>   <th><$ edit _ host_u2rl $></th>
-    <th><? app_user_count ?></th>   <th><$$ Email_Settings $$></th>  <th><$$ Attached_Objects $$></th>
-    <th><$ button reset_app Reset $></th>
+  <tr>   <td><$ hash_key $></td>     <td><$ edit _ host_name $></td>   <td><$ edit _ host_u2rl $></td>
+    <td><? app_user_count ?></td>   <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
+    <td><$ button reset_app Reset $></td>
   </tr>
 </script>
 
