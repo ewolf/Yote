@@ -428,14 +428,6 @@ sub __process_command {
 	    }
 	    $resp->{d} = $dirty_data;
 	} #if there was a dirty delta
-	
-	# Check to see if the client was watching for any containers attached to an object they have. If so, indicate
-	# to the client which containers those are ( do not include their data ) and the client may have events that
-	# fire when those are updated.
-	my $container_updates = Yote::ObjManager::fetch_updated_container_holders( $login, $guest_token );
-	if( $container_updates ) {
-	    $resp->{l} = $container_updates;
-	}
     };
     if( $@ ) {
 	my $err = $@;
