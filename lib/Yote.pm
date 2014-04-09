@@ -20,7 +20,6 @@ $VERSION = '0.203';
 use Carp;
 use File::Path;
 
-use Yote::ConfigData;
 use Yote::ObjProvider;
 use Yote::WebAppServer;
 
@@ -106,7 +105,11 @@ sub get_args {
     } # each argument
 
     # --------- find yote root directory and configuration file ---------
-    my $yote_root_dir = $config{ yote_root } || Yote::ConfigData->config( 'yote_root' );
+    my $yote_root_dir = $config{ yote_root };
+    unless( $yote_root_dir ) {
+	eval('use Yote::ConfigData');
+	$yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+    }
     $config{ yote_root } = $yote_root_dir;
     $ENV{YOTE_ROOT} = $yote_root_dir;
 
