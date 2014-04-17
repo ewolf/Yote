@@ -15,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.205';
+$VERSION = '0.206';
 
 use Carp;
 use File::Path;
@@ -315,20 +315,31 @@ sub _get_configuration {
 			$done = 1;
 			$newconfig{ store } = "$dir$store";
 		    }
+		    elsif( -d $dir ) {
+			print "Directory '$dir' is not writable by this account.\n";
+		    }
+		    else {
+			print "Directory '$dir' is not found.\n";
+		    }
 		}
-		elsif( $dir ) {
-		    my $full_store = "$yote_root_dir/$dir";
-		    mkpath( $full_store );
-		    $newconfig{ store } = "$full_store/$store";
-		    $done = 1;
+		elsif( -w $yote_root_dir ) {
+		    if( $dir ) {
+			my $full_store = "$yote_root_dir/$dir";
+			mkpath( $full_store );
+			$newconfig{ store } = "$full_store/$store";
+			$done = 1;
+		    }
+		    else {
+			$newconfig{ store } = "$yote_root_dir/data/$store";
+			$done = 1;
+		    }
 		}
 		else {
-		    $newconfig{ store } = "$yote_root_dir/data/$store";
-		    $done = 1;
+		    print "Directory '$dir' is not writable by this account.\n";		    
 		}
 	    }
-	}
-    }
+	} #done loop
+    } #sqlite
     elsif ( lc($engine) eq 'mongo' ) {
 	$newconfig{ store }       = _ask( "MongoDB database", undef, $current_config->{ store }       || 'yote' );
 	$newconfig{ host }        = _ask( "MongoDB host",     undef, $current_config->{ host }        || 'localhost' );
@@ -376,9 +387,11 @@ sub _get_configuration {
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, $current_config->{ root_account} || 'root' );
-    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password", undef,  ),
-								   $newconfig{ root_account } );
-
+    my $passwd;
+    until( $passwd ) {
+	$passwd = _ask( "Root Account Password" );
+    }
+    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( $passwd );
     return \%newconfig;
 } #_get_configuration
 

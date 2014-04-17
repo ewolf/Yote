@@ -5,7 +5,7 @@ bin/yote_classpath_updater.pl
 bin/yote_server
 Build.PL
 ChangeLog
-doc/DocumentationIdeas.txt
+doc/DocumentationIdeas.html
 extra_test/email.t
 extra_test/mongo.t
 extra_test/mysql.t

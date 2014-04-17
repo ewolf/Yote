@@ -24,7 +24,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/Obj Hash IO::Mongo/) {
+    for my $class (qw/Obj Hash IO::Mongo WebAppServer/) {
         use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
     }
 }

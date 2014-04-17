@@ -327,7 +327,7 @@ sub __start_server_thread {
 	sub {
 	    Yote::ObjProvider::init( %{$self->{ init_args } } );
 	    print STDERR "Starting server thread " . threads->tid() . "\n";
-	    $SIG{PIPE} = sub { 
+	    $SIG{PIPE} = sub { # a client disconnected before receiving a response
 		print STDERR "Thread $$ got sig pipe. Exiting\n";
 		$self->{lsn}->close() if $self->{lsn};
 		threads->exit()

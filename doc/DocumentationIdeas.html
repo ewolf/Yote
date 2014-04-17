@@ -1,0 +1,293 @@
+<H1>Yote Platform Page</H1>
+
+<section>
+<h2>What Yote Is</h2> 
+
+<p>
+Yote is a framework, a server, client templating engine and a set of libraries designed for functional 
+demos or small to moderate traffic web applications. It is implemented in perl and javascript and is 
+very rich in syntactic sugar. The core of yote is based around an object model of container objects 
+organized in a graph. Yote objects are easily and in most cases automatically created and are 
+automatically saved to an object graph store.
+</p>
+
+<p>
+A yote program typically needs no schema or intervention with a database. Most of the programming is done
+on the client side. It is designed to allow its design to be rapidly shaped. It is not (at this time) for 
+high volume, high performance websites. It is also designed to for security. A gatekeeper on the server 
+side enforces which user or client is allowed to edit or see what.
+</p>
+</section>
+
+<STYLE> code { font-size: larger; font-weight:bold } </STYLE>
+<section>
+
+
+<h2>Example - a rolodex in 15 steps with only client side code.</h2>
+<p>
+The purpose of this example is to give a taste of Yote's tepmlating system. A searchable rolodex
+is something that can be of immediately use. This also demonstrates basic installation and 
+configuration. YMMV and this setup was tested on a vanilla Ubuntu installation.
+</p>
+<p>
+<h4>Design goals</h4>
+Design a rolodex where all may edit, add and remove entries. 
+The entries should be paginated and searchable.
+</p>
+
+<h3>Installation and configuration</h3>
+ <ol>
+   <li>Get Yote.  The simplist way is to use cpan.<BR>
+      <code>$&gt; sudo cpan Yote</code><BR>
+   </li>
+   <li>Shut off any webservers running on port 80</li>
+   <li>start yote<BR>
+     <code>$&gt; sudo yote_server </code><BR>
+     Yote will now ask setup questions. Use defaults for everything 
+     except the root password, which has no default.
+    </li>
+ </ol>
+<h3>Create an app</h3>
+ <ol>
+   <li>Open up the Yote Admin Page and log in with the root credentials you created. 
+     The admin page is at http://localhost/admin.html
+   </li>
+   <li>Add an app. Give it the name 'Rolo'. <BR>
+       <img src="/images/create_app.png">
+   </li>
+   <li>Add an object with read and write permissions for all to the app. Call this rolodex.  
+     The app object itself requires a root login to modify and we want all to be able to 
+     use and modify the rolodex, so we must create an object with the loose permissions.
+     <BR>
+         <img src="/images/add_object.png">
+   </li>
+  </ol>
+<h3>Write the App Front End</h3>
+<ol>
+  <li>Copy the app template file for editing <BR><code> $&gt; cp /opt/yote/html/app_template.html
+     /opt/yote/html/rolo.html </code></li>
+
+  <li><p>Edit  /opt/yote/html/rolo.html with your favorite editor. </p></li>
+
+  <li>Define the main template to use for the rolodex. Define this outside of the body, or use
+      the sample template script sections and change the template name.<BR>
+     <code><pre>
+&lt;script type="text/template" class="yote_template_definition" template_name="RolodexMain"&gt;
+   &lt;h2&gt;Rolodex App&lt;/h2&gt;
+   &lt;DIV class="box"&gt;
+     &lt;$@ Show_Rolodex Empty _.rolodex entries @$&gt; &lt;BR&gt;
+   &lt;/DIV&gt;
+   &lt;DIV class="box"&gt;
+     &lt;$$ New_Rolodex $$&gt;
+   &lt;/DIV&gt;
+&lt;/script&gt;</pre></code>
+     <dl>
+      <dt>&lt$$ <i>templatename</i> $$&gt;</dt>
+      <dd> 
+	Fills in the named template in this spot.
+	The current context is copied and passed to the template being filled out. A context
+	is just a collection of variables that are relevant to the template creation and functions
+	called from it.
+      </dd>
+      <dt>&lt$@ <i>listtemplatename</i> <i>emptytemplatename</i> <i>targetobject</i> <i>listname</i> @$&gt;</dt> 
+      <dd>
+	This construct is for displaying lists of things. The first parameter is the template to show
+	if the list has entries. The second is a template to show if there is nothing in the list.
+	The third parameter is what object the list is attached to and the fourth is the name of the list.
+	The default variable in the context of these templates will be the list specified.
+	The default parent in the context of these templates will be the target object.
+      </dd>
+      <dt>_.rolodex</dt>
+      <dd>
+	One underscore character means the default variable of the context the template is filled with.
+	In this case, the default variable is the app itself.  The dot notation specifies an object
+	attached to the first. In this case, the <b>rolodex</b> object was created in step 3 of
+	the <i>Create an App</i> section. The <i>entries</i> list attached to this will be the 
+	default variable for the copy of the context passed to the Show_Rolodex and Empty templates.
+      </dd>
+     </dl>
+  </li>  
+
+  <li>Use the main template in the body of the document.<BR>
+     <code><pre>&lt;BODY&gt;
+   &lt;DIV class="yote_template side_panel" template="RolodexMain" default_variable="rolo_app"&gt;
+   &lt;/div&gt;
+&lt;/body&gt;</pre></code>
+    <p>
+     The template RolodexMain will be filled in inside this div. It will be passed the registered
+     default variable called <i>rolo_app</i>.
+     </p>
+  </li>
+  
+  <li>Inside the javascript block, define and register the app variable with the templating system.
+    <BR><CODE><PRE>var app = $.yote.fetch_app( 'Rolo' );
+$.yote.util.register_item( 'rolo_app', app );</pre></code>
+  </li>
+
+  <li>Define a template to show if there is nothing in the collection of entries.
+    <BR><CODE><PRE>&lt;script type="text/template" class="yote_template_definition" template_name="Empty"&gt;
+    No entries found.
+&lt;/script&gt;</PRE></CODE>
+  </LI>
+
+  <LI>Create a template for the rolodex list to be displayed in. It will show up to 10 entries at a time.
+    <CODE><PRE>&lt;script type="text/template" class="yote_template_definition" template_name="Show_Rolodex"&gt;
+   &lt;h3&gt;Rolodex Entries&lt;/h3&gt;
+   &lt;$$$ var search_fields firstname lastname email $$$&gt;
+   &lt;$$ SearchList $$&gt;&lt;BR&gt;
+   &lt;TABLE&gt;
+         &lt;TR&gt; &lt;TH&gt;First Name&lt;/TH&gt; &lt;TH&gt;Last Name&lt;/TH&gt; &lt;TH&gt;Email&lt;/TH&gt; &lt;TH&gt;Cell Number&lt&gt; &lt;TH&gt;Homepage&lt;/TH&gt; &lt;TH&gt;Delete&lt;/TH&gt; &lt;/TR&gt;
+         &lt;@ Show_Rolodex_Entry 10 @&gt;
+   &lt;/TABLE&gt;
+   &lt;$$ Paginator $$&gt;
+&lt;/script&gt;</pre></code>
+    <dl>
+      <dt>&lt;@ <i>templatename</i> <i>maxnumbertoshow</i> @&gt; </dt>
+      <dd> 
+	This template will be filled up to 10 times. For each time, the context's default variable
+	will be a different list entry. In addition, this 
+      </dd>
+      <dt>Paginator</dt>
+      <dd> 
+	This is an other template that is defined in /template/templates.html and included by default.
+	It expects the default variable to be a container ( list or hash ) object.
+      </dd>
+      <dt>&lt;$$$ var <i>varname</i> <i> value </i> $$$&gt; </dt>
+      <dd> 
+	Variables are assigned in this manner and are made available to the context of this template
+	and all templates called from it. In this case, <i>search_fields</i> is given the value 
+	'firstname lastname email' and will be used by the SearchList template to determine how to 
+	search.
+      </dd>
+      <dt>SearchList</dt>
+      <dd> 
+	This is a template that is defined in /template/templates.html and included by default.
+	It expects the default variable to be a list object and expects the search_fields variable
+	to be defined.
+      </dd>
+    </dl>
+  </li>
+   <li>Create the template to show a single entry. This template is going to be filled in up to 10 times.
+and appears in the middle of a table, so it should be a table row in this case.
+<CODE><PRE>&lt;script type="text/template" class="yote_template_definition" template_name="Show_Rolodex_Entry"&gt;
+   &lt;TR&gt;
+         &lt;TD&gt;  &lt;$ edit _ firstname $&gt; &lt;/TD&gt;
+         &lt;TD&gt;  &lt;$ edit _ lastname  $&gt; &lt;/TD&gt;
+         &lt;TD&gt;  &lt;$ edit _ email  $&gt;    &lt;/TD&gt;
+         &lt;TD&gt;  &lt;$ edit _ cell $&gt;      &lt;/TD&gt;
+         &lt;TD&gt;  &lt;$ edit _ homepage $&gt;  &lt;/TD&gt;
+         &lt;TD&gt;  &lt;$ list_remove_button _ entries $&gt;  &lt;/TD&gt;
+   &lt;/TR&gt;
+&lt;/script&gt;</PRE></CODE>
+    <dl>
+      <dt>&lt;$ edit <i>object</i> <i>field</i> $&gt; </dt>
+      <dd> 
+	This creates an edit box that a user can click on and change the value of field on the object.
+	The default variable <b>_</b> in this case is the list entry that this template was called
+	to fill for.
+      </dd>
+      <dt>&lt;$ list_remove_button <i>objecttoremove</i> <i>listnameinitsparent</i> $&gt; </dt>
+      <dd> 
+	This removes the object in question from the list named that is attached to the context's default parent.
+	The default parent was set in the &lt;$@ .. @$&gt; template call.
+      </dd>
+    </dl>
+   </li>
+ <LI>Make a template to add new entries.
+<CODE><PRE>&lt;script type="text/template" class="yote_template_definition" template_name="New_Rolodex"&gt;
+   &lt;$$$ new firstname &lt;input type="text"  placeholder="First Name"   &gt; $$$&gt;   &lt;BR&gt;
+   &lt;$$$ new lastname  &lt;input type="text"  placeholder="Last Name"    &gt; $$$&gt;   &lt;BR&gt;
+   &lt;$$$ new email     &lt;input type="email" placeholder="Email Address"&gt; $$$&gt;   &lt;BR&gt;
+   &lt;$$$ new cell      &lt;input type="phone" placeholder="Cellphone"    &gt; $$$&gt;   &lt;BR&gt;
+   &lt;$$$ new homepage  &lt;input type="text"  placeholder="Homepage URL" &gt; $$$&gt;   &lt;BR&gt;
+   &lt;$ newbutton _.rolodex entries New Rolodex Entry $&gt;
+&lt;/script&gt;</PRE></CODE>
+     <dl>
+      <dt>&lt$$$ new <i>varname</i> <i>controldefinition</i> $$$&gt;</dt>
+      <dd> 
+	Add a variable to a part of the context that is set aside for new object variables. The variable
+	is bound to the value of the control specified here, which is filled into the template. An id
+	is automagically assigned to the control and registered in the context.
+      </dd>
+      <dt>&lt$ newbutton <i>object</i> <i>containerinobject</i> <i>buttontext</i> $$&gt;</dt>
+      <dd> 
+	Newbutton creates a button that is bound to a function that creates a new object and adds
+	it to the container named that is part of the object given. It knows to look for the object
+	fields in the context that were defined with the new directive.
+      </dd>
+     </dl>
+<p>
+Now it is done. Toss in a little CSS and it looks like this. The boxes under the fields indicate that field is editable. When moused over and clicked, an edit field with an OK and Cancel button appears.
+<img src="/images/completed.png">
+</p>
+  </LI>
+</ol>
+
+</section>
+
+<h2>How Yote is Organized</h2>
+
+<p>
+Yote apps are composed of container objects that link together and all trace back a reference to 
+the root of the app. Likewise, the app roots all connect to a YoteRoot object, which is the primary
+node of the object graph.
+</p>
+<p>
+A running Yote server may have many aps and users. Each user has one set of credentials and a 
+separate account for each app that they user. The server also has a cron engine that runs commands
+at specified times or periods.
+</p>
+
+<h2>Glossary</h2>
+
+<dl>
+<dt>Yote::Obj / javascript object.</dt>
+<dd>
+  This perl class defines basic Yote object. Nearly all other classes are subclasses of this.
+  Client end objects are proxies for the server side objects. All object methods called on the 
+  client side are transparently executed on the back end.
+</dd>
+<dt>App </dt>
+<dd>
+  An app is a singleton object that is used to run the web application. 
+  It has a unique name and can be obtained by calling <code>$.yote.fetch_app( appname );</code>.
+  An app by default can only be modified by a root account.
+  The app contains the following 
+<ul>
+        <li>map of login ID to Account</li>
+        <li>map of account handle to account</li>
+	<li>information about the app url/domain</li>
+	<li>settings for emails specific to this app</li>
+	<li>settings for accounts ( such as do they need to be validated to be able to log in )</li>
+</ul>
+  The app datastructure contains a list of user accounts that have signed on to the app.
+  The app is responsible for removing or creating a login and sending an optional validation request email.
+  It also provides password recovery feature. Even though the credentials for a login are app-wide,
+  one app may send out differently formatted emails for those functions.
+</dd>
+<dt>Login </dt>
+<dd>
+  Yote makes a distinction between a login and an account. The Login is a set of credentials a user
+  has for the Yote system. A login spans all accounts so one user has only one login. 
+  It is the login which may have the root bit.
+  Any account connected to a login with the root bit is considered to also be a root account.
+  </dd>
+<dt>Master Login </dt>
+<dd>
+  These credentials are defined in the Yote settings and may not be changed. This login cannot have its
+  root privileges revoked.
+</dd>
+<dt>Account </dt>
+<dd>
+  A user will have an account for every app that they use. An Account is a container for app specific data.
+  What is this data? It's anything the app wants it to be. Yote's data structures are free form and mutable.
+</dd>
+<dt>YoteRoot </dt>
+<dd>
+  Objects in Yote are stored in a graph. The first node of that graph, the entry point of that graph,
+  is the YoteRoot. All logins and apps are attached to this object. A cron system is attached to this
+  object. This object provides methods to enable and disable accounts. 
+</dd>
+
+
+

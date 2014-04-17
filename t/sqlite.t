@@ -3,8 +3,6 @@
 use strict;
 use warnings;
 
-use Yote::WebAppServer;
-
 use Yote::AppRoot;
 use Yote::YoteRoot;
 use Yote::Test::TestAppNoLogin;
@@ -23,7 +21,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    for my $class (qw/Obj Hash IO::SQLite/) {
+    for my $class (qw/Obj Hash IO::SQLite WebAppServer/) {
         use_ok( "Yote::$class" ) || BAIL_OUT( "Unable to load Yote::$class" );
     }
 }

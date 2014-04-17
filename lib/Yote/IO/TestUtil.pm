@@ -411,9 +411,6 @@ sub io_independent_tests {
     ok( $t->{t}, "logged in with token $t->{t}" );
     my( $hello_app ) = $root->fetch_app_by_class( 'Yote::Test::Hello' );
     is( $hello_app->hello( { name => 'toot' } ), "hello there 'toot'. I have said hello 1 times.", "Hello app works with given token" );
-    my $as = new Yote::WebAppServer();
-    ok( $as, "Yote::WebAppServer compiles" );
-
 
     my( $ta ) = $root->fetch_app_by_class( 'Yote::Test::TestAppNeedsLogin' );
     ok( $ta->get_yote_obj(), "test app created yote object automatically" );
