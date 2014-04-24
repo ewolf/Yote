@@ -927,7 +927,7 @@ $.yote = {
 		    var obj = root.objs[val+''];
 		    if( ! obj ) {
 			var ret = $.yote.fetch_root().fetch(val);
-			if( ! ret ) return undef; //this can happen if an authorized user logs out
+			if( ! ret ) return undefinded; //this can happen if an authorized user logs out
 			obj = ret.get(0);
 		    }
 		    obj._app_id = this._app_id;

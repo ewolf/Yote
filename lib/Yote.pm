@@ -15,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.206';
+$VERSION = '0.207';
 
 use Carp;
 use File::Path;
@@ -391,7 +391,7 @@ sub _get_configuration {
     until( $passwd ) {
 	$passwd = _ask( "Root Account Password" );
     }
-    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( $passwd );
+    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( $passwd, $newconfig{ root_account } );
     return \%newconfig;
 } #_get_configuration
 

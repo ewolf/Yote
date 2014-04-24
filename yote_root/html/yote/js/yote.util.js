@@ -1780,7 +1780,8 @@ $.yote.util = {
             if( cmd.toLowerCase() == 'var' ) {
 		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
 		var args = $.yote.util.clone_template_args( params );
-		args[ 'template' ] = parts[ 4 ];
+		args[ 'template' ] = parts[ 4 ]; // template may be misnamed, but it is what will be parsed and
+		                                 // have a value extracted from it.
                 var val = $.yote.util.fill_template_text( args ).trim();
                 params[ 'vars' ][ varname ] = val;
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
@@ -1817,6 +1818,10 @@ $.yote.util = {
 
     fill_template_container:function( params, is_hash ) {
 	var parts = params[ 'template_body' ].split(/ +/);
+	if( parts.length < 4 ) {
+	    console.log( "Template error for parsing '"+ params[ 'template_body' ] +"' : not enough arguments " );	    
+	    return;
+	}
 	var args = $.yote.util.clone_template_args( params );
         args[ 'target' ] = parts[ 2 ].trim();
 
@@ -1824,7 +1829,6 @@ $.yote.util = {
 	    on_empty_template = parts[ 1 ].trim(),
             host_obj          = $.yote.util._template_var( args ),
 	    container_name    = parts[ 3 ].trim();
-
 	if( typeof host_obj === 'object' && container_name ) {
 	    var container = host_obj.wrap( { collection_name : container_name,
 					     size : args[ 'size' ],
@@ -2007,8 +2011,8 @@ $.yote.util = {
   Template sigils :
      <$$ template name $$>  <--- fills with template
      <$                 $>  <--- fills with variable
-     <% template_before_rows row_template template_after_rows tempate_for_empty_hash registered_host_object hashname_in_host_object %>  <--- fills with template
-     <@ template_before_rows row_template template_after_rows tempate_for_empty_list registered_host_object listname_in_host_object @>  <--- fills with template
+     <$% template empty_template registered_host_object hashname_in_host_object %>  <--- fills with template
+     <$@ template empty_template registered_host_object listname_in_host_object @>  <--- fills with template
 
    Inside the variable fill is a particular syntax
 
@@ -2020,8 +2024,11 @@ $.yote.util = {
       * checkbox  object  field  (  makes checkbox for a field on an object
       * switch  object  function  ( runs function on change )
       * button templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
-      * action_link templateaction "title"  ( runs the function registered as a template and passes in  _, __ )
-
+      * action_link templateaction "title"  ( runs the function registered as a template and passes in  _, __ )      
+      * newbutton object_holding_container container_name button text
+      * list_remove_button
+      * show_or_edit item field ( if logged in user is root, do edit, otherwise just show )
+      * val variablename 
       * radio   field ( like select with choose 1 ... implement at some point )
 
 
