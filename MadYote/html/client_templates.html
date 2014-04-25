@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Client Template Walkthrough</title>
+
+    <script src="/yote/js"></script>
+
+    <script src="/templates/default_templates.js"></script>
+
+    <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
+
+    <STYLE>
+    .example { 
+	background-color: #DEA;
+	display:block;
+	padding: .25em;
+	margin: .25em;
+    }
+    code.result { background-color: #ADA; }
+    body { background-color: #FFF }
+    </STYLE>
+
+    <script>
+    $().ready(function(){
+	$.yote.include_templates( '/templates/templates.html' );
+	$.yote.util.register_functions( base_templates );
+
+	$.yote.init();
+	var app = $.yote.fetch_app( 'MadYote' );
+	var pages = app.get_page();
+	$.yote.util.register_template_variable( 'app', app );
+	$.yote.util.register_template_variable( 'pages', pages );
+	$.yote.util.register_function( 'show_new', function() { return $.yote.is_root() ? '<$$ client_templates_new $$>' : ''; } );
+        $.yote.util.init_ui();
+    });
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="client_templates_Section">
+      <h3><$ show_or_edit _ #title $> </h3>
+      <p><$ show_or_edit _ #info $></p>
+      <code class="example"><pre><$ show_or_edit _ code $></pre></code>
+        HTML Result
+      <code class="example result"><pre><$ show_or_edit _ result $></pre></code>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="client_templates_Sections">
+      <@ client_templates_Section 100 @>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="client_templates_Page">
+      <$@ client_templates_Sections client_templates_Sections _ client_templates_sections @$>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="client_templates_new">
+      <div class="newitem">
+	<h2>New Sections</h2>
+	<table>
+	<tr><th>Title</th><td><$$$ new title <input type="text"> $$$></td></tr>
+	<tr><th>Info</th><td><$$$ new info <textarea cols="80" rows="5"></textarea> $$$></td></tr>
+	<tr><th>Code</th><td><$$$ new code <textarea cols="80" rows="5"></textarea> $$$></td></tr>
+	<tr><th>Result</th><td><$$$ new result <textarea cols="80" rows="5"></textarea> $$$></td></tr>
+        </table>
+	<$ newbutton _ client_templates_sections Create Section $>
+      </div>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="client_templates_main">
+      <h1>Learn Yote by example</h1>
+
+      <h2>Level 1 - template commands not using Yote objects</h2>
+
+      <p>
+	This is a simple walkthrough that touches on all parts of the client templates that don't involve Yote objects. 
+	Only the BODY section and the template definitions are included here. 
+	The surrounding HTML tags, javascript includes and template init code is omitted.
+      </p>
+
+      <$$ client_templates_Page $$>
+      <? show_new ?>
+    </script>
+
+  </head>
+
+  <BODY>
+     <DIV class="yote_template" template="YoteHeader"></div>
+     <DIV class="yote_template side_panel" template="client_templates_main" default_variable="pages"></div>        
+  </body>
+</html>

@@ -1,19 +1,17 @@
+<!DOCTYPE html>
 <html>
+
   <head>
 <title>Yote Object Explorer</title>
+<!-- TODO: rewrite this with templates and new info -->
 
-<script src="/yote/js/jquery-latest.js"></script>
-<script src="/yote/js/jquery.cookie.js"></script>
-<script src="/yote/js/jquery.base64.min.js"></script>
-<script src="/yote/js/json2.js"></script>
-<script src="/yote/js/yote.js"></script>
-<script src="/yote/js/yote.util.js"></script>
+<script src="/yote/js"></script>
 
 <script>
-   $().ready(function(){ 
-       $.yote.debug = true;
-       function show_header( name, obj, attachpoint ) {
-	   var plus_id = $.yote.util.next_id();
+    $().ready(function(){ 
+	$.yote.debug = true;
+	function show_header( name, obj, attachpoint ) {
+	    var plus_id = $.yote.util.next_id();
 	   var list_id = $.yote.util.next_id();
 	   attachpoint.append( '<span><a id="a_' + obj.id + '" name="a_' + obj.id + '">name</a></span> <span id=' + plus_id +
 			       '>[+]</span> <span>' +

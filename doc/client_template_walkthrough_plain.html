@@ -1,0 +1,184 @@
+Learn Yote by example
+
+Level 1
+
+This is a simple walkthrough that touches on all of the client templates. Only the 
+BODY section and the template definitions are included here. The surrounding HTML tags,
+javascript includes and template init code is omitted.
+
+Using a template in a page.
+
+<script type="text/template" class="yote_template_definition" template_name="HelloWorld">
+  Hello World
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloWorld"></div>
+</BODY>
+
+ Image
+
+ Generated HTML
+ <BODY>
+   <DIV class="yote_template side_panel" template="HelloWorld">
+   Hello World
+   </DIV>
+ </BODY>
+
+Using a template in an other template.
+
+<script type="text/template" class="yote_template_definition" template_name="HelloTemplate">
+  Hello Template
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HelloWorld">
+  <$$ HelloTemplate $$> <BR>
+  Hello World
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloWorld"></div>
+</BODY>
+
+ Image
+
+ Generated HTML
+ <BODY>
+   <DIV class="yote_template side_panel" template="HelloWorld">
+Hello Template <BR> 
+Hello World
+   </DIV>
+ </BODY>
+
+Function building templates.
+
+<SCRIPT>
+  $.yote.util.register_function( "hello", function() { return "Hello Functional World" } );
+</SCRIPT>
+
+<script type="text/template" class="yote_template_definition" template_name="HelloWorld">
+  <? hello ?>
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloWorld"></div>
+</BODY>
+
+ Image
+
+ Generated HTML
+ <BODY>
+   <DIV class="yote_template side_panel" template="HelloWorld">
+     Hello Functional World
+   </DIV>
+ </BODY>
+
+Buttons, Links
+
+<SCRIPT>
+  $.yote.util.register_function( "hello", function() { return "Hello CLICK" } );
+</SCRIPT>
+
+<script type="text/template" class="yote_template_definition" template_name="HelloWorld">
+  <$ button hello Clickme for Hello $> <BR>
+  <$ action_link hello Click Link $>
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloWorld"></div>
+</BODY>
+
+ Image
+
+ Generated HTML
+ <BODY>
+   <DIV class="yote_template side_panel" template="HelloWorld">
+<BUTTON type="BUTTON" id="__yidx_n" class="yote_button" template_id="__yidx_m">Clickme for Hello</BUTTON> <BR>
+<A HREF="#" id="__yidx_o" class="yote_action_link" action="hello" template_id="__yidx_m">Click Link</A>
+   </DIV>
+ </BODY>
+
+The button and link have a click handler set that calls the hello function, passing it the context of the template.
+
+Variables
+
+<script type="text/template" class="yote_template_definition" template_name="HelloTemplate">
+  Hello <b><$ val name $></b>.
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HiSue">
+  <$$$ var name Sue $$$>
+  <$$ HelloTemplate $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HiFred">
+  <$$$ var name Fred $$$>
+  <$$ HelloTemplate $$>
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HiSue"></div> <BR>
+  <DIV class="yote_template side_panel" template="HiFred"></div>
+</BODY>
+
+ Image
+
+ Generated HTML
+ <BODY>
+   <DIV class="yote_template side_panel" template="HiSue">Hello Sue</DIV> <BR>
+   <DIV class="yote_template side_panel" template="HiFred">Hello Fred</DIV>
+ </BODY>
+
+Variables and functions
+
+<SCRIPT>
+  $.yote.util.register_function( "hello", 
+       function( context ) { 
+         alert( "Greetings " + context.vars[ 'name' ] );
+       } );
+</SCRIPT>
+
+<script type="text/template" class="yote_template_definition" template_name="HelloTemplate">
+  <$$$ var name Dude $$$>
+  <$ button hello Clickme $>
+</script>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloTemplate">
+<BUTTON type="BUTTON" id="__yidx_n" class="yote_button" template_id="__yidx_m">Clickme</BUTTON> <BR>
+  </div>
+</BODY>
+
+Controls as variables and after rendering functions
+
+
+<script type="text/template" class="yote_template_definition" template_name="HelloTemplate">
+  <$$$ control text <INPUT TYPE="TEXT"> $$$> <BR>
+  <$$$ control button <BUTTON type="BUTTON">Clickme</BUTTON> $$$>
+  <?? setup_hello ??>
+</script>
+
+<SCRIPT>
+    $.yote.util.register_function( "setup_hello", 
+      function( context ) { 
+	  var button_id = context.controls[ 'button' ];
+	  var text_id   = context.controls[ 'text' ];
+	  $( '#' + button_id ).click( function() { 
+	      alert( "Greetings " + $( '#' + text_id ).val() );
+	  } );
+      } );
+</SCRIPT>
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloTemplate"></div>
+</BODY>
+
+ Image
+
+ Generated HTML 
+
+<BODY>
+  <DIV class="yote_template side_panel" template="HelloTemplate">
+<INPUT TYPE="TEXT" id="__yidx_m"> <BR> 
+<BUTTON type="BUTTON" id="__yidx_n" class="yote_button" template_id="__yidx_m">Clickme</BUTTON> <BR>
+  </div>
