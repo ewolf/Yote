@@ -1,0 +1,67 @@
+<h1>Client Template Documentation</h1>
+
+<section>
+  
+<p>
+  The client side templates are evolving, and this document describes the set of 
+  templates at the time of writing.
+</p>
+
+<h3>Context</h3>
+<p>
+  Each filled out template is assigned a serialized template id and has a context dictionary 
+  that is stored in the lookup hash <code>$.yote.util.template_context</code> keyed by its template_id.
+  The context is copied from the current context ( if any ) that is assigned to the template this template
+  is embedded in. If this template is embedded directly in the body, a new context is created for it.
+</p>
+
+<p>
+  This context is also passed in to all functions called from the templates. There are three sorts
+  of functions that can be called from the templates. A function that returns html that is placed
+  in the filled out template, a function that is called after the template is rendered and 
+  functions that are attached to links and buttons and are called when those are clicked.
+</p>
+
+<p>
+  The context dictionary may have the following context fields :
+<pre><code>
+  $.yote.util.template_context[ <i>template_id</i> ] = {
+
+      <b>vars</b>      = { <i>dictionary of variables assigned in the templates.</i> };
+
+      <b>newfields</b> = { <i>dictionary mapping field names to ids of controls. 
+                    The control ids are for controls specifically created for 
+	            the assignment of a particular field for a new item</i> };
+
+      <b>controls</b>  = { <i>dictionary mapping a name to the id of a control.</i> };    
+
+  };
+</code></pre>
+<p>
+  It should be stressed again that the context is copied each time a template is filled out. 
+  This means a variable created in an enclosing template will still be visible to the 
+  the enclosed template with the value it had when created unless it had been explicitly overwritten.
+</p>
+
+<h3>Registration Declarations</h3>
+
+<p>
+These directives are executed and their values placed in context.
+</p>
+
+<$$$ var varname value $$$>
+
+  
+<$$$ control ctlname <..html control..> $$$>
+
+    
+<$$$ new ctlname <..html control..> $$$>
+      
+
+<$$$ new_hashkey <..html control..> $$$>
+
+
+
+
+
+</section>

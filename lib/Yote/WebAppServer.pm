@@ -8,9 +8,12 @@ use warnings;
 no warnings 'uninitialized';
 
 use Data::Dumper;
+use File::Slurp;
+use File::stat;
 use MIME::Base64;
 use IO::Handle;
 use IO::Socket;
+use JavaScript::Minifier;
 use JSON;
 use POSIX qw(strftime);
 
@@ -305,8 +308,8 @@ sub __check_locked_for_dirty {
 } #__check_locked_for_dirty
 
 sub _do404 {
-    my $self = shift;
-    print "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
+    my( $self, $socket ) = @_;
+    print $socket "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
 }
 
 
@@ -477,7 +480,7 @@ sub __process_http_request {
     }
     my $content_length = $ENV{'HTTP_CONTENT-LENGTH'};
     if( $content_length > 5_000_000 ) { #TODO : make this into a configurable field
-	$self->_do404();
+	$self->_do404( $socket );
 	close( $socket );
 	return;
     }
@@ -570,10 +573,16 @@ sub __process_http_request {
 	my $dest = '/' . join('/',@path);
 
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    if( $dest eq '/' ) {
-		$dest = '/index.html';
-	    } else {
-		$dest = "$dest/index.html";
+	    # check for javascript directory to minify
+	    if( $dest =~ m~(.*)/js/?$~ ) {
+		$dest = minify_dir( $root, $dest, $1 );
+	    }
+	    else {
+		if( $dest eq '/' ) {
+		    $dest = '/index.html';
+		} else {
+		    $dest = "$dest/index.html";
+		}
 	    }
 	} 
 	if( open( my $IN, '<', "$root/$dest" ) ) {
@@ -659,7 +668,8 @@ sub __process_http_request {
 	    #accesslog( "200 : $dest");
 	} else {
 	    accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
-	    $self->_do404();
+	    errlog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
+	    $self->_do404( $socket );
 	}
     } #serve html
     close( $socket );
@@ -858,6 +868,51 @@ sub __unlock_all {
     $self->{LOCKED} = {};
 }
 
+sub minify_dir {
+    my( $root, $source_dir, $source_root ) = @_;
+    #
+    # Check if there are files in the directory that are newer than the minified file
+    # of if the minified file does not exist
+    #
+    my $minidir = "$source_root/_js";
+    my $minifile = "$root/$minidir/mini.js";
+    
+    if( ! -d "$root/$minidir" ) {
+	mkdir( "$root/$minidir" ); 
+    }
+    opendir( my $SOURCEDIR, "$root/$source_dir" );
+    my( @js_files, $latest_time );
+    while( my $fn = readdir $SOURCEDIR ) {
+	if( $fn =~ /\.js$/ ) {
+	    my $file = "$root/$source_dir/$fn";
+	    push @js_files, $file;
+	    my $lastmod = stat($file)->mtime;
+
+	    $latest_time ||= $lastmod;
+	    $latest_time = $latest_time < $lastmod ? $lastmod : $latest_time;
+	}
+    }
+    my $minitime = -e $minifile ? stat($minifile)->mtime : 0;
+
+    if( ! -f $minifile || $minitime < $latest_time ) {
+	my $buf = '';
+	# make sure base jquery comes first, followed by other jquery
+	# make sure that yote comes before yote.util
+	for my $f (sort { $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ ? -1 :
+			      $a =~ /jquery/ && $b !~ /jquery/ ? -1 :
+			      $a =~ /jquery/ ? -1 :
+			      $a =~ /yote.util/ ? 1 :
+			      1  
+		   } @js_files) {
+	    my $js = read_file( $f );
+	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
+	}
+	open( my $OUT, '>', $minifile);
+	print $OUT $buf;
+	close( $OUT );
+    }
+    return "$minidir/mini.js";
+} #minify_dir
 
 1;
 

@@ -3,15 +3,11 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Yote Admin Page (YAP)</title>
-    <script src="/yote/js/jquery-latest.js"></script>
-    <script src="/yote/js/jquery.cookie.js"></script>
-    <script src="/yote/js/jquery.base64.min.js"></script>
-    <script src="/yote/js/json2.js"></script>
 
-    <script src="/templates/templates.js"></script>
+    <script src="/yote/js"></script>
 
-    <script src="/yote/js/yote.js"></script>
-    <script src="/yote/js/yote.util.js"></script>
+    <script src="/templates/default_templates.js"></script>
+
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
 
@@ -85,7 +81,7 @@ if we are our experiences then we are both sides of them.
 	  }
 
       $().ready(function(){
-	  $.yote.include_templates( '/templates/templates.html' );
+	  $.yote.include_templates( '/templates/default_templates.html' );
 	  $.yote.util.register_functions( base_templates );
 
 	  $( '#mainpanel' ).hide();
