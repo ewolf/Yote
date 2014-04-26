@@ -322,7 +322,7 @@ sub _get_configuration {
 			print "Directory '$dir' is not found.\n";
 		    }
 		}
-		elsif( -w $yote_root_dir ) {
+		elsif( -w $yote_root_dir || ( ! -d $yote_root_dir || -w "$yote_root_dir/.." ) ) {
 		    if( $dir ) {
 			my $full_store = "$yote_root_dir/$dir";
 			mkpath( $full_store );
@@ -335,7 +335,7 @@ sub _get_configuration {
 		    }
 		}
 		else {
-		    print "Directory '$dir' is not writable by this account.\n";		    
+		    print "Directory '$yote_root_dir' is not writable by this account.\n";		    
 		}
 	    }
 	} #done loop
