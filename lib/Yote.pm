@@ -15,7 +15,7 @@ use warnings;
 
 use vars qw($VERSION);
 
-$VERSION = '0.208';
+$VERSION = '0.209';
 
 use Carp;
 use File::Path;
@@ -31,7 +31,7 @@ use Yote::WebAppServer;
 sub get_args {
 
     my %params = ref( $_[0] ) ? %{ $_[0] } : @_;
-    
+
     my $allow_unknown = $params{ allow_unknowns };
     my $allow_multiple_commands = $params{ allow_multiple_commands };
 
@@ -92,7 +92,7 @@ sub get_args {
 
 	if ( $arg =~ /^--([^=]*)(=(.*))?/ ) {
 	    _soft_exit( "Unknown argument '$arg'" ) unless $argnames{ $1 } || $allow_unknown;
-	    $config{ $1 } = $noval{ $1 } ? 1 : $3; 
+	    $config{ $1 } = $noval{ $1 } ? 1 : $3;
 	} elsif ( $arg =~ /^-(.*)/ ) {
 	    _soft_exit( "Unknown argument '$arg'" ) unless $argmap{ $1 } || $allow_unknown;
 	    $config{ $argmap{ $1 } } = $noval{ $argmap{ $1 } } ? 1 : shift @ARGV;
@@ -131,7 +131,7 @@ sub get_args {
 	my $newconfig = _create_configuration( $yote_root_dir, _load_config( $yote_root_dir ) );
 	for my $key ( keys %$newconfig ) {
 	    $config{ $key } ||= $newconfig->{ $key };
-	}	
+	}
     }
     elsif( $config{ reset_password } ) {
 	%config = %{ _reset_root_password( $yote_root_dir, _load_config( $yote_root_dir ) ) };
@@ -190,7 +190,7 @@ sub run {
 # Convenience method to return the Yote::YoteRoot singleton, connected to the db as outlined by
 # the config file.
 #
-# Warning : do not do any write operations while a Yote server is running. This could cause havoc 
+# Warning : do not do any write operations while a Yote server is running. This could cause havoc
 #           if that server is also doing write operations.
 #
 sub fetch_root {
@@ -214,12 +214,12 @@ sub _print_use {
                     --help
                     --host=mongo-or-mysql-host
                     --show_config
-                    --password=engine-password 
+                    --password=engine-password
                     --port=yote-server-port
                     --reset_password
                     --store=filename|mongo-db|mysq-db
                     --threads=number-of-server-processes
-                    --user=engine-username 
+                    --user=engine-username
                     --yote_root=yote-root-directory
                           START|STOP|RESTART
 ';
@@ -289,7 +289,7 @@ sub _reset_root_password {
     open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
     print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $config->{$_}" } grep { $config->{$_} } keys %$config )."\n\n";
     close( $OUT );
-    return $config;    
+    return $config;
 
 } #_reset_root_password
 
@@ -335,7 +335,7 @@ sub _get_configuration {
 		    }
 		}
 		else {
-		    print "Directory '$yote_root_dir' is not writable by this account.\n";		    
+		    print "Directory '$yote_root_dir' is not writable by this account.\n";
 		}
 	    }
 	} #done loop
@@ -469,23 +469,23 @@ Yote on the client is a javascript library that provides
 
 =head1 DESCRIPTION
 
-The purpose of Yote to be able to develop rapidly, flexbily and 
+The purpose of Yote to be able to develop rapidly, flexbily and
 fluidly. Yote stores a graph of interconnected container objects.
-Each of these can be connected to any other, and each may have 
+Each of these can be connected to any other, and each may have
 properties attached to them. No schema is needed to describe how
 objects are connected or what properties they contain.
 
 There is an organization to this object graph, however; all objects
 that are 'live' can trace back to the root of the graph. This root
-contains a collection of user logins and application objects. It 
+contains a collection of user logins and application objects. It
 provides methods for creating these login objects, which, since they are
 Yote objects, can have arbitrary properties attached to them. The
-application objects are singleton Yote objects are are accessed via 
+application objects are singleton Yote objects are are accessed via
 the fetch_app_by_class method attached to the root.
 
 I wrote Yote because I wanted to write object oriented applications,
 particulally web applications and prototypes, in a ferenic ADHD style. I did
-want want to have to set up schemas, and then make changes to them as the 
+want want to have to set up schemas, and then make changes to them as the
 application changed.
 
 

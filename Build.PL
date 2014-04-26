@@ -76,6 +76,7 @@ my $builder = Module::Build->new(
 	'File::UStore'          => 0.12,
 	'forks'                 => 0.34,
 	'forks::shared'         => 0.34,
+	'JavaScript::Minifier'  => '1.11',
 	'JSON'                  => 2.53,
 	'Mail::Sender'          => 0,
 	'MIME::Base64'          => 0,
