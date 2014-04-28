@@ -130,29 +130,32 @@ $.yote = {
     root:null,
     wrap_cache:{},
 
-    init:function() {
+    init:function( appname ) {
         var t = $.cookie('yoken');
 	$.yote.token = t || 0;
 	
-	var root;
-	if( ! $.yote.init_precache( root ) ) {
-	    root = this.fetch_root();
-	    $.yote.guest_token = root.guest_token();
-	} else {
-	    root = this.fetch_root();
-	}	    
-
-        if( typeof t === 'string' ) {
-            var ret = root.token_login( $.yote.token );
-	    if( typeof ret === 'object' ) {
-		$.yote.token     = t;
-		this.login_obj = ret;
-	    }
-        }
-
-	return ret;
+	var data =  this.fetch_initial( t, appname );
+	var root    = data[ 0 ], 
+            app     = data[ 1 ], 
+	    login   = data[ 2 ],
+	    account = data[ 3 ];
+	root._app_id = root.id;
+	$.yote.objs['root'] = root;
+	$.yote.root = root;
+	$.yote.login_obj = login;
+	app._app_id = app.id;
+	$.yote.apps[ appname ] = app;
+	this.app = app;
+	this.acct_obj = account;
+	return app;
     }, //init
 
+    //
+    // precache is server side magic that writes out a 
+    // javascript json data structure window.yote_precache
+    // containing objects.  This function loads those 
+    // objects into its object cache.
+    //
     init_precache:function( root ) {
 	var precache = window['yote_precache'];
 	if( ! precache ) return false;
@@ -213,6 +216,8 @@ $.yote = {
 	}
     }, //fetch_app
 
+    // TODO - add login information here as well and 
+    // return not only root but login if applicable
     fetch_root:function() {
 	var r = this.objs['root'];
 	if( ! r ) {
@@ -227,12 +232,26 @@ $.yote = {
 	return r;
     }, //fetch_root
 
+    // return not only root but login if applicable
+    // returns root, app, login, account
+    fetch_initial:function( token, appname ) {
+	var r = this.message( {
+	    async:false,
+	    cmd:'fetch_initial',
+	    wait:true,
+	    data:{ t:token,a:appname },
+	} );
+	if( r && typeof r === 'object' && r.length() > 2 ) {
+	    return [ r.get(0), r.get(1), r.get(2), r.get(3) ];
+	}
+    }, //fetch_initial
+
     get_by_id:function( id ) {
 	return $.yote.objs[id+''] || $.yote.fetch_root().fetch(id).get(0);
     },
 
     is_root:function() {
-	return this.is_logged_in() && 1*this.get_login().is_root();
+	return this.is_logged_in() && 1*this.get_login().get_is_root();
     },
 
     get_login:function() {
@@ -345,26 +364,30 @@ $.yote = {
                 if( typeof data !== 'undefined' ) {
 		    resp = ''; //for returning synchronous
 
-		    //dirty objects that may need a refresh
-		    if( typeof data.d === 'object' ) {
-			for( var oid in data.d ) {
-			    if( root._is_in_cache( oid ) ) {
-				var cached = root.objs[ oid + '' ];
-				for( fld in cached._d ) {
-				    //take off old getters/setters
-				    delete cached['get_'+fld];
-				}
-				cached._d = data.d[ oid ];
-
-				for( fld in cached._d ) {
-				    //add new getters/setters
-				    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-				}
-			    }
-			} //each dirty
-		    } //if dirty
-
 		    if( typeof data.err === 'undefined' ) {
+			//dirty objects that may need a refresh
+			if( typeof data.d === 'object' ) {
+			    for( var oid in data.d ) {
+				if( root._is_in_cache( oid ) ) {
+				    var cached = root.objs[ oid + '' ];
+				    for( fld in cached._d ) {
+					//take off old getters/setters
+					delete cached['get_'+fld];
+				    }
+				    cached._d = data.d[ oid ];
+
+				    for( fld in cached._d ) {
+					//add new getters/setters
+					cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
+				    }
+				}
+			    } //each dirty
+			} //if dirty
+
+			if( typeof data.e === 'object' ) {
+			    root._create_obj( data.e, app_id );
+			}
+
 			if( typeof data.r === 'object' ) {
 			    resp = root._create_obj( data.r, app_id );
 		            if( typeof params.passhandler === 'function' ) {
@@ -582,10 +605,16 @@ $.yote = {
 			return $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ];
 		    }
 
-		    var ol = host_obj.count( fld );
-
-		    // see if the whole list can be obtained at once
-		    var page_out_list = fld.charAt( 0 ) == '_'  || ol > (args[ 'threshhold' ] || 200);
+		    var ol, page_out_list = false;
+		    // check to see if this object is already loaded in the cache.
+		    if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
+			ol = host_obj.get( fld ).length();
+		    }
+		    else {
+			ol = host_obj.count( fld );
+			// see if the whole list can be obtained at once
+			page_out_list = fld.charAt( 0 ) == '_'  || ol > (args[ 'threshhold' ] || 200);
+		    }
 
 		    if( ! page_out_list ) {
 			var collection_obj = host_obj.get( fld );

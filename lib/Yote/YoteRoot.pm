@@ -18,6 +18,10 @@ use Email::Valid;
 
 use base 'Yote::AppRoot';
 
+#
+# Used by Yote::ObjManager. If true, it won't mark things dirty. This is
+# for the case where the YoteRoot is instantiated for the first time.
+#
 $Yote::YoteRoot::ROOT_INIT = 0;
 
 # ------------------------------------------------------------------------------------------
@@ -98,7 +102,7 @@ sub fetch {
     if( ref( $data ) eq 'ARRAY' ) {
 	my $login = $account->get_login();
 	return [ map { Yote::ObjProvider::fetch( $_ ) } grep { defined($Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ }) } @$data ];
-    } 
+    }
     return [ Yote::ObjProvider::fetch( $data ) ];
 
 } #fetch
@@ -107,13 +111,13 @@ sub fetch {
 #
 sub fetch_app_by_class {
     my( $self, $data ) = @_;
-    my $app = $self->get__apps({})->{$data};
+    my $app = $self->get__apps({})->{ $data };
     unless( $app ) {
         eval ("use $data");
         die $@ if $@;
         $app = $data->new();
 	$app->set__key( $data );
-        $self->get__apps()->{$data} = $app;
+        $self->get__apps()->{ $data } = $app;
     }
     return $app;
 } #fetch_app_by_class
@@ -132,6 +136,21 @@ sub fetch_root {
     $Yote::YoteRoot::ROOT_INIT = 0;
     return $root;
 } #fetch_root
+
+#
+# Returns this root object.
+#
+sub fetch_initial {
+    my( $self, $data, undef, $env ) = @_;
+    my $app   = $self->fetch_app_by_class( $data->{ a } );
+    my $login = $self->token_login( $data->{ t }, undef, $env );
+    return [ $self,                          # root app
+	     $app,                           # resired app
+	     $login,                         # login
+	     $app && $login ? $app->__get_account( $login ) : undef, # account
+             $app ? $app->precache() : undef, # precache data
+	];
+} #fetch_initial
 
 #
 # Returns a token for non-logging in use.
@@ -182,6 +201,7 @@ sub make_root {
     my( $self, $login, $acct ) = @_;
     die "Access Error" unless $acct->is_root();
     $login->set__is_root( 1 );
+    $login->set_is_root( 1 );
     return;
 } #make_root
 
@@ -303,6 +323,7 @@ sub remove_root {
     die "Access Error" unless $acct->is_root();
     die "Cannot remove master root account" if $login->get__is_master_root();
     $login->set__is_root( 0 );
+    $login->set_is_root( 0 );
     return;
 } #remove_root
 
@@ -331,7 +352,7 @@ sub _update_master_root {
 	if( $old_root->get_handle() ne $master_root_handle ) {
 	    $self->_hash_delete( '_handles', lc( $old_root->get_handle() ) );
 	    $old_root->set_handle( $master_root_handle );
-	    $self->_hash_insert( '_handles', $lc_handle, $old_root );	
+	    $self->_hash_insert( '_handles', $lc_handle, $old_root );
 	}
 	if( $old_root->get__password() ne $master_root_password_hashed ) {
 	    $old_root->set__password( $master_root_password_hashed );
@@ -391,6 +412,7 @@ sub _create_login {
         my $new_login = new Yote::Login();
 
 	$new_login->set__is_root( 0 );
+	$new_login->set_is_root( 0 );
         $new_login->set_handle( $handle );
         $new_login->set_email( $email );
 	my $ip = $env->{REMOTE_ADDR};

@@ -407,12 +407,13 @@ sub __process_command {
 	# prepare the response object
 	$resp = { r =>  __obj_to_response( $ret, $login, $guest_token ) };
 
-	# check if there are object updates that should be included. This means objects that have changed on the server side
-	# since the last time the client was updated
+	if( $action eq 'fetch_app_by_class' && $ret && $ret->isa( 'Yote::AppRoot' ) ) {
+	    $resp->{e} = __obj_to_response( $ret->precache(), $login, $guest_token );
+	}
+
 	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
-	my( $dirty_data );
 	if( @$dirty_delta ) {
-	    $dirty_data = {};
+	    my $dirty_data = {};
 	    for my $d_id ( @$dirty_delta ) {
 		my $dobj = Yote::ObjProvider::fetch( $d_id );
 		if( ref( $dobj ) eq 'ARRAY' ) {
@@ -616,7 +617,7 @@ sub __process_http_request {
 	    my $buf;
 	    my $precache_done;
             while( read( $IN,$buf, 8 * 2**10 ) ) {
-		if( $is_html && $buf =~ /\<\?YOTE_PRECACHE\s+(\S+)\s*\?\>/ && ! $precache_done ) { 
+		if( $is_html && ! $precache_done && $buf =~ /\<\?YOTE_PRECACHE\s+(\S+)\s*\?\>/ ) { 
 		    # a web page is almost certainly under the size where the chunking matters.
 		    # TODO : cover all cases here
 		    # if PRECACHE is checked and $ENV{HTTP_COOKIE} is set
@@ -898,11 +899,7 @@ sub minify_dir {
 	my $buf = '';
 	# make sure base jquery comes first, followed by other jquery
 	# make sure that yote comes before yote.util
-	for my $f (sort { $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ ? -1 :
-			      $a =~ /jquery/ && $b !~ /jquery/ ? -1 :
-			      $a =~ /jquery/ ? -1 :
-			      $a =~ /yote.util/ ? 1 :
-			      1  
+        for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.util/ ) ? -1 : 1
 		   } @js_files) {
 	    my $js = read_file( $f );
 	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);

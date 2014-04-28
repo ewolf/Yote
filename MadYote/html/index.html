@@ -10,26 +10,18 @@
     <link rel="stylesheet" type="text/css" href="/css/main.css"/>
 
     <STYLE>
-      .side_panel { float: left; padding: 15px; margin-top:2em; max-width: 262px; }
-      .main       { padding: 15px; margin-top:2em; }
-      body       { margin-top:70px; font-family: sans-serif }
-      .news_time { font-family: monospace;
-                   font-size: small; }
-      .news_body { font-family: serif; margin-left: 10px; padding-left: 10px; }
-      .news_header{ font-family: sans-serif;
-                    font-style: italic;
-                    font-size: large; margin-top: 3px; margin-bottom: 3px; }
-
     </STYLE>
 
     <script>
       <!--
 	  $().ready(function() {
+              $.yote.debug = true;
 	      $.yote.include_templates( '/templates/default_templates.html' );
 	      $.yote.util.register_functions( base_templates );
 
-	      $.yote.init();
- 	      var yote_app = $.yote.fetch_app( 'MadYote' );
+	      var yote_app = $.yote.init( 'MadYote' );
+
+	      $.yote.util.register_function( 'new_todo', function() { return $.yote.is_root() ? "<$$ NewToDo $$>" : '';  } );
 	      $.yote.util.register_item( 'yote', yote_app );
 	      
 	      $.yote.util.refresh_ui();		  
@@ -37,33 +29,60 @@
 	-->
     </script>
 
+    <script type="text/template" class="yote_template_definition" template_name="SideBar">
+      <$ show_or_edit _.page #news  $>
+	<BR>
+	<$ show_or_edit _.page #yoteversion $>
+	  <ul class="navlink">
+	    <li>Thing</li>
+	  </ul>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="ToDoItem">
+      <div>
+      <h4> <$ show_or_edit _ title $></h4>
+      <div><$ show_or_edit _ #explanation $></div>
+      <div><$ show_or_edit _ #progress $></div>
+      </div>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="ToDos">
+      <div>
+      <h2>Working On</h2>
+      <@ ToDoItem 10 @>
+      <? new_todo ?>
+      </div>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="NewToDo">
+      <DIV>
+      <$$$ new title <input placeholder="title" type="text"> $$$> <BR>
+      <$$$ new explanation <textarea cols=80 placeholder="explanation" rows=4></textarea> $$$>  <BR>
+      <$$$ new progress <textarea cols=80 placeholder="progress" rows=4></textarea> $$$>  <BR>
+      <$ newbutton _ todos Add $>
+      </DIV>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="Main">
+      <$ show_or_edit _.page #whatis  $>
+      <hr>
+      <$@ ToDos ToDos _.page todos @$>
+      <hr>
+      <$ show_or_edit _.page #features  $>
+      <hr>
+      <$ show_or_edit _.page #demo  $>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="Header">
+      <$$$ var default_login_message  $$$>
+      <$$ YoteHeader $$>
+    </script>
+
   </head>
-
-  <script type="text/template" class="yote_template_definition" template_name="SideBar">
-    <$ show_or_edit _.page #news  $>
-      <BR>
-    <$ show_or_edit _.page #yoteversion $>
-    <ul class="navlink">
-      <li>Thing</li>
-    </ul>
-  </script>
-
-  <script type="text/template" class="yote_template_definition" template_name="Main">
-    <$ show_or_edit _.page #whatis  $> <BR>
-    <$ show_or_edit _.page #features  $> <BR>
-    <$ show_or_edit _.page #demo  $>
-  </script>
-
-  <script type="text/template" class="yote_template_definition" template_name="Header">
-    <$$$ var default_login_message  $$$>
-    <$$ YoteHeader $$>
-  </script>
 
   <body>
 
     <DIV class="yote_template" template="YoteHeader"></div>
-
-    <DIV class="yote_template side_panel" template="SideBar" default_variable="yote"></div>
 
     <DIV class="yote_template main" template="Main" default_variable="yote"></div>
 

@@ -12,6 +12,11 @@ $VERSION = '0.04';
 
 use base 'Yote::Obj';
 
+sub _load {
+    my $self = shift;
+    $self->set_is_root( $self->get__is_root() );
+}
+
 sub is_root {
     my $self = shift;
     return $self->get__is_root();
