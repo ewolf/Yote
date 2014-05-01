@@ -92,20 +92,20 @@
  	try {
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
-            var nologin = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-            nologin._reset();
+            var nologin_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
+            nologin_app._reset();
             step('scalar called on testappnologin');
-            var scalar = nologin.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
+            var scalar = nologin_app.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
             is( scalar, "BEEP", "value of login scalar" );
             
             //fetch app that requires login and get scalar
             step('get app testappneedslogin');
 
-            var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
- 	    login.purge_app();
-            login._reset();
+            var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+ 	    login_app.purge_app();
+            login_app._reset();
             step('scalar called on testappneedslogin');
-            var scalar = login.scalar( {}, 
+            var scalar = login_app.scalar( {}, 
                                        fail("required login returned scalar without login"),
  	                               pass("required login returned nothingwithout login") );
             
@@ -137,40 +137,42 @@
  	    ok( $.yote.token != '', 'login has token', 'token missing from login' );
  	    ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
 
-            login.reset();
+            login_app.reset();
 
  	    var token_login = $.yote.fetch_root().token_login( $.yote.token );
  	    ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );	
 
+	    login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+
             //app that requires login should allow scalar now
             step('scalar called on testappneedslogin to succeed');
-            var scalar = login.scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
+            var scalar = login_app.scalar( {}, pass("required login returned scalar with login"), fail("required login returned scalar with login") );
             ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
             // have a Yote object returned
             step('yote_obj get called on testappneedslogin to succeed');
  	    
-            var obj = login.get_yote_obj();
+            var obj = login_app.get_yote_obj();
             if( typeof obj !== 'object' ) {
  		fail( "yote_obj not returned" )();
  		return;      
             }
- 	    is( login.list().length(), 3, " list properly returned " );
+ 	    is( login_app.list().length(), 3, " list properly returned " );
 
             // try passing in a javascript proxy object as a data parameter
-            var o1 = login.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
-            var o2 = login.make_obj( {Text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
-            login.give_obj( o1, pass( "gave object 1" ), fail( "gave object 1" ) );
+            var o1 = login_app.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
+            var o2 = login_app.make_obj( {Text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
+            login_app.give_obj( o1, pass( "gave object 1" ), fail( "gave object 1" ) );
             is( o1.get_Text(), 'foo', 'correct object 1 text directly a' );
             is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
-            login.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
-            is( login.obj_text(), 'bar', 'correct object 1 text' ); //should have dirty sent back
+            login_app.give_obj( o2, pass( "gave object 2" ), fail( "gave object 2" ) );
+            is( login_app.obj_text(), 'bar', 'correct object 1 text' ); //should have dirty sent back
 
-            var o3 = login.get_obj(); //<--- STILL FAIL
+            var o3 = login_app.get_obj(); //<--- STILL FAIL
             is( o3.get_Text(), 'bar', 'correct object 1 text directly' );
 
-            login.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
-            is( login.obj_text(), 'foo', 'correct object 2 text' );
-            o3 = login.get_obj();
+            login_app.give_obj( o1, pass( "gave object 2" ), fail( "gave object 2" ) );
+            is( login_app.obj_text(), 'foo', 'correct object 2 text' );
+            o3 = login_app.get_obj();
             is( o3.get_Text(), 'foo', 'correct object 2 text directly' );
 
             o3._stage( 'Text', 'baz' );
@@ -185,15 +187,15 @@
             is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
  	    //Text is writable, zap doesn't exist and so it not, and bext is not writeable
- 	    is( login.get_Text(), 'inity', "TANL initied text" );
- 	    is( login.get_zap(), 'zappy', "TANL initied zap" );
+ 	    is( login_app.get_Text(), 'inity', "TANL initied text" );
+ 	    is( login_app.get_zap(), 'zappy', "TANL initied zap" );
  	    ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );
  	    ok( typeof o3[ 'set_bext' ] !== undefined, "bext is there" );
  	    is( o3[ 'set_zap' ], undefined, "zap is not there" );
 
-            login._send_update({Text:'baf',bext:'Again',zip:'zap'});
- 	    is( login.get_Text(), 'baf', "TANL changed text" ); 
- 	    is( login.get_zap(), 'zappy', "TANL unchnaged zap" );
+            login_app._send_update({Text:'baf',bext:'Again',zip:'zap'});
+ 	    is( login_app.get_Text(), 'baf', "TANL changed text" ); 
+ 	    is( login_app.get_zap(), 'zappy', "TANL unchnaged zap" );
 
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
@@ -206,7 +208,7 @@
             
             // have yote array returned
             step('array called on testappneedslogin to succeed');
-            var arry = login.array();
+            var arry = login_app.array();
             is( arry.length(), 4, 'length of array returned' );
             is( arry.get(0), 'A', 'element 0 correct' );
 
@@ -256,8 +258,8 @@
             //test javascript object caching and multi loading of objects.
             $.yote._dump_cache();
             is( $.yote._cache_size(), 0, "cache now empty" );
-            var login = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
-            is( $.yote._cache_size(), 3, "cache with loginapp and root and obj in loginapp" );
+            var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+            is( $.yote._cache_size(), 2, "cache with loginapp and root in loginapp" );
 
  	    var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
  	    hello_app.hello();
@@ -572,10 +574,10 @@
  	    }
 
 
- 	    login.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
- 	    login.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
- 	    login.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
- 	    login.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
+ 	    login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
+ 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
+ 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
+ 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
  	}
  	catch( err ) {
  	    fail( err )();

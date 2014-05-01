@@ -30,6 +30,7 @@ sub allows_access {
 
     my $root = Yote::YoteRoot::fetch_root();
     my $ALLOWS = $root->get___ALLOWS();
+
     if( $login ) {
 	my $ret = $ALLOWS->{ $obj_id }{ $login->{ID} };
 	unless( $ret ) { # transfer from guest to logged in token, if needed
