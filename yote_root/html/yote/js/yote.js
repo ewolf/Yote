@@ -6,117 +6,18 @@
  *
  * Version 0.2
  */
-// Production steps of ECMA-262, Edition 5, 15.4.4.19
-// Reference: http://es5.github.com/#x15.4.4.19
-if (!Array.prototype.map) {
-    Array.prototype.map = function(callback, thisArg) {
-
-	var T, A, k;
-
-	if (this == null) {
-	    throw new TypeError(" this is null or not defined");
-	}
-
-	// 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-	var O = Object(this);
-
-	// 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-	// 3. Let len be ToUint32(lenValue).
-	var len = O.length >>> 0;
-
-	// 4. If IsCallable(callback) is false, throw a TypeError exception.
-	// See: http://es5.github.com/#x9.11
-	if ({}.toString.call(callback) != "[object Function]") {
-	    throw new TypeError(callback + " is not a function");
-	}
-
-	// 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-	if (thisArg) {
-	    T = thisArg;
-	}
-
-	// 6. Let A be a new array created as if by the expression new Array(len) where Array is
-	// the standard built-in constructor with that name and len is the value of len.
-	A = new Array(len);
-
-	// 7. Let k be 0
-	k = 0;
-
-	// 8. Repeat, while k < len
-	while(k < len) {
-
-	    var kValue, mappedValue;
-
-	    // a. Let Pk be ToString(k).
-	    //   This is implicit for LHS operands of the in operator
-	    // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-	    //   This step can be combined with c
-	    // c. If kPresent is true, then
-	    if (k in O) {
-
-		// i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-		kValue = O[ k ];
-
-		// ii. Let mappedValue be the result of calling the Call internal method of callback
-		// with T as the this value and argument list containing kValue, k, and O.
-		mappedValue = callback.call(T, kValue, k, O);
-
-		// iii. Call the DefineOwnProperty internal method of A with arguments
-		// Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
-		// and false.
-
-		// In browsers that support Object.defineProperty, use the following:
-		// Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
-
-		// For best browser support, use the following:
-		A[ k ] = mappedValue;
-	    }
-	    // d. Increase k by 1.
-	    k++;
-	}
-
-	// 9. return A
-	return A;
-    };
-} //map definition
-
-if( ! Object.size ) {
-    Object.size = function(obj) {
-	var size = 0, key;
-	for (key in obj) {
-            if (obj.hasOwnProperty(key)) size++;
-	}
-	return size;
-    };
-}
-if( ! Object.keys ) {
-    Object.keys = function( t ) {
-    	var k = []
-	for( var key in t ) {
-	    k.push( key );
-	}
-	return k;
-    }
-}
-if( ! Object.clone ) {
-    // shallow clone
-    Object.clone = function( h ) {
-        var clone = {};
-        for( var key in h ) {
-	    clone[ key ] = h[ key ];
-        }
-        return clone;
-    }
-}
 
 /*
   Upon script load, find the port that the script came from, if any.
  */
+
 var scripts = document.getElementsByTagName('script');
 var index = scripts.length - 1;
 var myScriptUrl = scripts[index].src;
 var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 var yote_scr_url = ma && ma.length > 1 ? ma[ 1 ] : '';
+
+// the whole yote object.
 $.yote = {
     url:yote_scr_url,
     guest_token:0,
@@ -131,83 +32,48 @@ $.yote = {
     wrap_cache:{},
 
     init:function( appname ) {
-        var t = $.cookie('yoken');
-	$.yote.token = t || 0;
+        var token = $.cookie('yoken');
+	$.yote.token = token || 0;
 	
-	var data =  this.fetch_initial( t, appname );
-	var root    = data[ 0 ], 
-            app     = data[ 1 ], 
-	    login   = data[ 2 ],
-	    account = data[ 3 ];
-	root._app_id = root.id;
-	$.yote.objs['root'] = root;
-	$.yote.root = root;
-	$.yote.login_obj = login;
-	app._app_id = app.id;
-	$.yote.apps[ appname ] = app;
-	this.app = app;
-	this.acct_obj = account;
-	return app;
+	var initial_data = this.message( {
+	    async:false,
+	    cmd:'fetch_initial',
+	    data:{ t:token,a:appname }
+	    // TODO - add exception handling and throwing here
+	} );
+
+	if( typeof initial_data === 'object' && initial_data[ 'root' ] && initial_data[ 'app' ] ) {
+	    var yote_root = data[ 'root' ]; yote_root._app_id = yote_root.id;
+	    $.yote.yote_root = yote_root;
+	    $.yote.objs[ yote_root.id ] = yote_root;
+
+	    var app = data[ 'app' ]; app._app_id = app.id;
+	    $.yote.default_app = app;
+	    $.yote.objs[ app.id ] = app;
+	    
+	    $.yote.root.login_obj   = data[ 'login' ];
+	    $.yote.root.acct_obj    = data[ 'account' ];
+	    $.yote.root.guest_token = data[ 'guest_token' ];
+
+	    return app;
+	}
     }, //init
 
-    //
-    // precache is server side magic that writes out a 
-    // javascript json data structure window.yote_precache
-    // containing objects.  This function loads those 
-    // objects into its object cache.
-    //
-    init_precache:function( root ) {
-	var precache = window['yote_precache'];
-	if( ! precache ) return false;
-	$.yote.guest_token = precache[ 'gt' ];
-	$.yote.token = precache[ 't' ];
-	var app_id = precache[ 'a' ];
-	var precache_data = precache[ 'r' ];
-	var appname = precache[ 'an' ];
-	var app_data = precache[ 'ap' ];
-	var acct_data = precache[ 'ac' ];
-	var login_data = precache[ 'lo' ];
-	if( appname && app_data ) { 
-	    $.yote.objs['root'] = $.yote._create_obj( precache[ 'ro' ] );
-	    var app = $.yote._create_obj( app_data, app_id );
-	    app.__app_id = app_id;
-	    $.yote.apps[ appname ] = app;
-	    $.yote.app = app;
-	    if( login_data ) {
-		$.yote.login_obj = $.yote._create_obj( login_data );
-	    }
-	    if( acct_data ) {
-		$.yote.acct_obj = $.yote._create_obj( acct_data, app_id );
-	    }
-	    resp = $.yote._create_obj( precache_data, app_id );
-	    return true;
-	}
-	return false;
-    },
-
     fetch_account:function() {
-	if( this.app ) {
+	if( this.default_app ) {
 	    if( ! this.acct_obj ) {
-		this.acct_obj = this.app.account();
+		this.acct_obj = this.default_app.account();
 	    }
 	    return this.acct_obj;
 	}
 	return undefined;
     },
 
-    default_app:function() {
-	// returns the last app fetched.
-	return this.app;
-    },
-
     fetch_app:function(appname,passhandler,failhandler) {
-	if( $.yote.apps[ appname ] ) return $.yote.apps[ appname ];
-	var root = this.fetch_root();
-	if( typeof root === 'object' ) {
-	    var ret = root.fetch_app_by_class( appname );
+	var yote_root = this.fetch_root();
+	if( typeof yote_root === 'object' ) {
+	    var ret = yote_root.fetch_app_by_class( appname );
 	    ret._app_id = ret.id;
-	    this.app = ret;
-	    $.yote.apps[ appname ] = ret;
 	    return ret;
 	} else if( typeof failhanlder === 'function' ) {
 	    failhandler('lost connection to yote server');
@@ -219,15 +85,13 @@ $.yote = {
     // TODO - add login information here as well and 
     // return not only root but login if applicable
     fetch_root:function() {
-	var r = this.objs['root'];
+	var r = $.yote.yote_root;
 	if( ! r ) {
 	    r = this.message( {
 		async:false,
-		cmd:'fetch_root',
-		wait:true
+		cmd:'fetch_root'
 	    } );
-	    this.objs['root'] = r;
-	    this.root = r;
+	    $.yote.yote_root = r;
 	}
 	return r;
     }, //fetch_root
@@ -235,12 +99,6 @@ $.yote = {
     // return not only root but login if applicable
     // returns root, app, login, account
     fetch_initial:function( token, appname ) {
-	var r = this.message( {
-	    async:false,
-	    cmd:'fetch_initial',
-	    wait:true,
-	    data:{ t:token,a:appname },
-	} );
 	if( r && typeof r === 'object' && r.length() > 2 ) {
 	    return [ r.get(0), r.get(1), r.get(2), r.get(3) ];
 	}
@@ -318,7 +176,6 @@ $.yote = {
         var root   = this;
         var data   = root._translate_data( params.data || {} );
         var async  = params.async == true ? 1 : 0;
-	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
         var app_id = params.app_id || '';
         var cmd    = params.cmd;
@@ -339,7 +196,7 @@ $.yote = {
             root._disable();
         }
 	var encoded_data = $.base64.encode( JSON.stringify( { d : data } ) );
-        var get_data = $.yote.token + "/" + $.yote.guest_token + "/" + wait;
+        var get_data = $.yote.token + "/" + $.yote.guest_token;
 	var resp;
 
         if( $.yote.debug == true ) {
@@ -383,10 +240,6 @@ $.yote = {
 				}
 			    } //each dirty
 			} //if dirty
-
-			if( typeof data.e === 'object' ) {
-			    root._create_obj( data.e, app_id );
-			}
 
 			if( typeof data.r === 'object' ) {
 			    resp = root._create_obj( data.r, app_id );
@@ -447,7 +300,6 @@ $.yote = {
 
         var root   = this;
         var data   = root._translate_data( params.data || {}, true );
-	var wait   = params.wait  == true ? 1 : 0;
         var url    = params.url;
         var app_id = params.app_id || '';
         var cmd    = params.cmd;
@@ -477,7 +329,6 @@ $.yote = {
 	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
 	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=w value="' + wait + '">');
 
 	for( var i=0; i<cb_list.length; i++ ) {
 	    cb_list[ i ].removeAttr('checked');
@@ -664,7 +515,7 @@ $.yote = {
 				    reverse : me.sort_reverse,
 				    sort_fields : me.sort_fields
 				} );
-				return res.to_list();
+				return res ? res.to_list() : [];
 			    }
 			    else {
 				var ret = [];
@@ -729,7 +580,7 @@ $.yote = {
 				    sort_fields : me.sort_fields,
 				    return_hash : true,
 				} );
-				return res.to_hash();
+				return res ? res.to_hash() : {};
 			    }
 			    else {
 				var ret = {};
@@ -938,8 +789,7 @@ $.yote = {
 				    data:params,
 				    failhandler:failhandler,
                                     obj_id:this.id,
-				    passhandler:passhandler,
-				    wait:true
+				    passhandler:passhandler
 				} ); //sending message
 			    } } )(x.m[m],x);
 		    } //each method
@@ -956,7 +806,7 @@ $.yote = {
 		    var obj = root.objs[val+''];
 		    if( ! obj ) {
 			var ret = $.yote.fetch_root().fetch(val);
-			if( ! ret ) return undefinded; //this can happen if an authorized user logs out
+			if( ! ret ) return undefined; //this can happen if an authorized user logs out
 			obj = ret.get(0);
 		    }
 		    obj._app_id = this._app_id;
@@ -1092,7 +942,6 @@ $.yote = {
                             }
                         }
                     } )(to_send),
-                    wait:true
                 } );
             }; //_send_update
 
@@ -1115,6 +964,8 @@ $.yote = {
     _dump_cache:function() {
         this.objs = {};
 	this.apps = {};
+	this.yote_root   = undefined;
+	this.default_app = undefined;
     },
 
     // generic server type error
@@ -1194,3 +1045,106 @@ $.yote = {
     iframe_count: 0
 
 }; //$.yote
+// Production steps of ECMA-262, Edition 5, 15.4.4.19
+// Reference: http://es5.github.com/#x15.4.4.19
+if (!Array.prototype.map) {
+    Array.prototype.map = function(callback, thisArg) {
+
+	var T, A, k;
+
+	if (this == null) {
+	    throw new TypeError(" this is null or not defined");
+	}
+
+	// 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+	var O = Object(this);
+
+	// 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+	// 3. Let len be ToUint32(lenValue).
+	var len = O.length >>> 0;
+
+	// 4. If IsCallable(callback) is false, throw a TypeError exception.
+	// See: http://es5.github.com/#x9.11
+	if ({}.toString.call(callback) != "[object Function]") {
+	    throw new TypeError(callback + " is not a function");
+	}
+
+	// 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+	if (thisArg) {
+	    T = thisArg;
+	}
+
+	// 6. Let A be a new array created as if by the expression new Array(len) where Array is
+	// the standard built-in constructor with that name and len is the value of len.
+	A = new Array(len);
+
+	// 7. Let k be 0
+	k = 0;
+
+	// 8. Repeat, while k < len
+	while(k < len) {
+
+	    var kValue, mappedValue;
+
+	    // a. Let Pk be ToString(k).
+	    //   This is implicit for LHS operands of the in operator
+	    // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+	    //   This step can be combined with c
+	    // c. If kPresent is true, then
+	    if (k in O) {
+
+		// i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+		kValue = O[ k ];
+
+		// ii. Let mappedValue be the result of calling the Call internal method of callback
+		// with T as the this value and argument list containing kValue, k, and O.
+		mappedValue = callback.call(T, kValue, k, O);
+
+		// iii. Call the DefineOwnProperty internal method of A with arguments
+		// Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
+		// and false.
+
+		// In browsers that support Object.defineProperty, use the following:
+		// Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+
+		// For best browser support, use the following:
+		A[ k ] = mappedValue;
+	    }
+	    // d. Increase k by 1.
+	    k++;
+	}
+
+	// 9. return A
+	return A;
+    };
+} //map definition
+
+if( ! Object.size ) {
+    Object.size = function(obj) {
+	var size = 0, key;
+	for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+	}
+	return size;
+    };
+}
+if( ! Object.keys ) {
+    Object.keys = function( t ) {
+    	var k = []
+	for( var key in t ) {
+	    k.push( key );
+	}
+	return k;
+    }
+}
+if( ! Object.clone ) {
+    // shallow clone
+    Object.clone = function( h ) {
+        var clone = {};
+        for( var key in h ) {
+	    clone[ key ] = h[ key ];
+        }
+        return clone;
+    }
+}
+

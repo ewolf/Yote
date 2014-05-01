@@ -38,7 +38,7 @@ sub copy_dir {
 	if( -d "$dir/$fn" ) {
 	    copy_dir( "$dir/$fn", "$dest/$fn" );
 	} 
-	else {	    
+	elsif( ! -e "$dest/$fn" ) {	    
 	    copy( "$dir/$fn", "$dest/$fn" );
 	}
     }

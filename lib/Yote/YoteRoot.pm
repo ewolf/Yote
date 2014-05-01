@@ -142,14 +142,15 @@ sub fetch_root {
 #
 sub fetch_initial {
     my( $self, $data, undef, $env ) = @_;
-    my $app   = $self->fetch_app_by_class( $data->{ a } );
+    my $app   = $data->{ a } ? $self->fetch_app_by_class( $data->{ a } ) : $self;
     my $login = $self->token_login( $data->{ t }, undef, $env );
-    return [ $self,                          # root app
-	     $app,                           # resired app
-	     $login,                         # login
-	     $app && $login ? $app->__get_account( $login ) : undef, # account
-             $app ? $app->precache() : undef, # precache data
-	];
+    return { root	   => $self,
+	     app	   => $app,
+	     login	   => $login,
+	     account	   => $app && $login ? $app->__get_account( $login ) : undef,
+	     guest_token   => $login ? undef :  $self->guest_token(),
+             precache_data => $app ? $app->precache( $env->{ REMOTE_ADDR } ) : undef,
+	};
 } #fetch_initial
 
 #
@@ -165,6 +166,11 @@ sub guest_token {
 
     return $token;
 } #guest_token
+
+sub check_guest_token {
+    my( $ip, $token ) = @_;
+    return $token if $Yote::ObjProvider::IP_TO_GUEST_TOKEN->{$ip}{$token};
+} #check_guest_token
 
 #
 # Validates that the given credentials are given
@@ -214,7 +220,7 @@ sub new_obj {
 
 sub new_root_obj {
     my( $self, $data, $acct ) = @_;
-    return "Access Error" unless $acct->get_login()->is_root();
+    return "Access Error" unless $acct && $acct->get_login() &&  $acct->get_login()->is_root();
     my $ret = new Yote::RootObj( ref( $data ) ? $data : undef );
     $ret->set___creator( $acct );
     return $ret;
@@ -222,7 +228,7 @@ sub new_root_obj {
 
 sub new_template {
     my( $self, $data, $acct ) = @_;
-    return "Access Error" unless $acct->get_login()->is_root();
+    return "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
     my $ret = new Yote::SimpleTemplate();
     $ret->set___creator( $acct );
     return $ret;

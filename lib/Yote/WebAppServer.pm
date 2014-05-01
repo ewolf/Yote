@@ -70,41 +70,63 @@ sub iolog {
     print $Yote::WebAppServer::IO "$t : $msg\n";
 }
 
+#
+# Locks the given object from use by other threads.
+#
 sub lock_object {
     my( $self, $obj_id, $ref ) = @_;
-    # LOCKED in this case means already locked by this thread
+
+    #
+    # LOCKED in this case means already locked by this thread,
+    # so do nothing.
+    #
     if( $obj_id eq Yote::ObjProvider::first_id() || $self->{ LOCKED }{ $obj_id } ) {
 	return $ref;
     }
 
+    #
+    # Attempt to lock this object from other forks.
+    #
     while( 1 ) {
 	my( @locked );
 	{
 	    lock( %oid2lockdata );
 	    my $lockdata = $oid2lockdata{ $obj_id };
 
+	    #
+	    # The easy case - no one else locked this.
+	    #
 	    if( ! $lockdata ) {
 		$oid2lockdata{ $obj_id } = "$$|";
 		$self->{ LOCKED }{ $obj_id } = 1;
 		return $ref;
 	    }
+
 	    my( $locking_pid, $dirty_time, @pids_waiting_for_this_object ) = split( /\|/, $lockdata );
 
 	    my( %waiters ) = map { $_ => 1 } @pids_waiting_for_this_object;
 
+	    #
+	    # This is not currently locked.
+	    #
 	    if( ! $locking_pid ) {
 		delete $waiters{$$}; #remove this from any waiting list
 		$oid2lockdata{ $obj_id } = join( '|', $$, $dirty_time, keys %waiters );
 		$self->{ LOCKED }{ $obj_id } = 1;
 		if( $dirty_time &&  $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } && $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } <= $dirty_time ) {
-		    # means the object is dirty and should be reloaded
+		    #
+		    # means the object is dirty and its thingy should be reloaded
+		    #
 		    return;
 		}
 		return $ref;
 	    } # not locking pid
 	    
-	    # lock data indicates this obj is locked by an other pid. 
-	    # Check to make sure that pid isn't waiting on what we have locked, for that is deadlock
+	    #
+	    # Check for other objects locked by this fork.
+	    # If there is someone waiting on one of those objects
+	    # that this fork has locked, it is a deadlock situation.
+	    #
 	    my @locked_ids = keys %{ $self->{LOCKED} || {} };
 	    for my $locked_oid ( @locked_ids ) {
 		# check if the process that has obj_id locked is waiting on any of the locked objects that are had.
@@ -121,21 +143,30 @@ sub lock_object {
 		}
 	    } #each locked oid
 
-	    if( $waiters{$$} ) {
-		# if I am already in the waiters, I'm already in @pids_waiting_for_this_object
-		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, @pids_waiting_for_this_object );
-	    } 
-	    else {
+	    #
+	    # If I am already in the waiters, I'm already in @pids_waiting_for_this_object
+	    # so nothing needs to be done.
+	    #
+	    unless( $waiters{$$} ) {
 		# add me to @pids_waiting_for_this_object
 		$oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, $$, @pids_waiting_for_this_object );
 	    }
-	    
+
+	    #
+	    # If this fork is not locking anything else, then wait for a signal
+	    # from a fork that may be unlocking things.
+	    #
 	    unless( @locked ) {
 		lock( %oid2lockdata );
 		cond_wait( %oid2lockdata );
 	    }
 	} # scope for locked var
 
+	#
+	# If there are other objects locked by this fork that no one else is 
+	# waiting on, unlock those and wait for a signal from an unlocking
+	# fork.
+	#
 	if( @locked ) {
 	    $self->unlock_objects( @locked );
 	    lock( %oid2lockdata );
@@ -294,6 +325,9 @@ sub unlock_objects {
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
 
+#
+# Check to see if objects that had been locked by other forks have data that had changed.
+#
 sub __check_locked_for_dirty {
     my( $self  ) = @_;
     my( @dirty_oids ) = grep { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} || {} };
@@ -370,29 +404,57 @@ sub __process_command {
         my $obj_id = $command->{oi};
         my $app_id = $command->{ai};
 
-        my $app         = Yote::ObjProvider::fetch( $app_id ) || Yote::YoteRoot::fetch_root();
+	my $root = Yote::YoteRoot::fetch_root();
 
+	#
+	# There will be an app involved for this command. If none is given, the YoteRoot
+	# is used as the default.
+	#
+        my $app         = Yote::ObjProvider::fetch( $app_id ) || $root;
+
+	#
+	# Data is the data playload given as the first parameter of the action.
+	#
         my $data        = __translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
 
-#	iolog( "  * CMD IN $$ : " . Data::Dumper->Dump( [ $command ] ) );
-
-#	iolog( "  * DATA IN $$ : " . Data::Dumper->Dump( [ $data ] ) );
-
+	#
+	# A yote uesr can either be logged in, or be a 'guest' that is tokenized with
+	# the token associated with that person's ip address
+	#
         my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
-	my $guest_token = $command->{gt};
 
+	#
+	# The guest token is for clients that do not have a logged in user.
+	# The token is stored with the IP address of the client and both
+	# are used to verify the token.
+	#
+	my $guest_token =  $root->check_guest_token( $command->{gt} );
 	$command->{e}{GUEST_TOKEN} = $guest_token;
 
-	# security check
+	#
+	# Security check. This will trip if an object is requested by the client where the
+	# client has not been given a reference to that object.
+	#
 	unless( Yote::ObjManager::allows_access( $obj_id, $app, $login, $guest_token ) ) {
 	    accesslog( "INVALID ACCCESS ATTEMPT for $obj_id from $command->{e}{ REMOTE_ADDR }" );
 	    die "Access Error";
 	}
 
+	#
+	# The object in question that will have the action method run on it.
+	#
         my $app_object = Yote::ObjProvider::fetch( $obj_id ) || $app;
         my $action     = $command->{a};
 
-	die "Access Error" if $action =~ /^([gs]et|add_(once_)?to_|remove_(all_)?from)_/; # set may not be called directly on an object.
+	#
+	# set or adding to a list of the object may not be called directly on an object.
+	#
+	die "Access Error" if $action =~ /^([gs]et|add_(once_)?to_|remove_(all_)?from)_/; 
+
+	#
+	# If a user is logged in, that user will have an account associated with whatever
+	# app this call is for. Find that.
+	#
         my $account;
         if( $login ) {
 	    die "Access Error" if $login->get__is_disabled();
@@ -402,15 +464,25 @@ sub __process_command {
 	    $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
 	    $login->add_once_to__accounts( $account );
         }
+	
+	#
+	# This is where the magic method call is done and the response generated.
+	#
         my $ret = $app_object->$action( $data, $account, $command->{e} );
 	
-	# prepare the response object
+	#
+	# Prepare the response object. It has the following parts :
+	#    r - the response itself
+	#    d - updates for dirty data
+	#    err - if there was an exception, this contains the exception message.
+	#
 	$resp = { r =>  __obj_to_response( $ret, $login, $guest_token ) };
 
-	if( $action eq 'fetch_app_by_class' && $ret && $ret->isa( 'Yote::AppRoot' ) ) {
-	    $resp->{e} = __obj_to_response( $ret->precache(), $login, $guest_token );
-	}
-
+	#
+	# This block checks to see if there are objects that the client has
+	# a reference to that were updated since the client last communicated
+	# with the server.
+	#
 	my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
 	if( @$dirty_delta ) {
 	    my $dirty_data = {};
@@ -448,10 +520,12 @@ sub __process_command {
         errlog( "ERROR : $@" );
 	iolog( "ERROR : $@" );
         $resp = { err => $err, r => '' };
-    }
+    } #if error
     
-    $resp = to_json( $resp );
 
+    #
+    # Save the state of the database completely.
+    #
     $self->__check_locked_for_dirty();
     Yote::ObjProvider::start_transaction();
     Yote::ObjProvider::stow_all();
@@ -459,12 +533,7 @@ sub __process_command {
     Yote::ObjProvider::commit_transaction();
     $self->__unlock_all();
 
-    ### SEND BACK $resp
-    iolog( " * DATA BACK $$ : $resp" );
-    #
-    # Send return value back to the caller if its waiting for it.
-    #
-    return $resp
+    return to_json( $resp );
 
 } #__process_command
 
@@ -507,7 +576,6 @@ sub __process_http_request {
     #   * oi - object id to invoke command on
     #   * t  - login token for verification
     #   * gt - app (non-login) guest token for verification
-    #   * w  - if true, waits for command to be processed before returning
     #
 
     my( $verb, $uri, $proto ) = split( /\s+/, $req );
@@ -528,20 +596,19 @@ sub __process_http_request {
 	errlog( $uri );
 	my $path_start = shift @path;
 
-	my( $wait, $guest_token, $token, $action, $obj_id, $app_id );
+	my( $guest_token, $token, $action, $obj_id, $app_id );
 
 	push( @return_headers, "Content-Type: text/json; charset=utf-8");
 	push( @return_headers, "Server: Yote" );
 	if( $path_start eq '_' ) {
-	    ( $app_id, $obj_id, $action, $token, $guest_token, $wait ) = @path;
+	    ( $app_id, $obj_id, $action, $token, $guest_token ) = @path;
 	    $app_id ||= Yote::ObjProvider::first_id();
 	}
-	else {
-	    my $vars = Yote::FileHelper::__ingest( __parse_form( $socket ) );
+	else { # an upload
+	    my $vars = Yote::FileHelper::__ingest( __parse_headers( $socket ) );
 	    $data        = $vars->{d};
 	    $token       = $vars->{t};
 	    $guest_token = $vars->{gt};
-	    $wait        = $vars->{w};
 	    $action      = pop( @path );
 	    $obj_id      = pop( @path );
 	    $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
@@ -554,7 +621,6 @@ sub __process_http_request {
             oi => $obj_id,
             t  => $token,
 	    gt => $guest_token,
-            w  => $wait,
         } );
 	print $socket "HTTP/1.0 200 OK\015\012";
 	push( @return_headers, "Content-Type: text/json; charset=utf-8" );
@@ -566,15 +632,27 @@ sub __process_http_request {
 	
     } #if a command on an object
 
-    else { #serve up a web page
-	accesslog( "$uri from [ $ENV{REMOTE_ADDR} ][ $ENV{HTTP_REFERER} ]" );
+    else {
+	#
+	# Serve up a web page. TODO : replace this with a library specialized in this.
+	#
+	accesslog( "$uri from [ $ENV{ REMOTE_ADDR } ][ $ENV{ HTTP_REFERER } ]" );
 	iolog( $uri );
 
 	my $root = $self->{args}{webroot};
 	my $dest = '/' . join('/',@path);
 
+	#
+	# If the requested page matches a directory,
+	# change the destination to index.html or, in the
+	# case of a javascript directory, have it return
+	# the _js/mini.js instead.
+	#
 	if( -d "$root/$dest" && ! -f "$root/$dest" ) {
-	    # check for javascript directory to minify
+	    #
+	    # Check for javascript directory to minify and
+	    # return a consolidated javascript file
+	    #
 	    if( $dest =~ m~(.*)/js/?$~ ) {
 		$dest = minify_dir( $root, $dest, $1 );
 	    }
@@ -586,6 +664,10 @@ sub __process_http_request {
 		}
 	    }
 	} 
+
+	#
+	# Read in the headers
+	#
 	if( open( my $IN, '<', "$root/$dest" ) ) {
 
 	    print $socket "HTTP/1.0 200 OK\015\012";
@@ -615,58 +697,10 @@ sub __process_http_request {
 	    push( @return_headers,  "Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control " );
 
 	    my $buf;
-	    my $precache_done;
-            while( read( $IN,$buf, 8 * 2**10 ) ) {
-		if( $is_html && ! $precache_done && $buf =~ /\<\?YOTE_PRECACHE\s+(\S+)\s*\?\>/ ) { 
-		    # a web page is almost certainly under the size where the chunking matters.
-		    # TODO : cover all cases here
-		    # if PRECACHE is checked and $ENV{HTTP_COOKIE} is set
-		    ++$precache_done;
-		    my $root = Yote::YoteRoot::fetch_root();
-		    my $app_name = $1;
-
-		    my $app = $root->fetch_app_by_class( $app_name );
-		    if( $app ) {
-			my( $acct, $login, $login_token );
-			if( $ENV{HTTP_COOKIE} =~ /yoken=([a-f0-9-]+)/ ) {
-			    $login_token = $1;
-			    $login = $app->token_login( $login_token, undef, \%ENV );
-			    if( $login ) {
-				$acct = $app->__get_account( $login );
-				if( $acct && ( ( $app->get_requires_validation() && ! $login->get__is_validated() ) || $acct->get__is_disabled() ) ) {
-				    undef $acct;
-				    undef $login;
-				} else {
-#				    $login_token = $root->_create_token( $login, $ENV{IP} );
-				}
-			    }
-			}
-			my $ret = $app->precache( undef, $acct );
-			if( $ret ) {
-			    my $guest_token = $login_token ? undef : $root->guest_token( $ENV{REMOTE_ADDR} );
-			    my $resp = { a  => $app->{ID}, 
-					 ap => __obj_to_response( $app, $login, $guest_token ),
-					 r  => __obj_to_response( $ret, $login, $guest_token ),
-					 gt => $guest_token,
-					 t  => $login_token,
-					 an => $app_name,
-					 ro => __obj_to_response( $root, $login, $guest_token ),
-					 lo => $acct ? __obj_to_response( $login, $login, $guest_token ) : undef,
-					 ac => $acct ? __obj_to_response( $acct, $login, $guest_token ) : undef,
-			    };
-			    Yote::ObjProvider::start_transaction();
-			    Yote::ObjProvider::stow_all();
-			    Yote::ObjProvider::flush_all_volatile();
-			    Yote::ObjProvider::commit_transaction();
-			    my $json_resp = "window['yote_precache'] = " . to_json( $resp ) . ";";
-			    $buf =~ s/(\<\?YOTE_PRECACHE\s+\S+\s*\?\>)/$json_resp/;
-			}
-		    }
-		} #if there is a precache
+            while( read( $IN,$buf, 8 * 2**10 ) ) {		
                 print $socket $buf;
             }
             close( $IN );
-	    #accesslog( "200 : $dest");
 	} else {
 	    accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
 	    errlog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
@@ -680,7 +714,7 @@ sub __process_http_request {
 #
 # 
 #
-sub __parse_form {
+sub __parse_headers {
     my $socket = shift;
     my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
@@ -742,7 +776,7 @@ sub __parse_form {
 	} #while
     } #if has a boundary content type
     return ( \%post_data, \%file_helpers );
-} #parse_form
+} #parse_headers
 
 #
 # Translates from vValue and reference_id to values and references
@@ -902,7 +936,8 @@ sub minify_dir {
         for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.util/ ) ? -1 : 1
 		   } @js_files) {
 	    my $js = read_file( $f );
-	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
+#	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
+	    $buf .= "$js\n\n";
 	}
 	open( my $OUT, '>', $minifile);
 	print $OUT $buf;
