@@ -13,9 +13,11 @@ use forks::shared;
 use strict;
 use warnings;
 
+no warnings 'uninitialized';
+
 use vars qw($VERSION);
 
-$VERSION = '0.211';
+$VERSION = '0.212';
 
 use Carp;
 use File::Path;
@@ -299,10 +301,32 @@ sub _get_configuration {
 
     my %newconfig;
 
-    my $engine = _ask( 'This is the first time yote is being run and must be set up now.
- The first decision as to what data store to use.
- mongo db is the fastest, but sqlite will always work.',
-		       [ 'sqlite', 'mongo', 'mysql' ], $current_config->{ engine } || 'sqlite' );
+    my $avail = [ 'sqlite' ];
+
+    eval( "require Yote::IO::Mongo" );
+    if( ! $@ ) {
+	push @$avail, 'mongo';
+    }
+    elsif( $current_config->{ engine } eq 'mongo' ) {
+	delete $current_config->{ engine };
+    }
+    eval( "require Yote::IO::Mysql" );
+    if( ! $@ ) {
+	push @$avail, 'mysql';
+    }
+    elsif( $current_config->{ engine } eq 'mysql' ) {
+	delete $current_config->{ engine };
+    }
+    
+    my $engine = 'sqlite';
+
+    if( @$avail > 1 ) { 
+	$engine = _ask( 'This is the first time yote is being run and must be set up now.
+ The first decision as to what data store to use.',
+			$avail, $current_config->{ engine } || 'sqlite' );
+    } else {
+	print "Using sqlite as an engine. Mongo and Mysql do not appear to be installed.\n";
+    }
     $newconfig{ engine } = $engine;
 
     if ( $engine eq 'sqlite' ) {

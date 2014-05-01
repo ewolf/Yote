@@ -7,10 +7,12 @@ use strict;
 use warnings;
 
 # check to find the root directory for yote using a list of common candidates
-my( $yote_root_parent ) = grep { -e && -r && -w } ( '/opt',
-						    '/var',
-						    '/usr/local',
-						    $ENV{HOME} );
+my( $yote_root_parent ) = grep { -e $_ && -r $_ && -w $_ } ( '/opt',
+							     '/var',
+							     '/usr/local',
+							     $ENV{HOME},
+							     '.'
+							   );
 
 die "Unable to write yote root directory" unless -w $yote_root_parent;
 my $yote_root = "$yote_root_parent/yote";
@@ -30,20 +32,22 @@ mkdir "$yote_root/daemon";
 
 # fill the root directory
 sub copy_dir {
-    my( $dir, $dest ) = @_;
+    my( $dir, $dest, $overwrite ) = @_;
     mkdir "$dest" unless -d "$dest";
     opendir( my $DIN, $dir );
     while( my $fn = readdir $DIN ) {
 	next if $fn =~ /^\.+$/;
 	if( -d "$dir/$fn" ) {
-	    copy_dir( "$dir/$fn", "$dest/$fn" );
-	} 
-	elsif( ! -e "$dest/$fn" ) {	    
+	    copy_dir( "$dir/$fn", "$dest/$fn", $overwrite );
+	}
+	elsif( ! -e "$dest/$fn" || $overwrite ) {
 	    copy( "$dir/$fn", "$dest/$fn" );
 	}
     }
 } #copy_dir
 copy_dir( 'yote_root', $yote_root );
+copy_dir( 'yote_root/html/yote', "$yote_root/html/yote", 1 );
+
 
 my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Yote-*' ],
