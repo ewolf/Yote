@@ -148,7 +148,7 @@ sub fetch_initial {
 	     app	   => $app,
 	     login	   => $login,
 	     account	   => $app && $login ? $app->__get_account( $login ) : undef,
-	     guest_token   => $login ? undef :  guest_token( $env->{ REMOTE_ADDR } ),
+	     guest_token   => $env->{GUEST_TOKEN},
              precache_data => $app ? $app->precache( ) : undef,
 	};
 } #fetch_initial
@@ -157,19 +157,28 @@ sub fetch_initial {
 # Returns a token for non-logging in use.
 #
 sub guest_token {
-    my $ip = shift;
+    my( $self, $ip ) = @_;
     my $token = int( rand 9 x 10 );
-    $Yote::ObjProvider::IP_TO_GUEST_TOKEN->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
-    $Yote::ObjProvider::GUEST_TOKEN_OBJECTS->{$token} = {};  #memory leak? @todo - test this
-
+    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
+    $tok_store->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
     Yote::ObjManager::clear_login( undef, $token );
 
     return $token;
 } #guest_token
 
+sub _reset_connections {
+    my $self = shift;
+    $self->set___ALLOWS({});
+    $self->set___ALLOWS_REV({});
+    $self->set___DIRTY({});
+    $self->set___REGISTERED_CONTAINERS({});
+    $self->set___IP_TO_GUEST_TOKEN({});
+}
+
 sub check_guest_token {
-    my( $ip, $token ) = @_;
-    return $token if $Yote::ObjProvider::IP_TO_GUEST_TOKEN->{$ip}{$token};
+    my( $self, $ip, $token ) = @_;
+    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
+    return $token if $tok_store->{$ip}{$token};
 } #check_guest_token
 
 #
