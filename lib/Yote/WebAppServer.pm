@@ -428,7 +428,7 @@ sub __process_command {
 	# The token is stored with the IP address of the client and both
 	# are used to verify the token.
 	#
-	my $guest_token =  $root->check_guest_token( $command->{gt} );
+	my $guest_token =  $root->check_guest_token( $command->{e}{ REMOTE_ADDR }, $command->{gt} ) || $root->guest_token( $command->{e}{ REMOTE_ADDR } );
 	$command->{e}{GUEST_TOKEN} = $guest_token;
 
 	#
