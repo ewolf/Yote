@@ -30,11 +30,8 @@
 	$.yote.util.register_functions( base_templates );
 
 	<!-- This connects the client with the yote system -->
-	$.yote.init();
+	var app = $.yote.init( MYAPP );
 
-	<!-- Fill in the classname or name registered in the admin page to  -->	
-	<!-- get a reference to the app.                                    -->
-	var app = $.yote.fetch_app( MYAPP );
 	$.yote.util.register_template_variable( 'app', app );
         $.yote.util.init_ui();
     });
