@@ -2,6 +2,8 @@ The stack :
 
 How should MadYote look?
 
+* run mongo and mysqlite tests if those are present maybe?
+
 * CRON BORKED
 
 * TEST FILE UPLOAD

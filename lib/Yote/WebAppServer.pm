@@ -936,8 +936,7 @@ sub minify_dir {
         for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.util/ ) ? -1 : 1
 		   } @js_files) {
 	    my $js = read_file( $f );
-#	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
-	    $buf .= "$js\n\n";
+	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
 	}
 	open( my $OUT, '>', $minifile);
 	print $OUT $buf;
