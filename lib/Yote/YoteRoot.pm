@@ -148,8 +148,8 @@ sub fetch_initial {
 	     app	   => $app,
 	     login	   => $login,
 	     account	   => $app && $login ? $app->__get_account( $login ) : undef,
-	     guest_token   => $login ? undef :  $self->guest_token(),
-             precache_data => $app ? $app->precache( $env->{ REMOTE_ADDR } ) : undef,
+	     guest_token   => $login ? undef :  guest_token( $env->{ REMOTE_ADDR } ),
+             precache_data => $app ? $app->precache( ) : undef,
 	};
 } #fetch_initial
 

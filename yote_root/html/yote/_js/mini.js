@@ -9225,18 +9225,18 @@ $.yote = {
 	    // TODO - add exception handling and throwing here
 	} );
 
-	if( typeof initial_data === 'object' && initial_data[ 'root' ] && initial_data[ 'app' ] ) {
-	    var yote_root = data[ 'root' ]; yote_root._app_id = yote_root.id;
+	if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
+	    var yote_root = initial_data.get(  'root' ); yote_root._app_id = yote_root.id;
 	    $.yote.yote_root = yote_root;
 	    $.yote.objs[ yote_root.id ] = yote_root;
 
-	    var app = data[ 'app' ]; app._app_id = app.id;
+	    var app = initial_data.get(  'app' ); app._app_id = app.id;
 	    $.yote.default_app = app;
 	    $.yote.objs[ app.id ] = app;
 	    
-	    $.yote.root.login_obj   = data[ 'login' ];
-	    $.yote.root.acct_obj    = data[ 'account' ];
-	    $.yote.root.guest_token = data[ 'guest_token' ];
+	    $.yote.login_obj   = initial_data.get(  'login' );
+	    $.yote.acct_obj    = initial_data.get(  'account' );
+	    $.yote.guest_token = initial_data.get(  'guest_token' );
 
 	    return app;
 	}
@@ -9383,7 +9383,7 @@ $.yote = {
 	var resp;
 
         if( $.yote.debug == true ) {
-	    console.log("\noutgoing " + url + '-------------------------' );
+	    console.log("\noutgoing " + url + '/' + get_data + '-------------------------' );
 	    console.log( data );
 //	    console.log( JSON.stringify( {d:data} ) );
 	}
