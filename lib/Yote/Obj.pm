@@ -201,7 +201,7 @@ sub _container_type {
 
 sub _count {
     my( $self, $args ) = @_;
-    if( ref( $args ) ) {
+    if( ref( $args ) ) { # TODO : standarize
 	return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
     }
     return Yote::ObjProvider::count( $self->{DATA}{$args} );

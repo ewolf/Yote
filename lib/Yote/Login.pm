@@ -10,7 +10,7 @@ use warnings;
 use vars qw($VERSION);
 $VERSION = '0.04';
 
-use base 'Yote::Obj';
+use parent 'Yote::Obj';
 
 sub _load {
     my $self = shift;

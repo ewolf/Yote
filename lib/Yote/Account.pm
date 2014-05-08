@@ -10,7 +10,7 @@ use warnings;
 use vars qw($VERSION);
 $VERSION = '0.05';
 
-use base 'Yote::Obj';
+use parent 'Yote::Obj';
 
 use Yote::UserObj;
 

@@ -16,7 +16,7 @@ use Yote::UserObj;
 
 use Email::Valid;
 
-use base 'Yote::AppRoot';
+use parent 'Yote::AppRoot';
 
 #
 # Used by Yote::ObjManager. If true, it won't mark things dirty. This is

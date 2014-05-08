@@ -6,7 +6,7 @@ package Yote::RootObj;
 use strict;
 use warnings;
 
-use base 'Yote::Obj';
+use parent 'Yote::Obj';
 
 sub new_with_same_permissions {
     my( $self, $dummy, $account ) = @_;

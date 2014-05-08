@@ -14,7 +14,7 @@ $VERSION = '0.014';
 
 use DateTime;
 
-use base 'Yote::RootObj';
+use parent 'Yote::RootObj';
 
 ##################
 # Public Methods #

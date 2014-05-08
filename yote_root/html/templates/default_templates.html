@@ -11,15 +11,26 @@
    <$$$ control login_button <button type="BUTTON">Log In</button> $$$>
 <BR>
    <$ action_link forgot Forgot Password $>
+   <$ action_link show_create_account Create Account $>
    <?? init_login ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Recover_Login">
    <$$$ control messages <span></span> $$$><BR>
    <$$$ control email <input placeholder="email" type="text"> $$$>
-   <$ button recover Recover Password $>
+   <$$$ control recover <button type="button">Recover Password</button> $$$>
    <$ action_link refresh_all [X] $>
    <?? init_recover ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Create_Login">
+   <$$$ control messages <span></span> $$$><BR>
+   <$$$ control handle <input placeholder="handle" type="text"> $$$>
+   <$$$ control email <input placeholder="email" type="text"> $$$>
+   <$$$ control password <input placeholder="password" type="password"> $$$>
+   <$$$ control create <button type="button">Create Accout</button> $$$>
+   <$ action_link refresh_all [X] $>
+   <?? init_create ??>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
@@ -43,7 +54,7 @@
       <img height="70px" width="151px" src="yotelogo.png">
     </A>
     <UL id="top_nav" class="nav"></UL>
-    <div class="login">
+    <div id="login_div" class="login">
       <? check_login_status ?>
     </div>
   </DIV>

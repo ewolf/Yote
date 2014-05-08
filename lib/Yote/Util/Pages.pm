@@ -8,7 +8,7 @@ package Yote::Util::Pages;
 use strict;
 use warnings;
 
-use base 'Yote::AppRoot';
+use parent 'Yote::AppRoot';
 
 use Yote::RootObj;
 

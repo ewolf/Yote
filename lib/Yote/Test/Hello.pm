@@ -6,7 +6,7 @@ use warnings;
 
 use Yote::Obj;
 
-use base 'Yote::AppRoot';
+use parent 'Yote::AppRoot';
 
 use vars qw($VERSION);
 

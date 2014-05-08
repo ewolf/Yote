@@ -276,7 +276,7 @@ sub _create_configuration {
     my( $yote_root_dir, $current_config ) = @_;
 
     my $newconfig = _get_configuration( $yote_root_dir, $current_config );
-    open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
+    open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die "Error creating file $!";
     print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $newconfig->{$_}" } grep { defined($newconfig->{$_}) } keys %$newconfig )."\n\n";
     close( $OUT );
     return $newconfig;

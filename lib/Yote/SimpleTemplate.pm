@@ -1,5 +1,5 @@
 package Yote::SimpleTemplate;
-use base 'Yote::RootObj';
+use parent 'Yote::RootObj';
 
 sub _fill {
     my( $self, $context ) = @_;

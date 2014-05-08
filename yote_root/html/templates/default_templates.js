@@ -2,6 +2,7 @@ base_templates = {
 
     /** LOGIN FUNCTIONS **/
     refresh_all:function(args) {
+	$.yote.reinit();
 	$.yote.util.refresh_ui();	
     },
 
@@ -12,7 +13,10 @@ base_templates = {
 	$( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Recover_Login" } ) );
 	$.yote.util.init_ui();
     },
-
+    show_create_account:function(args) {
+	$( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Create_Login" } ) );
+	$.yote.util.init_ui();	
+    },
     init_login:function(args) {
 	if( args['controls'] ) {
 	    var vars = args['controls'];
@@ -43,22 +47,52 @@ base_templates = {
     }, //init_login
     init_recover:function(args) {
 	if( args['controls'] ){
-	    var e = '#' + args[ 'controls' ][ 'email' ];
+	    var vars = args['controls'];
+	    var e = '#' + vars[ 'email' ];
 	    $.yote.util.button_actions({
 		button : '#' + vars[ 'recover' ],
 		texts : [ e ],
 		action : function() {
-		    root.recover_password( $(e).val(),
-					   function(msg) {
-					       $(m).empty().append("ERROR : " + msg );
-					   },
-					   function(err) {
-					       $(m).empty().append("ERROR : " + err );
-					   }
-					 );
+		    var app = $.yote.default_app;
+		    app.recover_password( $( e ).val(),
+					  function(msg) {
+					      alert( msg );
+					  },
+					  function(err) {
+					      $(m).empty().append("ERROR : " + err );
+					  }
+					);
 		} } );
 	}
-    },
+    }, //init_recover
+
+    init_create:function(args) {
+	if( args['controls'] ){	    
+	    var vars = args['controls'];
+	    var h = '#' + vars[ 'handle' ];
+	    var e = '#' + vars[ 'email' ];
+	    var p = '#' + vars[ 'password' ];
+	    var m = '#' + vars[ 'messages' ];
+	    $.yote.util.button_actions({
+		button : '#' + vars[ 'create' ],
+		texts  : [ h, e, p ],
+		action : function() {
+		    var app = $.yote.default_app;
+		    app.create_login( {
+			h : $( h ).val(),
+			e : $( e ).val(),
+			p : $( p ).val()
+		    },
+				      function(msg) {
+					  $(m).empty().append( msg  );
+				      },
+				      function(err) {
+					  $(m).empty().append("ERROR : " + err );
+				      }
+				    );
+		} } );
+	}
+    }, //init_create
     logout:function(args) {
 	$.yote.logout();
 	$.yote.util.run_function( 'refresh_all' );

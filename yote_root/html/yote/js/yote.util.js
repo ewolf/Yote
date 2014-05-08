@@ -45,6 +45,8 @@ $.yote.util = {
 
     registered_templates : {},
 
+    after_render_functions : [],
+
     register_items:function( hashed_items ) {
 	for( var key in hashed_items ) {
 	     $.yote.util.registered_items[ key ] = hashed_items[ key ];
@@ -348,198 +350,6 @@ $.yote.util = {
 	}
     }, //make_table
 
-    login_control:function( args ) {
-	var lc = {
-	    attachpoint      : args[ 'attachpoint' ],
-	    msg_function     : args[ 'msg_function' ]              || function(m,c){ c ? $( '#login_msg' ).removeClass().addClass( c ) : '';$( '#login_msg' ).empty().append( m ); },
-	    log_in_status    : args[ 'log_in_status_attachpoint' ] || '#logged_in_status',
-	    after_login_fun  : args[ 'after_login_function' ],
-	    after_logout_fun : args[ 'after_logout_function' ],
-	    access_test      : args[ 'access_test' ] || function() { return $.yote.is_logged_in(); },
-	    logged_in_fail_msg : args[ 'logged_in_fail_msg' ],
-	    app                : args[ 'app' ] || $.yote.fetch_root(),
-
-	    on_login:function() {
-		var thislc = this;
-		$( thislc.attachpoint ).empty();
-		$( thislc.log_in_status ).empty().append(
-		    'Logged in as ' + $.yote.get_login().get_handle() + '<BR><A href="#" id="logout">Log Out</A>'
-		);
-		$( '#logout' ).click( function() {
-		    thislc.msg_function( 'logged out' );
-		    $( thislc.log_in_status ).empty();
-
-		    if( typeof thislc.on_logout_fun === 'function' ) {
-			thislc.on_logout_fun();
-		    }
-		    $.yote.logout();
-		    if( typeof thislc.after_logout_fun === 'function' )
-			thislc.after_logout_fun();
-		} );
-	    }, //on_login
-
-	    make_recovery:function() {
-		var thislc = this;
-		thislc.msg_function('');
-		$( thislc.attachpoint ).empty().append(
-		    '<div class="panel core" id="recover_acct_div">' +
-			'<DIV id="recover_acct_msg"></DIV>' +
-			'<P>' +
-			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
-			'<A id="recover_acct_b" class="hotlink" href="#">Recover</A> <A HREF="#" id="cancel_b">[X]</A>' +
-			'</div>'
-		);
-		$( '#em' ).focus();
-		$( '#cancel_b' ).click( function() {
-		    thislc.msg_function('');
-		    thislc.needs_login();
-		} );
-
-		$.yote.util.button_actions( {
-		    button : '#recover_acct_b',
-		    texts  : [ '#em' ],
-		    action : function() {
-			thislc.app.recover_password(
-			    $( '#em' ).val(),
-			    function( msg ) {
-				thislc.msg_function( msg );
-			    },
-			    function( err ) {
-				thislc.msg_function( err, 'error' );
-			    } );
-		    } //action
-		} );
-	    }, //make_recovery
-
-	    make_create_login:function() {
-		var thislc = this;
-		thislc.msg_function('');
-		$( thislc.attachpoint ).empty().append(
-		    '<div class="panel core" id="create_acct_div">' +
-			'<DIV id="login_msg"></DIV>' +
-			'<P><input type="text" id="username" placeholder="Name" size="6">' +
-			'<input type="email" placeholder="Email (optional)" id="em" size="8">' +
-			'<input type="password" placeholder="Password" id="pw" size="6">' +
-			'<A id="create_account_b" class="hotlink" href="#">Create</A> <A HREF="#" id="cancel_b">[X]</A>' +
-			'</div>'
-		);
-		$( '#username' ).focus();
-		$( '#cancel_b' ).click( function() {
-		    thislc.msg_function('');
-		    thislc.needs_login();
-		} );
-
-		$.yote.util.button_actions( {
-		    button : '#create_account_b',
-		    texts  : [ '#username', '#em', '#pw' ],
-		    required : [ '#username', '#pw' ],
-		    action : function() {
-			var login = thislc.app.create_login(
-			    {
-				h : $( '#username' ).val(),
-				p : $( '#pw' ).val(),
-				e : $( '#em' ).val() },
-			    function( msg ) {
-				if( thislc.access_test( $.yote.fetch_account() ) ) {
-				    thislc.msg_function( msg );
-				    if( typeof thislc.on_login_fun === 'function' )
-					thislc.on_login_fun();
-				    if( typeof thislc.after_login_fun === 'function' )
-					thislc.after_login_fun();
-				} else if( thislc.logged_in_fail_msg ) {
-				    thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
-				    $.yote.logout();
-				}
-			    },
-			    function( err ) {
-				thislc.msg_function( err, 'error' );
-			    }  );
-		    } //action
-		} );
-	    }, //make_create_login
-
-	    needs_login:function() {
-		var thislc = this;
-		$( thislc.attachpoint ).empty().append(
-		    '<A class="hotlink big" HREF="#" id="go_to_login_b">Log In</A> <BR>' +
-		    '<A class="hotlink small" HREF="#" id="create_account_b">Create an Account</A>'
-		);
-		$( '#go_to_login_b' ).click( function() { thislc.make_login() } );
-		$( '#create_account_b' ).click( function() { thislc.make_create_login() } );
-	    }, //needs_login
-
-	    make_login:function() {
-		var thislc = this;
-		$( thislc.attachpoint ).empty().append(
-		    '<div class="panel core" id="create_acct_div">' +
-			'<DIV id="login_msg"></DIV>' +
-			'Log In' +
-			'<input type="text" id="username" placeholder="Name" size="6">' +
-			'<input type="password" placeholder="Password" id="pw" size="6"> <BUTTON type="BUTTON" id="log_in_b">Log In</BUTTON> <A id="cancel_b" href="#">[X]</A></P> ' +
-			'<A id="reset_password_b" class="hotlink" href="#">Forgot Password</A><BR>' +
-			'<A id="create_account_b" class="hotlink" href="#">Create an Account</A> ' +
-			'</div>'
-		);
-		$( '#username' ).focus();
-
-		$( '#cancel_b' ).click( function() {
-		    thislc.msg_function( '' );
-		    thislc.needs_login();
-		} );
-
-		$.yote.util.button_actions( {
-		    button :  '#log_in_b',
-		    texts  : [ '#username', '#pw' ],
-		    action : function() {
-			thislc.msg_function('');
-			$.yote.login( $( '#username' ).val(),
-				      $( '#pw' ).val(),
-				      function( msg ) {
-					  if( thislc.access_test( $.yote.fetch_account() ) ) {
-					      if( typeof thislc.on_login_fun === 'function' )
-						  thislc.on_login_fun();
-					      if( typeof thislc.after_login_fun === 'function' )
-						  thislc.after_login_fun();
-					  } else if( thislc.logged_in_fail_msg ) {
-					      thislc.msg_function( thislc.logged_in_fail_msg, 'error' );
-					      $.yote.logout();
-					  }
-				      },
-				      function( err ) {
-					  thislc.msg_function( err, 'error' );
-				      } );
-		    }
-		} );
-
-		$( '#reset_password_b' ).click( function() { thislc.make_recovery(); } );
-		$( '#create_account_b' ).click( function() { thislc.make_create_login(); } );
-	    } //make_login
-	};
-	if( ! lc.access_test( $.yote.fetch_account() ) ) {
-	    lc.make_login();
-	}
-
-	lc.on_logout_fun = args[ 'on_logout_function' ] || lc.make_login;
-	lc.on_login_fun = args[ 'on_login_fun' ]  || lc.on_login;
-	if( lc.access_test( $.yote.fetch_account() ) ) {
-	    if( typeof lc.on_login_fun === 'function' )
-		lc.on_login_fun();
-	    if( typeof lc.after_login_fun === 'function' )
-		lc.after_login_fun();
-	} else {
-	    if( lc.logged_in_fail_msg ) {
-		lc.msg_function( lc.logged_in_fail_msg, 'error' );
-		$.yote.logout();
-	    }
-	    if( typeof lc.on_logout_fun === 'function' )
-		lc.on_logout_fun();
-	    if( typeof lc.after_logout_fun === 'function' )
-		lc.after_logout_fun();
-	}
-
-	return lc;
-    }, //login_control
-
     check_edit:function( fld, updated_fun, extra_classes ) {
 	var div_id = '__' + $.yote.util.next_id();
 	return function( item, is_prep ) {
@@ -821,7 +631,6 @@ $.yote.util = {
 	    $.yote.util.register_template( $( this ).attr( 'template_name' ), $( this ).text() );
 	} );
 
-	$.yote.util.after_render_functions = [];
 	// ACTIVATE templates
 	$( '.yote_template' ).each( function() {
 	    var el = $( this );
@@ -854,6 +663,8 @@ $.yote.util = {
 	for( var i = 0 ; i <  $.yote.util.after_render_functions.length; i++ ) {
 	    $.yote.util.after_render_functions[ i ]();
 	}
+	$.yote.util.after_render_functions = [];
+
 	// run this to make sure no new control tables were created
 	// as part of the next round
 	if( may_need_init ) {

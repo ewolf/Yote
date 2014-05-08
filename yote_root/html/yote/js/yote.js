@@ -34,7 +34,7 @@ $.yote = {
     init:function( appname ) {
         var token = $.cookie('yoken');
 	$.yote.token = token || 0;
-	
+
 	var initial_data = this.message( {
 	    async:false,
 	    cmd:'fetch_initial',
@@ -47,10 +47,12 @@ $.yote = {
 	    $.yote.yote_root = yote_root;
 	    $.yote.objs[ yote_root.id ] = yote_root;
 
-	    var app = initial_data.get(  'app' ); app._app_id = app.id;
+	    var app = initial_data.get( 'app' ) || yote_root;
+	    app._app_id = app.id;
 	    $.yote.default_app = app;
+	    $.yote.default_appname = appname;
 	    $.yote.objs[ app.id ] = app;
-	    
+
 	    $.yote.login_obj   = initial_data.get(  'login' );
 	    $.yote.acct_obj    = initial_data.get(  'account' );
 	    $.yote.guest_token = initial_data.get(  'guest_token' );
@@ -58,6 +60,14 @@ $.yote = {
 	    return app;
 	}
     }, //init
+
+    reinit:function() {
+	if( ! this.default_app || this.need_reinit ) {
+	    this.init( this.default_appname );
+	    return true;
+	}
+	return false;
+    }, //reinit
 
     fetch_account:function() {
 	if( this.default_app ) {
@@ -82,7 +92,7 @@ $.yote = {
 	}
     }, //fetch_app
 
-    // TODO - add login information here as well and 
+    // TODO - add login information here as well and
     // return not only root but login if applicable
     fetch_root:function() {
 	var r = $.yote.yote_root;
@@ -145,6 +155,7 @@ $.yote = {
 	$.yote.fetch_root().logout();
 	$.yote.login_obj = undefined;
 	$.yote.acct_obj = undefined;
+	$.yote.default_app = undefined;
 	$.yote.token = 0;
 	$.yote._dump_cache();
 	$.cookie( 'yoken', '', { path : '/' } );
@@ -168,7 +179,7 @@ $.yote = {
 	    },
 	    type:'GET',
 	    url: url
-	} );	
+	} );
     }, //include_templates
 
     /* general functions */
@@ -349,7 +360,7 @@ $.yote = {
 		    if( $.yote.debug == true ) {
 			console.log('incoming '); console.log( resp );
 		    }
-		    
+
                     if( typeof resp !== 'undefined' ) {
 			if( typeof resp.err === 'undefined' ) {
 			    //dirty objects that may need a refresh
@@ -435,7 +446,7 @@ $.yote = {
 		    return res;
 		},
 		wrap_list:function( args ) {
-		    return this.wrap( args, false ); 
+		    return this.wrap( args, false );
 		},
 		wrap_hash:function( args ) {
 		    return this.wrap( args, true );
@@ -502,12 +513,12 @@ $.yote = {
 			    var me = this;
 			    if( me.page_out_list ) {
 				me.length = 1*me.host_obj.count( {
-				    name  : me.field, 
+				    name  : me.field,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
 				} );
-				var res = me.host_obj.paginate( { 
-				    name  : me.field, 
+				var res = me.host_obj.paginate( {
+				    name  : me.field,
 				    limit : me.page_size,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
@@ -523,9 +534,9 @@ $.yote = {
 				var olist = me.collection_obj.to_list();
 
 				if( me.sort_fields.length > 0 ) {
-				    olist = olist.sort( function( a, b ) { 
+				    olist = olist.sort( function( a, b ) {
 					for( var i=0; i<me.sort_fields.length; i++ ) {
-					    if( typeof a === 'object' && typeof b === 'object' ) 
+					    if( typeof a === 'object' && typeof b === 'object' )
 						return a.get( me.sort_fields[i] ).toLowerCase().localeCompare( b.get( me.sort_fields[i] ).toLowerCase() );
 					    return 0;
 					}
@@ -545,7 +556,7 @@ $.yote = {
 					    }
 					    if( match ) {
 						me.length++;
-						if( i >= me.start && ret.length < me.page_size ) 
+						if( i >= me.start && ret.length < me.page_size )
 						    ret.push( olist[i] );
 					    }
 					}
@@ -564,13 +575,13 @@ $.yote = {
 			    var me = this;
 			    if( me.page_out_list ) {
 				me.length = 1*me.host_obj.count( {
-				    name  : me.field, 
+				    name  : me.field,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
 				    hashkey_search : me.hashkey_search_value,
 				} );
-				var res = me.host_obj.paginate( { 
-				    name  : me.field, 
+				var res = me.host_obj.paginate( {
+				    name  : me.field,
 				    limit : me.page_size,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
@@ -587,7 +598,7 @@ $.yote = {
 				if( ! me.collection_obj ) return ret;
 				var ohash  = me.collection_obj.to_hash();
 				var hkeys = me.collection_obj.keys();
-				
+
 				hkeys.sort();
 				if( me.sort_reverse ) hkeys.reverse();
 
@@ -604,7 +615,7 @@ $.yote = {
 					    if( match ) {
 						var k = hkeys[ i ];
 						if( i >= me.start && me.length < me.page_size &&
-						    ( ! me.hashkey_search_value || 
+						    ( ! me.hashkey_search_value ||
 						      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
 						{
 						    ret[ k ] = ohash[ k ];
@@ -678,7 +689,7 @@ $.yote = {
 			    var towards = this.start - (this.page_size);
  			    this.start = towards < 0 ? 0 : towards;
 			},
-			first:function(){         
+			first:function(){
 			    this.start = 0;
 			},
 			last:function(){
@@ -709,7 +720,7 @@ $.yote = {
 				return this.contents.length;
 			    }
 			},
-			seek : function( idx ) {			    
+			seek : function( idx ) {
 			    if( this.is_hash ) {
 				this.contents = obj.paginate( { name : this.field, limit : this.page_size, skip : idx, return_hash : true } ).to_hash();
 			    }
@@ -718,7 +729,7 @@ $.yote = {
 				this.contents = [];
 				for( var i=0; i < res.length(); i++ ) {
 				    this.contents.push( res.get( i ) );
-				}			
+				}
 			    }
 			    this.start = idx;
 			},
@@ -744,7 +755,7 @@ $.yote = {
 			end: function() {
 			    this.seek( this.full_size - this.page_size );
 			},
-			to_beginning : function() { 
+			to_beginning : function() {
 			    this.seek( 0 );
 			}
 		    };
@@ -827,7 +838,7 @@ $.yote = {
 			return this.item.list_fetch( { name : this.container_key, index : idx } );
 		    },
 		    push          : function( key, val ) {
-			return this.item.insert_at( { name : this.container_key, item : val } );			
+			return this.item.insert_at( { name : this.container_key, item : val } );
 		    }
 		};
 		return ret;
@@ -844,7 +855,7 @@ $.yote = {
 			return this.item.hash_fetch( { name : this.container_key, key : hkey } );
 		    },
 		    set           : function( hkey, val ) {
-			return this.item.hash( { name : this.container_key, key : hkey, value : val } );			
+			return this.item.hash( { name : this.container_key, key : hkey, value : val } );
 		    }
 		};
 		return ret;
@@ -1147,4 +1158,3 @@ if( ! Object.clone ) {
         return clone;
     }
 }
-

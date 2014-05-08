@@ -170,10 +170,11 @@ if we are our experiences then we are both sides of them.
 	      },
 	      cron_entry_next_time : function( args ) {
 		  var entry = args[ 'default_var' ];
+		  if( ! entry ) return '';
 		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
 	      },
 	      app_user_count : function( args ) {
-		  return args[ 'default_var' ].count('_account_roots');
+		  return args[ 'default_var' ] ? args[ 'default_var' ].count('_account_roots') : 0;
 	      },
 	      make_root : function( is_checked, user ) {
 		  if( is_checked ) return root.make_root( user );
@@ -181,19 +182,25 @@ if we are our experiences then we are both sides of them.
 	      },
 	      root_status : function( args ) {
 		  var login = args[ 'default_var' ];
+		  if( ! login ) return '';
 		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
 	      },
 	      is_validated : function( args ) {
-		  return args[ 'default_var' ].is_validated() ? "Yes" : "No";
+		  return args[ 'default_var' ] && args[ 'default_var' ].is_validated() ? "Yes" : "No";
 	      },
 	      new_schedule:function( args ) {
 		  var id = '#' + args[ 'controls' ][ 'new_schedule_time' ];
-		  alert( $(id).val() );
+	      },
+	      admin_body:function( args ) {
+		  return $.yote.is_root() ? '<$$ AdminBody $$>' : '';
 	      },
 	      refresh_all: refresh_all
 	  } );
 
 	  function refresh_all() {
+	      if( $.yote.reinit() ) {
+		  $( '#mainbody' ).empty().append( $.yote.util.fill_template( { template_name : 'AdminBody', default_var : root } ) );
+	      }
 	      if( $.yote.is_root() ) {
 		  $( '#errpanel' ).hide();
 		  $( '#mainpanel' ).show();
@@ -209,7 +216,6 @@ if we are our experiences then we are both sides of them.
 
 	      $.yote.util.refresh_ui();
 	  }//refresh_all
-
 	  $.yote.util.register_function( 'refresh_all', refresh_all );
 
 	  refresh_all();
@@ -416,27 +422,14 @@ if we are our experiences then we are both sides of them.
     <A HREF="#Top">Back to Top</A>
 </script>
 
-</section>
-<!-- ------------------------------ -->
-
-  </head>
-
-  <BODY>
-
-    <DIV class="header">
-      <A href="/index.html" style="display:block">
-	<img height="70px" width="151px" src="yotelogo.png">
-      </A>
-      <UL id="top_nav" class="nav"></UL>
-      <DIV id="login_div" class="yote_template login" template="Log_in_box_admin"></div>
-    </DIV>
-
-    <A NAME="Top">
-
+<script type="text/template" class="yote_template_definition" template_name="MainBody">
     <DIV id="errpanel" class="err">
       Must be logged in with a root account to view this page.
     </DIV>
+    <? admin_body ?>
+</script>
 
+<script type="text/template" class="yote_template_definition" template_name="AdminBody">
     <DIV class="mainpanel" id="mainpanel">
 	<SECTION>
 	  <DIV class="page-header">
@@ -450,9 +443,32 @@ if we are our experiences then we are both sides of them.
 
 	<hr>
 
-        <DIV class="yote_template side_panel" template="MainAdmin" default_variable="root"></div>
-
+        <$$ MainAdmin $$>
     </DIV>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">
+    <DIV class="header">
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="/yotelogo.png">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <$$ Log_in_box_admin $$>
+    </DIV>
+</script>
+
+</section>
+<!-- ------------------------------ -->
+
+  </head>
+
+  <BODY>
+
+    <DIV class="yote_template" template="YoteHeaderAdmin"></div>
+
+    <A NAME="Top">
+
+    <DIV class="yote_template main" template="MainBody" id="mainbody" default_variable="root"></div>
 
     <hr>
 

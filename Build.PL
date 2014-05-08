@@ -25,6 +25,7 @@ mkdir "$yote_root/holding";
 mkdir "$yote_root/html";
 mkdir "$yote_root/html/templates";
 mkdir "$yote_root/html/uploads";
+mkdir "$yote_root/html/DEFAULT";
 mkdir "$yote_root/data";
 mkdir "$yote_root/lib";
 mkdir "$yote_root/log";
