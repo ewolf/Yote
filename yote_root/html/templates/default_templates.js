@@ -3,7 +3,7 @@ base_templates = {
     /** LOGIN FUNCTIONS **/
     refresh_all:function(args) {
 	$.yote.reinit();
-	$.yote.util.refresh_ui();	
+	$.yote.util.refresh_ui();
     },
 
     check_login_status:function(args) {
@@ -15,7 +15,7 @@ base_templates = {
     },
     show_create_account:function(args) {
 	$( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Create_Login" } ) );
-	$.yote.util.init_ui();	
+	$.yote.util.init_ui();
     },
     init_login:function(args) {
 	if( args['controls'] ) {
@@ -32,6 +32,7 @@ base_templates = {
 				  $(p).val(),
 				  function(msg) {
 				      if( $.yote.is_root() ) {
+					  
 					  $.yote.util.run_function( 'refresh_all' );
  				      }
 				      else if( $.yote.is_logged_in() ) {
@@ -56,7 +57,7 @@ base_templates = {
 		    var app = $.yote.default_app;
 		    app.recover_password( $( e ).val(),
 					  function(msg) {
-					      alert( msg );
+					      $.yote.util.run_function( 'refresh_all' );
 					  },
 					  function(err) {
 					      $(m).empty().append("ERROR : " + err );
@@ -67,7 +68,7 @@ base_templates = {
     }, //init_recover
 
     init_create:function(args) {
-	if( args['controls'] ){	    
+	if( args['controls'] ){
 	    var vars = args['controls'];
 	    var h = '#' + vars[ 'handle' ];
 	    var e = '#' + vars[ 'email' ];
@@ -84,7 +85,11 @@ base_templates = {
 			p : $( p ).val()
 		    },
 				      function(msg) {
-					  $(m).empty().append( msg  );
+					  if( msg.l ) {
+					      $.yote.need_reinit = true;
+					      $.yote.util.run_function( 'refresh_all' );
+					  }
+					  $.yote.util.run_function( 'refresh_all' );
 				      },
 				      function(err) {
 					  $(m).empty().append("ERROR : " + err );
@@ -145,7 +150,7 @@ base_templates = {
 		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
-	
+
     }, //init_search_hash
 
     init_search_list : function( args ) {

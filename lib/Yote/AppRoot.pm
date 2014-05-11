@@ -51,10 +51,6 @@ sub _load {
     $self->get__attached_objects( {} ); # field -> obj parings, set aside here as a duplicate data structure to track items that may be editable on the admin page
 }
 
-sub precache {
-    my( $self, $data, $account ) = @_;
-} #_precache
-
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC API Methods *
 # ------------------------------------------------------------------------------------------
@@ -251,11 +247,21 @@ sub recovery_reset_password {
 
 } #recovery_reset_password
 
-sub remove_login {
+sub remove_account {
     my( $self, $args, $acct, $env ) = @_;
-    my $root = Yote::YoteRoot::fetch_root();
-    return $root->_remove_login( $args->{ l }, $args->{ p }, $acct );
-} #remove_login
+    
+    die "invalid arguments" unless ref( $args ) eq 'HASH';
+    my( $del_acct, $password ) = @$args['a','p'];
+    die "invalid arguments" unless $del_acct && $password;
+    die "Cannot remove root" if $del_acct->get_login()->is_root() || $del_acct->get_login()->is_master_root();
+    my $login = $del_acct->get_login();
+    if( $acct->is_root() || ( $del_acct->_is( $acct ) &&
+			      Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() ) ) {
+	$self->_hash_delete( '_account_roots', $login->{ID} );
+	$self->_hash_delete( '_account_handles', lc($login->get_handle() ) );
+    }
+    die "unable to remove account";
+} #remove_account
 
 #
 # Used by the web app server to verify the login. Returns the login object belonging to the token.

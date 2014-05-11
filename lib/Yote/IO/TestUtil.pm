@@ -1210,6 +1210,43 @@ sub io_independent_tests {
 
     # the following block is copied from above
     $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    my $yote_root = Yote::YoteRoot::fetch_root();
+
+    my $root_handles = $yote_root->get__handles();
+    my $root_emails = $yote_root->get__emails();
+
+
+    # 4 handles created now
+    is( $yote_root->_count( '_handles' ), 4, "starting handles count" );
+    is( scalar keys %$root_handles, 4, "Starting handles" );
+
+    # one of the logins has no email : the master root
+    is( $yote_root->_count( '_emails' ), 3, "starting emails count" );
+    is( scalar keys %$root_emails, 3, "stsarting emails" );
+
+    for( 1..1010 ) {
+	$root_handles->{ "BAD_HANDLE_$_" } = "DELME";
+	$root_emails->{ "BAD_HANDLE_$_" } = "DELME";
+    }
+    is( scalar keys %$root_handles, 1014, "Added bad handles" );
+    is( scalar keys %$root_emails, 1013, "added bad emails" );
+
+    Yote::ObjProvider::stow_all();
+
+    is( $yote_root->_count( '_handles' ), 1014, "bad handles count" );
+    is( $yote_root->_count( '_emails' ), 1013, "bad emails count" );
+
+
+    $yote_root->_purge_deleted_logins();
+    is( $yote_root->_count( '_handles' ), 4, "back to starting handles count" );
+    is( scalar keys %$root_handles, 4, "back to Starting handles" );
+
+    # one of the logins has no email : the master root
+    is( $yote_root->_count( '_emails' ), 3, "back to starting emails count" );
+    is( scalar keys %$root_emails, 3, "back to starting emails" );
+
+
+    ok( $root->_is( $yote_root ), "Fetch Root is first ID" );
     $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
     my $master_root = $root->login( { h => 'NEWROOT', p => 'NEWPW' } )->{l};
     ok( $master_root->is_root(), "Master root is root" );

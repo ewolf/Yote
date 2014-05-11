@@ -133,6 +133,22 @@ if we are our experiences then we are both sides of them.
 			  } //action
 		      } );
 	      }, //setup_attached
+	      RemovedUsers : function( args ) {
+		  var pu = args[ 'default_var' ].count( '_removed_logins' );
+		  return pu + ' user logins that have been removed <$$$ var uc ' + pu
+		      + ' $$$> <$ button purge_users Flush all removed users $>';
+	      }, //RemovedUsers
+	      purge_users : function( args ) {
+		  var noconfirm = 1*args[ 'vars' ][ 'pu' ] > 0;
+		  if( noconfirm || confirm( 'Really purge ' + args[ 'vars' ][ 'uc' ] + ' removed users?' ) ) {
+		      args[ 'default_var' ].purge_deleted_logins( '',
+							      function(retmsg){ 
+								  msg( args, retmsg ) },
+							      function(err){ 
+								  msg( args, err ) } );
+		      refresh_all();
+		  }
+	      },
 	      PurgedApps : function( args ) {
 		  var pc = args[ 'default_var' ].count( '_purged_apps' );
 		  if( pc > 0 ) {
@@ -143,9 +159,14 @@ if we are our experiences then we are both sides of them.
 	      }, //PurgedApps
 	      purge_apps : function( args ) {
 		  if( confirm( 'Really purge ' + args[ 'vars' ][ 'ac' ] + ' removed apps?' ) ) {
-		      args[ 'default_var' ].flush_purged_apps(undefined,function(){ msg( args, 'flushed purged apps' ) },function(err){ msg( args, err ) } );
+		      args[ 'default_var' ].flush_purged_apps(undefined,
+							      function(){ 
+								  msg( args, 'flushed purged apps' ) },
+							      function(err){ 
+								  msg( args, err ) } );
+		      refresh_all();
 		  }
-	      },
+	      }, //purge_apps
 	      reset_app : function( args ) {
 		  $.yote.debug = true;
 		  root.purge_app( args[ 'default_var' ] );
@@ -229,10 +250,6 @@ if we are our experiences then we are both sides of them.
   </tr>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
-  <$$$ var default_login_message This page requires a root login. $$$>
-  <$$ Log_in_box $$>
-</script>
 
 <script type="text/template" class="yote_template_definition" template_name="Empty">
    None Found
@@ -397,6 +414,7 @@ if we are our experiences then we are both sides of them.
  <A NAME="Users">
  <H3>Users</H3>
  <$% User_Table Empty _ _handles %$>
+  <? RemovedUsers ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="User_Table">
@@ -447,15 +465,6 @@ if we are our experiences then we are both sides of them.
     </DIV>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">
-    <DIV class="header">
-      <A href="/index.html" style="display:block">
-	<img height="70px" width="151px" src="/yotelogo.png">
-      </A>
-      <UL id="top_nav" class="nav"></UL>
-      <$$ Log_in_box_admin $$>
-    </DIV>
-</script>
 
 </section>
 <!-- ------------------------------ -->

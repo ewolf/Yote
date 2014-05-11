@@ -911,6 +911,7 @@ sub minify_dir {
     #
     my $minidir = "$source_root/_js";
     my $minifile = "$root/$minidir/mini.js";
+    my $debugfile = "$root/$minidir/maxi.js";
     
     if( ! -d "$root/$minidir" ) {
 	mkdir( "$root/$minidir" ); 
@@ -928,20 +929,21 @@ sub minify_dir {
 	}
     }
     my $minitime = -e $minifile ? stat($minifile)->mtime : 0;
-
     if( ! -f $minifile || $minitime < $latest_time ) {
-	my $buf = '';
+	my $mini_buf = '';
+	my $debug_buf = '';
 	# make sure base jquery comes first, followed by other jquery
 	# make sure that yote comes before yote.util
         for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.util/ ) ? -1 : 1
 		   } @js_files) {
 	    my $js = read_file( $f );
-	    $buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
+	    $mini_buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);
+	    $debug_buf .= "$js\n";
 	}
-	open( my $OUT, '>', $minifile);
-	print $OUT $buf;
-	close( $OUT );
+	write_file( $minifile, $mini_buf );
+	write_file( $debugfile, $debug_buf );
     }
+
     return "$minidir/mini.js";
 } #minify_dir
 

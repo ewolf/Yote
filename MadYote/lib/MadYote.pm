@@ -28,7 +28,7 @@ sub precache {
     my( $self, $data, $account ) = @_;
     return [ $self->get_chat(), $self->get_suggestion_box(), $self->get_yote_blog(), 
 	     $self->get_sandbox(), $self->get_page()->get_todos(), $self->get_page(), $self->get_page()->get_todos(), @{ $self->get_page()->get_todos() || [] }, $self->get_rolodex() ];
-} #_precache
+} #precache
 
 1;
 

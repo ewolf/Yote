@@ -30,9 +30,10 @@ $.yote = {
     app:null,
     root:null,
     wrap_cache:{},
+    need_reinit:false,
 
-    init:function( appname ) {
-        var token = $.cookie('yoken');
+    init:function( appname, token ) {
+        token = token ? token : $.cookie('yoken');
 	$.yote.token = token || 0;
 
 	var initial_data = this.message( {
@@ -61,9 +62,10 @@ $.yote = {
 	}
     }, //init
 
-    reinit:function() {
+    reinit:function( token ) {
 	if( ! this.default_app || this.need_reinit ) {
-	    this.init( this.default_appname );
+	    this.init( this.default_appname, token );
+	    this.need_reinit = false;
 	    return true;
 	}
 	return false;
@@ -445,13 +447,13 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
-		wrap_list:function( args ) {
-		    return this.wrap( args, false );
+		wrap_list:function( args, dontmake ) {
+		    return this.wrap( args, false, dontmake );
 		},
-		wrap_hash:function( args ) {
-		    return this.wrap( args, true );
+		wrap_hash:function( args, dontmake ) {
+		    return this.wrap( args, true, dontmake );
 		},
-		wrap:function( args, is_hash ) {
+		wrap:function( args, is_hash, dontmake ) {
 		    var host_obj = this;
 		    var fld = args[ 'collection_name' ];
 
@@ -461,12 +463,12 @@ $.yote = {
 			$.yote.wrap_cache[ cache_key ] = {};
 		    }
 		    if( ! $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] ) {
-			$.yote.wrap_cache[ host_obj.id ][ args[ 'wrap_key' ] ] = {};
+			$.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] = {};
 		    }
 		    if( $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] ) {
 			return $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ];
 		    }
-
+		    if( dontmake ) return undefined;
 		    var ol, page_out_list = false;
 		    // check to see if this object is already loaded in the cache.
 		    if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
@@ -677,7 +679,7 @@ $.yote = {
 			},
 			forwards:function(){
 			    var towards = this.start + this.page_size;
-			    this.start = towards > this.length ? (this.length-1) : towards;
+			    this.start = towards > this.full_size() ? (this.length-1) : towards;
 			},
 			can_rewind : function() {
 			    return this.start > 0;
@@ -825,6 +827,12 @@ $.yote = {
 		}
 		return val.substring(1);
 	    };
+
+	    o._get_id = function( key ) {
+		// returns the id ( if any of the item specified by the key )
+		var val = this._d[key];
+		return val && val.substring(0,1) != 'v' ? val : undefined;
+	    },
 
 	    o.get_list_handle = function( key ) {
 		// this returns an object that is a handle to a container. It does not load the

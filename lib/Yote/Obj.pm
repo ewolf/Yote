@@ -89,6 +89,14 @@ sub _init {}
 #
 sub _load {}
 
+#
+# May be called for the client to get lots of data at once
+# rather than asking piecemeal
+#
+sub precache {
+    my( $self, $data, $account ) = @_;
+} #precache
+
 # ------------------------------------------------------------------------------------------
 #      * UTILITY METHODS *
 # ------------------------------------------------------------------------------------------
@@ -421,7 +429,7 @@ sub list_fetch {
 sub paginate {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    return Yote::ObjProvider::paginate( $self->{DATA}{ $args->{name} }, $args );
+    return $self->_paginate( $args );
 } #paginate
 
 sub remove_from {

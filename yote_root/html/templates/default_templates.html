@@ -51,7 +51,7 @@
 <script type="text/template" class="yote_template_definition" template_name="YoteHeader">
   <DIV class="header" id="header_div">
     <A href="/index.html" style="display:block">
-      <img height="70px" width="151px" src="yotelogo.png">
+      <img height="70px" width="151px" src="<$ val logo /yotelogo.png $>">
     </A>
     <UL id="top_nav" class="nav"></UL>
     <div id="login_div" class="login">
@@ -62,4 +62,21 @@
 
 <script type="text/template" class="yote_template_definition" template_name="Log_in_box">
  <? check_login_status ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
+  <$$$ var default_login_message This page requires a root login. $$$>
+  <$$ Log_in_box $$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">
+    <DIV class="header">
+      <A href="/index.html" style="display:block">
+	<img height="70px" width="151px" src="<$ val logo /yotelogo.png $>">
+      </A>
+      <UL id="top_nav" class="nav"></UL>
+      <div id="login_div" class="login">
+        <$$ Log_in_box_admin $$>
+      </div>
+    </DIV>
 </script>

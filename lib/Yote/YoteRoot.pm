@@ -144,12 +144,13 @@ sub fetch_initial {
     my( $self, $data, undef, $env ) = @_;
     my $app   = $data->{ a } ? $self->fetch_app_by_class( $data->{ a } ) : $self;
     my $login = $self->token_login( $data->{ t }, undef, $env );
+    my $acct = $app && $login ? $app->__get_account( $login ) : undef;
     return { root	   => $self,
 	     app	   => $app,
 	     login	   => $login,
-	     account	   => $app && $login ? $app->__get_account( $login ) : undef,
+	     account	   => $acct,
 	     guest_token   => $env->{GUEST_TOKEN},
-             precache_data => $app ? $app->precache( ) : undef,
+             precache_data => $app ? $app->precache( '', $acct ) : undef,
 	};
 } #fetch_initial
 
@@ -309,12 +310,18 @@ sub flush_purged_apps {
 #   (client side) use : remove_login({h:'handle',e:'email',p:'password'});
 #             returns : "deleted account"
 #
-sub _remove_login {
-    my( $self, $login, $password, $acct ) = @_;
-    if( $login &&
-	$login->_is( $acct->get_login() ) &&
-        Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
-        ! $login->is_master_root() )
+sub remove_login {
+    my( $self, $args, $acct, $env ) = @_;
+
+    die "invalid arguments" unless ref( $args ) eq 'HASH';
+    my( $login, $password ) = @$args{'l','p'};
+
+    die "Cannot remove root" if $login->is_root() || $login->is_master_root();
+
+    if( $acct->is_root() || ( $login &&
+			      $login->_is( $acct->get_login() ) &&
+			      Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
+			      ! $login->is_master_root() ) )
     {
 	my $account_mutex = $self->get__account_mutex();
 	$account_mutex->_lock();
@@ -326,9 +333,53 @@ sub _remove_login {
 	$account_mutex->_unlock();
         return "deleted account";
     }
-    die "unable to remove account";
+    die "unable to remove login";
 
-} #_remove_login
+} #remove_login
+
+#
+# Purges old accounts that were removed from the removed_logins list.
+# also makes sure all handles and emails in those hashes actually point
+# to a login.
+#
+sub purge_deleted_logins {
+    my( $self, $args, $acct, $env ) = @_;
+
+    die "Access Error" unless $acct && $acct->get_login()->is_root();
+    
+    $self->_purge_deleted_logins();
+
+} #purge_deleted_logins
+
+sub _purge_deleted_logins {
+    my( $self ) = @_;
+    
+    my( @removed );
+    for my $store ('_handles', '_emails' ) {
+	my $count = $self->_count( { name => $store } );
+	my $skip = 0;
+	my( @gonners );
+	do {
+	    my $hash = $self->_paginate( { name => $store, limit => 1000, skip => $skip, return_hash => 1 } );
+	    for my $val ( keys %$hash ) {
+		push @gonners, $val unless ref( $hash->{ $val } );
+	    }	    
+	    $skip += 1000;
+	    $count -= 1000;
+	} while( $count > 0 );
+
+	for my $gonner (@gonners) {
+	    $self->_hash_delete( $store, $gonner );
+	}
+	push @removed, scalar( @gonners );
+    } #store
+
+    my $flushed = $self->_count( '_removed_logins' );
+    $self->set__removed_logins( [] );
+
+    return "Flushed $flushed removed accounts. Removed $removed[0] invalid handles and $removed[1] invalid emails";
+    
+} #_purge_deleted_logins
 
 #
 # Removes root privs from a login. Does not remove the last root if there is one
