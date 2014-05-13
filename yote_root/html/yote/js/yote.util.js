@@ -374,16 +374,16 @@ $( '#' + me.div_id ).empty().append( val );
     }, //make_table
 
     check_edit:function( fld, updated_fun, extra_classes ) {
-	var div_id = '__' + $.yote.util.next_id();
+	var chk_id = '__' + $.yote.util.next_id();
 	return function( item, is_prep ) {
 	    if( is_prep ) {
 		extra_classes = extra_classes ? extra_classes : [];
-		return '<input type="checkbox" id="' + div_id + '" ' +
+		return '<input type="checkbox" id="' + chk_id + '" ' +
 		    ( 1 * item.get( fld ) == 1 ? ' checked' : '' ) +
 		    ' class="' + extra_classes.join(' ') + '">';
 	    } else {
-		$( '#' + div_id ).click( function() {
-		    var chked = $( '#' + div_id ).is( ':checked' );
+		$( '#' + chk_id ).click( function() {
+		    var chked = $( '#' + chk_id ).is( ':checked' );
 		    item.set( fld, chked ? 1 : 0 );
 		    updated_fun( chked, item, fld );
 		} );
@@ -393,13 +393,13 @@ $( '#' + me.div_id ).empty().append( val );
 
     // makes a select that controls a field on an object that is also an object.
     select_obj_edit:function( fld, list_obj, list_item_field, after_change_fun ) {
-	var div_id = '__' + $.yote.util.next_id();
+	var sel_id = '__' + $.yote.util.next_id();
 	return function( item, is_prep ) {
 	    if( is_prep ) {
-		return '<SELECT id="' + div_id + '">' + list_obj.to_list().map(function(it,idx){if( typeof it !== 'object' ) return '<option value="' + it + '">' + it + '</option>'; return '<option ' + ( item.get(fld) && item.get(fld).id == it.id ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it.get(list_item_field)+'</option>'}).join('') + '</SELECT>';
+		return '<SELECT id="' + sel_id + '">' + list_obj.to_list().map(function(it,idx){if( typeof it !== 'object' ) return '<option value="' + it + '">' + it + '</option>'; return '<option ' + ( item.get(fld) && item.get(fld).id == it.id ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it.get(list_item_field)+'</option>'}).join('') + '</SELECT>';
 	    }
 	    else {
-		$( '#' + div_id ).change( function() {
+		$( '#' + sel_id ).change( function() {
 		    item.set( fld, list_obj.get( $(this).val() * 1 ) );
 		    if( after_change_fun ) after_change_fun(item,list_obj);
 		} );
@@ -409,13 +409,13 @@ $( '#' + me.div_id ).empty().append( val );
 
     // makes a select that controls a text field on an object
     select_edit:function( fld, list_obj, after_change_fun ) {
-	var div_id = '__' + $.yote.util.next_id();
+	var sel_id = '__' + $.yote.util.next_id();
 	return function( item, is_prep ) {
 	    if( is_prep ) {
-		return '<SELECT id="' + div_id + '">' + list_obj.map(function(it,idx){return '<option ' + ( item.get(fld) && item.get(fld) == it ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it+'</option>'}).join('') + '</SELECT>';
+		return '<SELECT id="' + sel_id + '">' + list_obj.map(function(it,idx){return '<option ' + ( item.get(fld) && item.get(fld) == it ? 'SELECTED ' : '' ) + ' value="'+idx+'">'+it+'</option>'}).join('') + '</SELECT>';
 	    }
 	    else {
-		$( '#' + div_id ).change( function() {
+		$( '#' + sel_id ).change( function() {
 		    item.set( fld, list_obj[ $(this).val() * 1 ] );
 		    if( after_change_fun ) after_change_fun(item);
 		} );
@@ -649,7 +649,7 @@ $( '#' + me.div_id ).empty().append( val );
 	    if( el.attr( 'has_init' ) == 'true' || el.attr( 'disabled' ) == 'true' ) {
 		return;
 	    }
-	    if( ! el.attr( 'id' ) ) {
+	    if( ! el.attr( 'id' ) ) { //make sure there is an ID for this element so it can be identified to fill in to it.
 		el.attr( 'id', '__CNTROL_ID_' + $.yote.util.next_id() );
 	    }
 	    el.attr( 'has_init', 'true' );
@@ -749,14 +749,14 @@ $( '#' + me.div_id ).empty().append( val );
 	} //if field
 	else if( bare ) {
 	    if( args[ 'use_checkbox' ] ) {
-		var div_id = '__' + $.yote.util.next_id();
+		var chk_id = '__' + $.yote.util.next_id();
 		$( args[ 'attachpoint' ] ).empty().append(
-		    '<input type="checkbox" id="' + div_id + '" ' + ( args[ 'checked' ] ? 'checked' : '' ) + '>'
+		    '<input type="checkbox" id="' + chk_id + '" ' + ( args[ 'checked' ] ? 'checked' : '' ) + '>'
 		);
 		var f = $.yote.util.functions[ args[ 'after_edit_function' ] ];
 		if( f ) {
-		    $( '#' + div_id ).click( function() {
-			var chked = $( '#' + div_id ).is( ':checked' );
+		    $( '#' + chk_id ).click( function() {
+			var chked = $( '#' + chk_id ).is( ':checked' );
 			f( chked, args[ 'item' ], args[ 'parent' ], args[ 'template_id' ], args[ 'hash_key_or_index' ] );
 		    } );
 		}
@@ -898,6 +898,9 @@ $( '#' + me.div_id ).empty().append( val );
     }, //find_template_name
 
     fill_template:function( params, old_context ) {
+	/*
+	  ENTRY POINT FOR APPLYING TEMPLATE.
+	 */
 	var template = $.yote.util.templates[ params[ 'template_name' ] ];
 	if( ! template ) { return ''; }
 
@@ -923,9 +926,22 @@ $( '#' + me.div_id ).empty().append( val );
     }, //fill_template
 
     _template_parts:function( txt, sigil, template ) {
+	var rev_sigil = sigil.split('').reverse().join('');
 	var start = txt.indexOf( '<' + sigil );
-	var end   = txt.indexOf( sigil.split('').reverse().join('') + '>' );
+	var end   = txt.indexOf( rev_sigil + '>' );
 	var len   = sigil.length + 1;
+
+	// recalculate the start if need be...this chunk should not have two 
+	// starts in a row..actally just reverse the string and find the 
+	// first rev_sigel...so
+	//   '<$$ <$$ foo bar $$>' ---> <$$ rab oof $$> $$>
+	//                          end ^           ^ lenstring - indexof rev is start
+	// however, the while loop will work as well
+	
+	while( txt.substring( start + len, end ).indexOf( '<' + sigil ) >= 0 ) {
+	    start = txt.substring( start + len, end ).indexOf( '<' + sigil );
+	}
+
 	if( end < start ) {
 	    console.log( "Template error for '"+template+"' : unable to find close of <" + sigil );
 	    return;
@@ -1079,6 +1095,15 @@ $( '#' + me.div_id ).empty().append( val );
 		ctrl_id = '__' + $.yote.util.next_id();
 		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
+	    ctrl_parts = /\*\<.* template_id\s*=\s*['"]?\S+['"]? /.exec( control );
+	    if( ctrl_parts ) {
+		console.log( "CANNOT ASSIGN TEMPLATE ID TO '" + control + '"' );
+		return control;
+	    }
+	    else {
+		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 template_id="' + params[ 'template_id' ]  + '" $2' );
+	    }
+
             if( cmd.toLowerCase() == 'new_hashkey' ) {
                 params[ 'new_hashkey' ] = ctrl_id;
 	        $.yote.util.template_context[ params[ 'template_id' ] ][ 'new_hashkey' ] = ctrl_id;
