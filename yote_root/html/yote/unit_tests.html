@@ -90,7 +90,7 @@
          $.yote.reinit();
          $.yote.debug = true;
 
-// 	try {
+ 	 try {
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
             var nologin_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
@@ -579,13 +579,11 @@
  	    login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
  	    login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
  	    login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
-/*
  	}
  	catch( err ) {
  	    fail( err )();
  	    wrap_up();
  	}
-*/
      } //do_tests
 
      do_tests();

@@ -11704,9 +11704,9 @@ $( '#' + me.div_id ).empty().append( val );
 	$.yote.util.functions[ key ] = value;
     }, //register_function
     
-    run_function:function( fun, args ) {
-	if( $.yote.util.functions[ fun ] )
-	    $.yote.util.functions[ fun ]( args );
+    run_function:function( fun_name, args ) {
+	var fun = args.functions[ fun_name ] || $.yote.util.functions[ fun ];
+	if( fun ) fun( args );
     }, //run_function
 
     register_functions:function( hash ) {
@@ -11752,11 +11752,12 @@ $( '#' + me.div_id ).empty().append( val );
 	    $.yote.util.template_context[ args[ 'template_id' ] ] = { 
 		vars : oc[ 'vars' ] ? Object.clone( oc[ 'vars' ] ) : {},
 		newfields : oc[ 'newfields' ] ? Object.clone( oc[ 'newfields' ] ) : {},
-		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {}
+		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {},
+		functions : oc[ 'functions' ] ? Object.clone( oc[ 'functions' ] ) : {}
 	    };
 	}
 	else {
-	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {} };
+	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {}, functions : {} };
 	}
 
 	return $.yote.util.fill_template_text( args );
@@ -11791,6 +11792,7 @@ $( '#' + me.div_id ).empty().append( val );
     fill_template_text:function( params ) {
         var template = params[ 'template' ]
 	var text_val = typeof template === 'function' ? template() : template;
+	if( ! text_val ) return '';
 	while( text_val.indexOf( '<$$$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$$$', template );
 	    var tv2 = parts[ 0 ] + $.yote.util.register_template_value( parts[ 1 ], params ) + parts[ 2 ];
@@ -11854,32 +11856,55 @@ $( '#' + me.div_id ).empty().append( val );
 		parts[ 2 ];
 	}
 	while( text_val.indexOf( '<??' ) > -1 ) {
-	    // functions to be run after rendering is done
 	    var parts = $.yote.util._template_parts( text_val, '??', template );
 	    var args = $.yote.util.clone_template_args( params );
-	    var funparts = parts[1].match( /^\s*(\S+)(\s+.*)?\s*$/ );
-	    if( funparts.length == 3 && funparts[2] ) {
-		args[ 'extra' ] = funparts[2].trim();
+	    if( parts[1].match( /^\s*function[\( ]/ ) ) {
+		try { 
+		    var f = eval( '['+parts[1]+']');
+		    return parts[ 0 ] + f[0]( args ) + parts[ 2 ];
+		}
+		catch( err ) {
+		    console.log( 'error in function : ' + err);
+		    return parts[ 0 ] + parts[ 2 ];
+		}
+		
 	    }
+	    else {
+		args[ 'function_name' ] = parts[ 1 ];
+		text_val = parts[ 0 ] +
+		    $.yote.util.run_template_function( args ) +
+		    parts[ 2 ];
+	    }
+	}
+	while( text_val.indexOf( '<?' ) > -1 ) {
+
+	    // functions to be run after rendering is done
+	    var parts = $.yote.util._template_parts( text_val, '?', template );
+	    var args = $.yote.util.clone_template_args( params );
+
 	    (function(fn, arg ) {
 		$.yote.util.after_render_functions.push( function() {
-		    var f = $.yote.util.functions[ fn ];
+		    var f;
+		    if( fn.match( /^\s*function[\( ]/ ) ) {
+			try { 
+			    f = eval( '['+fn+']')[ 0 ];
+			}
+			catch( err ) {
+			    console.log( 'error in function : ' + err);
+			    return parts[ 0 ] + parts[ 2 ];
+			}
+		    }
+		    else {
+			f = $.yote.util.functions[ fn ];
+		    }
 		    if( f ) {
 			f( arg );
 		    } else {
 			console.log( "Template in after render function. Function '" + fn + "' not found." );
 		    }
 		} );
-	    } )( funparts[ 1 ].trim(), args );
+	    } )( parts[ 1 ].trim(), args );
 	    text_val = parts[ 0 ] + parts[ 2 ];
-	}
-	while( text_val.indexOf( '<?' ) > -1 ) {
-	    var parts = $.yote.util._template_parts( text_val, '?', template );
-	    var args = $.yote.util.clone_template_args( params );
-            args[ 'function_name' ] = parts[ 1 ];
-	    text_val = parts[ 0 ] +
-		$.yote.util.run_template_function( args ) +
-		parts[ 2 ];
 	}
 	return text_val;
     }, //fill_template_text
@@ -11903,10 +11928,9 @@ $( '#' + me.div_id ).empty().append( val );
         /*
           <$$$ var varname value $$$>
           <$$$ control ctlname <..html control..> $$$>
-          <$$$ new ctlname <..html control..> $$$>
-          <$$$ new_hashkey <..html control..> $$$>
+	  <$$$ function foo() { ... } $$$>
          */
-	var parts = text_val.match( /^\s*(var|control|new|new_hashkey)\s+((\S+)(.*))?/i );
+	var parts = text_val.match( /^\s*(var|control|function|new|new_hashkey)\s+((\S+)(.*))?/i );
 	if( parts ) {
             var cmd = parts[ 1 ];
             var varname = parts[ 3 ];
@@ -11920,6 +11944,12 @@ $( '#' + me.div_id ).empty().append( val );
                 $.yote.util.template_context[ params[ 'template_id' ] ][ 'vars' ][ varname ] = val;
                 return '';
             }
+            else if( cmd.toLowerCase() == 'function' ) {
+		var funparts = text_val.match( /^\s*function\s+([^\(\s]+)([\s\S]*)/ );
+		var funname = funparts[1];
+		var fun = eval( '[function ' + funparts[2] + ']' )[0];
+		$.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ funname ] = fun;
+	    }
 
             var control = cmd.toLowerCase() == 'new_hashkey' ? parts[ 2 ] : parts[ 4 ];
 	    var ctrl_parts = /\*\<.* id\s*=\s*['"]?(\S+)['"]? /.exec( control );
@@ -11948,9 +11978,9 @@ $( '#' + me.div_id ).empty().append( val );
             else { // new or control
                 var tvar =  cmd.toLowerCase() == 'control' ? 'controls' : 'new_fields';
 		if( ! params[ tvar ] ) params[ tvar ] = {};
-                params[ tvar ][ varname ] = ctrl_id;
+                params[ tvar ][ varname ] = '#' + ctrl_id;
                 if( ! $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] ) $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] = {};
-                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = ctrl_id;
+                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = '#' + ctrl_id;
             }
             return ctrl;
         } //has parts

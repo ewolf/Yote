@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Yote Template Tests</title>
+
+<style>
+ .fail { color:red }
+ .pass { color:green }
+ body { background-color:wheat }
+</style>
+
+<script src="/yote/js/jquery-2.1.0.js"></script>
+<script src="/yote/js/jquery.base64.min.js"></script>
+<script src="/yote/js/jquery.cookie.js"></script>
+<script src="/yote/js/json2.js"></script>
+<script src="/yote/js/yote.js"></script>
+<script src="/yote/js/yote.util.js"></script>
+
+
+<script>
+    <!--
+var tests = 0;
+var failed = 0;
+var calls_made = 0;
+$.yote.old_message = $.yote.message;
+$.yote.message = function( params ) {
+    calls_made++;
+    return $.yote.old_message( params );
+}
+
+
+function fail( test ) {
+    return function(d) {
+        ++failed;
+        ++tests;
+        $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
+    }
+}
+function pass( test ) {
+    return function(d) {
+        ++tests;
+        $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
+    }
+}
+function is( result, expected, msg ) {
+    if( result === expected ) {
+ 	pass( msg )();
+    }
+    else {
+ 	fail( msg + "( expected '" + expected + "' and got '" + result +"')" )();
+    }
+}
+function ok( result, msg ) {
+    if( result === true ) {
+ 	pass( msg )();
+    }
+    else { 
+ 	fail( msg )();
+    }
+}
+function wrap_up() {
+    $( '#results' ).append( "<BR>Calls made " + calls_made + "<BR>" );
+    if( failed > 0 ) {
+        $('#results').append( "Failed " + failed + " tests out of " + tests );
+    } else {
+        $('#results').append( "Passed all " + tests + " tests" );
+    }
+    var d = new Date();
+    var t2 = d.getTime();
+    var d2 = new Date();
+    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+} //wrap_up
+var step_count = 0;
+function step( msg ) {
+    console.log( "step " + step_count + ':' + msg  );
+    step_count++;
+}
+$().ready(function(){ 
+    /* 
+       Test the following template parts 
+             <$$$ var variable-name value $$$>
+             <$$$ function funciton-name() { } $$$>
+             <$$$ control control-name <control-html> $$$>
+             <$$ template-name $$>
+             <?? function-name-to-insert-into-template ??>
+             <?? function() { return stuff-to-insert-into-template } ??>
+             <? funciton() { do-this-after-rendering } ?>
+             <? funciton-name-to-do-this-after-rendering ?>
+
+             <@ templatename host_object listname max_to_show @>
+             <% templatename host_object hashname max_to_show %>
+
+	     <$ show object field $>
+	     <$ edit object field $>
+	     <$ show_or_edit object field $>
+	     <$ select object field host_object list $>
+	     <$ select object field [ json list ] $>
+	     <$ checkbox object field $>
+      */
+    function do_tests() {
+        // init yote
+        var app = $.yote.init('Yote::Test::Template');
+        $.yote.util.register_item( 'app', app );
+        $.yote.logout();
+        $.yote.reinit();
+        $.yote.debug = true;
+
+// 	try {
+
+	$.yote.util.register_function( 'funtest', function() { return "FoO" } );
+
+	$.yote.util.register_function( 'button_test', function( args ) {
+	    $( args.controls.button ).click(function( arg ){ 
+		$('#button_test_div').html( "BaR:" + args.controls.button );
+	    });   } );
+
+
+	    $.yote.util.init_ui();
+	    is( $.yote.util.fill_template( { template_name : 'HeadDefinedTemplate' } ).trim(), 'Head Defined Templates', 'Template Defined in head is registered' );
+	    is( $( '#test_div' ).html().trim(), 'Head Defined Templates', 'template was filled out on page through init' );
+
+	    is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	    is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	    is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	    is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	    
+	    $.yote.util.register_template( 'varsayer', 'Value is <$ val variable DEFAULT $>' );
+	    is( $.yote.util.fill_template( { template_name : 'varsayer' } ).trim(), 'Value is DEFAULT', 'Default value for val' );
+	    $.yote.util.register_template( 'varecho', 'Echo <$$ varsayer $$>' );
+	    is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
+	    $.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
+	    is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
+
+	// id for control
+	var t_id = $( '#control_test_div > input' ).attr( 'template_id' );
+	var i_id = $( '#control_test_div > input' ).attr( 'id' );
+	is( $.yote.util.template_context[ t_id ][ 'controls' ][ 'someinput' ], '#' + i_id, "correct control in template context" );
+
+	// in template functions
+	is( $( '#funtest_div' ).html().trim(), 'FoO', 'Function writing to template text' );	
+	is( $.yote.util.fill_template_text( { template : "foo <?? function() { return 'Zo' + 'rch'; } ??>" } ), 'foo Zorch', 'inline functions to build template' );
+
+	// after render functions
+	is( $('#button_test_div').html().trim(), '', "empty button test so far" );
+	// find the click
+	$( '.findbutton' ).click();
+	is( $('#button_test_div').html(), 'BaR:#' + $('.findbutton').attr('id'), 'button clicked' );
+
+	is( $('#funfun_div').html().trim(), 'BEEP1 - SHEEP1 BEEP1 - EWE1 BEEP1 - EWE1', 'levels of inline functions' );
+
+
+	// lists 
+	app.reset();
+	var items = [ app.new_with_same_permissions({ name : "A", flavor : "Beet" }),
+		      app.new_with_same_permissions({ name : "B", flavor : "Lemon" }),
+		      app.new_with_same_permissions({ name : "C", flavor : "Spinach" }),
+		      app.new_with_same_permissions({ name : "D", flavor : "Shrimp" }),
+		      app.new_with_same_permissions({ name : "E", flavor : "Canolis" })
+		    ];
+
+	app.add_to( { name : '', items : items } );
+	var count = 0;
+	$( '.ListRow' ).each(function() {
+	    is( $( this ).html().trim(), items[ count ].get_name(), "list item " + count );
+	    count++;
+	} );
+	is( count, 3, "3 rows called for" );
+
+	// hashes
+	
+	
+//test the embedding of a function inside a template, overwriting stuff
+
+/* 	}
+ 	catch( err ) {
+ 	    fail( err )();
+ 	    wrap_up();
+ 	}
+*/
+    } //do_tests
+    do_tests();
+} ); //ready
+-->
+</script>
+
+</head>
+
+<script type="text/template" class="yote_template_definition" template_name="HeadDefinedTemplate">Head Defined Templates</script>
+
+<script type="text/template" class="yote_template_definition" template_name="ControlIDTemplate">
+     <$$$ control someinput <input value='foo'> $$$></script>
+
+<script type="text/template" class="yote_template_definition" template_name="FuntestTemplate">
+  <?? funtest ??>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="ButtonTestTemplate">
+    <$$$ control button <button class="findbutton" type='BUTTON'>Click</button> $$$>
+    <? button_test ?>
+    <div id="button_test_div">
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="FunFunTemplate"><$$$ function foo_inline() {
+         return "BEEP1";
+      }
+  $$$><$$$ function bar_inline() {
+         return "SHEEP1";
+      }
+  $$$><?? foo_inline ??> - <?? bar_inline ??> <$$ FunFunChildTemplate $$></script>
+
+<script type="text/template" class="yote_template_definition" template_name="FunFunChildTemplate"><$$$ function bar_inline() {
+         return "EWE1";
+      }
+  $$$><?? foo_inline ??> - <?? bar_inline ??> <$$ FunFunGrandchildTemplate $$></script>
+
+<script type="text/template" class="yote_template_definition" template_name="FunFunGrandchildTemplate"><?? foo_inline ??> - <?? bar_inline ??></script>
+
+<script type="text/template" class="yote_template_definition" template_name="ListTestTemplate">
+  <@ ListRowTestTemplate 3 _.sandbox mylist @>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="ListRowTestTemplate">
+  <div class="ListRow"><$ show _ name $></div>
+</script>
+
+<body>
+  <h1>Yote Template Tests</h1>
+  <div style="display:none" id="test_div" class="yote_template" template="HeadDefinedTemplate"></div>
+  <div style="display:none" id="control_test_div" class="yote_template" template="ControlIDTemplate"></div>
+  <div style="display:none" id="funtest_div" class="yote_template" template="FuntestTemplate"></div>
+  <div style="display:none" id="funbutton_div" class="yote_template" template="ButtonTestTemplate"></div>
+  <div style="display:none" id="funfun_div" class="yote_template" template="FunFunTemplate"></div>
+  <div style="display:none" id="funfun_c_div" class="yote_template" template="FunFunChildTemplate"></div>
+  <div style="display:none" id="funfun_gc_div" class="yote_template" template="FunFunGrandchildTemplate"></div>
+  <div style="display:none" id="list_div" class="yote_template" template="ListTestTemplate" default_variable="app"></div>
+  <div id=tests></div>
+  <div id=results></div>
+</body>
+</html>
