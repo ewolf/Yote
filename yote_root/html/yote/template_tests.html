@@ -42,6 +42,9 @@ function pass( test ) {
         $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
     }
 }
+function msg( txt ) {
+    $('#tests').append( txt + '<BR>' );
+}
 function is( result, expected, msg ) {
     if( result === expected ) {
  	pass( msg )();
@@ -106,7 +109,7 @@ $().ready(function(){
         $.yote.util.register_item( 'app', app );
         $.yote.logout();
         $.yote.reinit();
-        $.yote.debug = true;
+        $.yote.debug = false;
 
 // 	try {
 
@@ -118,30 +121,36 @@ $().ready(function(){
 	    });   } );
 
 
-	    $.yote.util.init_ui();
-	    is( $.yote.util.fill_template( { template_name : 'HeadDefinedTemplate' } ).trim(), 'Head Defined Templates', 'Template Defined in head is registered' );
-	    is( $( '#test_div' ).html().trim(), 'Head Defined Templates', 'template was filled out on page through init' );
-
-	    is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    
-	    $.yote.util.register_template( 'varsayer', 'Value is <$ val variable DEFAULT $>' );
-	    is( $.yote.util.fill_template( { template_name : 'varsayer' } ).trim(), 'Value is DEFAULT', 'Default value for val' );
-	    $.yote.util.register_template( 'varecho', 'Echo <$$ varsayer $$>' );
-	    is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
-	    $.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
-	    is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
+	$.yote.util.init_ui();
+	msg( 'Template interpolation  &lt;$$ <i>template-name</i> $$&gt' );
+	is( $.yote.util.fill_template( { template_name : 'HeadDefinedTemplate' } ).trim(), 'Head Defined Templates', 'Template Defined in head is registered' );
+	is( $( '#test_div' ).html().trim(), 'Head Defined Templates', 'template was filled out on page through init' );
+	
+	is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	is( $.yote.util.fill_template_text( { template : "foo <$$ HeadDefinedTemplate $$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
+	
+	msg( '<br>Set Variables  &lt;$$$ var <i>variable-name</i> <i>value</i> $$$&gt' );
+	msg( 'Read Variables  &lt;$ val <i>variable-name</i> <i>default-value</i> $&gt' );
+	$.yote.util.register_template( 'varsayer', 'Value is <$ val variable DEFAULT $>' );
+	is( $.yote.util.fill_template( { template_name : 'varsayer' } ).trim(), 'Value is DEFAULT', 'Default value for val' );
+	$.yote.util.register_template( 'varecho', 'Echo <$$ varsayer $$>' );
+	is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
+	$.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
+	is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
 
 	// id for control
+	msg( '<BR>Set Controls &lt;$$$ control <i>variable-name</i> <i>control-html</i> $$$&gt' );
 	var t_id = $( '#control_test_div > input' ).attr( 'template_id' );
 	var i_id = $( '#control_test_div > input' ).attr( 'id' );
 	is( $.yote.util.template_context[ t_id ][ 'controls' ][ 'someinput' ], '#' + i_id, "correct control in template context" );
 
 	// in template functions
+	msg( '<BR>Registered functions to build templates &lt;?? <i>registered-function-name</i> ??&gt' );
+	msg( 'Inline functions to build templates &lt;?? function( args ) { <i>function-code</i> } ??&gt' );
 	is( $( '#funtest_div' ).html().trim(), 'FoO', 'Function writing to template text' );	
-	is( $.yote.util.fill_template_text( { template : "foo <?? function() { return 'Zo' + 'rch'; } ??>" } ), 'foo Zorch', 'inline functions to build template' );
+	is( $.yote.util.fill_template_text( { template : "foo <?? function(args) { return 'Zo' + 'rch'; } ??>" } ), 'foo Zorch', 'inline functions to build template' );
 
 	// after render functions
 	is( $('#button_test_div').html().trim(), '', "empty button test so far" );
@@ -149,8 +158,11 @@ $().ready(function(){
 	$( '.findbutton' ).click();
 	is( $('#button_test_div').html(), 'BaR:#' + $('.findbutton').attr('id'), 'button clicked' );
 
+	msg( '<BR>Defining registered functions &lt;$$$ function <i>function-name</i>(<i>args</i>) { <i>function-code</i> } $$$&gt' );
 	is( $('#funfun_div').html().trim(), 'BEEP1 - SHEEP1 BEEP1 - EWE1 BEEP1 - EWE1', 'levels of inline functions' );
+	is( $('#funvar_div > span').text().trim(), 'BLUEB', 'inline $$ function taking arguments' );
 
+	is( $('#funvar_div > div').html().trim(), 'GRNS', 'inline after render $ function taking arguments' );
 
 	// lists 
 	app.reset();
@@ -243,6 +255,16 @@ $().ready(function(){
     <div id="button_test_div">
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="FunVarTemplate"> <$$$ var foo_defined BLUEB $$$> <$$$ var bar_defined GRNS $$$> <span><?? function foo_inline( args ) {
+          return args.vars.foo_defined;
+        }
+    ??> </span><$$$ control grub_control <div></div>$$$> 
+
+    <? function( args ) {
+	  $( args.controls.grub_control ).append( args.vars.bar_defined );
+       }
+    ?></script>
+
 <script type="text/template" class="yote_template_definition" template_name="FunFunTemplate"><$$$ function foo_inline() {
          return "BEEP1";
       }
@@ -283,6 +305,7 @@ $().ready(function(){
   <div style="display:none" id="funfun_div" class="yote_template" template="FunFunTemplate"></div>
   <div style="display:none" id="funfun_c_div" class="yote_template" template="FunFunChildTemplate"></div>
   <div style="display:none" id="funfun_gc_div" class="yote_template" template="FunFunGrandchildTemplate"></div>
+  <div style="display:none" id="funvar_div" class="yote_template" template="FunVarTemplate"></div>
   <div style="display:none" id="list_div" class="yote_template" template="ListTestTemplate" default_variable="app"></div>
   <div style="display:none" id="hash_div" class="yote_template" template="HashTestTemplate" default_variable="app"></div>
   <div id=tests></div>

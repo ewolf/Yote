@@ -918,7 +918,6 @@ $( '#' + me.div_id ).empty().append( val );
 		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {},
 		functions : oc[ 'functions' ] ? Object.clone( oc[ 'functions' ] ) : {}
 	    };
-	    console.log( [ 'cloning', oc, old_context + " --> " + args[ 'template_id' ] + ' : ' + args[ 'template_name' ], $.yote.util.template_context ] );
 	}
 	else {
 	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {}, functions : {} };
@@ -1025,13 +1024,12 @@ $( '#' + me.div_id ).empty().append( val );
 	    if( parts[1].match( /^\s*function[\( ]/ ) ) {
 		try { 
 		    var f = eval( '['+parts[1]+']');
-		    return parts[ 0 ] + f[0]( args ) + parts[ 2 ];
+		    text_val = parts[ 0 ] + f[0]( args ) + parts[ 2 ];
 		}
 		catch( err ) {
 		    console.log( 'error in function : ' + err);
-		    return parts[ 0 ] + parts[ 2 ];
+		    text_val = parts[ 0 ] + parts[ 2 ];
 		}
-		
 	    }
 	    else {
 		args[ 'function_name' ] = parts[ 1 ];
@@ -1055,7 +1053,6 @@ $( '#' + me.div_id ).empty().append( val );
 			}
 			catch( err ) {
 			    console.log( 'error in function : ' + err);
-			    return parts[ 0 ] + parts[ 2 ];
 			}
 		    }
 		    else {
@@ -1076,7 +1073,6 @@ $( '#' + me.div_id ).empty().append( val );
     run_template_function:function( params ) {
         if( params.function_name ) {
 	    var f = $.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ params.function_name ] || $.yote.util.functions[ params.function_name ];
-	    console.log( [ params.function_name,params['template_id'],$.yote.util.template_context, $.yote.util.functions ] );
 	    if( f ) {
 		var args = $.yote.util.clone_template_args( params );
                 args[ 'template' ] = f( args );
@@ -1114,7 +1110,6 @@ $( '#' + me.div_id ).empty().append( val );
 		var funname = funparts[1];
 
 		var fun = eval( '[function ' + funparts[2] + ']' )[0];
-console.log( ' register ' + params.template_id + ' : ' + funname + ':' + fun );
 
 		$.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ funname ] = fun;
 		return '';
