@@ -75,7 +75,8 @@ sub new {
 } #new
 
 sub new_with_same_permissions {
-    return new Yote::Obj();
+    my( $self, $args ) = @_;
+    return new Yote::Obj($args);
 } #new_with_same_permissions
 
 #

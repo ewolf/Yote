@@ -1216,25 +1216,33 @@ console.log( ' register ' + params.template_id + ' : ' + funname + ':' + fun );
 
     fill_template_hash_rows:function( args ) {
 	var parts = args[ 'template_body' ].split(/ +/);
+	args[ 'target' ] = parts[ 1 ].trim();
+	var host_obj = $.yote.util._template_var( args );
 	var row_template    = parts[ 0 ].trim(),
-	    pagination_size = parts[ 1 ].trim();
-	// assumes default var is a hash
-        var default_var = args[ 'default_var' ];
-	if( default_var && default_var[ 'to_hash' ] ) {
-	    default_var.page_size = 1*pagination_size;
-	    var hash = default_var.to_hash();
+            hash_name       = parts[ 2 ].trim(),
+	    pagination_size = parts[ 3 ].trim();
+
+	if( typeof host_obj === 'object' && hash_name ) {
+	    var container = host_obj.wrap( { collection_name : hash_name,
+					     size            : pagination_size,
+					     wrap_key        : row_template }, 
+					   true );
+	    container.page_size = 1 * pagination_size;
+	    var hash = container.to_hash();
 	    var keys = Object.keys( hash );
 	    keys.sort();
-	    if( default_var[ 'sort_reverse' ] ) keys.reverse();
-	    return keys.map(function(key,idx){
-		var rowargs = $.yote.util.clone_template_args( args );
-                rowargs[ 'template_name' ] = row_template;
-                rowargs[ 'default_var' ] = hash[ key ];
-		rowargs[ 'default_parent' ] = default_var;
-                rowargs[ 'hash_key_or_index' ] = key;
+	    if( container.sort_reverse ) keys.reverse();
+	    return parts[ 0 ] + 
+		keys.map(function(key,idx){
+		    var rowargs = $.yote.util.clone_template_args( args );
+                    rowargs[ 'template_name' ] = row_template;
+                    rowargs[ 'default_var' ] = hash[ key ];
+		    rowargs[ 'default_parent' ] = host_obj;
+                    rowargs[ 'hash_key_or_index' ] = key;
 
-		return $.yote.util.fill_template( rowargs );
-	    } ).join('');
+                    return $.yote.util.fill_template( rowargs );
+		} ).join('') +
+		parts[ 2 ];
 	}
 	console.log( "Template error for '"+row_template+"' : default_var passed in is not a hash " );
 	return '';

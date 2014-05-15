@@ -96,6 +96,9 @@ $().ready(function(){
 	     <$ select object field host_object list $>
 	     <$ select object field [ json list ] $>
 	     <$ checkbox object field $>
+             <$ hash_key $>
+             <$ index $>
+             <$ val varname default $>
       */
     function do_tests() {
         // init yote
@@ -130,7 +133,6 @@ $().ready(function(){
 	    is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
 	    $.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
 	    is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
-alert( 'is greatgrandparent cool?' );
 
 	// id for control
 	var t_id = $( '#control_test_div > input' ).attr( 'template_id' );
@@ -160,14 +162,51 @@ alert( 'is greatgrandparent cool?' );
 		      sandbox.new_with_same_permissions({ name : "E", flavor : "Canolis" })
 		    ];
 
+        sandbox.hash( { name:'myhash',
+                        key:'a', 
+                        value:sandbox.new_with_same_permissions({ name : "HA", flavor : "HBeet" } )
+                      } );
+        sandbox.hash( { name:'myhash',
+                        key:'b', 
+	                value:sandbox.new_with_same_permissions({ name : "HB", flavor : "HLemon" })
+                      } );
+        sandbox.hash( { name:'myhash',
+                        key:'c', 
+	                value:sandbox.new_with_same_permissions({ name : "HC", flavor : "HSpinach" })
+                      } );        
+        sandbox.hash( { name:'myhash',
+                        key:'d', 
+	                value:sandbox.new_with_same_permissions({ name : "HD", flavor : "HShrimp" })
+                      } );
+        sandbox.hash( { name:'myhash',
+                        key:'e', 
+	                value:sandbox.new_with_same_permissions({ name : "HE", flavor : "HCanolis" })
+                      } );
+        
 	sandbox.add_to( { name : 'mylist', items : items } );
 	is( sandbox.count( 'mylist' ), '5', "five items entered" );
 	var count = 0;
 	$( '.ListRow' ).each(function() {
-	    is( $( this ).html().trim(), items[ count ].get_name(), "list item " + count );
 	    count++;
 	} );
-	is( count, 3, "3 rows called for" );
+        is( count, 0, "paginated list : 0 rows there before refresh" );
+        $.yote.util.refresh_ui();
+
+	count = 0;
+	$( '.ListRow' ).each(function() {
+	    is( $( this ).text().trim(), count + items[ count ].get_name(), "list item " + count );
+	    count++;
+	} );
+	is( count, 3, "paginated list : 3 rows made after refresh" );
+
+	count = 0;
+	$( '.HashRow' ).each(function() {
+	    is( $( this ).text().trim(), items[ count ].get_name().toLowerCase() + 'H' + items[ count ].get_name(), "hash item " + count );
+	    count++;
+	} );
+	is( count, 4, "paginated hash : 4 rows made after refresh" );
+
+        
 
 	// hashes
 	
@@ -224,7 +263,15 @@ alert( 'is greatgrandparent cool?' );
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="ListRowTestTemplate">
-  <div class="ListRow"><$ show _ name $></div>
+  <div class="ListRow"><$ index $><$ show _ name $></div>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HashTestTemplate">
+  <% HashRowTestTemplate _.sandbox myhash 4 %>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HashRowTestTemplate">
+  <div class="HashRow"><$ hash_key $><$ show _ name $></div>
 </script>
 
 <body>
@@ -237,6 +284,7 @@ alert( 'is greatgrandparent cool?' );
   <div style="display:none" id="funfun_c_div" class="yote_template" template="FunFunChildTemplate"></div>
   <div style="display:none" id="funfun_gc_div" class="yote_template" template="FunFunGrandchildTemplate"></div>
   <div style="display:none" id="list_div" class="yote_template" template="ListTestTemplate" default_variable="app"></div>
+  <div style="display:none" id="hash_div" class="yote_template" template="HashTestTemplate" default_variable="app"></div>
   <div id=tests></div>
   <div id=results></div>
 </body>
