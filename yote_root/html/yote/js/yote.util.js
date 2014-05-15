@@ -1353,11 +1353,16 @@ $( '#' + me.div_id ).empty().append( val );
 	    }
 	}
 	else if( cmd == 'val' ) {
-	    if( ! args[ 'vars' ]  || ! args[ 'vars' ][ subj ] ) {
-		parts = /^\s*\S+\s+\S+\s*([\s\S]*)/.exec( varcmd );
-		return parts[ 1 ].trim() || '';
+	    var def_val = /^\s*\S+\s+\S+\s*([\s\S]*)/.exec( varcmd );
+	    var tlist = subj.split(/[\.]/); 
+
+	    var stored = args.vars && args.vars[ tlist[0] ] ? args.vars[ tlist[0] ] : def_val;
+	    if( tlist.length > 1 && typeof stored === 'object' ) {
+		for( var i=1; i<tlist.length; i++ ) {
+		    stored = stored.get( tlist[i] )
+		}
 	    }
-	    return args[ 'vars' ][ subj ];
+	    return stored;
 	}
 	console.log( "template variable command '" + varcmd + '" not understood' );
 	return varcmd;
