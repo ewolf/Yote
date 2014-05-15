@@ -130,6 +130,7 @@ $().ready(function(){
 	    is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
 	    $.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
 	    is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
+alert( 'is greatgrandparent cool?' );
 
 	// id for control
 	var t_id = $( '#control_test_div > input' ).attr( 'template_id' );
@@ -151,14 +152,16 @@ $().ready(function(){
 
 	// lists 
 	app.reset();
-	var items = [ app.new_with_same_permissions({ name : "A", flavor : "Beet" }),
-		      app.new_with_same_permissions({ name : "B", flavor : "Lemon" }),
-		      app.new_with_same_permissions({ name : "C", flavor : "Spinach" }),
-		      app.new_with_same_permissions({ name : "D", flavor : "Shrimp" }),
-		      app.new_with_same_permissions({ name : "E", flavor : "Canolis" })
+	var sandbox = app.get_sandbox();
+	var items = [ sandbox.new_with_same_permissions({ name : "A", flavor : "Beet" }),
+		      sandbox.new_with_same_permissions({ name : "B", flavor : "Lemon" }),
+		      sandbox.new_with_same_permissions({ name : "C", flavor : "Spinach" }),
+		      sandbox.new_with_same_permissions({ name : "D", flavor : "Shrimp" }),
+		      sandbox.new_with_same_permissions({ name : "E", flavor : "Canolis" })
 		    ];
 
-	app.add_to( { name : '', items : items } );
+	sandbox.add_to( { name : 'mylist', items : items } );
+	is( sandbox.count( 'mylist' ), '5', "five items entered" );
 	var count = 0;
 	$( '.ListRow' ).each(function() {
 	    is( $( this ).html().trim(), items[ count ].get_name(), "list item " + count );
@@ -217,7 +220,7 @@ $().ready(function(){
 <script type="text/template" class="yote_template_definition" template_name="FunFunGrandchildTemplate"><?? foo_inline ??> - <?? bar_inline ??></script>
 
 <script type="text/template" class="yote_template_definition" template_name="ListTestTemplate">
-  <@ ListRowTestTemplate 3 _.sandbox mylist @>
+  <@ ListRowTestTemplate _.sandbox mylist 3 @>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="ListRowTestTemplate">

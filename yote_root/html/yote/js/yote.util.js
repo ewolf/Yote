@@ -918,6 +918,7 @@ $( '#' + me.div_id ).empty().append( val );
 		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {},
 		functions : oc[ 'functions' ] ? Object.clone( oc[ 'functions' ] ) : {}
 	    };
+	    console.log( [ 'cloning', oc, old_context + " --> " + args[ 'template_id' ] + ' : ' + args[ 'template_name' ], $.yote.util.template_context ] );
 	}
 	else {
 	    $.yote.util.template_context[ args[ 'template_id' ] ] = { vars : {}, newfields : {}, controls : {}, functions : {} };
@@ -1006,7 +1007,6 @@ $( '#' + me.div_id ).empty().append( val );
 	    var parts = $.yote.util._template_parts( text_val, '@', template );
 	    var args = $.yote.util.clone_template_args( params );
             args[ 'template_body' ] = parts[ 1 ];
-	    args[ 'default_variable' ] = parts[ 2 ]asfdsadf;
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_list_rows( args ) +
 		parts[ 2 ];
@@ -1039,7 +1039,7 @@ $( '#' + me.div_id ).empty().append( val );
 		    $.yote.util.run_template_function( args ) +
 		    parts[ 2 ];
 	    }
-	}
+	} // ??>
 	while( text_val.indexOf( '<?' ) > -1 ) {
 
 	    // functions to be run after rendering is done
@@ -1076,6 +1076,7 @@ $( '#' + me.div_id ).empty().append( val );
     run_template_function:function( params ) {
         if( params.function_name ) {
 	    var f = $.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ params.function_name ] || $.yote.util.functions[ params.function_name ];
+	    console.log( [ params.function_name,params['template_id'],$.yote.util.template_context, $.yote.util.functions ] );
 	    if( f ) {
 		var args = $.yote.util.clone_template_args( params );
                 args[ 'template' ] = f( args );
@@ -1111,7 +1112,10 @@ $( '#' + me.div_id ).empty().append( val );
             else if( cmd.toLowerCase() == 'function' ) {
 		var funparts = text_val.match( /^\s*function\s+([^\(\s]+)([\s\S]*)/ );
 		var funname = funparts[1];
+
 		var fun = eval( '[function ' + funparts[2] + ']' )[0];
+console.log( ' register ' + params.template_id + ' : ' + funname + ':' + fun );
+
 		$.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ funname ] = fun;
 		return '';
 	    }
@@ -1181,21 +1185,30 @@ $( '#' + me.div_id ).empty().append( val );
 
     fill_template_list_rows:function( args ) {
 	var parts = args[ 'template_body' ].split(/ +/);
+	args[ 'target' ] = parts[ 1 ].trim();
+	var host_obj = $.yote.util._template_var( args );
 	var row_template    = parts[ 0 ].trim(),
-	    pagination_size = parts[ 1 ].trim();
-	// assumes default var is a list
-        var default_var = args[ 'default_var' ];
-	if( default_var && default_var[ 'to_list' ] )
-	    default_var.page_size = 1*pagination_size;
-	    return default_var.to_list().map(function(it,idx){
-		var rowargs = $.yote.util.clone_template_args( args );
-                rowargs[ 'template_name' ] = row_template;
-                rowargs[ 'default_var' ] = it;
-		rowargs[ 'default_parent' ] = default_var;
-                rowargs[ 'hash_key_or_index' ] = idx;
+	    list_name       = parts[ 2 ].trim(),
+	    pagination_size = parts[ 3 ].trim();
 
-                return $.yote.util.fill_template( rowargs );
-            } ).join('');
+	if( typeof host_obj === 'object' && list_name ) {
+	    var container = host_obj.wrap( { collection_name : list_name,
+					     size            : pagination_size,
+					     wrap_key        : row_template }, 
+					   false );
+	    container.page_size = 1 * pagination_size;
+	    return parts[ 0 ] + 
+		container.to_list().map(function(it,idx){
+		    var rowargs = $.yote.util.clone_template_args( args );
+                    rowargs[ 'template_name' ] = row_template;
+                    rowargs[ 'default_var' ] = it;
+		    rowargs[ 'default_parent' ] = host_obj;
+                    rowargs[ 'hash_key_or_index' ] = idx;
+
+                    return $.yote.util.fill_template( rowargs );
+		} ).join('') +
+		parts[ 2 ];
+	}
 	console.log( "Template error for '"+row_template+"' : default_var passed in is not a list " );
 	return '';
     }, //fill_template_list_rows
