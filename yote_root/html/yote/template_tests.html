@@ -117,7 +117,10 @@ $().ready(function(){
         $.yote.debug = true;
 
 // 	try {
-
+	app.reset();
+	var sandbox = app.get_sandbox();
+        $.yote.util.register_item( 'sandbox', sandbox );
+	
 	$.yote.util.register_function( 'funtest', function() { return "FoO" } );
 
 	$.yote.util.register_function( 'button_test', function( args ) {
@@ -138,12 +141,17 @@ $().ready(function(){
 	
 	msg( '<br>Set Variables  &lt;$$$ var <i>variable-name</i> <i>value</i> $$$&gt' );
 	msg( 'Read Variables  &lt;$ val <i>variable-name</i> <i>default-value</i> $&gt' );
+	msg( 'Alias Variables  &lt;$$$ alias <i>variable-name</i> <i>value</i> $$$&gt' );
 	$.yote.util.register_template( 'varsayer', 'Value is <$ val variable DEFAULT $>' );
 	is( $.yote.util.fill_template( { template_name : 'varsayer' } ).trim(), 'Value is DEFAULT', 'Default value for val' );
 	$.yote.util.register_template( 'varecho', 'Echo <$$ varsayer $$>' );
 	is( $.yote.util.fill_template( { template_name : 'varecho' } ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
 	$.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
 	is( $.yote.util.fill_template( { template_name : 'grandparentvar' } ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
+	sandbox.set( 'toalias', 'toval' );
+	$.yote.util.register_template( 'aliassayer', 'alias value is <$ val avar DEFAULT $>' );
+	$.yote.util.register_template( 'apar', "<$$$ alias avar sandbox.toalias  $$$><$$ aliassayer $$>" );
+	is( $.yote.util.fill_template( { template_name : 'apar' } ), 'alias value is toval', 'alias works' );
 
 	// id for control
 	msg( '<BR>Set Controls &lt;$$$ control <i>variable-name</i> <i>control-html</i> $$$&gt' );
@@ -172,8 +180,7 @@ $().ready(function(){
 	is( $.yote.util.fill_template_text( { template : '<$@ ListTemplate _.sandbox mylist @$>', default_var:app } ).trim().substring(0,7), 'My List', 'No Empty Template Specified' );
 	is( $.yote.util.fill_template_text( { template : '<$@ ListTemplate _.sandbox mylist Empty @$>', default_var:app } ).trim(), 'I am empty', 'Empty Template Specified' );
 	// lists 
-	app.reset();
-	var sandbox = app.get_sandbox();
+
 	var items = [ sandbox.new_with_same_permissions({ name : "A", flavor : "Beet" }),
 		      sandbox.new_with_same_permissions({ name : "B", flavor : "Lemon" }),
 		      sandbox.new_with_same_permissions({ name : "C", flavor : "Spinach" }),

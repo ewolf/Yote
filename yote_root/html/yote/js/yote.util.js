@@ -642,7 +642,7 @@ $( '#' + me.div_id ).empty().append( val );
 								default_var : def_var,
 								parent_var  : parent_var } ) );
 	    } catch( Err ) {
-		console.log( Err );
+		console.log( Err + ' for template ' + templ_name );
 	    }
 	} );
 
@@ -967,6 +967,26 @@ $( '#' + me.div_id ).empty().append( val );
 	    var tv2 = parts[ 0 ] + $.yote.util.register_template_value( parts[ 1 ], params ) + parts[ 2 ];
 	    text_val = tv2;
 	}
+	while( text_val.indexOf( '<??' ) > -1 ) {
+	    var parts = $.yote.util._template_parts( text_val, '??', template );
+	    var args = $.yote.util.clone_template_args( params );
+	    if( parts[1].match( /^\s*function[\( ]/ ) ) {
+		try { 
+		    var f = eval( '['+parts[1]+']');
+		    text_val = parts[ 0 ] + f[0]( args ) + parts[ 2 ];
+		}
+		catch( err ) {
+		    console.log( 'error in function ' + parts[1] + ' : ' + err);
+		    text_val = parts[ 0 ] + parts[ 2 ];
+		}
+	    }
+	    else {
+		args[ 'function_name' ] = parts[ 1 ];
+		text_val = parts[ 0 ] +
+		    $.yote.util.run_template_function( args ) +
+		    parts[ 2 ];
+	    }
+	} // ??>
 	while( text_val.indexOf( '<$@' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$@', template );
 	    var args = $.yote.util.clone_template_args( params );
@@ -1024,26 +1044,6 @@ $( '#' + me.div_id ).empty().append( val );
 		$.yote.util.fill_template_variable( args ) +
 		parts[ 2 ];
 	}
-	while( text_val.indexOf( '<??' ) > -1 ) {
-	    var parts = $.yote.util._template_parts( text_val, '??', template );
-	    var args = $.yote.util.clone_template_args( params );
-	    if( parts[1].match( /^\s*function[\( ]/ ) ) {
-		try { 
-		    var f = eval( '['+parts[1]+']');
-		    text_val = parts[ 0 ] + f[0]( args ) + parts[ 2 ];
-		}
-		catch( err ) {
-		    console.log( 'error in function : ' + err);
-		    text_val = parts[ 0 ] + parts[ 2 ];
-		}
-	    }
-	    else {
-		args[ 'function_name' ] = parts[ 1 ];
-		text_val = parts[ 0 ] +
-		    $.yote.util.run_template_function( args ) +
-		    parts[ 2 ];
-	    }
-	} // ??>
 	while( text_val.indexOf( '<?' ) > -1 ) {
 
 	    // functions to be run after rendering is done
@@ -1058,7 +1058,7 @@ $( '#' + me.div_id ).empty().append( val );
 			    f = eval( '['+fn+']')[ 0 ];
 			}
 			catch( err ) {
-			    console.log( 'error in function : ' + err);
+			    console.log( 'error in function ' + fn + ' : ' + err);
 			}
 		    }
 		    else {
@@ -1100,7 +1100,7 @@ $( '#' + me.div_id ).empty().append( val );
           <$$$ control ctlname <..html control..> $$$>
 	  <$$$ function foo() { ... } $$$>
          */
-	var parts = text_val.match( /^\s*(var|control|function|aliaslist|aliashash|new|new_hashkey)\s+((\S+)([\s\S]*))?/i );
+	var parts = text_val.match( /^\s*(var|control|function|alias|aliaslist|aliashash|new|new_hashkey)\s+((\S+)([\s\S]*))?/i );
 	if( parts ) {
             var cmd = parts[ 1 ];
             var varname = parts[ 3 ];
@@ -1126,6 +1126,14 @@ $( '#' + me.div_id ).empty().append( val );
 		    params.vars[ varname ] = container;
                     $.yote.util.template_context[ params.template_id ][ 'vars' ][ varname ] = val;
 		}
+                return '';
+	    }
+            else if( cmd.toLowerCase() == 'alias' ) {
+		if( ! params[ 'vars' ] ) params[ 'vars' ] = {};
+		var args = $.yote.util.clone_template_args( params );
+		var targ = $.yote.util.lookup_template_var( { target : parts[ 4 ].trim() } );
+		params.vars[ varname ] = targ;
+                $.yote.util.template_context[ params.template_id ][ 'vars' ][ varname ] = targ;
                 return '';
 	    }
             else if( cmd.toLowerCase() == 'function' ) {
@@ -1204,7 +1212,7 @@ $( '#' + me.div_id ).empty().append( val );
     fill_template_container_rows:function( args, is_list ) {
 	var parts = args[ 'template_body' ].split(/ +/);
         var row_template    = parts[ 0 ].trim(),
-           pagination_size = parts[ 1 ].trim();
+           pagination_size = parts[ 1 ].trim() || 1;
 	// assumes default var is a list
         var default_var = args[ 'default_var' ];
         default_var.page_size = 1*pagination_size;
