@@ -12,7 +12,7 @@
 <BR>
    <$ action_link forgot Forgot Password $>
    <$ action_link show_create_account Create Account $>
-   <?? init_login ??>
+   <? init_login ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Recover_Login">
@@ -20,7 +20,7 @@
    <$$$ control email <input placeholder="email" type="text"> $$$>
    <$$$ control recover <button type="button">Recover Password</button> $$$>
    <$ action_link refresh_all [X] $>
-   <?? init_recover ??>
+   <? init_recover ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Create_Login">
@@ -30,7 +30,7 @@
    <$$$ control password <input placeholder="password" type="password"> $$$>
    <$$$ control create <button type="button">Create Accout</button> $$$>
    <$ action_link refresh_all [X] $>
-   <?? init_create ??>
+   <? init_create ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
@@ -38,14 +38,14 @@
  <$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
  <$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
  <$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
- <?? init_paginator ??>
+ <? init_paginator ?>
 </script>
 
 
 <script type="text/template" class="yote_template_definition" template_name="SearchList">
  <$$$ control search_val <input type="TEXT" placeholder="Search"> $$$>
  <$$$ control search_btn <button type="BUTTON">Search</button> $$$>
- <?? init_search_list ??>
+ <? init_search_list ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="YoteHeader">

@@ -16,6 +16,7 @@
 <script src="/yote/js/yote.js"></script>
 <script src="/yote/js/yote.util.js"></script>
 
+<script src="/templates/default_templates.js"></script>
 
 <script>
     <!--
@@ -103,13 +104,16 @@ $().ready(function(){
              <$ index $>
              <$ val varname default $>
       */
+    $.yote.include_templates( '/templates/default_templates.html' );
+    $.yote.util.register_functions( base_templates );
+
     function do_tests() {
         // init yote
         var app = $.yote.init('Yote::Test::Template');
         $.yote.util.register_item( 'app', app );
         $.yote.logout();
         $.yote.reinit();
-        $.yote.debug = false;
+        $.yote.debug = true;
 
 // 	try {
 
@@ -123,7 +127,7 @@ $().ready(function(){
 
 	$.yote.util.init_ui();
 	msg( 'Template interpolation  &lt;$$ <i>template-name</i> $$&gt' );
-	is( $.yote.util.fill_template( { template_name : 'HeadDefinedTemplate' } ).trim(), 'Head Defined Templates', 'Template Defined in head is registered' );
+	is( $.yote.util.fill_template( { template_name : 'HeadDefinedTemplate' } ).trim(), 'Head Defined Templates', 'Template defined in head is registered' );
 	is( $( '#test_div' ).html().trim(), 'Head Defined Templates', 'template was filled out on page through init' );
 	
 	is( $.yote.util.fill_template_text( { template : "foo <$$HeadDefinedTemplate$$>" } ).trim(), 'foo Head Defined Templates', 'include template works' );
@@ -164,6 +168,8 @@ $().ready(function(){
 
 	is( $('#funvar_div > div').html().trim(), 'GRNS', 'inline after render $ function taking arguments' );
 
+	is( $.yote.util.fill_template_text( { template : '<$@ ListTemplate _.sandbox mylist @$>', default_var:app } ).trim().substring(0,7), 'My List', 'No Empty Template Specified' );
+	is( $.yote.util.fill_template_text( { template : '<$@ ListTemplate _.sandbox mylist Empty @$>', default_var:app } ).trim(), 'I am empty', 'Empty Template Specified' );
 	// lists 
 	app.reset();
 	var sandbox = app.get_sandbox();
@@ -196,12 +202,20 @@ $().ready(function(){
                       } );
         
 	sandbox.add_to( { name : 'mylist', items : items } );
+	msg( '<BR>List template &lt;$@ <i>List-template</i> <i>host-object</i> <i>list-name</i> <i>Empty-Template</i> @$&gt' );
+	msg( 'List row template &lt;@ <i>host-object</i> <i>list-name</i> <i>max-rows-to-show</i> @&gt' );
+	msg( 'List row index &lt;$ index $&gt' );
 	is( sandbox.count( 'mylist' ), '5', "five items entered" );
 	var count = 0;
 	$( '.ListRow' ).each(function() {
 	    count++;
 	} );
         is( count, 0, "paginated list : 0 rows there before refresh" );
+	is( $( '#list_div' ).text().trim(), 'I am empty', "list Empty worked" );
+	is( $( '#hash_div' ).text().trim(), 'I am empty', "hash Empty worked" );
+
+	
+
         $.yote.util.refresh_ui();
 
 	count = 0;
@@ -211,6 +225,12 @@ $().ready(function(){
 	} );
 	is( count, 3, "paginated list : 3 rows made after refresh" );
 
+	//need to figure out how to grab and advance the wrapper pagination
+	
+	
+	msg( '<BR>Hash template &lt;$% <i>List-template</i> <i>host-object</i> <i>list-name</i> <i>Empty-Template</i> %$&gt' );
+	msg( 'Hash row template &lt;% <i>host-object</i> <i>has-name</i> <i>max-rows-to-show</i> %&gt' );
+	msg( 'Hash row hash key &lt;$ hash_key $&gt' );
 	count = 0;
 	$( '.HashRow' ).each(function() {
 	    is( $( this ).text().trim(), items[ count ].get_name().toLowerCase() + 'H' + items[ count ].get_name(), "hash item " + count );
@@ -281,15 +301,29 @@ $().ready(function(){
 <script type="text/template" class="yote_template_definition" template_name="FunFunGrandchildTemplate"><?? foo_inline ??> - <?? bar_inline ??></script>
 
 <script type="text/template" class="yote_template_definition" template_name="ListTestTemplate">
-  <@ ListRowTestTemplate _.sandbox mylist 3 @>
+  <$@ ListTemplate _.sandbox mylist Empty @$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Empty">
+    I am empty
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="ListTemplate">
+    My List
+  <@ ListRowTestTemplate 3 @>
+  <$$ Paginator $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="ListRowTestTemplate">
-  <div class="ListRow"><$ index $><$ show _ name $></div>
+  <div class="ListRow"><$ index $><$ edit _ name $></div>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="HashTestTemplate">
-  <% HashRowTestTemplate _.sandbox myhash 4 %>
+  <$% HashTemplate _.sandbox myhash Empty %$>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HashTemplate">
+  <% HashRowTestTemplate 4 %>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="HashRowTestTemplate">
@@ -298,16 +332,16 @@ $().ready(function(){
 
 <body>
   <h1>Yote Template Tests</h1>
-  <div style="display:none" id="test_div" class="yote_template" template="HeadDefinedTemplate"></div>
-  <div style="display:none" id="control_test_div" class="yote_template" template="ControlIDTemplate"></div>
-  <div style="display:none" id="funtest_div" class="yote_template" template="FuntestTemplate"></div>
-  <div style="display:none" id="funbutton_div" class="yote_template" template="ButtonTestTemplate"></div>
-  <div style="display:none" id="funfun_div" class="yote_template" template="FunFunTemplate"></div>
-  <div style="display:none" id="funfun_c_div" class="yote_template" template="FunFunChildTemplate"></div>
-  <div style="display:none" id="funfun_gc_div" class="yote_template" template="FunFunGrandchildTemplate"></div>
-  <div style="display:none" id="funvar_div" class="yote_template" template="FunVarTemplate"></div>
-  <div style="display:none" id="list_div" class="yote_template" template="ListTestTemplate" default_variable="app"></div>
-  <div style="display:none" id="hash_div" class="yote_template" template="HashTestTemplate" default_variable="app"></div>
+  <div  id="test_div" class="yote_template hide" template="HeadDefinedTemplate"></div>
+  <div  id="control_test_div" class="yote_template hide" template="ControlIDTemplate"></div>
+  <div  id="funtest_div" class="yote_template hide" template="FuntestTemplate"></div>
+  <div  id="funbutton_div" class="yote_template hide" template="ButtonTestTemplate"></div>
+  <div  id="funfun_div" class="yote_template hide" template="FunFunTemplate"></div>
+  <div  id="funfun_c_div" class="yote_template hide" template="FunFunChildTemplate"></div>
+  <div  id="funfun_gc_div" class="yote_template hide" template="FunFunGrandchildTemplate"></div>
+  <div  id="funvar_div" class="yote_template hide" template="FunVarTemplate"></div>
+  <div  id="list_div" class="yote_template hide" template="ListTestTemplate" default_variable="app"></div>
+  <div  id="hash_div" class="yote_template hide" template="HashTestTemplate" default_variable="app"></div>
   <div id=tests></div>
   <div id=results></div>
 </body>

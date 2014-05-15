@@ -504,7 +504,8 @@ $.yote = {
 			full_size : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
-				return 1 * me.host_obj.count( me.field );
+				var c = 1 * me.host_obj.count( me.field );
+				return c;
 			    }
 			    if( me.is_hash ) {
  				 return Object.size( me.collection_obj._d );

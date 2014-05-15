@@ -20,12 +20,12 @@ base_templates = {
     init_login:function(args) {
 	if( args['controls'] ) {
 	    var vars = args['controls'];
-	    var h = '#' + vars[ 'handle' ],
-	    p = '#' + vars[ 'password' ],
-            m = '#' + vars[ 'messages' ];
+	    var h =  vars[ 'handle' ],
+	    p =  vars[ 'password' ],
+            m =  vars[ 'messages' ];
 
 	    $.yote.util.button_actions({
-		button : '#' + vars[ 'login_button' ],
+		button :  vars[ 'login_button' ],
 		texts : [ h, p ],
 		action : function() {
 		    $.yote.login( $(h).val(),
@@ -49,9 +49,9 @@ base_templates = {
     init_recover:function(args) {
 	if( args['controls'] ){
 	    var vars = args['controls'];
-	    var e = '#' + vars[ 'email' ];
+	    var e =  vars[ 'email' ];
 	    $.yote.util.button_actions({
-		button : '#' + vars[ 'recover' ],
+		button :  vars[ 'recover' ],
 		texts : [ e ],
 		action : function() {
 		    var app = $.yote.default_app;
@@ -70,12 +70,12 @@ base_templates = {
     init_create:function(args) {
 	if( args['controls'] ){
 	    var vars = args['controls'];
-	    var h = '#' + vars[ 'handle' ];
-	    var e = '#' + vars[ 'email' ];
-	    var p = '#' + vars[ 'password' ];
-	    var m = '#' + vars[ 'messages' ];
+	    var h =  vars[ 'handle' ];
+	    var e =  vars[ 'email' ];
+	    var p =  vars[ 'password' ];
+	    var m =  vars[ 'messages' ];
 	    $.yote.util.button_actions({
-		button : '#' + vars[ 'create' ],
+		button :  vars[ 'create' ],
 		texts  : [ h, e, p ],
 		action : function() {
 		    var app = $.yote.default_app;
@@ -107,33 +107,38 @@ base_templates = {
     /** PAGE NAVIGATION FUNCTIONS **/
 
     init_paginator : function( args ) {
-	var collection = args[ 'default_var' ];
+	var collection = args.default_var;
 
-	var pag_begin_button_id = args[ 'controls' ][ 'paginate_to_beginning_button' ],
-	pag_back_button_id =  args[ 'controls' ][ 'paginate_back_button' ],
-	pag_forward_button_id =  args[ 'controls' ][ 'paginate_forward_button' ],
-	pag_end_button_id =  args[ 'controls' ][ 'paginate_to_end_button' ];
+	if( ! collection.can_rewind ) {
+	    console.log( 'warning : init_paginator called for something not a list or hash' );
+	    return;
+	}
+
+	var pag_begin_button_id    = args.controls.paginate_to_beginning_button,
+             pag_back_button_id    =  args.controls.paginate_back_button,
+	     pag_forward_button_id =  args.controls.paginate_forward_button,
+             pag_end_button_id     =  args.controls.paginate_to_end_button;
 
 	if( collection.can_rewind() ) {
-	    $( '#' + pag_begin_button_id ).attr( 'disabled', false );
-	    $( '#' + pag_back_button_id ).attr( 'disabled', false );
-	    $( '#' + pag_begin_button_id ).click( function() { collection.first(); $.yote.util.run_function( 'refresh_all' ); } );
-	    $( '#' + pag_back_button_id ).click( function() { collection.back(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $( pag_begin_button_id ).attr( 'disabled', false );
+	    $(  pag_back_button_id ).attr( 'disabled', false );
+	    $(  pag_begin_button_id ).click( function() { collection.first(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $(  pag_back_button_id ).click( function() { collection.back(); $.yote.util.run_function( 'refresh_all' ); } );
 	} else {
-	    $( '#' + pag_begin_button_id ).attr( 'disabled', true );
-	    $( '#' + pag_back_button_id ).attr( 'disabled', true );
+	    $(  pag_begin_button_id ).attr( 'disabled', true );
+	    $(  pag_back_button_id ).attr( 'disabled', true );
 	}
 	if( collection.can_fast_forward() ) {
-	    $( '#' + pag_forward_button_id ).attr( 'disabled', false );
-	    $( '#' + pag_end_button_id ).attr( 'disabled', false );
-	    $( '#' + pag_forward_button_id ).click( function() {
+	    $(  pag_forward_button_id ).attr( 'disabled', false );
+	    $(  pag_end_button_id ).attr( 'disabled', false );
+	    $(  pag_forward_button_id ).click( function() {
 		collection.forwards();
 		$.yote.util.run_function( 'refresh_all' );
 	    } );
-	    $( '#' + pag_end_button_id ).click( function() { collection.last(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $(  pag_end_button_id ).click( function() { collection.last(); $.yote.util.run_function( 'refresh_all' ); } );
 	} else {
-	    $( '#' + pag_forward_button_id ).attr( 'disabled', true );
-	    $( '#' + pag_end_button_id ).attr( 'disabled', true );
+	    $(  pag_forward_button_id ).attr( 'disabled', true );
+	    $(  pag_end_button_id ).attr( 'disabled', true );
 	}
     }, //init_paginator
 
@@ -141,12 +146,12 @@ base_templates = {
 	var collection = args[ 'default_var' ];
 	var search_button_id = args[ 'controls' ][ 'search_btn' ],
 	search_val_id =  args[ 'controls' ][ 'search_val' ];
-	$( '#' + search_val_id ).val( collection.hashkey_search_value );
+	$(  search_val_id ).val( collection.hashkey_search_value );
 	$.yote.util.button_actions( {
-	    button :  '#' + search_button_id,
-	    texts : [ '#' + search_val_id  ],
+	    button :   search_button_id,
+	    texts : [  search_val_id  ],
 	    action : function() {
-		collection.hashkey_search_value = [ $( '#' + search_val_id ).val() ],
+		collection.hashkey_search_value = [ $(  search_val_id ).val() ],
 		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
@@ -157,13 +162,13 @@ base_templates = {
 	var collection = args[ 'default_var' ];
 	var search_button_id = args[ 'controls' ][ 'search_btn' ],
         search_val_id =  args[ 'controls' ][ 'search_val' ];
-	$( '#' + search_val_id ).val( collection.search_values.join(' ') );
+	$(  search_val_id ).val( collection.search_values.join(' ') );
 	$.yote.util.button_actions( {
-	    button :  '#' + search_button_id,
-	    texts : [ '#' + search_val_id  ],
+	    button : search_button_id,
+	    texts  : [ search_val_id  ],
 	    action : function() {
 		collection.search_fields = args[ 'vars' ][ 'search_fields' ].trim().split(/ +/);
-		collection.search_values = $( '#' + search_val_id ).val().trim().split(/ +/);
+		collection.search_values = $( search_val_id ).val().trim().split(/ +/);
 		$.yote.util.run_function( 'refresh_all' );
 	    }
 	} )
