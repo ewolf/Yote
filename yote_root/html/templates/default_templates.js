@@ -107,7 +107,7 @@ base_templates = {
     init_paginator : function( args ) {
 	var collection = args.default_var;
 
-	if( ! collection.can_rewind ) {
+	if( ! collection.can_rewind ) { //test if it has that function
 	    console.log( 'warning : init_paginator called for something not a list or hash' );
 	    return;
 	}

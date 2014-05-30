@@ -447,28 +447,53 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
-		wrap_list:function( args, dontmake ) {
-		    return this.wrap( args, false, dontmake );
+		wrap_list:function( args, size, dontmake ) {
+		    args.dontmake = dontmake;
+		    args.size = size;
+		    return this.wrap( args );
 		},
-		wrap_hash:function( args, dontmake ) {
-		    return this.wrap( args, true, dontmake );
+		wrap_hash:function( args, size, dontmake ) {
+		    args.is_hash = true;
+		    args.dontmake = dontmake;
+		    args.size = size;
+		    return this.wrap( args );
 		},
-		wrap:function( args, is_hash, dontmake ) {
+		wrap_native_list:function( list ) {
+		    return {
+			start:0,
+			full_size:function() { return list.length; },
+			to_list:function() { return list; },
+			set_hashkey_search_criteria:function( hashkey_search ) {},
+			set_search_criteria:function( hashkey_search ) {},
+			get:function( idx ) { return list[ idx ] },
+			seek:function( topos ) { this.start = topos; },
+			forwards:function( ) {},
+			can_rewind:function( ) { return this.start > 0; },
+			can_fast_forward:function( ) {},
+			back:function( ) {},
+			first:function( ) { this.start = 0; },
+			last:function( ) {},
+		    };
+		},
+		wrap:function( args ) { 
+		    var ctx = args.context;
 		    var host_obj = this;
-		    var fld = args[ 'collection_name' ];
+		    var fld = ctx.collection_name;
 
 		    var cache_key = host_obj.id;
 
 		    if( ! $.yote.wrap_cache[ cache_key ] ) {
 			$.yote.wrap_cache[ cache_key ] = {};
 		    }
-		    if( ! $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] ) {
-			$.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ] = {};
+		    // TODO : better wrap_key. Suggest it be a path of templates that traces to the root html document.
+		    // NEED to then have a parent_template functioning well
+		    if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
+			$.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
 		    }
-		    if( $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] ) {
-			return $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ];
+		    if( $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] ) {
+			return $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ];
 		    }
-		    if( dontmake ) return undefined;
+		    if( args.dontmake ) return undefined;
 		    var ol, page_out_list = false;
 		    // check to see if this object is already loaded in the cache.
 		    if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
@@ -477,7 +502,7 @@ $.yote = {
 		    else {
 			ol = host_obj.count( fld );
 			// see if the whole list can be obtained at once
-			page_out_list = fld.charAt( 0 ) == '_'  || ol > (args[ 'threshhold' ] || 200);
+			page_out_list = fld.charAt( 0 ) == '_'  || ol > (ctx.threshhold || 200);
 		    }
 
 		    if( ! page_out_list ) {
@@ -493,14 +518,14 @@ $.yote = {
 			id                 : host_obj.id,
 			host_obj           : host_obj,
 			field              : fld,
-			start              : args[ 'start' ] || 0,
-			page_size     : 1*args[ 'size' ],
-			search_values : args[ 'search_value'  ] || [],
-			search_fields : args[ 'search_field'  ] || [],
-			sort_fields   : args[ 'sort_fields'   ] || [],
-			hashkey_search_value : args[ 'hashkey_search_value' ] || undefined,
-			sort_reverse  : args[ 'sort_reverse'  ] || undefined,
-			is_hash       : is_hash,
+			start              : ctx.start || 0,
+			page_size     : 1*args.size,
+			search_values : ctx.search_value || [],
+			search_fields : ctx.search_field || [],
+			sort_fields   : ctx.sort_fields  || [],
+			hashkey_search_value : ctx.hashkey_search_value || undefined,
+			sort_reverse  : ctx.sort_reverse || undefined,
+			is_hash       : args.is_hash,
 			full_size : function() {
 			    var me = this;
 			    if( me.page_out_list ) {
@@ -678,6 +703,12 @@ $.yote = {
 			seek:function(topos) {
 			    this.start = topos;
 			},
+			back_one:function() {
+			    this.start--;
+			},
+			forwards_one:function() {
+			    this.start++;
+			},
 			forwards:function(){
 			    var towards = this.start + this.page_size;
 			    this.start = towards > this.full_size() ? (this.length-1) : towards;
@@ -699,7 +730,7 @@ $.yote = {
 			    this.start = this.full_size() - this.page_size;
 			}
 		    };
-		    $.yote.wrap_cache[ cache_key ][ args[ 'wrap_key' ] ][ fld ] = ret;
+		    $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] = ret;
 		    return ret;
 		}, //wrap
 

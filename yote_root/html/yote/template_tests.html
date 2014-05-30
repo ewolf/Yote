@@ -125,6 +125,7 @@ $().ready(function(){
  	try {
 	    app.reset();
 	    var sandbox = app.get_sandbox();
+	    sandbox.set( 'name', "ZORKZ" );
             $.yote.util.register_item( 'sandbox', sandbox );
 
             $.yote.util.register_item( 'fooreg', 'fooOOf' );
@@ -256,6 +257,9 @@ $().ready(function(){
 								       template : "LIST <@ ListAlone sandbox mylist 3 @>" }) ).trim(),
 		'LIST Nom ANom BNom C', '<@ template hostojb list count @> works' );
 
+	    is( $.yote.util.fill_template_text( $.yote.util.context( { vars : { sandbox : sandbox },
+								       template : "GIST <$$ ListAlone sandbox $$>" }) ).trim(),
+		'GIST Nom ZORKZ', '<$$ template newdefvar $$> works' );
 
 	    // TODO need to figure out how to grab and advance the wrapper pagination
 

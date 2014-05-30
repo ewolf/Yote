@@ -2,15 +2,7 @@ The stack :
 
 _Templates_
 
- Pair down the number of template commands. Get rid of new and new_hash and
-add ability to define template function inline.
-
- template parsing..make sure innermost gets parsed first
-
-if you can add conditionals, then
-  Get rid of $@ and $%, just have list?
-
-
+  for pagination. if paginating beyond due to change in list, move the start point
 
 
 

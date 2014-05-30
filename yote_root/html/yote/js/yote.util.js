@@ -78,22 +78,22 @@ $.yote.util = {
     }, //unregister_item
     button_actions:function( args ) {
 	var cue = {};
-	if( args[ 'cleanup_exempt' ] ) {
-	    for( var i=0; i < args[ 'cleanup_exempt' ].length; i++ ) {
-		cue[ args[ 'cleanup_exempt' ][ i ] ] = true;
+	if( args.cleanup_exempt ) {
+	    for( var i=0; i < args.cleanup_exempt.length; i++ ) {
+		cue[ args.cleanup_exempt[ i ] ] = true;
 	    }
 	}
 	var ba = {
-	    but         : args[ 'button' ],
-	    action      : args[ 'action' ] || function(){},
-	    on_escape   : args[ 'on_escape' ] || function(){},
-	    texts       : args[ 'texts'  ] || [],
-	    t_values    : args[ 'texts' ].map( function(it,idx){ return $( it ).val(); } ),
-	    req_texts   : args[ 'required' ],
-	    req_indexes : args[ 'required_by_index' ],
-	    req_fun     : args[ 'required_by_function' ],
+	    but         : args.button,
+	    action      : args.action || function(){},
+	    on_escape   : args.on_escape || function(){},
+	    texts       : args.texts || [],
+	    t_values    : args.texts.map( function(it,idx){ return $( it ).val(); } ),
+	    req_texts   : args.required,
+	    req_indexes : args.required_by_index,
+	    req_fun     : args.required_by_function,
 	    exempt      : cue,
-	    extra_check : args[ 'extra_check' ] || function() { return true; },
+	    extra_check : args.extra_check || function() { return true; },
 
 	    check_ready : function() {
 		var me = this;
@@ -511,7 +511,7 @@ $( '#' + me.div_id ).empty().append( val );
 		else if( attr_val.charAt(0) == '*' ) {
 		    var fs = attr_val.substring(1);
 		    try {
-			var f = eval( '['+fs+']' );
+			var f = eval( '[' + fs + ']' );
 		    } catch(err) {
 			console.log( [ "ERR IN EVAL", err, attr_val ] );
 			throw err;
@@ -523,7 +523,7 @@ $( '#' + me.div_id ).empty().append( val );
 		else if( attr_val.charAt(0) == '!' ) {
 		    var fs = attr_val.substring(1);
 		    try {
-			var f = eval( '['+fs+']' );
+			var f = eval( '[' + fs + ']' );
 		    } catch(err) {
 			console.log( [ "ERR IN EVAL", err, attr_val ] );
 			throw err;
@@ -546,7 +546,7 @@ $( '#' + me.div_id ).empty().append( val );
 	} //each field
 
 	// if the control has a template id, then grab values from that stored template context.
-	if( args[ 'template_id' ] ) {
+	if( args.template_id ) {
 	    var ctx = $.yote.util.template_context[ args.template_id ];
 	    if( ctx ) {
 		for( fld in ctx ) {
@@ -558,29 +558,29 @@ $( '#' + me.div_id ).empty().append( val );
 	}
 
 	if( el.hasClass( 'yote_panel' ) ) {
-	    if( args[ 'item' ] || args['show'] ) {
+	    if( args.item || args.show ) {
 		$.yote.util.yote_panel( args );
 	    }
 	    else {
-		$( args[ 'attachpoint' ] ).empty();
+		$( args.attachpoint ).empty();
 	    }
 	} //yote_panel
 	else if( el.hasClass( 'yote_button' ) ) {
-	    if( args[ 'action' ] ) {
-		if( ! args[ 'default_var' ] ) args[ 'default_var' ] = args[ 'item' ];
-		if( ! args[ 'default_parent' ] ) args[ 'default_parent' ] = args[ 'parent' ];
+	    if( args.action ) {
+		if( ! args.default_var ) args.default_var = args.item;
+		if( ! args.default_parent ) args.default_parent = args.parent;
 //WOLF - here is here the args get introduced to the template id instance
 		(function(a) {
-		$( a[ 'attachpoint' ] ).click(function(){
-		    if( a[ 'action' ].indexOf('__') == 0 && $.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ] ) {
-			$.yote.util.intrinsic_functions[ a[ 'action' ].substring(2) ]( a );
+		$( a.attachpoint ).click(function(){
+		    if( a.action.indexOf('__') == 0 && $.yote.util.intrinsic_functions[ a.action.substring(2) ] ) {
+			$.yote.util.intrinsic_functions[ a.action.substring(2) ]( a );
 		    }
-		    else if( $.yote.util.functions[ a[ 'action' ] ] ) {
-			$.yote.util.functions[ a[ 'action' ] ]( a )
-		    } else if( typeof window[ a[ 'action' ] ] === 'function' ) {
-			window[ a[ 'action' ] ]( a );
+		    else if( $.yote.util.functions[ a.action ] ) {
+			$.yote.util.functions[ a.action ]( a )
+		    } else if( typeof window[ a.action ] === 'function' ) {
+			window[ a.action ]( a );
 		    } else {
-			console.log( "'" + a['action'] + "' not found for button." );
+			console.log( "'" + a.action + "' not found for button." );
 		    }
 		} );
 		} )( args );
@@ -589,17 +589,17 @@ $( '#' + me.div_id ).empty().append( val );
 	    }
 	} //yote_button
 	else if( el.hasClass( 'yote_action_link' ) ) {
-	    if( args[ 'action' ] ) {
-		if( ! args[ 'default_var' ] ) args[ 'default_var' ] = args[ 'item' ];
-		if( ! args[ 'default_parent' ] ) args[ 'default_parent' ] = args[ 'parent' ];
-		$( args[ 'attachpoint' ] ).click(function(ev){
+	    if( args.action ) {
+		if( ! args.default_var ) args.default_var = args.item;
+		if( ! args.default_parent ) args.default_parent = args.parent;
+		$( args.attachpoint ).click(function(ev){
 		    ev.preventDefault();
-		    if( $.yote.util.functions[ args[ 'action' ] ] ) {
-			$.yote.util.functions[ args[ 'action' ] ]( args[ 'item' ], args[ 'parent' ] );
-		    } else if( typeof window[ args[ 'action' ] ] === 'function' ) {
-			window[ args[ 'action' ] ]( args );
+		    if( $.yote.util.functions[ args.action ] ) {
+			$.yote.util.functions[ args.action ]( args.item, args.parent );
+		    } else if( typeof window[ args.action ] === 'function' ) {
+			window[ args.action ]( args );
 		    } else {
-			console.log( "'" + args['action'] + "' not found for button." );
+			console.log( "'" + args.action + "' not found for button." );
 		    }
 		} );
 	    } else {
@@ -681,12 +681,12 @@ $( '#' + me.div_id ).empty().append( val );
     }, //init_ui
 
     yote_panel:function( args ) {
-	var item = args[ 'item' ];
-	var field = args[ 'field' ];
-	var show = args[ 'show' ];
-	var additional_classes = args[ 'additional_classes' ] ? args[ 'additional_classes' ] + '' : '';
-	var after_show = args[ 'after_show' ];
-	var bare = args[ 'bare' ]; //bare has no item and field normally
+	var item = args.item;
+	var field = args.field;
+	var show = args.show;
+	var additional_classes = args.additional_classes ? args.additional_classes + '' : '';
+	var after_show = args.after_show;
+	var bare = args.bare; //bare has no item and field normally
 	if( show ) {
 	    try {
 		var f = eval( '[function(){' + ( show.indexOf('return') == -1 ? 'return ' + show : show ) + '}]' );
@@ -696,7 +696,7 @@ $( '#' + me.div_id ).empty().append( val );
 	    }
 	    try {
 		var val = f[0]();
-		$( args[ 'attachpoint' ] ).empty().append( f[0]() );
+		$( args.attachpoint ).empty().append( f[0]() );
 		if( after_show ) {
 		    try {
 			var f = eval( '[function(){' + after_show + '}]' );
@@ -716,35 +716,35 @@ $( '#' + me.div_id ).empty().append( val );
 		use_html = true;
 		field = field.substring(1);
 	    }
-	    if( ! args[ 'no_edit' ] && (  ! args[ 'edit_requires' ] ||
-		  args[ 'edit_requires' ] == 'none'  ||
-		( args[ 'edit_requires' ] == 'root'  && $.yote.is_root() ) ||
-		( args[ 'edit_requires' ] == 'login' && $.yote.is_logged_in() ) ) ) {
-		var aef = args[ 'after_edit_function' ];
-		if( args[ 'use_checkbox' ] ) {
+	    if( ! args.no_edit && (  ! args.edit_requires ||
+		  args.edit_requires == 'none'  ||
+		( args.edit_requires == 'root'  && $.yote.is_root() ) ||
+		( args.edit_requires == 'login' && $.yote.is_logged_in() ) ) ) {
+		var aef = args.after_edit_function;
+		if( args.use_checkbox ) {
 		    var ce_fun = $.yote.util.check_edit( field, aef );
-		    $( args[ 'attachpoint' ] ).empty().append(
+		    $( args.attachpoint ).empty().append(
 			ce_fun( item, true )
 		    );
 		    ce_fun( item, false );
 		}
-		else if( args[ 'use_select' ] ) {
-		    var sel_fun = $.yote.util.select_edit( field, args[ 'sel_list' ], aef );
-		    $( args[ 'attachpoint' ] ).empty().append(
+		else if( args.use_select ) {
+		    var sel_fun = $.yote.util.select_edit( field, args.sel_list, aef );
+		    $( args.attachpoint ).empty().append(
 			sel_fun( item, true )
 		    );
 		    sel_fun( item, false );
 		}
-		else if( args[ 'use_select_obj' ] ) {
-		    var sel_fun = $.yote.util.select_obj_edit( field, args[ 'list_obj' ], args[ 'list_field' ], aef );
-		    $( args[ 'attachpoint' ] ).empty().append(
+		else if( args.use_select_obj ) {
+		    var sel_fun = $.yote.util.select_obj_edit( field, args.list_obj, args.list_field, aef );
+		    $( args.attachpoint ).empty().append(
 			sel_fun( item, true )
 		    );
 		    sel_fun( item, false );
 		}
 		else {
 		    var id = '__' + $.yote.util.next_id();
-		    $( args[ 'attachpoint' ] ).empty().append(
+		    $( args.attachpoint ).empty().append(
 			$.yote.util.prep_edit( item, field, [ additional_classes ], use_html, id )
 		    );
 		    $.yote.util.implement_edit( item, field, aef, id, additional_classes );
@@ -752,24 +752,24 @@ $( '#' + me.div_id ).empty().append( val );
 	    }
 	    else {
 		if( use_html ) {
-		    $( args[ 'attachpoint' ] ).empty().append( item.get( field ) || '' );
+		    $( args.attachpoint ).empty().append( item.get( field ) || '' );
 		}
 		else {
-		    $( args[ 'attachpoint' ] ).text( item.get( field ) || '' );
+		    $( args.attachpoint ).text( item.get( field ) || '' );
 		}
 	    }
 	} //if field
 	else if( bare ) {
-	    if( args[ 'use_checkbox' ] ) {
+	    if( args.use_checkbox ) {
 		var chk_id = '__' + $.yote.util.next_id();
-		$( args[ 'attachpoint' ] ).empty().append(
-		    '<input type="checkbox" id="' + chk_id + '" ' + ( args[ 'checked' ] ? 'checked' : '' ) + '>'
+		$( args.attachpoint ).empty().append(
+		    '<input type="checkbox" id="' + chk_id + '" ' + ( args.checked ? 'checked' : '' ) + '>'
 		);
-		var f = $.yote.util.functions[ args[ 'after_edit_function' ] ];
+		var f = $.yote.util.functions[ args.after_edit_function ];
 		if( f ) {
 		    $( '#' + chk_id ).click( function() {
 			var chked = $( '#' + chk_id ).is( ':checked' );
-			f( chked, args[ 'item' ], args[ 'parent' ], args[ 'template_id' ], args[ 'hash_key_or_index' ] );
+			f( chked, args.item, args.parent, args.template_id, args.hash_key_or_index );
 		    } );
 		}
 	    }
@@ -813,10 +813,10 @@ $( '#' + me.div_id ).empty().append( val );
     functions : {},
     template_context : {},
     _new_with_same_permissions : function( args ) {
-	if( args[ 'default_var' ] ) { 
-	    var newv = args[ 'default_var' ].new_with_same_permissions();
+	if( args.default_var ) { 
+	    var newv = args.default_var.new_with_same_permissions();
 	    if( newv ) {
-		var newf = args[ 'new_fields' ] || {};
+		var newf = args.new_fields || {};
 		for( var k in newf ) {
 		    var f = $( '#' + newf[ k ] );
 		    if( f ) {
@@ -835,16 +835,16 @@ $( '#' + me.div_id ).empty().append( val );
     intrinsic_functions : {
 	new_with_same_permissions_to_container : function( args ) {
 	    //default var is the host object of the container, field is the container name that is in the host object
-	    if( args[ 'default_var' ] && args[ 'field' ] ) { 
+	    if( args.default_var && args.field ) { 
 		var newv = $.yote.util._new_with_same_permissions( args );
 		if( newv ) {
-		    if( args[ 'new_hashkey' ] ) {
-			args[ 'default_var' ].hash( { key   : args[ 'new_hashkey' ],
-						      name  : args[ 'field' ],
+		    if( args.new_hashkey ) {
+			args.default_var.hash( { key   : args.new_hashkey,
+						      name  : args.field,
 						      value : newv } );
 		    }
 		    else {
-			args[ 'default_var' ].add_to( { name : args[ 'field' ], items : [ newv ] } );
+			args.default_var.add_to( { name : args.field, items : [ newv ] } );
 		    }
 		    $.yote.util.refresh_ui();
 		}
@@ -853,9 +853,12 @@ $( '#' + me.div_id ).empty().append( val );
 	    return null;
 	}, //new_with_same_permissions_to_container
 	remove_from_list : function( args ) {
-	    if( args[ 'default_parent' ] && args[ 'default_var' ] && args[ 'field' ] ) {
-		args[ 'default_parent' ].remove_from( { name : args[ 'field' ], items : [ args[ 'default_var' ] ] } );
-		var container = args[ 'default_parent' ].wrap_list( { collection_name : args[ 'field' ], wrap_key : $.yote.util.find_parent_template_name( args ) }, true );
+	    if( args.default_parent && args.default_var && args.field ) {
+//					   key : args.template_path,
+		args.default_parent.remove_from( { name : args.field, items : [ args.default_var ] } );
+		var container = args.default_parent.wrap_list( { context : { collection_name : args.field, 
+									     wrap_key : args.parent.template_path
+									   } }, 0, true );
 		if( container && container.start > 0 ) {
 		    container.start--;
 		}
@@ -891,44 +894,50 @@ $( '#' + me.div_id ).empty().append( val );
 	// clone the template arg hash. This is implemented because there are some lists attached to the arguments
 	// that should also be cloned.
 	var clone = Object.clone( args );
-	if( clone[ 'new_fields' ] ) clone.new_fields = Object.clone( args[ 'new_fields' ] );
-	if( clone[ 'vars' ] ) clone.vars = Object.clone( args[ 'vars' ] );
-	if( clone[ 'controls' ] ) clone.controls = Object.clone( args[ 'controls' ] );
+	if( clone.new_fields ) clone.new_fields = Object.clone( args.new_fields );
+	if( clone.vars ) clone.vars = Object.clone( args.vars );
+	if( clone.controls ) clone.controls = Object.clone( args.controls );
+	clone.parent = args;
 	return clone;
     }, //clone_template_args
 
     find_parent_template_name:function( args ) {
-	return $.yote.util.template_lookup[ args[ 'parent_template_id' ] ];
+	return $.yote.util.template_lookup[ args.parent_template_id ];
     }, //find_parent_template_name
 
     find_template_name:function( args ) {
-	return $.yote.util.template_lookup[ args[ 'template_id' ] ];
+	return $.yote.util.template_lookup[ args.template_id ];
     }, //find_template_name
 
+    // TODO : make the template into an object, maybe? That would be kind of cool and eliminate a lot of problems.
+    //        the object can be kept in memory even as it is filled. At least look at this. it might not be needed.
     fill_template:function( params, old_context ) {
 	/*
 	  ENTRY POINT FOR APPLYING TEMPLATE.
 	 */
-	var template = $.yote.util.templates[ params[ 'template_name' ] ];
+	var template = $.yote.util.templates[ params.template_name ];
 	if( ! template ) { return ''; }
 
         var args = $.yote.util.clone_template_args( params );
-        args[ 'template' ] = template;
-	args[ 'template_id' ] = $.yote.util.next_id();
-	args[ 'parent_template_id' ] = old_context;
-	$.yote.util.template_lookup[ args[ 'template_id' ] ] = args[ 'template_name' ];
+	args.parent = params;
+        args.template = template;
+	args.template_id = $.yote.util.next_id();
+	args.parent_template_id = old_context;
+	$.yote.util.template_lookup[ args.template_id ] = args.template_name;
 
 	var oc = $.yote.util.template_context[ old_context ];
 	if( oc ) {
-	    $.yote.util.template_context[ args[ 'template_id' ] ] = $.yote.util.context( { 
-		vars : oc[ 'vars' ] ? Object.clone( oc[ 'vars' ] ) : {},
-		newfields : oc[ 'newfields' ] ? Object.clone( oc[ 'newfields' ] ) : {},
-		controls : oc[ 'controls' ] ? Object.clone( oc[ 'controls' ] ) : {},
-		functions : oc[ 'functions' ] ? Object.clone( oc[ 'functions' ] ) : {}
+	    args.template_path = oc.template_path + '/' + params.template_name;
+	    $.yote.util.template_context[ args.template_id ] = $.yote.util.context( { 
+		vars : oc.vars ? Object.clone( oc.vars ) : {},
+		newfields : oc.newfields ? Object.clone( oc.newfields ) : {},
+		controls : oc.controls ? Object.clone( oc.controls ) : {},
+		functions : oc.functions ? Object.clone( oc.functions ) : {}
 	    } );
 	}
 	else {
-	    $.yote.util.template_context[ args[ 'template_id' ] ] = $.yote.util.context();
+	    args.template_path = '/' + params.template_name;
+	    $.yote.util.template_context[ args.template_id ] = $.yote.util.context();
 	}
 
 	return $.yote.util.fill_template_text( args );
@@ -962,13 +971,13 @@ $( '#' + me.div_id ).empty().append( val );
     }, //_template_parts
 
     fill_template_text:function( params ) {
-        var template = params[ 'template' ]
+        var template = params.template
 	var text_val = typeof template === 'function' ? template() : template;
 	if( ! text_val ) return '';
 	while( text_val.indexOf( '<???' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '???', template );
 	    try { 
-		var f = eval( '['+parts[1]+']');
+		var f = eval( '[' + parts[1] + ']');
 		text_val = parts[ 0 ] + f[0]( params ) + parts[ 2 ];
 	    }
 	    catch( err ) {
@@ -984,7 +993,7 @@ $( '#' + me.div_id ).empty().append( val );
 	    var parts = $.yote.util._template_parts( text_val, '??', template );
 	    if( parts[1].match( /^\s*function[\( ]/ ) ) {
 		try { 
-		    var f = eval( '['+parts[1]+']');
+		    var f = eval( '[' + parts[1] + ']' );
 		    text_val = parts[ 0 ] + f[0]( params ) + parts[ 2 ];
 		}
 		catch( err ) {
@@ -993,7 +1002,7 @@ $( '#' + me.div_id ).empty().append( val );
 		}
 	    }
 	    else {
-		params[ 'function_name' ] = parts[ 1 ];
+		params.function_name = parts[ 1 ];
 		text_val = parts[ 0 ] +
 		    $.yote.util.run_template_function( params ) +
 		    parts[ 2 ];
@@ -1002,7 +1011,7 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<$@' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$@', template );
 	    var args = $.yote.util.clone_template_args( params );
-            args[ 'template_body' ] = parts[ 1 ];
+            args.template_body = parts[ 1 ];
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_container( args, false ) +
 		parts[ 2 ];
@@ -1010,7 +1019,7 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<$%' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$%', template );
 	    var args = $.yote.util.clone_template_args( params );
-            args[ 'template_body' ] = parts[ 1 ];
+            args.template_body = parts[ 1 ];
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_container( args, true ) +
 		parts[ 2 ];
@@ -1018,7 +1027,7 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<@' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '@', template );
 	    var args = $.yote.util.clone_template_args( params );
-            args[ 'template_body' ] = parts[ 1 ];
+            args.template_body = parts[ 1 ];
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_container_rows( args, true ) +
 		parts[ 2 ];
@@ -1026,7 +1035,7 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<%' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '%', template );
 	    var args = $.yote.util.clone_template_args( params );
-            args[ 'template_body' ] = parts[ 1 ];
+            args.template_body = parts[ 1 ];
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_container_rows( args, false ) +
 		parts[ 2 ];
@@ -1034,14 +1043,19 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<$$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$$', template );
 	    var args = $.yote.util.clone_template_args( params );
-	    var funparts = parts[1].match( /^\s*(\S+)(\s+[\s\S]*)?\s*$/ );
+	    var funparts = parts[1].match( /^\s*(\S+)(\s+([\S]+))?$/ );
 	    if( funparts ) {
-		if( funparts.length == 3 && funparts[2] ) {
-		    args[ 'extra' ] = funparts[2].trim();
+		if( funparts.length > 2 && funparts[3] ) { //obj
+		    //set the default variable as the list here
+		    var tlist = funparts[3].trim().split(/[\.]/);
+		    args.default_var = args.getvar( tlist[0] );
+		    for( var i=1; i<tlist.length; i++ ) {
+			args.default_var = args.default_var.get( tlist[i] );
+		    }
 		}
-		args[ 'template_name' ] = funparts[ 1 ];
+		args.template_name = funparts[ 1 ];
 		text_val = parts[ 0 ] +
-		    $.yote.util.fill_template( args, args[ 'template_id' ] ) +
+		    $.yote.util.fill_template( args, args.template_id ) +
 		    parts[ 2 ];
 	    } else {
 		text_val = parts[ 0 ] + parts[ 2 ];
@@ -1051,7 +1065,7 @@ $( '#' + me.div_id ).empty().append( val );
 	while( text_val.indexOf( '<$' ) > -1 ) {
 	    var parts = $.yote.util._template_parts( text_val, '$', template );
 	    var args = $.yote.util.clone_template_args( params );
-            args[ 'template_body' ] = parts[ 1 ];
+            args.template_body = parts[ 1 ];
 	    text_val = parts[ 0 ] +
 		$.yote.util.fill_template_variable( args ) +
 		parts[ 2 ];
@@ -1067,7 +1081,7 @@ $( '#' + me.div_id ).empty().append( val );
 		    var f;
 		    if( fn.match( /^\s*function[\( ]/ ) ) {
 			try { 
-			    f = eval( '['+fn+']')[ 0 ];
+			    f = eval( '[' + fn + ']' )[ 0 ];
 			}
 			catch( err ) {
 			    console.log( 'error in function ' + fn + ' : ' + err);
@@ -1090,14 +1104,14 @@ $( '#' + me.div_id ).empty().append( val );
 
     run_template_function:function( params ) {
         if( params.function_name ) {
-	    var f = $.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ params.function_name ] || $.yote.util.functions[ params.function_name ];
+	    var f = $.yote.util.template_context[ params.template_id ].functions[ params.function_name ] || $.yote.util.functions[ params.function_name ];
 	    if( f ) {
 		var args = $.yote.util.clone_template_args( params );
-                args[ 'template' ] = f( args );
+                args.template = f( args );
 	        return $.yote.util.fill_template_text( args );
             }
         }
-	console.log( "Template error. Function '" + params[ 'function_name' ] + "' not found." );
+	console.log( "Template error. Function '" + params.function_name + "' not found." );
 	return '';
     }, //run_template_function
 
@@ -1107,13 +1121,11 @@ $( '#' + me.div_id ).empty().append( val );
         /*
           <$$$ var varname value $$$>
           <$$$ var varname othervar $$$>
-          <$$$ aliaslist varname hostobj listname $$$>
-          <$$$ aliashash varname hostobj hashname $$$>
           <$$$ control ctlname <..html control..> $$$>
 	  <$$$ function foo(args) { ... } $$$>
 	  <??? function(args) { ... } ???>
          */
-	var parts = text_val.match( /^\s*(var|control|function|aliasresult|alias|aliaslist|aliashash|new|new_hashkey)\s+((\S+)([\s\S]*))?/i );
+	var parts = text_val.match( /^\s*(var|control|function|aliasresult|alias|new|new_hashkey)\s+((\S+)([\s\S]*))?/i );
 	if( parts ) {
             var cmd = parts[ 1 ];
             var varname = parts[ 3 ];
@@ -1126,30 +1138,16 @@ $( '#' + me.div_id ).empty().append( val );
                 $.yote.util.template_context[ params.template_id ].vars[ varname ] = val;
                 return '';
             }
-            else if( cmd.toLowerCase() == 'aliaslist' ) {
-		var args = $.yote.util.clone_template_args( params );
-		var listparts = parts[ 4 ].trim().split(/ +/);
-		if( listparts.length == 2 ) {
-		    args.target = listparts[ 0 ];
-		    var host_obj = $.yote.util.lookup_template_var( args );
-		    var container = host_obj.wrap_list( { collection_name : listparts[ 1 ],
-							  wrap_key : args.template_id }, false );
-		    params.vars[ varname ] = container;
-                    $.yote.util.template_context[ params.template_id ][ 'vars' ][ varname ] = val;
-		}
-                return '';
-	    }
             else if( cmd.toLowerCase() == 'alias' ) {
 		var args = $.yote.util.clone_template_args( params );
 		var targ = $.yote.util.lookup_template_var( { target : parts[ 4 ].trim() } );
 		params.vars[ varname ] = targ;
-                $.yote.util.template_context[ params.template_id ][ 'vars' ][ varname ] = targ;
+                $.yote.util.template_context[ params.template_id ].vars[ varname ] = targ;
                 return '';
 	    }
             else if( cmd.toLowerCase() == 'aliasresult' ) {
 		var args = $.yote.util.clone_template_args( params );
-		var targ = $.yote.util.lookup_template_var( { target : parts[ 4 ].trim() } );
-		var fun = eval( '[' +  targ + ']' )[0];
+		var fun = eval( '[' +  parts[ 4 ].trim() + ']' )[0];
 		params.vars[ varname ] = fun( args );
                 return '';
 	    }
@@ -1159,7 +1157,7 @@ $( '#' + me.div_id ).empty().append( val );
 
 		var fun = eval( '[function ' + funparts[2] + ']' )[0];
 
-		$.yote.util.template_context[ params[ 'template_id' ] ][ 'functions' ][ funname ] = fun;
+		$.yote.util.template_context[ params.template_id ].functions[ funname ] = fun;
 		return '';
 	    }
 
@@ -1180,19 +1178,19 @@ $( '#' + me.div_id ).empty().append( val );
 		return control;
 	    }
 	    else {
-		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 template_id="' + params[ 'template_id' ]  + '" $2' );
+		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 template_id="' + params.template_id  + '" $2' );
 	    }
 
             if( cmd.toLowerCase() == 'new_hashkey' ) {
-                params[ 'new_hashkey' ] = ctrl_id;
-	        $.yote.util.template_context[ params[ 'template_id' ] ][ 'new_hashkey' ] = ctrl_id;
+                params.new_hashkey = ctrl_id;
+	        $.yote.util.template_context[ params.template_id ].new_hashkey = ctrl_id;
             }
             else { // new or control
                 var tvar =  cmd.toLowerCase() == 'control' ? 'controls' : 'new_fields';
 		if( ! params[ tvar ] ) params[ tvar ] = {};
                 params[ tvar ][ varname ] = '#' + ctrl_id;
-                if( ! $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] ) $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ] = {};
-                $.yote.util.template_context[ params[ 'template_id' ] ][ tvar ][ varname ] = '#' + ctrl_id;
+                if( ! $.yote.util.template_context[ params.template_id ][ tvar ] ) $.yote.util.template_context[ params.template_id ][ tvar ] = {};
+                $.yote.util.template_context[ params.template_id ][ tvar ][ varname ] = '#' + ctrl_id;
             }
             return ctrl;
         } //has parts
@@ -1201,72 +1199,73 @@ $( '#' + me.div_id ).empty().append( val );
     }, //register_template_value
 
     fill_template_container:function( params, is_hash ) {
-	var parts = params[ 'template_body' ].split(/ +/);
+	var parts = params.template_body.split(/ +/);
 	if( parts.length < 3 ) {
-	    console.log( "Template error for parsing '"+ params[ 'template_body' ] +"' : not enough arguments " );	    
+	    console.log( "Template error for parsing '"+ params.template_body +"' : not enough arguments " );	    
 	    return;
 	}
 	var args = $.yote.util.clone_template_args( params );
-        args[ 'target' ] = parts[ 1 ].trim();
+        args.target = parts[ 1 ].trim();
 
 	var main_template     = parts[ 0 ].trim(),
 	    on_empty_template = parts.length == 4 ? parts[ 3 ].trim() : parts[ 0 ].trim(),
             host_obj          = $.yote.util.lookup_template_var( args ),
 	    container_name    = parts[ 2 ].trim();
 	if( typeof host_obj === 'object' && container_name ) {
-	    var container = host_obj.wrap( { collection_name : container_name,
-					     size : args[ 'size' ],
-					     wrap_key : main_template,
-					   }, is_hash );
-	    console.log( [ "HOSTY", host_obj, container ] );
-            args[ 'template_name' ] = container.full_size() == 0 ? on_empty_template : main_template;
-	    args[ 'default_var' ] = container;
-	    args[ 'container_name' ] = container_name;
+	    var container = host_obj.wrap( { context : { collection_name : container_name, }, 
+					     size : args.size,
+					     wrap_key : args.template_path,
+					     is_hash : is_hash
+					   } );
+            args.template_name = container.full_size() == 0 ? on_empty_template : main_template;
+	    args.default_var = container;
+	    args.container_name = container_name;
 	    return $.yote.util.fill_template( args, args.template_id );
 	}
 	return '';
     }, //fill_template_container
 
     fill_template_container_rows:function( args, is_list ) {
-	var parts = args[ 'template_body' ].split(/ +/);
+	var parts = args.template_body.split(/ +/);
         var row_template = parts[ 0 ].trim();
 	var default_var, pagination_size;
 	if( parts.length > 3 ) {
 	    pagination_size = parts[ 3 ].trim() || 1;
 	    var host_obj = args.getvar( parts[ 1 ].trim() );
-	    default_var = host_obj.wrap( { collection_name : parts[ 2 ].trim(),
-					   size : args[ 'size' ],
-					   wrap_key : args.template_name,
-					 }, ! is_list );
+	    default_var = host_obj.wrap( { context : { collection_name : parts[ 2 ].trim() },
+					   size : args.size,
+					   wrap_key : args.template_path,
+					   is_hash : ! is_list
+					 } );
 	} 
 	else {
             pagination_size = parts[ 1 ].trim() || 1;
-            default_var = args[ 'default_var' ];
+            default_var = args.default_var;
 	}
 	// assumes default var is a list
         default_var.page_size = 1*pagination_size;
-	if( is_list && default_var && default_var[ 'to_list' ] ) {
+	if( is_list && default_var && default_var.to_list ) {
             return default_var.to_list().map(function(it,idx){
 		var rowargs = $.yote.util.clone_template_args( args );
-		rowargs[ 'template_name' ] = row_template;
-		rowargs[ 'default_var' ] = it;
-		rowargs[ 'default_parent' ] = default_var;
-		rowargs[ 'hash_key_or_index' ] = idx;
+		rowargs.template_name = row_template;
+		rowargs.default_var = it;
+		rowargs.default_parent = default_var;
+		rowargs.hash_key_or_index = idx;
 		
 		return $.yote.util.fill_template( rowargs );
             } ).join('');
 	}
-        if( ! is_list && default_var && default_var[ 'to_hash' ] ) {
+        if( ! is_list && default_var && default_var.to_hash ) {
             var hash = default_var.to_hash();
             var keys = Object.keys( hash );
             keys.sort();
-            if( default_var[ 'sort_reverse' ] ) keys.reverse();
+            if( default_var.sort_reverse ) keys.reverse();
             return keys.map(function(key,idx){
 		var rowargs = $.yote.util.clone_template_args( args );
-                rowargs[ 'template_name' ] = row_template;
-                rowargs[ 'default_var' ] = hash[ key ];
-		rowargs[ 'default_parent' ] = default_var;
-                rowargs[ 'hash_key_or_index' ] = key;
+                rowargs.template_name = row_template;
+                rowargs.default_var = hash[ key ];
+		rowargs.default_parent = default_var;
+                rowargs.hash_key_or_index = key;
 		
 		return $.yote.util.fill_template( rowargs );
             } ).join('');
@@ -1299,17 +1298,16 @@ $( '#' + me.div_id ).empty().append( val );
     },
 
     lookup_template_var:function( args ) {
-	if( ! args[ 'target' ] ) return null;
-        var tlist = args[ 'target' ].trim().split(/[\.]/);
+	if( ! args.target ) return null;
+        var tlist = args.target.trim().split(/[\.]/);
 	var subj = tlist[0];
 	var subjobj;
 	if( subj == '_acct_' )      subjobj = $.yote.fetch_account();
 	else if( subj == '_root_' ) subjobj = $.yote.fetch_root();
 	else if( subj == '_app_' ) subjobj = $.yote.default_app;
-	else if( subj == '_id_' )   subjobj = args[ 'template_id' ];
-	else if( subj == '_' )    subjobj = args[ 'default_var' ];
-	else if( subj == '__' )   subjobj = args[ 'default_parent' ];
-	else if( subj == '___' )   subjobj = args[ 'extra' ];
+	else if( subj == '_id_' )   subjobj = args.template_id;
+	else if( subj == '_' )    subjobj = args.default_var;
+	else if( subj == '__' )   subjobj = args.default_parent;
 	else subjobj = $.yote.util.registered_items[ subj ];
 	if( subjobj ) {
 	    for( i=1; i<tlist.length; i++ ) {
@@ -1321,31 +1319,31 @@ $( '#' + me.div_id ).empty().append( val );
     }, //_template_var
 
     fill_template_variable:function( args ) {
-        var varcmd = args[ 'template_body' ];
-        var template_id = args[ 'template_id' ];
+        var varcmd = args.template_body;
+        var template_id = args.template_id;
 	var cmdl = varcmd.split(/ +/); //yikes, this split suxx.use regex
 	var cmd  = cmdl[0].toLowerCase();
 	var subj = cmdl[1];
 	var fld  = cmdl[2];
-	var hash_key_or_index = args[ 'hash_key_or_index' ];
+	var hash_key_or_index = args.hash_key_or_index;
 	if( cmd == 'hash_key' || cmd == 'index' ) {
 	    return hash_key_or_index;
 	}
-        args[ 'target' ] = subj;
-        var default_var = args[ 'default_var' ];
-        var default_parent = args[ 'default_parent' ];
+        args.target = subj;
+        var default_var = args.default_var;
+        var default_parent = args.default_parent;
 	var subjobj = $.yote.util.lookup_template_var( args );
 	if( cmd == 'edit' ) {
 	    if( ! subjobj ) return '';
-	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '" additional_classes="' + ( cmdl[3] || '' ) + '"></span>';
+	    return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args.template_id + '" additional_classes="' + ( cmdl[3] || '' ) + '"></span>';
 	}
 	else if( cmd == 'show' ) {
 	    if( ! subjobj ) return '';
-	    return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+	    return subjobj.get( fld );
 	}
 	else if( cmd == 'checkbox' ) {
 	    if( ! subjobj ) return '';
-	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+	    return '<span class="yote_panel" use_checkbox="true" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args.template_id + '"></span>';
 	}
 	else if( cmd == 'switch' ) {
 	    var oid = default_var ? default_var.id : 'undefined';
@@ -1356,14 +1354,14 @@ $( '#' + me.div_id ).empty().append( val );
 	    if( ! subjobj ) return '';
 	    parts = /^\s*\S+\s+\S+\s+\S+\s+([\s\S]*)/.exec( varcmd );
 	    listblock = parts[ 1 ];
-	    return '<span class="yote_panel" use_select="true" sel_list="' + listblock + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+	    return '<span class="yote_panel" use_select="true" sel_list="' + listblock + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args.template_id + '"></span>';
 	}
 	else if( cmd == 'selectobj' ) {
-            args[ 'target' ] = cmdl[3].trim();
+            args.target = cmdl[3].trim();
 	    var lst = $.yote.util.lookup_template_var( args );
 	    if( lst ) {
 		if( ! subjobj ) return '';
-		return '<span class="yote_panel" use_select_obj="true" list_field="' + cmdl[4].trim() + '" list_obj="$$' + lst.id + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+		return '<span class="yote_panel" use_select_obj="true" list_field="' + cmdl[4].trim() + '" list_obj="$$' + lst.id + '" after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args.template_id + '"></span>';
 	    }
 	    console.log( "Could not find '" + cmdl[3] + "'" );
 	    return '';
@@ -1373,35 +1371,35 @@ $( '#' + me.div_id ).empty().append( val );
 	    var item   = default_var;
 	    var parent = default_parent;
 	    var txt = parts ? parts[3].trim() : '';
-	    return '<button type="BUTTON" ' + ( args[ 'container_name' ] ? 'container_name="' + args[ 'container_name' ] + '"'  : '' ) + ' ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
+	    return '<button type="BUTTON" ' + ( args.container_name ? 'container_name="' + args.container_name + '"'  : '' ) + ' ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_button" action="' + subj.trim() +'" template_id="' + args.template_id + '">' + txt + '</button>';
 	}
 	else if( cmd == 'action_link' ) {
 	    parts = /^\s*\S+\s+\S+\s*([\s\S]*)/.exec( varcmd );
 	    var item   = default_var;
 	    var parent = default_parent;
 	    txt = parts ? parts[1].trim() : '';
-	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'" template_id="' + args[ 'template_id' ] + '">' + txt + '</a>';
+	    return '<a href="#" ' + ( item ? ' item="$$' + item.id + '"' : '' ) +  ( parent ? ' parent="$$' + parent.id + '"' : '' ) + ' class="yote_action_link" action="' + subj.trim() +'" template_id="' + args.template_id + '">' + txt + '</a>';
 	}
 	else if( cmd == 'newbutton' ) {
 	    parts = /^\s*\S+\s+\S+\s+\S+\s*([\s\S]*)/.exec( varcmd );
 	    var subjobj = $.yote.util.lookup_template_var( args );
 	    txt = parts ? parts[1].trim() : 'New';
-	    return '<button type="BUTTON" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__new_with_same_permissions_to_container" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
+	    return '<button type="BUTTON" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__new_with_same_permissions_to_container" template_id="' + args.template_id + '">' + txt + '</button>';
 	}
 	else if( cmd == 'list_remove_button' ) {
 	    parts = /^\s*\S+\s+\S+\s+\S+\s*([\s\S]*)/.exec( varcmd );
 	    var subjobj = $.yote.util.lookup_template_var( args );
 	    txt = parts && parts[1] ? parts[1].trim() : 'Delete';
 	    var parent = default_parent;
-	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args[ 'template_id' ] + '">' + txt + '</button>';
+	    return '<button type="BUTTON" parent="$$' + parent.id + '" item="$$' + subjobj.id + '" field="'+fld+'" class="yote_button" action="__remove_from_list" template_id="' + args.template_id + '">' + txt + '</button>';
 	}
 	else if( cmd == 'show_or_edit' ) {
 	    if( ! subjobj ) return '';
 	    if( $.yote.is_root() ) {
-		return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+		return '<span class="yote_panel" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' after_edit_function="*function(){$.yote.util.refresh_ui();}" item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args.template_id + '"></span>';
 	    }
 	    else {
-		return '<span class="yote_panel" no_edit="true" ' + (fld.charAt(0) == '#' ? ' as_html="true" ' : '' ) + ' item="$$' + subjobj.id + '" field="' + fld + '" template_id="' + args[ 'template_id' ] + '"></span>';
+		return subjobj.get( fld );
 	    }
 	}
 	else if( cmd == 'val' ) {
