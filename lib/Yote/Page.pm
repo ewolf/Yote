@@ -50,4 +50,33 @@ methods :
    _fetch_page. Private.. an app is expected to call this.
    
 
+=head1 NAME
 
+Yote::Page
+
+=head1 DESCRIPTION
+
+Not yet used, a class for storing editable pages.
+
+=head1 PUBLIC API METHODS
+
+=over 4
+
+=item fetch_page
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2012 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut

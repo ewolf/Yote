@@ -30,7 +30,7 @@ __END__
 
 =over 4
 
-=item hello
+=item reset
 
 =back
 
