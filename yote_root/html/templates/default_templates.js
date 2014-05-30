@@ -1,20 +1,14 @@
 base_templates = {
 
-    /** LOGIN FUNCTIONS **/
-    refresh_all:function(args) {
-	$.yote.reinit();
-	$.yote.util.refresh_ui();
-    },
-
     check_login_status:function(args) {
 	return $.yote.is_root() ? "<$$ Logged_in $$>" : "<$$ Logged_out $$>";
     },
     forgot:function(args) {
-	$( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Recover_Login" } ) );
+	$( '#login_div' ).empty().append( $.yote.util.fill_template( $.yote.util.context( { template_name : "Recover_Login" } ) ) );
 	$.yote.util.init_ui();
     },
     show_create_account:function(args) {
-	$( '#login_div' ).empty().append( $.yote.util.fill_template( { template_name : "Create_Login" } ) );
+	$( '#login_div' ).empty().append( $.yote.util.fill_template( $.yote.util.context( { template_name : "Create_Login" } ) ) );
 	$.yote.util.init_ui();
     },
     init_login:function(args) {
@@ -32,8 +26,8 @@ base_templates = {
 				  $(p).val(),
 				  function(msg) {
 				      if( $.yote.is_root() ) {
-					  
-					  $.yote.util.run_function( 'refresh_all' );
+					  $.yote.reinit();
+					  $.yote.util.refresh_ui();
  				      }
 				      else if( $.yote.is_logged_in() ) {
 					  $(m).empty().append( "ERROR : this account does not have root privileges" );
@@ -57,7 +51,8 @@ base_templates = {
 		    var app = $.yote.default_app;
 		    app.recover_password( $( e ).val(),
 					  function(msg) {
-					      $.yote.util.run_function( 'refresh_all' );
+					      $.yote.reinit();
+					      $.yote.util.refresh_ui();
 					  },
 					  function(err) {
 					      $(m).empty().append("ERROR : " + err );
@@ -87,9 +82,11 @@ base_templates = {
 				      function(msg) {
 					  if( msg.l ) {
 					      $.yote.need_reinit = true;
-					      $.yote.util.run_function( 'refresh_all' );
+					      $.yote.reinit();
+					      $.yote.util.refresh_ui();
 					  }
-					  $.yote.util.run_function( 'refresh_all' );
+					  $.yote.reinit();
+					  $.yote.util.refresh_ui();
 				      },
 				      function(err) {
 					  $(m).empty().append("ERROR : " + err );
@@ -100,7 +97,8 @@ base_templates = {
     }, //init_create
     logout:function(args) {
 	$.yote.logout();
-	$.yote.util.run_function( 'refresh_all' );
+	$.yote.reinit();
+	$.yote.util.refresh_ui();
     },
 
 
@@ -122,8 +120,12 @@ base_templates = {
 	if( collection.can_rewind() ) {
 	    $( pag_begin_button_id ).attr( 'disabled', false );
 	    $(  pag_back_button_id ).attr( 'disabled', false );
-	    $(  pag_begin_button_id ).click( function() { collection.first(); $.yote.util.run_function( 'refresh_all' ); } );
-	    $(  pag_back_button_id ).click( function() { collection.back(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $(  pag_begin_button_id ).click( function() { collection.first(); 	
+							  $.yote.reinit();
+							  $.yote.util.refresh_ui(); } );
+	    $(  pag_back_button_id ).click( function() { collection.back(); 
+							 $.yote.reinit();
+							 $.yote.util.refresh_ui(); } );
 	} else {
 	    $(  pag_begin_button_id ).attr( 'disabled', true );
 	    $(  pag_back_button_id ).attr( 'disabled', true );
@@ -133,9 +135,12 @@ base_templates = {
 	    $(  pag_end_button_id ).attr( 'disabled', false );
 	    $(  pag_forward_button_id ).click( function() {
 		collection.forwards();
-		$.yote.util.run_function( 'refresh_all' );
+		$.yote.reinit();
+		$.yote.util.refresh_ui();
 	    } );
-	    $(  pag_end_button_id ).click( function() { collection.last(); $.yote.util.run_function( 'refresh_all' ); } );
+	    $(  pag_end_button_id ).click( function() { collection.last(); 
+							$.yote.reinit();
+							$.yote.util.refresh_ui(); } );
 	} else {
 	    $(  pag_forward_button_id ).attr( 'disabled', true );
 	    $(  pag_end_button_id ).attr( 'disabled', true );
@@ -152,7 +157,8 @@ base_templates = {
 	    texts : [  search_val_id  ],
 	    action : function() {
 		collection.hashkey_search_value = [ $(  search_val_id ).val() ],
-		$.yote.util.run_function( 'refresh_all' );
+		$.yote.reinit();
+		$.yote.util.refresh_ui();
 	    }
 	} )
 
@@ -169,7 +175,8 @@ base_templates = {
 	    action : function() {
 		collection.search_fields = args[ 'vars' ][ 'search_fields' ].trim().split(/ +/);
 		collection.search_values = $( search_val_id ).val().trim().split(/ +/);
-		$.yote.util.run_function( 'refresh_all' );
+		$.yote.reinit();
+		$.yote.util.refresh_ui();
 	    }
 	} )
 

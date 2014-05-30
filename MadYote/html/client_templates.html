@@ -31,8 +31,8 @@
 	$.yote.init();
 	var app = $.yote.init( 'MadYote' );
 	var pages = app.get_page();
-	$.yote.util.register_template_variable( 'app', app );
-	$.yote.util.register_template_variable( 'pages', pages );
+	$.yote.util.register_item( 'app', app );
+	$.yote.util.register_item( 'pages', pages );
 	$.yote.util.register_function( 'show_new', function() { return $.yote.is_root() ? '<$$ client_templates_new $$>' : ''; } );
         $.yote.util.init_ui();
     });
