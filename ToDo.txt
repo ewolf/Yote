@@ -2,7 +2,24 @@ The stack :
 
 _Templates_
 
-  for pagination. if paginating beyond due to change in list, move the start point
+ template test for setvar as well as getvar
+
+  is_first and is_last in context for pagination lists
+
+  for pagination. if paginating beyond due to change in list, move the start point.
+        see adding a new flavor. in the refresh, it doesn't move forwards.
+
+  yote admin page
+
+  aliasresult and list useage. Needs a lot of work. Specifically, a yote list should be able to be specified rather in the same way that hostobj listname are currently.
+
+  error messages for unknown directive
+
+
+
+The BART sings to me. Its song is the sweet howl of the metal tracks and its buzzing. It is fine
+
+
 
 
 

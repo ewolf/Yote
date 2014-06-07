@@ -404,6 +404,39 @@ $.yote = {
 	} ).submit();
     }, //upload_message
 
+    wrap_native_list:function( args ) { // args {  list : somelist, cache_key : key identifying item, wrap_key : key identifying template, field_key : other key identifying item }
+	if( ! $.yote.wrap_cache[ args.cache_key ] ) {
+	    $.yote.wrap_cache[ args.cache_key ] = {};
+	}
+	// TODO : better wrap_key. Suggest it be a path of templates that traces to the root html document.
+	// NEED to then have a parent_template functioning well
+	if( ! $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] ) {
+	    $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] = {};
+	}
+	if( $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ] ) {
+	    return $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ];
+	}
+	if( args.dontmake ) return undefined;
+	var ret = {
+	    list : args.list,
+	    start:0,
+	    full_size:function() { return args.list.length; },
+	    to_list:function() { return args.list; },
+	    set_hashkey_search_criteria:function( hashkey_search ) {},
+	    set_search_criteria:function( hashkey_search ) {},
+	    get:function( idx ) { return args.list[ idx ] },
+	    seek:function( topos ) { this.start = topos; },
+	    forwards:function( ) {},
+	    can_rewind:function( ) { return this.start > 0; },
+	    can_fast_forward:function( ) {},
+	    back:function( ) {},
+	    first:function( ) { this.start = 0; },
+	    last:function( ) {}
+	};
+	$.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ] = ret;
+	return ret;
+    },
+
     _cache_size:function() { //used for unit tests
         var i = 0;
         for( v in this.objs ) {
@@ -458,23 +491,6 @@ $.yote = {
 		    args.size = size;
 		    return this.wrap( args );
 		},
-		wrap_native_list:function( list ) {
-		    return {
-			start:0,
-			full_size:function() { return list.length; },
-			to_list:function() { return list; },
-			set_hashkey_search_criteria:function( hashkey_search ) {},
-			set_search_criteria:function( hashkey_search ) {},
-			get:function( idx ) { return list[ idx ] },
-			seek:function( topos ) { this.start = topos; },
-			forwards:function( ) {},
-			can_rewind:function( ) { return this.start > 0; },
-			can_fast_forward:function( ) {},
-			back:function( ) {},
-			first:function( ) { this.start = 0; },
-			last:function( ) {},
-		    };
-		},
 		wrap:function( args ) { 
 		    var ctx = args.context;
 		    var host_obj = this;
@@ -485,6 +501,11 @@ $.yote = {
 		    if( ! $.yote.wrap_cache[ cache_key ] ) {
 			$.yote.wrap_cache[ cache_key ] = {};
 		    }
+		    // in order to preserve the pagination state of this list wrapper accross refresh,
+		    // the internal pagination wrapper object is stored in a cache. The cache is keyed by
+		    //  a cache key that is the host objects id, the wrap_key which identifies which template
+		    // this is in, and a fld which is the collection name in the host object.
+
 		    // TODO : better wrap_key. Suggest it be a path of templates that traces to the root html document.
 		    // NEED to then have a parent_template functioning well
 		    if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
@@ -494,7 +515,7 @@ $.yote = {
 			return $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ];
 		    }
 		    if( args.dontmake ) return undefined;
-		    var ol, page_out_list = false;
+		    var ol, page_out = false;
 		    // check to see if this object is already loaded in the cache.
 		    if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
 			ol = host_obj.get( fld ).length();
@@ -502,18 +523,18 @@ $.yote = {
 		    else {
 			ol = host_obj.count( fld );
 			// see if the whole list can be obtained at once
-			page_out_list = fld.charAt( 0 ) == '_'  || ol > (ctx.threshhold || 200);
+			page_out = fld.charAt( 0 ) == '_'  || ol > (ctx.threshhold || 200);
 		    }
 
-		    if( ! page_out_list ) {
+		    if( ! page_out ) {
 			var collection_obj = host_obj.get( fld );
 			if( ! collection_obj ) {
 			    console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
-			    page_out_list = true;
+			    page_out = true;
 			}
 		    }
 		    var ret = {
-			page_out_list      : page_out_list,
+			page_out      : page_out,
 			collection_obj     : collection_obj,
 			id                 : host_obj.id,
 			host_obj           : host_obj,
@@ -528,7 +549,7 @@ $.yote = {
 			is_hash       : args.is_hash,
 			full_size : function() {
 			    var me = this;
-			    if( me.page_out_list ) {
+			    if( me.page_out ) {
 				var c = 1 * me.host_obj.count( me.field );
 				return c;
 			    }
@@ -536,10 +557,10 @@ $.yote = {
  				 return Object.size( me.collection_obj._d );
 			    }
 			    return me.collection_obj.length();
-			},
+			}, //full_size
 			to_list : function() {
 			    var me = this;
-			    if( me.page_out_list ) {
+			    if( me.page_out ) {
 				me.length = 1*me.host_obj.count( {
 				    name  : me.field,
 				    search_fields : me.search_fields,
@@ -601,7 +622,7 @@ $.yote = {
 			},
 			to_hash : function() {
 			    var me = this;
-			    if( me.page_out_list ) {
+			    if( me.page_out ) {
 				me.length = 1*me.host_obj.count( {
 				    name  : me.field,
 				    search_fields : me.search_fields,
@@ -690,7 +711,7 @@ $.yote = {
 			    }
 			}, //set_search_criteria
 			get : function( idx ) {
-			    if( this.page_out_list ) {
+			    if( this.page_out ) {
 				if( this.is_hash )
 				    return this.host_obj.hash_fetch( { name : this.field, index : idx + this.start } );
 				return this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );
@@ -699,7 +720,12 @@ $.yote = {
 				return this.collection_obj.get( idx );
 			    }
 			    return this.collection_obj.get( this.start + idx );
-			},
+			}, //get
+			remove : function ( idx ) {
+			    if( this.is_hash )
+				return this.host_obj.delete_key( { name : this.field, index : idx } );
+			    return this.host_obj.list_delete( { name : this.field, index : idx + this.start } );
+			}, //remove
 			seek:function(topos) {
 			    this.start = topos;
 			},
@@ -843,7 +869,7 @@ $.yote = {
 
 	    o.get = function( key ) {
 		var val = this._staged[key] || this._d[key];
-		if( typeof val === 'undefined' ) return false;
+		if( typeof val === 'undefined' ) return undefined;
 		if( typeof val === 'object' ) return val;
 		if( typeof val === 'function' ) return val;
 

@@ -205,7 +205,7 @@
 
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
-            is( o3.get('zip'), false, 'correct object 2 text directly' );
+            is( o3.get('zip'), undefined, 'correct object 2 text directly' );
 
             pass( "no login returns yote obj" )();      
             step('name get called on testappneedslogin to succeed');

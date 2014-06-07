@@ -7,7 +7,7 @@
  .fail { color:red }
  .pass { color:green }
  body { background-color:wheat }
-// .hide { display:none }
+ .hide { display:none }
 </style>
 
 <script src="/yote/js/jquery-2.1.0.js"></script>
@@ -275,11 +275,10 @@ $().ready(function(){
 	    is( count, 4, "paginated hash : 4 rows made after refresh" );
 
 
-
-	    // hashes
-
-
-	    //test the embedding of a function inside a template, overwriting stuff
+	    msg( '<BR>Comment &lt;# comment text #&gt' );
+	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "IS THERE A <# comment #> in here?" }) ).trim(),
+		'IS THERE A  in here?', 'comment works <# cmt #>' );
+	    
 
  	}
  	catch( err ) {
