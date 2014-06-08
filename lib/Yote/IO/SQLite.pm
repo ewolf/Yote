@@ -213,7 +213,8 @@ sub paginate {
     if( @{ $args->{ sort_fields }||[] } ) {
 	my $sort_fields = $args->{ sort_fields };
 	my $reversed_orders = $args->{ reversed_orders } || [];
-	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
+	my $numeric = $args->{ numeric_fields } || [];
+	$query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @$sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { ($numeric->[ $_ ] ? ' cast ( ' . (3+$_) . ' as int )' : (3+$_) ) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#$sort_fields) ) . $PAG;
     }
     elsif( $search_fields && @$search_fields ) {
 	if( @{ $args->{ hashkey_search } || [] } ) {
@@ -223,12 +224,7 @@ sub paginate {
 	else {
 	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
 	}
-	if( $type eq 'ARRAY' ) {
-	    $query .= ' ORDER BY cast( bar.field as int ) ';
-	}
-	else {
-	    $query .= ' ORDER BY bar.field ';
-	}
+	$query .= $type eq 'ARRAY' || $args->{ numeric } ? ' ORDER BY cast( bar.field as int ) ' : ' ORDER BY bar.field ';
 	$query .= ' DESC' if $args->{ reverse };
 	$query .= $PAG;
     }
@@ -240,7 +236,7 @@ sub paginate {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
 	    if( $args->{ sort } ) {
-		$query .= ' ORDER BY value ';
+		$query .= $args->{ numeric } ? ' ORDER BY cast( value as int ) ' : ' ORDER BY value ';
 	    }
 	    else {
 		$query .= ' ORDER BY cast( field as int ) ';
@@ -259,7 +255,7 @@ sub paginate {
             elsif( @search_terms ) {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
-	    $query .= ' ORDER BY field ';
+	    $query .= $args->{ numeric } ? ' ORDER BY cast( field as int) ' : ' ORDER BY field ';
 	}
 	$query .= ' DESC' if $args->{ reverse };
 	$query .= $PAG;

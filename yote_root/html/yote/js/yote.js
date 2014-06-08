@@ -420,8 +420,127 @@ $.yote = {
 	var ret = {
 	    list : args.list,
 	    start:0,
+	    is_list : true,
 	    full_size:function() { return args.list.length; },
-	    to_list:function() { return args.list; },
+	    to_list : function() {
+		var me = this;
+		var olist = me.list;
+		if( me.sort_fields.length > 0 ) {
+		    olist = olist.sort( function( a, b ) {
+			for( var i=0; i < me.sort_fields.length; i++ ) {
+			    if( me.reversed_sort_idx[ i ] ) {
+				var c = a;
+				a = b;
+				b = c;
+			    }
+			    if( typeof a === 'object' && typeof b === 'object' ) {
+				if( me.is_number_sort )
+				    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
+				a = a.get( me.sort_fields[i] ).toLowerCase();
+				b = b.get( me.sort_fields[i] ).toLowerCase();
+				return a > b ? 1 : a < b ? -1 : 0;
+			    }
+			    return 0;
+			}
+		    } );
+		    if( me.sort_reverse ) olist.reverse();
+		}
+		var ret = [];
+		me.length = 0;
+		for( var i=0; i < olist.length; i++ ) {
+		    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
+			if( me.search_fields && me.search_fields.length > 0 ) {
+			    var match = false;
+			    for( var j=0; j<me.search_values.length; j++ ) {
+				for( var k=0; k<me.search_fields.length; k++ ) {
+				    match = match || typeof olist[ i ] === 'object' && olist[ i ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
+				}
+			    }
+			    if( match ) {
+				me.length++;
+				if( i >= me.start && ret.length < me.page_size )
+				    ret.push( olist[i] );
+			    }
+			}
+		    }
+		    else {
+			if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
+			    me.length++;
+			    ret.push( olist[i] );
+			}
+		    }
+		}
+		return ret;
+	    },
+	    to_hash : function() {
+		var me = this;
+		var ret = {};
+		if( ! me.collection_obj ) return ret;
+		var ohash  = me.collection_obj.to_hash();
+		var hkeys = me.collection_obj.keys();
+
+		hkeys.sort();
+		if( me.sort_reverse ) hkeys.reverse();
+
+		me.length = 0;
+		for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
+		    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
+			if( me.search_fields && me.search_fields.length > 0 ) {
+			    var match = false;
+			    for( var j=0; j<me.search_values.length; j++ ) {
+				for( var k=0; k<me.search_fields.length; k++ ) {
+				    match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
+				}
+			    }
+			    if( match ) {
+				var k = hkeys[ i ];
+				if( i >= me.start && me.length < me.page_size &&
+				    ( ! me.hashkey_search_value ||
+				      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
+				{
+				    ret[ k ] = ohash[ k ];
+				    me.length++;
+				}
+			    }
+			}
+		    }
+		    else {
+			if( i >= me.start && me.length < me.page_size ) {
+			    var k = hkeys[ i ];
+			    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
+				ret[ k ] = ohash[ k ];
+				me.length++;
+			    }
+			}
+		    }
+		}
+		return ret;
+	    },
+	    to_listy:function() {
+		var l = args.list;
+		if( this.sort_fields ) {
+		    for( var i=l.length; i>=0; --i ) {
+			l = l.sort( function( a, b ) {
+			    if( this.reversed_sort_idx[ i ] ) {
+				var c = a;
+				a = b;
+				b = c;
+			    }
+			    if( typeof a === 'object' && typeof b === 'object' ) {
+				if( me.is_number_sort )
+				    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
+				a = a.get( me.sort_fields[i] ).toLowerCase();
+				b = b.get( me.sort_fields[i] ).toLowerCase();
+				return a > b ? 1 : a < b ? -1 : 0;
+			    }
+			    return 0;
+			} );
+		    }
+		}
+
+		return args.list;
+	    },
+	    is_number_sort : args.is_number_sort,
 	    set_hashkey_search_criteria:function( hashkey_search ) {},
 	    set_search_criteria:function( hashkey_search ) {},
 	    get:function( idx ) { return args.list[ idx ] },
@@ -431,7 +550,14 @@ $.yote = {
 	    can_fast_forward:function( ) {},
 	    back:function( ) {},
 	    first:function( ) { this.start = 0; },
-	    last:function( ) {}
+	    last:function( ) {},
+	    search_values : args.search_value || [],
+	    search_fields : args.search_field || [],
+	    sort_fields   : args.sort_fields  || [],
+	    set_sort_fields : function( sf ) { this.sort_fields = sf; },
+	    set_reversed_sort_idx : function( sf ) { this.reversed_sort_idx = sf; },
+	    reversed_sort_idx : args.reversed_sort_idx || [], //which index to reverse
+	    hashkey_search_value : args.hashkey_search_value || undefined,
 	};
 	$.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ] = ret;
 	return ret;
@@ -445,6 +571,39 @@ $.yote = {
         return i;
     },
 
+    sort_list_fun:function (container,fld,is_number_sort) {
+	return function() {
+	    var sorts = container.sort_fields || [];
+	    var sorts_rev = container.reversed_sort_idx || [];
+	    var has_sort = false;
+	    var has_sort_idx;
+	    for( var i=0; i<sorts.length; i++ ) {
+		if( sorts[i] == fld ) {
+		    has_sort_idx = i;
+		    has_sort = true;
+		}
+	    }
+	    if( has_sort > 0 && has_sort_idx == 0 ) {
+		// top sort already, so reverse
+		sorts_rev[ 0 ] = ! sorts_rev[ 0 ];
+	    } else if( has_sort ) {
+		// sorted somewhere. bring to the top of the sort
+		var orev = sorts_rev[ has_sort_idx ];
+		sorts.splice( has_sort_idx, 1 );
+		sorts_rev.splice( has_sort_idx, 1 );
+		sorts.splice( 0, 0, fld );
+		sorts_rev.splice( 0, 0, orev );
+	    } else {
+		// not in there yet. easy, just push to the
+		sorts.splice( 0, 0, fld );
+		sorts_rev.splice( 0, 0, 0 );
+	    }
+	    container.is_number_sort = is_number_sort;
+	    container.set_sort_fields( sorts );
+	    container.set_reversed_sort_idx( sorts_rev );
+	    $.yote.util.refresh_ui();
+	}
+    },
     // TODO : use prototype for the _create_obj
     _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
 	var root = this;
@@ -480,6 +639,8 @@ $.yote = {
 		    var res = this.values().sort( sortfun );
 		    return res;
 		},
+
+
 		wrap_list:function( args, size, dontmake ) {
 		    args.dontmake = dontmake;
 		    args.size = size;
@@ -491,7 +652,7 @@ $.yote = {
 		    args.size = size;
 		    return this.wrap( args );
 		},
-		wrap:function( args ) { 
+		wrap:function( args ) {
 		    var ctx = args.context;
 		    var host_obj = this;
 		    var fld = ctx.collection_name;
@@ -544,6 +705,10 @@ $.yote = {
 			search_values : ctx.search_value || [],
 			search_fields : ctx.search_field || [],
 			sort_fields   : ctx.sort_fields  || [],
+			is_number_sort : ctx.is_number_sort,
+			reversed_sort_idx : ctx.reversed_sort_idx || [], //which index to reverse
+			set_sort_fields : function( sf ) { this.sort_fields = sf; },
+			set_reversed_sort_idx : function( sf ) { this.reversed_sort_idx = sf; },
 			hashkey_search_value : ctx.hashkey_search_value || undefined,
 			sort_reverse  : ctx.sort_reverse || undefined,
 			is_hash       : args.is_hash,
@@ -573,6 +738,7 @@ $.yote = {
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
 				    reverse : me.sort_reverse,
+				    reversed_orders : me.reversed_sort_idx,
 				    sort_fields : me.sort_fields
 				} );
 				return res ? res.to_list() : [];
@@ -581,12 +747,21 @@ $.yote = {
 				var ret = [];
 				if( ! me.collection_obj ) return ret;
 				var olist = me.collection_obj.to_list();
-
 				if( me.sort_fields.length > 0 ) {
 				    olist = olist.sort( function( a, b ) {
-					for( var i=0; i<me.sort_fields.length; i++ ) {
-					    if( typeof a === 'object' && typeof b === 'object' )
-						return a.get( me.sort_fields[i] ).toLowerCase().localeCompare( b.get( me.sort_fields[i] ).toLowerCase() );
+					for( var i=0; i < me.sort_fields.length; i++ ) {
+					    if( me.reversed_sort_idx[ i ] ) {
+						var c = a;
+						a = b;
+						b = c;
+					    }
+					    if( typeof a === 'object' && typeof b === 'object' ) {
+						if( me.is_number_sort )
+						    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
+						a = a.get( me.sort_fields[i] ).toLowerCase();
+						b = b.get( me.sort_fields[i] ).toLowerCase();
+						return a > b ? 1 : a < b ? -1 : 0;
+					    }
 					    return 0;
 					}
 				    } );

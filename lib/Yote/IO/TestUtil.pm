@@ -720,6 +720,41 @@ sub io_independent_tests {
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 1, 2, 3, 4, 5 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms and sort_fields no problemo" );
 
+    my $num_objs = [
+	new Yote::Obj( { n => 1, l => "C", l2 => "D"    } ), #0
+	new Yote::Obj( { n => 2, l => "D", l2 => "D"   } ),  #1
+	new Yote::Obj( { n => 5, l => "E", l2 => "A"      } ), # 2
+	new Yote::Obj( { n => 20, l => "G", l2=>"D"         } ), #3
+	new Yote::Obj( { n => 22, l => "B", l2 => "B"          } ), #4
+	new Yote::Obj( { n => 100, l => "A" , l2 => "Q"       } ),  #5
+	new Yote::Obj( { n => 1000, l => "F", l2=> "A"        } ), #6
+	];
+    $new_obj->set_llama( $num_objs );
+    Yote::ObjProvider::stow_all();
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n' ], numeric_fields => [ 1 ] } );
+    is_deeply( $res, $num_objs, "Numeric sort" );
+
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'l' ], numeric_fields => [ 0 ] } );
+    is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 5, 4, 0, 1, 2, 6, 3 ) ], "alpha sort" );
+
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n' ], numeric_fields => [ 0 ] } );
+    is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 0, 5, 6, 1, 3, 4, 2 ) ], "Non Numeric sort" );
+
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'l2', 'n' ], numeric_fields => [ 0, 1 ] } );
+    is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 2, 6, 4, 0, 1, 3, 5  ) ], "Mixed" );
+
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'l2', 'n' ], numeric_fields => [ 0, 0 ] } );
+    is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 6, 2, 4, 0, 1, 3, 5  ) ], "Mixed nonnum" );
+
+    my $nums = [ qw/1 5 10 100 2 22/ ];
+    $new_obj->set_gnu( $nums );
+    Yote::ObjProvider::stow_all();
+    $res = $new_obj->paginate( { name => 'gnu', sort => 1, numeric => 1 } );
+    is_deeply( $res, [ qw/1 2 5 10 22 100/ ], "number list sorted numerically" );
+
+    $res = $new_obj->paginate( { name => 'gnu', sort => 1 } );
+    is_deeply( $res, [ qw/1 10 100 2 22 5/ ], "number list sorted alpha" );
+
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
     $o = new Yote::Obj( { anonymous => "guest" } );
     Yote::ObjProvider::stow_all();
@@ -796,6 +831,30 @@ sub io_independent_tests {
 
     $root->_hash_delete( 'el_hash', 'FoO' );
     is_deeply( $el_hash, { 'BBB' => 123 }, "_hash_delete" );
+
+    $root->_hash_delete( 'el_hash', 'BBB' );
+    $root->_hash_insert( 'el_hash', '1', "LALA" );
+    $root->_hash_insert( 'el_hash', '2', "ERF" );
+    $root->_hash_insert( 'el_hash', '10', "ERF" );
+    $root->_hash_insert( 'el_hash', '100', "ERF" );
+
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, skip => 0 } );
+    is_deeply( $res, { 1 => "LALA" }, "return hash chunk 1" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, skip => 1 } );
+    is_deeply( $res, { 10 => "ERF" }, "return hash chunk 2" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, skip => 2 } );
+    is_deeply( $res, { 100 => "ERF" }, "return hash chunk 3" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, skip => 3 } );
+    is_deeply( $res, { 2 => "ERF" }, "return hash chunk 4" );
+
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 0 } );
+    is_deeply( $res, { 1 => "LALA" }, "return hash num sort chunk 1" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 1 } );
+    is_deeply( $res, { 2 => "ERF" }, "return hash num sort chunk 2" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 2 } );
+    is_deeply( $res, { 10 => "ERF" }, "return hash num sort chunk 3" );
+    $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 3 } );
+    is_deeply( $res, { 100 => "ERF" }, "return hash num sort chunk 4" );
 
     # root acct test
     my $new_master_login = $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );

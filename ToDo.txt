@@ -1,5 +1,9 @@
 The stack :
 
+implement sorting for nativly wrapped list
+
+sort fields numeric for IO classes
+
 _Templates_
 
  template test for setvar as well as getvar
