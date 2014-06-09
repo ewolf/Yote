@@ -83,6 +83,7 @@ if we are our experiences then we are both sides of them.
 	  }
 
       $().ready(function(){
+          $.yote.debug = true;
 	  $.yote.templates.import_templates( '/templates/default_templates.html' );
 	  $.yote.init(  );
 	  $.yote.templates.init();
@@ -361,16 +362,29 @@ if we are our experiences then we are both sides of them.
   <script type="text/template" class="yote_template_definition" template_name="Apps">
     <A NAME="App">
       <H3>Applications Installed</H3>
-      <$$$ set root function( ctx ) { return $.yote.fetch_root(); } $$$>
+       <???
+    function( ctx ) { 
+	var root = $.yote.fetch_root();
+	ctx.vars.root = root;
+	var app_count = root.count( '_apps' );
+        var pag = root.wrap_hash( { collection_name : '_apps', cache_key : 'foo', wrap_key : 'bar' }, app_count );
+	var app_hash = pag.to_hash();
+	var apps = {};
+	for( var k in app_hash ) {
+	    if( app_hash[ k ] ) 
+		apps[ k ] = app_hash[ k ];
+	}
+	ctx.vars.apps = apps;
+    } ???>
       <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
            <th>Number of Users</th>   <th>Email Settings</th> 
            <th>Attached Objects</th>  <th>Reset</th>
          </tr>
 
-         <% App_Row root%_apps 3 %>
+         <% App_Row %apps 3 %>
 
       </table>
-      <$$ Paginator root%_apps $$>
+      <$$ Paginator %apps $$>
       <#$$ SearchHash $$#>
       <??? function( ctx ) {
 	     var pc = $.yote.fetch_root().count( '_purged_apps' );
