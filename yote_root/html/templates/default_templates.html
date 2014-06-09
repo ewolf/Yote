@@ -202,7 +202,7 @@
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
  <??? function( ctx ) { 
-     var collection = ctx.args[ 0 ];
+     var collection = ctx.parse( ctx.args[ 0 ] );
      if( collection.can_rewind() || collection.can_fast_forward() ) {
 	 return '<$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
       '<$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 

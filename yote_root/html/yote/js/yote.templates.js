@@ -552,7 +552,7 @@ $.yote.templates = {
 		if( i > 0 && typeof nextval === 'undefined' ) return undefined;
 		subj = nextval;
 	    }
-	    if( ! subj ) return value;
+	    if( typeof subj === 'undefined' ) return value;
 	}
 	return subj;
     }, //_parse_val
@@ -579,7 +579,7 @@ $.yote.templates = {
 	    }
 	    else {
 		var args = $.yote.templates._parse_args( rest );
-		var val = $.yote.templates._parse_val( args[ 0 ], context );
+		var val = context.parse( args[ 0 ] );
 		context.set( varname, val );
 	    }
 	}
