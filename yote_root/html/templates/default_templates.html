@@ -1,3 +1,29 @@
+<style> .editing { background-color: lightyellow; border: solid 2px black; padding-right: 10px; min-width:100px; } 
+    .edit_allowed { padding-right: 10px; }
+</style>
+
+<script type="text/template" class="yote_template_definition" template_name="checkbox">
+    <??? function( ctx ) { 
+	   if( ctx.args.length > 1 ) { 
+	       var obj = ctx.args[ 0 ];
+	       ctx.set( 'object', obj );
+	       var fld = ctx.args[ 1 ];
+	       var lbl = ctx.args[ 2 ] || '';
+	       ctx.set( 'field', fld );
+               return '<label for="<?? function(c){return c.controls.checkbox.substring(1);}??>"><$$$ control checkbox <input type="checkbox" ' + ( 1*obj.get( fld ) > 0 ? ' checked ' : '' ) + '>$$$>' + lbl + '<label>';
+	   } else {
+	       console.log( "error in template 'checkbox' : not enough arguments." );
+	       return '';
+	   }
+	return '';
+    } ???> 
+    <? function( ctx ) {
+	$( ctx.controls.checkbox ).click( function() {
+	    ctx.get( 'object').set( ctx.get('field' ), $( this ).is( ':checked' ) ? 1 : 0 );
+	    $.yote.templates.refresh();
+	} );
+    } ?>
+</script>
 
 <script type="text/template" class="yote_template_definition" template_name="CreateLogin">
    <$$$ control messages <span></span> $$$><BR>
@@ -35,35 +61,38 @@
    ?>
 </script>
 
+
 <script type="text/template" class="yote_template_definition" template_name="edit">
     <# edit takes an object and a field to edit and builds a way to edit this #>
-    <style> .editing { background-color: lightyellow; } 
-            .edit_allowed { min-width: 100px }
-    </style>
     <??? function( ctx ) { 
 	   if( ctx.args.length > 1 ) { 
 	       ctx.set( 'object', ctx.args[ 0 ] );
 	       var fld = ctx.args[ 1 ];
 	       ctx.set( 'field', fld );
-               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ get object.' + fld + ' $>x</span><$$$ control edit_span <span style="display:none">$$$><$$$ control editarea <textarea>$$$><$ get object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ get object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$><$ get object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
 	   } else {
-	       console.log( 'error in edit template. not enough arguments.' );
+	       console.log( "error in template 'edit' : not enough arguments." );
 	       return '';
 	   }
 	return '';
     } ???> 
     <? function( ctx ) {
-console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
-	$( ctx.controls.noedit_span ).mouseleave( function() { 
-	    console.log( "OUT" );
+
+	$( ctx.controls.input_div ).mouseleave( function() { 
 	    $( ctx.controls.noedit_span ).removeClass( 'editing' );
 	} ).mouseenter( function() { 
-	    console.log( "IN" );
-	    $( ctx.controls.noedit_span ).addClass( 'editing' );	
-	} ).click( function() {
+	    $( ctx.controls.noedit_span ).addClass( 'editing' );
+	} );
+
+	if( $( ctx.controls.noedit_span ).width() > 100 ) {
+	    $( ctx.controls.noedit_span ).width( 100 );
+	}
+	
+	$( ctx.controls.noedit_span ).click( function() { 
 	    $( this ).hide();
 	    $( ctx.controls.edit_span ).show();
 	} );
+
 	$( ctx.controls.cancel_button ).click( function() {
 	    $( ctx.controls.edit_span ).hide();
 	    $( ctx.controls.noedit_span ).show();
@@ -73,6 +102,45 @@ console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
 	    $.yote.templates.refresh();
 	} );
     } ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="list_remove_button">
+    <??? function( ctx ) { 
+	var collection_to_remove_from = ctx.args[ 0 ] || ctx.get( '__' );
+	ctx.set( 'collection_to_remove_from', collection_to_remove_from );
+	
+	var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
+	ctx.set( 'remove_key', key_to_remove );
+	
+	var lbl = ctx.args[ 2 ] || 'Remove';
+        return '<$$$ control remove_button <button type="button">$$$>' + lbl + '</button>';
+    } ???> 
+    <? function( ctx ) {
+	$( ctx.controls.remove_button ).click( function() {
+	    ctx.get( 'collection_to_remove_from' ).remove( ctx.get( 'remove_key' ) );
+	    $.yote.templates.refresh();
+	} );
+     } ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="list_remove_ask">
+    <??? function( ctx ) { 
+	var collection_to_remove_from = ctx.args[ 0 ] || ctx.get( '__' );
+	ctx.set( 'collection_to_remove_from', collection_to_remove_from );
+	var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
+	ctx.set( 'remove_key', key_to_remove );
+	
+	var lbl = ctx.args[ 2 ] || 'Remove';
+        return '<$$$ control remove_button <button type="button">$$$>' + lbl + '</button>';
+    } ???> 
+    <? function( ctx ) {
+	$( ctx.controls.remove_button ).click( function() {
+	    if( confirm( "Are you sure you want to delete this?" ) ) {
+		ctx.get( 'collection_to_remove_from' ).remove( ctx.get( 'remove_key' ) );
+		$.yote.templates.refresh();
+	    }
+	} );
+     } ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_in">
@@ -93,8 +161,8 @@ console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
    <$$$ control password <input placeholder="password" type="password"> $$$>
    <$$$ control login <button type="BUTTON">Log In</button> $$$>
      <BR>
-   <$$$ control forgot <a href="#">>Log In</a> $$$>
-   <$$$ control create <a href="#">>Create Account</a> $$$>
+   <$$$ control forgot <a href="#">Log In</a> $$$>
+   <$$$ control create <a href="#">Create Account</a> $$$>
    <? function(ctx) {
        $.yote.util.button_actions({
 	   button :  ctx.controls.login,
@@ -128,16 +196,64 @@ console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_out">
-    <??? function( ctx ) { return ctx.scratch.forgot_login ? 'RecoverPassword' : ctx.scratch.create_login ? 'CreateLogin' : 'Login'; } ???>
+    <??? function( ctx ) { return '<$$' + ( ctx.scratch.forgot_login ? 'RecoverPassword' : ctx.scratch.create_login ? 'CreateLogin' : 'Login' ) + '$$>'; } ???>
 </script>
 
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
+ <??? function( ctx ) { 
+     var collection = ctx.args[ 0 ];
+     if( collection.can_rewind() || collection.can_fast_forward() ) {
+	 return '
  <$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
  <$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
  <$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
  <$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
- <? init_paginator ?>
+';
+     }
+      } ???>
+ <? function( ctx ) {
+        if( ctx.args.length < 1 ) return;
+
+	var collection = ctx.args[ 0 ];
+	if( ! collection.can_rewind ) { //test if it has that function
+	    console.log( 'warning : init_paginator called for something not a list or hash' );
+	    return;
+	}
+	var pag_begin_button_id    = ctx.controls.paginate_to_beginning_button,
+             pag_back_button_id    =  ctx.controls.paginate_back_button,
+	     pag_forward_button_id =  ctx.controls.paginate_forward_button,
+             pag_end_button_id     =  ctx.controls.paginate_to_end_button;
+
+	if( collection.can_rewind() ) {
+	    $( pag_begin_button_id ).attr( 'disabled', false );
+	    $(  pag_back_button_id ).attr( 'disabled', false );
+	    $(  pag_begin_button_id ).click( function() { collection.first(); 	
+							  $.yote.reinit();
+							  $.yote.templates.refresh(); } );
+	    $(  pag_back_button_id ).click( function() { collection.back(); 
+							 $.yote.reinit();
+							 $.yote.templates.refresh(); } );
+	} else {
+	    $(  pag_begin_button_id ).attr( 'disabled', true );
+	    $(  pag_back_button_id ).attr( 'disabled', true );
+	}
+	if( collection.can_fast_forward() ) {
+	    $(  pag_forward_button_id ).attr( 'disabled', false );
+	    $(  pag_end_button_id ).attr( 'disabled', false );
+	    $(  pag_forward_button_id ).click( function() {
+		collection.forwards();
+		$.yote.reinit();
+		$.yote.templates.refresh();
+	    } );
+	    $(  pag_end_button_id ).click( function() { collection.last(); 
+							$.yote.reinit();
+							$.yote.templates.refresh(); } );
+	} else {
+	    $(  pag_forward_button_id ).attr( 'disabled', true );
+	    $(  pag_end_button_id ).attr( 'disabled', true );
+	}
+   } ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="RecoverPassword">
@@ -192,7 +308,7 @@ console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">
-    <??? function( ctx ) { ctx.scratch.requires_admin = true; } ???>
+    <??? function( ctx ) { ctx.scratch.requires_admin = true; return '';} ???>
     <div class="header" id="header_div">
      <a href="/index.html" style="display:block">
       <img height="70px" width="151px" src="<$ get _app_.logo /yotelogo.png $>">

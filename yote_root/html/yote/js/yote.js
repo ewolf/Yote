@@ -221,6 +221,7 @@ $.yote = {
 			//dirty objects that may need a refresh
 			if( typeof data.d === 'object' ) {
 			    for( var oid in data.d ) {
+				delete $.yote.wrap_cache[ oid ];
 				if( root._is_in_cache( oid ) ) {
 				    var cached = root.objs[ oid + '' ];
 				    for( fld in cached._d ) {
@@ -507,16 +508,17 @@ $.yote = {
 		return ret;
 	    },
 	    is_number_sort : args.is_number_sort,
+	    remove : function( idx ) { return delete this.list[ idx ]; },
 	    set_hashkey_search_criteria:function( hashkey_search ) {},
 	    set_search_criteria:function( hashkey_search ) {},
-	    get:function( idx ) { return args.list[ idx ] },
+	    get:function( idx ) { return this.list[ idx ] },
 	    seek:function( topos ) { this.start = topos; },
-	    forwards:function( ) {},
+	    forwards:function( ) { this.start += this.page_size_limit; if( this.start >= this.full_size() ) this.start = this.full_size() - 1; },
 	    can_rewind:function( ) { return this.start > 0; },
-	    can_fast_forward:function( ) {},
-	    back:function( ) {},
+	    can_fast_forward:function( ) { return this.start + this.page_size_limit < this.full_size(); },
+	    back:function( ) { this.start -= this.page_size_limit; if( this.start < 0 ) this.start = 0; },
 	    first:function( ) { this.start = 0; },
-	    last:function( ) {},
+	    last:function( ) { this.start = this.full_size() - page_size_limit; },
 	    search_values : args.search_value || [],
 	    search_fields : args.search_field || [],
 	    sort_fields   : args.sort_fields  || [],
@@ -619,7 +621,7 @@ $.yote = {
 		wrap:function( args ) {
 		    var ctx = args.context;
 		    var host_obj = this;
-		    var fld = ctx.collection_name;
+		    var fld = args.collection_name;
 
 		    var cache_key = host_obj.id;
 
@@ -664,7 +666,7 @@ $.yote = {
 			host_obj           : host_obj,
 			field              : fld,
 			start              : ctx.start || 0,
-			page_size     : 1*args.size,
+			page_size_limit     : 1*args.size,
 			search_values : ctx.search_value || [],
 			search_fields : ctx.search_field || [],
 			sort_fields   : ctx.sort_fields  || [],
@@ -696,7 +698,7 @@ $.yote = {
 				} );
 				var res = me.host_obj.paginate( {
 				    name  : me.field,
-				    limit : me.page_size,
+				    limit : me.page_size_limit,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -743,13 +745,13 @@ $.yote = {
 					    }
 					    if( match ) {
 						me.length++;
-						if( i >= me.start && ret.length < me.page_size )
+						if( i >= me.start && ret.length < me.page_size_limit )
 						    ret.push( olist[i] );
 					    }
 					}
 				    }
 				    else {
-					if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
+					if( i >= me.start && ( me.page_size_limit==0 || ret.length < me.page_size_limit) ) {
 					    me.length++;
 					    ret.push( olist[i] );
 					}
@@ -769,7 +771,7 @@ $.yote = {
 				} );
 				var res = me.host_obj.paginate( {
 				    name  : me.field,
-				    limit : me.page_size,
+				    limit : me.page_size_limit,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -790,7 +792,7 @@ $.yote = {
 				if( me.sort_reverse ) hkeys.reverse();
 
 				me.length = 0;
-				for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
+				for( var i=0; i < hkeys.length && me.length < me.page_size_limit; i++ ) {
 				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
 					if( me.search_fields && me.search_fields.length > 0 ) {
 					    var match = false;
@@ -801,7 +803,7 @@ $.yote = {
 					    }
 					    if( match ) {
 						var k = hkeys[ i ];
-						if( i >= me.start && me.length < me.page_size &&
+						if( i >= me.start && me.length < me.page_size_limit &&
 						    ( ! me.hashkey_search_value ||
 						      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
 						{
@@ -812,7 +814,7 @@ $.yote = {
 					}
 				    }
 				    else {
-					if( i >= me.start && me.length < me.page_size ) {
+					if( i >= me.start && me.length < me.page_size_limit ) {
 					    var k = hkeys[ i ];
 					    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
 						ret[ k ] = ohash[ k ];
@@ -860,9 +862,14 @@ $.yote = {
 			    return this.collection_obj.get( this.start + idx );
 			}, //get
 			remove : function ( idx ) {
-			    if( this.is_hash )
-				return this.host_obj.delete_key( { name : this.field, index : idx } );
-			    return this.host_obj.list_delete( { name : this.field, index : idx + this.start } );
+			    var ret = this.is_hash ? 
+				this.host_obj.delete_key( { name : this.field, index : idx } ) :
+			    this.host_obj.list_delete( { name : this.field, index : idx + this.start } );
+			    
+			    var fs = this.full_size();
+			    if( this.start >= fs )
+				this.start = fs - 1;
+			    return ret;
 			}, //remove
 			seek:function(topos) {
 			    this.start = topos;
@@ -870,28 +877,25 @@ $.yote = {
 			back_one:function() {
 			    this.start--;
 			},
-			forwards_one:function() {
-			    this.start++;
-			},
 			forwards:function(){
-			    var towards = this.start + this.page_size;
+			    var towards = this.start + this.page_size_limit;
 			    this.start = towards > this.full_size() ? (this.length-1) : towards;
 			},
 			can_rewind : function() {
 			    return this.start > 0;
 			},
 			can_fast_forward : function() {
-			    return this.start + this.page_size < this.full_size();
+			    return this.start + this.page_size_limit < this.full_size();
 			},
 			back:function(){
-			    var towards = this.start - (this.page_size);
+			    var towards = this.start - (this.page_size_limit);
  			    this.start = towards < 0 ? 0 : towards;
 			},
 			first:function(){
 			    this.start = 0;
 			},
 			last:function(){
-			    this.start = this.full_size() - this.page_size;
+			    this.start = this.full_size() - this.page_size_limit;
 			}
 		    };
 		    $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] = ret;
@@ -904,7 +908,7 @@ $.yote = {
 		    var pag = {
 			field      : fieldname,
 			full_size  : 1 * obj.count( fieldname ),
-			page_size  : size,
+			page_size_limit  : size,
 			start      : st,
 			contents   : [],
 			is_hash    : is_hash,
@@ -920,10 +924,10 @@ $.yote = {
 			},
 			seek : function( idx ) {
 			    if( this.is_hash ) {
-				this.contents = obj.paginate( { name : this.field, limit : this.page_size, skip : idx, return_hash : true } ).to_hash();
+				this.contents = obj.paginate( { name : this.field, limit : this.page_size_limit, skip : idx, return_hash : true } ).to_hash();
 			    }
 			    else {
-				var res = obj.paginate( { name : this.field, limit : this.page_size, skip : idx } );
+				var res = obj.paginate( { name : this.field, limit : this.page_size_limit, skip : idx } );
 				this.contents = [];
 				for( var i=0; i < res.length(); i++ ) {
 				    this.contents.push( res.get( i ) );
@@ -936,22 +940,22 @@ $.yote = {
 			},
 			rewind : function() {
 			    if( this.start > 0 ) {
-				var to = this.start - this.page_size;
+				var to = this.start - this.page_size_limit;
 				if( to < 0 ) { to = 0 };
 				this.seek( to );
 			    }
 			},
 			can_fast_forward : function() {
-			    return this.start + this.page_size < this.full_size;
+			    return this.start + this.page_size_limit < this.full_size;
 			},
 			fast_forward : function() {
-			    var to = this.start + this.page_size;
+			    var to = this.start + this.page_size_limit;
 			    if( to < this.full_size ) {
 				this.seek( to );
 			    }
 			},
 			end: function() {
-			    this.seek( this.full_size - this.page_size );
+			    this.seek( this.full_size - this.page_size_limit );
 			},
 			to_beginning : function() {
 			    this.seek( 0 );

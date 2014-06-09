@@ -79,20 +79,20 @@ $.yote.templates = {
 	    vars : {},
 	    controls : {},
 	    args : [], // args passed in to the template as it was built
-	    scratch : $.yote.templates.context_scratch,
-	    get: function( key ) { return this.vars[ key ]; },
+	    scratch : $.yote.templates._context_scratch,
+	    get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
 	    set: function( key, val ) { this.vars[ key ] = val; },
 	    clone : function() {
 		var clone = {
 		    vars     : Object.clone( this.vars ),
 		    controls : Object.clone( this.controls ),
 		    args     : Object.clone( this.args ),
-		    hashkey  : this.hashkey,
-		    index    : this.index
+		    hashkey_or_index  : this.hashkey_or_index,
 		}; //TODO : add hash key and index
 		clone.clone = this.clone;
 		clone.set = this.set;
 		clone.get = this.get;
+		clone.scratch = $.yote.templates._context_scratch;
 		return clone;
 	    } //clone
 	};
@@ -262,7 +262,7 @@ $.yote.templates = {
 		var cparts = part.split( /[@%]/ );
 		if( cparts.length == 2 && cparts[ 1 ].length > 0 ) {
 		    subj = subj.get( cparts[ 0 ] );
-		    if( ! subj ) return subj;
+		    if( ! subj ) return undefined;
 		    return subj.wrap( {
 			context : context,
 			collection_name :  cparts[ 1 ],
@@ -297,7 +297,7 @@ $.yote.templates = {
 	    else {
 		subj = subj.get( part );
 	    }
-	    if( ! subj ) return subj;
+	    if( ! subj ) return undefined;
 	}
 	return subj;
     }, //_parse_val
@@ -355,29 +355,37 @@ $.yote.templates = {
 		console.log( 'Error : no subject found for <@ @> or <% %> in path "' + context.template_path );
 		return '';
 	    }
-	    subj.page_size_limit = parts[ 3 ];
+	    subj.page_size_limit = 1*parts[ 3 ] || subj.page_size_limit;
+	    
+	    var old_key  = context.hashkey_or_index;
+	    var old_def = context.get( '_' );
+	    var old_parent = context.get( '__' );
+	    var ret;
 	    if( is_list ) {
-		var old_idx = context.index;
-		var ret = subj.to_list().map(function(it,idx){
+		ret = subj.to_list().map(function(it,idx){
 		    var args = parts[ 4 ] ? parts[ 4 ].split( /\s+/ ) : [];
-		    context.index = idx;
+		    context.hashkey_or_index = idx;
 		    context.set( '_', it );
+		    context.set( '__', subj );
 		    return $.yote.templates.fill_template( templ, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) );
 		} ).join('');
-		context.index = old_idx;
-		return ret;
 	    }
-            var hash = subj.to_hash();
-            var keys = Object.keys( hash );
-            keys.sort(); // TODO : a real sort here
-	    var old_hash = context.hashkey;
-            ret = keys.map(function(key,idx,h){
-		var args = parts[ 4 ] ? parts[ 4 ].split( /\s+/ ) : [];
-		context.hashkey = key;
-		context.set( '_', hash[ key ] );
-		return $.yote.templates.fill_template( templ, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) );
-            } ).join('');
-	    context.hashkey = old_hash;
+	    else {
+		var hash = subj.to_hash();
+		var keys = Object.keys( hash );
+		keys.sort(); // TODO : a real sort here
+		ret = keys.map(function(key,idx,h){
+		    var args = parts[ 4 ] ? parts[ 4 ].split( /\s+/ ) : [];
+		    context.hashkey_or_index = key;
+		    context.set( '_', hash[ key ] );
+		    context.set( '__', subj );
+		    return $.yote.templates.fill_template( templ, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) );
+		} ).join('');
+	    }
+	    context.hashkey_or_index = old_key;
+	    context.set( '_', old_def );
+	    context.set( '__', old_parent );
+
 	    return ret;
 	}
 	if( is_list )
@@ -394,10 +402,8 @@ $.yote.templates = {
 	    if( cmd == 'get' ) {
 		var res = $.yote.templates._parse_val( args[ 3 ], context );
 		return typeof res === 'undefined' ? args[ 4 ] : res;
-	    } else if( cmd == 'index' ) {
-		return context.index;
-	    } else if( cmd == 'hashkey' ) {
-		return context.hashkey;
+	    } else if( cmd == 'index' || cmd == 'hashkey' ) {
+		return context.hashkey_or_index;
 	    }	    
 	}
 	console.log( '<$ ' + arg_string + ' $> not understand for ' + context.template_path );

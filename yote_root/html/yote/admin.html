@@ -10,8 +10,7 @@
     <script src="/yote/js/json2.js"></script>
     <script src="/yote/js/yote.js"></script>
     <script src="/yote/js/yote.util.js"></script>
-
-    <script src="/templates/default_templates.js"></script>
+    <script src="/yote/js/yote.templates.js"></script>
 
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
@@ -84,9 +83,11 @@ if we are our experiences then we are both sides of them.
 	  }
 
       $().ready(function(){
-	  $.yote.include_templates( '/templates/default_templates.html' );
-	  $.yote.util.register_functions( base_templates );
-
+	  $.yote.templates.import_templates( '/templates/default_templates.html' );
+	  $.yote.init(  );
+	  $.yote.templates.init();
+	  $.yote.templates.refresh();
+if( 0 ) {	  
 	  $( '#mainpanel' ).hide();
 	  $.yote.debug = true;
 	  $.yote.init();
@@ -108,30 +109,9 @@ if we are our experiences then we are both sides of them.
 		  $.yote.debug = false;
 		  $.yote.util.refresh_ui();
 	      },
-	      setup_attached : function( args ) {
-		  $.yote.util.button_actions( 
-		      {
-			  button : '#' + args[ 'controls' ][ 'add_attached_b' ],
-			  texts  : [ '#' + args[ 'controls' ][ 'field' ] ],
-			  action : function() {
-			      var k  = $( '#' + args[ 'controls' ][ 'field' ] ).val();
-			      var ot = $( '#' + args[ 'controls' ][ 'objtype' ] ).val();
-			      var o = ot == 1 ? $.yote.fetch_root().new_obj() :
-				  ot == 2 ? $.yote.fetch_root().new_user_obj() :
-				  ot == 3 ? $.yote.fetch_root().new_root_obj() : null;
-			      if( o ) {
-				  args[ 'default_var' ].set( k, o );
-				  args[ 'default_var' ].hash( {  name  : '_attached_objects',
-								 key   : k,
-								 value : o } );
-				  $.yote.util.refresh_ui();
-			      }
-			  } //action
-		      } );
-	      }, //setup_attached
 	      RemovedUsers : function( args ) {
 		  var pu = args[ 'default_var' ].count( '_removed_logins' );
-		  return pu + ' user logins that have been removed <$$$ var uc ' + pu
+		  return pu + ' user logins that have been removed <$$$ set uc ' + pu
 		      + ' $$$> <$ button purge_users Flush all removed users $>';
 	      }, //RemovedUsers
 	      purge_users : function( args ) {
@@ -176,8 +156,7 @@ if we are our experiences then we are both sides of them.
 		  $.yote.util.unregister_item( 'root' );
 	      }
 	  } );
-
-	  $.yote.util.refresh_ui();
+}
       });
     </script>
 
@@ -224,11 +203,32 @@ if we are our experiences then we are both sides of them.
     <$$$ control field <input type="text" placeholder="field"> $$$>
       <$$$ control objtype <select> <option value="1">All May Edit</option> <option value="2">User and Root May Edit</option> <option value="3">Root May Edit</option></select> $$$>
 	<$$$ control add_attached_b <BUTTON type="BUTTON">Attach Object</BUTTON> $$$>
-	  <?? setup_attached ??>
+    <?? function( ctx ) { 
+    $.yote.util.button_actions( 
+	{
+	    button : ctx.controls.add_attached_b,
+	    texts  : [ ctx.controls.field ],
+	    action : function() {
+		var k  = $( ctx.controls.field ).val();
+		var ot = $( ctx.controls.objtype ).val();
+		var o = ot == 1 ? $.yote.fetch_root().new_obj() :
+		    ot == 2 ? $.yote.fetch_root().new_user_obj() :
+		    ot == 3 ? $.yote.fetch_root().new_root_obj() : null;
+		if( o ) {
+		    ctx.get( '_' ).set( k, o );
+		    ctx.get( '_' ).hash( {  name  : '_attached_objects',
+					    key   : k,
+					    value : o } );
+		    $.yote.templates.refresh_ui();
+		}
+	    } //action
+	} );
+    }
+    ??>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Obj_Row">
-    <$$$ var fieldname <$ hash_key $> $$$>
+    <$$$ set fieldname <$ hash_key $> $$$>
       <TR>
 	<TD><$ hash_key $></TD>
 	<TD><? ref ?></TD>
@@ -244,11 +244,11 @@ if we are our experiences then we are both sides of them.
 
   <script type="text/template" class="yote_template_definition" template_name="Email_Settings">
     <table>
-      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$ checkbox _ requires_validation $> </td> </tr>
-      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$ edit _ validation_email_from $> </td> </tr>
-      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$ edit _.validation_subject_template text $> </td> </tr>
-      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$ edit _.validation_message_template text $> </td> </tr>
-      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$ edit _.validation_link_template text $> </td> </tr>
+      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$$ checkbox _ requires_validation $$> </td> </tr>
+      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$$ edit _ validation_email_from $$> </td> </tr>
+      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$$ edit _.validation_subject_template text $$> </td> </tr>
+      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$$ edit _.validation_message_template text $$> </td> </tr>
+      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$$ edit _.validation_link_template text $$> </td> </tr>
     </table>
   </script>
 
@@ -268,7 +268,7 @@ if we are our experiences then we are both sides of them.
       <% User_Row 10 %>
     </table>
     <$$ Paginator $$>
-      <$$ SearchHash $$>
+      <#$$ SearchHash $$#>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="User_Row">
@@ -330,74 +330,73 @@ if we are our experiences then we are both sides of them.
     <div class="newapp">
       <h3>Create a new App</h3>
       App Name <$$$ control name <input type="text"> $$$><BR>
-	App Class <$$$ control appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
-	  <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
-	    <? function( arg ) {
-		$.yote.util.button_actions( {
-		    button :   arg.controls.new_app_b,
-		    texts  : [ arg.controls.name,
-		    action : function() {
-			var newapp = arg[ 'default_var' ].register_app(
-			    { name    : $( arg.controls.name ).val(),
-			      'class' : $( arg.controls.appclass ).val() },
-			    function() { $.yote.util.refresh_ui() },
-			    function(err) { msg( arg, err ); }
-			);
-		    }
-		} );
-	    }  ?>
+      App Class <$$$ control appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
+      <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
     </div>
+    <? function( ctx ) {
+	$.yote.util.button_actions( {
+	    button :   ctx.controls.new_app_b,
+	    texts  : [ ctx.controls.name ],
+	    action : function() {
+		var newapp = arg.get( 'root' ).register_app(
+		    { 'name'    : $( arg.controls.name ).val(),
+		      'class' : $( arg.controls.appclass ).val() 
+		    },
+		    function() { $.yote.util.refresh_ui() },
+		    function(err) { msg( arg, err ); }
+		);
+	    } 
+	} );
+   } ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="App_Row">
-    <tr>   <td><$ hash_key $></td>     <td><$ edit _ host_name $></td>   <td><$ edit _ host_u2rl $></td>
-      <td><?? function(args) { return args.default_var.count('_account_roots'); } ??> </td>   
+    <tr>   <td><$ hashkey $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
+      <td><?? function(ctx) { return ctx.get( '_' ).count('_account_roots'); } ??> </td>   
       <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
-      <td><$$$ controls reset_b <button type="button">Reset</button>$$$></td>
+      <td><$$$ control reset_b <button type="button">Reset</button>$$$></td>
     </tr>
     <?
        function( ctx ) {
 	   $( ctx.controls.reset_b ).click( function() {
-	       root.purge_app( args.default_var );
-	       $.yote.util.refresh_ui();
-	   } );
+	       if( confirm( 'really purge app ' + ctx.hashkey ) ) {
+		   ctx.get( 'root' ).purge_app( ctx.get( '_' ) );
+		   $.yote.templates.refresh();
+	       }
+	   } )
        }
     ?>
   </script>
 
 
-  <script type="text/template" class="yote_template_definition" template_name="App_Table">
-    <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
-        <th>Number of Users</th>   <th>Email Settings</th> 
-        <th>Attached Objects</th>  <th>Reset</th>
-      </tr>
-      <% App_Row 2 %>
-    </table>
-    <$$ Paginator $$>
-    <BR>
-    <$$ SearchHash $$>
-  </script>
-
   <script type="text/template" class="yote_template_definition" template_name="Apps">
     <A NAME="App">
       <H3>Applications Installed</H3>
-      <$% App_Table _ _apps Empty %$>
-      <??? function( args ) {
-	     var pc = args.default_var.count( '_purged_apps' );
+      <$$$ set root function( ctx ) { return $.yote.fetch_root(); } $$$>
+      <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
+           <th>Number of Users</th>   <th>Email Settings</th> 
+           <th>Attached Objects</th>  <th>Reset</th>
+         </tr>
+
+      <% App_Row root%_apps 5 %>
+      </table>
+      <#$$ Paginator root._apps $$#>
+      <#$$ SearchHash $$#>
+      <??? function( ctx ) {
+	     var pc = $.yote.fetch_root().count( '_purged_apps' );
 	     if( pc > 0 ) {
 		 return pc + ' apps thate have been purged <$$$ control purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
 	     } 
 	     return '';
            } ???>
       <$$ NewApp $$>
-      <? function(args) {
-	  $( args.controls.purge_apps ).click(function(){
-	      args.default_var.flush_purged_apps(undefined,
-						 function(){ 
-						     msg( args, 'flushed purged apps' ) },
-						 function(err){ 
-						     msg( args, err ) } );
-           } );
+      <? function(ctx) {
+	  $( ctx.controls.purge_apps ).click(function(){
+	      ctx.get( 'root' ).flush_purged_apps(undefined,
+						  function(){ ctx.controls.message.empty().append( 'flushed purged apps' ) },
+						  function(err){ ctx.controls.message.empty().append( err ) }
+						 ); 
+          } );
          } ?>
   </script>
 
@@ -411,16 +410,11 @@ if we are our experiences then we are both sides of them.
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="MainAdmin">
-    <$$$ control messages <span class="message"></span> $$$>
-    <$$ Apps $$>
-    <$$ Cron $$>
-    <$$ Users $$>
-    <A HREF="#Top">Back to Top</A>
   </script>
 
 
   <script type="text/template" class="yote_template_definition" template_name="AdminBody">
-    <DIV class="mainpanel" id="mainpanel">
+    <DIV class="mainpanel">
       <SECTION>
 	<DIV class="page-header">
 	  <H1>Yote Admin Page (YAP)</H1>
@@ -431,15 +425,19 @@ if we are our experiences then we are both sides of them.
 	</P>
       </SECTION>
       <hr>
-      <$$ MainAdmin $$>
-    </DIV>
+       <$$$ control messages <span class="message"></span> $$$>
+       <$$ Apps $$>
+       <#$$ Cron $$#>
+       <#$$ Users $$#>
+      <A HREF="#Top">Back to Top</A>
+     </DIV>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="MainBody">
     <?? function( arg ) {
          return $.yote.is_root() ?
-	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>' :
-	    '<$$ AdminBody $$>';
+	    '<$$ AdminBody $$>' :
+	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>';
         } 
     ??>
   </script>
@@ -449,6 +447,6 @@ if we are our experiences then we are both sides of them.
   <BODY>
     <DIV class="yote_template" template="YoteHeaderAdmin"></div>
     <A NAME="Top"/>
-    <DIV class="yote_template main" template="MainBody" id="mainbody" default_variable="root"></div>
+    <DIV class="yote_template main" template="MainBody"></div>
   </body>
 </html>
