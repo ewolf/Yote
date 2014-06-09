@@ -382,7 +382,7 @@ $.yote.templates = {
     }, //fill_template_direct
 
     _fill_template_text:function( template, context, template_name ) {
-
+        if( ! template ) return '';
 	// function buliding template ( highest precidence )
 	while( template.indexOf( '<???' ) > -1 ) {
 	    var parts = $.yote.templates._template_parts( template, '???', template_name );
