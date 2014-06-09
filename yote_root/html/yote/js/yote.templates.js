@@ -66,7 +66,10 @@ $.yote.templates = {
 		} else if( priority == 7 ) { //raw text
 		    compiled.push( [ idx, item, true, false ] );
 		} else if( priority == 3 || priority == 0 ) { //building functions, so process results again
-		    compiled.push( [ idx, function( ctx ) { return $.yote.templates.fill_template_direct( item( ctx ), ctx, key ) }, false, false ] );
+		    compiled.push( [ idx, function( ctx ) {
+			var ret = $.yote.templates.fill_template_direct( item( ctx ), ctx, key ); 
+			return ret;
+		    }, false, false ] );
 		} else { // build with a function that returns
 		    compiled.push( [ idx, function( ctx ) { return item( ctx ) }, false, false ] );
 		}
@@ -371,17 +374,8 @@ $.yote.templates = {
 	return res.join('');
     }, //fill_template
 
-    fill_template_direct:function( template, old_context, template_name ) {
-
+    fill_template_direct:function( template, context, template_name ) {
 	// a new context is only made when there is a template id assigned
-	var context = old_context ? old_context.clone() : $.yote.templates.new_context();
-	context.template_id = $.yote.templates._next_id();
-	if( old_context ) {
-	    context.template_path = old_context.template_path + '/' + template_name;
-	} else {
-	    context.template_path = '/' + template_name;
-	}
-
 	return $.yote.templates._fill_template_text( template, context, template_name );
     }, //fill_template_direct
 
@@ -586,7 +580,8 @@ $.yote.templates = {
 	    }
 	    else {
 		var args = $.yote.templates._parse_args( rest );
-		context.set( varname, $.yote.templates._parse_val( args[ 0 ], context ) );
+		var val = $.yote.templates._parse_val( args[ 0 ], context );
+		context.set( varname, val );
 	    }
 	}
 	else if( cmd == 'control' ) {
