@@ -169,27 +169,31 @@ sub clear_old_tokens {
     my $count;
     for my $ip (keys %$tok_store) {
         my $hash = $tok_store->{ $ip };
-        for my $tok ( keys %$hash ) {
-            if( $hash->{ $tok } < $time ) {
-                ++$count;
-                delete $hash->{ $tok };
-                delete $dirty_containers->{ $tok };
-                delete $registered_containers->{ $tok };
-                my $todel = $recip2obj->{ $tok };
-                if( $todel ) {
-                    for my $obj_id (grep { $obj2recip->{ $_ } } keys %$todel) {
-                        delete $obj2recip->{ $obj_id }{ $tok };
-                        if( scalar( keys %{ $obj2recip->{ $obj_id } } ) == 0 ) {
-                            delete $obj2recip->{ $obj_id };
-                        }
-                    }
-                }
-                delete $recip2obj->{ $tok };
-            }
-        }
-        if( scalar( keys %$hash ) == 0 ) {
-            delete $tok_store->{ $ip };
-        }
+	unless( ref $hash ) {
+	    delete $tok_store->{ $ip };
+	} else {
+	    for my $tok ( keys %$hash ) {
+		if( $hash->{ $tok } < $time ) {
+		    ++$count;
+		    delete $hash->{ $tok };
+		    delete $dirty_containers->{ $tok };
+		    delete $registered_containers->{ $tok };
+		    my $todel = $recip2obj->{ $tok };
+		    if( $todel ) {
+			for my $obj_id (grep { $obj2recip->{ $_ } } keys %$todel) {
+			    delete $obj2recip->{ $obj_id }{ $tok };
+			    if( scalar( keys %{ $obj2recip->{ $obj_id } } ) == 0 ) {
+				delete $obj2recip->{ $obj_id };
+			    }
+			}
+		    }
+		    delete $recip2obj->{ $tok };
+		}
+	    }
+	    if( scalar( keys %$hash ) == 0 ) {
+		delete $tok_store->{ $ip };
+	    }
+	}
     }
     return $count;
 } #clear_old_tokens
@@ -201,7 +205,7 @@ sub guest_token {
     my( $self, $ip ) = @_;
     my $token = 'gtok' . int( rand 9 x 10 );
     my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
-    $tok_store->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
+    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
     Yote::ObjManager::clear_login( undef, $token );
 
     return $token;
@@ -297,32 +301,31 @@ sub new_user_obj {
 # and can only be used by the superuser.
 #
 sub purge_app {
-    my( $self, $app_or_name, $account ) = @_;
+    my( $self, $app_or_name, $acct ) = @_;
     die "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
 
-	my $apps = $self->get__apps();
-	my $app;
-	if( ref( $app_or_name ) ) {
-	    $app = $app_or_name;
-	    my $aname = $app->get__key();
-	    if( $aname ) {
-		delete $apps->{ $aname };
-	    }
-	    else {
-		for my $key (keys %$apps) {
-		    if( $app->_is( $apps->{ $key } ) ) {
-			delete $apps->{ $key };
-			last;
-		    }
+    my $apps = $self->get__apps();
+    my $app;
+    if( ref( $app_or_name ) ) {
+	$app = $app_or_name;
+	my $aname = $app->get__key();
+	if( $aname ) {
+	    delete $apps->{ $aname };
+	}
+	else {
+	    for my $key (keys %$apps) {
+		if( $app->_is( $apps->{ $key } ) ) {
+		    delete $apps->{ $key };
+		    last;
 		}
 	    }
 	}
-	else {
-	    $app = delete $apps->{ $app_or_name };
-	}
-	$self->add_to__purged_apps( $app );
-	return "Purged " . (ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name );
     }
+    else {
+	$app = delete $apps->{ $app_or_name };
+    }
+    $self->add_to__purged_apps( $app );
+    return "Purged " . (ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name );
 } #purge_app
 
 sub register_app {

@@ -93,7 +93,7 @@
          $.yote.init();
          $.yote.logout();
          $.yote.reinit();
-         $.yote.debug = true;
+         $.yote.debug = false;
 
  	 try {
             //fetch app that doesn't require login and get scalar
@@ -272,14 +272,14 @@
  	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
  	    // testing pagination
- 	    var pag = hello_app.wrap_list( { context : { wrap_key : 'key', collection_name : 'foo_array' } }, 5 );
- 	    
+ 	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : 'foo_array' }, 5 );
+ 	    $.yote.debug = true;
  	    var pag_list = pag.to_list();
 
  	    is( pag.full_size(), 26, "26 letters of the alphabet" );
  	    is( pag.get( 0 ), "A", "first letter" );
  	    is( pag_list[ 0 ], "A", "first letter output list" );
- 	    is( pag.page_size, 5, "Size of 5" );
+ 	    is( pag.page_size_limit, 5, "Size of 5" );
  	    is( pag_list.length, 5, "output list has 5" );
  	    is( pag.get( 4 ), "E", "fifth letter" );
  	    is( pag_list[ 4 ], "E", "fifth letter output list" );
@@ -313,7 +313,7 @@
  	    var bar_hash = hello_app.get_bar_hash().to_hash();
  	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
  	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size, 10, "Page Size of 10" );
+ 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
  	    is( hpag.page_count(), 10, "10 in buffer" );
 
  	    //go through them all and see if there is a-z but no more than that.
@@ -333,12 +333,12 @@
  	    is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
  	    ok( pag_ok, "all letters are present and there are no extra ones" );
 
- 	    var pag = hello_app.wrap_list( { context : { wrap_key : 'key', collection_name : '_foo_array' } }, 5 );
+ 	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : '_foo_array' }, 5 );
  	    var pag_list = pag.to_list();
  	    is( pag.full_size(), 26, "26 letters of the alphabet" );
  	    is( pag.get( 0 ), "A", "first letter" );
  	    is( pag_list[ 0 ], "A", "first letter output list" );
- 	    is( pag.page_size, 5, "Size of 5" );
+ 	    is( pag.page_size_limit, 5, "Size of 5" );
  	    is( pag_list.length, 5, "output list has 5" );
  	    is( pag.get( 4 ), "E", "fifth letter" );
  	    is( pag_list[ 4 ], "E", "fifth letter output list" );
@@ -379,7 +379,7 @@
  	    var bar_hash = hello_app.get_bar_hash().to_hash();
  	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
  	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size, 10, "Page Size of 10" );
+ 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
  	    is( hpag.page_count(), 10, "10 in buffer" );
 
  	    //go through them all and see if there is a-z but no more than that.
@@ -400,7 +400,7 @@
  	    ok( pag_ok, "all letters are present and there are no extra ones" );
  	    
 
- 	    pag = hello_app.wrap_hash( { context: { collection_name : 'foo_hash' } }, 5 );
+ 	    pag = hello_app.wrap_hash( { collection_name : 'foo_hash' }, 5 );
  	    pag_hash = pag.to_hash();
  	    pag_keys = Object.keys( pag_hash );
  	    pag_keys.sort();
@@ -411,7 +411,7 @@
  	    is( pag.full_size(), 26, "26 letters of the alphabet" );
  	    is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter" );
  	    is( pag_keys[ 0 ], '0', "first index at start" );
- 	    is( pag.page_size, 5, "Size of 5" );
+ 	    is( pag.page_size_limit, 5, "Size of 5" );
  	    is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter" );
  	    pag.forwards();
  	    pag_hash = pag.to_hash();
@@ -469,7 +469,7 @@
  	    is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key" );
  	    is( pag_hash[ pag_keys[ 2 ] ], "D", "third matched 3 key" );
  	    
- 	    pag = hello_app.wrap_hash( { context: { collection_name : '_foo_hash' } }, 5 );
+ 	    pag = hello_app.wrap_hash( { collection_name : '_foo_hash' }, 5 );
  	    pag_hash = pag.to_hash();
  	    pag_keys = Object.keys( pag_hash );
  	    pag_keys.sort();
@@ -481,7 +481,7 @@
  	    is( pag.full_size(), 26, "26 letters of the alphabet" );
  	    is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter" );
  	    is( pag_keys[ 0 ], '0', "first index at start" );
- 	    is( pag.page_size, 5, "Size of 5" );
+ 	    is( pag.page_size_limit, 5, "Size of 5" );
  	    is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter" );
  	    pag.forwards();
  	    pag_hash = pag.to_hash();
@@ -546,7 +546,7 @@
  	    var bar_hash = hello_app.get_bar_hash().to_hash();
  	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
  	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size, 10, "Page Size of 10" );
+ 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
  	    is( hpag.page_count(), 10, "10 in buffer" );
  	    
  	    

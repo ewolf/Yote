@@ -36,30 +36,36 @@ $.yote = {
         token = token ? token : $.cookie('yoken');
 	$.yote.token = token || 0;
 
-	var initial_data = this.message( {
+	this.message( {
 	    async:false,
 	    cmd:'fetch_initial',
-	    data:{ t:token,a:appname }
-	    // TODO - add exception handling and throwing here
+	    data:{ t:token,a:appname },
+	    passhandler:function( initial_data ) {	    
+		if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
+		    var yote_root = initial_data.get(  'root' ); yote_root._app_id = yote_root.id;
+		    $.yote.yote_root = yote_root;
+		    $.yote.objs[ yote_root.id ] = yote_root;
+
+		    var app = initial_data.get( 'app' ) || yote_root;
+		    app._app_id = app.id;
+		    $.yote.default_app = app;
+		    $.yote.default_appname = appname;
+		    $.yote.objs[ app.id ] = app;
+
+		    $.yote.login_obj   = initial_data.get(  'login' );
+		    $.yote.acct_obj    = initial_data.get(  'account' );
+		    $.yote.guest_token = initial_data.get(  'guest_token' );
+
+		    return app;
+		}
+		else {
+		    console.log( "ERROR in init for app '" + appname + "' Load did not work" );
+		}
+	    },
+	    failhandler:function( err ) {
+		console.log( "ERROR in init for app '" + appname + "' : " + err );
+	    }
 	} );
-
-	if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
-	    var yote_root = initial_data.get(  'root' ); yote_root._app_id = yote_root.id;
-	    $.yote.yote_root = yote_root;
-	    $.yote.objs[ yote_root.id ] = yote_root;
-
-	    var app = initial_data.get( 'app' ) || yote_root;
-	    app._app_id = app.id;
-	    $.yote.default_app = app;
-	    $.yote.default_appname = appname;
-	    $.yote.objs[ app.id ] = app;
-
-	    $.yote.login_obj   = initial_data.get(  'login' );
-	    $.yote.acct_obj    = initial_data.get(  'account' );
-	    $.yote.guest_token = initial_data.get(  'guest_token' );
-
-	    return app;
-	}
     }, //init
 
     reinit:function( token ) {
@@ -208,7 +214,7 @@ $.yote = {
 	    data : encoded_data,
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
-		    console.log('incoming '); console.log( a );
+		    console.log( ['incoming ', a ] );
 		}
 		return a;
 	    },
@@ -221,8 +227,9 @@ $.yote = {
 			//dirty objects that may need a refresh
 			if( typeof data.d === 'object' ) {
 			    for( var oid in data.d ) {
-				delete $.yote.wrap_cache[ oid ];
 				if( root._is_in_cache( oid ) ) {
+				    delete $.yote.wrap_cache[ oid ];
+				    
 				    var cached = root.objs[ oid + '' ];
 				    for( fld in cached._d ) {
 					//take off old getters/setters
@@ -344,7 +351,7 @@ $.yote = {
 		try {
 		    resp = JSON.parse( contents );
 		    if( $.yote.debug == true ) {
-			console.log('incoming '); console.log( resp );
+			console.log([ 'incoming ', resp ] );
 		    }
 
                     if( typeof resp !== 'undefined' ) {
@@ -400,7 +407,10 @@ $.yote = {
 	    $.yote.wrap_cache[ args.cache_key ] = {};
 	}
 	if( $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] ) {
-	    return $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ];
+	    var wrapper = $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ];
+	    wrapper.list = args.list || [];
+	    wrapper.hash = args.hash || {};
+	    return wrapper;
 	}
 	var ret = {
 	    list : args.list,
@@ -620,7 +630,7 @@ $.yote = {
 		    return this.wrap( args );
 		},
 		wrap:function( args ) {
-		    var ctx = args.context;
+		    var ctx = args.context || {};
 		    var host_obj = this;
 		    var fld = args.collection_name;
 
@@ -652,6 +662,13 @@ $.yote = {
 			// see if the whole list can be obtained at once
 			page_out = fld.charAt( 0 ) == '_'  || ol > (ctx.threshhold || 200);
 		    }
+		    if( ! $.yote.wrap_cache[ cache_key ] ) {
+			$.yote.wrap_cache[ cache_key ] = {};
+		    }
+		    if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
+			$.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
+		    }
+
 
 		    if( ! page_out ) {
 			var collection_obj = host_obj.get( fld );

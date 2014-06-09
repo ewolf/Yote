@@ -20,7 +20,7 @@ $.yote.templates = {
 	    contentType: "text/html",
 	    dataFilter:function(a,b) {
 		if( $.yote.debug == true ) {
-		    console.log('incoming '); console.log( a );
+		    console.log( ['incoming ', a ] );
 		}
 		return a;
 	    },
@@ -131,7 +131,7 @@ $.yote.templates = {
 	    }
             
 	    catch( err ) {
-		console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
+		console.log( "Error in compiling '" + template_name + "' in function <??? " + parts[1] + " ???> : " + err);
                 A.push.apply( A, B );
 	    }
 	} // ???
@@ -157,7 +157,7 @@ $.yote.templates = {
 	    }
             
 	    catch( err ) {
-		console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
+		console.log( "Error in compiling '" + template_name + "' in function <?? " + parts[1] + " ??> : " + err);
                 A.push.apply( A, B );
 	    }
 	} // ??
@@ -275,6 +275,7 @@ $.yote.templates = {
 	    set_args : function( args ) { this.args = args; },
 	    get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
 	    parse: function( key ) { return $.yote.templates._parse_val( key, this ); },
+	    id:$.yote.templates._next_id(),
 	    get_path : function( value ) {
 		var tlist = value.trim().split(/[\.]/);
 		var subj = this;
@@ -328,6 +329,7 @@ $.yote.templates = {
 	    clone : function() {
 		var clone = {
 		    vars     : Object.clone( this.vars ),
+		    id:$.yote.templates._next_id(),
 		    controls : Object.clone( this.controls ),
 		    args     : Object.clone( this.args ),
 		    hashkey_or_index  : this.hashkey_or_index,
@@ -359,18 +361,24 @@ $.yote.templates = {
 	}
 	context.set_args( args );
 
-	var res = [];
-	for( var i=0; i < compilation.length; i++ ) {
-	    var tuple = compilation[ i ];
-	    var idx   = tuple[ 0 ];
-	    if( tuple[ 2 ] ) { // is text
-		res[ idx ] = tuple[ 1 ];
-	    } else if( tuple[ 3 ] ) { // is after render
-		$.yote.templates._after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
-		res[ idx ] = '';
-	    } else { //function
-		res[ idx ] = tuple[ 1 ]( context );
-	    }
+	try {
+
+	    var res = [];
+	    for( var i=0; i < compilation.length; i++ ) {
+		var tuple = compilation[ i ];
+		var idx   = tuple[ 0 ];
+		if( tuple[ 2 ] ) { // is text
+		    res[ idx ] = tuple[ 1 ];
+		} else if( tuple[ 3 ] ) { // is after render
+		    $.yote.templates._after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
+		    res[ idx ] = '';
+		} else { //function
+		    res[ idx ] = tuple[ 1 ]( context );
+		}
+	    } 
+	}
+	catch( err ) {
+	    console.log( "Error filling template '" + template_name + "' : " + err );
 	}
 
 	return res.join('');
@@ -600,7 +608,6 @@ $.yote.templates = {
 
     }, //_register
 
-//    fill_template_container_rows:function( args_string, context, is_list ) {
     fill_template_container_rows:function( templ, context, args, is_list ) {
 	if( args &&  args.length > 0 ) {
 	    var subj = $.yote.templates._parse_val( args[ 0 ], context );

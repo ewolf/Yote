@@ -87,76 +87,6 @@ if we are our experiences then we are both sides of them.
 	  $.yote.init(  );
 	  $.yote.templates.init();
 	  $.yote.templates.refresh();
-if( 0 ) {	  
-	  $( '#mainpanel' ).hide();
-	  $.yote.debug = true;
-	  $.yote.init();
-	  $.yote.debug = false;
-	  root = $.yote.fetch_root();
-	  $.yote.app = root;
-	  $.yote.util.register_item( 'root', root );
-	  // -------------------------------------
-
-	  $.yote.util.register_functions( {
-	      ref : function( args ) {
-		  return args[ 'default_var' ][ 'class' ];
-	      },
-	      remove_attached : function( args ) {
-		  $.yote.debug = true;
-		  var dh = args[ 'vars' ][ 'fieldname' ];
-		  args[ 'default_parent' ].set( dh, null );
-		  args[ 'default_parent' ].delete_key( { name : '_attached_objects', key : dh } );
-		  $.yote.debug = false;
-		  $.yote.util.refresh_ui();
-	      },
-	      RemovedUsers : function( args ) {
-		  var pu = args[ 'default_var' ].count( '_removed_logins' );
-		  return pu + ' user logins that have been removed <$$$ set uc ' + pu
-		      + ' $$$> <$ button purge_users Flush all removed users $>';
-	      }, //RemovedUsers
-	      purge_users : function( args ) {
-		  var noconfirm = 1*args[ 'vars' ][ 'pu' ] > 0;
-		  if( noconfirm || confirm( 'Really purge ' + args[ 'vars' ][ 'uc' ] + ' removed users?' ) ) {
-		      args[ 'default_var' ].purge_deleted_logins( '',
-							      function(retmsg){ 
-								  msg( args, retmsg ) },
-							      function(err){ 
-								  msg( args, err ) } );
-		      $.yote.util.refresh_ui();
-		  }
-	      },
-	      cron_entry_next_time : function( args ) {
-		  var entry = args[ 'default_var' ];
-		  if( ! entry ) return '';
-		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
-	      },
-	      make_root : function( is_checked, user ) {
-		  if( is_checked ) return root.make_root( user );
-		  root.remove_root( user, function(){},function(err){ alert(err)} );
-	      },
-	      root_status : function( args ) {
-		  var login = args[ 'default_var' ];
-		  if( ! login ) return '';
-		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
-	      },
-	      is_validated : function( args ) {
-		  return args[ 'default_var' ] && args[ 'default_var' ].is_validated() ? "Yes" : "No";
-	      },
-	      new_schedule:function( args ) {
-		  var id = '#' + args[ 'controls' ][ 'new_schedule_time' ];
-	      },
-	  } );
-
-	  $.yote.util.register_function( 'refresh_all', function() {
-	      if( $.yote.is_root() ) {
-		  $.yote.util.register_item( 'cron', root.cron() );
-		  $.yote.util.register_item( 'root', root );
-	      } else {
-		  $.yote.util.unregister_item( 'cron' );
-		  $.yote.util.unregister_item( 'root' );
-	      }
-	  } );
-}
       });
     </script>
 
@@ -219,7 +149,7 @@ if( 0 ) {
 		    ctx.get( '_' ).hash( {  name  : '_attached_objects',
 					    key   : k,
 					    value : o } );
-		    $.yote.templates.refresh_ui();
+		    $.yote.templates.refresh();
 		}
 	    } //action
 	} );
@@ -231,9 +161,16 @@ if( 0 ) {
     <$$$ set fieldname <$ hash_key $> $$$>
       <TR>
 	<TD><$ hash_key $></TD>
-	<TD><? ref ?></TD>
-	<TD><$ button remove_attached Remove $></TD>
+	<TD><?? function( ctx ) { return ctx.get('_').class } ??></TD>
+	<TD><$$$ control remove_attached <button type="button">Remove</button> $$$></TD>
       </TR>
+    <? function( ctx ) {
+	$.yote.debug = true;
+	var dh = args.get('fieldname');
+	ctx.get( '__' ).set( dh, null );
+	ctx.get( '__' ).delete_key( { name : '_attached_objects', key : dh } );
+	$.yote.templates.refresh();
+    } ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_ObjTab">
@@ -258,7 +195,23 @@ if( 0 ) {
     <A NAME="Users">
       <H3>Users</H3>
       <$% User_Table Empty _ _handles %$>
-	<? RemovedUsers ?>
+	<??? function( ctx ) {
+	    var pu = args.get( '_' ).count( '_removed_logins' );
+	    return pu + ' user logins that have been removed <$$$ set uc ' + pu
+		      + ' $$$> <$$$ control purge_users <button type="button">Flush all removed users</button> $$$>';
+	} ???>
+        <? function( ctx ) {
+	    var pu = ctx.get( 'pu' );
+	    var noconfirm = 1* pu  > 0;
+	    if( noconfirm || confirm( 'Really purge ' + pu + ' removed users?' ) ) {
+		ctx.get( '_' ).purge_deleted_logins( '',
+						     function(retmsg){ 
+							 msg( args, retmsg ) },
+						     function(err){ 
+							 msg( args, err ) } );
+		$.yote.templates.refresh();
+	    }
+	} ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="User_Table">
@@ -272,8 +225,22 @@ if( 0 ) {
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="User_Row">
-    <tr>   <th><$ hash_key $></th> <th><$ show _ email $></th>   <th><? root_status ?></th>
-      <th><? is_validated ?></th> </tr>
+    <tr>   <th><$ hash_key $></th> <th><$ get _.email $></th>   <th>
+             <??? function( ctx ) { 
+		 var l = args.get( '_' ); 
+		 return login ? login.is_master_root() ? 'master root' : '<$$$ control toggle <input type="checkbox"> $$$>' : ''; 
+	     } ???></th>
+    <th><?? function( ctx ) {return ctx.get('_') && ctx.get( '_' ).is_validated() ? "Yes" : "No" } ??></th> </tr>
+    <? function( ctx ) {
+	$( ctx.controls.toggle ).change( function() {
+	    if( $(this).is( ':checked' ) ) {
+		root.make_root( user, function(){}, function(err){ alert(err) } );
+	    } else {
+		root.remove_root( user, function(){},function(err){ alert(err)} )
+	    }
+	    $.yote.templates.refresh();
+	} );
+    } ?>
   </script>
 
   <!------------------------------------------->
@@ -292,13 +259,20 @@ if( 0 ) {
   <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
     <$@ Entry_Schedule_Table _ scheduled_times Empty @$>
     <$$$ control new_schedule_time <input type="datetime-local"> $$$>
-    <$ button new_schedule Schedule Time $>
+    <$$$ control new_schedule <button type="button">Schedule Time</button> $$$>
+    <? function( ctx ) {
+	$( ctx.controls.new_schedule_time );
+    } ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
     <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  
       <td> <$ edit _ notes $> </td> <td> <$ edit _ script $> </td>  
-      <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
+      <td> <?? function( ctx ) {
+		  var entry = ctx.get( '_' );
+		  if( ! entry ) return '';
+		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
+	      } ??> </td>  <td> <$$ Entry_Repeat $$> </td>
       <td> <$$ Entry_Schedule $$> </td>  <td> <$ list_remove_button _ Delete $> </td>
     </tr>
   </script>
@@ -342,7 +316,7 @@ if( 0 ) {
 		    { 'name'    : $( arg.controls.name ).val(),
 		      'class' : $( arg.controls.appclass ).val() 
 		    },
-		    function() { $.yote.util.refresh_ui() },
+		    function() { $.yote.templates.refresh() },
 		    function(err) { msg( arg, err ); }
 		);
 	    } 
@@ -379,6 +353,7 @@ if( 0 ) {
          </tr>
 
       <% App_Row root%_apps 5 %>
+
       </table>
       <#$$ Paginator root._apps $$#>
       <#$$ SearchHash $$#>
@@ -397,22 +372,22 @@ if( 0 ) {
 	  $( ctx.controls.purge_apps ).click(function(){
 	      ctx.get( 'root' ).flush_purged_apps(
                   undefined,
-		  function(){ ctx.controls.message.empty().append( 'flushed purged apps' ) },
-		  function(err){ ctx.controls.message.empty().append( err ) }
+		  function(){ $( ctx.controls.messages ).empty().append( 'flushed purged apps' ) },
+		  function(err){ $( ctx.controls.messages ).empty().append( err ) }
 	      ); 
           } );
 	  $( ctx.controls.flush_obj_cache ).click(function(){
-	      ctx.get( 'root' ).(
+	      ctx.get( 'root' ).reset_connections(
                   undefined,
-		  function(){ ctx.controls.message.empty().append( 'flushed object cache' ) },
-		  function(err){ ctx.controls.message.empty().append( err ) }
+		  function(){ $( ctx.controls.messages ).empty().append( 'flushed object cache' ) },
+		  function(err){ $( ctx.controls.messages ).empty().append( err ) }
 	      ); 
           } );
 	  $( ctx.controls.flush_old_login ).click(function(){
 	      ctx.get( 'root' ).clear_old_tokens(
                   undefined,
-		  function(){ ctx.controls.message.empty().append( 'flushed old tokens' ) },
-		  function(err){ ctx.controls.message.empty().append( err ) }
+		  function(){ $( ctx.controls.messages ).empty().append( 'flushed old tokens' ) },
+		  function(err){ $( ctx.controls.messages ).empty().append( err ) }
 	      ); 
           } );
          } ?>
