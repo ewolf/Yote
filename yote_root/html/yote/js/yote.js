@@ -1057,9 +1057,9 @@ $.yote = {
 	    };
 	    
 	    o.is = function( othero ) {
-		var k = this._get_id();
-		var ok = othero._get_id ? othero._get_id() : undefined;
-		return k !== 'undefined' && k == ok;
+		    var k = this.id;
+		    var ok = othero.id ? othero.id : undefined;
+		    return k !== 'undefined' && k == ok;
 	    }
 
 	    o._get_id = function( key ) {
