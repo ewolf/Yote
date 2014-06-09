@@ -1,6 +1,13 @@
 The stack :
 
-implement sorting for nativly wrapped list
+problem where madyote.com/se  and madyote.com/se/index.html cause images there to be / for the first and /se/ for the second.
+fix with redirect
+
+comment on tags
+
+bugs in admin page live
+
+
 
 sort fields numeric for IO classes ( SQLite is done. test for this is now done for all )
 
@@ -8,12 +15,6 @@ fetch app - check if app is already fetched
 
 _Templates_
 
- dot notation : foo.bar <--- the bar of foo
-                foo.bar|baz <----the wrapped list of baz attached to the bar of foo
-		foo.bar%zap <----the wrapped hash of baz attached to the bar of foo
-  "quotes" 	
-
-  functions defaulty like <??? return "foo" ???>  ? nah...I think the function gives it shape and makes it clear
 
 Precidence
   <# comments go here #>
