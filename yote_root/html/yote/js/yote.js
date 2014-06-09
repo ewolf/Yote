@@ -1058,7 +1058,7 @@ $.yote = {
 	    
 	    o.is = function( othero ) {
 		    var k = this.id;
-		    var ok = othero.id ? othero.id : undefined;
+		    var ok = othero ? othero.id : undefined;
 		    return k !== 'undefined' && k == ok;
 	    }
 
