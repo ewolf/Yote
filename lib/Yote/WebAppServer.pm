@@ -191,6 +191,8 @@ sub start_server {
     my( $self, @args ) = @_;
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
 
+    $0 = 'Yote Master';
+
     $self->{ args } = $args;
     $self->{ args }{ webroot } ||= $self->{ args }{ yote_root } . '/html';
     $self->{ args }{ upload }  ||= $self->{ args }{ webroot }   . '/upload';
@@ -279,6 +281,7 @@ sub start_server {
             $self->__unlock_all();
             for my $entry (@$cron_entries) {
                 threads->new( sub {
+                    $0 = 'Yote Cron';
                     $cron->_mark_done( $entry );
                     print STDERR "Starting cron thread " . threads->tid() . "\n";
                     my $script = $entry->get_script();
@@ -363,6 +366,7 @@ sub __start_server_thread {
 
     my $new_thread = threads->new(
         sub {
+            $0 = 'Yote Worker';
             Yote::ObjProvider::init( %{$self->{ init_args } } );
             print STDERR "Starting server thread " . threads->tid() . "\n";
             $SIG{PIPE} = sub { # a client disconnected before receiving a response
@@ -904,7 +908,6 @@ sub __transform_data_no_id {
 sub __unlock_all {
     my( $self  ) = @_;
     $self->unlock_objects( keys %{ $self->{LOCKED} || {} } );
-    $self->{LOCKED} = {};
 }
 
 sub minify_dir {

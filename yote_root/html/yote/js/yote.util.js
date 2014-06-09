@@ -6,6 +6,7 @@
  *
  * Version 0.027
  */
+if( ! $.yote ) { $.yote = {}; }
 $.yote.util = {
 
     // general useful utility functions go here.

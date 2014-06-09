@@ -1109,6 +1109,8 @@ $.yote = {
 		        this._stage( key, val );
 		        this._send_update( undefined, failh, passh );
 		        delete this._staged[ key ];
+                if( ! this[ 'set_' + key ] ) 
+                    this[ 'set_' + key ] = (function(k) { return function(val,fh,ph) { return this.set(k,val,fh,ph) } } )(key);
 		        return val;
 	        };
 
