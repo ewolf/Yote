@@ -84,7 +84,6 @@ yote_root/html/robots.txt
 yote_root/html/samples.html
 yote_root/html/server_docs.html
 yote_root/html/templates/default_templates.html
-yote_root/html/templates/default_templates.js
 yote_root/html/testy.html
 yote_root/html/Todo.html
 yote_root/html/val.html
@@ -97,6 +96,7 @@ yote_root/html/yote/js/jquery.base64.min.js
 yote_root/html/yote/js/jquery.cookie.js
 yote_root/html/yote/js/json2.js
 yote_root/html/yote/js/yote.js
+yote_root/html/yote/js/yote.templates.js
 yote_root/html/yote/js/yote.util.js
 yote_root/html/yote/reset.html
 yote_root/html/yote/template_tests.html
