@@ -71,6 +71,10 @@ $.yote = {
 	return false;
     }, //reinit
 
+    fetch_default_app:function() {
+	return this.default_app;
+    },
+
     fetch_account:function() {
 	if( this.default_app ) {
 	    if( ! this.acct_obj ) {

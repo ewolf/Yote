@@ -1,6 +1,6 @@
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_in">
-   Logged in as <$ show _acct_ handle $><BR>
+   Logged in as <$ get _acct_.handle $><BR>
    <$ action_link logout Log Out $>
 </script>
 
@@ -48,6 +48,17 @@
  <? init_search_list ?>
 </script>
 
+
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
+ <?? check_login_status ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
+  <$$$ var default_login_message This page requires a root login. $$$>
+  <$$ Log_in_box $$>
+</script>
+
+
 <script type="text/template" class="yote_template_definition" template_name="YoteHeader">
   <DIV class="header" id="header_div">
     <A href="/index.html" style="display:block">
@@ -58,15 +69,6 @@
       <?? check_login_status ??>
     </div>
   </DIV>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
- <?? check_login_status ??>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
-  <$$$ var default_login_message This page requires a root login. $$$>
-  <$$ Log_in_box $$>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">

@@ -288,6 +288,12 @@ $.yote.templates = {
 			} );
 		}
 	    }
+	    else if( part == '_app_' ) {
+		subj = $.yote.default_app;
+	    }
+	    else if( part == '_acct_' ) {
+		subj = $.yote.fetch_account();
+	    }
 	    else {
 		subj = subj.get( part );
 	    }
@@ -303,7 +309,7 @@ $.yote.templates = {
           <$$$ set varname value $$$>
           <$$$ control ctlname <..html control..> $$$>
         */
-	var parts   = args_string.match( /^\s*(\S+)\s+(\S+)\s+(\S.*)?/ );
+	var parts   = args_string.match( /^\s*(\S+)\s+(\S+)\s+(\S[\s\S]*)?/ );
 	var cmd     = parts ? parts[ 1 ] : undefined;
 	var varname = parts ? parts[ 2 ] : undefined;
 	var rest    = parts ? parts[ 3 ] : undefined;
@@ -357,7 +363,7 @@ $.yote.templates = {
     }, //_register
 
     fill_template_container_rows:function( args_string, context, is_list ) {
-	var parts   = args_string.match( /^\s*(\S+)\s+(\S+)\s+(\S+)(.*)?/ );
+	var parts   = args_string.match( /^\s*(\S+)\s+(\S+)\s+(\S+)([\s\S]*)?/ );
 	if( parts && parts.length > 3 ) {
 	    var templ = parts[ 1 ];
 	    if( is_list )
@@ -401,11 +407,12 @@ $.yote.templates = {
     }, //fill_template_container_rows
 
     fill_template_variable:function( arg_string, context ) {
-	var args = arg_string.split( /\s+/ );
-	if( args && args.length > 0 ) {
-	    var cmd = args[ 0 ].toLowerCase();
+	var args = arg_string.match( /^\s*(\S+)(\s+(\S+)([\s\S]*))?/ );
+	if( args && args.length > 1 ) {
+	    var cmd = args[ 1 ].toLowerCase();
 	    if( cmd == 'get' ) {
-		return context.get( args[ 1 ] );
+		var res = $.yote.templates._parse_val( args[ 3 ], context );
+		return typeof res === 'undefined' ? args[ 4 ] : res;
 	    } else if( cmd == 'index' ) {
 		return context.index;
 	    } else if( cmd == 'hashkey' ) {

@@ -109,17 +109,19 @@ $().ready(function(){
 
     function do_tests() {
         // init yote
-        var app = $.yote.init('Yote::Test::Template');
+	$.yote.init('Yote::Test::Template');
         $.yote.logout();
         $.yote.reinit();
         $.yote.debug = true;
 
  	try {
+	    var app = $.yote.fetch_default_app();
 	    app.reset();
 	    var sandbox = app.get_sandbox();
+	    sandbox.set( 'name', 'sandy' );
 	    $.yote.templates.init();
 	    $.yote.templates.refresh();
-	    
+
 	    is( $.yote.templates.fill_template( 'Comments' ).trim(), 'This template has comments', '$.yote.templates.fill_template works' );
 	    is( $( '#comments' ).html().trim(), 'This template has comments', 'automatic filling of template variables' );
 	    is( $( '#comments' ).html().trim(), 'This template has comments', '<# comment template #>' );
@@ -130,6 +132,8 @@ $().ready(function(){
 	    is( $.yote.templates.fill_template( 'VarTest' ).trim().replace( /[\n\s]+/g, ' '), 'Give me arguments alpha beta zappa wack Tootwack', '<$$ templatename args $$>, <$$$ set varname "value" $$$> and <$$$ set varname function $$$>' );
 
 	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ index $> and <$ get _ $> ' );
+	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ get app.sandbox name $>' );
+	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
 //	    is( $.yote.templates.fill_template( '' ).trim().replace( /[\n\s]+/g, ' '), '', '' );
 	    
@@ -149,6 +153,21 @@ $().ready(function(){
 </head>
 
 <templates>
+
+    <script type="text/template" class="yote_template_definition" template_name="Vars">
+      My name is <$ get name unknown $>
+    </script>
+    <script type="text/template" class="yote_template_definition" template_name="SandBox">
+       <$$$ set app function( ctx ) { 
+	   return $.yote.fetch_default_app();
+       } $$$>
+       <$$$ set sandbox function( ctx ) { 
+	   return $.yote.fetch_default_app().get_sandbox();
+       } $$$>
+       <$ get app.sandbox.name $>
+       <$ get _app_.sandbox.name $>
+       <$ get sandbox.name $>
+    </script>
 
     <script type="text/template" class="yote_template_definition" template_name="ArrayRow">
       <$ index $> : <$ get _ $> 
