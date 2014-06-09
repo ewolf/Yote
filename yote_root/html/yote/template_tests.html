@@ -89,18 +89,16 @@ $().ready(function(){
 		    - test ability to return other filled in templates
 
 	        <$$$ set varname value $$$>
-                    - both simple and compound and list variables
-	        <$$$ set varname "text value" $$$>
-	        <$$$ set varname 'text value' $$$>
+                    - value can be text or a context variable
 	        <$$$ set varname function( ctx ) ...
 	        <$$$ control controlname html
 	        <?? function( ctx ) ....
 	        <$$ template 
 	        <@ template list max_rows @>
 	        <% template list max_rows %>
-	        <$ show var $>
-	        <$ index $>
-	        <$ hashkey $>
+	        <$ var $>
+	        <$ _index_ $>
+	        <$ _hashkey_ $>
 	        <? function( ctx ) ... ( after render )
 
 
@@ -134,8 +132,8 @@ $.yote.templates.debug = true;
 		'Give me arguments alpha beta zappa wack Tootwack',
 		'<$$ templatename args $$>, <$$$ set varname "value" $$$> and <$$$ set varname function $$$>' );
 
-	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ index $> and <$ get _ $> ' );
-	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ get app.sandbox name $>' );
+	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ _index_ $> and <$ _ $> ' );
+	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
 	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
 	    is( $( '#after_render' ).text().trim().replace( /[\n\s]+/g, ' '), 'TEST', 'after render function' );
@@ -165,7 +163,7 @@ $.yote.templates.debug = true;
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Vars">
-      My name is <$ get name unknown $>
+      My name is <$ name unknown $>
     </script>
     <script type="text/template" class="yote_template_definition" template_name="SandBox">
        <$$$ set app function( ctx ) { 
@@ -174,17 +172,17 @@ $.yote.templates.debug = true;
        <$$$ set sandbox function( ctx ) { 
 	   return $.yote.fetch_default_app().get_sandbox();
        } $$$>
-       <$ get app.sandbox.name $>
-       <$ get _app_.sandbox.name $>
-       <$ get sandbox.name $>
+       <$ app.sandbox.name $>
+       <$ _app_.sandbox.name $>
+       <$ sandbox.name $>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="ArrayRow">
-      <$ index $> : <$ get _ $> 
+      <$ _index_ $> : <$ _ $> 
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="HashRow">
-      <$ hashkey $> : <$ get _ $> 
+      <$ _hashkey_ $> : <$ _ $> 
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="ArrayTest">

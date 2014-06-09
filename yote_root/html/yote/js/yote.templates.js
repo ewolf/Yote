@@ -653,17 +653,12 @@ $.yote.templates = {
 	return '';
     }, //fill_template_container_rows
 
-    fill_template_variable:function( cmd, context, args ) {
-	var lccmd = cmd;
-	if( lccmd == 'get' ) {
-	    var key = args[ 0 ];
-	    var res = context.get_path( key );
-	    return typeof res === 'undefined' ? args[ 1 ] ? args[ 1 ] : '' : res;
-	} else if( lccmd == 'index' || lccmd == 'hashkey' ) {
+    fill_template_variable:function( vari, context, args ) {
+        if( vari == '_index_' || vari == '_hashkey_' ) {
 	    return context.hashkey_or_index;
-	}	    
-	console.log( '<$ ' + cmd + args.join(' ' ) + ' $> not understand for ' + context.template_path );
-	return '';
+	}
+	var res = context.get_path( vari );
+	return typeof res === 'undefined' ? args[ 0 ] ? args[ 0 ] : '' : res;
     }, //fill_template_variable
 
 
