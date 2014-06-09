@@ -129,7 +129,9 @@ $().ready(function(){
 
 	    is( $.yote.templates.fill_template( 'SimpleTemplate' ).trim().replace( /[\n\s]+/g, ' '), 'A very simple test This template has comments', '<$$ templatename $$>' );
 
-	    is( $.yote.templates.fill_template( 'VarTest' ).trim().replace( /[\n\s]+/g, ' '), 'Give me arguments alpha beta zappa wack Tootwack', '<$$ templatename args $$>, <$$$ set varname "value" $$$> and <$$$ set varname function $$$>' );
+	    is( $.yote.templates.fill_template( 'VarTest' ).trim().replace( /[\n\s]+/g, ' '), 
+		'Give me arguments alpha beta zappa wack Tootwack',
+		'<$$ templatename args $$>, <$$$ set varname "value" $$$> and <$$$ set varname function $$$>' );
 
 	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ index $> and <$ get _ $> ' );
 	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ get app.sandbox name $>' );
@@ -194,7 +196,7 @@ $().ready(function(){
     <script type="text/template" class="yote_template_definition" template_name="VarTest">
       <$$$ set x "wack" $$$>
       <$$$ set y function( args ) { return "Toot"; } $$$>
-      Give me arguments <$$ VarTestPartTwo Alpha Beta Zappa $$>
+      Give me arguments <$$ VarTestPartTwo 'Alpha' 'Beta' 'Zappa' $$>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="TripleQuest">
@@ -210,12 +212,17 @@ $().ready(function(){
        This template<# doesn't #> has comments <# I'd say #>
     </script>
 
+    <script type="text/template" class="yote_template_definition" template_name="Ed">
+       Edit field <$$ edit _app_.sandbox 'wistle' $$> UM
+    </script>
+
 </templates>
 
 <body>
   <h1>Yote Template Tests</h1>
   <div  id="comments" class="yote_template hide" template="Comments"></div>
 
+  <div  id="comments" class="yote_template" template="Ed"></div>
   <div id="tests"></div>
   <div id="results"></div>
 </body>

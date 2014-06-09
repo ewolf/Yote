@@ -177,7 +177,7 @@ $.yote.templates = {
 	    var args = parts[1].split( /\s+/ );
 	    var template_name = args.shift();
 	    template = parts[ 0 ] +
-		$.yote.templates.fill_template( template_name, context, args ) +
+		$.yote.templates.fill_template( template_name, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) ) +
 		parts[ 2 ];
 	} // $$
 
@@ -197,7 +197,7 @@ $.yote.templates = {
 	    var parts = $.yote.templates._template_parts( template, '?', template_name );
 	    try { 
 		var fun = eval( '[' + parts[1] + ']' )[ 0 ];
-		$.yote.util.after_render_functions.push( 
+		$.yote.templates._after_render_functions.push( 
 		    (function( f, ctx ) { return function() { 
 			try { 
 			    f( ctx );
@@ -336,27 +336,8 @@ $.yote.templates = {
 		ctrl_id = $.yote.templates._next_id();
 		rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
-	    ctrl_parts = /\*\<[\s\S]* template_id\s*=\s*['"]?\S+['"]? /.exec( control );
-	    if( ctrl_parts ) {
-		console.log( "CANNOT ASSIGN TEMPLATE ID TO '" + control + '"' );
-		return control;
-	    }
-	    else {
-		ctrl = ctrl.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 template_id="' + context.template_id  + '" $2' );
-	    }
-
-            if( cmd.toLowerCase() == 'new_hashkey' ) {
-                context.new_hashkey = ctrl_id;
-	        $.yote.templates.template_context[ context.template_id ].new_hashkey = ctrl_id;
-            }
-            else { // new or control
-                var tvar =  cmd.toLowerCase() == 'control' ? 'controls' : 'new_fields';
-		if( ! context[ tvar ] ) context[ tvar ] = {};
-                context[ tvar ][ varname ] = '#' + ctrl_id;
-                if( ! $.yote.templates.template_context[ context.template_id ][ tvar ] ) $.yote.templates.template_context[ context.template_id ][ tvar ] = {};
-                $.yote.templates.template_context[ context.template_id ][ tvar ][ varname ] = '#' + ctrl_id;
-            }
-            return ctrl;
+	    context.controls[ varname ] = '#' + ctrl_id;
+	    return rest;
         } //has parts
         return '';
 
@@ -381,7 +362,7 @@ $.yote.templates = {
 		    var args = parts[ 4 ] ? parts[ 4 ].split( /\s+/ ) : [];
 		    context.index = idx;
 		    context.set( '_', it );
-		    return $.yote.templates.fill_template( templ, context, args );
+		    return $.yote.templates.fill_template( templ, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) );
 		} ).join('');
 		context.index = old_idx;
 		return ret;
@@ -394,7 +375,7 @@ $.yote.templates = {
 		var args = parts[ 4 ] ? parts[ 4 ].split( /\s+/ ) : [];
 		context.hashkey = key;
 		context.set( '_', hash[ key ] );
-		return $.yote.templates.fill_template( templ, context, args );
+		return $.yote.templates.fill_template( templ, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) );
             } ).join('');
 	    context.hashkey = old_hash;
 	    return ret;

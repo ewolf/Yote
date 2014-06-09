@@ -2,7 +2,9 @@ The stack :
 
 implement sorting for nativly wrapped list
 
-sort fields numeric for IO classes
+sort fields numeric for IO classes ( SQLite is done. test for this is now done for all )
+
+fetch app - check if app is already fetched
 
 _Templates_
 

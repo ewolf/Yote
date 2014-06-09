@@ -1,37 +1,136 @@
 
-<script type="text/template" class="yote_template_definition" template_name="Logged_in">
-   Logged in as <$ get _acct_.handle $><BR>
-   <$ action_link logout Log Out $>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Logged_out">
-   <$$$ control messages <span><$ val default_login_message Please Log In $></span> $$$><BR>
-   <$$$ control handle <input placeholder="handle" type="text"> $$$>
-   <$$$ control password <input placeholder="password" type="password"> $$$>
-   <$$$ control login_button <button type="BUTTON">Log In</button> $$$>
-<BR>
-   <$ action_link forgot Forgot Password $>
-   <$ action_link show_create_account Create Account $>
-   <? init_login ?>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Recover_Login">
-   <$$$ control messages <span></span> $$$><BR>
-   <$$$ control email <input placeholder="email" type="text"> $$$>
-   <$$$ control recover <button type="button">Recover Password</button> $$$>
-   <$ action_link refresh_all [X] $>
-   <? init_recover ?>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Create_Login">
+<script type="text/template" class="yote_template_definition" template_name="CreateLogin">
    <$$$ control messages <span></span> $$$><BR>
    <$$$ control handle <input placeholder="handle" type="text"> $$$>
    <$$$ control email <input placeholder="email" type="text"> $$$>
    <$$$ control password <input placeholder="password" type="password"> $$$>
    <$$$ control create <button type="button">Create Accout</button> $$$>
-   <$ action_link refresh_all [X] $>
-   <? init_create ?>
+   <$$$ control cancel <a href="#">[X]</a> $$$>
+   <? 
+     function( ctx ) {
+	 $( ctx.controls.cancel ).click( function() {
+	     ctx.scratch.create_login = false;
+	     $.yote.templates.refresh();
+	 } );
+	 $.yote.util.button_actions( { 
+	     button :  ctx.controls.create,
+             texts  :  [ ctx.controls.handle, ctx.controls.email, ctx.controls.password ],
+	     action : function() {
+		 var app = $.yote.fetch_default_app();
+		 app.create_login( { h : $( ctx.controls.handle ).val(),
+				     e : $( ctx.controls.email ).val(),
+				     p : $( ctx.controls.password ).val() },
+				   function(msg) {
+				       $.yote.need_reinit = true;
+				       ctx.scratch.create_login = false;
+				       $.yote.reinit();
+				       $.yote.templates.refresh();
+				   },
+				   function(err) {
+				       $( ctx.controls.messages ).empty().append( err );
+				   }
+				 );
+	     } } );
+     }
+   ?>
 </script>
+
+<script type="text/template" class="yote_template_definition" template_name="edit">
+    <# edit takes an object and a field to edit and builds a way to edit this #>
+    <style> .editing { background-color: lightyellow; } 
+            .edit_allowed { min-width: 100px }
+    </style>
+    <??? function( ctx ) { 
+	   if( ctx.args.length > 1 ) { 
+	       ctx.set( 'object', ctx.args[ 0 ] );
+	       var fld = ctx.args[ 1 ];
+	       ctx.set( 'field', fld );
+               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ get object.' + fld + ' $>x</span><$$$ control edit_span <span style="display:none">$$$><$$$ control editarea <textarea>$$$><$ get object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+	   } else {
+	       console.log( 'error in edit template. not enough arguments.' );
+	       return '';
+	   }
+	return '';
+    } ???> 
+    <? function( ctx ) {
+console.log( [ "?", ctx.get( 'object' ), ctx.controls.noedit_span ] );
+	$( ctx.controls.noedit_span ).mouseleave( function() { 
+	    console.log( "OUT" );
+	    $( ctx.controls.noedit_span ).removeClass( 'editing' );
+	} ).mouseenter( function() { 
+	    console.log( "IN" );
+	    $( ctx.controls.noedit_span ).addClass( 'editing' );	
+	} ).click( function() {
+	    $( this ).hide();
+	    $( ctx.controls.edit_span ).show();
+	} );
+	$( ctx.controls.cancel_button ).click( function() {
+	    $( ctx.controls.edit_span ).hide();
+	    $( ctx.controls.noedit_span ).show();
+	} );
+	$( ctx.controls.go_button ).click( function() {
+	    ctx.get( 'object' ).set( ctx.get( 'field' ), $( ctx.controls.editarea ).val() );
+	    $.yote.templates.refresh();
+	} );
+    } ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_in">
+   Logged in as <$ get _acct_.handle $><BR>
+   <$$$ control logout <a href="#">Log Out</a> $$$>
+   <? function( ctx ) {
+       $( ctx.controls.logout ).click( function() {
+	   $.yote.logout();
+	   $.yote.reinit();
+	   $.yote.templates.refresh();
+       } );
+      } ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Login">
+   <$$$ control messages <span><$ get _app_.login_message Please Log In $></span> $$$><BR>
+   <$$$ control handle <input placeholder="handle" type="text"> $$$>
+   <$$$ control password <input placeholder="password" type="password"> $$$>
+   <$$$ control login <button type="BUTTON">Log In</button> $$$>
+     <BR>
+   <$$$ control forgot <a href="#">>Log In</a> $$$>
+   <$$$ control create <a href="#">>Create Account</a> $$$>
+   <? function(ctx) {
+       $.yote.util.button_actions({
+	   button :  ctx.controls.login,
+           texts  :  [ ctx.controls.handle, ctx.controls.password ],
+	   action : function() {
+	       $.yote.login( $( ctx.controls.handle ).val(),
+			     $( ctx.controls.password ).val(),
+			     function(msg) {
+				 if( ctx.scratch.requires_admin && ! $.yote.is_root() ) {
+				     $( ctx.controls.messages ).empty().append( "Error : root login required" );
+				     $.yote.logout();
+				     $.yote.need_reinit = true;
+				     $.yote.reinit();
+				 }
+				 $.yote.templates.refresh();
+			     },
+			     function(err) {
+				 $( ctx.controls.messages ).empty().append( err );
+			     } );
+	   }
+	   } );
+         $( ctx.controls.forgot ).click( function() {
+	     ctx.scratch.forgot_login = true;
+	     $.yote.templates.refresh();
+	 } );
+         $( ctx.controls.create ).click( function() {
+	     ctx.scratch.create_login = true;
+	     $.yote.templates.refresh();
+	 } );
+      } ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Logged_out">
+    <??? function( ctx ) { return ctx.scratch.forgot_login ? 'RecoverPassword' : ctx.scratch.create_login ? 'CreateLogin' : 'Login'; } ???>
+</script>
+
 
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
  <$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
@@ -39,6 +138,37 @@
  <$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
  <$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
  <? init_paginator ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="RecoverPassword">
+   <$$$ control messages <span></span> $$$><BR>
+   <$$$ control email <input placeholder="email" type="text"> $$$>
+   <$$$ control recover <button type="button">Recover Password</button> $$$>
+   <$$$ control cancel <a href="#">[X]</a> $$$>
+   <? 
+     function( ctx ) {
+	 $( ctx.controls.cancel ).click( function() {
+	     ctx.scratch.forgot_login = false;
+	     $.yote.templates.refresh();
+	 } );
+	 $.yote.util.button_actions( { 
+	     button :  ctx.controls.recover,
+             texts  :  [ ctx.controls.email ],
+	     action : function() {
+		 var app = $.yote.fetch_default_app();
+		 app.recover_password( $( ctx.controls.email ).val(),
+				       function(msg) {
+					   ctx.scratch.forgot_login = false;
+					   $.yote.reinit();
+					   $.yote.templates.refresh();
+				       },
+				       function(err) {
+					   $( ctx.controls.messages ).empty().append( err );
+				       }
+				     );
+	     } } );
+     }
+    ?>
 </script>
 
 
@@ -49,36 +179,27 @@
 </script>
 
 
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box">
- <?? check_login_status ??>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Log_in_box_admin">
-  <$$$ var default_login_message This page requires a root login. $$$>
-  <$$ Log_in_box $$>
-</script>
-
-
 <script type="text/template" class="yote_template_definition" template_name="YoteHeader">
   <DIV class="header" id="header_div">
     <A href="/index.html" style="display:block">
-      <img height="70px" width="151px" src="<$ val logo /yotelogo.png $>">
+      <img height="70px" width="151px" src="<$ get _app_.logo /yotelogo.png $>">
     </A>
     <UL id="top_nav" class="nav"></UL>
     <div id="login_div" class="login">
-      <?? check_login_status ??>
+      <?? function( ctx ) { return $.yote.is_logged_in() ? '<$$ Logged_in $$>' :' <$$ Logged_out $$>'; } ??>
     </div>
   </DIV>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="YoteHeaderAdmin">
-    <DIV class="header">
-      <A href="/index.html" style="display:block">
-	<img height="70px" width="151px" src="<$ val logo /yotelogo.png $>">
-      </A>
-      <UL id="top_nav" class="nav"></UL>
-      <div id="login_div" class="login">
-        <$$ Log_in_box_admin $$>
-      </div>
-    </DIV>
+    <??? function( ctx ) { ctx.scratch.requires_admin = true; } ???>
+    <div class="header" id="header_div">
+     <a href="/index.html" style="display:block">
+      <img height="70px" width="151px" src="<$ get _app_.logo /yotelogo.png $>">
+     </a>
+     <ul id="top_nav" class="nav"></ul>
+     <div id="login_div" class="login">
+       <?? function( ctx ) { return $.yote.is_root() ? '<$$ Logged_in $$>' :' <$$ Logged_out $$>'; } ??>
+     </div>
+  </div>
 </script>
