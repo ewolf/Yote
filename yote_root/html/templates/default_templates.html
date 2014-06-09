@@ -46,11 +46,22 @@
                                            e : $( ctx.controls.email ).val(),
                                            p : $( ctx.controls.password ).val() },
                                          function(msg) {
-                                             $.yote.need_reinit = true;
-                                             ctx.scratch.create_login = false;
-                                             $.yote.reinit();
-                                             $.yote.templates.refresh();
-                                         },
+					     ctx.scratch.create_login = false;
+					     $.yote.login( $( ctx.controls.handle ).val(),
+							   $( ctx.controls.password ).val(),
+							   function(msg) {
+							       if( ctx.scratch.requires_admin && ! $.yote.is_root() ) {
+								   $( ctx.controls.messages ).empty().append( "Error : root login required" );
+								   $.yote.logout();
+								   $.yote.need_reinit = true;
+								   $.yote.reinit();
+							       }
+							       $.yote.templates.refresh();
+							   },
+							   function(err) {
+							       $( ctx.controls.messages ).empty().append( err );
+							   } );
+					 },
                                          function(err) {
                                              $( ctx.controls.messages ).empty().append( err );
                                          }
@@ -213,7 +224,7 @@
  <? function( ctx ) {
         if( ctx.args.length < 1 ) return;
 
-        var collection = $.yote.templates._parse_val( ctx.args[0], ctx );
+        var collection = ctx.parent.parse( ctx.args[ 0 ] );
 
         if( ! collection || ! collection.can_rewind ) { //test if it has that function
             console.log( 'warning : init_paginator called for something not a list or hash' );

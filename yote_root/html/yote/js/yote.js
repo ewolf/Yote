@@ -32,6 +32,11 @@ $.yote = {
     wrap_cache:{},
     need_reinit:false,
 
+    _ids:0,
+    _next_id:function() {
+        return '__yidx_'+this._ids++;
+    }, //_next_id
+
     init:function( appname, token ) {
         token = token ? token : $.cookie('yoken');
 	$.yote.token = token || 0;
@@ -411,14 +416,15 @@ $.yote = {
 	    return wrapper;
 	}
 	var ret = {
+	    wrap_type : 'native',
 	    list : args.list,
 	    hash : args.hash,
-	    page_size_limit : args.page_size,
+	    page_size_limit : args.page_size * 1,
 	    start:0,
 	    is_list : args.is_list,
-	    id : $.yote.templates._next_id(),
+	    id : $.yote._next_id(),
 	    page_size : function() { if( typeof this.page_size_limit !== 'undefined' ) return this.page_size_limit;
-				     this.page_size_limit = this.full_size(); 
+				     this.page_size_limit = 1* this.full_size(); 
 				     return this.page_size_limit;
 				   },
 	    full_size:function() { return this.is_list ?  this.list.length : Object.size( this.hash ) },
@@ -519,16 +525,19 @@ $.yote = {
 	    },
 	    is_number_sort : args.is_number_sort,
 	    remove : function( idx ) { return delete this.list[ idx ]; },
-	    set_hashkey_search_criteria:function( hashkey_search ) {},
+	    set_hashkey_search_criteria:function( hashkey_search ) { 
+		hs = hashkey_search || '';
+		this.hashkey_search_value = hs.split(/ +/);
+	    },
 	    set_search_criteria:function( hashkey_search ) {},
 	    get:function( idx ) { return this.list[ idx ] },
-	    seek:function( topos ) { this.start = topos; },
-	    forwards:function( ) { this.start += this.page_size_limit; if( this.start >= this.full_size() ) this.start = this.full_size() - 1; },
+	    seek:function( topos ) { this.start = topos*1; },
+	    forwards:function( ) { this.start = this.start*1 +  this.page_size()*1; if( this.start >= this.full_size() ) this.start = this.full_size() - 1; },
 	    can_rewind:function( ) { return this.start > 0; },
-	    can_fast_forward:function( ) { return this.start + this.page_size_limit < this.full_size(); },
-	    back:function( ) { this.start -= this.page_size_limit; if( this.start < 0 ) this.start = 0; },
+	    can_fast_forward:function( ) { return this.start + this.page_size_limit*1 < this.full_size(); },
+	    back:function( ) { this.start -= this.page_size(); if( this.start < 0 ) this.start = 0; },
 	    first:function( ) { this.start = 0; },
-	    last:function( ) { this.start = this.full_size() - page_size_limit; },
+	    last:function( ) { this.start = this.full_size() - this.page_size(); },
 	    search_values : args.search_value || [],
 	    search_fields : args.search_field || [],
 	    sort_fields   : args.sort_fields  || [],
@@ -677,6 +686,7 @@ $.yote = {
 			}
 		    }
 		    var ret = {
+			wrap_type : 'collection obj',
 			page_out      : page_out,
 			collection_obj     : collection_obj,
 			id                 : host_obj.id,
@@ -715,7 +725,7 @@ $.yote = {
 				} );
 				var res = me.host_obj.paginate( {
 				    name  : me.field,
-				    limit : me.page_size_limit,
+				    limit : me.page_size_limit * 1,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -788,7 +798,7 @@ $.yote = {
 				} );
 				var res = me.host_obj.paginate( {
 				    name  : me.field,
-				    limit : me.page_size_limit,
+				    limit : me.page_size_limit*1,
 				    skip  : me.start,
 				    search_fields : me.search_fields,
 				    search_terms  : me.search_values,
@@ -809,6 +819,7 @@ $.yote = {
 				if( me.sort_reverse ) hkeys.reverse();
 
 				me.length = 0;
+
 				for( var i=0; i < hkeys.length && me.length < me.page_size_limit; i++ ) {
 				    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
 					if( me.search_fields && me.search_fields.length > 0 ) {
@@ -842,7 +853,7 @@ $.yote = {
 				}
 				return ret;
 			    }
-			},
+			}, //to_hash
 			set_hashkey_search_criteria:function( hashkey_search ) {
 			    hs = hashkey_search || '';
 			    this.hashkey_search_value = hs.split(/ +/);
@@ -925,7 +936,7 @@ $.yote = {
 		    var pag = {
 			field      : fieldname,
 			full_size  : 1 * obj.count( fieldname ),
-			page_size_limit  : size,
+			page_size_limit  : size*1,
 			start      : st,
 			contents   : [],
 			is_hash    : is_hash,
@@ -1044,6 +1055,12 @@ $.yote = {
 		}
 		return val.substring(1);
 	    };
+	    
+	    o.is = function( othero ) {
+		var k = this._get_id();
+		var ok = othero._get_id ? othero._get_id() : undefined;
+		return k !== 'undefined' && k == ok;
+	    }
 
 	    o._get_id = function( key ) {
 		// returns the id ( if any of the item specified by the key )

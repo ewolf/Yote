@@ -7,10 +7,6 @@
  * Version 0.1
  */
 $.yote.templates = {
-    _ids:0,
-    _next_id:function() {
-        return '__yidx_'+this._ids++;
-    }, //_next_id
 
     // imports templates from a url and places them into the document.
     import_templates:function( url ) {
@@ -273,19 +269,23 @@ $.yote.templates = {
 	    args : [], // args passed in to the template as it was built
 	    scratch : $.yote.templates._context_scratch,
 	    set_args : function( args ) { this.args = args; },
+	    _app_ : $.yote.fetch_default_app(),
+	    _acct_ : $.yote.fetch_account(),
 	    get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
-	    parse: function( key ) { return $.yote.templates._parse_val( key, this ); },
-	    id:$.yote.templates._next_id(),
+	    parse: function( key, use_literal ) { return $.yote.templates._parse_val( key, this, ! use_literal ); },
+	    id:$.yote._next_id(),
 	    set: function( key, val ) { this.vars[ key ] = val; },
 	    clone : function() {
 		var clone = {
 		    vars     : Object.clone( this.vars ),
-		    id:$.yote.templates._next_id(),
+		    id:$.yote._next_id(),
 		    controls : Object.clone( this.controls ),
 		    args     : Object.clone( this.args ),
 		    hashkey_or_index  : this.hashkey_or_index,
 		}; //TODO : add hash key and index
 		clone.clone = this.clone;
+		clone._app_ = this._app_;
+		clone._acct_ = this._acct_;
 		clone.parent = this;
 		clone.parse = this.parse;
 		clone.set = this.set;
@@ -304,7 +304,7 @@ $.yote.templates = {
 	    return ''; 
 	}
 	var context = old_context ? old_context.clone() : $.yote.templates.new_context();
-	context.template_id = $.yote.templates._next_id();
+	context.template_id = $.yote._next_id();
 	if( old_context ) {
 	    context.template_path = old_context.template_path + '/' + template_name;
 	} else {
@@ -338,6 +338,12 @@ $.yote.templates = {
     fill_template_direct:function( template, context, template_name ) {
         if( ! template ) return '';
 	template += '';
+
+	while( template.indexOf( '<#' ) > -1 ) {
+	    var parts = $.yote.templates._template_parts( template, '#', template_name );
+	    template = parts[ 0 ] + parts [ 2 ];
+	}
+
 	// function buliding template ( highest precidence )
 	while( template.indexOf( '<???' ) > -1 ) {
 	    var parts = $.yote.templates._template_parts( template, '???', template_name );
@@ -410,10 +416,6 @@ $.yote.templates = {
 	    template = parts[ 0 ] +
 		$.yote.templates.fill_template_variable( vari, context, args ) +
 		parts[ 2 ];
-	}
-	while( template.indexOf( '<#' ) > -1 ) {
-	    var parts = $.yote.templates._template_parts( template, '#', template_name );
-	    template = parts[ 0 ] + parts [ 2 ];
 	}
 	while( template.indexOf( '<?' ) > -1 ) {
 	    // functions to be run after rendering is done
@@ -490,7 +492,6 @@ $.yote.templates = {
 		} else {
 		    if( is_list )
 			return $.yote.wrap_native_container( {
-			    context   : context,
 			    list      : subj.get( cparts[ 1 ] ),
 			    cache_key : value,
 			    wrap_key  : context.template_path,
@@ -498,7 +499,6 @@ $.yote.templates = {
 			} );
 		    else
 			return $.yote.wrap_native_container( {
-			    context   : context,
 			    hash      : subj.get( cparts[ 1 ] ),
 			    cache_key : value,
 			    wrap_key  : context.template_path,
@@ -536,7 +536,7 @@ $.yote.templates = {
 	    }
 	    else {
 		var args = $.yote.templates._parse_args( rest );
-		var val = context.parse( args[ 0 ] );
+		var val = context.parse( args[ 0 ], true );
 		context.set( varname, val );
 	    }
 	}
@@ -547,7 +547,7 @@ $.yote.templates = {
 		ctrl_id = ctrl_parts[ 1 ];
 	    }
 	    else {
-		ctrl_id = $.yote.templates._next_id();
+		ctrl_id = $.yote._next_id();
 		rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
 	    }
 	    context.controls[ varname ] = '#' + ctrl_id;
@@ -564,7 +564,7 @@ $.yote.templates = {
 		console.log( 'Error : no subject found for <@ @> or <% %> in path "' + context.template_path );
 		return '';
 	    }
-	    subj.page_size_limit = args[ 1 ] || subj.page_size_limit;
+	    subj.page_size_limit = 1*args[ 1 ] || 1*subj.page_size_limit;
 	    
 	    var old_key  = context.hashkey_or_index;
 	    var old_def = context.vars._;
