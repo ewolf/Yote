@@ -274,6 +274,7 @@ $.yote.templates = {
 	    scratch : $.yote.templates._context_scratch,
 	    set_args : function( args ) { this.args = args; },
 	    get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
+	    parse: function( key ) { return $.yote.templates._parse_val( key, this ); },
 	    get_path : function( value ) {
 		var tlist = value.trim().split(/[\.]/);
 		var subj = this;
@@ -332,6 +333,7 @@ $.yote.templates = {
 		    hashkey_or_index  : this.hashkey_or_index,
 		}; //TODO : add hash key and index
 		clone.clone = this.clone;
+		clone.parse = this.parse;
 		clone.set = this.set;
 		clone.set_args = this.set_args;
 		clone.get = this.get;
@@ -449,8 +451,9 @@ $.yote.templates = {
 	while( template.indexOf( '<$' ) > -1 ) {
 	    var parts = $.yote.templates._template_parts( template, '$', template_name );
 	    var args = $.yote.templates._parse_args( parts[1] );
+	    var vari = args.shift();
 	    template = parts[ 0 ] +
-		$.yote.templates.fill_template_variable( parts[ 1 ], context, args ) +
+		$.yote.templates.fill_template_variable( vari, context, args ) +
 		parts[ 2 ];
 	}
 	while( template.indexOf( '<#' ) > -1 ) {
@@ -652,7 +655,7 @@ $.yote.templates = {
 	if( lccmd == 'get' ) {
 	    var key = args[ 0 ];
 	    var res = context.get_path( key );
-	    return typeof res === 'undefined' ? args[ 1 ] : res;
+	    return typeof res === 'undefined' ? args[ 1 ] ? args[ 1 ] : '' : res;
 	} else if( lccmd == 'index' || lccmd == 'hashkey' ) {
 	    return context.hashkey_or_index;
 	}	    
