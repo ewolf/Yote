@@ -15,7 +15,7 @@
 <script src="/yote/js/jquery.cookie.js"></script>
 <script src="/yote/js/json2.js"></script>
 <script src="/yote/js/yote.js"></script>
-<script src="/yote/js/yote.util.js"></script>
+<script src="/yote/js/yote.templates.js"></script>
 
 <script src="/templates/default_templates.js"></script>
 
@@ -83,41 +83,32 @@ function step( msg ) {
 $().ready(function(){
     /*
        Test the following template parts
-             <$$$ var variable-name value $$$>
-             <$$$ function funciton-name() { } $$$>
-             <$$$ control control-name <control-html> $$$>
-	     <$$$ alias varname othervar $$$>
-	     <$$$ alias varname other.var.vars $$$>
-	     <$$$ aliasresult varname function() { } $$$>
-	     <$$$ function() { } $$$>
-             <$$ template-name $$>
-             <?? function-name-to-insert-into-template ??>
-             <?? function() { return stuff-to-insert-into-template } ??>
-             <? funciton() { do-this-after-rendering } ?>
-             <? funciton-name-to-do-this-after-rendering ?>
 
-             <@ templatename max_to_show @>
-             <@ templatename host_object listname max_to_show @>
-             <% templatename max_to_show %>
-             <% templatename host_object hashname max_to_show %>
+	        <# comments go here #>
 
-	     <$ show object field $>
-	     <$ edit object field $>
-	     <$ show_or_edit object field $>
-	     <$ select object field host_object list $>
-	     <$ select object field [ json list ] $>
-	     <$ checkbox object field $>
-             <$ hash_key $>
-             <$ index $>
-             <$ val varname default $>
+	        <??? function( ctx ) ...
+		    - test ability to set values in the context
+		    - test ability to return other filled in templates
+
+	        <$$$ function foo( ctx ) ...
+	        <$$$ var varname value $$$>
+	        <$$$ value varname function( ctx ) ...
+	        <?? function( ctx ) ....
+	        <$$ template 
+	        <@ template list max_rows @>
+	        <% template list max_rows %>
+	        <$ show var $>
+	        <$ show var $>
+	        <? function( ctx ) ... ( after render )
+
+
       */
     $.yote.include_templates( '/templates/default_templates.html' );
-    $.yote.util.register_functions( base_templates );
+    $.yote.templates.register_functions( base_templates );
 
     function do_tests() {
         // init yote
         var app = $.yote.init('Yote::Test::Template');
-        $.yote.util.register_item( 'app', app );
         $.yote.logout();
         $.yote.reinit();
         $.yote.debug = true;
@@ -125,161 +116,11 @@ $().ready(function(){
  	try {
 	    app.reset();
 	    var sandbox = app.get_sandbox();
-	    sandbox.set( 'name', "ZORKZ" );
-            $.yote.util.register_item( 'sandbox', sandbox );
-
-            $.yote.util.register_item( 'fooreg', 'fooOOf' );
-
-	    $.yote.util.register_function( 'funtest', function() { return "FoO" } );
-
-	    $.yote.util.register_function( 'button_test', function( args ) {
-		$( args.controls.button ).click(function( arg ){
-		    $('#button_test_div').html( "BaR:" + args.controls.button );
-		});   } );
-
-
-	    $.yote.util.init_ui();
-	    msg( 'Template interpolation  &lt;$$ <i>template-name</i> $$&gt' );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'HeadDefinedTemplate' } ) ).trim(), 'Head Defined Templates', 'Template defined in head is registered' );
-	    is( $( '#test_div' ).html().trim(), 'Head Defined Templates', 'template was filled out on page through init' );
-
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "foo <$$HeadDefinedTemplate$$>" }) ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "foo <$$ HeadDefinedTemplate$$>" }) ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "foo <$$HeadDefinedTemplate $$>" }) ).trim(), 'foo Head Defined Templates', 'include template works' );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "foo <$$ HeadDefinedTemplate $$>" }) ).trim(), 'foo Head Defined Templates', 'include template works' );
-
-	    msg( '<br>Set Variables  &lt;$$$ var <i>variable-name</i> <i>value</i> $$$&gt' );
-	    msg( 'Read Variables  &lt;$ val <i>variable-name</i> <i>default-value</i> $&gt' );
-	    msg( 'Alias Variables  &lt;$$$ alias <i>variable-name</i> <i>value</i> $$$&gt' );
-	    msg( 'Alias Result Variables  &lt;$$$ aliasresult <i>variable-name</i> function(args){<i>function</i>} $$$&gt' );
-	    msg( 'function replace text  &lt;$$$ function(args){<i>function</i>} $$$&gt' );
-	    $.yote.util.register_template( 'varsayer', 'Value is <$ val variable DEFAULT $>' );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'varsayer' } ) ).trim(), 'Value is DEFAULT', 'Default value for val' );
-	    $.yote.util.register_template( 'varecho', 'Echo <$$ varsayer $$>' );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'varecho' } ) ).trim(), 'Echo Value is DEFAULT', 'Default for echoed var' );
-	    $.yote.util.register_template( 'grandparentvar', "<$$$ var variable notDEFAULT $$$><$$ varecho $$>" );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'grandparentvar' } ) ), 'Echo Value is notDEFAULT', 'Default for echoed var where val is changed in grandparent template' );
-	    sandbox.set( 'toalias', 'toval' );
-	    sandbox.set( 'toalias2', 'toval2' );
-	    $.yote.util.register_template( 'aliassayer', 'alias value is <$ val avar DEFAULT $>' );
-	    $.yote.util.register_template( 'apar', "<$$$ alias avar sandbox.toalias  $$$><$$ aliassayer $$>" );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'apar' } )), 'alias value is toval', 'alias works' );
-	    $.yote.util.register_template( 'apar2', "<$$$ alias avar sandbox.toalias2  $$$>alias2 value is <$ val avar DEFAULT $>" );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'apar2' } )), 'alias2 value is toval2', 'alias 2 works' );
-	    $.yote.util.register_template( 'ares', "<$$$ aliasresult aresvar function(a){ return 'FUNFUNRES';}  $$$>ares value is <$ val aresvar DEFAULT $>" );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'ares' } )), 'ares value is FUNFUNRES', 'alias result works' );
-
-	    $.yote.util.register_template( 'tripq', "<??? function(a){ return '<$$$ var silly SiLLy $$$>';} ???>serious or <$ val silly SeRIOUS$>" );
-	    is( $.yote.util.fill_template( $.yote.util.context( { template_name : 'tripq' } ) ), "serious or SiLLy", " triple ? function" );
-
-	    // id for control
-	    msg( '<BR>Set Controls &lt;$$$ control <i>variable-name</i> <i>control-html</i> $$$&gt' );
-	    var t_id = $( '#control_test_div > input' ).attr( 'template_id' );
-	    var i_id = $( '#control_test_div > input' ).attr( 'id' );
-	    is( $.yote.util.template_context[ t_id ][ 'controls' ][ 'someinput' ], '#' + i_id, "correct control in template context" );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : '<?? function( args ) { console.log( [args,"AAA"] );return args.getvar("fooreg"); } ??>' } ) ), 'fooOOf', 'registered items still context visible' );
-
-	    // in template functions
-	    msg( '<BR>Registered functions to build templates &lt;?? <i>registered-function-name</i> ??&gt' );
-	    msg( 'Inline functions to build templates &lt;?? function( args ) { <i>function-code</i> } ??&gt' );
-	    is( $( '#funtest_div' ).html().trim(), 'FoO', 'Function writing to template text' );
-	    is( $.yote.util.fill_template_text(  $.yote.util.context( { template : "foo <?? function(args) { return 'Zo' + 'rch'; } ??>" }) ), 'foo Zorch', 'inline functions to build template' );
-
-	    // after render functions
-	    is( $('#button_test_div').html().trim(), '', "empty button test so far" );
-	    // find the click
-	    $( '.findbutton' ).click();
-	    is( $('#button_test_div').html(), 'BaR:#' + $('.findbutton').attr('id'), 'button clicked' );
-
-	    msg( '<BR>Defining registered functions &lt;$$$ function <i>function-name</i>(<i>args</i>) { <i>function-code</i> } $$$&gt' );
-	    is( $('#funfun_div').html().trim(), 'BEEP1 - SHEEP1 BEEP1 - EWE1 BEEP1 - EWE1', 'levels of inline functions' );
-	    is( $('#funvar_div > span').text().trim(), 'BLUEB', 'inline $$ function taking arguments' );
-
-	    is( $('#funvar_div > div').html().trim(), 'GRNS', 'inline after render $ function taking arguments' );
-
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : '<$@ ListTemplate _.sandbox mylist @$>', default_var:app } ) ).trim().substring(0,7), 'My List', 'No Empty Template Specified' );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : '<$@ ListTemplate _.sandbox mylist Empty @$>', default_var:app }) ).trim(), 'I am empty', 'Empty Template Specified' );
-	    // lists
-
-	    var items = [ sandbox.new_with_same_permissions({ name : "A", flavor : "Beet" }),
-			  sandbox.new_with_same_permissions({ name : "B", flavor : "Lemon" }),
-			  sandbox.new_with_same_permissions({ name : "C", flavor : "Spinach" }),
-			  sandbox.new_with_same_permissions({ name : "D", flavor : "Shrimp" }),
-			  sandbox.new_with_same_permissions({ name : "E", flavor : "Canolis" })
-			];
-
-            sandbox.hash( { name:'myhash',
-                            key:'a',
-                            value:sandbox.new_with_same_permissions({ name : "HA", flavor : "HBeet" } )
-			  } );
-            sandbox.hash( { name:'myhash',
-                            key:'b',
-	                    value:sandbox.new_with_same_permissions({ name : "HB", flavor : "HLemon" })
-			  } );
-            sandbox.hash( { name:'myhash',
-                            key:'c',
-	                    value:sandbox.new_with_same_permissions({ name : "HC", flavor : "HSpinach" })
-			  } );
-            sandbox.hash( { name:'myhash',
-                            key:'d',
-	                    value:sandbox.new_with_same_permissions({ name : "HD", flavor : "HShrimp" })
-			  } );
-            sandbox.hash( { name:'myhash',
-                            key:'e',
-	                    value:sandbox.new_with_same_permissions({ name : "HE", flavor : "HCanolis" })
-			  } );
-
-	    sandbox.add_to( { name : 'mylist', items : items } );
-	    msg( '<BR>List template &lt;$@ <i>List-template</i> <i>host-object</i> <i>list-name</i> <i>Empty-Template</i> @$&gt' );
-	    msg( 'List row template &lt;@ <i>Row-template</i> <i>max-rows-to-show</i> @&gt' );
-	    msg( 'List row template &lt;@ <i>Row-template</i> <i>host-object</i> <i>list-name</i> <i>max-rows-to-show</i> @&gt' );
-	    msg( 'List row index &lt;$ index $&gt' );
-	    is( sandbox.count( 'mylist' ), '5', "five items entered" );
-	    var count = 0;
-	    $( '.ListRow' ).each(function() {
-		count++;
-	    } );
-            is( count, 0, "paginated list : 0 rows there before refresh" );
-	    is( $( '#list_div' ).text().trim(), 'I am empty', "list Empty worked" );
-	    is( $( '#hash_div' ).text().trim(), 'I am empty', "hash Empty worked" );
-
-            $.yote.util.refresh_ui();
-
-	    count = 0;
-	    $( '.ListRow' ).each(function() {
-		is( $( this ).text().trim(), count + items[ count ].get_name(), "list item " + count );
-		count++;
-	    } );
-	    is( count, 3, "paginated list : 3 rows made after refresh" );
-
-	    $.yote.util.register_template( 'ListAlone', "Nom <$ val _.name $>" );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { vars : { sandbox : sandbox },
-								       template : "LIST <@ ListAlone sandbox mylist 3 @>" }) ).trim(),
-		'LIST Nom ANom BNom C', '<@ template hostojb list count @> works' );
-
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { vars : { sandbox : sandbox },
-								       template : "GIST <$$ ListAlone sandbox $$>" }) ).trim(),
-		'GIST Nom ZORKZ', '<$$ template newdefvar $$> works' );
-
-	    // TODO need to figure out how to grab and advance the wrapper pagination
-
-
-	    msg( '<BR>Hash template &lt;$% <i>List-template</i> <i>host-object</i> <i>list-name</i> <i>Empty-Template</i> %$&gt' );
-	    msg( 'Hash row template &lt;% <i>host-object</i> <i>has-name</i> <i>max-rows-to-show</i> %&gt' );
-	    msg( 'Hash row hash key &lt;$ hash_key $&gt' );
-	    count = 0;
-	    $( '.HashRow' ).each(function() {
-		is( $( this ).text().trim(), items[ count ].get_name().toLowerCase() + 'H' + items[ count ].get_name(), "hash item " + count );
-		count++;
-	    } );
-	    is( count, 4, "paginated hash : 4 rows made after refresh" );
-
-
-	    msg( '<BR>Comment &lt;# comment text #&gt' );
-	    is( $.yote.util.fill_template_text( $.yote.util.context( { template : "IS THERE A <# comment #> in here?" }) ).trim(),
-		'IS THERE A  in here?', 'comment works <# cmt #>' );
+	    $.yote.templates.refresh_ui();
 	    
-
+	    is( $( '#comments' ).html().trim(), 'This template has comments', '<# comment template #>' );
+	    is( $( '#comments' ).html().trim(), 'This template has comments', 'automatic filling of template variables' );
+	    is( $.yote.templates.fill_template( 'Comments' ).trim(), 'This template has comments', '$.yote.templates.fill_template works' );
  	}
  	catch( err ) {
  	    fail( err )();
@@ -295,90 +136,19 @@ $().ready(function(){
 
 </head>
 
-<script type="text/template" class="yote_template_definition" template_name="HeadDefinedTemplate">Head Defined Templates</script>
-
-<script type="text/template" class="yote_template_definition" template_name="ControlIDTemplate">
-     <$$$ control someinput <input value='foo'> $$$></script>
-
-<script type="text/template" class="yote_template_definition" template_name="FuntestTemplate">
-  <?? funtest ??>
+<script type="text/template" class="yote_template_definition" template_name="SimpleTemplate">
+  A very simple test
 </script>
 
-
-<script type="text/template" class="yote_template_definition" template_name="ButtonTestTemplate">
-    <$$$ control button <button class="findbutton" type='BUTTON'>Click</button> $$$>
-    <? button_test ?>
-    <div id="button_test_div">
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="FunVarTemplate"> <$$$ var foo_defined BLUEB $$$> <$$$ var bar_defined GRNS $$$> <span><?? function foo_inline( args ) {
-          return args.vars.foo_defined;
-        }
-    ??> </span><$$$ control grub_control <div></div>$$$>
-
-    <? function( args ) {
-	  $( args.controls.grub_control ).append( args.vars.bar_defined );
-       }
-    ?></script>
-
-<script type="text/template" class="yote_template_definition" template_name="FunFunTemplate"><$$$ function foo_inline() {
-         return "BEEP1";
-      }
-  $$$><$$$ function bar_inline() {
-         return "SHEEP1";
-      }
-  $$$><?? foo_inline ??> - <?? bar_inline ??> <$$ FunFunChildTemplate $$></script>
-
-<script type="text/template" class="yote_template_definition" template_name="FunFunChildTemplate"><$$$ function bar_inline() {
-         return "EWE1";
-      }
-  $$$><?? foo_inline ??> - <?? bar_inline ??> <$$ FunFunGrandchildTemplate $$></script>
-
-<script type="text/template" class="yote_template_definition" template_name="FunFunGrandchildTemplate"><?? foo_inline ??> - <?? bar_inline ??></script>
-
-<script type="text/template" class="yote_template_definition" template_name="ListTestTemplate">
-  <$@ ListTemplate _.sandbox mylist Empty @$>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="Empty">
-    I am empty
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="ListTemplate">
-    My List
-  <@ ListRowTestTemplate 3 @>
-  <$$ Paginator $$>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="ListRowTestTemplate">
-  <div class="ListRow"><$ index $><$ edit _ name $></div>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="HashTestTemplate">
-  <$% HashTemplate _.sandbox myhash Empty %$>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="HashTemplate">
-  <% HashRowTestTemplate 4 %>
-</script>
-
-<script type="text/template" class="yote_template_definition" template_name="HashRowTestTemplate">
-  <div class="HashRow"><$ hash_key $><$ show _ name $></div>
+<script type="text/template" class="yote_template_definition" template_name="Comments">
+    This template<# doesn't #> has comments <# I'd say #>
 </script>
 
 <body>
   <h1>Yote Template Tests</h1>
-  <div  id="test_div" class="yote_template hide" template="HeadDefinedTemplate"></div>
-  <div  id="control_test_div" class="yote_template hide" template="ControlIDTemplate"></div>
-  <div  id="funtest_div" class="yote_template hide" template="FuntestTemplate"></div>
-  <div  id="funbutton_div" class="yote_template hide" template="ButtonTestTemplate"></div>
-  <div  id="funfun_div" class="yote_template hide" template="FunFunTemplate"></div>
-  <div  id="funfun_c_div" class="yote_template hide" template="FunFunChildTemplate"></div>
-  <div  id="funfun_gc_div" class="yote_template hide" template="FunFunGrandchildTemplate"></div>
-  <div  id="funvar_div" class="yote_template hide" template="FunVarTemplate"></div>
-  <div  id="list_div" class="yote_template hide" template="ListTestTemplate" default_variable="app"></div>
-  <div  id="hash_div" class="yote_template hide" template="HashTestTemplate" default_variable="app"></div>
-  <div id=tests></div>
-  <div id=results></div>
+  <div  id="comments" class="yote_template hide" template="Comments"></div>
+
+  <div id="tests"></div>
+  <div id="results"></div>
 </body>
 </html>

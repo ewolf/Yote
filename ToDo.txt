@@ -6,6 +6,30 @@ sort fields numeric for IO classes
 
 _Templates_
 
+ dot notation : foo.bar <--- the bar of foo
+                foo.bar|baz <----the wrapped list of baz attached to the bar of foo
+		foo.bar%zap <----the wrapped hash of baz attached to the bar of foo
+  "quotes" 	
+
+  functions defaulty like <??? return "foo" ???>  ? nah...I think the function gives it shape and makes it clear
+
+Precidence
+  <# comments go here #>
+  <??? function( ctx ) ...
+  <$$$ function foo( ctx ) ...
+  <$$$ var varname value $$$>
+  <$$$ value varname function( ctx ) ...
+  <?? function( ctx ) ....
+  <$$ template 
+  <@ template list max_rows @>
+  <% template list max_rows %>
+  <$ show var $>
+  <$ show var $>
+  <? function( ctx ) ... ( after render )
+  --- reeval the tags?
+  
+
+
  template test for setvar as well as getvar
 
   is_first and is_last in context for pagination lists
