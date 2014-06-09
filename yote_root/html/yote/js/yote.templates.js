@@ -272,6 +272,8 @@ $.yote.templates = {
 	    controls : {},
 	    args : [], // args passed in to the template as it was built
 	    scratch : $.yote.templates._context_scratch,
+            _app_ : $.yote.fetch_default_app(),
+            _acct_ : $.yote.fetch_account(),
 	    set_args : function( args ) { this.args = args; },
 	    get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
 	    parse: function( key ) { return $.yote.templates._parse_val( key, this ); },
@@ -286,6 +288,8 @@ $.yote.templates = {
 		    hashkey_or_index  : this.hashkey_or_index,
 		}; //TODO : add hash key and index
 		clone.clone = this.clone;
+                clone._app_ = this._app_;
+                clone._acct_ = this._acct_;
 		clone.parse = this.parse;
 		clone.set = this.set;
 		clone.set_args = this.set_args;
