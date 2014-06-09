@@ -134,7 +134,7 @@ sub fetch {
 	else {
 	    eval("require $class");
 	    print STDERR Data::Dumper->Dump([$class,$!,$@,$obj_arry]) if $@;
-	    die $@ if $@;
+	    return undef if $@;
 
 	    my $obj = $class->new( $id );
 	    $obj->{DATA} = $data;

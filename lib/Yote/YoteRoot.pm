@@ -263,7 +263,7 @@ sub make_root {
     die "Access Error" unless $acct->is_root();
     $login->set__is_root( 1 );
     $login->set_is_root( 1 );
-    return;
+    return "made root";
 } #make_root
 
 sub new_obj {
@@ -380,6 +380,45 @@ sub remove_login {
     die "unable to remove login";
 
 } #remove_login
+
+#
+# reset by a recovery link.
+#
+sub root_reset_password {
+    my( $self, $args, $acct ) = @_;
+
+    die "Access Error" unless $acct && $acct->get_login()->is_root();
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $newpass = $args->{p};
+    my $login   = $args->{l};
+
+    if( $login ) {
+        $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+    }
+    return "Reset Password";
+
+} #root_reset_password
+
+#
+# Mark user validated
+#
+sub root_validate {
+    my( $self, $args, $acct ) = @_;
+
+    die "Access Error" unless $acct && $acct->get_login()->is_root();
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $login   = $args->{l};
+
+    if( $login ) {
+        $login->set__is_validated( 1 );
+        $login->set__validated_on( time() );
+    }
+    return "Validated Account";
+
+} #root_validate
+
 
 #
 # Purges old accounts that were removed from the removed_logins list.
@@ -581,8 +620,8 @@ sub _validate {
     my $validations = $self->get__validations();
     my $login = $validations->{ $token };
     if( $login ) {
-	$login->set__is_validated( 1 );
-	$login->set__validated_on( time() );
+        $login->set__is_validated( 1 );
+        $login->set__validated_on( time() );
     }
     return $login;
 }

@@ -78,16 +78,16 @@ if we are our experiences then we are both sides of them.
 
     <script>
       var root;
-	  function msg( args, message ) {
-	      $( '#' + args[ 'controls' ][ 'messages' ] ).empty().append( message );
+	  function msg( ctx, message ) {
+	      $( ctx.controls.messages ).empty().append( message );
 	  }
 
       $().ready(function(){
           $.yote.debug = true;
-	  $.yote.templates.import_templates( '/templates/default_templates.html' );
-	  $.yote.init(  );
-	  $.yote.templates.init();
-	  $.yote.templates.refresh();
+	      $.yote.templates.import_templates( '/templates/default_templates.html' );
+	      $.yote.init(  );
+	      $.yote.templates.init();
+	      $.yote.templates.refresh();
       });
     </script>
 
@@ -196,6 +196,7 @@ if we are our experiences then we are both sides of them.
   <!-- ------------------------------ -->
 
   <script type="text/template" class="yote_template_definition" template_name="Users">
+Users
     <a NAME="Users">
       <he>Users</he>
       <table border=1><tr>  
@@ -203,53 +204,72 @@ if we are our experiences then we are both sides of them.
           <th>Email</th>
           <th>Is Root</th>
           <th>Was Validated</th>
+          <th>Reset Password</th>
         </tr>
-        <% User_Row _app_._handles 10 %>
+        <% User_Row _app_%_handles 10 %>
       </table>
-      <$$ Paginator _app_._handles $$>
+      <$$ Paginator _app_%_handles $$>
       <#$$ SearchHash $$#>
       <br>
       user logins removed : <$$$ control rl <span></span> $$$><br>
       <$$$ control purge_users <button type="button">Flush all removed users</button> $$$>
       <? function( ctx ) {
-	    var pu = 1*ctx._app_.count( '_removed_logins' );
-            $( ctx.controls.rl ).text( pu );
-	    if( pu == 0 ) {
-                $( ctx.controls.purge_users ).prop( 'disabled', true );
-            }
-	    if( noconfirm || confirm( 'Really purge ' + pu + ' removed users?' ) ) {
-		ctx.vars._.purge_deleted_logins( '',
-						 function(retmsg){ 
-						     msg( args, retmsg ) },
-						 function(err){ 
-						     msg( args, err ) } );
-		$.yote.templates.refresh();
-	    }
-	} ?>
+	      var pu = 1*ctx._app_.count( '_removed_logins' );
+          $( ctx.controls.rl ).text( pu );
+	      if( pu == 0 ) {
+              $( ctx.controls.purge_users ).prop( 'disabled', true );
+          }
+          $( ctx.controls.purge_users ).click( function() {
+	          if( confirm( 'Really purge ' + pu + ' removed users?' ) ) {
+		          ctx._app_.purge_deleted_logins( '',
+						                          function(retmsg){ 
+						                              msg( ctx, retmsg ) },
+						                          function(err){ 
+						                              msg( ctx, err ) } );
+		          $.yote.templates.refresh();
+              }
+	      } );
+	  } ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="User_Row">
     <tr>   
-      <th><$ _hash_key_ $></th>
+      <th><$ _hashkey_ $></th>
       <th><$ _.email $></th>
       <th><??? function( ctx ) { 
 		 var login = ctx.vars._;
 		 return login ? login.is_master_root() ? 'master root' : 
                            '<$$$ control toggle <input type="checkbox"> $$$>' : ''; 
 	     } ???></th>
-      <th><?? function( ctx ) {
-              return ctx.vars._ && ctx.vars._.is_validated() ? "Yes" : "No" } ??>
+      <th><??? function( ctx ) {
+              return ctx.vars._ && ctx.vars._.is_validated() ? 'Yes' : 'No <$$$ control makevalid <button type="button">validate</button>$$$>' } ???>
       </th> 
+      <th> <$$$ control newp <input type="password" placeholder="new password">$$$> <$$$ control newpup <button type="button">Update</button>$$$></th>
     </tr>
     <? function( ctx ) {
-	$( ctx.controls.toggle ).change( function() {
-	    if( $(this).is( ':checked' ) ) {
-		root.make_root( user, function(){}, function(err){ alert(err) } );
-	    } else {
-		root.remove_root( user, function(){},function(err){ alert(err)} )
-	    }
-	    $.yote.templates.refresh();
-	} );
+        if( ctx.vars._.is_root()*1 == 1 ) {
+            $( ctx.controls.toggle ).attr( 'checked', true );
+        }
+	    $( ctx.controls.toggle ).change( function() {
+	        if( $(this).is( ':checked' ) ) {
+		        ctx._app_.make_root( ctx.vars._, function(){}, function(err){ alert(err) } );
+	        } else {
+		        ctx._app_.remove_root( ctx.vars._, function(){},function(err){ alert(err)} )
+	        }
+	        $.yote.templates.refresh();
+	    } );
+        $( ctx.controls.makevalid ).click( function() {
+            ctx._app_.root_validate( { l : ctx.vars._ },
+                                function( pass ) { 
+                                    msg( ctx, pass );$.yote.templates.refresh();
+                                }, function( err ) { msg( ctx, err ); } );
+        } );
+        $( ctx.controls.newpup ).click( function() {
+            ctx._app_.root_reset_password( { p : $( ctx.controls.newp ).val(), l : ctx.vars._ },
+                                    function( pass ) { 
+                                        msg( ctx, pass ); $.yote.templates.refresh();
+                                    }, function( err ) { msg( ctx, err ); } );
+        } );
     } ?>
   </script>
 
@@ -329,11 +349,11 @@ if we are our experiences then we are both sides of them.
 	    texts  : [ ctx.controls.name ],
 	    action : function() {
 		var newapp = ctx.vars.root.register_app(
-		    { 'name'    : $( arg.controls.name ).val(),
-		      'class' : $( arg.controls.appclass ).val() 
+		    { 'name'    : $( ctx.controls.name ).val(),
+		      'class' : $( ctx.controls.appclass ).val() 
 		    },
 		    function() { $.yote.templates.refresh() },
-		    function(err) { msg( arg, err ); }
+		    function(err) { msg( ctx, err ); }
 		);
 	    } 
 	} );
@@ -450,13 +470,14 @@ if we are our experiences then we are both sides of them.
        <$$$ control messages <span class="message"></span> $$$>
        <$$ Apps $$>
        <#$$ Cron $$#>
-       <#$$ Users $$#>
+       <$$ Users $$>
+     <BR>
       <A HREF="#Top">Back to Top</A>
      </DIV>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="MainBody">
-    <?? function( arg ) {
+    <?? function( ctx ) {
          return $.yote.is_root() ?
 	    '<$$ AdminBody $$>' :
 	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>';

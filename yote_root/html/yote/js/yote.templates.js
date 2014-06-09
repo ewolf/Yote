@@ -271,7 +271,11 @@ $.yote.templates = {
 	        set_args : function( args ) { this.args = args; },
 	        _app_ : $.yote.fetch_default_app(),
 	        _acct_ : $.yote.fetch_account(),
-	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? $.yote.fetch_account() : undefined ) : this.vars[ key ]; },
+	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? 
+                                   ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? 
+                                     $.yote.fetch_account() :
+                                     undefined ) 
+                                   : this.vars[ key ]; },
 	        parse: function( key, use_literal ) { return $.yote.templates._parse_val( key, this, ! use_literal ); },
 	        id:$.yote._next_id(),
 	        set: function( key, val ) { this.vars[ key ] = val; },

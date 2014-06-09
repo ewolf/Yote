@@ -1053,7 +1053,8 @@ $.yote = {
 		            obj._app_id = this._app_id;
                     return obj;
 		        }
-		        return val.substring(1);
+		        var ret = val.substring(1);
+                return typeof ret * 1 !== 'NaN' ? ret : ret * 1;
 	        };
 	        
 	        o.is = function( othero ) {
