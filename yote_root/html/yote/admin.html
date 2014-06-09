@@ -389,13 +389,31 @@ if( 0 ) {
 	     } 
 	     return '';
            } ???>
-      <$$ NewApp $$>
+      <$$ NewApp $$> <br>
+      <$$$ control flush_obj_cache <button type="button">Flush Object Cache</button>$$$> <BR>
+      <$$$ control flush_old_login <button type="button">Flush Old Login Tokens</button>$$$>
+
       <? function(ctx) {
 	  $( ctx.controls.purge_apps ).click(function(){
-	      ctx.get( 'root' ).flush_purged_apps(undefined,
-						  function(){ ctx.controls.message.empty().append( 'flushed purged apps' ) },
-						  function(err){ ctx.controls.message.empty().append( err ) }
-						 ); 
+	      ctx.get( 'root' ).flush_purged_apps(
+                  undefined,
+		  function(){ ctx.controls.message.empty().append( 'flushed purged apps' ) },
+		  function(err){ ctx.controls.message.empty().append( err ) }
+	      ); 
+          } );
+	  $( ctx.controls.flush_obj_cache ).click(function(){
+	      ctx.get( 'root' ).(
+                  undefined,
+		  function(){ ctx.controls.message.empty().append( 'flushed object cache' ) },
+		  function(err){ ctx.controls.message.empty().append( err ) }
+	      ); 
+          } );
+	  $( ctx.controls.flush_old_login ).click(function(){
+	      ctx.get( 'root' ).clear_old_tokens(
+                  undefined,
+		  function(){ ctx.controls.message.empty().append( 'flushed old tokens' ) },
+		  function(err){ ctx.controls.message.empty().append( err ) }
+	      ); 
           } );
          } ?>
   </script>
