@@ -412,7 +412,7 @@ $.yote = {
 				     this.page_size_limit = this.full_size(); 
 				     return this.page_size_limit;
 				   },
-	    full_size:function() { return is_list ?  args.list.length : Object.size( args.hash ) },
+	    full_size:function() { return this.is_list ?  this.list.length : Object.size( this.hash ) },
 	    to_list : function() {
 		var me = this;
 		var olist = me.list;

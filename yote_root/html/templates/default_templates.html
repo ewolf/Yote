@@ -204,13 +204,12 @@
  <??? function( ctx ) { 
      var collection = ctx.args[ 0 ];
      if( collection.can_rewind() || collection.can_fast_forward() ) {
-	 return '
- <$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>
- <$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>
- <$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>
- <$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>
-';
+	 return '<$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
+      '<$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 
+      '<$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>' +
+      '<$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>';
      }
+      return '';
       } ???>
  <? function( ctx ) {
         if( ctx.args.length < 1 ) return;

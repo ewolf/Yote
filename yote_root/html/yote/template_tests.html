@@ -137,6 +137,8 @@ $().ready(function(){
 	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ get app.sandbox name $>' );
 	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
+	    is( $( '#after_render' ).text().trim().replace( /[\n\s]+/g, ' '), 'TEST', 'after render function' );
+
 //	    is( $.yote.templates.fill_template( '' ).trim().replace( /[\n\s]+/g, ' '), '', '' );
 	    
  	}
@@ -155,6 +157,11 @@ $().ready(function(){
 </head>
 
 <templates>
+
+    <script type="text/template" class="yote_template_definition" template_name="AfterRender">
+      <$$$ control ar_div <div></div>$$$>
+      <? function( ctx ) { $( ctx.controls.ar_div ).append( "TEST" ) } ?>
+    </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Vars">
       My name is <$ get name unknown $>
@@ -221,6 +228,7 @@ $().ready(function(){
 <body>
   <h1>Yote Template Tests</h1>
   <div  id="comments" class="yote_template hide" template="Comments"></div>
+  <div  id="after_render" class="yote_template hide" template="AfterRender"></div>
 
   <div  id="comments" class="yote_template" template="Ed"></div>
   <div id="tests"></div>
