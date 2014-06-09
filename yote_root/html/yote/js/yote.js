@@ -163,27 +163,6 @@ $.yote = {
 	$.cookie( 'yoken', '', { path : '/' } );
     }, //logout
 
-    include_templates:function( url ) {
-	var root = this;
-	$.ajax( {
-	    async:false,
-	    cache: false,
-	    contentType: "text/html",
-	    dataFilter:function(a,b) {
-		if( $.yote.debug == true ) {
-		    console.log('incoming '); console.log( a );
-		}
-		return a;
-	    },
-	    error:function(a,b,c) { root._error(a); },
-	    success:function( data ) {
-		$( 'body' ).append( data );
-	    },
-	    type:'GET',
-	    url: url
-	} );
-    }, //include_templates
-
     /* general functions */
     message:function( params ) {
         var root   = this;
@@ -404,24 +383,31 @@ $.yote = {
 	} ).submit();
     }, //upload_message
 
-    wrap_native_list:function( args ) { // args {  list : somelist, cache_key : key identifying item, wrap_key : key identifying template, field_key : other key identifying item }
+    wrap_native_container:function( args ) { // args {  list : somelist, cache_key : key identifying item, wrap_key : key identifying template, field_key : other key identifying item }
+	/* keys explained :
+                cache_key - identifies this list
+		wrap_key  - identifies which template the list is used in
+		field_key - 
+	 */
+
+
 	if( ! $.yote.wrap_cache[ args.cache_key ] ) {
 	    $.yote.wrap_cache[ args.cache_key ] = {};
 	}
-	// TODO : better wrap_key. Suggest it be a path of templates that traces to the root html document.
-	// NEED to then have a parent_template functioning well
-	if( ! $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] ) {
-	    $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] = {};
+	if( $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] ) {
+	    return $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ];
 	}
-	if( $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ] ) {
-	    return $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ];
-	}
-	if( args.dontmake ) return undefined;
 	var ret = {
 	    list : args.list,
+	    hash : args.hash,
+	    page_size_limit : args.page_size,
 	    start:0,
-	    is_list : true,
-	    full_size:function() { return args.list.length; },
+	    is_list : args.is_list,
+	    page_size : function() { if( typeof this.page_size_limit !== 'undefined' ) return this.page_size_limit;
+				     this.page_size_limit = this.full_size(); 
+				     return this.page_size_limit;
+				   },
+	    full_size:function() { return is_list ?  args.list.length : Object.size( args.hash ) },
 	    to_list : function() {
 		var me = this;
 		var olist = me.list;
@@ -458,13 +444,13 @@ $.yote = {
 			    }
 			    if( match ) {
 				me.length++;
-				if( i >= me.start && ret.length < me.page_size )
+				if( i >= me.start && ret.length < me.page_size() )
 				    ret.push( olist[i] );
 			    }
 			}
 		    }
 		    else {
-			if( i >= me.start && ( me.page_size==0 || ret.length < me.page_size) ) {
+			if( i >= me.start && ( me.page_size()==0 || ret.length < me.page_size()) ) {
 			    me.length++;
 			    ret.push( olist[i] );
 			}
@@ -475,15 +461,15 @@ $.yote = {
 	    to_hash : function() {
 		var me = this;
 		var ret = {};
-		if( ! me.collection_obj ) return ret;
-		var ohash  = me.collection_obj.to_hash();
-		var hkeys = me.collection_obj.keys();
+		if( ! me.hash ) return ret;
+		var ohash  = me.hash;
+		var hkeys = Object.keys( ohash );
 
 		hkeys.sort();
 		if( me.sort_reverse ) hkeys.reverse();
 
 		me.length = 0;
-		for( var i=0; i < hkeys.length && me.length < me.page_size; i++ ) {
+		for( var i=0; i < hkeys.length && me.length < me.page_size(); i++ ) {
 		    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
 			if( me.search_fields && me.search_fields.length > 0 ) {
 			    var match = false;
@@ -494,7 +480,7 @@ $.yote = {
 			    }
 			    if( match ) {
 				var k = hkeys[ i ];
-				if( i >= me.start && me.length < me.page_size &&
+				if( i >= me.start && me.length < me.page_size() &&
 				    ( ! me.hashkey_search_value ||
 				      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
 				{
@@ -505,7 +491,7 @@ $.yote = {
 			}
 		    }
 		    else {
-			if( i >= me.start && me.length < me.page_size ) {
+			if( i >= me.start && me.length < me.page_size() ) {
 			    var k = hkeys[ i ];
 			    if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
 				ret[ k ] = ohash[ k ];
@@ -515,30 +501,6 @@ $.yote = {
 		    }
 		}
 		return ret;
-	    },
-	    to_listy:function() {
-		var l = args.list;
-		if( this.sort_fields ) {
-		    for( var i=l.length; i>=0; --i ) {
-			l = l.sort( function( a, b ) {
-			    if( this.reversed_sort_idx[ i ] ) {
-				var c = a;
-				a = b;
-				b = c;
-			    }
-			    if( typeof a === 'object' && typeof b === 'object' ) {
-				if( me.is_number_sort )
-				    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
-				a = a.get( me.sort_fields[i] ).toLowerCase();
-				b = b.get( me.sort_fields[i] ).toLowerCase();
-				return a > b ? 1 : a < b ? -1 : 0;
-			    }
-			    return 0;
-			} );
-		    }
-		}
-
-		return args.list;
 	    },
 	    is_number_sort : args.is_number_sort,
 	    set_hashkey_search_criteria:function( hashkey_search ) {},
@@ -559,7 +521,7 @@ $.yote = {
 	    reversed_sort_idx : args.reversed_sort_idx || [], //which index to reverse
 	    hashkey_search_value : args.hashkey_search_value || undefined,
 	};
-	$.yote.wrap_cache[ args.cache_key ][ args.wrap_key ][ args.field_key ] = ret;
+	$.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] = ret;
 	return ret;
     },
 
@@ -641,14 +603,12 @@ $.yote = {
 		},
 
 
-		wrap_list:function( args, size, dontmake ) {
-		    args.dontmake = dontmake;
+		wrap_list:function( args, size ) {
 		    args.size = size;
 		    return this.wrap( args );
 		},
-		wrap_hash:function( args, size, dontmake ) {
+		wrap_hash:function( args, size ) {
 		    args.is_hash = true;
-		    args.dontmake = dontmake;
 		    args.size = size;
 		    return this.wrap( args );
 		},
@@ -675,7 +635,6 @@ $.yote = {
 		    if( $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] ) {
 			return $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ];
 		    }
-		    if( args.dontmake ) return undefined;
 		    var ol, page_out = false;
 		    // check to see if this object is already loaded in the cache.
 		    if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
