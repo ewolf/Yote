@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="/yote/js"></script>
 
-    <script src="/templates/default_templates.js"></script>
-
     <link rel="stylesheet" type="text/css" href="/css/main.css"/>
 
     <STYLE>
@@ -15,16 +13,13 @@
     <script>
       <!--
 	  $().ready(function() {
-              $.yote.debug = true;
-	      $.yote.include_templates( '/templates/default_templates.html' );
-	      $.yote.util.register_functions( base_templates );
+          $.yote.debug = true;
+	      $.yote.templates.import_templates( '/templates/default_templates.html' );
+	      $.yote.templates.init();
 
 	      var yote_app = $.yote.init( 'MadYote' );
 
-	      $.yote.util.register_function( 'new_todo', function() { return $.yote.is_root() ? "<$$ NewToDo $$>" : '';  } );
-	      $.yote.util.register_item( 'yote', yote_app );
-	      
-	      $.yote.util.refresh_ui();		  
+	      $.yote.templates.refresh();		  
 	  } );
 	-->
     </script>
@@ -40,37 +35,56 @@
 
     <script type="text/template" class="yote_template_definition" template_name="ToDoItem">
       <div>
-      <h4> <$ show_or_edit _ title $></h4>
-      <div><$ show_or_edit _ #explanation $></div>
-      <div><$ show_or_edit _ #progress $></div>
+        <h4> <$$ show_or_edit _ title $$></h4>
+        <div><$$ edithtml _ explanation $$></div>
+        <div><$$ edithtml _ progress $$></div>
+        <??? function( ctx ) {
+            return $.yote.is_root() ? '<$$$ control rem_but <button type="button">remove entry</button>$$$>' : '';
+        } ???>
       </div>
-    </script>
-
-    <script type="text/template" class="yote_template_definition" template_name="ToDos">
-      <div>
-      <h2>Working On</h2>
-      <@ ToDoItem 10 @>
-      <? new_todo ?>
-      </div>
+      <? function( ctx ) {
+           $( ctx.controls.rem_but ).click( function() {
+               ctx.vars.page.remove_from( { name : 'todos', items : [ ctx.vars._ ] } );
+               $.yote.templates.refresh();
+           } );
+      } ?>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="NewToDo">
       <DIV>
-      <$$$ new title <input placeholder="title" type="text"> $$$> <BR>
-      <$$$ new explanation <textarea cols=80 placeholder="explanation" rows=4></textarea> $$$>  <BR>
-      <$$$ new progress <textarea cols=80 placeholder="progress" rows=4></textarea> $$$>  <BR>
-      <$ newbutton _ todos Add $>
+        <$$$ control title <input placeholder="title" type="text"> $$$> <BR>
+        <$$$ control explanation <textarea cols=80 placeholder="explanation" rows=4></textarea> $$$>  <BR>
+        <$$$ control progress <textarea cols=80 placeholder="progress" rows=4></textarea> $$$>  <BR>
+        <$$$ control newtodo <button type="button">New Todo</button>$$$>
       </DIV>
+      <? function( ctx ) {
+           $( ctx.controls.newtodo ).click( function() {
+               var new_todo = ctx.vars.page.new_with_same_permissions( { 
+                   title       : $( ctx.controls.title ).val(),
+                   explanation : $( ctx.controls.explanation ).val(),
+                   progress    : $( ctx.controls.progress ).val()
+               } );
+               ctx.vars.page.add_to( {  name : 'todos', items : [ new_todo ] } );
+               $.yote.templates.refresh();
+            } );
+         } ?>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Main">
-      <$ show_or_edit _.page #whatis  $>
+      <??? function( ctx ) {
+           ctx.vars.page = ctx._app_.get_page();
+           } ???>
+      <$$ edithtml page whatis $$>
       <hr>
-      <$@ ToDos ToDos _.page todos @$>
+      <div>
+        <h2>Working On</h2>
+        <@ ToDoItem page@todos 10 @>
+        <$$ NewToDo $$>
+      </div>
       <hr>
-      <$ show_or_edit _.page #features  $>
+      <$$ edithtml page features $$>
       <hr>
-      <$ show_or_edit _.page #demo  $>
+      <$$ edithtml page demo $$>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Header">
@@ -84,7 +98,7 @@
 
     <DIV class="yote_template" template="YoteHeader"></div>
 
-    <DIV class="yote_template main" template="Main" default_variable="yote"></div>
+    <DIV class="yote_template main" template="Main"></div>
 
   </body>
 </HTML>
