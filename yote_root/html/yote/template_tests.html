@@ -197,7 +197,7 @@ $().ready(function(){
 
     <script type="text/template" class="yote_template_definition" template_name="VarTestPartTwo">
       <$$$ set e x $$$>
-      <?? function( ctx ) { return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); } ??>
+      <?? function( ctx ) { console.log( [ "BL", ctx ] ); return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); } ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTest">
