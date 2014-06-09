@@ -429,7 +429,8 @@ $.yote = {
 				    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
 				a = a.get( me.sort_fields[i] ).toLowerCase();
 				b = b.get( me.sort_fields[i] ).toLowerCase();
-				return a > b ? 1 : a < b ? -1 : 0;
+			//	return a > b ? 1 : a < b ? -1 : 0;
+				return a - b;
 			    }
 			    return 0;
 			}

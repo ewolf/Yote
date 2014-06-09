@@ -109,6 +109,7 @@ $().ready(function(){
 
     function do_tests() {
         // init yote
+$.yote.templates.debug = true;
 	$.yote.init('Yote::Test::Template');
         $.yote.logout();
         $.yote.reinit();
@@ -119,6 +120,7 @@ $().ready(function(){
 	    app.reset();
 	    var sandbox = app.get_sandbox();
 	    sandbox.set( 'name', 'sandy' );
+
 	    $.yote.templates.init();
 	    $.yote.templates.refresh();
 
@@ -230,7 +232,7 @@ $().ready(function(){
   <div  id="comments" class="yote_template hide" template="Comments"></div>
   <div  id="after_render" class="yote_template hide" template="AfterRender"></div>
 
-  <div  id="comments" class="yote_template" template="Ed"></div>
+  <div  id="eddy" class="yote_template" template="Ed"></div>
   <div id="tests"></div>
   <div id="results"></div>
 </body>
