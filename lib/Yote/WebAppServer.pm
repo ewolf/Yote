@@ -262,7 +262,6 @@ sub start_server {
 
     while( 1 ) {
         sleep( 5 );
-        print STDERR Data::Dumper->Dump(["Heartbeat"]);
         my $threads = $self->{ threads };
         for my $thread ( values %$threads ) {
             if( $thread->is_joinable() ) {
@@ -276,7 +275,6 @@ sub start_server {
         eval { 
             my $cron = $root->_cron();
             my $cron_entries = $cron->entries();
-            print STDERR Data::Dumper->Dump(["checking cron", $cron_entries]);
             Yote::ObjProvider::flush_all_volatile();
             $self->__unlock_all();
             for my $entry (@$cron_entries) {
@@ -935,12 +933,13 @@ sub minify_dir {
         }
     }
     my $minitime = -e $minifile ? stat($minifile)->mtime : 0;
+
     if( ! -f $minifile || $minitime < $latest_time ) {
         my $mini_buf = '';
         my $debug_buf = '';
         # make sure base jquery comes first, followed by other jquery
         # make sure that yote comes before yote.util
-        for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.util/ ) ? -1 : 1
+        for my $f (sort { ( $a =~ /jquery(-[0-9.]*)?(\.min)?\.js$/ || ($a =~ /jquery/ && $b !~ /jquery/ ) || $b =~ /yote.template/ ) ? -1 : 1
                    } @js_files) {
             my $js = read_file( $f );
             $mini_buf .= $f =~ /\.min\.js$/ ? $js : JavaScript::Minifier::minify(input => $js);

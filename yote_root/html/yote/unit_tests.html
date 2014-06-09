@@ -271,9 +271,6 @@
  	    hello_app.hello();
  	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
-
-
-
  	    // testing pagination
  	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : 'foo_array' }, 5 );
  	    $.yote.debug = true;

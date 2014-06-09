@@ -18,6 +18,10 @@ var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 var yote_scr_url = ma && ma.length > 1 ? ma[ 1 ] : '';
 
 // the whole yote object.
+if( typeof $.yote === 'object' ) {
+    var eh = $.yote;
+}
+
 $.yote = {
     url:yote_scr_url,
     guest_token:0,
@@ -233,7 +237,6 @@ $.yote = {
 			            if( typeof data.d === 'object' ) {
 			                for( var oid in data.d ) {
 				                if( root._is_in_cache( oid ) ) {
-				                    delete $.yote.wrap_cache[ oid ];
 				                    
 				                    var cached = root.objs[ oid + '' ];
 				                    for( fld in cached._d ) {
@@ -689,8 +692,6 @@ $.yote = {
 		            if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
 			            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
 		            }
-
-
 		            if( ! page_out ) {
 			            var collection_obj = host_obj.get( fld );
 			            if( ! collection_obj ) {
@@ -1298,6 +1299,13 @@ $.yote = {
     iframe_count: 0
 
 }; //$.yote
+
+if( eh ) {
+    for( var key in eh ) {
+        $.yote[ key ] = eh[ key ];
+    }
+}
+
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19
 if (!Array.prototype.map) {

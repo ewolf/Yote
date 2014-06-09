@@ -4,13 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Yote Admin Page (YAP)</title>
 
-    <script src="/yote/js/jquery-2.1.0.js"></script>
-    <script src="/yote/js/jquery.base64.min.js"></script>
-    <script src="/yote/js/jquery.cookie.js"></script>
-    <script src="/yote/js/json2.js"></script>
-    <script src="/yote/js/yote.js"></script>
-    <script src="/yote/js/yote.util.js"></script>
-    <script src="/yote/js/yote.templates.js"></script>
+    <script src="/yote/js"></script>
 
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
@@ -216,7 +210,7 @@ if we are our experiences then we are both sides of them.
           <th>Was Validated</th>
           <th>Reset Password</th>
         </tr>
-        <% User_Row _app_%_handles 5 %>
+        <% User_Row _app_%_handles 1 %>
       </table>
       <$$ Paginator _app_%_handles $$> <br>
        <#$$ SearchHash $$#>
@@ -300,7 +294,10 @@ if we are our experiences then we are both sides of them.
      <$$$ control new_schedule_time <input type="datetime-local"> $$$>
      <$$$ control new_schedule <button type="button">Schedule Time</button> $$$>
      <? function( ctx ) {
-     $( ctx.controls.new_schedule_time );
+         $( ctx.controls.new_schedule_time ).click( function() {
+             alert( $( ctx.controls.new_schedule_time ).val() );
+            
+         } );
      } ?>
    </script>
 
@@ -406,6 +403,7 @@ if we are our experiences then we are both sides of them.
     <H3>Applications Installed</H3>
     <???
     function( ctx ) { 
+        $.yote.debug = true;
         var root = $.yote.fetch_root();
         ctx.vars.root = root;
         var app_count = root.count( '_apps' );
@@ -416,7 +414,9 @@ if we are our experiences then we are both sides of them.
             if( app_hash[ k ] ) 
                 apps[ k ] = app_hash[ k ];
         }
+        console.log( [ 'APPS', apps, pag, app_hash, app_count, root ] );
         ctx.vars.apps = apps;
+        $.yote.debug = false;
     } ???>
     <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
         <th>Number of Users</th>   <th>Email Settings</th> 

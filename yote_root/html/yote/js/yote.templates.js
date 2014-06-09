@@ -6,6 +6,7 @@
  *
  * Version 0.1
  */
+if( ! $.yote ) { $.yote = {}; }
 $.yote.templates = {
 
     // imports templates from a url and places them into the document.

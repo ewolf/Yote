@@ -76,7 +76,6 @@
     <??? function( ctx ) { 
            if( ctx.args.length > 1 ) { 
                ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
-               console.log( [ "SETTY", ctx.vars.object, ctx.args[ 0 ] ] );
                ctx.vars.field = ctx.args[ 1 ];
                return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
            } else {
@@ -258,7 +257,6 @@
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
  <??? function( ctx ) { 
      var collection = ctx.parent.parse( ctx.args[ 0 ] );
-      console.log( [ "PAG ", ctx.args[ 0 ], collection ] );
      if( collection.can_rewind() || collection.can_fast_forward() ) {
          return '<$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
       '<$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 
