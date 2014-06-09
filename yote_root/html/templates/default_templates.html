@@ -66,7 +66,7 @@
     <# edit takes an object and a field to edit and builds a way to edit this #>
     <??? function( ctx ) { 
 	   if( ctx.args.length > 1 ) { 
-	       ctx.set( 'object', ctx.args[ 0 ] );
+	       ctx.set( 'object', ctx.parse( ctx.args[ 0 ] ) );
 	       var fld = ctx.args[ 1 ];
 	       ctx.set( 'field', fld );
                return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ get object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$><$ get object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';

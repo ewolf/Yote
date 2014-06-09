@@ -377,12 +377,8 @@ $.yote.templates = {
     }, //fill_template
 
     fill_template_direct:function( template, context, template_name ) {
-	// a new context is only made when there is a template id assigned
-	return $.yote.templates._fill_template_text( template, context, template_name );
-    }, //fill_template_direct
-
-    _fill_template_text:function( template, context, template_name ) {
         if( ! template ) return '';
+	template += '';
 	// function buliding template ( highest precidence )
 	while( template.indexOf( '<???' ) > -1 ) {
 	    var parts = $.yote.templates._template_parts( template, '???', template_name );
@@ -423,7 +419,7 @@ $.yote.templates = {
 	    var args = $.yote.templates._parse_args( parts[1] );
 	    var tmpl = args.shift();
 	    template = parts[ 0 ] +
-		$.yote.templates.fill_template_container_rows( tmpl, context, args ) +
+		$.yote.templates.fill_template_container_rows( tmpl, context, args, true ) +
 		parts[ 2 ];
 	} // @
 
@@ -433,7 +429,7 @@ $.yote.templates = {
 	    var args = $.yote.templates._parse_args( parts[1] );
 	    var tmpl = args.shift();
 	    template = parts[ 0 ] +
-		$.yote.templates.fill_template_container_rows( tmpl, context, args ) +
+		$.yote.templates.fill_template_container_rows( tmpl, context, args, false ) +
 		parts[ 2 ];
 	} // %
 
@@ -443,7 +439,7 @@ $.yote.templates = {
 	    var args = $.yote.templates._parse_args( parts[1] );
 	    var template_name = args.shift();
 	    template = parts[ 0 ] +
-		$.yote.templates.fill_template( template_name, context, args.map( function(it) { return $.yote.templates._parse_val(it,context); } ) ) +
+		$.yote.templates.fill_template( template_name, context, args ) +
 		parts[ 2 ];
 	} // $$
 
@@ -482,7 +478,7 @@ $.yote.templates = {
 	} // <?
 
 	return template;
-    }, //_fill_template_text
+    }, //fill_template_direct
     
 
     // fill

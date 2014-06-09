@@ -123,7 +123,6 @@ $.yote.templates.debug = true;
 
 	    $.yote.templates.init();
 	    $.yote.templates.refresh();
-
 	    is( $.yote.templates.fill_template( 'Comments' ).trim(), 'This template has comments', '$.yote.templates.fill_template works' );
 	    is( $( '#comments' ).html().trim(), 'This template has comments', 'automatic filling of template variables' );
 	    is( $( '#comments' ).html().trim(), 'This template has comments', '<# comment template #>' );
@@ -192,14 +191,14 @@ $.yote.templates.debug = true;
        <$$$ set array function( ctx ) { return [ "A", "C", "B", "D", "E" ]; } $$$>
        <$$$ set hash function( ctx ) { return {  Apple : 'butter', Spinach : 'wild', Daikon : 'radish', Lemon : 'yellow', Pea : 'green'}; } $$$>
        ARRAY
-       <@ ArrayRow array 3 @>
-       <% HashRow hash 3 %>
+       <@ ArrayRow array@ 3 @>
+       <% HashRow hash% 3 %>
        YARRA
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTestPartTwo">
       <$$$ set e x $$$>
-      <?? function( ctx ) { console.log( [ "BL", ctx ] ); return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); } ??>
+      <?? function( ctx ) { return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); } ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTest">
