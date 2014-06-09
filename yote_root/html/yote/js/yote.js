@@ -525,6 +525,19 @@ $.yote = {
 	        },
 	        is_number_sort : args.is_number_sort,
 	        remove : function( idx ) { return delete this.list[ idx ]; },
+	        remove_item : function( item ) { 
+                if( ! is_list ) {
+                    console.log( "Error, remove_item called on hash. It should be called on a list." );
+                    return;
+                }
+                
+                for( var i=0; i<this.list.length; i++ ) {
+                    var list_item = this.list.length[ i ];
+                    if( ( typeof item === 'object' && item.is && item.is( list_item ) ) || ( item == list_item ) ) {
+                        return delete this.list[ i ]; 
+                    }
+                }
+            }, //remove_item
 	        set_hashkey_search_criteria:function( hashkey_search ) { 
 		        hs = hashkey_search || '';
 		        this.hashkey_search_value = hs.split(/ +/);
@@ -889,6 +902,28 @@ $.yote = {
 			                }
 			                return this.collection_obj.get( this.start + idx );
 			            }, //get
+			            add_item : function ( item ) {
+                            if( this.is_hash ) {
+                                console.log( "Error, add_item called on hash. It should be called on a list." );
+                                return;
+                            }
+                            return this.host_obj.add_to( { name : this.field, items : [ item ] } );
+                        },
+			            hash_item : function ( key, item ) {
+                            if( ! this.is_hash ) {
+                                console.log( "Error, remove_item called on list. It should be called on a hash." );
+                                return;
+                            }
+                            return this.host_obj.hash( { name : this.field, value : item, key : key } );
+                        },
+
+			            remove_item : function ( item ) {
+                            if( this.is_hash ) {
+                                console.log( "Error, remove_item called on hash. It should be called on a list." );
+                                return;
+                            }
+                            return this.host_obj.remove_from( { name : this.field, items : [ item ] } );
+                        },
 			            remove : function ( idx ) {
 			                var ret = this.is_hash ? 
 				                this.host_obj.delete_key( { name : this.field, index : idx } ) :

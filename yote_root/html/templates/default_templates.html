@@ -71,8 +71,53 @@
    ?>
 </script>
 
-
 <script type="text/template" class="yote_template_definition" template_name="edit">
+    <# edit takes an object and a field to edit and builds a way to edit this #>
+    <??? function( ctx ) { 
+           if( ctx.args.length > 1 ) { 
+               ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
+               console.log( [ "SETTY", ctx.vars.object, ctx.args[ 0 ] ] );
+               ctx.vars.field = ctx.args[ 1 ];
+               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+           } else {
+               console.log( "error in template 'edit' : not enough arguments." );
+               return '';
+           }
+        return '';
+    } ???> 
+    <? function( ctx ) {
+        if( ctx.vars.object ) {
+            $( ctx.controls.editarea ).text( ctx.vars.object.get( ctx.vars.field ) );
+            $( ctx.controls.noedit_span ).text( ctx.vars.object.get( ctx.vars.field ) );
+        }
+        $( ctx.controls.input_div ).mouseleave( function() { 
+            $( ctx.controls.noedit_span ).removeClass( 'editing' );
+        } ).mouseenter( function() { 
+            $( ctx.controls.noedit_span ).addClass( 'editing' );
+        } );
+
+        if( $( ctx.controls.noedit_span ).width() > 100 ) {
+            $( ctx.controls.noedit_span ).width( 100 );
+        }
+        
+        $( ctx.controls.noedit_span ).click( function() { 
+            $( this ).hide();
+            $( ctx.controls.edit_span ).show();
+        } );
+
+        $( ctx.controls.cancel_button ).click( function() {
+            $( ctx.controls.edit_span ).hide();
+            $( ctx.controls.noedit_span ).show();
+        } );
+        $( ctx.controls.go_button ).click( function() {
+            ctx.vars.object.set( ctx.vars.field, $( ctx.controls.editarea ).val() );
+            $.yote.templates.refresh();
+        } );
+    } ?>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="edithtml">
     <# edit takes an object and a field to edit and builds a way to edit this #>
     <??? function( ctx ) { 
            if( ctx.args.length > 1 ) { 
@@ -213,6 +258,7 @@
 <script type="text/template" class="yote_template_definition" template_name="Paginator">
  <??? function( ctx ) { 
      var collection = ctx.parent.parse( ctx.args[ 0 ] );
+      console.log( [ "PAG ", ctx.args[ 0 ], collection ] );
      if( collection.can_rewind() || collection.can_fast_forward() ) {
          return '<$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
       '<$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 

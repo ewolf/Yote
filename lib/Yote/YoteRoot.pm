@@ -53,7 +53,7 @@ sub _init {
 sub cron {
     my( $self, $data, $acct ) = @_;
     if( $acct && $acct->is_root() ) {
-	return $self->_cron();
+        return $self->_cron();
     }
     die "Permissions Error";
 } #cron
@@ -61,8 +61,8 @@ sub _cron {
     my $self = shift;
     my $c = $self->get__crond();
     unless( $c ) {
-	$c = new Yote::Cron();
-	$self->set__crond( $c );
+        $c = new Yote::Cron();
+        $self->set__crond( $c );
     }
     return $c;
 }
@@ -160,6 +160,11 @@ sub fetch_initial {
 sub clear_old_tokens {
     my( $self, $dummy, $acct ) = @_;
     die "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
+    return $self->_clear_old_tokens();
+} #clear_old_tokens
+
+sub _clear_old_tokens {
+    my( $self ) = @_;
     my $tok_store = $self->get___IP_TO_GUEST_TOKEN({});
     my $dirty_containers = $self->get___DIRTY_CONTAINERS();
     my $registered_containers = $self->get__REGISTERED_CONTAINERS();
@@ -196,7 +201,7 @@ sub clear_old_tokens {
 	}
     }
     return $count;
-} #clear_old_tokens
+} #_clear_old_tokens
 
 #
 # Returns a token for non-logging in use.

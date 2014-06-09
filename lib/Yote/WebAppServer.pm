@@ -262,6 +262,7 @@ sub start_server {
 
     while( 1 ) {
         sleep( 5 );
+        print STDERR Data::Dumper->Dump(["Heartbeat"]);
         my $threads = $self->{ threads };
         for my $thread ( values %$threads ) {
             if( $thread->is_joinable() ) {
@@ -275,6 +276,7 @@ sub start_server {
         eval { 
             my $cron = $root->_cron();
             my $cron_entries = $cron->entries();
+            print STDERR Data::Dumper->Dump(["checking cron", $cron_entries]);
             Yote::ObjProvider::flush_all_volatile();
             $self->__unlock_all();
             for my $entry (@$cron_entries) {
@@ -297,6 +299,7 @@ sub start_server {
                     print STDERR "Done cron thread " . threads->tid() . "\n";
                               } ); #done with cron entry thread
             } #each cron entry
+            
         };
         print STDERR "ERROR IN CRON : $@ $!" if $@;
     } #endless loop
