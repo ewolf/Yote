@@ -286,6 +286,7 @@ $.yote.templates = {
 		    hashkey_or_index  : this.hashkey_or_index,
 		}; //TODO : add hash key and index
 		clone.clone = this.clone;
+		clone.parent = this;
 		clone.parse = this.parse;
 		clone.set = this.set;
 		clone.set_args = this.set_args;
@@ -470,6 +471,7 @@ $.yote.templates = {
     _parse_val:function( value, context, no_literal ) {
 	var tlist = value.trim().split(/[\.]/);
 	var subj = context;
+	
 	for( var i=0; i < tlist.length; i++ ) {
 	    var part = tlist[ i ];
 

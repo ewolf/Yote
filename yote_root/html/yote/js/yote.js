@@ -401,8 +401,6 @@ $.yote = {
 		wrap_key  - identifies which template the list is used in
 		field_key - 
 	 */
-
-
 	if( ! $.yote.wrap_cache[ args.cache_key ] ) {
 	    $.yote.wrap_cache[ args.cache_key ] = {};
 	}
@@ -418,6 +416,7 @@ $.yote = {
 	    page_size_limit : args.page_size,
 	    start:0,
 	    is_list : args.is_list,
+	    id : $.yote.templates._next_id(),
 	    page_size : function() { if( typeof this.page_size_limit !== 'undefined' ) return this.page_size_limit;
 				     this.page_size_limit = this.full_size(); 
 				     return this.page_size_limit;
