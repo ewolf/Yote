@@ -125,7 +125,7 @@ if we are our experiences then we are both sides of them.
 
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Objects">
-    <$% Attached_ObjTab Empty _ _attached_objects %$>
+    <#$% Attached_ObjTab Empty _ _attached_objects %$#>
       <$$ Add_Attached $$>
   </script>
 
@@ -225,7 +225,7 @@ if we are our experiences then we are both sides of them.
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="User_Row">
-    <tr>   <th><$ hash_key $></th> <th><$ get _.email $></th>   <th>
+    <tr>   <th><$ hash_key $></th> <th><$ _.email $></th>   <th>
              <??? function( ctx ) { 
 		 var l = args.get( '_' ); 
 		 return login ? login.is_master_root() ? 'master root' : '<$$$ control toggle <input type="checkbox"> $$$>' : ''; 
@@ -325,7 +325,7 @@ if we are our experiences then we are both sides of them.
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="App_Row">
-    <tr>   <td><$ hashkey $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
+    <tr>   <td><$ _hashkey_ $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
       <td><?? function(ctx) { return ctx.get( '_' ).count('_account_roots'); } ??> </td>   
       <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
       <td><$$$ control reset_b <button type="button">Reset</button>$$$></td>

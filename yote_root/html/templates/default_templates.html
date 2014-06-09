@@ -5,7 +5,7 @@
 <script type="text/template" class="yote_template_definition" template_name="checkbox">
     <??? function( ctx ) { 
 	   if( ctx.args.length > 1 ) { 
-	       var obj = ctx.args[ 0 ];
+	       var obj = ctx.parse( ctx.args[ 0 ] );
 	       ctx.set( 'object', obj );
 	       var fld = ctx.args[ 1 ];
 	       var lbl = ctx.args[ 2 ] || '';
@@ -19,7 +19,7 @@
     } ???> 
     <? function( ctx ) {
 	$( ctx.controls.checkbox ).click( function() {
-	    ctx.get( 'object').set( ctx.get('field' ), $( this ).is( ':checked' ) ? 1 : 0 );
+	    ctx.vars.object.set( ctx.vars.field, $( this ).is( ':checked' ) ? 1 : 0 );
 	    $.yote.templates.refresh();
 	} );
     } ?>
@@ -69,7 +69,7 @@
 	       ctx.set( 'object', ctx.parse( ctx.args[ 0 ] ) );
 	       var fld = ctx.args[ 1 ];
 	       ctx.set( 'field', fld );
-               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ get object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$><$ get object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$><$ object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
 	   } else {
 	       console.log( "error in template 'edit' : not enough arguments." );
 	       return '';
@@ -98,7 +98,7 @@
 	    $( ctx.controls.noedit_span ).show();
 	} );
 	$( ctx.controls.go_button ).click( function() {
-	    ctx.get( 'object' ).set( ctx.get( 'field' ), $( ctx.controls.editarea ).val() );
+	    ctx.vars.object.set( ctx.vars.field, $( ctx.controls.editarea ).val() );
 	    $.yote.templates.refresh();
 	} );
     } ?>
@@ -106,7 +106,7 @@
 
 <script type="text/template" class="yote_template_definition" template_name="list_remove_button">
     <??? function( ctx ) { 
-	var collection_to_remove_from = ctx.args[ 0 ] || ctx.get( '__' );
+	var collection_to_remove_from = ctx.args[ 0 ] || ctx.vars.__;
 	ctx.set( 'collection_to_remove_from', collection_to_remove_from );
 	
 	var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
@@ -117,7 +117,7 @@
     } ???> 
     <? function( ctx ) {
 	$( ctx.controls.remove_button ).click( function() {
-	    ctx.get( 'collection_to_remove_from' ).remove( ctx.get( 'remove_key' ) );
+	    ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
 	    $.yote.templates.refresh();
 	} );
      } ?>
@@ -125,7 +125,7 @@
 
 <script type="text/template" class="yote_template_definition" template_name="list_remove_ask">
     <??? function( ctx ) { 
-	var collection_to_remove_from = ctx.args[ 0 ] || ctx.get( '__' );
+	var collection_to_remove_from = ctx.args[ 0 ] || ctx.vars.__;
 	ctx.set( 'collection_to_remove_from', collection_to_remove_from );
 	var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
 	ctx.set( 'remove_key', key_to_remove );
@@ -136,7 +136,7 @@
     <? function( ctx ) {
 	$( ctx.controls.remove_button ).click( function() {
 	    if( confirm( "Are you sure you want to delete this?" ) ) {
-		ctx.get( 'collection_to_remove_from' ).remove( ctx.get( 'remove_key' ) );
+		ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
 		$.yote.templates.refresh();
 	    }
 	} );
@@ -144,7 +144,7 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_in">
-   Logged in as <$ get _acct_.handle $><BR>
+   Logged in as <$ _acct_.handle $><BR>
    <$$$ control logout <a href="#">Log Out</a> $$$>
    <? function( ctx ) {
        $( ctx.controls.logout ).click( function() {
@@ -156,7 +156,7 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Login">
-   <$$$ control messages <span><$ get _app_.login_message Please Log In $></span> $$$><BR>
+   <$$$ control messages <span><$ _app_.login_message Please Log In $></span> $$$><BR>
    <$$$ control handle <input placeholder="handle" type="text"> $$$>
    <$$$ control password <input placeholder="password" type="password"> $$$>
    <$$$ control login <button type="BUTTON">Log In</button> $$$>
@@ -297,7 +297,7 @@
 <script type="text/template" class="yote_template_definition" template_name="YoteHeader">
   <DIV class="header" id="header_div">
     <A href="/index.html" style="display:block">
-      <img height="70px" width="151px" src="<$ get _app_.logo /yotelogo.png $>">
+      <img height="70px" width="151px" src="<$ _app_.logo /yotelogo.png $>">
     </A>
     <UL id="top_nav" class="nav"></UL>
     <div id="login_div" class="login">
@@ -310,7 +310,7 @@
     <??? function( ctx ) { ctx.scratch.requires_admin = true; return '';} ???>
     <div class="header" id="header_div">
      <a href="/index.html" style="display:block">
-      <img height="70px" width="151px" src="<$ get _app_.logo /yotelogo.png $>">
+      <img height="70px" width="151px" src="<$ _app_.logo /yotelogo.png $>">
      </a>
      <ul id="top_nav" class="nav"></ul>
      <div id="login_div" class="login">

@@ -132,7 +132,7 @@ $.yote.templates.debug = true;
 		'Give me arguments alpha beta zappa wack Tootwack',
 		'<$$ templatename args $$>, <$$$ set varname "value" $$$> and <$$$ set varname function $$$>' );
 
-	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ _index_ $> and <$ _ $> ' );
+	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
 	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
 	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
@@ -189,8 +189,8 @@ $.yote.templates.debug = true;
        <$$$ set array function( ctx ) { return [ "A", "C", "B", "D", "E" ]; } $$$>
        <$$$ set hash function( ctx ) { return {  Apple : 'butter', Spinach : 'wild', Daikon : 'radish', Lemon : 'yellow', Pea : 'green'}; } $$$>
        ARRAY
-       <@ ArrayRow array@ 3 @>
-       <% HashRow hash% 3 %>
+       <@ ArrayRow @array 3 @>
+       <% HashRow %hash 3 %>
        YARRA
     </script>
 
