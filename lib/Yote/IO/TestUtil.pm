@@ -1268,7 +1268,7 @@ sub io_independent_tests {
 
     # the following block is copied from above
     $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
-    my $yote_root = Yote::Root::fetch();
+    my $yote_root = Yote::Root::fetch_root();
 
     my $root_handles = $yote_root->get__handles();
     my $root_emails = $yote_root->get__emails();

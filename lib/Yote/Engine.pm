@@ -27,7 +27,7 @@ sub start {
     Yote::IO::Mailer::init( $cfg );
 
 
-    my $root = Yote::Root::fetch();
+    my $root = Yote::Root::fetch_root();
     $root->_update_master_root( $cfg->{ root_account },
                                 $cfg->{ root_password } );
 
@@ -35,11 +35,12 @@ sub start {
     #        and update the yote admin page to set those there
     my $socket = $cfg->{ internal_socket };
 
+    print STDERR Data::Dumper->Dump(["LISTENING ON ", $socket]);
+
     # TODO : end condition for shutdown
     while( my $conn = $socket->accept ) {
         my $req = <$conn>;
         # TODO : check if json escapes all newlines
-
         my( $command, $resp );
         eval {
             $command = from_json( $req );
@@ -145,10 +146,14 @@ sub start {
             my $err = $@;
             print STDERR Data::Dumper->Dump(["ERRRR $@",$command]);
             $err =~ s/at \/\S+\.pm.*//s;
-            errlog( "ERROR : $@" );
-            iolog( "ERROR : $@" );
+#            errlog( "ERROR : $@" );
+#            iolog( "ERROR : $@" );
             $resp = { err => $err, r => '' };
         } #if error
+
+        print $conn to_json( $resp );
+        
+        close $conn;
 
         #
         # Save the state of the database completely.
@@ -157,10 +162,6 @@ sub start {
         Yote::ObjProvider::stow_all();
         Yote::ObjProvider::flush_all_volatile();
         Yote::ObjProvider::commit_transaction();
-
-        print $conn to_json( $resp );
-        
-        close $conn;
 
     } # endless loop
 

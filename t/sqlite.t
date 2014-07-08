@@ -33,10 +33,10 @@ BEGIN {
 my( $fh, $name ) = mkstemp( "/tmp/SQLiteTest.XXXX" );
 $fh->close();
 
-Yote::ObjProvider::init(
+Yote::ObjProvider::init( {
     datastore      => 'Yote::SQLiteIO',
     store          => $name,
-    );
+    } );
 my $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
 done_testing();
@@ -62,9 +62,9 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    Yote::Root->fetch();
-    my $ROOT_START = 26;
-    my $ROOT_FIELD_START = 32;
+    Yote::Root->fetch_root();
+    my $ROOT_START = 24;
+    my $ROOT_FIELD_START = 30;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, $ROOT_START, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );

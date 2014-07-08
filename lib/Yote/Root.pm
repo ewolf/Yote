@@ -30,8 +30,6 @@ $Yote::Root::ROOT_INIT = 0;
 sub _init {
     my $self = shift;
     $self->set__apps({});
-    $self->set__app_mutex( new Yote::Obj() );
-    $self->set__account_mutex( new Yote::Obj() );
     $self->set__handles({});
     $self->set__emails({});
     $self->set__crond( new Yote::Cron() );
@@ -126,7 +124,7 @@ sub fetch_app_by_class {
 #
 # Returns singleton root object.
 #
-sub fetch {
+sub fetch_root {
     $Yote::Root::ROOT_INIT = 1;
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     unless( $root ) {
@@ -135,7 +133,7 @@ sub fetch {
     }
     $Yote::Root::ROOT_INIT = 0;
     return $root;
-} #fetch
+} #fetch_root
 
 #
 # Returns this root object.
@@ -372,14 +370,11 @@ sub remove_login {
                               Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
                               ! $login->is_master_root() ) )
     {
-        my $account_mutex = $self->get__account_mutex();
-        $account_mutex->_lock();
         my $handle = $login->get_handle();
         my $email  = $login->get_email();
         delete $self->get__handles()->{ $handle };
         delete $self->get__emails()->{ $email };
         $self->add_to__removed_logins( $login );
-        $account_mutex->_unlock();
         return "deleted account";
     }
     die "unable to remove login";
@@ -394,7 +389,7 @@ sub root_reset_password {
 
     die "Access Error" unless $acct && $acct->get_login()->is_root();
 
-    my $root = Yote::Root::fetch();
+    my $root = Yote::Root::fetch_root();
     my $newpass = $args->{p};
     my $login   = $args->{l};
 
@@ -413,7 +408,7 @@ sub root_validate {
 
     die "Access Error" unless $acct && $acct->get_login()->is_root();
 
-    my $root = Yote::Root::fetch();
+    my $root = Yote::Root::fetch_root();
     my $login   = $args->{l};
 
     if( $login ) {
@@ -540,26 +535,19 @@ sub _update_master_root {
 sub _create_login {
     my( $self, $handle, $email, $password, $env ) = @_;
     if( $handle ) {
-        my $account_mutex = $self->get__account_mutex();
-        $account_mutex->_lock();
-
         my $lc_handle = lc( $handle );
         if( $self->_hash_has_key( '_handles', $lc_handle ) ) {
-            $account_mutex->_unlock();
             die "handle already taken";
         }
         if( $email ) {
             if( $self->_hash_has_key( '_emails', $email ) ) {
-                $account_mutex->_unlock();
                 die "email already taken";
             }
             unless( Email::Valid->address( $email ) || $email =~ /\@localhost$/ ) {
-                $account_mutex->_unlock();
                 die "invalid email '$email' $Email::Valid::Details";
             }
         }
         unless( $password ) {
-            $account_mutex->_unlock();
             die "password required";
         }
 
@@ -578,8 +566,6 @@ sub _create_login {
 
         $self->_hash_insert( '_emails', $email, $new_login ) if $email;
         $self->_hash_insert( '_handles', $lc_handle, $new_login );
-
-        $account_mutex->_unlock();
 
         return $new_login;
     } #if handle

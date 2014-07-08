@@ -56,6 +56,8 @@ sub start {
     my $self = shift;
 
     # make sure the filehelper knows where the data directory is
+    $self->{args}{webroot} = $self->{ args }{ yote_root } . '/html';
+    $self->{args}{data_dir} = $self->{ args }{ yote_root } . '/data';
     $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
     $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
     $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
@@ -94,7 +96,7 @@ sub start {
     # waitpid to keep correct number of processes
     while( (my $cpid = waitpid( -1, 0 )) > 0 ) {
         if( $cpid > 0 ) {
-#            $self->start_server_thread;
+            $self->start_server_thread;
         }
     }
 
@@ -116,7 +118,6 @@ sub start_server_thread {
         };
 
         print STDERR "STARTING Server Thread $$";
-        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
         $self->serve;
         exit;
     }
@@ -201,7 +202,6 @@ sub process_http_request {
         push( @return_headers, "Server: Yote" );
         if( $path_start eq '_' ) {
             ( $app_id, $obj_id, $action, $token, $guest_token ) = @path;
-            $app_id ||= Yote::ObjProvider::first_id();
         }
         else { # an upload
             # TODO - verify this
@@ -211,7 +211,7 @@ sub process_http_request {
             $guest_token = $vars->{gt};
             $action      = pop( @path );
             $obj_id      = pop( @path );
-            $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
+            $app_id      = pop( @path );
         }
 
         # TODO : convert data to json and send that back and forth to the engine
@@ -322,10 +322,11 @@ sub run_command {
     my( $self, $cmd ) = @_;
 
     #open socket to engine and communicate with it
-    my $sock = new IO::Socket::INET( LocalPort => $self->{args}{internal_port} );
+    my $sock = new IO::Socket::INET( "127.0.0.1:$self->{args}{internal_port}" );
+
     my $json_cmd = to_json( $cmd );
-    print STDERR Data::Dumper->Dump(["About to send to engine : ",$json_cmd]);
-    print $sock $json_cmd;
+    print STDERR Data::Dumper->Dump(["About to send to engine : ",$json_cmd,$sock]);
+    print $sock "$json_cmd\n\n";
 
     my $res = <$sock>;
 
@@ -415,70 +416,6 @@ sub parse_headers {
     } #if has a boundary content type
     return ( \%post_data, \%file_helpers );
 } #parse_headers
- #__translate_data
-
-#
-# Converts scalar, yote object, hash or array to data for returning.
-#
-sub __obj_to_response {
-    my( $to_convert, $login, $guest_token ) = @_;
-    my $ref = ref($to_convert);
-    my $use_id;
-    if( $ref ) {
-        my( $m, $d );
-        if( $ref eq 'ARRAY' ) {
-            my $tied = tied @$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-                for my $entry (@$d) {
-                    next unless $entry;
-                    if( index( $entry, 'v' ) != 0 ) {
-                        Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
-                    }
-                }
-            } else {
-                $d = __transform_data_no_id( $to_convert, $login, $guest_token );
-            }
-        } 
-        elsif( $ref eq 'HASH' ) {
-            my $tied = tied %$to_convert;
-            if( $tied ) {
-                $d = $tied->[1];
-                $use_id = Yote::ObjProvider::get_id( $to_convert );
-                for my $entry (values %$d) {
-                    next unless $entry;
-                    if( index( $entry, 'v' ) != 0 ) {
-                        Yote::ObjManager::register_object( $entry, $login ? $login->{ID} : $guest_token );
-                    }
-                }
-            } else {
-                $d = __transform_data_no_id( $to_convert, $login, $guest_token );
-            }
-        } 
-        else {
-            $use_id = Yote::ObjProvider::get_id( $to_convert );
-            $d = { map { $_ => $to_convert->{DATA}{$_} } grep { $_ && $_ !~ /^_/ } keys %{$to_convert->{DATA}}};
-            for my $vl (values %$d) {
-                if( index( $vl, 'v' ) != 0 ) {
-                    Yote::ObjManager::register_object( $vl, $login ? $login->{ID} : $guest_token );
-                }
-            }
-            $m = Yote::ObjProvider::package_methods( $ref );
-        }
-
-        Yote::ObjManager::register_object( $use_id, $login ? $login->{ID} : $guest_token ) if $use_id;
-        return $m ? { c => $ref, id => $use_id, d => $d, 'm' => $m } : { c => $ref, id => $use_id, d => $d };
-    } # if a reference
-    return "v$to_convert";
-} #__obj_to_response
-
-
-
-sub __unlock_all {
-    my( $self  ) = @_;
-    $self->unlock_objects( keys %{ $self->{LOCKED} || {} } );
-}
 
 sub minify_dir {
     my( $root, $source_dir, $source_root ) = @_;

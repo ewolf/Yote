@@ -113,14 +113,12 @@ $.yote = {
 	    }
     }, //fetch_app
 
-    // TODO - add login information here as well and
-    // return not only root but login if applicable
     fetch_root:function() {
 	    var r = $.yote.yote_root;
 	    if( ! r ) {
 	        r = this.message( {
 		        async:false,
-		        cmd:'fetch'
+		        cmd:'fetch_root'
 	        } );
 	        $.yote.yote_root = r;
 	    }

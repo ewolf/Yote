@@ -96,6 +96,7 @@ sub start_yote {
         }
     } # until connection established
     print STDERR "Connected engine socket.\n";
+    print STDERR Data::Dumper->Dump(["ENG SOCK", $internal_socket]);
     $config->{ internal_socket } = $internal_socket;
      
 
@@ -173,7 +174,7 @@ sub start_server {
         $serv_proc = $cpid;
     } elsif( defined $cpid ) { #child
         $0 = 'yote appserver manager';
-        print STDERR Data::Dumper->Dump(["Starting server process"]);
+        print STDERR Data::Dumper->Dump(["Starting server manager process"]);
         require Yote::WebAppServer;
         my $server = Yote::WebAppServer->new( $config );
         $server->start();

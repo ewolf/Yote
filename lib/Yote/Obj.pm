@@ -278,16 +278,6 @@ sub _list_fetch {
     return Yote::ObjProvider::list_fetch( $self->{DATA}{$listname}, $key );
 }
 
-sub _lock {
-    my $self = shift;
-    return Yote::ObjProvider::lock( $self->{ID}, $self );
-} #lock
-
-sub _unlock {
-    my $self = shift;
-    return Yote::ObjProvider::unlock( $self->{ID} );
-} #_unlock
-
 sub _hash_has_key {
     my( $self, $hashname, $key ) = @_;
     return Yote::ObjProvider::hash_has_key( $self->{DATA}{$hashname}, $key );
