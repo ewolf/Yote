@@ -1,4 +1,4 @@
-package Yote::IO::Mongo;
+package Yote::IO::MongoNew;
 
 ############################################
 # Storage engine using the Mongo database. #
@@ -42,19 +42,19 @@ sub commit_transaction {}
 sub _db_act {
     my( $self, $act, @args ) = @_;
     for(0..2) {
-	my $res;
-	eval {
-	    $res = $self->{ OBJS }->$act( @args );
-	};
-	if( $@=~ /not connected/ ) {
-	    $self->_connect;
-	}
-	else {
+        my $res;
+        eval {
+            $res = $self->{ OBJS }->$act( @args );
+        };
+        if( $@=~ /not connected/ ) {
+            $self->_connect;
+        }
+        else {
             die $@ if $@ && $@ !~ /^missed|error getting database response|temporarily|please try again|couldn.t get response to throw out/;
-	}
-	return $res unless $@;
-	die "MongoDB attempt 3 failed with error : $@ ( giving up )" if $_ == 2;
-	sleep(1);
+        }
+        return $res unless $@;
+        die "MongoDB attempt 3 failed with error : $@ ( giving up )" if $_ == 2;
+        sleep(1);
     }
 } #_db_act
 
@@ -87,7 +87,7 @@ sub container_type {
     return '' if $obj->{ c } eq 'ARRAY';
     my $c_obj = $self->_find_one( { _id => MongoDB::OID->new( value => $obj->{ d }{$container_name} )  } );
     if( $c_obj ) {
-	return $c_obj->{ c };
+        return $c_obj->{ c };
     }
     return '';
 } #container_type;
@@ -102,23 +102,23 @@ sub count {
     my $obj = $self->_find_one( { _id => $mid } );
     my @search_terms = @{ $args->{search_terms} || [] };
     if( $args->{search_fields} && @search_terms ) {
-	my @ors;
-	for my $field ( @{ $args->{ search_fields } } ) {
-	    for my $term ( @search_terms ) {
-		push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
-	    }
-	}
-        for my $hash_term ( @{ $args->{ hashkey_search } || [] } ) {
-            push @ors, { "d.$hash_term" => { '$regex'=> "/./"  } };
+        my @ors;
+        for my $field ( @{ $args->{ search_fields } } ) {
+            for my $term ( @search_terms ) {
+                push @ors, { "v.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+            }
         }
-	my $cands = $obj->{ c } eq 'ARRAY' ? [ @{$obj->{ d }} ] : [ values %{$obj->{ d }} ];
-	my $query = {
-	    _id => { '$in' => [ map { MongoDB::OID->new( value => $_ )  } grep { index( $_, 'v' ) != 0 } @$cands] },
-	    '$or' => \@ors,
-	};
-	my $curs = $self->_find( $query );
+        for my $hash_term ( @{ $args->{ hashkey_search } || [] } ) {
+            push @ors, { "v.$hash_term" => { '$regex'=> "/./"  } };
+        }
+        my $cands = $obj->{ c } eq 'ARRAY' ? [ @{$obj->{ d }} ] : [ values %{$obj->{ d }} ];
+        my $query = {
+            _id => { '$in' => [ map { MongoDB::OID->new( value => $_ )  } grep { index( $_, 'v' ) != 0 } @$cands] },
+            '$or' => \@ors,
+        };
+        my $curs = $self->_find( $query );
 
-	return $self->_find( $query )->count();
+        return $self->_find( $query )->count();
     }
     my @hashkey_search = @{ $args->{ hashkey_search } || [] };
     if( @search_terms || @hashkey_search ) {
@@ -139,7 +139,7 @@ sub count {
     }
 
     if( $obj->{ c } eq 'ARRAY' ) {
-	return scalar( @{$obj->{ d } } );
+        return scalar( @{$obj->{ d } } );
     }
     return scalar( keys %{$obj->{ d } } );
 } #count
@@ -170,11 +170,11 @@ sub ensure_datastore {
     my $root = $self->{ DB }->get_collection( "root" );
     my $root_node = $root->find_one( { root => 1 } );
     if( $root_node ) {
-	$self->{ ROOT_ID } = $root_node->{ root_id };
+        $self->{ ROOT_ID } = $root_node->{ root_id };
     } else {
-	my $root_id = MongoDB::OID->new;
-	my $xid = $root->insert( { root => 1, root_id => $root_id->{ value } } );
-	$self->{ ROOT_ID } = $root_id->{ value };
+        my $root_id = MongoDB::OID->new;
+        my $xid = $root->insert( { root => 1, root_id => $root_id->{ value } } );
+        $self->{ ROOT_ID } = $root_id->{ value };
     }
 } #ensure_datastore
 
@@ -186,15 +186,15 @@ sub fetch {
     my $data = $self->_find_one( { _id => MongoDB::OID->new( value => $id ) } );
     return unless $data;
     if( $data->{ c } eq 'ARRAY' ) {
-	return [ $id, $data->{ c }, $data->{d} ];
+        return [ $id, $data->{ c }, $data->{d} ];
     } else {
-	my $unescaped_data = {};
-	for my $key ( keys %{$data->{d}} ) {
-	    my $val = $data->{d}{$key};
-	    $key =~ s/\\/\./g;
-	    $unescaped_data->{$key} = $val;
-	}
-	return [ $id, $data->{ c }, $unescaped_data ];
+        my $unescaped_data = {};
+        for my $key ( keys %{$data->{d}} ) {
+            my $val = $data->{d}{$key};
+            $key =~ s/\\/\./g;
+            $unescaped_data->{$key} = $val;
+        }
+        return [ $id, $data->{ c }, $unescaped_data ];
     }
 } #fetch
 
@@ -222,9 +222,9 @@ sub hash_delete {
     $key =~ s/\./\\/g;
     my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
-	die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
-	delete $obj->{ d }{ $key };
-	$self->_update( { _id => $mid, }, $obj );
+        die "hash_delete must be called for hash" if $obj->{ c } ne 'HASH';
+        delete $obj->{ d }{ $key };
+        $self->_update( { _id => $mid, }, $obj );
     }
     return;
 } #hash_delete
@@ -250,16 +250,16 @@ sub hash_insert {
     my $mid = MongoDB::OID->new( value => $hash_id );
     my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
-	die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
-	$obj->{ d }{ $key } = $val;
-	if( $obj ) {
-	    $self->_update( { _id => $mid, }, $obj );
-	}
+        die "hash_insert must be called for hash" if $obj->{ c } ne 'HASH';
+        $obj->{ d }{ $key } = $val;
+        if( $obj ) {
+            $self->_update( { _id => $mid, }, $obj );
+        }
     }
     else {
-	$self->_insert( { _id => $mid, d => { $key => $val },
-			  c => 'HASH', refs => index( $val, 'v' ) == 0 ? [] :
-			      [ $val ] } );
+        $self->_insert( { _id => $mid, d => { $key => $val },
+                          c => 'HASH', refs => index( $val, 'v' ) == 0 ? [] :
+                              [ $val ] } );
     }
     return;
 } #hash_insert
@@ -270,17 +270,17 @@ sub list_delete {
     my $mid = MongoDB::OID->new( value => $list_id );
     my $obj = $self->_find_one( { _id => $mid } );
     if( $obj ) {
-	die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
-	my $actual_index;
-	if( $val ) {
-	    ( $actual_index ) = grep { $obj->{d}[$_] eq $val } ( 0..$#{$obj->{d}} );
-	} else {
-	    $actual_index = $idx;
-	}
-	if( defined( $actual_index ) ) {
-	    splice @{$obj->{ d }}, $actual_index, 1;
-	    $self->_update( { _id => $mid, }, $obj );
-	}
+        die "list_delete must be called for list" if $obj->{ c } ne 'ARRAY';
+        my $actual_index;
+        if( $val ) {
+            ( $actual_index ) = grep { $obj->{d}[$_] eq $val } ( 0..$#{$obj->{d}} );
+        } else {
+            $actual_index = $idx;
+        }
+        if( defined( $actual_index ) ) {
+            splice @{$obj->{ d }}, $actual_index, 1;
+            $self->_update( { _id => $mid, }, $obj );
+        }
     }
     return;
 } #list_delete
@@ -293,7 +293,7 @@ sub list_fetch {
     return undef unless $list;
 
     if( $list->{ c } ne 'ARRAY' ) {
-	return $list->{ d }{ $idx };
+        return $list->{ d }{ $idx };
     }
 
 
@@ -305,17 +305,17 @@ sub list_insert {
     my $mid = MongoDB::OID->new( value => $list_id );
     my $list_obj = $self->_find_one( { _id => $mid } );
     if( $list_obj ) {
-	die "list_insert must be called for list" if $list_obj->{ c } ne 'ARRAY';
-	if( defined( $idx ) && $idx <= @{$list_obj->{d}} ) {
-	    splice @{$list_obj->{ d }}, $idx > @{$list_obj->{d}} ? scalar(@{$list_obj->{d}}) : $idx, 0, $val;
-	}
-	else {
-	    push @{$list_obj->{ d }}, $val;
-	}
-	$self->stow( $list_id, 'ARRAY', $list_obj->{ d } );
+        die "list_insert must be called for list" if $list_obj->{ c } ne 'ARRAY';
+        if( defined( $idx ) && $idx <= @{$list_obj->{d}} ) {
+            splice @{$list_obj->{ d }}, $idx > @{$list_obj->{d}} ? scalar(@{$list_obj->{d}}) : $idx, 0, $val;
+        }
+        else {
+            push @{$list_obj->{ d }}, $val;
+        }
+        $self->stow( $list_id, 'ARRAY', $list_obj->{ d } );
     }
     else {
-	$self->stow( $list_id, 'ARRAY', [ $val ] );
+        $self->stow( $list_id, 'ARRAY', [ $val ] );
     }
     return;
 } #list_insert
@@ -343,116 +343,116 @@ sub paginate {
     my( @list_items, %hash_items );
 
     if( @sort_fields || (@search_fields && @search_terms) ) {  #must be searching through or sorting by objects
-	my( $query, $query_args );
+        my( $query, $query_args );
 
-	if( $obj->{c} eq 'ARRAY' ) {
-	    $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } @{$obj->{d}} ] } };
-	}
-	else {
-	    $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } values %{$obj->{d}} ] } };
-	}
+        if( $obj->{c} eq 'ARRAY' ) {
+            $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } @{$obj->{d}} ] } };
+        }
+        else {
+            $query = { _id => { '$in' => [ map { MongoDB::OID->new( $_ ) } grep { index($_,'v') != 0 } values %{$obj->{d}} ] } };
+        }
 
         my @ors;
-	if( @search_fields && @search_terms) { #search fields must be objects
-	    for my $field ( @search_fields ) {
-		for my $term ( @search_terms ) {
-		    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
-		}
-	    }
-	} # if search fields
+        if( @search_fields && @search_terms) { #search fields must be objects
+            for my $field ( @search_fields ) {
+                for my $term ( @search_terms ) {
+                    push @ors, { "d.$field" => { '$regex'=> "$term", '$options' => 'i'  } };
+                }
+            }
+        } # if search fields
         for my $hash_term ( @hashkey_search ) {
             push @ors, { "d.$hash_term" => { '$regex'=> "/./"  } };
         }
         $query->{'$or'} = \@ors if @ors;
 
-	if( @sort_fields ) {
-	    for my $i (0..$#sort_fields) {
-		$query_args->{ sort_by }{ "d.$sort_fields[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
-	    }
-	}
-	my $curs = $self->_find( $query, $query_args );
+        if( @sort_fields ) {
+            for my $i (0..$#sort_fields) {
+                $query_args->{ sort_by }{ "d.$sort_fields[ $i ]" } = $reversed_orders->[ $i ] ? -1 : 1;
+            }
+        }
+        my $curs = $self->_find( $query, $query_args );
 
-	if( defined( $limit ) ) {
-	    if( $skip ) {
-		$curs->skip( $skip );
-	    }
-	    $curs->limit( $limit );
-	}
+        if( defined( $limit ) ) {
+            if( $skip ) {
+                $curs->skip( $skip );
+            }
+            $curs->limit( $limit );
+        }
 
-	if( $args->{ return_hash } ) {
-	    my %id2key = reverse %{ $obj->{ d } };
-	    return { map { $id2key{ $_->{ _id }{ value } } => $_->{ _id }{ value } } $curs->all };
-	}
+        if( $args->{ return_hash } ) {
+            my %id2key = reverse %{ $obj->{ d } };
+            return { map { $id2key{ $_->{ _id }{ value } } => $_->{ _id }{ value } } $curs->all };
+        }
 
-	return [map { $_->{ _id }{ value } } $curs->all ];
+        return [map { $_->{ _id }{ value } } $curs->all ];
 
     } #if searching through or sorting by objects
 
 
     if( @search_terms || @hashkey_search ) {
-	if( $obj->{c} eq 'ARRAY' ) {
-	    for my $item (grep { index( $_, 'v' ) == 0 } @{ $obj->{ d } } ) {
-		for my $term ( @search_terms ) {
-		    if( $item =~ /$term/i ) {
-			push @list_items, $item;
-			last;
-		    }
-		}
-	    }
-	}
-	else { #hash
-	    for my $key (keys %{ $obj->{ d } } ) {
+        if( $obj->{c} eq 'ARRAY' ) {
+            for my $item (grep { index( $_, 'v' ) == 0 } @{ $obj->{ d } } ) {
+                for my $term ( @search_terms ) {
+                    if( $item =~ /$term/i ) {
+                        push @list_items, $item;
+                        last;
+                    }
+                }
+            }
+        }
+        else { #hash
+            for my $key (keys %{ $obj->{ d } } ) {
                 if( grep { $key =~ /$_/i } @hashkey_search ) {
                     $hash_items{ $key } = $obj->{ d }{ $key };
                 }
                 elsif( grep { $obj->{ d }{ $key } =~ /^v.*$_/i } ( @search_terms ) ) {
                     $hash_items{ $key } = $obj->{ d }{ $key };
                 }
-	    }
-	}
+            }
+        }
     } #with search terms
 
     elsif( $obj->{c} eq 'ARRAY' ) {
-	@list_items = @{ $obj->{ d } };
+        @list_items = @{ $obj->{ d } };
     }
 
     else {
-	%hash_items = %{ $obj->{ d } };
+        %hash_items = %{ $obj->{ d } };
     }
 
 
     if( $obj->{c} eq 'ARRAY' ) {
-	if( $args->{ sort } ) {
-	    @list_items = sort @list_items;
-	}
-	if( $args->{ reverse } ) {
-	    @list_items = reverse @list_items;
-	}
-	if( $limit ) {
-	    my $end = $skip + $limit - 1;
-	    $end = $end > $#list_items ? $#list_items : $end;
-	    @list_items = @list_items[ $skip..$end ];
-	}
+        if( $args->{ sort } ) {
+            @list_items = sort @list_items;
+        }
+        if( $args->{ reverse } ) {
+            @list_items = reverse @list_items;
+        }
+        if( $limit ) {
+            my $end = $skip + $limit - 1;
+            $end = $end > $#list_items ? $#list_items : $end;
+            @list_items = @list_items[ $skip..$end ];
+        }
 
-	if( $args->{ return_hash } ) {
-	    return { map { ($skip+$_) => $list_items[$_] } (0..$#list_items) };
-	}
+        if( $args->{ return_hash } ) {
+            return { map { ($skip+$_) => $list_items[$_] } (0..$#list_items) };
+        }
 
-	return \@list_items;
+        return \@list_items;
     }
 
     my( @hash_keys ) = sort keys %hash_items;
 
     if( $args->{ reverse } ) {
-	@hash_keys = reverse @hash_keys;
+        @hash_keys = reverse @hash_keys;
     }
     if( $limit ) {
-	my $end = $skip + $limit - 1;
-	$end = $end > $#hash_keys ? $#hash_keys : $end;
-	@hash_keys = @hash_keys[ $skip..$end ]; # < --- make sure there is a test for this TODO
+        my $end = $skip + $limit - 1;
+        $end = $end > $#hash_keys ? $#hash_keys : $end;
+        @hash_keys = @hash_keys[ $skip..$end ]; # < --- make sure there is a test for this TODO
     }
     if( $args->{ return_hash } ) {
-	return { map { $_ => $hash_items{$_} } @hash_keys };
+        return { map { $_ => $hash_items{$_} } @hash_keys };
     }
 
     return [ map { $hash_items{ $_ } } @hash_keys ];
@@ -473,11 +473,11 @@ sub recycle_objects {
 
     my $rec_count = 0;
     while( my $obj = $cursor->next ) {
-	my $id = $obj->{ _id }{ value };
-	unless( $self->_has_path_to_root( $id ) ) {
-	    $self->recycle_object( $id );
-	    $rec_count++;
-	}
+        my $id = $obj->{ _id }{ value };
+        unless( $self->_has_path_to_root( $id ) ) {
+            $self->recycle_object( $id );
+            $rec_count++;
+        }
     }
     return $rec_count;
 } #recycle_object
@@ -492,37 +492,50 @@ sub stow {
     #
     # tease out references from the data, which can be either an array ref or a hash ref
     #
-    my( @refs );
+    my( @refs, $vals, $refs );
     if( $class eq 'ARRAY' ) {
-	@refs = grep { index( $_, 'v' ) != 0 } @$data;
+        for my $d (@$data) {
+            my( @vals );
+            if( index( $d, 'v' ) != 0 ) {
+                push @refs, $d;
+            } else {
+                push @vals, substr( $d, 1 );
+            }
+            ( %$vals ) = map { $_ => $vals[$_] } (0..$#vals);
+            ( %$refs ) = map { $_ => $refs[$_] } (0..$#refs);
+        }
     } else {
-	@refs = grep { index( $_, 'v' ) != 0 } values %$data;
-	my $escaped_data = {};
-	for my $key (keys %$data ) {
-	    my $val = $data->{$key};
-	    $key =~ s/\./\\/g;
-	    $escaped_data->{$key} = $val if defined($key);
-	}
-	$data = $escaped_data;
+        for my $k (keys %$data) {
+            $k =~ s/\./\\/g;
+            my $d = $data->{ $k };
+            if( index( $d, 'v' ) != 0 ) {
+                push @refs, $d;
+                $refs->{ $k } = $d;
+            } else {
+                $vals->{ $k } = substr( $d, 1 );
+            }
+        }
     }
 
     my $mid = MongoDB::OID->new( value => $id );
     if( $self->_find_one( { _id => $mid } ) ) {
-	$self->_update( { _id => $mid, },
-			{
-			    d   => $data,
-			    c   => $class,
-			    r   => \@refs,
-			    l   => time, #last updated
-			} );
+        $self->_update( { _id => $mid, },
+                        {
+                            v   => $vals
+                            f   => $refs,
+                            c   => $class,
+                            r   => \@refs,
+                            l   => time, #last updated
+                        } );
     }
     else {
-	my $ins = $self->_insert( { _id => $mid,
-				    d   => $data,
-				    c   => $class,
-				    r   => \@refs,
-				    l   => time, #last updated
-				  } );
+        my $ins = $self->_insert( { _id => $mid,
+                                    v   => $vals,
+                                    f   => $refs,
+                                    c   => $class,
+                                    r   => \@refs,
+                                    l   => time, #last updated
+                                  } );
     }
     return;
 } #stow
@@ -530,7 +543,7 @@ sub stow {
 sub stow_all {
     my( $self, $objs ) = @_;
     for my $objd ( @$objs ) {
-	$self->stow( @$objd );
+        $self->stow( @$objd );
     }
 } #stow_all
 
@@ -545,8 +558,8 @@ sub _connect {
     my $host = $args->{ host } || 'localhost';
     $host .= ':' . ($args->{ engine_port } || 27017);
     my %mongo_args = (
-	host => $host,
-	);
+        host => $host,
+        );
     $mongo_args{ password } = $args->{ password } if $args->{ password };
     $mongo_args{ username } = $args->{ user } if $args->{ user };
     $self->{MONGO_CLIENT} = MongoDB::MongoClient->new( %mongo_args );
@@ -564,12 +577,12 @@ sub _has_path_to_root {
 
     my $curs = $self->_find( { r => $obj_id } );
     while( my $obj = $curs->next ) {
-	return 1 unless $obj->{ l } > 0;
-	my $o_id = $obj->{ _id }{ value };
-	next if $seen->{ $o_id }++;
-	if( $self->_has_path_to_root( $o_id, $seen ) ) {
-	    return 1;
-	}
+        return 1 unless $obj->{ l } > 0;
+        my $o_id = $obj->{ _id }{ value };
+        next if $seen->{ $o_id }++;
+        if( $self->_has_path_to_root( $o_id, $seen ) ) {
+            return 1;
+        }
     }
     return 0;
 } #_has_path_to_root

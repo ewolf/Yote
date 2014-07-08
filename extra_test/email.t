@@ -68,7 +68,7 @@ unlink( $name );
 exit( 0 );
 
 sub test_suite {
-    my $root = Yote::YoteRoot->fetch_root();
+    my $root = Yote::Root->fetch_root();
     my $app = new Yote::AppRoot( {
 	requires_validation => 1,
 	login_email_from    => 'yote@localhost',

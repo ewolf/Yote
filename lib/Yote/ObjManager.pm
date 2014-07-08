@@ -28,7 +28,7 @@ sub allows_access {
     return 1 unless $obj;
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
 
-    my $root = Yote::YoteRoot::fetch_root();
+    my $root = Yote::Root::fetch_root();
     my $ALLOWS = $root->get___ALLOWS();
 
     if( $login ) {
@@ -49,7 +49,7 @@ sub allows_access {
 sub clear_login {
     my( $login, $guest_token ) = @_;
 
-    my $root = Yote::YoteRoot::fetch_root();    
+    my $root = Yote::Root::fetch_root();    
     my $DIRTY = $root->get___DIRTY();
     my $ALLOWS_REV = $root->get___ALLOWS_REV();
     my $REGISTERED_CONTAINERS = $root->get___REGISTERED_CONTAINERS();
@@ -69,7 +69,7 @@ sub clear_login {
 sub fetch_dirty {
     my( $login, $guest_token ) = @_;
     my $ids = [];
-    my $root = Yote::YoteRoot::fetch_root();
+    my $root = Yote::Root::fetch_root();
     my $DIRTY = $root->get___DIRTY();
 
     if( $login ) {
@@ -84,12 +84,12 @@ sub fetch_dirty {
 
 
 sub mark_dirty {
-    if( $Yote::YoteRoot::ROOT_INIT ) {
+    if( $Yote::Root::ROOT_INIT ) {
 	return;
     }
     my( $obj_id, $is_container ) = @_;
 
-    my $root = Yote::YoteRoot::fetch_root();
+    my $root = Yote::Root::fetch_root();
 
     # mark this obj dirty for any client watching it
     my $DIRTY = $root->get___DIRTY();
@@ -120,7 +120,7 @@ sub register_object {
     die unless $obj_id;
     return unless $recipient_id;
 
-    my $root = Yote::YoteRoot::fetch_root();
+    my $root = Yote::Root::fetch_root();
     my $ALLOWS = $root->get___ALLOWS();
     my $ALLOWS_REV = $root->get___ALLOWS_REV();
     $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;

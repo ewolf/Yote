@@ -4,58 +4,168 @@
 # This program launches the yote server. #
 ##########################################
 
-use Yote;
 
 # note, use forks inside of the Yote package should be called before use strict or use warnings.
 use strict;
 use warnings;
-
+no  warnings 'uninitialized';
 use vars qw($VERSION);
 
-$VERSION = '0.0002';
+use Daemon::Daemonize qw/ :all /;
 
+use Yote;
 
-my $args = Yote::get_args();
+$VERSION = '0.00021';
+
+$SIG{ __DIE__ } = sub { 
+    Carp::confess( @_ );
+};
+
+my $args   = Yote::get_args();
 my $config = $args->{ config };
 my $cmd    = $args->{ command };
+
 if( $config->{ profile } ) {
     require Yote::PerfAspect;
 }
 
-eval {
-    $SIG{ __DIE__ } = sub { 
-	Carp::confess( @_ );
-    };
+my $pidfile = $config->{ pidfile } || '/var/run/yote.pid';
 
-    my $s = Yote::run(
-	%$config
-	);
-
-    $SIG{TERM} = sub {
-	$s->shutdown();
-	print STDERR "Shutting down due to term\n";
-	exit;
-    };
-
-    $SIG{INT} = sub {
-	$s->shutdown();
-	print STDERR "Shutting down due to int\n";
-	exit;
-    };
-
-    $SIG{CHLD} = sub {
-	print STDERR "Got CHLD\n";
-	#this is important. I may be able to handle the occasional crashing of the web server process right here!
-	print STDERR Data::Dumper->Dump(["GOT SIG CHLD", $config]);
-    };
-
-    $SIG{PIPE} = sub {};
-
-
-};
-if( $@ ) {
-    print STDERR Data::Dumper->Dump([$@,"ERR"]);
+if( $cmd eq 'stop' ) {
+    if( my $pid = check_pidfile( $pidfile ) ) {
+        print "Stopping $0\n";
+        kill 'SIGINT', $pid;
+        sleep 2;
+        print "Done\n";
+        exit;
+    }    
+    print "yote is not running\n";
+    exit;
 }
+
+if( $cmd eq 'start' ) {
+    if( check_pidfile( $pidfile ) ) {
+        print "yote is already running\n";
+        exit;
+    }
+    start_yote();
+    exit;
+}
+
+if( $cmd eq 'restart' ) {
+    if( my $pid = check_pidfile( $pidfile ) ) {
+        print "Stopping $0\n";
+        kill 'SIGINT', $pid;
+        sleep 2;
+        print "Done\n";
+    }    
+    start_yote();
+    exit;
+}
+
+if( $cmd eq 'status' ) {
+    print check_pidfile( $pidfile ) ? "yote is running\n" : "yote is not running\n";
+    exit;
+}
+
+# ------------------------------------------------------------------
+
+my $in_shutdown = 0;
+my( %server_procs, $cron_proc );
+
+sub start_yote {
+
+    daemonize( close => 0 );
+    write_pidfile( $pidfile );
+
+    $SIG{ INT } = $SIG{ TERM } = sub {
+        print STDERR "Got term or int signal\n";
+        $in_shutdown = 1;
+        for my $cpid ($cron_proc, keys %server_procs) {
+            kill 'SIGINT', $cpid;
+        }
+        sleep 1;
+        while( (my $cpid = waitpid( -1, 0 )) > 0 ) {
+            delete $server_procs{ $cpid };
+        }
+        print STDERR "cleaned up\n";
+    };
+
+    for( 1..5 ) {
+        start_server();
+    }
+    start_cron();
+    $0 = 'yote';
+    print "Started yote\n";
+
+    while( ! $in_shutdown ) {
+        my $cpid = waitpid( -1, 0 );
+        if( $cpid > 0 ) {
+            if( $cron_proc == $cpid ) {
+                start_cron();
+            }
+            else {
+                delete $server_procs{ $cpid };
+                start_server();
+            }
+        }        
+    }
+    print "Exiting program\n";
+
+} #start_yote
+
+sub start_server {
+    my $cpid = fork;
+    if( $cpid > 0 ) {
+        $procs{ $cpid } = 1;
+    } elsif( defined $cpid ) { #child
+        $0 = 'yote server';
+
+        # TODO : handle signals in the server itself, it will know how to handle wrap up
+        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
+        requre Yote::WebAppServer;
+        my $server = Yote::WebAppServer->new;
+        $server->start( $config );
+    } else {
+        print STDERR "$0 : Unable to fork server process\n";
+    }
+} #start_server
+
+sub start_cron {
+    my $cpid = fork;
+    if( $cpid > 0 ) {
+        $cron_proc = $cpid;
+    } elsif( defined $cpid ) { #child
+        $0 = 'yote cron';
+
+        # TODO : handle signals in the cron itself, it will know how to handle wrap up
+        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
+        requre Yote::Cron;
+        Yote::Cron->start( $config );
+    } else {
+        print STDERR "$0 : Unable to fork cron process\n";
+    }
+} #start_cron
+
+#
+# The 'engine' in this case is a single thread that executes and communicates to the db. The other threads
+# communicate via sockets to this one.
+#
+sub start_engine {
+    my $cpid = fork;
+    if( $cpid > 0 ) {
+        $cron_proc = $cpid;
+    } elsif( defined $cpid ) { #child
+        $0 = 'yote cron';
+
+        # TODO : handle signals in the engine itself, it will know how to handle wrap up
+        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
+        requre Yote::Engine;
+        Yote::Engine::start( $config );
+    } else {
+        die "Unable to fork engine\n";
+    }
+} #start_engine
 
 __END__
 

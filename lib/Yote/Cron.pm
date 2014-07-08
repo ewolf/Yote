@@ -41,6 +41,30 @@ sub mark_done {
     return $self->_mark_done( $entry );
 }
 
+sub start_cron {
+    my $cron = shift;
+    while( 1 ) {
+        my $cron_entries = $cron->entries();
+        # TODO : make sure nothing volatile is here
+        # ALSO TODO : for security sake, only allow this to call a yote method?
+        for my $entry (@$cron_entries) {
+            # TODO : Just queue up a cron in the execution engine
+            $cron->_mark_done( $entry );
+            my $script = $entry->get_script();
+            print STDERR "EVAL $script\n";
+            eval "$script";
+            print STDERR "Done EVAL\n";
+            if( $@ ) {
+                print STDERR "Error in Cron : $@ $!\n";
+            } 
+            Yote::ObjProvider::start_transaction();
+            Yote::ObjProvider::stow_all();
+            Yote::ObjProvider::flush_all_volatile();
+            Yote::ObjProvider::commit_transaction();
+        } #each cron entry
+    } #endless loop
+} #start_cron
+
 sub update_entry {
     my( $self, $entry, $acct ) = @_;
     
@@ -78,7 +102,7 @@ sub _init {
     my $second_cron = new Yote::RootObj( {
 	name   => 'Token Janitor',
 	enabled => 1,
-	script => 'use Data::Dumper; my $dumped = Yote::YoteRoot::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
+	script => 'use Data::Dumper; my $dumped = Yote::Root::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
 	repeats => [
 	    new Yote::Obj( { repeat_interval => 30, repeat_infinite => 1, repeat_times => 0 } ),
 	    ],

@@ -6,7 +6,7 @@ use warnings;
 use Yote::WebAppServer;
 
 use Yote::AppRoot;
-use Yote::YoteRoot;
+use Yote::Root;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -107,12 +107,12 @@ sub test_suite {
     my $db = shift;
     my $objcol = $db->get_collection( "objects" );
     
-    Yote::YoteRoot->fetch_root();
+    Yote::Root->fetch_root();
     my $ROOT_START = 20;
 
     is( $objcol->count(), $ROOT_START, "number of objects after fetchroot" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
-    is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
+    is( ref( $root ), 'Yote::Root', 'correct root class type' );
     Yote::ObjProvider::stow_all();
     is( $objcol->count(), $ROOT_START+6, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
 

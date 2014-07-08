@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Yote::AppRoot;
-use Yote::YoteRoot;
+use Yote::Root;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -62,13 +62,13 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    Yote::YoteRoot->fetch_root();
+    Yote::Root->fetch_root();
     my $ROOT_START = 26;
     my $ROOT_FIELD_START = 32;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, $ROOT_START, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
-    is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
+    is( ref( $root ), 'Yote::Root', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
     my $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START, "highest id in database is $ROOT_START" );

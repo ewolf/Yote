@@ -31,7 +31,7 @@ Yote::RootObj
 =head1 DESCRIPTION
 
 This is a subclass of Yote::Obj that allows root access of its public and private fields for reading and wrinting
-and allows read access of its public fields for non root users. The Yote::YoteRoot instance method new_root_obj
+and allows read access of its public fields for non root users. The Yote::Root instance method new_root_obj
 returns a new object of this type.
 
 =head2 METHODS

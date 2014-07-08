@@ -600,7 +600,7 @@ will remove all the "b" values from the 'foo' list.
 All Yote objects have public api methods. These are methods that connect to javascript objects
 and are invoked by clients. All the public api methods have the same signature :
 
-All Yote objects except YoteRoot are attached to an application or descent of the Yote::AppRoot
+All Yote objects except Root are attached to an application or descent of the Yote::AppRoot
 class.
 
 =over 2

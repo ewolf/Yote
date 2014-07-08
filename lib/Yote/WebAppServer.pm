@@ -1,8 +1,5 @@
 package Yote::WebAppServer;
 
-use forks;
-use forks::shared;
-
 use strict;
 use warnings;
 no warnings 'uninitialized';
@@ -26,14 +23,7 @@ use Yote::IO::Mailer;
 
 use vars qw($VERSION);
 
-$VERSION = '0.21';
-
-# %oid2lockdata stores object id to a string containg locking process id, and last saved time.
-#   The resolution scheme is for the requesting process to unlock (and possibly save) objects that it has locked that are being requested
-#    by an other thread that has locked an item this thread is waiting on.
-# 
-my( %oid2lockdata );
-share( %oid2lockdata );
+$VERSION = '0.22';
 
 
 # ------------------------------------------------------------------------------------------
@@ -41,9 +31,10 @@ share( %oid2lockdata );
 # ------------------------------------------------------------------------------------------
 
 sub new {
-    my $pkg = shift;
+    my( $pkg, @args ) = @_;
+    my $args = { ref( $args[0] ) ? %{ $args[0] } : @args };
     my $class = ref( $pkg ) || $pkg;
-    return bless {}, $class;
+    return bless { args => $args }, $class;
 }
 
 # ------------------------------------------------------------------------------------------
@@ -83,96 +74,7 @@ sub lock_object {
     if( $obj_id eq Yote::ObjProvider::first_id() || $self->{ LOCKED }{ $obj_id } ) {
         return $ref;
     }
-
-    #
-    # Attempt to lock this object from other forks.
-    #
-    while( 1 ) {
-        my( @locked );
-        {
-            lock( %oid2lockdata );
-            my $lockdata = $oid2lockdata{ $obj_id };
-
-            #
-            # The easy case - no one else locked this.
-            #
-            if( ! $lockdata ) {
-                $oid2lockdata{ $obj_id } = "$$|";
-                $self->{ LOCKED }{ $obj_id } = 1;
-                return $ref;
-            }
-
-            my( $locking_pid, $dirty_time, @pids_waiting_for_this_object ) = split( /\|/, $lockdata );
-
-            my( %waiters ) = map { $_ => 1 } @pids_waiting_for_this_object;
-
-            #
-            # This is not currently locked.
-            #
-            if( ! $locking_pid ) {
-                delete $waiters{$$}; #remove this from any waiting list
-                $oid2lockdata{ $obj_id } = join( '|', $$, $dirty_time, keys %waiters );
-                $self->{ LOCKED }{ $obj_id } = 1;
-                if( $dirty_time &&  $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } && $Yote::ObjProvider::LAST_LOAD_TIME->{ $obj_id } <= $dirty_time ) {
-                    #
-                    # means the object is dirty and its thingy should be reloaded
-                    #
-                    return;
-                }
-                return $ref;
-            } # not locking pid
-            
-            #
-            # Check for other objects locked by this fork.
-            # If there is someone waiting on one of those objects
-            # that this fork has locked, it is a deadlock situation.
-            #
-            my @locked_ids = keys %{ $self->{LOCKED} || {} };
-            for my $locked_oid ( @locked_ids ) {
-                # check if the process that has obj_id locked is waiting on any of the locked objects that are had.
-                if( $waiters{ $locking_pid } ) {
-                    # if this object is dirty then 
-                    if( Yote::ObjProvider::__is_dirty( $locked_oid ) ) {
-                        $self->unlock_objects( keys %{ $self->{LOCKED} } );
-                        Yote::ObjProvider::flush( map { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} } );
-                        die "__DEADLOCK__";
-                    }
-                }
-                else { # the object is clean so can be unlocked from this thread
-                    push @locked, $locked_oid;
-                }
-            } #each locked oid
-
-            #
-            # If I am already in the waiters, I'm already in @pids_waiting_for_this_object
-            # so nothing needs to be done.
-            #
-            unless( $waiters{$$} ) {
-                # add me to @pids_waiting_for_this_object
-                $oid2lockdata{ $obj_id } = join( '|', $locking_pid, $dirty_time, $$, @pids_waiting_for_this_object );
-            }
-
-            #
-            # If this fork is not locking anything else, then wait for a signal
-            # from a fork that may be unlocking things.
-            #
-            unless( @locked ) {
-                lock( %oid2lockdata );
-                cond_wait( %oid2lockdata );
-            }
-        } # scope for locked var
-
-        #
-        # If there are other objects locked by this fork that no one else is 
-        # waiting on, unlock those and wait for a signal from an unlocking
-        # fork.
-        #
-        if( @locked ) {
-            $self->unlock_objects( @locked );
-            lock( %oid2lockdata );
-            cond_wait( %oid2lockdata );
-        }
-    } #while loop
+    
 } #lock_object
 
 
@@ -187,11 +89,9 @@ sub shutdown {
     accesslog( "Shut down server thread" );
 } #shutdown
 
-sub start_server {
+sub start {
     my( $self, @args ) = @_;
     my $args = scalar(@args) == 1 ? $args[0] : { @args };
-
-    $0 = 'Yote Master';
 
     $self->{ args } = $args;
     $self->{ args }{ webroot } ||= $self->{ args }{ yote_root } . '/html';
@@ -226,7 +126,7 @@ sub start_server {
     #   - one for a cron daemon inside of Yote. (PENDING)
     #   - and the parent thread an event loop.
 
-    my $root = Yote::YoteRoot::fetch_root();
+    my $root = Yote::Root::fetch_root();
     Yote::ObjProvider::stow_all();
     # check for default account and set its password from the config.
     $root->_update_master_root( $args->{ root_account }, $args->{ root_password } );
@@ -277,30 +177,6 @@ sub start_server {
         eval { 
             my $cron = $root->_cron();
             my $cron_entries = $cron->entries();
-            Yote::ObjProvider::flush_all_volatile();
-            $self->__unlock_all();
-            for my $entry (@$cron_entries) {
-                threads->new( sub {
-                    $0 = 'Yote Cron';
-                    $cron->_mark_done( $entry );
-                    print STDERR "Starting cron thread " . threads->tid() . "\n";
-                    my $script = $entry->get_script();
-                    print STDERR "EVAL $script\n";
-                    eval "$script";
-                    print STDERR "Done EVAL\n";
-                    if( $@ ) {
-                        print STDERR "Error in Cron : $@ $!\n";
-                    } 
-                    $self->__check_locked_for_dirty();
-                    Yote::ObjProvider::start_transaction();
-                    Yote::ObjProvider::stow_all();
-                    Yote::ObjProvider::flush_all_volatile();
-                    Yote::ObjProvider::commit_transaction();
-                    $self->__unlock_all();
-                    print STDERR "Done cron thread " . threads->tid() . "\n";
-                              } ); #done with cron entry thread
-            } #each cron entry
-            
         };
         print STDERR "ERROR IN CRON : $@ $!" if $@;
     } #endless loop
@@ -309,19 +185,12 @@ sub start_server {
 
     Yote::ObjProvider::disconnect();
 
-} #start_server
+} #start
 
 sub unlock_objects {
     my( $self, @objs ) = @_;
     @objs = grep { $self->{ LOCKED }{ $_ } } @objs;
     if( @objs ) {
-        lock( %oid2lockdata );
-        for my $obj_id ( @objs ) {
-            $oid2lockdata{ $obj_id } =~ s/^([^\|]+)//; 
-#	print STDERR "[$$ ".time()."] UNLOCKED $obj_id : $oid2lockdata{ $obj_id }\n";
-            delete $self->{ LOCKED }{ $obj_id };
-        }
-        cond_signal( %oid2lockdata );
     }
 } #unlock_objects
 
@@ -335,13 +204,6 @@ sub unlock_objects {
 sub __check_locked_for_dirty {
     my( $self  ) = @_;
     my( @dirty_oids ) = grep { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} || {} };
-    if( @dirty_oids ) {
-        lock( %oid2lockdata );
-        my $t = time();
-        for my $dirty_oid ( @dirty_oids ) {
-            my( $locking_pid, $last_dirty_time, @pids_waiting_for_this_object ) = split( /\|/, $oid2lockdata{ $dirty_oid } );
-            $oid2lockdata{ $dirty_oid } = join( '|', $locking_pid, $t, @pids_waiting_for_this_object );
-        }
     } #if dirty
 } #__check_locked_for_dirty
 
@@ -409,10 +271,10 @@ sub __process_command {
         my $obj_id = $command->{oi};
         my $app_id = $command->{ai};
 
-        my $root = Yote::YoteRoot::fetch_root();
+        my $root = Yote::Root::fetch_root();
 
         #
-        # There will be an app involved for this command. If none is given, the YoteRoot
+        # There will be an app involved for this command. If none is given, the Root
         # is used as the default.
         #
         my $app         = Yote::ObjProvider::fetch( $app_id ) || $root;
@@ -618,6 +480,8 @@ sub __process_http_request {
             $obj_id      = pop( @path );
             $app_id      = pop( @path ) || Yote::ObjProvider::first_id();
         }
+
+        # TODO : convert data to json and send that back and forth to the engine
         my $result = $self->__process_command( {
             a  => $action,
             ai => $app_id,

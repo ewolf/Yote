@@ -10,7 +10,7 @@ use Yote::Array;
 use Yote::Hash;
 use Yote::Obj;
 use Yote::ObjManager;
-use Yote::YoteRoot;
+use Yote::Root;
 
 use Crypt::Passwd::XS;
 use WeakRef;
@@ -150,7 +150,7 @@ sub fetch {
 
 
 #
-# Returns the first ID that is associated with the root YoteRoot object
+# Returns the first ID that is associated with the root Root object
 #
 sub first_id {
     $FIRST_ID ||= $DATASTORE->first_id();
@@ -216,7 +216,7 @@ sub get_id {
 	return $id;
     }
     else {
-	if( $class eq 'Yote::YoteRoot' ) {
+	if( $class eq 'Yote::Root' ) {
 	    $ref->{ID} = $DATASTORE->first_id( $class );
 	} else {
 	    $ref->{ID} ||= $DATASTORE->get_id( $class );
@@ -598,7 +598,7 @@ Returns the array ref, hash ref or yote object specified by the numeric id or ha
 
 =item first_id( id )
 
-Returns the id of the first object in the system, the YoteRoot. This may or may not be 
+Returns the id of the first object in the system, the Root. This may or may not be 
 numeric.
 
 =item flush( id )
