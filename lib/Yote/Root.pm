@@ -92,19 +92,6 @@ sub enable_login {
 }  #enable_login
 
 #
-# Fetches objects by id list
-#
-sub fetch {
-    my( $self, $data, $account, $env ) = @_;
-    die "Access Error" unless Yote::ObjManager::allows_access( $data, $self, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
-    if( ref( $data ) eq 'ARRAY' ) {
-        my $login = $account->get_login();
-        return [ map { Yote::ObjProvider::fetch( $_ ) } grep { defined($Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ }) } @$data ];
-    }
-    return [ Yote::ObjProvider::fetch( $data ) ];
-
-} #fetch
-#
 # Returns a list starting with the app object, followed by objects that the app wants to bring with
 #
 sub fetch_app_by_class {
@@ -257,47 +244,6 @@ sub logout {
         $login->set__token();
     }
 } #logout
-
-#
-# Transforms the login into a login with root privs. Do not use lightly.
-#
-sub make_root {
-    my( $self, $login, $acct ) = @_;
-    die "Access Error" unless $acct->is_root();
-    $login->set__is_root( 1 );
-    $login->set_is_root( 1 );
-    return "made root";
-} #make_root
-
-sub new_obj {
-    my( $self, $data, $acct ) = @_;
-    my $ret = new Yote::Obj( ref( $data ) ? $data : undef );
-    $ret->set___creator( $acct );
-    return $ret;
-} #new_obj
-
-sub new_root_obj {
-    my( $self, $data, $acct ) = @_;
-    return "Access Error" unless $acct && $acct->get_login() &&  $acct->get_login()->is_root();
-    my $ret = new Yote::RootObj( ref( $data ) ? $data : undef );
-    $ret->set___creator( $acct );
-    return $ret;
-} #new_root_obj
-
-sub new_template {
-    my( $self, $data, $acct ) = @_;
-    return "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
-    my $ret = new Yote::SimpleTemplate();
-    $ret->set___creator( $acct );
-    return $ret;
-} #new_template
-
-sub new_user_obj {
-    my( $self, $data, $acct ) = @_;
-    my $ret = new Yote::UserObj( ref( $data ) ? $data : undef );
-    $ret->set___creator( $acct );
-    return $ret;
-} #new_user_obj
 
 #
 # Used to wipe and reset a whole app's data. Use with caution

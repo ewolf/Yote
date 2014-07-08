@@ -4,7 +4,7 @@
  * Copyright (C) 2014 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.1
+ * Version 0.101
  */
 if( ! $.yote ) { $.yote = {}; }
 $.yote.templates = {

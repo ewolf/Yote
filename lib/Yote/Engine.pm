@@ -12,6 +12,10 @@ use Yote::ObjProvider;
 use Yote::IO::Mailer;
 use Yote::Root;
 
+use vars qw($VERSION);
+$VERSION = '0.001';
+
+
 #
 # Starts up a connection to the database, then opens a socket for
 # other processes to talk to this one.
@@ -74,7 +78,7 @@ sub start {
             # client has not been given a reference to that object.
             #
             unless( Yote::ObjManager::allows_access( $obj_id, $app, $login, $guest_token ) ) {
-                accesslog( "INVALID ACCCESS ATTEMPT for $obj_id from $command->{e}{ REMOTE_ADDR }" );
+#                accesslog( "INVALID ACCCESS ATTEMPT for $obj_id from $command->{e}{ REMOTE_ADDR }" );
                 die "Access Error";
             }
             #

@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.2
+ * Version 0.201
  */
 
 /*
@@ -44,28 +44,32 @@ $.yote = {
     init:function( appname, token ) {
         token = token ? token : $.cookie('yoken');
 	    $.yote.token = token || 0;
-
+        var ret;
 	    this.message( {
 	        async:false,
 	        cmd:'fetch_initial',
 	        data:{ t:token,a:appname },
 	        passhandler:function( initial_data ) {	    
 		        if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
-		            var yote_root = initial_data.get(  'root' ); yote_root._app_id = yote_root.id;
+		            var yote_root = initial_data.get(  'root' ); 
+                    yote_root._app_id = yote_root.id;
 		            $.yote.yote_root = yote_root;
 		            $.yote.objs[ yote_root.id ] = yote_root;
 
 		            var app = initial_data.get( 'app' ) || yote_root;
 		            app._app_id = app.id;
+		            $.yote._app_id = app.id;
 		            $.yote.default_app = app;
 		            $.yote.default_appname = appname;
 		            $.yote.objs[ app.id ] = app;
 
 		            $.yote.login_obj   = initial_data.get(  'login' );
 		            $.yote.acct_obj    = initial_data.get(  'account' );
+                    $.yote.acct_obj._app_id = app.id;
+
 		            $.yote.guest_token = initial_data.get(  'guest_token' );
 
-		            return app;
+		            ret = app;
 		        }
 		        else {
 		            console.log( "ERROR in init for app '" + appname + "' Load did not work" );
@@ -75,6 +79,7 @@ $.yote = {
 		        console.log( "ERROR in init for app '" + appname + "' : " + err );
 	        }
 	    } );
+        return ret;
     }, //init
 
     reinit:function( token ) {
@@ -87,7 +92,7 @@ $.yote = {
     }, //reinit
 
     fetch_default_app:function() {
-	    return this.default_app;
+	    return this.default_app || this.fetch_root();
     },
 
     fetch_account:function() {
@@ -101,7 +106,7 @@ $.yote = {
     },
 
     fetch_app:function(appname,passhandler,failhandler) {
-	    var yote_root = this.fetch_root();
+	    var yote_root = this.fetch_default_app();
 	    if( typeof yote_root === 'object' ) {
 	        var ret = yote_root.fetch_app_by_class( appname );
 	        ret._app_id = ret.id;
@@ -134,10 +139,10 @@ $.yote = {
     }, //fetch_initial
 
     get_by_id:function( id ) {
-	    return $.yote.objs[id+''] || $.yote.fetch_root().fetch(id).get(0);
+	    return $.yote.objs[id+''] || $.yote.fetch_default_app().fetch(id).get(0);
     },
 
-    is_root:function() {
+    has_root_permissions:function() {
 	    return this.is_logged_in() && 1*this.get_login().get_is_root();
     },
 
@@ -192,7 +197,7 @@ $.yote = {
 
 	    root.upload_count = 0;
 
-	    if( ! app_id ) app_id = 0;
+	    if( ! app_id ) app_id = $.yote._app_id || 0;
 	    if( ! obj_id ) obj_id = 0;
 
         var url = $.yote.url + '/_/' + app_id + '/' + obj_id + '/' + cmd;
@@ -209,9 +214,8 @@ $.yote = {
 	    var resp;
 
         if( $.yote.debug == true ) {
-	        console.log("\noutgoing " + url + '/' + get_data + '-------------------------' );
+	        console.log("\noutgoing : " + cmd + '  : ' + url + '/' + get_data + '-------------------------' );
 	        console.log( data );
-            //	    console.log( JSON.stringify( {d:data} ) );
 	    }
 
 	    $.ajax( {
@@ -221,12 +225,21 @@ $.yote = {
 	        data : encoded_data,
 	        dataFilter:function(a,b) {
 		        if( $.yote.debug == true ) {
-		            console.log( ['incoming ', a ] );
-		        }
+                    console.log( 'raw incoming ' );
+                    var len = 160;
+                    for( var i=0; i<a.length; i+=len ) {
+                        console.log( a.substring( i, i+len ) );
+                    }
+                    // print out eadch substring on a line
+                }
 		        return a;
 	        },
+
 	        error:function(a,b,c) { root._error(a); },
 	        success:function( data ) {
+		        if( $.yote.debug == true ) {
+                    console.log( ['incoming ', data ] );
+                }
                 if( typeof data !== 'undefined' ) {
 		            resp = ''; //for returning synchronous
 
@@ -605,6 +618,10 @@ $.yote = {
 	        $.yote.util.refresh_ui();
 	    }
     },
+    clear_wrap_cache:function() { 
+        $.yote.wrap_cache = {};
+    },
+
     // TODO : use prototype for the _create_obj
     _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
 	    var root = this;
@@ -640,8 +657,6 @@ $.yote = {
 		            var res = this.values().sort( sortfun );
 		            return res;
 		        },
-
-
 		        wrap_list:function( args, size ) {
 		            args.size = size;
 		            return this.wrap( args );
@@ -1080,7 +1095,7 @@ $.yote = {
 		        if( val.substring(0,1) != 'v' ) {
 		            var obj = root.objs[val+''];
 		            if( ! obj ) {
-			            var ret = $.yote.fetch_root().fetch(val);
+			            var ret = $.yote.fetch_default_app().fetch(val);
 			            if( ! ret ) return undefined; //this can happen if an authorized user logs out
 			            obj = ret.get(0);
 		            }
@@ -1176,9 +1191,8 @@ $.yote = {
                     needs = 1;
                 }
                 if( needs == 0 ) { return; }
-
                 root.message( { //for send update
-                    app_id:this._app_id,
+                    app_id:$.yote._app_id,
                     async:false,
                     data:to_send,
                     cmd:'update',

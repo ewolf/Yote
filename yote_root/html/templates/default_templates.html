@@ -50,7 +50,7 @@
 					     $.yote.login( $( ctx.controls.handle ).val(),
 							   $( ctx.controls.password ).val(),
 							   function(msg) {
-							       if( ctx.scratch.requires_admin && ! $.yote.is_root() ) {
+							       if( ctx.scratch.requires_admin && ! $.yote.has_root_permissions() ) {
 								   $( ctx.controls.messages ).empty().append( "Error : root login required" );
 								   $.yote.logout();
 								   $.yote.need_reinit = true;
@@ -121,7 +121,7 @@
            if( ctx.args.length > 1 ) { 
                ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
                ctx.vars.field = ctx.args[ 1 ];
-               return $.yote.is_root() ?  '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>' : '<$ ' + ctx.args[ 0 ] + '.' + ctx.args[ 1 ] + ' $>';
+               return $.yote.has_root_permissions() ?  '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>' : '<$ ' + ctx.args[ 0 ] + '.' + ctx.args[ 1 ] + ' $>';
            } else {
                console.log( "error in template 'edit' : not enough arguments." );
                return '';
@@ -269,7 +269,7 @@
                $.yote.login( $( ctx.controls.handle ).val(),
                              $( ctx.controls.password ).val(),
                              function(msg) {
-                                 if( ctx.scratch.requires_admin && ! $.yote.is_root() ) {
+                                 if( ctx.scratch.requires_admin && ! $.yote.has_root_permissions() ) {
                                      $( ctx.controls.messages ).empty().append( "Error : root login required" );
                                      $.yote.logout();
                                      $.yote.need_reinit = true;
@@ -413,7 +413,7 @@
      </a>
      <ul id="top_nav" class="nav"></ul>
      <div id="login_div" class="login">
-       <?? function( ctx ) { return $.yote.is_root() ? '<$$ Logged_in $$>' :' <$$ Logged_out $$>'; } ??>
+       <?? function( ctx ) { return $.yote.has_root_permissions() ? '<$$ Logged_in $$>' :' <$$ Logged_out $$>'; } ??>
      </div>
   </div>
 </script>

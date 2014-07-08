@@ -9,6 +9,7 @@ use warnings;
 no warnings 'uninitialized';
 
 use Data::Dumper;
+use DBD::mysql;
 use DBI;
 
 use vars qw($VERSION);

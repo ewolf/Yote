@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Rolodemo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="/yote/js"></script>
+
+    <SCRIPT>
+    $().ready(function(){
+        $.yote.debug = true;
+        $.yote.templates.import_templates( '/templates/default_templates.html' );
+        
+        var app = $.yote.init( 'Rolo' );
+        $.yote.templates.init();
+        $.yote.templates.refresh();
+    } );
+
+    </script>
+
+</head>
+
+<script type="text/template" class="yote_template_definition" template_name="New_Rolodex">
+  <$$$ control firstname <input type="text"  placeholder="First Name"   > $$$>   <BR>
+  <$$$ control lastname  <input type="text"  placeholder="Last Name"    > $$$>   <BR>
+  <$$$ control email     <input type="email" placeholder="Email Address"> $$$>   <BR>
+  <$$$ control cell      <input type="phone" placeholder="Cellphone"    > $$$>   <BR>
+  <$$$ control homepage  <input type="text"  placeholder="Homepage URL" > $$$>   <BR>
+  <$$$ control newb <button type="button">new entry</button> $$$>
+  <? function( ctx ) {
+      $( ctx.controls.newb ).click( function() {
+          var newe = ctx._app_.rolodex.new_with_same_permissions( {
+              firstname : $( ctx.controls.firstname ).val(),
+              lastname  : $( ctx.controls.lastname ).val(),
+              email     : $( ctx.controls.email ).val(),
+              cell      : $( ctx.controls.cell ).val(),
+              homepage  : $( ctx.controls.homepage ).val()
+          } );
+          ctx._app_.rolodex.add_to( { name : 'entries', items : [ newe ] } );
+      } );
+     } ?>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="Body">
+  <h2>Rolodex App</h2>
+  <DIV class="box">
+    <$$ Show_Rolodex $$>
+  </DIV>
+  <DIV class="box">
+    <$$ New_Rolodex $$>
+  </DIV>  
+</script>
+
+<body>
+ 
+</body>
+
+<DIV class="yote_template" template="YoteHeader"></div>
+
+<DIV class="yote_template" template="Body"></div>
+
+</html>

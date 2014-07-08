@@ -251,7 +251,7 @@ if we are our experiences then we are both sides of them.
        <th> <$$$ control newp <input type="password" placeholder="new password">$$$> <$$$ control newpup <button type="button">Update</button>$$$></th>
      </tr>
      <? function( ctx ) {
-         if( ctx.vars._.is_root()*1 == 1 ) {
+         if( ctx.vars._.has_root_permissions()*1 == 1 ) {
              $( ctx.controls.toggle ).attr( 'checked', true );
          }
          $( ctx.controls.toggle ).change( function() {
@@ -500,7 +500,7 @@ if we are our experiences then we are both sides of them.
 
   <script type="text/template" class="yote_template_definition" template_name="MainBody">
     <?? function( ctx ) {
-         return $.yote.is_root() ?
+         return $.yote.has_root_permissions() ?
 	    '<$$ AdminBody $$>' :
 	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>';
         } 

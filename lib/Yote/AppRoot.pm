@@ -21,7 +21,7 @@ use Yote::Root;
 use parent 'Yote::RootObj';
 
 use vars qw($VERSION);
-$VERSION = '0.088';
+$VERSION = '0.089';
 
 sub _init {
     my $self = shift;
@@ -69,32 +69,32 @@ sub create_login {
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );
 
     if( $self->get_requires_validation() && ! $email ) {
-	die "Must specify valid email";
+        die "Must specify valid email";
     }
 
     my $root = Yote::Root::fetch_root();
     my $login = $root->_create_login( $handle, $email, $password, $env );
 
     if( $self->get_requires_validation() ) {
-	my $rand_token = $root->_register_login_with_validation_token( $login );
-	my $link = $self->get_validation_link_template()->_fill( {
-	    t       => $rand_token,
-	    hosturl => $self->get_host_url(),
-								 } );
-	my $context = {
-	    handle => $handle,
-	    email  => $email,
-	    app    => $self->get_app_name( ref( $self ) ),
-	    link   => $link,
-	};
+        my $rand_token = $root->_register_login_with_validation_token( $login );
+        my $link = $self->get_validation_link_template()->_fill( {
+            t       => $rand_token,
+            hosturl => $self->get_host_url(),
+                                                                 } );
+        my $context = {
+            handle => $handle,
+            email  => $email,
+            app    => $self->get_app_name( ref( $self ) ),
+            link   => $link,
+        };
 
-	Yote::IO::Mailer::send_email(
-	    {
-		to      => $email,
-		from    => $self->get_validation_email_from( 'yote@' . $self->get_host_name() ),
-		subject => $self->get_validation_subject_template()->_fill( $context ),
-		msg     => $self->get_validation_message_template()->_fill( $context ),
-	    } );
+        Yote::IO::Mailer::send_email(
+            {
+                to      => $email,
+                from    => $self->get_validation_email_from( 'yote@' . $self->get_host_name() ),
+                subject => $self->get_validation_subject_template()->_fill( $context ),
+                msg     => $self->get_validation_message_template()->_fill( $context ),
+            } );
     } #requires validation
 
     return { l => $login, t => $root->_create_token( $login, $env->{REMOTE_ADDR} ) };
@@ -109,6 +109,21 @@ sub do_404 {
 } #do_404
 
 #
+# Fetches objects by id list
+#
+sub fetch {
+    my( $self, $data, $account, $env ) = @_;
+    die "Access Error" unless Yote::ObjManager::allows_access( $data, $self, $account ? $account->get_login() : undef, $env->{GUEST_TOKEN} );
+    if( ref( $data ) eq 'ARRAY' ) {
+        my $login = $account->get_login();
+        return [ map { Yote::ObjProvider::fetch( $_ ) } grep { defined($Yote::ObjProvider::LOGIN_OBJECTS->{ $login->{ID} }{ $_ }) } @$data ];
+    }
+    return [ Yote::ObjProvider::fetch( $data ) ];
+
+} #fetch
+
+
+#
 # TODO: maybe rather than app_name and DEfAULT, have a html_root and html_root_default fields
 # Returns response code and response.
 #
@@ -119,52 +134,91 @@ sub fetch_page {
     my $app_default_loc = $self->get_app_default_loc();
     my $default_file_loc = defined( $app_default_loc ) ? "$ENV{YOTE_ROOT}/html/$app_default_loc" : undef;
     if( -e $file_loc ) {
-	if( $node ) {
-	  # check to see which is more recent. if the file is, then set the current version of the node to the file unless
-	  # the node version is locked.
-	  my $file_mod_time;
-	  my $last_updated = $node->get_last_updated();
-	  if( $file_mod_time > $last_updated ) {
-	    my $html = read_file( $url );
-	    if( ! $node->get_version_locked() ) {
-	      $node->set_current_version_number( $node->_count( 'versions' ) );
-	      $node->add_to_versions( $html );
-	      $node->set_current_version( $html );
-	    }
-	    return 200, $html;
-	  }
-	  elsif( $file_mod_time < $last_updated ) {
-	    my $html = $node->get_current_version();
-	    write_file( $url, $html );
-	    return 200, $html;
-	  }
-	  else {
-	    return 200, $node->get_current_version();
-	  }
-	}
-	else {
-	    #create a new node
- 	    my $html = read_file( $file_loc );
-	    $self->_hash_insert( '_pages',
-				 $url,
-				 $node = new Yote::RootObj( { current_version => $html,
-							      versions        => [ $html ],
-							      last_updated    => time } ) );
-	    return $html;
-	}
+        if( $node ) {
+            # check to see which is more recent. if the file is, then set the current version of the node to the file unless
+            # the node version is locked.
+            my $file_mod_time;
+            my $last_updated = $node->get_last_updated();
+            if( $file_mod_time > $last_updated ) {
+                my $html = read_file( $url );
+                if( ! $node->get_version_locked() ) {
+                    $node->set_current_version_number( $node->_count( 'versions' ) );
+                    $node->add_to_versions( $html );
+                    $node->set_current_version( $html );
+                }
+                return 200, $html;
+            }
+            elsif( $file_mod_time < $last_updated ) {
+                my $html = $node->get_current_version();
+                write_file( $url, $html );
+                return 200, $html;
+            }
+            else {
+                return 200, $node->get_current_version();
+            }
+        }
+        else {
+            #create a new node
+            my $html = read_file( $file_loc );
+            $self->_hash_insert( '_pages',
+                                 $url,
+                                 $node = new Yote::RootObj( { current_version => $html,
+                                                              versions        => [ $html ],
+                                                              last_updated    => time } ) );
+            return $html;
+        }
     }
     elsif( $node ) {
-	my $html = $node->get_current_version();
-	write_file( $file_loc, $html );
-	return 200, $html;
+        my $html = $node->get_current_version();
+        write_file( $file_loc, $html );
+        return 200, $html;
     }
     elsif( $default_file_loc && -e $default_file_loc ) {
-	return 200, read_file( $default_file_loc );
+        return 200, read_file( $default_file_loc );
     }
     else {
-	return 404, $self->do_404();
+        return 404, $self->do_404();
     }
 } #fetch_page
+
+sub make_root {
+    my( $self, $login, $acct ) = @_;
+    die "Access Error" unless $acct->is_root();
+    $login->set__is_root( 1 );
+    $login->set_is_root( 1 );
+    return "made root";
+} #make_root
+
+sub new_obj {
+    my( $self, $data, $acct ) = @_;
+    my $ret = new Yote::Obj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_obj
+
+sub new_root_obj {
+    my( $self, $data, $acct ) = @_;
+    return "Access Error" unless $acct && $acct->get_login() &&  $acct->get_login()->is_root();
+    my $ret = new Yote::RootObj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_root_obj
+
+sub new_template {
+    my( $self, $data, $acct ) = @_;
+    return "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
+    my $ret = new Yote::SimpleTemplate();
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_template
+
+sub new_user_obj {
+    my( $self, $data, $acct ) = @_;
+    my $ret = new Yote::UserObj( ref( $data ) ? $data : undef );
+    $ret->set___creator( $acct );
+    return $ret;
+} #new_user_obj
+
 
 #
 # Sends an email to the address containing a link to reset password.
@@ -179,7 +233,7 @@ sub recover_password {
         unless( $login || ( $now - $login->get__last_recovery_time() ) < (60*15) ) { #need to wait 15 mins
             die "password recovery attempt failed";
         }
-	else {
+        else {
             my $rand_token = int( rand 9 x 10 );
             my $recovery_hash = $root->get__recovery_logins({});
             my $times = 0;
@@ -190,33 +244,33 @@ sub recover_password {
                 die "error recovering password";
             }
 
-	    $login->set__recovery_token( $rand_token );
+            $login->set__recovery_token( $rand_token );
             $login->set__last_recovery_time( $now );
             $login->set__recovery_tries( $login->get__recovery_tries() + 1 );
 
             $recovery_hash->{$rand_token} = $login;
 
-	    my $link = $self->get_recovery_link_template()->_fill(
-		{
-		    t       => $rand_token,
-		    hosturl => $self->get_host_url(),
-		    app     => ref( $self ),
-		} );
+            my $link = $self->get_recovery_link_template()->_fill(
+                {
+                    t       => $rand_token,
+                    hosturl => $self->get_host_url(),
+                    app     => ref( $self ),
+                } );
 
-	    my $context = {
-		handle => $login->get_handle(),
-		email  => $email,
-		app    => $self->get_app_name(),
-		link   => $link,
-		app    => ref( $self ),
-	    };
-	    Yote::IO::Mailer::send_email(
-		{
-		    to      => $email,
-		    from    => $self->get_recovery_email_from(),
-		    subject => $self->get_recovery_subject_template()->_fill( $context ),
-		    msg     => $self->get_recovery_message_template()->_fill( $context ),
-		} );
+            my $context = {
+                handle => $login->get_handle(),
+                email  => $email,
+                app    => $self->get_app_name(),
+                link   => $link,
+                app    => ref( $self ),
+            };
+            Yote::IO::Mailer::send_email(
+                {
+                    to      => $email,
+                    from    => $self->get_recovery_email_from(),
+                    subject => $self->get_recovery_subject_template()->_fill( $context ),
+                    msg     => $self->get_recovery_message_template()->_fill( $context ),
+                } );
         }
     } #if login
     return "password recovery initiated";
@@ -239,7 +293,7 @@ sub recovery_reset_password {
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
             $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
-	    $login->set__is_validated(1);
+            $login->set__is_validated(1);
             return $login->get__recovery_from_url();
         }
     }
@@ -255,10 +309,10 @@ sub remove_account {
     die "invalid arguments" unless $del_acct && $password;
     die "Cannot remove root" if $del_acct->get_login()->is_root() || $del_acct->get_login()->is_master_root();
     my $login = $del_acct->get_login();
-    if( $acct->is_root() || ( $del_acct->_is( $acct ) &&
-			      Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() ) ) {
-	$self->_hash_delete( '_account_roots', $login->{ID} );
-	$self->_hash_delete( '_account_handles', lc($login->get_handle() ) );
+    if( $acct->is_root() || 
+        ( $del_acct->_is( $acct ) &&
+          Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() ) ) {
+        $self->_hash_delete( '_account_roots', $login->{ID} );
     }
     die "unable to remove account";
 } #remove_account
@@ -273,9 +327,9 @@ sub token_login {
         my( $uid, $token ) = ( $1, $2 );
         my $login = $self->_fetch( $uid );
         if( ref( $login ) && ref( $login ) ne 'HASH' && ref( $login ) ne 'ARRAY'
-	    && $login->get__token() eq "${token}x$ip" ) {
-	    return $login;
-	}
+            && $login->get__token() eq "${token}x$ip" ) {
+            return $login;
+        }
     }
     return;
 } #token_login
@@ -320,10 +374,9 @@ sub __get_account {
     unless( $acct ) {
         $acct = $self->_new_account();
         $acct->set_login( $login );
-	$acct->set_handle( $login->get_handle() );
-	$self->_hash_insert( '_account_roots', $login->{ID}, $acct );
-	$self->_hash_insert( '_account_handles', lc( $login->get_handle() ), $acct );
-	$self->_init_account( $acct );
+        $acct->set_handle( $login->get_handle() );
+        $self->_hash_insert( '_account_roots', $login->{ID}, $acct );
+        $self->_init_account( $acct );
     }
     die "Access Error" if $acct->get__is_disabled();
 

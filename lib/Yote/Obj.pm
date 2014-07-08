@@ -402,6 +402,7 @@ sub insert_at {
 
 sub list_delete {
     my( $self, $args, $account ) = @_;
+
     die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     return $self->_list_delete( $args->{name}, $args->{index} );
 } #list_delete
