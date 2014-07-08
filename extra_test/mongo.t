@@ -92,9 +92,7 @@ my $db = $client->get_database( 'yote_test' );
 $db->drop();
 $db = $client->get_database( 'yote_test' );
 
-Yote::ObjProvider::init(
-    %yote_args
-    );
+Yote::ObjProvider::init( \%yote_args );
 
 $db = $Yote::ObjProvider::DATASTORE->database();
 test_suite( $db );
@@ -107,8 +105,8 @@ sub test_suite {
     my $db = shift;
     my $objcol = $db->get_collection( "objects" );
     
-    Yote::Root->fetch();
-    my $ROOT_START = 20;
+    Yote::Root->fetch_root();
+    my $ROOT_START = 18;
 
     is( $objcol->count(), $ROOT_START, "number of objects after fetchroot" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
@@ -133,7 +131,7 @@ sub test_suite {
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 14
     $root->set_hash( { "KEY" => "VALUE" } );                # 15
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), $ROOT_START+11, "number of objects after adding a bunch" );
+    is( $objcol->count(), $ROOT_START+14, "number of objects after adding a bunch" );
 
     # this resets the cool hash, overwriting what is there, which was a hash, array, a new obj and a hash ( 4 things )
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
@@ -141,7 +139,7 @@ sub test_suite {
     my $recycled = Yote::ObjProvider->recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), $ROOT_START+12, "number of objects after recycling" );
+    is( $objcol->count(), $ROOT_START+15, "number of objects after recycling" );
 
     Yote::IO::TestUtil::io_independent_tests( $root );
 } #test suite
