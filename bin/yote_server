@@ -154,10 +154,11 @@ sub start_yote {
                 start_cron();
             }
             elsif( $eng_proc == $cpid ) {
-                start_engine();
+                # TODO - maybe shut down or wait a bit.
+                start_engine( 1 );
             }
             elsif( $serv_proc == $cpid ) {
-                start_server();
+                start_server( 1 );
             }
             else {
                 # TODO - error for unknown pid
@@ -169,6 +170,25 @@ sub start_yote {
 } #start_yote
 
 sub start_server {
+    my $reconnect_socket = shift;
+
+    if( $reconnect_socket ) { 
+        $web_socket->close if $web_socket;
+
+        until( $web_socket ) {
+            $web_socket = new IO::Socket::INET(Listen => 10, LocalPort => $config->{port});
+            unless( $web_socket ) {
+                if( $! =~ /Address already in use/i ) {
+                    print STDERR "Address already in use. Retrying.\n";
+                    sleep( 5 );
+                } else {
+                    print STDERR "Unable to restart webserver socket : $!";
+                    exit;
+                }
+            }
+        }
+    }
+
     my $cpid = fork;
     if( $cpid > 0 ) {
         $serv_proc = $cpid;
@@ -204,6 +224,31 @@ sub start_cron {
 # communicate via sockets to this one.
 #
 sub start_engine {
+    my $reconnect_socket = shift;
+
+    if( $reconnect_socket ) { 
+        $internal_socket->close if $internal_socket;
+        until( $internal_socket = new IO::Socket::INT(
+                   Listen => 10, 
+                   # TODO : make sure there is an internal_port
+                   LocalPort => $config->{internal_port}
+               ) ) 
+        {
+            if( $! =~ /Address already in use/i ) {
+                print STDERR "Address '$config->{internal_port}' already in use. Retrying.\n";
+                sleep( 5 );
+            } else {
+                print STDERR "Unable to restart internal socket :  $!";
+                exit;
+            }
+        } # until connection established
+        print STDERR "Connected engine socket.\n";
+        print STDERR Data::Dumper->Dump(["ENG SOCK", $internal_socket]);
+        $config->{ internal_socket } = $internal_socket;
+    }        
+
+
+
     my $cpid = fork;
     if( $cpid > 0 ) {
         $eng_proc = $cpid;

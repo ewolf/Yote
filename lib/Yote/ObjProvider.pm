@@ -262,7 +262,7 @@ sub package_methods {
     unless( $methods ) {
 
         no strict 'refs';
-        my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|CLONE_SKIP|ISA|VERSION|unix_std_crypt|is|add_(once_)?to_.*|remove_(all_)?from_.*|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
+        my @m = grep { $_ && $_ !~ /^(_.*|AUTOLOAD|BEGIN|DESTROY|ISA|VERSION|unix_std_crypt|is|add_(once_)?to_.*|remove_(all_)?from_.*|import|[sg]et_.*|can|isa|new|decode_base64|encode_base64)$/ } grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
         for my $class ( @{"${pkg}\::ISA" } ) {
             my $pm = package_methods( $class );
@@ -286,58 +286,6 @@ sub paginate {
     return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
 } #paginate
 
-#
-# Deep clone this object. This will clone any yote object that is not an AppRoot.
-#
-sub power_clone {
-    my( $item, $replacements ) = @_;
-    my $class = ref( $item );
-    return $item unless $class;
-
-    unless( $replacements ) {
-        $replacements ||= {};
-    }
-    my $id = get_id( $item );
-    return $replacements->{$id} if $replacements->{$id};
-
-    if( $class eq 'ARRAY' ) {
-        my $clone_arry = [];
-        my $c_id = get_id( $clone_arry );
-        $replacements->{ $id } = $c_id;
-        for my $it ( @$item ) {
-            push @$clone_arry, power_clone( $it, $replacements );
-        }
-        return $clone_arry;
-    }
-    elsif( $class eq 'HASH' ) {
-        my $clone_hash = {};
-        my $c_id = get_id( $clone_hash );
-        $replacements->{ $id } = $c_id;
-        for my $key (keys %$item) {
-            $clone_hash->{ $key } = power_clone( $item->{ $key }, $replacements );
-        }
-
-        return $clone_hash;
-    }
-    else {
-        return $item if $item->isa( 'Yote::Account' ) || $item->isa( 'Yote::AppRoot' );
-    }
-
-    my $clone = $class->new;
-    $replacements->{ $id } = get_id( $clone );
-
-    for my $field (keys %{$item->{DATA}}) {
-        my $id_or_val = $item->{DATA}{$field};
-        if( $id_or_val > 0 ) { #means its a reference
-            $clone->{DATA}{$field} = $replacements->{$id_or_val} || xform_in( power_clone( xform_out( $id_or_val ), $replacements ) );
-        } else {
-            $clone->{DATA}{$field} = $id_or_val;
-        }
-    }
-
-    return $clone;
-
-} #power_clone
 
 #
 # Finds objects not connected to the root and recycles them.
@@ -636,10 +584,6 @@ Returns a paginated list or hash that is attached to the object specified by obj
 * reverse - return the result in reverse order
 
 =back
-
-=item power_clone( item )
-
-Returns a deep clone of the object. This will clone any object that is part of the yote system except for the yote root or any app (a Yote::AppRoot object)
 
 =item recycle_objects( start_id, end_id )
 

@@ -19,7 +19,7 @@ sub new_with_same_permissions {
 sub _check_access {
     my( $self, $account, $write_access, $name ) = @_;
     return ( index( $name, '_' ) != 0 && $write_access == 0 ) ||
-	( $account && ( $account->_is( $self->get___creator() ) || $account->is_root() ) );
+        ( $account && ( $account->_is( $self->get___creator() ) || $account->is_root() ) );
 } #_check_access
 
 1;

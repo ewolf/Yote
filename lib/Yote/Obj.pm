@@ -46,29 +46,29 @@ sub new {
 
     my $obj;
     if( ref( $id_or_hash ) eq 'HASH' ) {
-	$obj = bless {
-	    ID       => undef,
-	    DATA     => {},
-	}, $class;
+        $obj = bless {
+            ID       => undef,
+            DATA     => {},
+        }, $class;
     }
     else {
-	$obj = bless {
-	    ID       => $id_or_hash,
-	    DATA     => {},
-	}, $class;
+        $obj = bless {
+            ID       => $id_or_hash,
+            DATA     => {},
+        }, $class;
     }
 
     if( ! defined( $obj->{ID} ) ) {
-	$obj->{ID} = Yote::ObjProvider::get_id( $obj );
-	$obj->_init();
-	Yote::ObjProvider::dirty( $obj, $obj->{ID} );
+        $obj->{ID} = Yote::ObjProvider::get_id( $obj );
+        $obj->_init();
+        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
     }
 
     if( ref( $id_or_hash ) eq 'HASH' ) {
-	for my $key ( keys %$id_or_hash ) {
-	    $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
-	}
-	Yote::ObjProvider::dirty( $obj, $obj->{ID} );
+        for my $key ( keys %$id_or_hash ) {
+            $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
+        }
+        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
     }
 
     return $obj;
@@ -125,19 +125,19 @@ sub _add_to {
     my( $self, $listname, @data ) = @_;
     my $list_id = $self->{DATA}{$listname};
     if( $list_id ) {
-	Yote::ObjManager::mark_dirty( $list_id );
+        Yote::ObjManager::mark_dirty( $list_id );
     }
     else {
-	my $func = "set_$listname";
-	$self->$func( [] );
+        my $func = "set_$listname";
+        $self->$func( [] );
     }
     $list_id ||= $self->{DATA}{$listname};
     for my $d (@data) {
-	Yote::ObjProvider::list_insert( $list_id, $d );
+        Yote::ObjProvider::list_insert( $list_id, $d );
     }
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
-	push @$list, @data;
+        push @$list, @data;
     }
     return;
 } #_add_to
@@ -146,22 +146,22 @@ sub _insert_at {
     my( $self, $listname, $item, $idx ) = @_;
     my $list_id = $self->{DATA}{$listname};
     if( $list_id ) {
-	Yote::ObjManager::mark_dirty( $list_id );
+        Yote::ObjManager::mark_dirty( $list_id );
     }
     else {
-	my $func = "set_$listname";
-	$self->$func( [] );
+        my $func = "set_$listname";
+        $self->$func( [] );
     }
     $list_id ||= $self->{DATA}{$listname};
     Yote::ObjProvider::list_insert( $list_id, $item, $idx );
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
-	if( @$list <= $idx ) {
-	    push @$list, $item;
-	}
-	else {
-	    splice @$list, $idx, 0, $item;
-	}
+        if( @$list <= $idx ) {
+            push @$list, $item;
+        }
+        else {
+            splice @$list, $idx, 0, $item;
+        }
     }
     return;
 } #_insert_at
@@ -198,7 +198,7 @@ sub _check_access {
 sub _check_access_update {
     my( $self, $account, $write_access, $data ) = @_;
     for my $key ( keys %$data ) {
-	return 0 unless $self->_check_access( $account, $write_access, $key );
+        return 0 unless $self->_check_access( $account, $write_access, $key );
     }
     return 1;
 } #_check_access
@@ -211,7 +211,7 @@ sub _container_type {
 sub _count {
     my( $self, $args ) = @_;
     if( ref( $args ) ) { # TODO : standarize
-	return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
+        return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
     }
     return Yote::ObjProvider::count( $self->{DATA}{$args} );
 } #_count
@@ -220,13 +220,13 @@ sub _hash_delete {
     my( $self, $hashname, $key ) = @_;
     my $hash_id = $self->{DATA}{$hashname};
     if( $hash_id ) {
-	Yote::ObjManager::mark_dirty( $hash_id );
+        Yote::ObjManager::mark_dirty( $hash_id );
     }
     my $ret = Yote::ObjProvider::hash_delete( $hash_id, $key );
 
     my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
     if( $hash ) {
-	delete $hash->{ $key };
+        delete $hash->{ $key };
     }
 
     return $ret;
@@ -236,15 +236,15 @@ sub _hash_insert {
     my( $self, $hashname, $key, $val ) = @_;
     my $hash_id = $self->{DATA}{$hashname};
     if( $hash_id ) {
-	# mark dirty here in case there are outstanding instances of that hash?
-	Yote::ObjManager::mark_dirty( $hash_id );
+        # mark dirty here in case there are outstanding instances of that hash?
+        Yote::ObjManager::mark_dirty( $hash_id );
 
-	Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
-	my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
-	if( $hash ) {
-	    $hash->{ $key }= $val;
-	}
-	return $val;
+        Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
+        my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
+        if( $hash ) {
+            $hash->{ $key }= $val;
+        }
+        return $val;
     }
     my $fun = "set_$hashname";
     
@@ -288,24 +288,19 @@ sub _paginate {
     return Yote::ObjProvider::paginate( $self->{DATA}{$args->{name}}, $args );
 } #_paginate
 
-sub _power_clone {
-    my( $self, $replacements ) = @_;
-    return Yote::ObjProvider::power_clone( $self, $replacements );
-}
-
 sub _remove_from {
     my( $self, $listname, @data ) = @_;
     my $list_id = $self->{DATA}{$listname};
     return unless $list_id;
     
     for my $d (@data) {
-	Yote::ObjProvider::remove_from( $list_id, $d );
+        Yote::ObjProvider::remove_from( $list_id, $d );
     }
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
-	for( my $i=0; $i < @$list; $i++ ) {
-	    splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
-	}
+        for( my $i=0; $i < @$list; $i++ ) {
+            splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
+        }
     }    
     Yote::ObjManager::mark_dirty( $list_id );
 } #_remove_from
@@ -319,23 +314,23 @@ sub _update {
 
     my $dirty;
     if( @fieldlist ) {
-	for my $fld ( @fieldlist ) {
-	    my $set = "set_$fld";
-	    my $get = "get_$fld";
-	    if( defined( $datahash->{ $fld } ) ) {
-		$dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-		$self->$set( $datahash->{ $fld });
-	    }
-	}
+        for my $fld ( @fieldlist ) {
+            my $set = "set_$fld";
+            my $get = "get_$fld";
+            if( defined( $datahash->{ $fld } ) ) {
+                $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
+                $self->$set( $datahash->{ $fld });
+            }
+        }
     }
     else {
-	# catch anything tossed in that does not start with underscore
-	for my $fld ( keys %$datahash ) {
-	    my $set = "set_$fld";
-	    my $get = "get_$fld";
-	    $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-	    $self->$set( $datahash->{ $fld } );
-	}
+        # catch anything tossed in that does not start with underscore
+        for my $fld ( keys %$datahash ) {
+            my $set = "set_$fld";
+            my $get = "get_$fld";
+            $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
+            $self->$set( $datahash->{ $fld } );
+        }
     }
     Yote::ObjProvider::dirty( $self, $self->{ID} ) if $dirty;
 
@@ -460,7 +455,7 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
-	    push( @$arry, @vals );
+            push( @$arry, @vals );
         };
         use strict 'refs';
         goto &$AUTOLOAD;
@@ -472,12 +467,12 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
-	    for my $val ( @vals ) {
-		unless( grep { $val eq $_ } @$arry ) {
-		    push @$arry, $val;
-		}
-	    }
-	};
+            for my $val ( @vals ) {
+                unless( grep { $val eq $_ } @$arry ) {
+                    push @$arry, $val;
+                }
+            }
+        };
         use strict 'refs';
         goto &$AUTOLOAD;
     } #add_once_to
@@ -488,14 +483,14 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
-	    for my $val (@vals ) {
-		for my $i (0..$#$arry) {
-		    if( $arry->[$i] eq $val ) {
-			splice @$arry, $i, 1;
-			last;
-		    }
-		}
-	    }
+            for my $val (@vals ) {
+                for my $i (0..$#$arry) {
+                    if( $arry->[$i] eq $val ) {
+                        splice @$arry, $i, 1;
+                        last;
+                    }
+                }
+            }
         };
         use strict 'refs';
         goto &$AUTOLOAD;
@@ -507,18 +502,18 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
-	    for my $val (@vals) {
-		my $count = grep { $_ eq $val } @$arry;
-		while( $count ) {
-		    for my $i (0..$#$arry) {
-			if( $arry->[$i] eq $val ) {
-			    --$count;
-			    splice @$arry, $i, 1;
-			    last unless $count;
-			}
-		    }
-		}
-	    }
+            for my $val (@vals) {
+                my $count = grep { $_ eq $val } @$arry;
+                while( $count ) {
+                    for my $i (0..$#$arry) {
+                        if( $arry->[$i] eq $val ) {
+                            --$count;
+                            splice @$arry, $i, 1;
+                            last unless $count;
+                        }
+                    }
+                }
+            }
         };
         use strict 'refs';
         goto &$AUTOLOAD;
@@ -532,7 +527,7 @@ sub AUTOLOAD {
             Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval;
 
-	    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
+            return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;
     }
