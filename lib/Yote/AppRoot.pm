@@ -72,7 +72,7 @@ sub create_login {
 	die "Must specify valid email";
     }
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::Root::fetch();
     my $login = $root->_create_login( $handle, $email, $password, $env );
 
     if( $self->get_requires_validation() ) {
@@ -172,7 +172,7 @@ sub fetch_page {
 sub recover_password {
     my( $self, $email ) = @_;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::Root::fetch();
     my $login = $root->_hash_fetch( '_emails', $email );
     if( $login ) {
         my $now = time();
@@ -228,7 +228,7 @@ sub recover_password {
 sub recovery_reset_password {
     my( $self, $args ) = @_;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::Root::fetch();
     my $newpass        = $args->{p};
     my $rand_token     = $args->{t};
     my $recovery_hash  = $root->get__recovery_logins({});
@@ -282,7 +282,7 @@ sub token_login {
 
 sub validate {
     my( $self, $token ) = @_;
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::Root::fetch();
     return $root->_validate( $token );
 } #validate
 

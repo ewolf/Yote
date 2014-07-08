@@ -120,7 +120,7 @@ sub register_object {
     die unless $obj_id;
     return unless $recipient_id;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::Root::fetch();
     my $ALLOWS = $root->get___ALLOWS();
     my $ALLOWS_REV = $root->get___ALLOWS_REV();
     $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;

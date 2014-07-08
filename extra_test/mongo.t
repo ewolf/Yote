@@ -107,7 +107,7 @@ sub test_suite {
     my $db = shift;
     my $objcol = $db->get_collection( "objects" );
     
-    Yote::Root->fetch_root();
+    Yote::Root->fetch();
     my $ROOT_START = 20;
 
     is( $objcol->count(), $ROOT_START, "number of objects after fetchroot" );

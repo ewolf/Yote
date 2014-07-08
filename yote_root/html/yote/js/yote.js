@@ -120,7 +120,7 @@ $.yote = {
 	    if( ! r ) {
 	        r = this.message( {
 		        async:false,
-		        cmd:'fetch_root'
+		        cmd:'fetch'
 	        } );
 	        $.yote.yote_root = r;
 	    }

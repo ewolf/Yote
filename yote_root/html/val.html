@@ -20,7 +20,7 @@
     $().ready(function(){
 	$( '#mainpanel' ).hide();
 	$.yote.init();
-	var root = $.yote.fetch_root();
+	var root = $.yote.fetch();
 	var params = $.yote.util.url_params();
 	root.validate( params['t'] );
 	$( '#body' ).text( "Your account is now registered." );

@@ -21,7 +21,6 @@ $Yote::ObjProvider::WEAK_REFS      = {};
 $Yote::ObjProvider::LAST_LOAD_TIME = {};
 
 our $DATASTORE;
-our $LOCKER;
 our $FIRST_ID;
 
 use vars qw($VERSION);
@@ -39,7 +38,7 @@ sub new {
 } #new
 
 sub init {
-    my $args = ref( $_[0] ) ? $_[0] : { @_ };
+    my $args = shift;
     my $datapkg = 'Yote::IO::SQLite';
     if( $args->{engine} eq 'mongo' ) {
 	$datapkg = 'Yote::IO::Mongo';
@@ -51,10 +50,6 @@ sub init {
     $DATASTORE = $datapkg->new( $args );
     $DATASTORE->ensure_datastore();
 } #init
-
-sub attach_server {
-    $LOCKER = shift;
-}
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC CLASS METHODS *
@@ -262,16 +257,6 @@ sub list_insert {
     return $DATASTORE->list_insert( $list_id, xform_in( $val ), $idx );
 }
 
-sub lock {
-    my( $id, $ref ) = @_;
-    my $oref = $LOCKER ? $LOCKER->lock_object( $id, $ref ) : $ref;
-    unless( $oref ) {
-	$oref = fetch( $id );
-	$ref->{DATA} = $oref->{DATA};
-    }
-    return $ref;
-} #lock
-
 sub package_methods {
     my $pkg = shift;
     my $methods = $Yote::ObjProvider::PKG_TO_METHODS{$pkg};
@@ -442,14 +427,6 @@ sub stow_all {
     $Yote::ObjProvider::DIRTY = {};
 } #stow_all
 
-sub unlock {
-    my $id = shift;
-    if( $LOCKER ) {
-	return $LOCKER->unlock_objects( $id );
-    }
-    return;
-} #unlock
-
 sub xform_in {
     my $val = shift;
     if( ref( $val ) ) {
@@ -550,10 +527,6 @@ It is the only module to directly interact with the datastore layer.
 
 =item init - takes a hash of args, passing them to a new Yote::SQLite object and starting it up.
 
-=item attach_server( datalocker )
-
-This links a datalocker to this objprovider. This is called automatically by Yote::WebAppServer 
-which also serves as the locker. The datalocker is responsible for locking and unlocking objects.
 
 =back
 
@@ -643,10 +616,6 @@ Directly looks in the database to return the list element at the given index.
 Inserts the item into the list with an optional index. If not given, this inserts to the end of the list.
 This method will cause the list to be reindexed.
 
-=item lock( id, ref )
-
-Requests that the object locker lock the object given by id and reference to this thread. Calling this blocks until the item is unlocked.
-
 =item package_methods( package_name )
 
 This method returns a list of the public API methods attached to the given package name. This excludes the automatic getters and setters that are part of yote objects.
@@ -692,10 +661,6 @@ This saves the hash ref, array ref or yote object argument in the data store.
 =item stow_all( )
 
 Stows all objects that are marked as dirty. This is called automatically by the application server and need not be explicitly called.
-
-=item unlock( id )
-
-Requests the object locker release the object referenced by the given id that was locked to this thread.
 
 =item xform_in( value )
 

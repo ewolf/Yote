@@ -8,7 +8,7 @@ use Yote::IO::SMTP;
 our $MAILER;
 
 sub init {
-    my $args = ref( $_[0] ) ? $_[0] : { @_ };
+    my $args = shift;
     my $mail_imp = 'Yote::IO::SMTP';
     eval( "require $mail_imp" );
     $MAILER = $mail_imp->new( $args );

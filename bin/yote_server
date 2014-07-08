@@ -12,6 +12,8 @@ no  warnings 'uninitialized';
 use vars qw($VERSION);
 
 use Daemon::Daemonize qw/ :all /;
+use Data::Dumper;
+use IO::Socket;
 
 use Yote;
 
@@ -24,6 +26,8 @@ $SIG{ __DIE__ } = sub {
 my $args   = Yote::get_args();
 my $config = $args->{ config };
 my $cmd    = $args->{ command };
+my( $web_socket, $internal_socket );
+
 
 if( $config->{ profile } ) {
     require Yote::PerfAspect;
@@ -33,7 +37,7 @@ my $pidfile = $config->{ pidfile } || '/var/run/yote.pid';
 
 if( $cmd eq 'stop' ) {
     if( my $pid = check_pidfile( $pidfile ) ) {
-        print "Stopping $0\n";
+        print "Stopping $0 ( $pid )\n";
         kill 'SIGINT', $pid;
         sleep 2;
         print "Done\n";
@@ -71,30 +75,74 @@ if( $cmd eq 'status' ) {
 # ------------------------------------------------------------------
 
 my $in_shutdown = 0;
-my( %server_procs, $cron_proc );
+my( $serv_proc, $cron_proc, $eng_proc );
 
 sub start_yote {
 
+    #
+    # open internal socket
+    #
+    until( $internal_socket = new IO::Socket::INET(
+               Listen => 10, 
+               # TODO : make sure there is an internal_port
+               LocalPort => $config->{internal_port}
+           ) ) 
+    {
+        if( $! =~ /Address already in use/i ) {
+            print STDERR "Address '$config->{internal_port}' already in use. Retrying.\n";
+            sleep( 5 );
+        } else {
+            die "Unable to start internal socket :  $!";
+        }
+    } # until connection established
+    print STDERR "Connected engine socket.\n";
+    $config->{ internal_socket } = $internal_socket;
+     
+
+    #
+    # open webserver socket
+    #
+    until( $web_socket ) {
+        $web_socket = new IO::Socket::INET(Listen => 10, LocalPort => $config->{port});
+        unless( $web_socket ) {
+            if( $! =~ /Address already in use/i ) {
+                print STDERR "Address already in use. Retrying.\n";
+                sleep( 5 );
+            } else {
+                die "Unable to start webserver socket : $!";
+            }
+        }
+    }
+    print STDERR "Connected web socket.\n";
+    $config->{ web_socket } = $web_socket;
+
+
     daemonize( close => 0 );
     write_pidfile( $pidfile );
-
+    print STDERR Data::Dumper->Dump(["WROTE PIDFILE $pidfile $$"]);
     $SIG{ INT } = $SIG{ TERM } = sub {
         print STDERR "Got term or int signal\n";
         $in_shutdown = 1;
-        for my $cpid ($cron_proc, keys %server_procs) {
+        for my $cpid ($cron_proc, $eng_proc, $serv_proc) {
+            next unless $cpid;
+            print STDERR Data::Dumper->Dump(["KILLING '$cpid'"]);
             kill 'SIGINT', $cpid;
         }
         sleep 1;
         while( (my $cpid = waitpid( -1, 0 )) > 0 ) {
-            delete $server_procs{ $cpid };
         }
-        print STDERR "cleaned up\n";
+        print STDERR "cleaned up processes\n";
+        $internal_socket->close if $internal_socket;
+        $web_socket->close if $web_socket;
+        print STDERR "cleaned up sockets\n";
+
+        exit;
     };
 
-    for( 1..5 ) {
-        start_server();
-    }
-    start_cron();
+    start_engine();
+    start_server();
+#    start_cron(); #TODO - enable this
+    
     $0 = 'yote';
     print "Started yote\n";
 
@@ -104,9 +152,14 @@ sub start_yote {
             if( $cron_proc == $cpid ) {
                 start_cron();
             }
-            else {
-                delete $server_procs{ $cpid };
+            elsif( $eng_proc == $cpid ) {
+                start_engine();
+            }
+            elsif( $serv_proc == $cpid ) {
                 start_server();
+            }
+            else {
+                # TODO - error for unknown pid
             }
         }        
     }
@@ -117,15 +170,13 @@ sub start_yote {
 sub start_server {
     my $cpid = fork;
     if( $cpid > 0 ) {
-        $procs{ $cpid } = 1;
+        $serv_proc = $cpid;
     } elsif( defined $cpid ) { #child
-        $0 = 'yote server';
-
-        # TODO : handle signals in the server itself, it will know how to handle wrap up
-        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
-        requre Yote::WebAppServer;
-        my $server = Yote::WebAppServer->new;
-        $server->start( $config );
+        $0 = 'yote appserver manager';
+        print STDERR Data::Dumper->Dump(["Starting server process"]);
+        require Yote::WebAppServer;
+        my $server = Yote::WebAppServer->new( $config );
+        $server->start();
     } else {
         print STDERR "$0 : Unable to fork server process\n";
     }
@@ -140,7 +191,7 @@ sub start_cron {
 
         # TODO : handle signals in the cron itself, it will know how to handle wrap up
         $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
-        requre Yote::Cron;
+        require Yote::Cron;
         Yote::Cron->start( $config );
     } else {
         print STDERR "$0 : Unable to fork cron process\n";
@@ -148,20 +199,25 @@ sub start_cron {
 } #start_cron
 
 #
-# The 'engine' in this case is a single thread that executes and communicates to the db. The other threads
+# The 'engine' in this case is a single process that executes and communicates to the db. The other processes
 # communicate via sockets to this one.
 #
 sub start_engine {
     my $cpid = fork;
     if( $cpid > 0 ) {
-        $cron_proc = $cpid;
+        $eng_proc = $cpid;
     } elsif( defined $cpid ) { #child
-        $0 = 'yote cron';
+        $0 = 'yote engine';
 
         # TODO : handle signals in the engine itself, it will know how to handle wrap up
         $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
-        requre Yote::Engine;
-        Yote::Engine::start( $config );
+        require Yote::Engine;
+        eval {
+            Yote::Engine::start( $config );
+        };
+        if( $@ ) {
+            print STDERR Data::Dumper->Dump([$@]);
+        }
     } else {
         die "Unable to fork engine\n";
     }

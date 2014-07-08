@@ -62,7 +62,7 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    Yote::Root->fetch_root();
+    Yote::Root->fetch();
     my $ROOT_START = 26;
     my $ROOT_FIELD_START = 32;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );

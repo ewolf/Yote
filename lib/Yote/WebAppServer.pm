@@ -9,17 +9,9 @@ use File::Slurp;
 use File::stat;
 use MIME::Base64;
 use IO::Handle;
-use IO::Socket;
 use JavaScript::Minifier;
 use JSON;
 use POSIX qw(strftime);
-
-use Yote::AppRoot;
-use Yote::ConfigData;
-use Yote::FileHelper;
-use Yote::ObjManager;
-use Yote::ObjProvider;
-use Yote::IO::Mailer;
 
 use vars qw($VERSION);
 
@@ -31,8 +23,7 @@ $VERSION = '0.22';
 # ------------------------------------------------------------------------------------------
 
 sub new {
-    my( $pkg, @args ) = @_;
-    my $args = { ref( $args[0] ) ? %{ $args[0] } : @args };
+    my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     return bless { args => $args }, $class;
 }
@@ -41,64 +32,28 @@ sub new {
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
 
-
+# TODO : logging
 sub accesslog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
-    print $Yote::WebAppServer::ACCESS "$t : $msg\n";
+#    print $Yote::WebAppServer::ACCESS "$t : $msg\n";
 }
 
 
 sub errlog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
-    print $Yote::WebAppServer::ERR "$t : $msg\n";
+#    print $Yote::WebAppServer::ERR "$t : $msg\n";
 }
 
 sub iolog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
-    print $Yote::WebAppServer::IO "$t : $msg\n";
+#    print $Yote::WebAppServer::IO "$t : $msg\n";
 }
 
-#
-# Locks the given object from use by other threads.
-#
-sub lock_object {
-    my( $self, $obj_id, $ref ) = @_;
-
-    #
-    # LOCKED in this case means already locked by this thread,
-    # so do nothing.
-    #
-    if( $obj_id eq Yote::ObjProvider::first_id() || $self->{ LOCKED }{ $obj_id } ) {
-        return $ref;
-    }
-    
-} #lock_object
-
-
-sub shutdown {
-    my $self = shift;
-    accesslog( "Shutting down yote server" );
-    Yote::ObjProvider::start_transaction();
-    Yote::ObjProvider::stow_all();
-    Yote::ObjProvider::commit_transaction();
-    accesslog(  "Killing threads" );
-    $self->__stop_threads();
-    accesslog( "Shut down server thread" );
-} #shutdown
-
 sub start {
-    my( $self, @args ) = @_;
-    my $args = scalar(@args) == 1 ? $args[0] : { @args };
-
-    $self->{ args } = $args;
-    $self->{ args }{ webroot } ||= $self->{ args }{ yote_root } . '/html';
-    $self->{ args }{ upload }  ||= $self->{ args }{ webroot }   . '/upload';
-    $self->{ args }{ log_dir } ||= $self->{ args }{ yote_root } . '/log';
-    $self->{ args }{ port }    ||= 80;
-    $self->{ args }{ threads } ||= 10;
+    my $self = shift;
 
     # make sure the filehelper knows where the data directory is
     $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
@@ -117,294 +72,72 @@ sub start {
     open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
         && $Yote::WebAppServer::ERR->autoflush;
 
-    $self->{ init_args } = $args;
-    Yote::ObjProvider::init( %$args );
-    Yote::IO::Mailer::init( %$args );
+    # open listener socket
+    $self->{ web_socket } = $self->{ args }{ web_socket };
 
-    # fork out for three starting threads
-    #   - one a multi forking server (parent class)
-    #   - one for a cron daemon inside of Yote. (PENDING)
-    #   - and the parent thread an event loop.
-
-    my $root = Yote::Root::fetch_root();
-    Yote::ObjProvider::stow_all();
-    # check for default account and set its password from the config.
-    $root->_update_master_root( $args->{ root_account }, $args->{ root_password } );
-
-
-    # make sure the filehelper knows where the data directory is
-
-    # update @INC library list
-    my $paths = $root->get__application_lib_directories([]);
-    push @INC, Yote::ConfigData->config( 'yote_root' ), @$paths;
-
-    until( $self->{lsn} ) {
-        $self->{lsn} = new IO::Socket::INET(Listen => 10, LocalPort => $self->{args}{port});
-        unless( $self->{lsn} ) {
-            if( $! =~ /Address already in use/i ) {
-                print STDERR "Address already in use. Retrying.\n";
-                sleep( 5 );
-            } else {
-                die $!;
-            }
+    # TODO : handle signals in the server itself, it will know how to handle wrap up
+    $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { 
+        print STDERR "$0 $$ got signal. killing worker threads\n";   
+        for my $cpid ( keys %{ $self->{ server_threads } } ) {
+            kill 'SIGINT', $cpid;            
         }
-    }
+        print STDERR "stopped all worker threads\n";   
+        exit; 
+    };
+    $self->{ server_threads } = {};
 
-    print STDERR "Connected\n";
-    
-    $self->{ threads } = {};
-    
-    Yote::ObjProvider::attach_server( $self );
+    # launch server processes
     for( 1 .. $self->{args}{threads} ) {
-        $self->__start_server_thread;
+        $self->start_server_thread;
     } #creating threads
 
-    Yote::ObjProvider::flush_all_volatile();
-    $self->__unlock_all();
-
-    while( 1 ) {
-        sleep( 5 );
-        my $threads = $self->{ threads };
-        for my $thread ( values %$threads ) {
-            if( $thread->is_joinable() ) {
-                delete $threads->{ $thread->tid() };
-                $thread->join();
-            }
+    # waitpid to keep correct number of processes
+    while( (my $cpid = waitpid( -1, 0 )) > 0 ) {
+        if( $cpid > 0 ) {
+#            $self->start_server_thread;
         }
-        while( scalar( keys %$threads ) < $self->{ args }{ threads } ) {
-            $self->__start_server_thread;
-        }
-        eval { 
-            my $cron = $root->_cron();
-            my $cron_entries = $cron->entries();
-        };
-        print STDERR "ERROR IN CRON : $@ $!" if $@;
-    } #endless loop
-
-    __stop_threads();
-
-    Yote::ObjProvider::disconnect();
+    }
 
 } #start
 
-sub unlock_objects {
-    my( $self, @objs ) = @_;
-    @objs = grep { $self->{ LOCKED }{ $_ } } @objs;
-    if( @objs ) {
-    }
-} #unlock_objects
+sub start_server_thread {
+    my $self = shift;
+    my $cpid = fork;
 
-# ------------------------------------------------------------------------------------------
-#      * PRIVATE METHODS *
-# ------------------------------------------------------------------------------------------
+    if( $cpid ) { #parent
+        $self->{ server_threads }{ $cpid } = 1;
+    } 
+    elsif( defined $cpid ) { #child
+        $0 = 'yote appserver';
+
+        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { 
+            print STDERR "stopping worker thread $$\n";        
+            exit; 
+        };
+
+        print STDERR "STARTING Server Thread $$";
+        $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
+        $self->serve;
+        exit;
+    }
+    else {
+        # TODO - report thread starting error
+    }
+} #start_server_thread
 
 #
-# Check to see if objects that had been locked by other forks have data that had changed.
+# Accept and process incoming requests
 #
-sub __check_locked_for_dirty {
-    my( $self  ) = @_;
-    my( @dirty_oids ) = grep { Yote::ObjProvider::__is_dirty( $_ ) } keys %{ $self->{LOCKED} || {} };
-    } #if dirty
-} #__check_locked_for_dirty
-
-sub _do404 {
-    my( $self, $socket ) = @_;
-    print $socket "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
-}
-
-
-
-sub __stop_threads {
+sub serve {
     my $self = shift;
-    $self->{watchdog_thread}->kill if $self->{watchdog_thread} && $self->{watchdog_thread}->is_running;
-    for my $thread (values %{$self->{threads}}) {
-        $thread->join if $thread && $thread->is_joinable;
-        $thread->kill if $thread && $thread->is_running;
-    }
-} #__stop_threads
+    while( my $fh = $self->{ web_socket }->accept ) {
+        $ENV{ REMOTE_ADDR } = $fh->peerhost;
+        $self->process_http_request( $fh );
+        $fh->close;
+    } #process connection
+} #serve
 
-sub __start_server_thread {
-    my $self = shift;
-
-    my $new_thread = threads->new(
-        sub {
-            $0 = 'Yote Worker';
-            Yote::ObjProvider::init( %{$self->{ init_args } } );
-            print STDERR "Starting server thread " . threads->tid() . "\n";
-            $SIG{PIPE} = sub { # a client disconnected before receiving a response
-                print STDERR "Thread $$ got sig pipe. Exiting\n";
-                $self->{lsn}->close() if $self->{lsn};
-                threads->exit()
-            };
-            unless( $self->{lsn} ) {
-                threads->exit();
-            }
-            
-            open( $Yote::WebAppServer::IO,      '>>', "$Yote::WebAppServer::LOG_DIR/io.log" ) 
-                && $Yote::WebAppServer::IO->autoflush;
-            open( $Yote::WebAppServer::ACCESS,  '>>', "$Yote::WebAppServer::LOG_DIR/access.log" )
-                && $Yote::WebAppServer::ACCESS->autoflush;
-            open( $Yote::WebAppServer::ERR,     '>>', "$Yote::WebAppServer::LOG_DIR/error.log" )
-                && $Yote::WebAppServer::ERR->autoflush;
-            
-            while( my $fh = $self->{lsn}->accept ) {
-                eval {
-                    $ENV{ REMOTE_ADDR } = $fh->peerhost;
-                    $self->__process_http_request( $fh );
-                };
-                if( $@ ) {
-                    $self->{lsn}->close() if $self->{lsn};
-                    last;
-                }
-                $fh->close();
-            } #main loop
-        } ); #new thread
-    $self->{ threads }{ $new_thread->tid() } = $new_thread;
-    
-} #__start_server_thread
-
-sub __process_command {
-    my( $self, $command ) = @_;
-    my $resp;
-
-    eval {
-        my $obj_id = $command->{oi};
-        my $app_id = $command->{ai};
-
-        my $root = Yote::Root::fetch_root();
-
-        #
-        # There will be an app involved for this command. If none is given, the Root
-        # is used as the default.
-        #
-        my $app         = Yote::ObjProvider::fetch( $app_id ) || $root;
-
-        #
-        # Data is the data playload given as the first parameter of the action.
-        #
-        my $data        = __translate_data( from_json( MIME::Base64::decode( $command->{d} ) )->{d} );
-
-        #
-        # A yote uesr can either be logged in, or be a 'guest' that is tokenized with
-        # the token associated with that person's ip address
-        #
-        my $login       = $app->token_login( $command->{t}, undef, $command->{e} );
-
-        #
-        # The guest token is for clients that do not have a logged in user.
-        # The token is stored with the IP address of the client and both
-        # are used to verify the token.
-        #
-        my $guest_token =  $root->check_guest_token( $command->{e}{ REMOTE_ADDR }, $command->{gt} ) || $root->guest_token( $command->{e}{ REMOTE_ADDR } );
-        $command->{e}{GUEST_TOKEN} = $guest_token;
-
-        #
-        # Security check. This will trip if an object is requested by the client where the
-        # client has not been given a reference to that object.
-        #
-        unless( Yote::ObjManager::allows_access( $obj_id, $app, $login, $guest_token ) ) {
-            accesslog( "INVALID ACCCESS ATTEMPT for $obj_id from $command->{e}{ REMOTE_ADDR }" );
-            die "Access Error";
-        }
-
-        #
-        # The object in question that will have the action method run on it.
-        #
-        my $app_object = Yote::ObjProvider::fetch( $obj_id ) || $app;
-        my $action     = $command->{a};
-
-        #
-        # set or adding to a list of the object may not be called directly on an object.
-        #
-        die "Access Error" if $action =~ /^([gs]et|add_(once_)?to_|remove_(all_)?from)_/; 
-
-        #
-        # If a user is logged in, that user will have an account associated with whatever
-        # app this call is for. Find that.
-        #
-        my $account;
-        if( $login ) {
-            die "Access Error" if $login->get__is_disabled();
-            $account = $app->__get_account( $login );
-            die "Access Error" if $app->get_requires_validation() && ! $login->get__is_validated();
-            die "Access Error" if $account->get__is_disabled() || $login->get__is_disabled();
-            $account->set_login( $login ); # security measure to make sure login can't be overridden by a subclass of account
-            $login->add_once_to__accounts( $account );
-        }
-        
-        #
-        # This is where the magic method call is done and the response generated.
-        #
-        my $ret = $app_object->$action( $data, $account, $command->{e} );
-        
-        #
-        # Prepare the response object. It has the following parts :
-        #    r - the response itself
-        #    d - updates for dirty data
-        #    err - if there was an exception, this contains the exception message.
-        #
-        $resp = { r =>  __obj_to_response( $ret, $login, $guest_token ) };
-
-        #
-        # This block checks to see if there are objects that the client has
-        # a reference to that were updated since the client last communicated
-        # with the server.
-        #
-        my $dirty_delta = Yote::ObjManager::fetch_dirty( $login, $guest_token );
-        if( @$dirty_delta ) {
-            my $dirty_data = {};
-            for my $d_id ( @$dirty_delta ) {
-                my $dobj = Yote::ObjProvider::fetch( $d_id );
-                if( ref( $dobj ) eq 'ARRAY' ) {
-                    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->[$_] ) } (0..$#$dobj) };
-                } elsif( ref( $dobj ) eq 'HASH' ) {
-                    $dirty_data->{$d_id} = { map { $_ => Yote::ObjProvider::xform_in( $dobj->{ $_ } ) } keys %$dobj };
-                } else { # Yote::Obj
-                    $dirty_data->{$d_id} = { map { $_ => $dobj->{DATA}{$_} } grep { $_ !~ /^_/ } keys %{$dobj->{DATA}} };
-                }
-                for my $val (values %{ $dirty_data->{$d_id} } ) {
-                    # this registers the objects that were introduced via data structure to the client
-                    if( index( $val, 'v' ) != 0 ) {
-                        Yote::ObjManager::register_object( $val, $login ? $login->{ID} : $guest_token );
-                    }
-                }
-            }
-            $resp->{d} = $dirty_data;
-        } #if there was a dirty delta
-    };
-    if( $@ ) {
-        my $err = $@;
-        print STDERR Data::Dumper->Dump(["ERRRR $@",$command]);
-        if( $err =~ /^__DEADLOCK__/ ) {
-            iolog( "DEADLOCK TO RETRY $$ : $@" );
-            # if a deadlock condition was detected. back out of any changes and retry
-            # now this could become an issue if things deadlock really really often as the stack would fill up.
-#	    print STDERR "[$$ ".time()."] DEADLOCK DETECTED\n";
-            $self->__unlock_all();
-            return $self->__process_command( $command );
-        }
-        $err =~ s/at \/\S+\.pm.*//s;
-        errlog( "ERROR : $@" );
-        iolog( "ERROR : $@" );
-        $resp = { err => $err, r => '' };
-    } #if error
-    
-
-    #
-    # Save the state of the database completely.
-    #
-    $self->__check_locked_for_dirty();
-    Yote::ObjProvider::start_transaction();
-    Yote::ObjProvider::stow_all();
-    Yote::ObjProvider::flush_all_volatile();
-    Yote::ObjProvider::commit_transaction();
-    $self->__unlock_all();
-
-    return to_json( $resp );
-
-} #__process_command
-
-sub __process_http_request {
+sub process_http_request {
     my( $self, $socket ) = @_;
     my $req = <$socket>;
 
@@ -418,7 +151,6 @@ sub __process_http_request {
     my $content_length = $ENV{'HTTP_CONTENT-LENGTH'};
     if( $content_length > 5_000_000 ) { #TODO : make this into a configurable field
         $self->_do404( $socket );
-        close( $socket );
         return;
     }
 
@@ -472,7 +204,8 @@ sub __process_http_request {
             $app_id ||= Yote::ObjProvider::first_id();
         }
         else { # an upload
-            my $vars = Yote::FileHelper::__ingest( __parse_headers( $socket ) );
+            # TODO - verify this
+            my $vars = Yote::FileHelper::__ingest( parse_headers( $socket ) );
             $data        = $vars->{d};
             $token       = $vars->{t};
             $guest_token = $vars->{gt};
@@ -482,15 +215,16 @@ sub __process_http_request {
         }
 
         # TODO : convert data to json and send that back and forth to the engine
-        my $result = $self->__process_command( {
-            a  => $action,
-            ai => $app_id,
-            d  => $data,
-            e  => {%ENV},
-            oi => $obj_id,
-            t  => $token,
-            gt => $guest_token,
-                                               } );
+        my $result = $self->run_command( 
+            {
+                a  => $action,
+                ai => $app_id,
+                d  => MIME::Base64::decode( $data ),
+                e  => {%ENV},
+                oi => $obj_id,
+                t  => $token,
+                gt => $guest_token,
+            } );
         print $socket "HTTP/1.0 200 OK\015\012";
         push( @return_headers, "Content-Type: text/json; charset=utf-8" );
         push( @return_headers,  "Access-Control-Allow-Origin: *" );
@@ -509,6 +243,8 @@ sub __process_http_request {
         iolog( $uri );
 
         my $root = $self->{args}{webroot};
+        print STDERR Data::Dumper->Dump([$self->{args},"AAA"]);
+        print STDERR Data::Dumper->Dump(["ROOT is $root"]);
         my $dest = '/' . join('/',@path);
 
         #
@@ -531,7 +267,6 @@ sub __process_http_request {
                 } else {
                     print $socket "HTTP/1.1 301 FOUND\015\012";
                     print $socket "Location: $dest/index.html";
-                    close( $socket );
                     return;
                 }
             }
@@ -574,19 +309,50 @@ sub __process_http_request {
             }
             close( $IN );
         } else {
-            accesslog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
-            errlog( "404 NOT FOUND (".threads->tid().") : $@,$! [$root/$dest]");
+            accesslog( "404 NOT FOUND ($$) : $@,$! [$root/$dest]");
+            errlog( "404 NOT FOUND ($$) : $@,$! [$root/$dest]");
             $self->_do404( $socket );
         }
     } #serve html
-    close( $socket );
+
     return;
-} #__process_http_request
+} #process_http_request
+
+sub run_command {
+    my( $self, $cmd ) = @_;
+
+    #open socket to engine and communicate with it
+    my $sock = new IO::Socket::INET( LocalPort => $self->{args}{internal_port} );
+    my $json_cmd = to_json( $cmd );
+    print STDERR Data::Dumper->Dump(["About to send to engine : ",$json_cmd]);
+    print $sock $json_cmd;
+
+    my $res = <$sock>;
+
+    print STDERR Data::Dumper->Dump(["Got result from engine : ",$res]);
+
+    $sock->close;
+
+    return $res;
+
+} #run_command
+
+# ------------------------------------------------------------------------------------------
+#      * PRIVATE METHODS *
+# ------------------------------------------------------------------------------------------
+
+
+sub _do404 {
+    my( $self, $socket ) = @_;
+    print $socket "HTTP/1.0 404 NOT FOUND\015\012Content-Type: text/html\n\nERROR : 404\n";
+}
+
+
 
 #
 # 
 #
-sub __parse_headers {
+sub parse_headers {
     my $socket = shift;
     my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
@@ -649,35 +415,7 @@ sub __parse_headers {
     } #if has a boundary content type
     return ( \%post_data, \%file_helpers );
 } #parse_headers
-
-#
-# Translates from vValue and reference_id to values and references
-#
-sub __translate_data {
-    my( $val ) = @_;
-
-    if( ref( $val ) eq 'HASH' ) { #from javacript object, or hash. no fields starting with underscores accepted
-        return { map {  $_ => __translate_data( $val->{$_} ) } grep { index( $_, '_' ) != 0 } keys %$val };
-    }
-    elsif( ref( $val ) eq 'ARRAY' ) { #from javacript object, or hash. no fields starting with underscores accepted
-        return [ map {  __translate_data( $_ ) } @$val ];
-    }
-    return unless $val;
-    if( index($val,'v') == 0 ) {
-        return substr( $val, 1 );
-    }
-    elsif( index($val,'u') == 0 ) {  #file upload contains an encoded hash
-        my $filestruct   = from_json( substr( $val, 1 ) );
-        my $filehelper = new Yote::FileHelper();
-        $filehelper->set_content_type( $filestruct->{content_type} );
-        $filehelper->__accept( $filestruct->{filename} );
-
-        return $filehelper;
-    }
-    else {
-        return Yote::ObjProvider::fetch( $val );
-    }
-} #__translate_data
+ #__translate_data
 
 #
 # Converts scalar, yote object, hash or array to data for returning.
@@ -735,38 +473,6 @@ sub __obj_to_response {
     return "v$to_convert";
 } #__obj_to_response
 
-#
-# Transforms data structure but does not assign ids to non tied references.
-#
-sub __transform_data_no_id {
-    my( $item, $login, $guest_token ) = @_;
-    if( ref( $item ) eq 'ARRAY' ) {
-        my $tied = tied @$item;
-        if( $tied ) {
-            my $id =  Yote::ObjProvider::get_id( $item ); 
-            Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-            return $id;
-        }
-        return [map { __obj_to_response( $_, $login, $guest_token ) } @$item];
-    }
-    elsif( ref( $item ) eq 'HASH' ) {
-        my $tied = tied %$item;
-        if( $tied ) {
-            my $id =  Yote::ObjProvider::get_id( $item ); 
-            Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-            return $id;
-        }
-        return { map { $_ => __obj_to_response( $item->{$_}, $login, $guest_token ) } keys %$item };
-    }
-    elsif( ref( $item ) ) {
-        my $id = Yote::ObjProvider::get_id( $item ); 
-        Yote::ObjManager::register_object( $id, $login ? $login->{ID} : $guest_token );
-        return $id;
-    }
-    else {
-        return "v$item"; #scalar case
-    }
-} #__transform_data_no_id
 
 
 sub __unlock_all {
@@ -863,10 +569,6 @@ Locks the given object id for use by this process only until it is unlocked.
 =item new
 
 Returns a new WebAppServer.
-
-=item shutdown( )
-
-Shuts down the yote server, saving all unsaved items.
 
 =item start_server( )
 

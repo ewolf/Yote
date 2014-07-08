@@ -13,6 +13,7 @@ use vars qw($VERSION);
 $VERSION = '0.215';
 
 use Carp;
+use Crypt::Passwd::XS;
 use File::Path;
 
 ##################
@@ -45,6 +46,7 @@ sub get_args {
         h  => 'help',
         '?' => 'help',
         H  => 'host',
+        i  => 'internal_port',
         P  => 'password',
         p  => 'port',
         R  => 'reset_password',
@@ -61,15 +63,15 @@ sub get_args {
         t  => 'threads',
         );
     my %noval = (  #arguments that do not take a value
-                   help			=> 1,
-                   generate		=> 1,
-                   show_config		=> 1,
-                   reset_password	=> 1,
-                   profile              => 1,
+                   help           => 1,
+                   generate       => 1,
+                   show_config	  => 1,
+                   reset_password => 1,
+                   profile        => 1,
         );
     my %argnames = map { $_ => 1 } values %argmap;
 
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port threads smtp_auth/;
+    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port internal_port threads smtp_auth/;
 
     # ---------  run variables  -----------------
 
@@ -158,6 +160,15 @@ sub get_args {
     return { config => \%config, command => $cmd, commands => \@cmds };
 } #get_args
 
+#
+# Encrypt the password so its not saved in plain text.
+#
+sub encrypt_pass {
+    my( $pw, $handle ) = @_;
+    return $handle ? Crypt::Passwd::XS::crypt( $pw, $handle ) : undef;
+} #encrypt_pass
+
+
 sub start_yote {
     my %config = @_;
 }
@@ -182,22 +193,6 @@ sub run {
 
 } #run
 
-#
-# Convenience method to return the Yote::Root singleton, connected to the db as outlined by
-# the config file.
-#
-# Warning : do not do any write operations while a Yote server is running. This could cause havoc
-#           if that server is also doing write operations.
-#
-sub fetch_root {
-    my $args = get_args();
-    my $config = $args->{ config };
-    Yote::ObjProvider::init( $config );
-    Data::Dumper->Dump([ $config ]);
-    require Yote::Root;
-    return Yote::Root::fetch_root();
-} #fetch_root
-
 ###################
 # Private Methods #
 ###################
@@ -209,6 +204,7 @@ sub _print_use {
                     --generate
                     --help
                     --host=mongo-or-mysql-host
+                    --internal_port=object-and-action-server-port
                     --show_config
                     --password=engine-password
                     --port=yote-server-port
@@ -280,7 +276,7 @@ sub _create_configuration {
 sub _reset_root_password {
     my( $yote_root_dir, $config ) = @_;
 
-    $config->{ root_password } = Yote::ObjProvider::encrypt_pass( _ask( "Root Account Password" ), $config->{ root_account } );
+    $config->{ root_password } = encrypt_pass( _ask( "Root Account Password" ), $config->{ root_account } );
 
     open( my $OUT, '>', "$yote_root_dir/yote.conf" ) or die $@;
     print $OUT "\#\n# Yote Configuration File\n#\n\n".join("\n",map { "$_ = $config->{$_}" } grep { $config->{$_} } keys %$config )."\n\n";
@@ -394,14 +390,15 @@ sub _get_configuration {
         $newconfig{ smtp_authid }  = _ask( "Auth ID", undef, $current_config->{ smtp_authid } );
         $newconfig{ smtp_authpwd } = _ask( "Auth Password", undef, $current_config->{ smtp_authpwd } );
     }
-    $newconfig{ smtp_TLS_allowed } = _ask( "Should TLS ( SSL encrypted connection ) be used ", ['Yes','No'], $current_config->{ smtp_TLS_allowed } ? 'Yes' : 'No' );
-    $newconfig{ smtp_TLS_allowed } = $newconfig{ smtp_TLS_allowed } eq 'Yes' ? 1 : 0;
+    $newconfig{ smtp_TLS_allowed }  = _ask( "Should TLS ( SSL encrypted connection ) be used ", ['Yes','No'], $current_config->{ smtp_TLS_allowed } ? 'Yes' : 'No' );
+    $newconfig{ smtp_TLS_allowed }  = $newconfig{ smtp_TLS_allowed } eq 'Yes' ? 1 : 0;
     $newconfig{ smtp_TLS_required } = _ask( "Must TLS ( SSL encrypted connection ) be used", ['Yes','No'], $current_config->{ smtp_TLS_required } ? 'Yes' : 'No' );
     $newconfig{ smtp_TLS_required } = $newconfig{ smtp_TLS_required } eq 'Yes' ? 1 : 0;
 
-
-    $newconfig{ port } = _ask( "Port to run yote server on?",     undef, $current_config->{ port }    || 80 );
-    $newconfig{ threads } = _ask( "Number of server processes :", undef, $current_config->{ threads } || 4 );
+    # TODO - make sure internal port is not externally accessible.
+    $newconfig{ internal_port } = _ask( "Internal port to run object server on?",     undef, $current_config->{ internal_port } || 81 );
+    $newconfig{ port }          = _ask( "Port to run yote server on?",     undef, $current_config->{ port }    || 80 );
+    $newconfig{ threads }       = _ask( "Number of server processes :", undef, $current_config->{ threads } || 4 );
 
     # this is as secure as the file permissions of the config file, and as secure as the data store is itself.
     $newconfig{ root_account  } = _ask( "Root Account name", undef, $current_config->{ root_account} || 'root' );
@@ -409,7 +406,7 @@ sub _get_configuration {
     until( $passwd ) {
         $passwd = _ask( "Root Account Password" );
     }
-    $newconfig{ root_password } = Yote::ObjProvider::encrypt_pass( $passwd, $newconfig{ root_account } );
+    $newconfig{ root_password } = encrypt_pass( $passwd, $newconfig{ root_account } );
     return \%newconfig;
 } #_get_configuration
 
@@ -527,16 +524,6 @@ return until the yote server has shut down.
 =head1 BUGS
 
 There are likely bugs to be discovered. This is alpha software.
-
-=head2 METHODS
-
-=over 4
-
-=item fetch_root()
-
-Returns the Yote Root singleton. Used for some tests.
-
-=back
 
 =head1 AUTHOR
 
