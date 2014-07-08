@@ -251,7 +251,7 @@ if we are our experiences then we are both sides of them.
        <th> <$$$ control newp <input type="password" placeholder="new password">$$$> <$$$ control newpup <button type="button">Update</button>$$$></th>
      </tr>
      <? function( ctx ) {
-         if( ctx.vars._.has_root_permissions()*1 == 1 ) {
+         if( ctx.vars._.is_root()*1 == 1 ) {
              $( ctx.controls.toggle ).attr( 'checked', true );
          }
          $( ctx.controls.toggle ).change( function() {
