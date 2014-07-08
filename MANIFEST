@@ -26,7 +26,6 @@ lib/Yote/FileHelper.pm
 lib/Yote/Hash.pm
 lib/Yote/IO/Mailer.pm
 lib/Yote/IO/Mongo.pm
-lib/Yote/IO/MongoNew.pm
 lib/Yote/IO/Mysql.pm
 lib/Yote/IO/SMTP.pm
 lib/Yote/IO/SQLite.pm
