@@ -53,7 +53,7 @@ sub _init {
 sub cron {
     my( $self, $data, $acct ) = @_;
     if( $acct && $acct->is_root() ) {
-	return $self->_cron();
+        return $self->_cron();
     }
     die "Permissions Error";
 } #cron
@@ -61,8 +61,8 @@ sub _cron {
     my $self = shift;
     my $c = $self->get__crond();
     unless( $c ) {
-	$c = new Yote::Cron();
-	$self->set__crond( $c );
+        $c = new Yote::Cron();
+        $self->set__crond( $c );
     }
     return $c;
 }
@@ -155,19 +155,68 @@ sub fetch_initial {
 } #fetch_initial
 
 #
+# Clears out old data from guest and login token stores ( older than an hour )
+#
+sub clear_old_tokens {
+    my( $self, $dummy, $acct ) = @_;
+    die "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
+    return $self->_clear_old_tokens();
+} #clear_old_tokens
+
+sub _clear_old_tokens {
+    my( $self ) = @_;
+    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({});
+    my $dirty_containers = $self->get___DIRTY_CONTAINERS();
+    my $registered_containers = $self->get__REGISTERED_CONTAINERS();
+    my $recip2obj = $self->get___ALLOWS_REV();
+    my $obj2recip = $self->get___ALLOWS();
+    my $time = time - 3600;
+    my $count;
+    for my $ip (keys %$tok_store) {
+        my $hash = $tok_store->{ $ip };
+	unless( ref $hash ) {
+	    delete $tok_store->{ $ip };
+	} else {
+	    for my $tok ( keys %$hash ) {
+		if( $hash->{ $tok } < $time ) {
+		    ++$count;
+		    delete $hash->{ $tok };
+		    delete $dirty_containers->{ $tok };
+		    delete $registered_containers->{ $tok };
+		    my $todel = $recip2obj->{ $tok };
+		    if( $todel ) {
+			for my $obj_id (grep { $obj2recip->{ $_ } } keys %$todel) {
+			    delete $obj2recip->{ $obj_id }{ $tok };
+			    if( scalar( keys %{ $obj2recip->{ $obj_id } } ) == 0 ) {
+				delete $obj2recip->{ $obj_id };
+			    }
+			}
+		    }
+		    delete $recip2obj->{ $tok };
+		}
+	    }
+	    if( scalar( keys %$hash ) == 0 ) {
+		delete $tok_store->{ $ip };
+	    }
+	}
+    }
+    return $count;
+} #_clear_old_tokens
+
+#
 # Returns a token for non-logging in use.
 #
 sub guest_token {
     my( $self, $ip ) = @_;
-    my $token = int( rand 9 x 10 );
+    my $token = 'gtok' . int( rand 9 x 10 );
     my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
-    $tok_store->{$ip} = {$token => time()}; # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
+    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
     Yote::ObjManager::clear_login( undef, $token );
 
     return $token;
 } #guest_token
 
-sub _reset_connections {
+sub reset_connections {
     my $self = shift;
     $self->set___ALLOWS({});
     $self->set___ALLOWS_REV({});
@@ -206,6 +255,7 @@ sub logout {
     my( $self, $data, $acct ) = @_;
     if( $acct ) {
 	my $login = $acct->get_login();
+        Yote::ObjManager::clear_login( $login );
 	$login->set__token();
     }
 } #logout
@@ -218,7 +268,7 @@ sub make_root {
     die "Access Error" unless $acct->is_root();
     $login->set__is_root( 1 );
     $login->set_is_root( 1 );
-    return;
+    return "made root";
 } #make_root
 
 sub new_obj {
@@ -256,32 +306,31 @@ sub new_user_obj {
 # and can only be used by the superuser.
 #
 sub purge_app {
-    my( $self, $app_or_name, $account ) = @_;
-    if( $account->get_login()->get__is_root() ) {
-	my $apps = $self->get__apps();
-	my $app;
-	if( ref( $app_or_name ) ) {
-	    $app = $app_or_name;
-	    my $aname = $app->get__key();
-	    if( $aname ) {
-		delete $apps->{ $aname };
-	    }
-	    else {
-		for my $key (keys %$apps) {
-		    if( $app->_is( $apps->{ $key } ) ) {
-			delete $apps->{ $key };
-			last;
-		    }
+    my( $self, $app_or_name, $acct ) = @_;
+    die "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
+
+    my $apps = $self->get__apps();
+    my $app;
+    if( ref( $app_or_name ) ) {
+	$app = $app_or_name;
+	my $aname = $app->get__key();
+	if( $aname ) {
+	    delete $apps->{ $aname };
+	}
+	else {
+	    for my $key (keys %$apps) {
+		if( $app->_is( $apps->{ $key } ) ) {
+		    delete $apps->{ $key };
+		    last;
 		}
 	    }
 	}
-	else {
-	    $app = delete $apps->{ $app_or_name };
-	}
-	$self->add_to__purged_apps( $app );
-	return "Purged " . (ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name );
     }
-    die "Permissions Error";
+    else {
+	$app = delete $apps->{ $app_or_name };
+    }
+    $self->add_to__purged_apps( $app );
+    return "Purged " . (ref( $app_or_name ) ? ref( $app_or_name ) : $app_or_name );
 } #purge_app
 
 sub register_app {
@@ -336,6 +385,45 @@ sub remove_login {
     die "unable to remove login";
 
 } #remove_login
+
+#
+# reset by a recovery link.
+#
+sub root_reset_password {
+    my( $self, $args, $acct ) = @_;
+
+    die "Access Error" unless $acct && $acct->get_login()->is_root();
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $newpass = $args->{p};
+    my $login   = $args->{l};
+
+    if( $login ) {
+        $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+    }
+    return "Reset Password";
+
+} #root_reset_password
+
+#
+# Mark user validated
+#
+sub root_validate {
+    my( $self, $args, $acct ) = @_;
+
+    die "Access Error" unless $acct && $acct->get_login()->is_root();
+
+    my $root = Yote::YoteRoot::fetch_root();
+    my $login   = $args->{l};
+
+    if( $login ) {
+        $login->set__is_validated( 1 );
+        $login->set__validated_on( time() );
+    }
+    return "Validated Account";
+
+} #root_validate
+
 
 #
 # Purges old accounts that were removed from the removed_logins list.
@@ -537,8 +625,8 @@ sub _validate {
     my $validations = $self->get__validations();
     my $login = $validations->{ $token };
     if( $login ) {
-	$login->set__is_validated( 1 );
-	$login->set__validated_on( time() );
+        $login->set__is_validated( 1 );
+        $login->set__validated_on( time() );
     }
     return $login;
 }

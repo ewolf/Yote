@@ -63,16 +63,28 @@ sub update_entry {
 
 sub _init {
     my $self = shift;
+
     my $first_cron = new Yote::RootObj( {
 	name   => 'recycler',
 	enabled => 1,
 	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
 	repeats => [
-	    new Yote::Obj( { repeat_interval => 2333, repeat_infinite => 1, repeat_times => 0 } ),
+	    new Yote::Obj( { repeat_interval => 50, repeat_infinite => 1, repeat_times => 0 } ),
 	    ],
 	    
 					} );
     $self->add_entry( $first_cron );
+
+    my $second_cron = new Yote::RootObj( {
+	name   => 'Token Janitor',
+	enabled => 1,
+	script => 'use Data::Dumper; my $dumped = Yote::YoteRoot::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
+	repeats => [
+	    new Yote::Obj( { repeat_interval => 30, repeat_infinite => 1, repeat_times => 0 } ),
+	    ],
+	    
+					} );
+    $self->add_entry( $second_cron );
 
 } #_init
 

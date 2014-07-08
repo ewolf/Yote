@@ -114,7 +114,7 @@ sub test_suite {
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
     is( ref( $root ), 'Yote::YoteRoot', 'correct root class type' );
     Yote::ObjProvider::stow_all();
-    is( $objcol->count(), $ROOT_START+3, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
+    is( $objcol->count(), $ROOT_START+6, "number of objects after save root" ); # which also makes an account root automiatcially and has apps,emails,accounts,app_alias and library paths underneath it
 
 #
 # Save key value fields for simple scalars, arrays and hashes.

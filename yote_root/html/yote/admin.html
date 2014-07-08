@@ -4,14 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Yote Admin Page (YAP)</title>
 
-    <script src="/yote/js/jquery-2.1.0.js"></script>
-    <script src="/yote/js/jquery.base64.min.js"></script>
-    <script src="/yote/js/jquery.cookie.js"></script>
-    <script src="/yote/js/json2.js"></script>
-    <script src="/yote/js/yote.js"></script>
-    <script src="/yote/js/yote.util.js"></script>
-
-    <script src="/templates/default_templates.js"></script>
+    <script src="/yote/js"></script>
 
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
@@ -79,161 +72,114 @@ if we are our experiences then we are both sides of them.
 
     <script>
       var root;
-	  function msg( args, message ) {
-	      $( '#' + args[ 'controls' ][ 'messages' ] ).empty().append( message );
+	  function msg( ctx, message ) {
+	      $( ctx.controls.messages ).empty().append( message );
 	  }
 
       $().ready(function(){
-	  $.yote.include_templates( '/templates/default_templates.html' );
-	  $.yote.util.register_functions( base_templates );
-
-	  $( '#mainpanel' ).hide();
-	  $.yote.debug = true;
-	  $.yote.init();
-	  $.yote.debug = false;
-	  root = $.yote.fetch_root();
-	  $.yote.app = root;
-	  $.yote.util.register_item( 'root', root );
-	  // -------------------------------------
-
-	  $.yote.util.register_functions( {
-	      ref : function( args ) {
-		  return args[ 'default_var' ][ 'class' ];
-	      },
-	      remove_attached : function( args ) {
-		  $.yote.debug = true;
-		  var dh = args[ 'vars' ][ 'fieldname' ];
-		  args[ 'default_parent' ].set( dh, null );
-		  args[ 'default_parent' ].delete_key( { name : '_attached_objects', key : dh } );
-		  $.yote.debug = false;
-		  $.yote.util.refresh_ui();
-	      },
-	      setup_attached : function( args ) {
-		  $.yote.util.button_actions( 
-		      {
-			  button : '#' + args[ 'controls' ][ 'add_attached_b' ],
-			  texts  : [ '#' + args[ 'controls' ][ 'field' ] ],
-			  action : function() {
-			      var k  = $( '#' + args[ 'controls' ][ 'field' ] ).val();
-			      var ot = $( '#' + args[ 'controls' ][ 'objtype' ] ).val();
-			      var o = ot == 1 ? $.yote.fetch_root().new_obj() :
-				  ot == 2 ? $.yote.fetch_root().new_user_obj() :
-				  ot == 3 ? $.yote.fetch_root().new_root_obj() : null;
-			      if( o ) {
-				  args[ 'default_var' ].set( k, o );
-				  args[ 'default_var' ].hash( {  name  : '_attached_objects',
-								 key   : k,
-								 value : o } );
-				  $.yote.util.refresh_ui();
-			      }
-			  } //action
-		      } );
-	      }, //setup_attached
-	      RemovedUsers : function( args ) {
-		  var pu = args[ 'default_var' ].count( '_removed_logins' );
-		  return pu + ' user logins that have been removed <$$$ var uc ' + pu
-		      + ' $$$> <$ button purge_users Flush all removed users $>';
-	      }, //RemovedUsers
-	      purge_users : function( args ) {
-		  var noconfirm = 1*args[ 'vars' ][ 'pu' ] > 0;
-		  if( noconfirm || confirm( 'Really purge ' + args[ 'vars' ][ 'uc' ] + ' removed users?' ) ) {
-		      args[ 'default_var' ].purge_deleted_logins( '',
-							      function(retmsg){ 
-								  msg( args, retmsg ) },
-							      function(err){ 
-								  msg( args, err ) } );
-		      $.yote.util.refresh_ui();
-		  }
-	      },
-	      cron_entry_next_time : function( args ) {
-		  var entry = args[ 'default_var' ];
-		  if( ! entry ) return '';
-		  return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
-	      },
-	      make_root : function( is_checked, user ) {
-		  if( is_checked ) return root.make_root( user );
-		  root.remove_root( user, function(){},function(err){ alert(err)} );
-	      },
-	      root_status : function( args ) {
-		  var login = args[ 'default_var' ];
-		  if( ! login ) return '';
-		  return login.is_master_root() ? 'master root' : '<$ switch make_root ' + (1*login.is_root() != 0 ? '1' : '') + '$>';
-	      },
-	      is_validated : function( args ) {
-		  return args[ 'default_var' ] && args[ 'default_var' ].is_validated() ? "Yes" : "No";
-	      },
-	      new_schedule:function( args ) {
-		  var id = '#' + args[ 'controls' ][ 'new_schedule_time' ];
-	      },
-	  } );
-
-	  $.yote.util.register_function( 'refresh_all', function() {
-	      if( $.yote.is_root() ) {
-		  $.yote.util.register_item( 'cron', root.cron() );
-		  $.yote.util.register_item( 'root', root );
-	      } else {
-		  $.yote.util.unregister_item( 'cron' );
-		  $.yote.util.unregister_item( 'root' );
-	      }
-	  } );
-
-	  $.yote.util.refresh_ui();
+          $.yote.debug = false;
+	      $.yote.templates.import_templates( '/templates/default_templates.html' );
+	      $.yote.init(  );
+	      $.yote.templates.init();
+	      $.yote.templates.refresh();
       });
     </script>
 
 
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
- <$@ Entry_Repeat_Table Empty  _ repeats @$>
- Interval (min) : <$$$ new repeat_interval <input type="text"> $$$> <BR>
- Infinite Repeat : <$$$ new repeat_infinite <input type="checkbox"> $$$> <BR>
- Number Repeat Times : <$$$ new repeat_times <input type="text"> $$$> <BR>
- <$ newbutton _ repeats Add Repeat $>
+  <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>
+                        <th>Delete</th>
+                  </tr>
+      <@ Cron_Repeat_Row _@repeats 2 @>
+  </table>
+  <$$ Paginator _@repeats $$>
+  <$$$ control newrep <button type="button">add repeat</button> $$$>
+    <? function( ctx ) {
+        $( ctx.controls.newrep ).click( function() {
+            ctx.vars._.add_to( { name : 'repeats', items : [ $.yote.fetch_root().new_root_obj()] } );
+	        $.yote.templates.refresh();
+        } );
+    } ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat_Table">
-
-  <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>
-                        <th>Delete</th>
-                        <th>Schedule</th> <th>Delete</th>
-                  </tr>
-      <@ Cron_Repeat_Row 2 @>
-  </table>
-  <$$ Paginator $$>
   <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Repeat_Row">
-  <tr>  <td><$ edit _ repeat_interval $></td>  <td><$ checkbox _ repeat_infinite $></td>  <td><$ edit _ repeat_times $></td>  <td><$ list_remove_button _ repeats $></td>
+  <tr>  <td><$$ edit _ repeat_interval $$></td>  <td><$$ checkbox _ repeat_infinite $$></td>  <td><$$ edit _ repeat_times $$></td>  <td><$$$ control delme <a href="#">delete</a>$$$></td> </tr>
+    <?
+    function( ctx ) {
+        $( ctx.controls.delme ).click( function() {
+            ctx.vars.__.remove_item( ctx.vars._ );
+	        $.yote.templates.refresh();            
+        } );
+    }
+    ?>
 </script>
 
 
-
 <script type="text/template" class="yote_template_definition" template_name="Cron_Schedule_Row">
-  <tr>  <td><$ show $></td> <td><$ button remove_scheduled_time Delete $></td> </tr>
+  <tr>  <td><$ show $></td> <td><$$$ controls remsched <button type="button">remove</button>$$$></td> </tr>
+    <? function( ctx ) {
+        $( ctx.controls.remsched ).click( function() {
+            ctx.vars.__.remove_item( ctx.vars.hashkey_or_index );
+        } );
+    } ?>
 </script>
 
 
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Objects">
-    <$% Attached_ObjTab Empty _ _attached_objects %$>
-      <$$ Add_Attached $$>
+    <table> <TR> <TH>Object Name</TH> <TH>Class</TH> <TH>Remove</TH> </TR>
+      <% Attached_Obj_Row _%attached_objects 10 %>
+    </table>
+    <$$ Paginator _%attached_objects $$>
+    <$$ Add_Attached $$>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Add_Attached">
     <$$$ control field <input type="text" placeholder="field"> $$$>
       <$$$ control objtype <select> <option value="1">All May Edit</option> <option value="2">User and Root May Edit</option> <option value="3">Root May Edit</option></select> $$$>
 	<$$$ control add_attached_b <BUTTON type="BUTTON">Attach Object</BUTTON> $$$>
-	  <?? setup_attached ??>
+    <? function( ctx ) { 
+    $.yote.util.button_actions( 
+	{
+	    button : ctx.controls.add_attached_b,
+	    texts  : [ ctx.controls.field ],
+	    action : function() {
+		var k  = $( ctx.controls.field ).val();
+		var ot = $( ctx.controls.objtype ).val();
+		var o = ot == 1 ? $.yote.fetch_root().new_obj() :
+		    ot == 2 ? $.yote.fetch_root().new_user_obj() :
+		    ot == 3 ? $.yote.fetch_root().new_root_obj() : null;
+		if( o ) {
+		    ctx.vars._.set( k, o );
+		    ctx.vars._.hash( {  name  : '_attached_objects',
+                                        key   : k,
+					value : o } );
+		    $.yote.templates.refresh();
+		}
+	    } //action
+	} );
+    }
+    ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Obj_Row">
-    <$$$ var fieldname <$ hash_key $> $$$>
+    <$$$ set fieldname <$ hash_key $> $$$>
       <TR>
 	<TD><$ hash_key $></TD>
-	<TD><? ref ?></TD>
-	<TD><$ button remove_attached Remove $></TD>
+	<TD><?? function( ctx ) { return ctx.vars._.class } ??></TD>
+	<TD><$$$ control remove_attached <button type="button">Remove</button> $$$></TD>
       </TR>
+    <? function( ctx ) {
+	    var dh = ctx.vars.fieldname;
+	    ctx.vars.__.set( dh, null );
+	    ctx.vars._.delete_key( { name : '_attached_objects', key : dh } );
+	    $.yote.templates.refresh();
+    } ?>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_ObjTab">
@@ -244,162 +190,277 @@ if we are our experiences then we are both sides of them.
 
   <script type="text/template" class="yote_template_definition" template_name="Email_Settings">
     <table>
-      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$ checkbox _ requires_validation $> </td> </tr>
-      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$ edit _ validation_email_from $> </td> </tr>
-      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$ edit _.validation_subject_template text $> </td> </tr>
-      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$ edit _.validation_message_template text $> </td> </tr>
-      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$ edit _.validation_link_template text $> </td> </tr>
+      <tr> <td><nobr>Email Validation Required</nobr> </td> <td> <$$ checkbox _ requires_validation $$> </td> </tr>
+      <tr> <td><nobr>Validation Email From</nobr> </td> <td> <$$ edit _ validation_email_from $$> </td> </tr>
+      <tr> <td><nobr>Validation Subject Template</nobr> </td> <td> <$$ edit _.validation_subject_template text $$> </td> </tr>
+      <tr> <td><nobr>Validation Message Template</nobr> </td> <td> <$$ edit _.validation_message_template text $$> </td> </tr>
+      <tr> <td><nobr>Validation Link Template</nobr> </td> <td> <$$ edit _.validation_link_template text $$> </td> </tr>
     </table>
   </script>
 
   <!-- ------------------------------ -->
 
   <script type="text/template" class="yote_template_definition" template_name="Users">
-    <A NAME="Users">
-      <H3>Users</H3>
-      <$% User_Table Empty _ _handles %$>
-	<? RemovedUsers ?>
-  </script>
+    <a NAME="Users">
+      <h3>Users</h3>
+      <table border=1><tr>  
+          <th>Handle</th>
+          <th>Email</th>
+          <th>Is Root</th>
+          <th>Was Validated</th>
+          <th>Reset Password</th>
+        </tr>
+        <% User_Row _app_%_handles 1 %>
+      </table>
+      <$$ Paginator _app_%_handles $$> <br>
+       <#$$ SearchHash $$#>
+       <br>
+       user logins removed : <$$$ control rl <span></span> $$$><br>
+       <$$$ control purge_users <button type="button">Flush all removed users</button> $$$>
+       <? function( ctx ) {
+           var pu = 1*ctx._app_.count( '_removed_logins' );
+           $( ctx.controls.rl ).text( pu );
+           if( pu == 0 ) {
+               $( ctx.controls.purge_users ).prop( 'disabled', true );
+           }
+           $( ctx.controls.purge_users ).click( function() {
+               if( confirm( 'Really purge ' + pu + ' removed users?' ) ) {
+                   ctx._app_.purge_deleted_logins( '',
+                                                   function(retmsg){ 
+                                                       msg( ctx, retmsg ) },
+                                                   function(err){ 
+                                                       msg( ctx, err ) } );
+                   $.yote.templates.refresh();
+               }
+           } );
+       } ?>
+   </script>
 
-  <script type="text/template" class="yote_template_definition" template_name="User_Table">
-    <table border=1><tr>  <th>Handle</th>     <th>Email</th>   <th>Is Root</th>
-        <th>Was Validated</th>
-      </tr>
-      <% User_Row 10 %>
-    </table>
-    <$$ Paginator $$>
-      <$$ SearchHash $$>
-  </script>
+   <script type="text/template" class="yote_template_definition" template_name="User_Row">
+     <tr>   
+       <th><$ _hashkey_ $></th>
+       <th><$ _.email $></th>
+       <th><??? function( ctx ) { 
+          var login = ctx.vars._;
+          return login ? login.is_master_root() ? 'master root' : 
+                            '<$$$ control toggle <input type="checkbox"> $$$>' : ''; 
+          } ???></th>
+       <th><??? function( ctx ) {
+               return ctx.vars._ && ctx.vars._.is_validated() ? 'Yes' : 'No <$$$ control makevalid <button type="button">validate</button>$$$>' } ???>
+       </th> 
+       <th> <$$$ control newp <input type="password" placeholder="new password">$$$> <$$$ control newpup <button type="button">Update</button>$$$></th>
+     </tr>
+     <? function( ctx ) {
+         if( ctx.vars._.is_root()*1 == 1 ) {
+             $( ctx.controls.toggle ).attr( 'checked', true );
+         }
+         $( ctx.controls.toggle ).change( function() {
+             if( $(this).is( ':checked' ) ) {
+                 ctx._app_.make_root( ctx.vars._, function(){}, function(err){ alert(err) } );
+             } else {
+                 ctx._app_.remove_root( ctx.vars._, function(){},function(err){ alert(err)} )
+             }
+             $.yote.templates.refresh();
+         } );
+         $( ctx.controls.makevalid ).click( function() {
+             ctx._app_.root_validate( { l : ctx.vars._ },
+                                 function( pass ) { 
+                                     msg( ctx, pass );$.yote.templates.refresh();
+                                 }, function( err ) { msg( ctx, err ); } );
+         } );
+         $( ctx.controls.newpup ).click( function() {
+             ctx._app_.root_reset_password( { p : $( ctx.controls.newp ).val(), l : ctx.vars._ },
+                                     function( pass ) { 
+                                         msg( ctx, pass ); $.yote.templates.refresh();
+                                     }, function( err ) { msg( ctx, err ); } );
+         } );
+     } ?>
+   </script>
 
-  <script type="text/template" class="yote_template_definition" template_name="User_Row">
-    <tr>   <th><$ hash_key $></th> <th><$ show _ email $></th>   <th><? root_status ?></th>
-      <th><? is_validated ?></th> </tr>
-  </script>
+   <!------------------------------------------->
+   <!----                 CRON               --->
+   <!------------------------------------------->
 
-  <!------------------------------------------->
-  <!----                 CRON               --->
-  <!------------------------------------------->
+   <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">
 
-  <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule_Table">
+       <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
+   </script>
 
-    <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
-      <@ Cron_Schedule_Row 2 @>
-    </table>
-    <$$ Paginator $$>
-      <!-- pagination goes here. Under the hood, there must be a context container or a default tag, or even last list -->
-  </script>
+   <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
+     <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
+       <@ Cron_Schedule_Row _@scheduled_times 2 @>
+     </table>
+     <$$ Paginator _@scheduled_times $$>
+     <$$$ control new_schedule_time <input type="datetime-local"> $$$>
+     <$$$ control new_schedule <button type="button">Schedule Time</button> $$$>
+     <? function( ctx ) {
+         $( ctx.controls.new_schedule_time ).click( function() {
+             alert( $( ctx.controls.new_schedule_time ).val() );
+            
+         } );
+     } ?>
+   </script>
 
-  <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
-    <$@ Entry_Schedule_Table _ scheduled_times Empty @$>
-    <$$$ control new_schedule_time <input type="datetime-local"> $$$>
-    <$ button new_schedule Schedule Time $>
-  </script>
+   <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
+     <tr> <td> <$$ edit _ name $$> </td>  <td> <$$ checkbox _ enabled $$> </td>  
+       <td> <$$ edit _ notes $$> </td> <td> <$$ edit _ script $$> </td>  
+       <td> <?? function( ctx ) {
+           var entry = ctx.vars._;
+           if( ! entry ) return '';
+           return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
+           } ??> </td>  <td> <$$ Entry_Repeat $$> </td>
+       <td> <$$ Entry_Schedule $$> </td>  <td> <$$$ control del <button type="button">delete</button> $$$> </td>
+     </tr>
+    <? function( ctx ) {
+        ctx.vars.cron.update_entry( ctx.vars._ );
+        $( ctx.controls.del ).click( function() {
+            ctx.vars.__.remove_item( ctx.vars.hashkey_or_index );
+            $.yote.templates.refresh();
+        } );
+    } ?>    
+   </script>
 
-  <script type="text/template" class="yote_template_definition" template_name="Cron_Row">
-    <tr> <td> <$ edit _ name $> </td>  <td> <$ checkbox _ enabled $> </td>  
-      <td> <$ edit _ notes $> </td> <td> <$ edit _ script $> </td>  
-      <td> <? cron_entry_next_time ?> </td>  <td> <$$ Entry_Repeat $$> </td>
-      <td> <$$ Entry_Schedule $$> </td>  <td> <$ list_remove_button _ Delete $> </td>
-    </tr>
-  </script>
+   <script type="text/template" class="yote_template_definition" template_name="Cron_Table">
 
-  <script type="text/template" class="yote_template_definition" template_name="Cron_Table">
+   </script>
 
-    <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>
-        <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
-        <th>Schedule</th> <th>Delete</th>
-      </tr>
-      <@ Cron_Row 5 @>
-    </table>
-    <$$ Paginator $$>
-  </script>
+   <script type="text/template" class="yote_template_definition" template_name="Cron">
+     <??? function( ctx ) {
+         ctx.vars.cron = ctx._app_.cron();
+     } ???>
+     <A NAME="Cron">
+       <H3>Crons</H3>
+       <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>
+           <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
+           <th>Schedule</th> <th>Delete</th>
+         </tr>
+         <@ Cron_Row cron@entries 5 @>
+       </table>
+       <$$ Paginator cron@entries $$> <br>
 
-  <script type="text/template" class="yote_template_definition" template_name="Cron">
-    <A NAME="Cron">
-      <H3>Crons</H3>
-      <$@ Cron_Table cron entries  Empty @$>
-      <$ newbutton cron entries Add Cron $>
-  </script>
-
-
-  <!------------------------------------------->
-  <!----                 APPS               --->
-  <!------------------------------------------->
-
-  <script type="text/template" class="yote_template_definition" template_name="NewApp">
-    <div class="newapp">
-      <h3>Create a new App</h3>
-      App Name <$$$ control name <input type="text"> $$$><BR>
-	App Class <$$$ control appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
-	  <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
-	    <? function( arg ) {
-		$.yote.util.button_actions( {
-		    button :   arg.controls.new_app_b,
-		    texts  : [ arg.controls.name,
-		    action : function() {
-			var newapp = arg[ 'default_var' ].register_app(
-			    { name    : $( arg.controls.name ).val(),
-			      'class' : $( arg.controls.appclass ).val() },
-			    function() { $.yote.util.refresh_ui() },
-			    function(err) { msg( arg, err ); }
-			);
-		    }
-		} );
-	    }  ?>
-    </div>
-  </script>
-
-  <script type="text/template" class="yote_template_definition" template_name="App_Row">
-    <tr>   <td><$ hash_key $></td>     <td><$ edit _ host_name $></td>   <td><$ edit _ host_u2rl $></td>
-      <td><?? function(args) { return args.default_var.count('_account_roots'); } ??> </td>   
-      <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
-      <td><$$$ controls reset_b <button type="button">Reset</button>$$$></td>
-    </tr>
-    <?
-       function( ctx ) {
-	   $( ctx.controls.reset_b ).click( function() {
-	       root.purge_app( args.default_var );
-	       $.yote.util.refresh_ui();
-	   } );
-       }
-    ?>
-  </script>
+       <$$$ control newbutton <button type="button">Add Cron</button>$$$>
+       <?
+           function( ctx ) {
+               $( ctx.controls.newbutton ).click( function() {
+                   var newc = ctx.vars.cron.new_with_same_permissions();
+                   ctx.vars.cron.add_entry( newc );
+                   $.yote.templates.refresh();
+               } );
+           }
+        ?>
+   </script>
 
 
-  <script type="text/template" class="yote_template_definition" template_name="App_Table">
+   <!------------------------------------------->
+   <!----                 APPS               --->
+   <!------------------------------------------->
+
+   <script type="text/template" class="yote_template_definition" template_name="NewApp">
+     <div class="newapp">
+       <h3>Create a new App</h3>
+       App Name <$$$ control name <input type="text"> $$$><BR>
+       App Class <$$$ control appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
+       <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
+     </div>
+     <? function( ctx ) {
+     $.yote.util.button_actions( {
+         button :   ctx.controls.new_app_b,
+         texts  : [ ctx.controls.name ],
+         action : function() {
+         var newapp = ctx.vars.root.register_app(
+             { 'name'    : $( ctx.controls.name ).val(),
+               'class' : $( ctx.controls.appclass ).val() 
+             },
+             function() { $.yote.templates.refresh() },
+             function(err) { msg( ctx, err ); }
+         );
+         } 
+     } );
+    } ?>
+   </script>
+
+   <script type="text/template" class="yote_template_definition" template_name="App_Row">
+     <tr>   <td><$ _hashkey_ $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
+       <td><?? function(ctx) { return ctx.vars._.count('_account_roots'); } ??> </td>   
+       <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
+       <td><$$$ control reset_b <button type="button">Reset</button>$$$></td>
+     </tr>
+     <?
+        function( ctx ) {
+        $( ctx.controls.reset_b ).click( function() {
+            if( confirm( 'really purge app ' + ctx.hashkey ) ) {
+            ctx.vars.root.purge_app( ctx.vars._ );
+            $.yote.templates.refresh();
+            }
+        } )
+        }
+     ?>
+   </script>
+
+
+   <script type="text/template" class="yote_template_definition" template_name="Apps">
+    <A NAME="App">
+    <H3>Applications Installed</H3>
+    <???
+    function( ctx ) { 
+        $.yote.debug = true;
+        var root = $.yote.fetch_root();
+        ctx.vars.root = root;
+        var app_count = root.count( '_apps' );
+        var pag = root.wrap_hash( { collection_name : '_apps', cache_key : 'foo', wrap_key : 'bar' }, app_count );
+        var app_hash = pag.to_hash();
+        var apps = {};
+        for( var k in app_hash ) {
+            if( app_hash[ k ] ) 
+                apps[ k ] = app_hash[ k ];
+        }
+        console.log( [ 'APPS', apps, pag, app_hash, app_count, root ] );
+        ctx.vars.apps = apps;
+        $.yote.debug = false;
+    } ???>
     <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
         <th>Number of Users</th>   <th>Email Settings</th> 
         <th>Attached Objects</th>  <th>Reset</th>
       </tr>
-      <% App_Row 2 %>
+      <% App_Row %apps 3 %>
     </table>
-    <$$ Paginator $$>
-    <BR>
-    <$$ SearchHash $$>
-  </script>
+    <$$ Paginator %apps $$> <br>
+    <#$$ SearchHash $$#>
+    <??? function( ctx ) {
+        var pc = $.yote.fetch_root().count( '_purged_apps' );
+        if( pc > 0 ) {
+            return pc + ' apps thate have been purged <$$$ control purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
+	    } 
+	    return '';
+    } ???>
+    <$$ NewApp $$> <br>
+    <$$$ control flush_obj_cache <button type="button">Flush Object Cache</button>$$$> <BR>
+    <$$$ control flush_old_login <button type="button">Flush Old Login Tokens</button>$$$>
 
-  <script type="text/template" class="yote_template_definition" template_name="Apps">
-    <A NAME="App">
-      <H3>Applications Installed</H3>
-      <$% App_Table _ _apps Empty %$>
-      <??? function( args ) {
-	     var pc = args.default_var.count( '_purged_apps' );
-	     if( pc > 0 ) {
-		 return pc + ' apps thate have been purged <$$$ control purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
-	     } 
-	     return '';
-           } ???>
-      <$$ NewApp $$>
-      <? function(args) {
-	  $( args.controls.purge_apps ).click(function(){
-	      args.default_var.flush_purged_apps(undefined,
-						 function(){ 
-						     msg( args, 'flushed purged apps' ) },
-						 function(err){ 
-						     msg( args, err ) } );
-           } );
-         } ?>
-  </script>
+    <? function(ctx) {
+	    $( ctx.controls.purge_apps ).click(function(){
+	        ctx.vars.root.flush_purged_apps(
+                undefined,
+		        function(){ $( ctx.controls.messages ).empty().append( 'flushed purged apps' ) },
+		        function(err){ $( ctx.controls.messages ).empty().append( err ) }
+	        ); 
+        } );
+	    $( ctx.controls.flush_obj_cache ).click(function(){
+	        ctx.vars.root.reset_connections(
+                undefined,
+		        function(){ $( ctx.controls.messages ).empty().append( 'flushed object cache' ) },
+		        function(err){ $( ctx.controls.messages ).empty().append( err ) }
+	        ); 
+        } );
+	    $( ctx.controls.flush_old_login ).click(function(){
+	        ctx.vars.root.clear_old_tokens(
+                undefined,
+		        function(){ $( ctx.controls.messages ).empty().append( 'flushed old tokens' ) },
+		        function(err){ $( ctx.controls.messages ).empty().append( err ) }
+	        ); 
+        } );
+    } ?>
+    </script>
 
 
   <!------------------------------------------->
@@ -411,16 +472,11 @@ if we are our experiences then we are both sides of them.
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="MainAdmin">
-    <$$$ control messages <span class="message"></span> $$$>
-    <$$ Apps $$>
-    <$$ Cron $$>
-    <$$ Users $$>
-    <A HREF="#Top">Back to Top</A>
   </script>
 
 
   <script type="text/template" class="yote_template_definition" template_name="AdminBody">
-    <DIV class="mainpanel" id="mainpanel">
+    <DIV class="mainpanel">
       <SECTION>
 	<DIV class="page-header">
 	  <H1>Yote Admin Page (YAP)</H1>
@@ -431,15 +487,22 @@ if we are our experiences then we are both sides of them.
 	</P>
       </SECTION>
       <hr>
-      <$$ MainAdmin $$>
-    </DIV>
+       <$$$ control messages <span class="message"></span> $$$>
+       <$$ Apps $$>
+       <hr>
+       <$$ Cron $$>
+       <hr>
+       <$$ Users $$>
+     <BR>
+      <A HREF="#Top">Back to Top</A>
+     </DIV>
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="MainBody">
-    <?? function( arg ) {
+    <?? function( ctx ) {
          return $.yote.is_root() ?
-	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>' :
-	    '<$$ AdminBody $$>';
+	    '<$$ AdminBody $$>' :
+	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page.</DIV>';
         } 
     ??>
   </script>
@@ -449,6 +512,6 @@ if we are our experiences then we are both sides of them.
   <BODY>
     <DIV class="yote_template" template="YoteHeaderAdmin"></div>
     <A NAME="Top"/>
-    <DIV class="yote_template main" template="MainBody" id="mainbody" default_variable="root"></div>
+    <DIV class="yote_template main" template="MainBody"></div>
   </body>
 </html>

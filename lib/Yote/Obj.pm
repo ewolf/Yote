@@ -268,7 +268,7 @@ sub _list_delete {
     Yote::ObjProvider::list_delete( $list_id, $idx );
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
     if( $list ) {
-	splice @$list, $idx, 1;
+        splice @$list, $idx, 1;
     }
     return;
 } #_list_delete

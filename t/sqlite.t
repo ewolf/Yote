@@ -63,8 +63,8 @@ sub test_suite {
 # ----------- simple object tests -----#
 #                                      #
     Yote::YoteRoot->fetch_root();
-    my $ROOT_START = 23;
-    my $ROOT_FIELD_START = 31;
+    my $ROOT_START = 26;
+    my $ROOT_FIELD_START = 32;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, $ROOT_START, "number of objects before save root, since root is initiated automatically" );
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
@@ -132,7 +132,7 @@ sub test_suite {
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), $ROOT_FIELD_START + 28, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), $ROOT_FIELD_START + 38, "Number of db rows saved to database with stow all" );
 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
     is( scalar(@$db_rows), $ROOT_START+9, "Number of db rows saved to database not recycled" ); 

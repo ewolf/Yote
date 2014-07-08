@@ -417,7 +417,6 @@ sub io_independent_tests {
 
     my $aaa = $ta->array( '', $t );
 
-
     is( $aaa->[0], 'A', 'first el' );
     is( ref( $aaa->[1] ), 'HASH', 'second el hash' );
     my $ina = $aaa->[1]{inner};

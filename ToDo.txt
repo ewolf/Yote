@@ -1,10 +1,37 @@
 The stack :
 
-implement sorting for nativly wrapped list
+problem where madyote.com/se  and madyote.com/se/index.html cause images there to be / for the first and /se/ for the second.
+fix with redirect
 
-sort fields numeric for IO classes
+comment on tags
+
+bugs in admin page live
+
+
+
+sort fields numeric for IO classes ( SQLite is done. test for this is now done for all )
+
+fetch app - check if app is already fetched
 
 _Templates_
+
+
+Precidence
+  <# comments go here #>
+  <??? function( ctx ) ...
+  <$$$ set varname function foo( ctx ) ...
+  <$$$ set varname othervar $$$>
+  <$$$ set varname "value" $$$>
+  <?? function( ctx ) ....
+  <$$ template 
+  <@ template list max_rows @>
+  <% template list max_rows %>
+  <$ show var $>
+  <$ show var $>
+  <? function( ctx ) ... ( after render )
+  --- reeval the tags?
+  
+
 
  template test for setvar as well as getvar
 
