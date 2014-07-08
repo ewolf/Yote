@@ -243,8 +243,6 @@ sub process_http_request {
         iolog( $uri );
 
         my $root = $self->{args}{webroot};
-        print STDERR Data::Dumper->Dump([$self->{args},"AAA"]);
-        print STDERR Data::Dumper->Dump(["ROOT is $root"]);
         my $dest = '/' . join('/',@path);
 
         #
@@ -325,12 +323,9 @@ sub run_command {
     my $sock = new IO::Socket::INET( "127.0.0.1:$self->{args}{internal_port}" );
 
     my $json_cmd = to_json( $cmd );
-    print STDERR Data::Dumper->Dump(["About to send to engine : ",$json_cmd,$sock]);
     print $sock "$json_cmd\n\n";
 
     my $res = <$sock>;
-
-    print STDERR Data::Dumper->Dump(["Got result from engine : ",$res]);
 
     $sock->close;
 
