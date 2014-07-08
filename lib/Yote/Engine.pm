@@ -292,3 +292,38 @@ sub _transform_data_no_id {
 1;
 
 __END__
+
+
+=head1 NAME
+
+Yote::Engine
+
+=head1 DESCRIPTION
+
+The Engine is  a loop that runs all the yote commands in a single process. It listens on a tcpip port for requests and executes those requests in order.
+
+=head1 PUBLIC API METHODS
+
+=over 4
+
+=item start( $config_hashref )
+
+Starts up the engine and opens a socket to listen on.
+
+=back
+
+=head1 AUTHOR
+
+Eric Wolf
+coyocanid@gmail.com
+http://madyote.com
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (C) 2014 Eric Wolf
+
+This module is free software; it can be used under the same terms as perl
+itself.
+
+=cut
+
