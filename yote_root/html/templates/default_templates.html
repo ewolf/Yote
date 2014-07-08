@@ -115,7 +115,7 @@
     } ?>
 </script>
 
-<script type="text/template" class="yote_template_definition" template_name="show_or_edit">
+<script type="text/template" class="yote_template_definition" template_name="show_or_edit_old">
     <# edit takes an object and a field to edit and builds a way to edit this #>
     <??? function( ctx ) { 
            if( ctx.args.length > 1 ) { 
@@ -159,15 +159,39 @@
     } ?>
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="show_or_edit_html">
+  <??? function( ctx ) { 
+       return $.yote.has_root_permissions() ?
+	  '<$$ edit_html ' + ctx.args.join( ' ' ) + ' $$>' : '<$ ' + ctx.args.join('.') + '$>'; 
+  } ???>
+</script>
 
-<script type="text/template" class="yote_template_definition" template_name="edithtml">
+<script type="text/template" class="yote_template_definition" template_name="show_or_edit">
+  <??? function( ctx ) { return $.yote.has_root_permissions() ? '<$$ edit ' + ctx.args.join( ' ' ) + ' $$>' : '<$ ' + ctx.args.join('.') + '$>'; } ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="escape_html">
+  <??? function( ctx ) {
+          if( ctx.args.length*1 == 1 ) {
+	      var val = ctx.parse( ctx.args[ 0 ] );
+	      console.log( val );
+	      return val;
+	  }
+          return 'xxxx';
+       } ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="edit_html">
     <# edit takes an object and a field to edit and builds a way to edit this #>
     <??? function( ctx ) { 
            if( ctx.args.length > 1 ) { 
-               ctx.set( 'object', ctx.parse( ctx.args[ 0 ] ) );
                var fld = ctx.args[ 1 ];
+	       var obj =  ctx.parse( ctx.args[ 0 ] );
+               ctx.set( 'object', obj );
+               var fld = ctx.args[ 1 ];
+	       ctx.set( 'escaped', obj.get( fld ) );
                ctx.set( 'field', fld );
-               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$><$ object.' + fld + ' $></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
            } else {
                console.log( "error in template 'edit' : not enough arguments." );
                return '';
@@ -175,6 +199,8 @@
         return '';
     } ???> 
     <? function( ctx ) {
+
+	$( ctx.controls.editarea ).text( ctx.vars.escaped );
 
         $( ctx.controls.input_div ).mouseleave( function() { 
             $( ctx.controls.noedit_span ).removeClass( 'editing' );
