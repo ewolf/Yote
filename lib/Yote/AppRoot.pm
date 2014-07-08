@@ -12,6 +12,7 @@ no warnings 'uninitialized';
 use File::Slurp;
 use MIME::Base64;
 
+use Yote;
 use Yote::Account;
 use Yote::Obj;
 use Yote::RootObj;
@@ -292,7 +293,7 @@ sub recovery_reset_password {
         my $now = $login->get__last_recovery_time();
         delete $recovery_hash->{$rand_token};
         if( ( time() - $now ) < 3600 * 24 ) { #expires after a day
-            $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+            $login->set__password( Yote::encrypt_pass( $newpass, $login->get_handle() ) );
             $login->set__is_validated(1);
             return $login->get__recovery_from_url();
         }
@@ -311,7 +312,7 @@ sub remove_account {
     my $login = $del_acct->get_login();
     if( $acct->is_root() || 
         ( $del_acct->_is( $acct ) &&
-          Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() ) ) {
+          Yote::encrypt_pass($password, $login->get_handle()) eq $login->get__password() ) ) {
         $self->_hash_delete( '_account_roots', $login->{ID} );
     }
     die "unable to remove account";
@@ -404,14 +405,33 @@ A Yote::AppRoot extends Yote::Obj and provides some class methods and the follow
 
 =over 4
 
-=item account()
+=item account
 
+Return the account that the user has with this app.
+
+=item do_404
+
+=item check_guest_token
 
 =item create_login( args )
 
 Create a login with the given client supplied args : h => handle, e => email, p => password.
 This checks to make sure handle and email address are not already taken.
 This is invoked by the javascript call $.yote.create_login( handle, password, email )
+
+=item fetch
+
+=item fetch_page
+
+=item make_root
+
+=item new_obj
+
+=item new_root_obj
+
+=item new_template
+
+=item new_user_obj
 
 =item precache
 
@@ -427,6 +447,8 @@ Returns the currently logged in account using this app.
 
 Resets the password ( kepts hashed in the database ) for the account that the recovery token belongs to.
 Returns the url_the_person_requested_recovery that was given in the recover_password call.
+
+=item remove_account( { h : handle, e : email, p : password } )
 
 =item remove_login( { h : handle, e : email, p : password } )
 

@@ -15,7 +15,7 @@ use POSIX qw(strftime);
 
 use vars qw($VERSION);
 
-$VERSION = '0.22';
+$VERSION = '0.23';
 
 
 # ------------------------------------------------------------------------------------------
@@ -90,19 +90,19 @@ sub start {
 
     # launch server processes
     for( 1 .. $self->{args}{threads} ) {
-        $self->start_server_thread;
+        $self->_start_server_thread;
     } #creating threads
 
     # waitpid to keep correct number of processes
     while( (my $cpid = waitpid( -1, 0 )) > 0 ) {
         if( $cpid > 0 ) {
-            $self->start_server_thread;
+            $self->_start_server_thread;
         }
     }
 
 } #start
 
-sub start_server_thread {
+sub _start_server_thread {
     my $self = shift;
     my $cpid = fork;
 
@@ -124,7 +124,7 @@ sub start_server_thread {
     else {
         # TODO - report thread starting error
     }
-} #start_server_thread
+} #_start_server_thread
 
 #
 # Accept and process incoming requests
@@ -133,12 +133,12 @@ sub serve {
     my $self = shift;
     while( my $fh = $self->{ web_socket }->accept ) {
         $ENV{ REMOTE_ADDR } = $fh->peerhost;
-        $self->process_http_request( $fh );
+        $self->_process_http_request( $fh );
         $fh->close;
     } #process connection
 } #serve
 
-sub process_http_request {
+sub _process_http_request {
     my( $self, $socket ) = @_;
     my $req = <$socket>;
 
@@ -205,7 +205,7 @@ sub process_http_request {
         }
         else { # an upload
             # TODO - verify this
-            my $vars = Yote::FileHelper::__ingest( parse_headers( $socket ) );
+            my $vars = Yote::FileHelper::__ingest( _parse_headers( $socket ) );
             $data        = $vars->{d};
             $token       = $vars->{t};
             $guest_token = $vars->{gt};
@@ -215,7 +215,7 @@ sub process_http_request {
         }
 
         # TODO : convert data to json and send that back and forth to the engine
-        my $result = $self->run_command( 
+        my $result = $self->_run_command( 
             {
                 a  => $action,
                 ai => $app_id,
@@ -257,11 +257,11 @@ sub process_http_request {
             # return a consolidated javascript file
             #
             if( $dest =~ m~(.*)/js/?$~ ) {
-                $dest = minify_dir( $root, $dest, $1 );
+                $dest = _minify_dir( $root, $dest, $1 );
             }
             else {
-                if( $dest eq '/' ) {
-                    $dest = '/index.html';
+                if( $dest eq '/' || -e "$root/$dest/index.html" ) {
+                    $dest .= '/index.html';
                 } else {
                     print $socket "HTTP/1.1 301 FOUND\015\012";
                     print $socket "Location: $dest/index.html";
@@ -314,9 +314,9 @@ sub process_http_request {
     } #serve html
 
     return;
-} #process_http_request
+} #_process_http_request
 
-sub run_command {
+sub _run_command {
     my( $self, $cmd ) = @_;
 
     #open socket to engine and communicate with it
@@ -331,7 +331,7 @@ sub run_command {
 
     return $res;
 
-} #run_command
+} #_run_command
 
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
@@ -348,7 +348,7 @@ sub _do404 {
 #
 # 
 #
-sub parse_headers {
+sub _parse_headers {
     my $socket = shift;
     my $content_length = $ENV{CONTENT_LENGTH} || $ENV{'HTTP_CONTENT-LENGTH'} || $ENV{HTTP_CONTENT_LENGTH};
     my( $finding_headers, $finding_content, %content_data, %post_data, %file_helpers, $fn, $content_type );
@@ -410,9 +410,9 @@ sub parse_headers {
         } #while
     } #if has a boundary content type
     return ( \%post_data, \%file_helpers );
-} #parse_headers
+} #_parse_headers
 
-sub minify_dir {
+sub _minify_dir {
     my( $root, $source_dir, $source_root ) = @_;
     #
     # Check if there are files in the directory that are newer than the minified file
@@ -455,7 +455,7 @@ sub minify_dir {
     }
 
     return "$minidir/mini.js";
-} #minify_dir
+} #_minify_dir
 
 1;
 
@@ -464,14 +464,6 @@ __END__
 =head1 NAME
 
 Yote::WebAppServer - This is the app server engine that provides server threads and all javascript perl IO.
-
-=head1 SYNOPSIS
-
-use Yote::WebAppServer;
-
-my $server = new Yote::WebAppServer();
-
-$server->start_server();
 
 =head1 DESCRIPTION
 
@@ -502,9 +494,9 @@ Locks the given object id for use by this process only until it is unlocked.
 
 Returns a new WebAppServer.
 
-=item start_server( )
+=item serve
 
-Starts the yote server and launches server threads and activates cron.
+=item start
 
 =item unlock_objects( @list_of_obj_ids )
 

@@ -11906,6 +11906,7 @@ $.yote.templates = {
     fill_template_container_rows:function( templ, context, args, is_list ) {
 	    if( args &&  args.length > 0 ) {
 	        var subj = $.yote.templates._parse_val( args[ 0 ], context );
+            console.log( [ "FTCR", subj, args[ 0 ], context ] );
 	        if( ! subj ) {
 		        console.log( 'Error : no subject found for <@ @> or <% %> in path "' + context.template_path );
 		        return '';

@@ -852,7 +852,7 @@ else{var args=$.yote.templates._parse_args(rest);var val=context.parse(args[0],t
 else if(cmd=='control'){var ctrl_parts=/\*\<[\s\S]* id\s*=\s*['"]?(\S+)['"]? /.exec(rest);var ctrl_id;if(ctrl_parts){ctrl_id=ctrl_parts[1];}
 else{ctrl_id=$.yote._next_id();rest=rest.replace(/^\s*(<\s*[^\s\>]+)([ \>])/,'$1 id="'+ctrl_id+'" $2');}
 context.controls[varname]='#'+ctrl_id;return rest;}
-return'';},fill_template_container_rows:function(templ,context,args,is_list){if(args&&args.length>0){var subj=$.yote.templates._parse_val(args[0],context);if(!subj){console.log('Error : no subject found for <@ @> or <% %> in path "'+context.template_path);return'';}
+return'';},fill_template_container_rows:function(templ,context,args,is_list){if(args&&args.length>0){var subj=$.yote.templates._parse_val(args[0],context);console.log(["FTCR",subj,args[0],context]);if(!subj){console.log('Error : no subject found for <@ @> or <% %> in path "'+context.template_path);return'';}
 subj.page_size_limit=1*args[1]||1*subj.page_size_limit;var old_key=context.hashkey_or_index;var old_def=context.vars._;var old_parent=context.vars.__;var ret;if(is_list){ret=subj.to_list().map(function(it,idx){context.hashkey_or_index=idx;context.vars._=it;context.vars.__=subj;return $.yote.templates.fill_template(templ,context,args);}).join('');}
 else{var hash=subj.to_hash();var keys=Object.keys(hash);keys.sort();ret=keys.map(function(key,idx,h){context.hashkey_or_index=key;context.vars._=hash[key];context.vars.__=subj;return $.yote.templates.fill_template(templ,context,args);}).join('');}
 context.hashkey_or_index=old_key;context.set('_',old_def);context.set('__',old_parent);return ret;}

@@ -10,7 +10,7 @@
                var fld = ctx.args[ 1 ];
                var lbl = ctx.args[ 2 ] || '';
                ctx.set( 'field', fld );
-               return '<label for="<?? function(c){return c.controls.checkbox.substring(1);}??>"><$$$ control checkbox <input type="checkbox" ' + ( 1*obj.get( fld ) > 0 ? ' checked ' : '' ) + '>$$$>' + lbl + '<label>';
+               return '<label for="<?? function(c){return c.controls.checkbox.substring(1);}??>"><$$$ checkbox <input type="checkbox" ' + ( 1*obj.get( fld ) > 0 ? ' checked ' : '' ) + '>$$$>' + lbl + '<label>';
            } else {
                console.log( "error in template 'checkbox' : not enough arguments." );
                return '';
@@ -26,12 +26,12 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="CreateLogin">
-   <$$$ control messages <span></span> $$$><BR>
-   <$$$ control handle   <input placeholder="handle"   type="text"> $$$>
-   <$$$ control email    <input placeholder="email"    type="text"> $$$>
-   <$$$ control password <input placeholder="password" type="password"> $$$>
-   <$$$ control create   <button type="button">Create Accout</button> $$$>
-   <$$$ control cancel   <a href="#">[X]</a> $$$>
+   <$$$ messages <span></span> $$$><BR>
+   <$$$ handle   <input placeholder="handle"   type="text"> $$$>
+   <$$$ email    <input placeholder="email"    type="text"> $$$>
+   <$$$ password <input placeholder="password" type="password"> $$$>
+   <$$$ create   <button type="button">Create Accout</button> $$$>
+   <$$$ cancel   <a href="#">[X]</a> $$$>
    <? 
      function( ctx ) {
          $( ctx.controls.cancel ).click( function() {
@@ -77,7 +77,7 @@
            if( ctx.args.length > 1 ) { 
                ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
                ctx.vars.field = ctx.args[ 1 ];
-               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+               return '<$$$ input_div <div class="input_div"> $$$><$$$ noedit_span <span class="edit_allowed"> $$$></span><$$$ edit_span <span class="edit_allowed" style="display:none">$$$><$$$ editarea <textarea>$$$></textarea><br><$$$ cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ go_button <button class="go" type="button">go</button>$$$></span></div>';
            } else {
                console.log( "error in template 'edit' : not enough arguments." );
                return '';
@@ -121,7 +121,7 @@
            if( ctx.args.length > 1 ) { 
                ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
                ctx.vars.field = ctx.args[ 1 ];
-               return $.yote.has_root_permissions() ?  '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>' : '<$ ' + ctx.args[ 0 ] + '.' + ctx.args[ 1 ] + ' $>';
+               return $.yote.has_root_permissions() ?  '<$$$ input_div <div class="input_div"> $$$><$$$ noedit_span <span class="edit_allowed"> $$$></span><$$$ edit_span <span class="edit_allowed" style="display:none">$$$><$$$ editarea <textarea>$$$></textarea><br><$$$ cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ go_button <button class="go" type="button">go</button>$$$></span></div>' : '<$ ' + ctx.args[ 0 ] + '.' + ctx.args[ 1 ] + ' $>';
            } else {
                console.log( "error in template 'edit' : not enough arguments." );
                return '';
@@ -191,7 +191,7 @@
                var fld = ctx.args[ 1 ];
 	       ctx.set( 'escaped', obj.get( fld ) );
                ctx.set( 'field', fld );
-               return '<$$$ control input_div <div class="input_div"> $$$><$$$ control noedit_span <span class="edit_allowed"> $$$><$ object.' + fld + ' $></span><$$$ control edit_span <span class="edit_allowed" style="display:none">$$$><$$$ control editarea <textarea>$$$></textarea><br><$$$ control cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ control go_button <button class="go" type="button">go</button>$$$></span></div>';
+               return '<$$$ input_div <div class="input_div"> $$$><$$$ noedit_span <span class="edit_allowed"> $$$><$ object.' + fld + ' $></span><$$$ edit_span <span class="edit_allowed" style="display:none">$$$><$$$ editarea <textarea>$$$></textarea><br><$$$ cancel_button <button class="cancel" type="button">cancel</button>$$$><$$$ go_button <button class="go" type="button">go</button>$$$></span></div>';
            } else {
                console.log( "error in template 'edit' : not enough arguments." );
                return '';
@@ -237,7 +237,7 @@
         ctx.set( 'remove_key', key_to_remove );
         
         var lbl = ctx.args[ 2 ] || 'Remove';
-        return '<$$$ control remove_button <button type="button">$$$>' + lbl + '</button>';
+        return '<$$$ remove_button <button type="button">$$$>' + lbl + '</button>';
     } ???> 
     <? function( ctx ) {
         $( ctx.controls.remove_button ).click( function() {
@@ -255,7 +255,7 @@
         ctx.set( 'remove_key', key_to_remove );
         
         var lbl = ctx.args[ 2 ] || 'Remove';
-        return '<$$$ control remove_button <button type="button">$$$>' + lbl + '</button>';
+        return '<$$$ remove_button <button type="button">$$$>' + lbl + '</button>';
     } ???> 
     <? function( ctx ) {
         $( ctx.controls.remove_button ).click( function() {
@@ -269,7 +269,7 @@
 
 <script type="text/template" class="yote_template_definition" template_name="Logged_in">
    Logged in as <$ _acct_.handle $><BR>
-   <$$$ control logout <a href="#">Log Out</a> $$$>
+   <$$$ logout <a href="#">Log Out</a> $$$>
    <? function( ctx ) {
        $( ctx.controls.logout ).click( function() {
            $.yote.logout();
@@ -280,13 +280,13 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Login">
-   <$$$ control messages <span><$ _app_.login_message Please Log In $></span> $$$><BR>
-   <$$$ control handle <input placeholder="handle" type="text"> $$$>
-   <$$$ control password <input placeholder="password" type="password"> $$$>
-   <$$$ control login <button type="BUTTON">Log In</button> $$$>
+   <$$$ messages <span><$ _app_.login_message Please Log In $></span> $$$><BR>
+   <$$$ handle <input placeholder="handle" type="text"> $$$>
+   <$$$ password <input placeholder="password" type="password"> $$$>
+   <$$$ login <button type="BUTTON">Log In</button> $$$>
      <BR>
-   <$$$ control forgot <a href="#">Forgot Account</a> $$$>
-   <$$$ control create <a href="#">Create Account</a> $$$>
+   <$$$ forgot <a href="#">Forgot Account</a> $$$>
+   <$$$ create <a href="#">Create Account</a> $$$>
    <? function(ctx) {
        $.yote.util.button_actions({
            button :  ctx.controls.login,
@@ -328,10 +328,10 @@
  <??? function( ctx ) { 
      var collection = ctx.parent.parse( ctx.args[ 0 ] );
      if( collection.can_rewind() || collection.can_fast_forward() ) {
-         return '<$$$ control paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
-      '<$$$ control paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 
-      '<$$$ control paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>' +
-      '<$$$ control paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>';
+         return '<$$$ paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' + 
+      '<$$$ paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' + 
+      '<$$$ paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>' +
+      '<$$$ paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>';
      }
       return '';
       } ???>
@@ -381,10 +381,10 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="RecoverPassword">
-   <$$$ control messages <span></span> $$$><BR>
-   <$$$ control email <input placeholder="email" type="text"> $$$>
-   <$$$ control recover <button type="button">Recover Password</button> $$$>
-   <$$$ control cancel <a href="#">[X]</a> $$$>
+   <$$$ messages <span></span> $$$><BR>
+   <$$$ email <input placeholder="email" type="text"> $$$>
+   <$$$ recover <button type="button">Recover Password</button> $$$>
+   <$$$ cancel <a href="#">[X]</a> $$$>
    <? 
      function( ctx ) {
          $( ctx.controls.cancel ).click( function() {
@@ -413,8 +413,8 @@
 
 
 <script type="text/template" class="yote_template_definition" template_name="SearchList">
- <$$$ control search_val <input type="TEXT" placeholder="Search"> $$$>
- <$$$ control search_btn <button type="BUTTON">Search</button> $$$>
+ <$$$ search_val <input type="TEXT" placeholder="Search"> $$$>
+ <$$$ search_btn <button type="BUTTON">Search</button> $$$>
  <#? init_search_list ?#>
 </script>
 

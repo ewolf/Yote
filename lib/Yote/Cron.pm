@@ -238,12 +238,16 @@ Ads an entry to this list. Takes a Yote::Obj that has the following data structu
 
 
 =item entries()
- 
+
 Returns a list of the entries that should be run at the time this was called.
 
 =item mark_done( $entry )
 
 Marks this entry as done. This causes any repeat_times to decrement, and removes appropriate scheduled times.
+
+=item start_cron( $entry )
+
+Starts main loop for cron.
 
 =item update_entry( $entry )
 

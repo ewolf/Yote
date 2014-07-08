@@ -12,12 +12,13 @@ $VERSION = '0.05';
 
 use parent 'Yote::Obj';
 
+use Yote;
 use Yote::UserObj;
 
 sub upload_avatar {
     my( $self, $data, $acct ) = @_;
     my $login = $acct->get_login();
-    if( $login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle() ) ) {
+    if( $login->get__password() eq Yote::encrypt_pass( $data->{p}, $login->get_handle() ) ) {
 	$self->set_avatar( $data->{avatar_file} );
 	return "set avatar";
     }

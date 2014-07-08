@@ -8,8 +8,9 @@ use vars qw($VERSION);
 $VERSION = '0.001';
 
 use Test::More;
-use Yote::RootObj;
+use Yote;
 use Yote::Obj;
+use Yote::RootObj;
 use Yote::UserObj;
 
 use Aspect;
@@ -381,7 +382,7 @@ sub io_independent_tests {
     my $acct = new Yote::Account( { login => $login } );
     ok( ! $login->get__is_root(), 'second account not root' );
 
-    my $rpass = Yote::ObjProvider::encrypt_pass( "realpass", 'realroot' );
+    my $rpass = Yote::encrypt_pass( "realpass", 'realroot' );
     isnt( $rpass, "realpass", "password was encrypted" );
     $res = $root->_update_master_root( 'realroot', $rpass );
     my $master_account = new Yote::Account( { login => $res } );
@@ -846,7 +847,7 @@ sub io_independent_tests {
     is_deeply( $res, { 100 => "ERF" }, "return hash num sort chunk 4" );
 
     # root acct test
-    my $new_master_login = $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+    my $new_master_login = $root->_update_master_root( "NEWROOT",Yote::encrypt_pass( "NEWPW", "NEWROOT" ) );
 
     is( $new_master_login, $master_account->get_login(), "check root with new credentials does not change login" );
 
@@ -1295,7 +1296,7 @@ sub io_independent_tests {
 
 
     ok( $root->_is( $yote_root ), "Fetch Root is first ID" );
-    $root->_update_master_root( "NEWROOT",Yote::ObjProvider::encrypt_pass( "NEWPW", "NEWROOT" ) );
+    $root->_update_master_root( "NEWROOT",Yote::encrypt_pass( "NEWPW", "NEWROOT" ) );
     my $master_root = $root->login( { h => 'NEWROOT', p => 'NEWPW' } )->{l};
     ok( $master_root->is_root(), "Master root is root" );
     my $master_acct = $root->__get_account( $master_root );
