@@ -82,9 +82,7 @@ my $dbh = DBI->connect( "DBI:mysql:information_schema", $un, $pw );
 $dbh->do( "DROP DATABASE $store" );
 $dbh->do( "CREATE DATABASE $store" );
 
-Yote::ObjProvider::init(
-    %yote_args
-    );
+Yote::ObjProvider::init( \%yote_args );
 
 my $db = $Yote::ObjProvider::DATASTORE->database();
 $db->do( "DROP TABLE objects" );
@@ -114,8 +112,8 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    Yote::Root->fetch();
-    my $ROOT_START = 22;
+    Yote::Root::fetch_root();
+    my $ROOT_START = 24;
     my $ROOT_FIELD_START = 30;
     my( $o_count ) = query_line( $db, "SELECT count(*) FROM objects" );
     is( $o_count, $ROOT_START, "number of objects before save root, since root is initiated automatically" );
@@ -181,7 +179,7 @@ sub test_suite {
 # 1 from alias_apps
     my $db_rows = $db->selectall_arrayref("SELECT * FROM field");
 
-    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), $ROOT_FIELD_START + 28, "Number of db rows saved to database with stow all" );
+    BAIL_OUT("error saving after stow all") unless is( scalar(@$db_rows), $ROOT_FIELD_START + 38, "Number of db rows saved to database with stow all" );
 
     $db_rows = $db->selectall_arrayref("SELECT * FROM objects WHERE recycled=0");
     is( scalar(@$db_rows), $ROOT_START+9, "Number of db rows saved to database not recycled" ); 

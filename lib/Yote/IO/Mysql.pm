@@ -37,7 +37,7 @@ sub new {
 sub _ensure_connection {
     my $self = shift;
     unless( $self->{DBH} && $self->{DBH}->ping() ) {
-	$self->_connect();
+        $self->_connect();
     }
 }
 
@@ -45,23 +45,23 @@ sub _connect {
     my $self  = shift;
     my $args  = ref( $_[0] ) ? $_[0] : { @_ };
     for my $arg (keys %$args) {
-	$self->{ $arg } = $args->{ $arg };
+        $self->{ $arg } = $args->{ $arg };
     }
 
     if( $args->{ check_database } ) {
-	my $connect = "DBI:mysql";
-	$connect .= ":host=$self->{ host }" if $self->{ host };
-	$connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
-	$self->{DBH} = DBI->connect( "$connect", $args->{ user }, $args->{ password } );
-	$self->{DBH}->do( "CREATE DATABASE IF NOT EXISTS $self->{ store }" );
-	$self->disconnect;
-	$self->{DBH} = DBI->connect( "$connect:$self->{ store }", $args->{ user }, $args->{ password } );
+        my $connect = "DBI:mysql";
+        $connect .= ":host=$self->{ host }" if $self->{ host };
+        $connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
+        $self->{DBH} = DBI->connect( "$connect", $args->{ user }, $args->{ password } );
+        $self->{DBH}->do( "CREATE DATABASE IF NOT EXISTS $self->{ store }" );
+        $self->disconnect;
+        $self->{DBH} = DBI->connect( "$connect:$self->{ store }", $args->{ user }, $args->{ password } );
     }
     else {
-	my $connect = "DBI:mysql:$self->{ store }";
-	$connect .= ":host=$self->{ host }" if $self->{ host };
-	$connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
-	$self->{DBH} = DBI->connect( $connect, $self->{ user }, $self->{ password } );
+        my $connect = "DBI:mysql:$self->{ store }";
+        $connect .= ":host=$self->{ host }" if $self->{ host };
+        $connect .= ":port=$self->{ engine_port }" if $self->{ engine_port };
+        $self->{DBH} = DBI->connect( $connect, $self->{ user }, $self->{ password } );
     }
     die "Unable to connect : " . $self->{DBH}->errstr() if $self->{DBH}->errstr() || ! $self->{DBH}->ping();
 } #_connect
@@ -107,7 +107,7 @@ sub ensure_datastore {
         my( $t ) = $self->_query_line( "SHOW TABLES LIKE '$table'" );
         if( $t ) {
             my $existing_def_ref = $self->_selectall_arrayref( "SHOW CREATE TABLE $table" );
-	    my $existing_def = $existing_def_ref->[0][1];
+            my $existing_def = $existing_def_ref->[0][1];
             my $current_def = $definitions{$table};
 
             #normalize whitespace for comparison
@@ -118,7 +118,7 @@ sub ensure_datastore {
             if( lc( $current_def ) eq lc( $existing_def ) ) {
                 print STDERR "Table '$table' exists and is the same version\n";
             } else {
-		print STDERR Data::Dumper->Dump([$current_def,$existing_def]);
+                print STDERR Data::Dumper->Dump([$current_def,$existing_def]);
                 my $backup = "${table}_$today";
                 print STDERR "Table definition mismatch for $table. Rename old table '$table' to '$backup' and creating new one.\n";
                 $self->_do("RENAME TABLE $table TO $backup\n");
@@ -149,19 +149,19 @@ sub count {
     my( @search_terms ) = grep { $_ ne '' } @{ $args->{ search_terms } || [] };
     my( @search_fields ) = @{ $args->{ search_fields } || [] };
     if( @search_terms ) {
-	if( @search_fields ) {
-	    my( @ors );
-	    for my $field ( @search_fields ) {
-		for my $term (@search_terms) {
-		    push @ors, " (f.field=? AND f.value LIKE ?) ";
-		    push @params, $field, "\%$term\%";
-		}
-	    }
-	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
-	}
-	else {
-	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
-	}
+        if( @search_fields ) {
+            my( @ors );
+            for my $field ( @search_fields ) {
+                for my $term (@search_terms) {
+                    push @ors, " (f.field=? AND f.value LIKE ?) ";
+                    push @params, $field, "\%$term\%";
+                }
+            }
+            $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+        }
+        else {
+            $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
+        }
     }
 
     my $query;
@@ -169,36 +169,36 @@ sub count {
 
     if( @search_fields ) {
 #        push @params, map { "\%$_\%" } @search_terms;
-	if( $args->{ hashkey_search } ) {
-	    $query = "SELECT count( distinct concat( bar.field, '-', fi.obj_id ) ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";
-	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
-	}
-	else {
-	    $query = "SELECT count( distinct concat( bar.field, '-', fi.obj_id ) ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id ";
-	}
+        if( $args->{ hashkey_search } ) {
+            $query = "SELECT count( distinct concat( bar.field, '-', fi.obj_id ) ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") ";
+            push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
+        }
+        else {
+            $query = "SELECT count( distinct concat( bar.field, '-', fi.obj_id ) ) FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id ";
+        }
     }
     else {
-	$query = "SELECT count(*) FROM field WHERE obj_id=?";
+        $query = "SELECT count(*) FROM field WHERE obj_id=?";
         push @params, map { "\%$_\%" } @search_terms;
-	if( $type eq 'ARRAY' ) {
+        if( $type eq 'ARRAY' ) {
             if( @search_terms ) {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
-	}
-	else {
-	    if( $args->{ hashkey_search } ) {
+        }
+        else {
+            if( $args->{ hashkey_search } ) {
                 if( @search_terms ) {
                     $query .= ' AND ((' . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ') OR (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . '))';
                 }
                 else {
                     $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
                 }
-		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
-	    }
+                push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
+            }
             elsif( @search_terms ) {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
-	}
+        }
     }
     my( $count ) = $self->_query_line( $query, @params );
     return $count;
@@ -208,32 +208,32 @@ sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my( $last_idx ) = $self->_query_line( "SELECT max( cast( field as unsigned ) ) FROM field WHERE obj_id=?", $list_id );
     if( defined( $idx ) ) { 
-	if( !defined( $last_idx ) ) {
-	    $idx = 0;
-	}
-	elsif( $idx > $last_idx ) {
-	    $idx = $last_idx + 1;
-	}
-	else {
-	    my( $occupied ) = $self->_query_line( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
-	    if( $occupied ) {
-		$self->_do( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", $list_id, $idx );
-	    }
-	}
+        if( !defined( $last_idx ) ) {
+            $idx = 0;
+        }
+        elsif( $idx > $last_idx ) {
+            $idx = $last_idx + 1;
+        }
+        else {
+            my( $occupied ) = $self->_query_line( "SELECT count(*) FROM field WHERE obj_id=? AND field=?", $list_id, $idx );
+            if( $occupied ) {
+                $self->_do( "UPDATE field SET field=field+1 WHERE obj_id=? AND field >= ?", $list_id, $idx );
+            }
+        }
     }
     else {
-	if( defined( $last_idx ) ) {
-	    $idx = $last_idx + 1;
-	} 
-	else {
-	    $idx = 0;
-	}
+        if( defined( $last_idx ) ) {
+            $idx = $last_idx + 1;
+        } 
+        else {
+            $idx = 0;
+        }
     }
 
     if( index( $val, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $list_id, $idx, substr( $val, 1 )  );
+        $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $list_id, $idx, substr( $val, 1 )  );
     } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $list_id, $idx, $val );
+        $self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $list_id, $idx, $val );
     }
     return;
 } #list_insert
@@ -247,8 +247,8 @@ sub hash_delete {
 sub list_delete {
     my( $self, $list_id, $val, $idx ) = @_;
     my( $actual_index ) = $val ? 
-	$self->_query_line( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
-	$idx;
+        $self->_query_line( "SELECT field FROM field WHERE obj_id=? AND ( value=? OR ref_id=? )", $list_id, $val, $val ) :
+        $idx;
     $actual_index ||= 0;
 
     $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $list_id, $actual_index );
@@ -260,9 +260,9 @@ sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
     $self->_do( "DELETE FROM field WHERE obj_id=? AND field=?", $hash_id, $key );
     if( index( $val, 'v' ) == 0 ) {
-	$self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $hash_id, $key, substr( $val, 1 )  );
+        $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $hash_id, $key, substr( $val, 1 )  );
     } else {
-	$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $hash_id, $key, $val );
+        $self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $hash_id, $key, $val );
     }
     return;
 } #hash_insert
@@ -291,8 +291,8 @@ sub _do {
     $self->_ensure_connection();
     my $ret = $self->{DBH}->do( $query, {}, @args );
     if( $self->{DBH}->errstr() ) {
-	print STDERR Data::Dumper->Dump([$query,\@args,$self->{DBH}->errstr()]);
-	die $self->{DBH}->errstr();
+        print STDERR Data::Dumper->Dump([$query,\@args,$self->{DBH}->errstr()]);
+        die $self->{DBH}->errstr();
     }
     return $ret;
 }
@@ -319,7 +319,7 @@ sub _selectall_arrayref {
 sub first_id {
     my( $self, $class ) = @_;
     if( $class ) {
-	$self->_do( "INSERT IGNORE INTO objects (id,class) VALUES (?,?)",  1, $class );
+        $self->_do( "INSERT IGNORE INTO objects (id,class) VALUES (?,?)",  1, $class );
     }
     return 1;
 } #first_id
@@ -335,33 +335,33 @@ sub fetch {
     return unless $class;
     my $obj = [$id,$class];
     if( $class eq 'ARRAY') {
-	$obj->[DATA] = [];
-	my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
+        $obj->[DATA] = [];
+        my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
 
-	for my $row (@$res) {
-	    my( $idx, $ref_id, $value ) = @$row;
-	    if( $ref_id && $value ) {
-		my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
+        for my $row (@$res) {
+            my( $idx, $ref_id, $value ) = @$row;
+            if( $ref_id && $value ) {
+                my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
 
-		( $obj->[DATA][$idx] ) = "v$val";
-	    } else {
-		$obj->[DATA][$idx] = $ref_id || "v$value";
-	    }
-	}
+                ( $obj->[DATA][$idx] ) = "v$val";
+            } else {
+                $obj->[DATA][$idx] = $ref_id || "v$value";
+            }
+        }
     }
     else {
-	$obj->[DATA] = {};
-	my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
+        $obj->[DATA] = {};
+        my $res = $self->_selectall_arrayref( "SELECT field, ref_id, value FROM field WHERE obj_id=?", $id );
 
-	for my $row (@$res) {
-	    my( $field, $ref_id, $value ) = @$row;
-	    if( $ref_id && $value ) {
-		my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
-		( $obj->[DATA]{$field} ) = "v$val";
-	    } else {
-		$obj->[DATA]{$field} = $ref_id || "v$value";
-	    }
-	}
+        for my $row (@$res) {
+            my( $field, $ref_id, $value ) = @$row;
+            if( $ref_id && $value ) {
+                my( $val ) = $self->_query_line( "SELECT text FROM big_text WHERE obj_id=?", $ref_id );
+                ( $obj->[DATA]{$field} ) = "v$val";
+            } else {
+                $obj->[DATA]{$field} = $ref_id || "v$value";
+            }
+        }
     }
     return $obj;
 } #fetch
@@ -386,12 +386,12 @@ sub _has_path_to_root {
     $seen ||= { $obj_id => 1 };
     my $res = $self->_selectall_arrayref( "SELECT obj_id,last_updated FROM field f,objects o WHERE o.id=obj_id AND ref_id=?", $obj_id );
     for my $res ( @$res ) {
-	return 1 unless $res->[1];
-	my $o_id = $res->[0];
-	next if $seen->{ $o_id }++;
-	if( $self->_has_path_to_root( $o_id, $seen ) ) {
-	    return 1;
-	}
+        return 1 unless $res->[1];
+        my $o_id = $res->[0];
+        next if $seen->{ $o_id }++;
+        if( $self->_has_path_to_root( $o_id, $seen ) ) {
+            return 1;
+        }
     }
 
     return 0;
@@ -421,11 +421,11 @@ sub paginate {
     my $PAG = '';
 
     if( defined( $args->{ limit } ) ) {
-	if( $args->{ skip } ) {
-	    $PAG = " LIMIT $args->{ skip },$args->{ limit }";
-	} else {
-	    $PAG = " LIMIT $args->{ limit }";
-	}
+        if( $args->{ skip } ) {
+            $PAG = " LIMIT $args->{ skip },$args->{ limit }";
+        } else {
+            $PAG = " LIMIT $args->{ limit }";
+        }
     }
 
     my( $orstr, @params ) = ( '', $obj_id );
@@ -433,83 +433,93 @@ sub paginate {
     my( @search_fields ) = @{ $args->{ search_fields } || [] };
     my( @sort_fields ) = @{ $args->{ sort_fields } || [] };
     if( @search_terms ) {
-	if( @search_fields ) {
-	    my( @ors );
-	    for my $field ( @search_fields ) {
-		for my $term (@search_terms) {
-		    push @ors, " (f.field=? AND f.value LIKE ?) ";
-		    push @params, $field, "\%$term\%";
-		}
-	    }
-	    $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
-	}
-	else {
-	    $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
-	}
+        if( @search_fields ) {
+            my( @ors );
+            for my $field ( @search_fields ) {
+                for my $term (@search_terms) {
+                    push @ors, " (f.field=? AND f.value LIKE ?) ";
+                    push @params, $field, "\%$term\%";
+                }
+            }
+            $orstr = @ors > 0 ? " WHERE " . join( ' OR ', @ors )  : '';
+        }
+        else {
+            $orstr = " AND (".join(' OR ',map { 'value LIKE ?' } @search_terms ).")";
+        }
     }
 
     my $query;
     my( $type ) = $self->_query_line( "SELECT class FROM objects WHERE id=?", $obj_id );
 
     if( @sort_fields ) {
-	my $reversed_orders = $args->{ reversed_orders } || [];
-        $query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#sort_fields) ) . $PAG;
+        my $reversed_orders = $args->{ reversed_orders } || [];
+        my $numeric = $args->{ numeric_fields } || [];
+        $query = "SELECT bar.field,fi.obj_id,".join(
+            ',', 
+#            map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @sort_fields ).
+            map { ($numeric->[ $_ ] ? 'cast(' : '' ) . "GROUP_CONCAT( CASE WHEN fi.field='".$sort_fields[$_]."' THEN value END )" . ($numeric->[ $_ ] ? ' as signed )' : '') } (0..$#sort_fields) ).
+            " FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#sort_fields) ) . $PAG;
+#        $query = "SELECT bar.field,fi.obj_id,".join(',', map { "GROUP_CONCAT( CASE WHEN fi.field='".$_."' THEN value END )" } @sort_fields )." FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id FROM (SELECT field,ref_id FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ORDER BY " . join( ',' , map { (3+$_) . ( $reversed_orders->[ $_ ] ? ' DESC' : '' )} (0..$#sort_fields) ) . $PAG;
     }
     elsif( @search_fields ) {
-	if( $args->{ hashkey_search } ) {
-	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
-	    push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
-	}
-	else {
-	    $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
-	}
-	if( $type eq 'ARRAY' ) {
-	    $query .= ' ORDER BY cast( bar.field as unsigned ) ';
-	}
-	else {
-	    $query .= ' ORDER BY bar.field ';
-	}
-	$query .= ' DESC' if $args->{ reverse };
-	$query .= $PAG;
+        if( $args->{ hashkey_search } ) {
+            $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id " . " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ") GROUP BY 1,2 ";
+            push @params, map { "\%$_\%" } @{ $args->{ hashkey_search } };
+        }
+        else {
+            $query = "SELECT bar.field,fi.obj_id,bar.value FROM field fi, ( SELECT foo.field,foo.ref_id AS ref_id,foo.value AS value FROM ( SELECT field,ref_id,value FROM field WHERE obj_id=? ) as foo LEFT JOIN field f ON ( f.obj_id=foo.ref_id ) $orstr GROUP BY 1,2) as bar WHERE fi.obj_id=bar.ref_id GROUP BY 1,2 ";
+        }
+        if( $type eq 'ARRAY' ) {
+            $query .= ' ORDER BY cast( bar.field as unsigned ) ';
+        }
+        else {
+            $query .= ' ORDER BY bar.field ';
+        }
+        $query .= ' DESC' if $args->{ reverse };
+        $query .= $PAG;
     }
     else {
-	$query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
+        $query = "SELECT field,ref_id,value FROM field WHERE obj_id=?";
         push @params, map { "\%$_\%" } @search_terms;
-	if( $type eq 'ARRAY' ) {
+        if( $type eq 'ARRAY' ) {
             if( @search_terms ) {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
-	    if( $args->{ sort } ) {
-		$query .= ' ORDER BY value ';
-	    }
-	    else {
-		$query .= ' ORDER BY cast( field as unsigned ) ';
-	    }
-	}
-	else {
-	    if( @{ $args->{ hashkey_search } || [] } ) {
+            if( $args->{ sort } ) {
+                if( $args->{ numeric } ) { 
+                    $query .= ' ORDER BY cast( value as unsigned ) ';
+                } else {
+                    $query .= ' ORDER BY value ';
+                }
+            }
+            else {
+                $query .= ' ORDER BY cast( field as unsigned ) ';
+            }
+        }
+        else {
+            if( @{ $args->{ hashkey_search } || [] } ) {
                 if( @search_terms ) {
                     $query .= ' AND ((' . join( ' OR ', map { ' value LIKE ? ' } @search_terms ) . ') OR (' . join( " OR ", map { ' field LIKE ? ' } @{ $args->{ hashkey_search } }  ) . '))';
                 }
                 else {
                     $query .= " AND (" . join( ' OR ', map { ' field LIKE ? ' } @{ $args->{ hashkey_search } } ) . ')';
                 }
-		push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
-	    }
+                push @params, map { "\%$_\%" } @{ $args->{ hashkey_search }  };
+            }
             elsif( @search_terms ) {
                 $query .= ' AND (' . join( " OR ", map { ' value LIKE ? ' } @search_terms  ) . ')';
             }
-	    $query .= ' ORDER BY field ';
-	}
-	$query .= ' DESC' if $args->{ reverse };
-	$query .= $PAG;
+            $query .= $args->{ numeric } ? ' ORDER BY cast( field as unsigned )' : ' ORDER BY field ';
+        }
+        $query .= ' DESC' if $args->{ reverse };
+        $query .= $PAG;
     }
     my $ret = $self->_selectall_arrayref( $query, @params );
     if( $args->{return_hash} ) {
-	if( $type eq 'ARRAY' ) {
-	    return { map { ($args->{ skip }+$_) => $ret->[$_][1] || 'v'.$ret->[$_][2] } (0..$#$ret) };
-	}
-	return { map { $_->[0] => $_->[1] || 'v'.$_->[2] } @$ret };
+        if( $type eq 'ARRAY' ) {
+            return { map { ($args->{ skip }+$_) => $ret->[$_][1] || 'v'.$ret->[$_][2] } (0..$#$ret) };
+        }
+        return { map { $_->[0] => $_->[1] || 'v'.$_->[2] } @$ret };
     }
 
     return [map { $_->[1] || 'v'.$_->[2] } @$ret ];
@@ -529,11 +539,11 @@ sub recycle_objects {
     my $recycled = 0;
     
     for( my $id=$start_id; $id <= $end_id; $id++ ) {
-	my $obj = $self->fetch( $id );
-	if( $obj && ( ! $self->_has_path_to_root( $id ) ) ) {
-	    $self->recycle_object( $id );
-	    ++$recycled;
-	}
+        my $obj = $self->fetch( $id );
+        if( $obj && ( ! $self->_has_path_to_root( $id ) ) ) {
+            $self->recycle_object( $id );
+            ++$recycled;
+        }
     }
     #print STDERR "RECYCLED $recycled objects\n";
     return $recycled;
@@ -550,7 +560,7 @@ sub stow_all {
     $self->{QUERIES} = [[[]],[[]]];
     $self->{STOW_LATER} = 1;
     for my $objd ( @$objs ) {
-	$self->stow( @$objd );
+        $self->stow( @$objd );
     }
     $self->_engage_queries();
     $self->{STOW_LATER} = 0;
@@ -565,46 +575,46 @@ sub stow {
 
     $self->_do("UPDATE objects SET last_updated=now() WHERE id=?", $id );
     if( $class eq 'ARRAY') {
-	$self->_do( "DELETE FROM field WHERE obj_id=?", $id );
+        $self->_do( "DELETE FROM field WHERE obj_id=?", $id );
 
-	for my $i (0..$#$data) {
-	    my $val = $data->[$i];
-	    if( index( $val, 'v' ) == 0 ) {
-		if( length( $val ) > MAX_LENGTH ) {
-		    my $big_id = $self->get_id( "BIGTEXT" );
-		    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $i, $big_id );
+        for my $i (0..$#$data) {
+            my $val = $data->[$i];
+            if( index( $val, 'v' ) == 0 ) {
+                if( length( $val ) > MAX_LENGTH ) {
+                    my $big_id = $self->get_id( "BIGTEXT" );
+                    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $i, $big_id );
 
-		    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
+                    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
 
-		} else {
-		    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $i, substr($val,1) );
+                } else {
+                    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $i, substr($val,1) );
 
-		}
-	    } else {
-		$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $i, $val );
+                }
+            } else {
+                $self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $i, $val );
 
-	    }
-	}
+            }
+        }
     }
     else {
-	$self->_do( "DELETE FROM field WHERE obj_id=?", $id );
-	for my $key (keys %$data) {
-	    my $val = $data->{$key};
-	    if( index( $val, 'v' ) == 0 ) {
-		if( length( $val ) > MAX_LENGTH ) {
-		    my $big_id = $self->get_id( "BIGTEXT" );
-		    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $key, $big_id );
+        $self->_do( "DELETE FROM field WHERE obj_id=?", $id );
+        for my $key (keys %$data) {
+            my $val = $data->{$key};
+            if( index( $val, 'v' ) == 0 ) {
+                if( length( $val ) > MAX_LENGTH ) {
+                    my $big_id = $self->get_id( "BIGTEXT" );
+                    $self->_do( "INSERT INTO field (obj_id,field,ref_id,value) VALUES (?,?,?,'V')", $id, $key, $big_id );
 
-		    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
-		} 
-		else {
-		    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $key, substr($val,1) );
-		}
-	    }
-	    else {
-		$self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $key, $val );
-	    }
-	} #each key
+                    $self->_do( "INSERT INTO big_text (obj_id,text) VALUES (?,?)", $big_id, substr($val,1) );
+                } 
+                else {
+                    $self->_do( "INSERT INTO field (obj_id,field,value) VALUES (?,?,?)", $id, $key, substr($val,1) );
+                }
+            }
+            else {
+                $self->_do( "INSERT INTO field (obj_id,field,ref_id) VALUES (?,?,?)", $id, $key, $val );
+            }
+        } #each key
     }
 } #stow
 
@@ -613,21 +623,21 @@ sub _engage_queries {
     my $self = shift;
     my( $upds, $uds ) = @{ $self->{QUERIES} };
     for( my $i=0; $i < scalar( @$upds ); $i++ ) {
-	my $updates = $upds->[ $i ];
-	my $udata   = $uds->[ $i ];
-	for my $upd (@$updates) {
-	    $self->_do( @$upd );
-	}
-	while( @$udata ) {
-	    my( $first_data, @chunk );
-	    ( $first_data, @chunk[0..100], @$udata ) = @$udata;
-	    if( $first_data ) {
-		$self->_do( qq~INSERT INTO field
+        my $updates = $upds->[ $i ];
+        my $udata   = $uds->[ $i ];
+        for my $upd (@$updates) {
+            $self->_do( @$upd );
+        }
+        while( @$udata ) {
+            my( $first_data, @chunk );
+            ( $first_data, @chunk[0..100], @$udata ) = @$udata;
+            if( $first_data ) {
+                $self->_do( qq~INSERT INTO field
                        SELECT ? AS obj_id, ? AS field, ? as ref_id, ? as value ~.
-			    join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @chunk ),
-			    map { @$_ } $first_data, @chunk );
-	    }
-	}
+                            join( ' ', map { ' UNION SELECT ?, ?, ?, ? ' } @chunk ),
+                            map { @$_ } $first_data, @chunk );
+            }
+        }
     }
 } #_engage_queries
 
