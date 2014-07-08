@@ -74,6 +74,7 @@ my $builder = Module::Build->new(
 	'perl'                  => 'v5.12',
 	'Aspect'                => 1.04,
 	'Crypt::Passwd::XS'     => 0.601,
+    'Daemon::Daemonize'     => 0.0052,
 	'DateTime'              => 0.77,
 	'DBD::SQLite'           => 1.35,
 	'DBI'                   => 1.625,
