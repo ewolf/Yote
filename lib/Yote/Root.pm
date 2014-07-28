@@ -8,6 +8,7 @@ $VERSION = '0.053';
 
 no warnings 'uninitialized';
 
+use Yote;
 use Yote::Cron;
 use Yote::Login;
 use Yote::RootObj;
@@ -109,7 +110,7 @@ sub fetch_app_by_class {
 
 
 #
-# Returns singleton root object.
+# Returns singleton Yote::Root object.
 #
 sub fetch_root {
     $Yote::Root::ROOT_INIT = 1;
@@ -227,7 +228,7 @@ sub login {
         my $lc_h = lc( $data->{h} );
         my $ip = $env->{ REMOTE_ADDR };
         my $login = $self->_hash_fetch( '_handles', $lc_h );
-        if( $login && ( $login->get__password() eq Yote::ObjProvider::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
+        if( $login && ( $login->get__password() eq Yote::encrypt_pass( $data->{p}, $login->get_handle()) ) ) {
             die "Access Error" if $login->get__is_disabled();
             Yote::ObjManager::clear_login( $login, $env->{GUEST_TOKEN} );
             return { l => $login, t => $self->_create_token( $login, $ip ) };
@@ -313,7 +314,7 @@ sub remove_login {
 
     if( $acct->is_root() || ( $login &&
                               $login->_is( $acct->get_login() ) &&
-                              Yote::ObjProvider::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
+                              Yote::encrypt_pass($password, $login->get_handle()) eq $login->get__password() &&
                               ! $login->is_master_root() ) )
     {
         my $handle = $login->get_handle();
@@ -340,7 +341,7 @@ sub root_reset_password {
     my $login   = $args->{l};
 
     if( $login ) {
-        $login->set__password( Yote::ObjProvider::encrypt_pass( $newpass, $login->get_handle() ) );
+        $login->set__password( Yote::encrypt_pass( $newpass, $login->get_handle() ) );
     }
     return "Reset Password";
 
@@ -508,7 +509,7 @@ sub _create_login {
 
         $new_login->set__time_created( time() );
 
-        $new_login->set__password( Yote::ObjProvider::encrypt_pass($password, $new_login->get_handle()) );
+        $new_login->set__password( Yote::encrypt_pass($password, $new_login->get_handle()) );
 
         $self->_hash_insert( '_emails', $email, $new_login ) if $email;
         $self->_hash_insert( '_handles', $lc_handle, $new_login );
@@ -579,6 +580,8 @@ This is the first object and the root of the object graph. It stores user logins
 
 =over 4
 
+=item clear_old_tokens
+
 =item cron
 
 Returns the cron. Only a root login may call this.
@@ -611,9 +614,9 @@ Returns the list of the objects to the client provided the client is authroized 
 
 Returns the app object singleton of the given package name.
 
-=item fetch( package_name )
+=item fetch_initial( { a : appname, t : logintoken } )
 
-Returns the singleton root object. It creates it if it has not been created.
+Returns a hash with the following fields : root, app, login, account, guest_token and precache_data .
 
 =item flush_purged_apps
 
@@ -657,6 +660,8 @@ Returns a new user yote object, initialized with the optional has reference.
 =item purge_app
 
 This method may only be invoked by a login with the root bit set. This clears out the app entirely.
+
+=item purge_deleted_logins
 
 =item register_app
 

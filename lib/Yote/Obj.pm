@@ -591,7 +591,7 @@ class.
 
 =over 2
 
-public_api_method( $data, $account )
+=item public_api_method( $data, $account )
 
 Where $data is either a scalar value, a list, hash or yote object. $account is the account assigned
 to the user for the app that this yote object belongs to. $account may be undefined if the method
@@ -745,18 +745,31 @@ Returns a paginated list or hash. Arguments are
 
 =over 4
 
-* limit
-* name ( of container )
-* return_hash
-* reverse
-* reversed_orders list of sort fields that should be reversed
-* skip
-* search_fields
-* search_terms
-* sort
-* sort_fields list of fields to sort objects by. Only works on collection of Yote::Obj objects.
+=item limit
+
+=item name ( of container )
+
+=item return_hash
+
+=item reverse
+
+=item reversed_orders list of sort fields that should be reversed
+
+=item skip
+
+=item search_fields
+
+=item search_terms
+
+=item sort
+
+=item sort_fields list of fields to sort objects by. Only works on collection of Yote::Obj objects.
 
 =back
+
+=item precache
+
+Overridable. Should return items you want cached on the client side.
 
 =item remove_from( { name => container_name, items => [] } )
 
@@ -764,18 +777,25 @@ Removes the items ( by value ) from the list attached to this object specified b
 
 =over 4
 
-* name - name of data structure attached to this object.
-* search_fields - a list of fields to search for in collections of yote objects
-* search_terms - a list of terms to search for
-* sort_fields - a list of fields to sort by for collections of yote objects
-* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
-* limit - maximum number of entries to return
-* skip - skip this many entries before returning the list
-* return_hash - return the result as a hashtable rather than as a list
-* reverse - return the result in reverse order
+=item name - name of data structure attached to this object.
+
+=item search_fields - a list of fields to search for in collections of yote objects
+
+=item search_terms - a list of terms to search for
+
+=item sort_fields - a list of fields to sort by for collections of yote objects
+
+=item reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+
+=item limit - maximum number of entries to return
+
+=item skip - skip this many entries before returning the list
+
+=item return_hash - return the result as a hashtable rather than as a list
+
+=item reverse - return the result in reverse order
 
 =back
-
 
 =item sync_all
 

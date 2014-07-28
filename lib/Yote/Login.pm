@@ -12,6 +12,8 @@ $VERSION = '0.04';
 
 use parent 'Yote::Obj';
 
+use Yote;
+
 sub _load {
     my $self = shift;
     $self->set_is_root( $self->get__is_root() );
@@ -46,9 +48,9 @@ sub reset_password {
 
     die "Passwords do not match" unless $newpass eq $newpass_verify;
 
-    die "Old Password is incorrect" unless $self->get__password() eq Yote::ObjProvider::encrypt_pass( $oldpass, $self->get_handle() );
+    die "Old Password is incorrect" unless $self->get__password() eq Yote::encrypt_pass( $oldpass, $self->get_handle() );
 
-    $self->set__password( Yote::ObjProvider::encrypt_pass($newpass, $self->get_handle()) );
+    $self->set__password( Yote::encrypt_pass($newpass, $self->get_handle()) );
     return "Password Reset";
 
 } #reset_password

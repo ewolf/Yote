@@ -39,8 +39,6 @@ sub start {
     #        and update the yote admin page to set those there
     my $socket = $cfg->{ internal_socket };
 
-    print STDERR Data::Dumper->Dump(["LISTENING ON ", $socket]);
-
     # TODO : end condition for shutdown
     while( my $conn = $socket->accept ) {
         my $req = <$conn>;
@@ -109,6 +107,7 @@ sub start {
             #
             # This is where the magic method call is done and the response generated.
             #
+            print STDERR Data::Dumper->Dump([$app_object,$obj_id,$app,Yote::ObjProvider::fetch( $obj_id ),"XX"]);
             my $ret = $app_object->$action( $data, $account, $command->{e} );
             
             #

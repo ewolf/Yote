@@ -10,7 +10,7 @@ use warnings;
 no warnings 'uninitialized';
 use vars qw($VERSION);
 
-$VERSION = '0.218';
+$VERSION = '0.217';
 
 use Carp;
 use Crypt::Passwd::XS;
@@ -167,11 +167,6 @@ sub encrypt_pass {
     my( $pw, $handle ) = @_;
     return $handle ? Crypt::Passwd::XS::crypt( $pw, $handle ) : undef;
 } #encrypt_pass
-
-
-sub start_yote {
-    my %config = @_;
-}
 
 sub run {
     my %config = @_;
@@ -448,11 +443,11 @@ Yote is a platform that
 
 =over 4
 
-* serves up any number of separate applications
+=item serves up any number of separate applications
 
-* provides account management
+=item provides account management
 
-* provides access control for objects and methods
+=item  provides access control for objects and methods
 
 =back
 
@@ -460,11 +455,11 @@ Yote on the server side is a server that is a
 
 =over 4
 
-* container objects exist in a graph structure
+=item container objects exist in a graph structure
 
-* multi-threaded request handling
+=item multi-threaded request handling
 
-* Object fields and connections are contents are free form and require no schema definition
+=item Object fields and connections are contents are free form and require no schema definition
 
 =back
 
@@ -472,13 +467,13 @@ Yote on the client is a javascript library that provides
 
 =over 4
 
-* RPC bound yote objects
+=item RPC bound yote objects
 
-* web controls that bind to the yote objects
+=item web controls that bind to the yote objects
 
-* web controls for account management
+=item web controls for account management
 
-* web widgets for use with yote objects
+=item web widgets for use with yote objects
 
 =back
 
@@ -507,6 +502,10 @@ application changed.
 =head1 PUBLIC METHODS
 
 =over 4
+
+=item encrypt_pass( pass_string, handle_string )
+
+Returns a string of the argument encrypted. This is 
 
 =item get_args
 

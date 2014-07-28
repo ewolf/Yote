@@ -86,15 +86,6 @@ sub disconnect {
     return $DATASTORE->disconnect();
 }
 
-#
-# Encrypt the password so its not saved in plain text. This is here because 
-# it fits best in the Object Provider, though it's not a great fit.
-#
-sub encrypt_pass {
-    my( $pw, $handle ) = @_;
-    return $handle ? Crypt::Passwd::XS::crypt( $pw, $handle ) : undef;
-} #encrypt_pass
-
 sub fetch {
     my( $id ) = @_;
     return undef unless $id;
@@ -495,8 +486,9 @@ Returns the number of items in the given container. Args are optional and are
 
 =over 4
 
-* search_fields - a list of fields to search for in collections of yote objects
-* search_terms - a list of terms to search for
+=item search_fields - a list of fields to search for in collections of yote objects
+
+=item search_terms - a list of terms to search for
 
 =back
 
@@ -507,10 +499,6 @@ Marks the item as needing a save.
 =item disconnect( )
 
 Requests the data store used disconnect.
-
-=item encrypt_pass( pass_string, handle_string )
-
-Returns a string of the argument encrypted. This is 
 
 =item fetch( id )
 
@@ -574,14 +562,21 @@ Returns a paginated list or hash that is attached to the object specified by obj
 
 =over 4
 
-* search_fields - a list of fields to search for in collections of yote objects
-* search_terms - a list of terms to search for
-* sort_fields - a list of fields to sort by for collections of yote objects
-* reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
-* limit - maximum number of entries to return
-* skip - skip this many entries before returning the list
-* return_hash - return the result as a hashtable rather than as a list
-* reverse - return the result in reverse order
+=item search_fields - a list of fields to search for in collections of yote objects
+
+=item search_terms - a list of terms to search for
+
+=item sort_fields - a list of fields to sort by for collections of yote objects
+
+=item reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
+
+=item limit - maximum number of entries to return
+
+=item skip - skip this many entries before returning the list
+
+=item return_hash - return the result as a hashtable rather than as a list
+
+=item reverse - return the result in reverse order
 
 =back
 

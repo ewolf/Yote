@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.201
+ * Version 0.202
  */
 
 /*
@@ -54,6 +54,7 @@ $.yote = {
 		            var yote_root = initial_data.get(  'root' ); 
                     yote_root._app_id = yote_root.id;
 		            $.yote.yote_root = yote_root;
+                    console.log( [ "YOTE ROOT", yote_root ] );
 		            $.yote.objs[ yote_root.id ] = yote_root;
 
 		            var app = initial_data.get( 'app' ) || yote_root;
@@ -437,7 +438,7 @@ $.yote = {
 	        start:0,
 	        is_list : args.is_list,
 	        id : $.yote._next_id(),
-	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' ) return this.page_size_limit;
+	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! isNan( this.page_size_limit ) ) return this.page_size_limit;
 				                     this.page_size_limit = 1* this.full_size(); 
 				                     return this.page_size_limit;
 				                   },
@@ -1234,6 +1235,7 @@ $.yote = {
 	    this.apps = {};
 	    this.yote_root   = undefined;
 	    this.default_app = undefined;
+        this._app_id = undefined;
     },
 
     // generic server type error
