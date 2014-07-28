@@ -15,7 +15,7 @@ use POSIX qw(strftime);
 
 use vars qw($VERSION);
 
-$VERSION = '0.22';
+$VERSION = '0.23';
 
 
 # ------------------------------------------------------------------------------------------
@@ -260,8 +260,8 @@ sub process_http_request {
                 $dest = minify_dir( $root, $dest, $1 );
             }
             else {
-                if( $dest eq '/' ) {
-                    $dest = '/index.html';
+                if( $dest eq '/' || -e "$root/$dest/index.html" ) {
+                    $dest .= '/index.html';
                 } else {
                     print $socket "HTTP/1.1 301 FOUND\015\012";
                     print $socket "Location: $dest/index.html";
