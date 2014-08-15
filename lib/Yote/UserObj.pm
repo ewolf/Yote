@@ -12,7 +12,7 @@ use parent 'Yote::Obj';
 sub new_with_same_permissions {
     my( $self, $args, $account ) = @_;
     die "Permissions Error" unless $self->_check_access( $account, 1, '' );
-    return new Yote::UserObj( $args );
+    return $self->new( $args );
 } #new_with_same_permissions
 
 

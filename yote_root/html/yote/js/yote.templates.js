@@ -283,6 +283,7 @@ $.yote.templates = {
 	        parse: function( key, use_literal ) { return $.yote.templates._parse_val( key, this, ! use_literal ); },
 	        id:$.yote._next_id(),
 	        set: function( key, val ) { this.vars[ key ] = val; },
+            refresh : $.yote.templates.refresh,
 	        clone : function() {
 		        var clone = {
 		            vars     : Object.clone( this.vars ),
@@ -290,6 +291,7 @@ $.yote.templates = {
 		            controls : Object.clone( this.controls ),
 		            args     : Object.clone( this.args ),
 		            hashkey_or_index  : this.hashkey_or_index,
+                    refresh  : this.refresh,
 		        }; //TODO : add hash key and index
 		        clone.clone = this.clone;
 		        clone._app_ = this._app_;
@@ -337,7 +339,7 @@ $.yote.templates = {
 	        } 
 	    }
 	    catch( err ) {
-	        console.log( "Error filling template '" + template_name + "' : " + err );
+	        console.log( "Runtime Error filling template '" + template_name + ":" + err );
 	    }
 
 	    return res.join('');
@@ -357,7 +359,8 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template, '???', template_name );
 	        try { 
 		        var f = eval( '[' + parts[1] + ']');
-		        template = parts[ 0 ] + f[0]( context ) + parts[ 2 ];
+                var txt = f[0]( context );
+		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
 	        }
 	        catch( err ) {
 		        console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
@@ -378,7 +381,8 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template, '??', template_name );
 	        try { 
 		        var f = eval( '[' + parts[1] + ']' );
-		        template = parts[ 0 ] + f[0]( context ) + parts[ 2 ];
+                var txt = f[0]( context );
+		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
 	        }
 	        catch( err ) {
 		        console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
@@ -455,7 +459,7 @@ $.yote.templates = {
 	    var rev_sigil = sigil.split('').reverse().join('');
 	    var start = txt.indexOf( '<' + sigil );
 	    var end   = txt.indexOf( rev_sigil + '>' );
-	    if( end == -1 ) throw new Error( "Error, mismatched template start and end sigils" );
+	    if( end == -1 ) throw new Error( "Error, mismatched template start and end sigils for template '" + template_name + "' : " + txt );
 	    var len   = sigil.length + 1;
 
 	    // recalculate the start if need be...this chunk should not have two 
@@ -467,14 +471,14 @@ $.yote.templates = {
 	    
 	    while( txt.substring( start + len, end ).indexOf( '<' + sigil ) >= 0 ) {
             if( txt.substring( start + len, end ).indexOf( '<' + sigil ) < start ) {
-	            console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil );
+	            console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil + ' : ' + txt );
 	            return;
             }
 	        start = txt.substring( start + len, end ).indexOf( '<' + sigil );
 	    }
 
 	    if( end < start ) {
-	        console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil );
+	        console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil + ' : ' + txt);
 	        return;
 	    }
 	    return [ txt.substring( 0, start ),

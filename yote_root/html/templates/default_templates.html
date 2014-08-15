@@ -20,7 +20,7 @@
     <? function( ctx ) {
         $( ctx.controls.checkbox ).click( function() {
             ctx.vars.object.set( ctx.vars.field, $( this ).is( ':checked' ) ? 1 : 0 );
-            $.yote.templates.refresh();
+            ctx.refresh();
         } );
     } ?>
 </script>
@@ -36,7 +36,7 @@
      function( ctx ) {
          $( ctx.controls.cancel ).click( function() {
              ctx.scratch.create_login = false;
-             $.yote.templates.refresh();
+             ctx.refresh();
          } );
          $.yote.util.button_actions( { 
              button :  ctx.controls.create,
@@ -46,22 +46,22 @@
                                            e : $( ctx.controls.email ).val(),
                                            p : $( ctx.controls.password ).val() },
                                          function(msg) {
-					     ctx.scratch.create_login = false;
-					     $.yote.login( $( ctx.controls.handle ).val(),
-							   $( ctx.controls.password ).val(),
-							   function(msg) {
-							       if( ctx.scratch.requires_admin && ! $.yote.has_root_permissions() ) {
-								   $( ctx.controls.messages ).empty().append( "Error : root login required" );
-								   $.yote.logout();
+					                         ctx.scratch.create_login = false;
+					                         $.yote.login( $( ctx.controls.handle ).val(),
+							                               $( ctx.controls.password ).val(),
+							                               function(msg) {
+							                                   if( ctx.scratch.requires_admin && ! $.yote.has_root_permissions() ) {
+								                                   $( ctx.controls.messages ).empty().append( "Error : root login required" );
+								                                   $.yote.logout();
 								   $.yote.need_reinit = true;
-								   $.yote.reinit();
-							       }
-							       $.yote.templates.refresh();
-							   },
-							   function(err) {
-							       $( ctx.controls.messages ).empty().append( err );
-							   } );
-					 },
+								                                   $.yote.reinit();
+							                                   }
+							                                   ctx.refresh();
+							                               },
+							                               function(err) {
+							                                   $( ctx.controls.messages ).empty().append( err );
+							                               } );
+					                     },
                                          function(err) {
                                              $( ctx.controls.messages ).empty().append( err );
                                          }
@@ -69,6 +69,31 @@
              } } );
      }
    ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="edit_hash_with_select_scalars">
+    <# edit takes an object and a field to edit and builds a way to edit this #>
+    <??? function( ctx ) { 
+           if( ctx.args.length == 4 ) { 
+               var list   = ctx.parse( ctx.args[ 0 ] );
+               ctx.vars.object = ctx.parse( ctx.args[ 1 ] );
+               ctx.vars.hash = ctx.args[ 2 ];
+               ctx.vars.field = ctx.parse( ctx.args[ 3 ] );
+               var curval = ctx.vars.object.hash_fetch( { name : ctx.vars.hash, key : ctx.vars.field } );
+               // TODO - escap the value there
+               return '<$$$ sel <select> $$$>' + list.map(function(it,idx) { return '<option ' + ( curval == it ? ' selected ' : '' ) + ' value="' + it + '">' + it + '</option>' } ).join('') + '</select>';
+           } else {
+               console.log( "error in template 'edit_select_scalars' : wrong number of arguments." );
+               return '';
+           }
+        return '';
+    } ???> 
+    <? function( ctx ) {
+        $( ctx.controls.sel ).change( function() { 
+            ctx.vars.object.hash( { name : ctx.vars.hash, key : ctx.vars.field, value : $( ctx.controls.sel ).val() } );
+            ctx.refresh();
+        } );
+    } ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="edit">
@@ -110,7 +135,7 @@
         } );
         $( ctx.controls.go_button ).click( function() {
             ctx.vars.object.set( ctx.vars.field, $( ctx.controls.editarea ).val() );
-            $.yote.templates.refresh();
+            ctx.refresh();
         } );
     } ?>
 </script>
@@ -154,7 +179,7 @@
         } );
         $( ctx.controls.go_button ).click( function() {
             ctx.vars.object.set( ctx.vars.field, $( ctx.controls.editarea ).val() );
-            $.yote.templates.refresh();
+            ctx.refresh();
         } );
     } ?>
 </script>
@@ -223,7 +248,7 @@
         } );
         $( ctx.controls.go_button ).click( function() {
             ctx.vars.object.set( ctx.vars.field, $( ctx.controls.editarea ).val() );
-            $.yote.templates.refresh();
+            ctx.refresh();
         } );
     } ?>
 </script>
@@ -242,7 +267,7 @@
     <? function( ctx ) {
         $( ctx.controls.remove_button ).click( function() {
             ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
-            $.yote.templates.refresh();
+            ctx.refresh();
         } );
      } ?>
 </script>
@@ -261,7 +286,7 @@
         $( ctx.controls.remove_button ).click( function() {
             if( confirm( "Are you sure you want to delete this?" ) ) {
                 ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
-                $.yote.templates.refresh();
+                ctx.refresh();
             }
         } );
      } ?>
@@ -274,13 +299,13 @@
        $( ctx.controls.logout ).click( function() {
            $.yote.logout();
            $.yote.reinit();
-           $.yote.templates.refresh();
+           ctx.refresh();
        } );
       } ?>
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Login">
-   <$$$ messages <span><$ _app_.login_message Please Log In $></span> $$$><BR>
+   <$$$ messages <span><$ _app_.login_message "Please Log In" $></span> $$$><BR>
    <$$$ handle <input placeholder="handle" type="text"> $$$>
    <$$$ password <input placeholder="password" type="password"> $$$>
    <$$$ login <button type="BUTTON">Log In</button> $$$>
@@ -301,7 +326,7 @@
                                      $.yote.need_reinit = true;
                                      $.yote.reinit();
                                  }
-                                 $.yote.templates.refresh();
+                                 ctx.refresh();
                              },
                              function(err) {
                                  $( ctx.controls.messages ).empty().append( err );
@@ -310,11 +335,11 @@
            } );
          $( ctx.controls.forgot ).click( function() {
              ctx.scratch.forgot_login = true;
-             $.yote.templates.refresh();
+             ctx.refresh();
          } );
          $( ctx.controls.create ).click( function() {
              ctx.scratch.create_login = true;
-             $.yote.templates.refresh();
+             ctx.refresh();
          } );
       } ?>
 </script>
@@ -354,10 +379,10 @@
             $(  pag_back_button_id ).attr( 'disabled', false );
             $(  pag_begin_button_id ).click( function() { collection.first();   
                                                           $.yote.reinit();
-                                                          $.yote.templates.refresh(); } );
+                                                          ctx.refresh(); } );
             $(  pag_back_button_id ).click( function() { collection.back(); 
                                                          $.yote.reinit();
-                                                         $.yote.templates.refresh(); } );
+                                                         ctx.refresh(); } );
         } else {
             $(  pag_begin_button_id ).attr( 'disabled', true );
             $(  pag_back_button_id ).attr( 'disabled', true );
@@ -368,11 +393,11 @@
             $(  pag_forward_button_id ).click( function() {
                 collection.forwards();
                 $.yote.reinit();
-                $.yote.templates.refresh();
+                ctx.refresh();
             } );
             $(  pag_end_button_id ).click( function() { collection.last(); 
                                                         $.yote.reinit();
-                                                        $.yote.templates.refresh(); } );
+                                                        ctx.refresh(); } );
         } else {
             $(  pag_forward_button_id ).attr( 'disabled', true );
             $(  pag_end_button_id ).attr( 'disabled', true );
@@ -389,7 +414,7 @@
      function( ctx ) {
          $( ctx.controls.cancel ).click( function() {
              ctx.scratch.forgot_login = false;
-             $.yote.templates.refresh();
+             ctx.refresh();
          } );
          $.yote.util.button_actions( { 
              button :  ctx.controls.recover,
@@ -400,7 +425,7 @@
                                        function(msg) {
                                            ctx.scratch.forgot_login = false;
                                            $.yote.reinit();
-                                           $.yote.templates.refresh();
+                                           ctx.refresh();
                                        },
                                        function(err) {
                                            $( ctx.controls.messages ).empty().append( err );

@@ -15,7 +15,7 @@ use POSIX qw(strftime);
 
 use vars qw($VERSION);
 
-$VERSION = '0.23';
+$VERSION = '0.24';
 
 
 # ------------------------------------------------------------------------------------------
@@ -251,20 +251,25 @@ sub _process_http_request {
         # case of a javascript directory, have it return
         # the _js/mini.js instead.
         #
-        if( -d "$root/$dest" && ! -f "$root/$dest" ) {
+        my $may_minify       = $dest =~ m~(.*)/js/?$~i;
+        my $may_minify_debug = $dest =~ m~(.*)/JS/?$~;
+        if( ( -d "$root/$dest" && ! -f "$root/$dest" ) || ( $may_minify_debug && ( -d $root . lc( "/$dest" ) && ! -f $root . lc( "/$dest" ) ) ) ) {
             #
             # Check for javascript directory to minify and
             # return a consolidated javascript file
-            #
-            if( $dest =~ m~(.*)/js/?$~ ) {
-                $dest = _minify_dir( $root, $dest, $1 );
+            #                                                                                                                                                                
+            if( $may_minify ) {
+                $dest = _minify_dir( $root, lc($dest), $1, $may_minify_debug );
             }
             else {
-                if( $dest eq '/' || -e "$root/$dest/index.html" ) {
-                    $dest .= '/index.html';
-                } else {
+                if( -e "$root/$dest/index.html" ) {
+                    if( $dest eq '' || $dest eq '/' ) {
+                        print $socket "HTTP/1.1 301 FOUND\015\012";
+                        print $socket "Location: /index.html\n\n";
+                        return;
+                    }
                     print $socket "HTTP/1.1 301 FOUND\015\012";
-                    print $socket "Location: $dest/index.html";
+                    print $socket "Location: $dest/index.html\n\n";
                     return;
                 }
             }
@@ -413,7 +418,7 @@ sub _parse_headers {
 } #_parse_headers
 
 sub _minify_dir {
-    my( $root, $source_dir, $source_root ) = @_;
+    my( $root, $source_dir, $source_root, $is_debug ) = @_;
     #
     # Check if there are files in the directory that are newer than the minified file
     # of if the minified file does not exist
@@ -425,7 +430,8 @@ sub _minify_dir {
     if( ! -d "$root/$minidir" ) {
         mkdir( "$root/$minidir" ); 
     }
-    opendir( my $SOURCEDIR, "$root/$source_dir" );
+
+    opendir( my $SOURCEDIR, $root . lc( "/$source_dir" ) );
     my( @js_files, $latest_time );
     while( my $fn = readdir $SOURCEDIR ) {
         if( $fn =~ /\.js$/ ) {
@@ -453,8 +459,7 @@ sub _minify_dir {
         write_file( $minifile, $mini_buf );
         write_file( $debugfile, $debug_buf );
     }
-
-    return "$minidir/mini.js";
+    return $is_debug ? "$minidir/maxi.js" : "$minidir/mini.js";
 } #_minify_dir
 
 1;

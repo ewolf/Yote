@@ -34,7 +34,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.072';
+$VERSION = '0.073';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -76,7 +76,7 @@ sub new {
 
 sub new_with_same_permissions {
     my( $self, $args ) = @_;
-    return new Yote::Obj($args);
+    return $self->new($args);
 } #new_with_same_permissions
 
 #

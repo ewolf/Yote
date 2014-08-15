@@ -142,7 +142,7 @@ sub start_yote {
 
     start_engine();
     start_server();
-#    start_cron(); #TODO - enable this
+    start_cron(); #TODO - enable this
     
     $0 = 'yote';
     print "Started yote\n";
@@ -213,7 +213,7 @@ sub start_cron {
         # TODO : handle signals in the cron itself, it will know how to handle wrap up
         $SIG{ TERM } = $SIG{ INT } = $SIG{ PIPE } = sub { print STDERR "$0 $$ got signal. exiting\n";   exit; };
         require Yote::Cron;
-        Yote::Cron->start( $config );
+        Yote::Cron::start( $config );
     } else {
         print STDERR "$0 : Unable to fork cron process\n";
     }

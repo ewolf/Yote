@@ -54,7 +54,6 @@ $.yote = {
 		            var yote_root = initial_data.get(  'root' ); 
                     yote_root._app_id = yote_root.id;
 		            $.yote.yote_root = yote_root;
-                    console.log( [ "YOTE ROOT", yote_root ] );
 		            $.yote.objs[ yote_root.id ] = yote_root;
 
 		            var app = initial_data.get( 'app' ) || yote_root;
@@ -438,7 +437,7 @@ $.yote = {
 	        start:0,
 	        is_list : args.is_list,
 	        id : $.yote._next_id(),
-	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! isNan( this.page_size_limit ) ) return this.page_size_limit;
+	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! isNaN( this.page_size_limit ) ) return this.page_size_limit;
 				                     this.page_size_limit = 1* this.full_size(); 
 				                     return this.page_size_limit;
 				                   },
@@ -721,7 +720,7 @@ $.yote = {
 			            host_obj           : host_obj,
 			            field              : fld,
 			            start              : ctx.start || 0,
-			            page_size_limit     : 1*args.size,
+			            page_size_limit     : 1*args.size || 0,
 			            search_values : ctx.search_value || [],
 			            search_fields : ctx.search_field || [],
 			            sort_fields   : ctx.sort_fields  || [],
@@ -785,9 +784,11 @@ $.yote = {
 					                        return 0;
 					                    }
 				                    } );
-				                    if( me.sort_reverse ) olist.reverse();
 				                }
 
+				                if( me.sort_reverse ) {
+                                    olist = olist.reverse();
+                                }
 				                me.length = 0;
 				                for( var i=0; i < olist.length; i++ ) {
 				                    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {

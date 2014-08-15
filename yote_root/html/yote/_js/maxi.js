@@ -9428,7 +9428,7 @@ $.yote.util = {
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.201
+ * Version 0.202
  */
 
 /*
@@ -9861,7 +9861,7 @@ $.yote = {
 	        start:0,
 	        is_list : args.is_list,
 	        id : $.yote._next_id(),
-	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' ) return this.page_size_limit;
+	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! isNaN( this.page_size_limit ) ) return this.page_size_limit;
 				                     this.page_size_limit = 1* this.full_size(); 
 				                     return this.page_size_limit;
 				                   },
@@ -10144,7 +10144,7 @@ $.yote = {
 			            host_obj           : host_obj,
 			            field              : fld,
 			            start              : ctx.start || 0,
-			            page_size_limit     : 1*args.size,
+			            page_size_limit     : 1*args.size || 0,
 			            search_values : ctx.search_value || [],
 			            search_fields : ctx.search_field || [],
 			            sort_fields   : ctx.sort_fields  || [],
@@ -10208,9 +10208,11 @@ $.yote = {
 					                        return 0;
 					                    }
 				                    } );
-				                    if( me.sort_reverse ) olist.reverse();
 				                }
 
+				                if( me.sort_reverse ) {
+                                    olist = olist.reverse();
+                                }
 				                me.length = 0;
 				                for( var i=0; i < olist.length; i++ ) {
 				                    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
@@ -10658,6 +10660,7 @@ $.yote = {
 	    this.apps = {};
 	    this.yote_root   = undefined;
 	    this.default_app = undefined;
+        this._app_id = undefined;
     },
 
     // generic server type error
@@ -11341,7 +11344,7 @@ if (!JSON) {
  * Copyright (C) 2014 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.101
+ * Version 0.102
  */
 if( ! $.yote ) { $.yote = {}; }
 $.yote.templates = {
@@ -11453,6 +11456,7 @@ $.yote.templates = {
 	        recurse = 0;
 	    }
 
+        // function to add to template text before other tag types are processed
 	    if( recurse < 2 && template_txt.indexOf( '<???' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template_txt, '???', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 2 );
@@ -11470,6 +11474,7 @@ $.yote.templates = {
 	        }
 	    } // ???
 
+        // register controls
 	    if( recurse < 3 && template_txt.indexOf( '<$$$' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template_txt, '$$$', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 3 );
@@ -11479,6 +11484,7 @@ $.yote.templates = {
             return A;
 	    } // $$$
 
+        // function to add to template text after controls have been registered
         if( recurse < 4 && template_txt.indexOf( '<??' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template_txt, '??', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 4 );
@@ -11617,6 +11623,7 @@ $.yote.templates = {
 	        parse: function( key, use_literal ) { return $.yote.templates._parse_val( key, this, ! use_literal ); },
 	        id:$.yote._next_id(),
 	        set: function( key, val ) { this.vars[ key ] = val; },
+            refresh : $.yote.templates.refresh,
 	        clone : function() {
 		        var clone = {
 		            vars     : Object.clone( this.vars ),
@@ -11624,6 +11631,7 @@ $.yote.templates = {
 		            controls : Object.clone( this.controls ),
 		            args     : Object.clone( this.args ),
 		            hashkey_or_index  : this.hashkey_or_index,
+                    refresh  : this.refresh,
 		        }; //TODO : add hash key and index
 		        clone.clone = this.clone;
 		        clone._app_ = this._app_;
@@ -11671,7 +11679,7 @@ $.yote.templates = {
 	        } 
 	    }
 	    catch( err ) {
-	        console.log( "Error filling template '" + template_name + "' : " + err );
+	        console.log( "Runtime Error filling template '" + template_name + ":" + err );
 	    }
 
 	    return res.join('');
@@ -11691,7 +11699,8 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template, '???', template_name );
 	        try { 
 		        var f = eval( '[' + parts[1] + ']');
-		        template = parts[ 0 ] + f[0]( context ) + parts[ 2 ];
+                var txt = f[0]( context );
+		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
 	        }
 	        catch( err ) {
 		        console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
@@ -11712,7 +11721,8 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template, '??', template_name );
 	        try { 
 		        var f = eval( '[' + parts[1] + ']' );
-		        template = parts[ 0 ] + f[0]( context ) + parts[ 2 ];
+                var txt = f[0]( context );
+		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
 	        }
 	        catch( err ) {
 		        console.log( "Error in '" + context.template_path + "' in function '" + parts[1] + "' : " + err);
@@ -11789,7 +11799,7 @@ $.yote.templates = {
 	    var rev_sigil = sigil.split('').reverse().join('');
 	    var start = txt.indexOf( '<' + sigil );
 	    var end   = txt.indexOf( rev_sigil + '>' );
-	    if( end == -1 ) throw new Error( "Error, mismatched template start and end sigils" );
+	    if( end == -1 ) throw new Error( "Error, mismatched template start and end sigils for template '" + template_name + "' : " + txt );
 	    var len   = sigil.length + 1;
 
 	    // recalculate the start if need be...this chunk should not have two 
@@ -11801,21 +11811,30 @@ $.yote.templates = {
 	    
 	    while( txt.substring( start + len, end ).indexOf( '<' + sigil ) >= 0 ) {
             if( txt.substring( start + len, end ).indexOf( '<' + sigil ) < start ) {
-	            console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil );
+	            console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil + ' : ' + txt );
 	            return;
             }
 	        start = txt.substring( start + len, end ).indexOf( '<' + sigil );
 	    }
 
 	    if( end < start ) {
-	        console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil );
+	        console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil + ' : ' + txt);
 	        return;
 	    }
 	    return [ txt.substring( 0, start ),
 		         txt.substring( start + len, end ).trim(),
 		         txt.substring( end+len ) ];
     }, //_template_parts
-
+    
+    // pass in a value/variable (calling this vavar) name string, a context and a boolean.
+    // if the boolean is false, then if the vavar name is not defined in the context, it is returned literally
+    // so   _parse_val( "FOO", { context object with foo defined as "bar" }, true ) --> "bar"
+    // so   _parse_val( "FOO", { context object with NOT foo defined }, true ) --> "FOO"
+    // in addition, the vavar contains period characters, those are treated as separators.
+    //      _parse_val( "foo.bar.baz", { context object with foo object that has a bar object that has a baz field with the value of "yup" } ) --> "yup"
+    // if the vavar contains a @ glyph, those are used to indicate that the final value is a list
+    // if the vavar contains a @ or % glyph, those are used to indicate that the final value is a hash
+    //    if a list or hash is the final value, then a 'wrapped' version of that datastructure is returned. The wrapping allows for pagination.
     _parse_val:function( value, context, no_literal ) {
 	    var tlist = value.trim().split(/[\.]/);
 	    var subj = context;
@@ -11867,38 +11886,25 @@ $.yote.templates = {
           <$$$ set varname value $$$>
           <$$$ control ctlname <..html control..> $$$>
         */
-	    var parts   = args_string.match( /^\s*(\S+)\s+(\S+)\s+(\S[\s\S]*)?/ );
-	    var cmd     = parts ? parts[ 1 ] : undefined;
-	    var varname = parts ? parts[ 2 ] : undefined;
-	    var rest    = parts ? parts[ 3 ] : undefined;
-	    if( cmd == 'set' ) {
-	        if( rest.match( /^function[ \(]/ ) ) {
-		        var fun = eval( '[' + rest + ']' )[ 0 ];
-		        try { 
-		            context.set( varname, fun( context ) );
-		        } catch( Err ) {
-		            console.log( "Error in after render function '" + ctx.template_path + "' in function '" + f + "' : " + Err);
-		        }
-	        }
-	        else {
-		        var args = $.yote.templates._parse_args( rest );
-		        var val = context.parse( args[ 0 ], true );
-		        context.set( varname, val );
-	        }
+	    var parts   = args_string.match( /^\s*(\S+)(\s+\S[\s\S]*)?/ );
+	    var varname = parts ? parts[ 1 ] : undefined;
+	    var rest    = parts ? parts[ 2 ] : undefined;
+
+        // check to see if the control already has an id or not.
+        // assign an id if it does not.
+	    var ctrl_parts = /\*\<[\s\S]* id\s*=\s*['"]?(\S+)['"]? /.exec( rest );
+	    var ctrl_id;
+	    if( ctrl_parts ) {
+		    ctrl_id = ctrl_parts[ 1 ];
 	    }
-	    else if( cmd == 'control' ) {
-	        var ctrl_parts = /\*\<[\s\S]* id\s*=\s*['"]?(\S+)['"]? /.exec( rest );
-	        var ctrl_id;
-	        if( ctrl_parts ) {
-		        ctrl_id = ctrl_parts[ 1 ];
-	        }
-	        else {
-		        ctrl_id = $.yote._next_id();
+	    else {
+		    ctrl_id = $.yote._next_id();
+            if( rest )
 		        rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
-	        }
-	        context.controls[ varname ] = '#' + ctrl_id;
-	        return rest;
-        } //has parts
+        }
+	    context.controls[ varname ] = '#' + ctrl_id;
+	    return rest;
+
         return '';
 
     }, //_register
@@ -11906,7 +11912,6 @@ $.yote.templates = {
     fill_template_container_rows:function( templ, context, args, is_list ) {
 	    if( args &&  args.length > 0 ) {
 	        var subj = $.yote.templates._parse_val( args[ 0 ], context );
-            console.log( [ "FTCR", subj, args[ 0 ], context ] );
 	        if( ! subj ) {
 		        console.log( 'Error : no subject found for <@ @> or <% %> in path "' + context.template_path );
 		        return '';

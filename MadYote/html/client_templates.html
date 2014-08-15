@@ -33,7 +33,7 @@
 	var pages = app.get_page();
 	$.yote.util.register_item( 'app', app );
 	$.yote.util.register_item( 'pages', pages );
-	$.yote.util.register_function( 'show_new', function() { return $.yote.is_root() ? '<$$ client_templates_new $$>' : ''; } );
+	$.yote.util.register_function( 'show_new', function() { return $.yote.has_root_permissions() ? '<$$ client_templates_new $$>' : ''; } );
         $.yote.util.init_ui();
     });
     </script>

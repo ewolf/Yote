@@ -1,13 +1,9 @@
 The stack :
 
-problem where madyote.com/se  and madyote.com/se/index.html cause images there to be / for the first and /se/ for the second.
-fix with redirect
+- make ' function( ctx ) be optional or implicit '
+- add sigils to variable names, like $foo to distinguish them from strings, or force use of quotes for strings or both
 
-comment on tags
-
-bugs in admin page live
-
-
+More ideads : 
 
 sort fields numeric for IO classes ( SQLite is done. test for this is now done for all )
 
@@ -16,12 +12,10 @@ fetch app - check if app is already fetched
 _Templates_
 
 
-Precidence
+Precedence
   <# comments go here #>
   <??? function( ctx ) ...
-  <$$$ set varname function foo( ctx ) ...
-  <$$$ set varname othervar $$$>
-  <$$$ set varname "value" $$$>
+  <$$$ controlname controlhtml $$$>
   <?? function( ctx ) ....
   <$$ template 
   <@ template list max_rows @>
@@ -49,14 +43,6 @@ Precidence
 
 
 The BART sings to me. Its song is the sweet howl of the metal tracks and its buzzing. It is fine
-
-
-
-
-
-
-
-
 
 
 ___________________________________________
