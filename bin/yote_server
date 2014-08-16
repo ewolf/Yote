@@ -33,7 +33,7 @@ if( $config->{ profile } ) {
     require Yote::PerfAspect;
 }
 
-use lib "$args->{ yote_root }/lib";
+unshift @INC, "$config->{ yote_root }/lib";
 
 my $pidfile = $config->{ pidfile } || '/var/run/yote.pid';
 
