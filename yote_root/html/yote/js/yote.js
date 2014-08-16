@@ -927,7 +927,7 @@ $.yote = {
                         },
 			            hash_item : function ( key, item ) {
                             if( ! this.is_hash ) {
-                                console.log( "Error, remove_item called on list. It should be called on a hash." );
+                                console.log( "Error, hash_item called on list. It should be called on a hash." );
                                 return;
                             }
                             return this.host_obj.hash( { name : this.field, value : item, key : key } );

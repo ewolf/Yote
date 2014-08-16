@@ -94,7 +94,7 @@ if we are our experiences then we are both sides of them.
       <@ Cron_Repeat_Row _@repeats 2 @>
   </table>
   <$$ Paginator _@repeats $$>
-  <$$$ control newrep <button type="button">add repeat</button> $$$>
+  <$$$ newrep <button type="button">add repeat</button> $$$>
     <? function( ctx ) {
         $( ctx.controls.newrep ).click( function() {
             ctx.vars._.add_to( { name : 'repeats', items : [ $.yote.fetch_root().new_root_obj()] } );
@@ -108,7 +108,7 @@ if we are our experiences then we are both sides of them.
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="Cron_Repeat_Row">
-  <tr>  <td><$$ edit _ repeat_interval $$></td>  <td><$$ checkbox _ repeat_infinite $$></td>  <td><$$ edit _ repeat_times $$></td>  <td><$$$ control delme <a href="#">delete</a>$$$></td> </tr>
+  <tr>  <td><$$ edit _ repeat_interval $$></td>  <td><$$ checkbox _ repeat_infinite $$></td>  <td><$$ edit _ repeat_times $$></td>  <td><$$$ delme <a href="#">delete</a>$$$></td> </tr>
     <?
     function( ctx ) {
         $( ctx.controls.delme ).click( function() {
@@ -140,9 +140,9 @@ if we are our experiences then we are both sides of them.
   </script>
 
   <script type="text/template" class="yote_template_definition" template_name="Add_Attached">
-    <$$$ control field <input type="text" placeholder="field"> $$$>
-      <$$$ control objtype <select> <option value="1">All May Edit</option> <option value="2">User and Root May Edit</option> <option value="3">Root May Edit</option></select> $$$>
-	<$$$ control add_attached_b <BUTTON type="BUTTON">Attach Object</BUTTON> $$$>
+    <$$$ field <input type="text" placeholder="field"> $$$>
+      <$$$ objtype <select> <option value="1">All May Edit</option> <option value="2">User and Root May Edit</option> <option value="3">Root May Edit</option></select> $$$>
+	<$$$ add_attached_b <BUTTON type="BUTTON">Attach Object</BUTTON> $$$>
     <? function( ctx ) { 
     $.yote.util.button_actions( 
 	{
@@ -172,7 +172,7 @@ if we are our experiences then we are both sides of them.
       <TR>
 	<TD><$ hash_key $></TD>
 	<TD><?? function( ctx ) { return ctx.vars._.class } ??></TD>
-	<TD><$$$ control remove_attached <button type="button">Remove</button> $$$></TD>
+	<TD><$$$ remove_attached <button type="button">Remove</button> $$$></TD>
       </TR>
     <? function( ctx ) {
 	    var dh = ctx.vars.fieldname;
@@ -215,8 +215,8 @@ if we are our experiences then we are both sides of them.
       <$$ Paginator _app_%_handles $$> <br>
        <#$$ SearchHash $$#>
        <br>
-       user logins removed : <$$$ control rl <span></span> $$$><br>
-       <$$$ control purge_users <button type="button">Flush all removed users</button> $$$>
+       user logins removed : <$$$ rl <span></span> $$$><br>
+       <$$$ purge_users <button type="button">Flush all removed users</button> $$$>
        <? function( ctx ) {
            var pu = 1*ctx._app_.count( '_removed_logins' );
            $( ctx.controls.rl ).text( pu );
@@ -243,12 +243,12 @@ if we are our experiences then we are both sides of them.
        <th><??? function( ctx ) { 
           var login = ctx.vars._;
           return login ? login.is_master_root() ? 'master root' : 
-                            '<$$$ control toggle <input type="checkbox"> $$$>' : ''; 
+                            '<$$$ toggle <input type="checkbox"> $$$>' : ''; 
           } ???></th>
        <th><??? function( ctx ) {
-               return ctx.vars._ && ctx.vars._.is_validated() ? 'Yes' : 'No <$$$ control makevalid <button type="button">validate</button>$$$>' } ???>
+               return ctx.vars._ && ctx.vars._.is_validated() ? 'Yes' : 'No <$$$ makevalid <button type="button">validate</button>$$$>' } ???>
        </th> 
-       <th> <$$$ control newp <input type="password" placeholder="new password">$$$> <$$$ control newpup <button type="button">Update</button>$$$></th>
+       <th> <$$$ newp <input type="password" placeholder="new password">$$$> <$$$ newpup <button type="button">Update</button>$$$></th>
      </tr>
      <? function( ctx ) {
          if( ctx.vars._.get_is_root()*1 == 1 ) {
@@ -291,8 +291,8 @@ if we are our experiences then we are both sides of them.
        <@ Cron_Schedule_Row _@scheduled_times 2 @>
      </table>
      <$$ Paginator _@scheduled_times $$>
-     <$$$ control new_schedule_time <input type="datetime-local"> $$$>
-     <$$$ control new_schedule <button type="button">Schedule Time</button> $$$>
+     <$$$ new_schedule_time <input type="datetime-local"> $$$>
+     <$$$ new_schedule <button type="button">Schedule Time</button> $$$>
      <? function( ctx ) {
          $( ctx.controls.new_schedule_time ).click( function() {
              alert( $( ctx.controls.new_schedule_time ).val() );
@@ -309,12 +309,12 @@ if we are our experiences then we are both sides of them.
            if( ! entry ) return '';
            return entry.get( 'next_time' ) > 0 ? '<nobr>' +  $.yote.util.format_date( new Date( 60 * 1000 * entry.get( 'next_time' ) ), "h:m Y-M-D" ) + '</nobr>' : 'Not Scheduled';
            } ??> </td>  <td> <$$ Entry_Repeat $$> </td>
-       <td> <$$ Entry_Schedule $$> </td>  <td> <$$$ control del <button type="button">delete</button> $$$> </td>
+       <td> <$$ Entry_Schedule $$> </td>  <td> <$$$ del <button type="button">delete</button> $$$> </td>
      </tr>
     <? function( ctx ) {
         ctx.vars.cron.update_entry( ctx.vars._ );
         $( ctx.controls.del ).click( function() {
-            ctx.vars.__.remove_item( ctx.vars.hashkey_or_index );
+            ctx.vars.cron.remove_from( { name : 'entries', items : [ ctx.vars._ ] } );
             $.yote.templates.refresh();
         } );
     } ?>    
@@ -338,7 +338,7 @@ if we are our experiences then we are both sides of them.
        </table>
        <$$ Paginator cron@entries $$> <br>
 
-       <$$$ control newbutton <button type="button">Add Cron</button>$$$>
+       <$$$ newbutton <button type="button">Add Cron</button>$$$>
        <?
            function( ctx ) {
                $( ctx.controls.newbutton ).click( function() {
@@ -358,9 +358,9 @@ if we are our experiences then we are both sides of them.
    <script type="text/template" class="yote_template_definition" template_name="NewApp">
      <div class="newapp">
        <h3>Create a new App</h3>
-       App Name <$$$ control name <input type="text"> $$$><BR>
-       App Class <$$$ control appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
-       <$$$ control new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
+       App Name <$$$ name <input type="text"> $$$><BR>
+       App Class <$$$ appclass <input type="text" value="Yote::AppRoot"> $$$><BR>
+       <$$$ new_app_b <button type="BUTTON">Register App</BUTTON> $$$>
      </div>
      <? function( ctx ) {
      $.yote.util.button_actions( {
@@ -383,7 +383,7 @@ if we are our experiences then we are both sides of them.
      <tr>   <td><$ _hashkey_ $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
        <td><?? function(ctx) { return ctx.vars._.count('_account_roots'); } ??> </td>   
        <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
-       <td><$$$ control reset_b <button type="button">Reset</button>$$$></td>
+       <td><$$$ reset_b <button type="button">Reset</button>$$$></td>
      </tr>
      <?
         function( ctx ) {
@@ -429,13 +429,13 @@ if we are our experiences then we are both sides of them.
     <??? function( ctx ) {
         var pc = $.yote.fetch_root().count( '_purged_apps' );
         if( pc > 0 ) {
-            return pc + ' apps thate have been purged <$$$ control purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
+            return pc + ' apps thate have been purged <$$$ purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
 	    } 
 	    return '';
     } ???>
     <$$ NewApp $$> <br>
-    <$$$ control flush_obj_cache <button type="button">Flush Object Cache</button>$$$> <BR>
-    <$$$ control flush_old_login <button type="button">Flush Old Login Tokens</button>$$$>
+    <$$$ flush_obj_cache <button type="button">Flush Object Cache</button>$$$> <BR>
+    <$$$ flush_old_login <button type="button">Flush Old Login Tokens</button>$$$>
 
     <? function(ctx) {
 	    $( ctx.controls.purge_apps ).click(function(){
@@ -487,7 +487,7 @@ if we are our experiences then we are both sides of them.
 	</P>
       </SECTION>
       <hr>
-       <$$$ control messages <span class="message"></span> $$$>
+       <$$$ messages <span class="message"></span> $$$>
        <$$ Apps $$>
        <hr>
        <$$ Cron $$>

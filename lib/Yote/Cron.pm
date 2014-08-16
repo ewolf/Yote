@@ -22,6 +22,7 @@ use parent 'Yote::RootObj';
 
 sub add_entry {
     my( $self, $entry, $acct ) = @_;
+    # TODO - enforce unique name to entries
     $self->add_to_entries( $entry );
     $self->_update_entry( $entry );
     return $entry;
@@ -46,6 +47,8 @@ sub mark_done {
 sub start {
     my $cfg = shift;
     while( 1 ) {
+            print STDERR Data::Dumper->Dump(["To check Cron"]);
+
         my $sock = new IO::Socket::INET( "127.0.0.1:$cfg->{internal_port}" );
         print $sock "CRON";
         close $sock;
@@ -96,25 +99,25 @@ sub _init {
     my $self = shift;
 
     my $first_cron = new Yote::RootObj( {
-	name   => 'recycler',
-	enabled => 1,
-	script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
-	repeats => [
-	    new Yote::Obj( { repeat_interval => 50, repeat_infinite => 1, repeat_times => 0 } ),
-	    ],
-	    
-					} );
+        name   => 'recycler',
+        enabled => 1,
+        script => 'use Data::Dumper; my $recycled = Yote::ObjProvider::recycle_objects(); print STDERR Data::Dumper->Dump(["Recycled $recycled Objects"]);',
+        repeats => [
+            new Yote::Obj( { repeat_interval => 50, repeat_infinite => 1, repeat_times => 0 } ),
+            ],
+            
+                                        } );
     $self->add_entry( $first_cron );
-
+    
     my $second_cron = new Yote::RootObj( {
-	name   => 'Token Janitor',
-	enabled => 1,
-	script => 'use Data::Dumper; my $dumped = Yote::Root::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
-	repeats => [
-	    new Yote::Obj( { repeat_interval => 30, repeat_infinite => 1, repeat_times => 0 } ),
-	    ],
-	    
-					} );
+        name   => 'Token Janitor',
+        enabled => 1,
+        script => 'use Data::Dumper; my $dumped = Yote::Root::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
+        repeats => [
+            new Yote::Obj( { repeat_interval => 30, repeat_infinite => 1, repeat_times => 0 } ),
+            ],
+            
+                                         } );
     $self->add_entry( $second_cron );
 
 } #_init

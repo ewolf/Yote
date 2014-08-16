@@ -9861,7 +9861,7 @@ $.yote = {
 	        start:0,
 	        is_list : args.is_list,
 	        id : $.yote._next_id(),
-	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! isNaN( this.page_size_limit ) ) return this.page_size_limit;
+	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! Number.isNaN( this.page_size_limit ) ) return this.page_size_limit;
 				                     this.page_size_limit = 1* this.full_size(); 
 				                     return this.page_size_limit;
 				                   },
@@ -10351,7 +10351,7 @@ $.yote = {
                         },
 			            hash_item : function ( key, item ) {
                             if( ! this.is_hash ) {
-                                console.log( "Error, remove_item called on list. It should be called on a hash." );
+                                console.log( "Error, hash_item called on list. It should be called on a hash." );
                                 return;
                             }
                             return this.host_obj.hash( { name : this.field, value : item, key : key } );
