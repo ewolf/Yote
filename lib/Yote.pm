@@ -10,7 +10,7 @@ use warnings;
 no warnings 'uninitialized';
 use vars qw($VERSION);
 
-$VERSION = '0.220';
+$VERSION = '0.221';
 
 use Carp;
 use Crypt::Passwd::XS;
