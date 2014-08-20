@@ -324,8 +324,8 @@
                                      $( ctx.controls.messages ).empty().append( "Error : root login required" );
                                      $.yote.logout();
                                      $.yote.need_reinit = true;
-                                     $.yote.reinit();
                                  }
+                                 $.yote.reinit();
                                  ctx.refresh();
                              },
                              function(err) {

@@ -1236,6 +1236,7 @@ $.yote = {
     _dump_cache:function() {
         this.objs = {};
 	    this.apps = {};
+	    this.wrap_cache = {};
 	    this.yote_root   = undefined;
 	    this.default_app = undefined;
         this._app_id = undefined;
