@@ -5,6 +5,10 @@ The stack :
 
 More ideads : 
 
+cron - consider making a hash rather than a list of cron entries
+
+apps - when reset, provide a destructor for doing things like removing cron entries
+
 sort fields numeric for IO classes ( SQLite is done. test for this is now done for all )
 
 fetch app - check if app is already fetched

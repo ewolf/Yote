@@ -34,7 +34,7 @@ use Yote::ObjProvider;
 
 use vars qw($VERSION);
 
-$VERSION = '0.073';
+$VERSION = '0.074';
 
 # ------------------------------------------------------------------------------------------
 #      * INITIALIZATION *
@@ -141,6 +141,21 @@ sub _add_to {
     }
     return;
 } #_add_to
+
+sub _get {
+    my( $self, $fld, $init_val ) = @_;
+
+    if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
+        if( ref( $init_val ) ) {
+            Yote::ObjProvider::dirty( $init_val, Yote::ObjProvider::get_id( $init_val ) );
+        }
+        Yote::ObjProvider::dirty( $self, $self->{ID} );
+        $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );
+    }
+    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
+} #_get
+
+
 
 sub _insert_at {
     my( $self, $listname, $item, $idx ) = @_;
@@ -304,6 +319,15 @@ sub _remove_from {
     }    
     Yote::ObjManager::mark_dirty( $list_id );
 } #_remove_from
+
+sub _set {
+    my( $self, $fld, $val ) = @_;
+    my $inval = Yote::ObjProvider::xform_in( $val );
+    Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+    $self->{DATA}{$fld} = $inval;
+    
+    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
+}
 
 #
 # Private method to update the hash give. Returns if things were made dirty.

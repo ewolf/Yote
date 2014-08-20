@@ -710,6 +710,8 @@ $.yote = {
 			            if( ! collection_obj ) {
 			                console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
 			                page_out = true;
+                            //remove this from the cache since this might be filled in on refresh
+                            delete $.yote.wrap_cache[ cache_key ];
 			            }
 		            }
 		            var ret = {

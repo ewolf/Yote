@@ -505,7 +505,7 @@ if we are our experiences then we are both sides of them.
 	    '<DIV id="errpanel" class="err">Must be logged in with a root account to view this page. ' + ( $.yote.is_logged_in() ? '<$$$ lo <a href="#">$$$>logout</a>' : '' ) + '</DIV>';
         } 
     ???>
-    <? function( ctx ) { $( ctx.controls.lo ).click( $.yote.logout() ); } ?>
+    <? function( ctx ) { $( ctx.controls.lo ).click( function() { $.yote.logout() } ); } ?>
   </script>
 
   </head>
