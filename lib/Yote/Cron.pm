@@ -108,7 +108,6 @@ sub _init {
             
                                         } );
     $self->add_entry( $first_cron );
-    
     my $second_cron = new Yote::RootObj( {
         name   => 'Token Janitor',
         enabled => 1,
