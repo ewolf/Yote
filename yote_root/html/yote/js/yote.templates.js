@@ -322,25 +322,28 @@ $.yote.templates = {
 	    }
 	    context.set_args( args );
 
-	    try {
 
-	        var res = [];
-	        for( var i=0; i < compilation.length; i++ ) {
-		        var tuple = compilation[ i ];
-		        var idx   = tuple[ 0 ];
-		        if( tuple[ 2 ] ) { // is text
-		            res[ idx ] = tuple[ 1 ];
-		        } else if( tuple[ 3 ] ) { // is after render
+	    var res = [];
+	    for( var i=0; i < compilation.length; i++ ) {
+		    var tuple = compilation[ i ];
+		    var idx   = tuple[ 0 ];
+		    if( tuple[ 2 ] ) { // is text
+		        res[ idx ] = tuple[ 1 ];
+		    } else if( tuple[ 3 ] ) { // is after render
+	            try {
 		            $.yote.templates._after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
 		            res[ idx ] = '';
-		        } else { //function
+	            } catch( err ) {
+	                console.log( "Runtime Error filling template '" + template_name + ":" + err + ' in function : ' + tuple[1] );
+	            }
+		    } else { //function
+	            try {
 		            res[ idx ] = tuple[ 1 ]( context );
-		        }
-	        } 
-	    }
-	    catch( err ) {
-	        console.log( "Runtime Error filling template '" + template_name + ":" + err );
-	    }
+	            } catch( err ) {
+	                console.log( "Runtime Error filling template '" + template_name + " : " + err + ' in function : ' + tuple[1]);
+	            }
+		    }
+	    } 
 
 	    return res.join('');
     }, //fill_template

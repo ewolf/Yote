@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.202
+ * Version 0.203
  */
 
 /*
@@ -235,7 +235,9 @@ $.yote = {
 		        return a;
 	        },
 
-	        error:function(a,b,c) { root._error(a); },
+	        error:function(a,b,c) { 
+                root._error(a); 
+            },
 	        success:function( data ) {
 		        if( $.yote.debug == true ) {
                     console.log( ['incoming ', data ] );
@@ -711,7 +713,7 @@ $.yote = {
 			                console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
 			                page_out = true;
                             //remove this from the cache since this might be filled in on refresh
-                            delete $.yote.wrap_cache[ cache_key ];
+                            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
 			            }
 		            }
 		            var ret = {

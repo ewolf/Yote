@@ -9659,7 +9659,9 @@ $.yote = {
 		        return a;
 	        },
 
-	        error:function(a,b,c) { root._error(a); },
+	        error:function(a,b,c) { 
+                root._error(a); 
+            },
 	        success:function( data ) {
 		        if( $.yote.debug == true ) {
                     console.log( ['incoming ', data ] );
@@ -10135,7 +10137,7 @@ $.yote = {
 			                console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
 			                page_out = true;
                             //remove this from the cache since this might be filled in on refresh
-                            delete $.yote.wrap_cache[ cache_key ];
+                            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
 			            }
 		            }
 		            var ret = {
@@ -11665,25 +11667,28 @@ $.yote.templates = {
 	    }
 	    context.set_args( args );
 
-	    try {
 
-	        var res = [];
-	        for( var i=0; i < compilation.length; i++ ) {
-		        var tuple = compilation[ i ];
-		        var idx   = tuple[ 0 ];
-		        if( tuple[ 2 ] ) { // is text
-		            res[ idx ] = tuple[ 1 ];
-		        } else if( tuple[ 3 ] ) { // is after render
+	    var res = [];
+	    for( var i=0; i < compilation.length; i++ ) {
+		    var tuple = compilation[ i ];
+		    var idx   = tuple[ 0 ];
+		    if( tuple[ 2 ] ) { // is text
+		        res[ idx ] = tuple[ 1 ];
+		    } else if( tuple[ 3 ] ) { // is after render
+	            try {
 		            $.yote.templates._after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
 		            res[ idx ] = '';
-		        } else { //function
+	            } catch( err ) {
+	                console.log( "Runtime Error filling template '" + template_name + ":" + err + ' in function : ' + tuple[1] );
+	            }
+		    } else { //function
+	            try {
 		            res[ idx ] = tuple[ 1 ]( context );
-		        }
-	        } 
-	    }
-	    catch( err ) {
-	        console.log( "Runtime Error filling template '" + template_name + ":" + err );
-	    }
+	            } catch( err ) {
+	                console.log( "Runtime Error filling template '" + template_name + " : " + err + ' in function : ' + tuple[1]);
+	            }
+		    }
+	    } 
 
 	    return res.join('');
     }, //fill_template
