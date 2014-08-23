@@ -72,7 +72,8 @@
 </script>
 
 <script type="text/template" class="yote_template_definition" template_name="edit_hash_with_select_scalars">
-    <# edit takes an object and a field to edit and builds a way to edit this #>
+    <# edit takes an object and a field to edit and builds a way to edit this. Uses hash method rather than
+       editing object directly. #>
     <??? function( ctx ) { 
            if( ctx.args.length == 4 ) { 
                var list   = ctx.parse( ctx.args[ 0 ] );
@@ -83,7 +84,7 @@
                // TODO - escap the value there
                return '<$$$ sel <select> $$$>' + list.map(function(it,idx) { return '<option ' + ( curval == it ? ' selected ' : '' ) + ' value="' + it + '">' + it + '</option>' } ).join('') + '</select>';
            } else {
-               console.log( "error in template 'edit_select_scalars' : wrong number of arguments." );
+               console.log( "error in template 'edit_hash_with_select_scalars' : wrong number of arguments." );
                return '';
            }
         return '';

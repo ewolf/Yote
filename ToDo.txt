@@ -1,6 +1,12 @@
 The stack :
 
+- remove as much eval as possible
+
+- redo lists or hashes as default pagination templates. the paginator would use scratch to store limit and offset data
+  test it, and if it passes, a whole lot of ugly code can be eliminated
+
 - make ' function( ctx ) be optional or implicit '
+
 - add sigils to variable names, like $foo to distinguish them from strings, or force use of quotes for strings or both
 
 - multi process engines. Going to have to do this if this program is going to be taken seriously at all. Damn, I keep going in circles and circles.

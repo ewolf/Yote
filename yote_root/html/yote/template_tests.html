@@ -129,7 +129,7 @@ $.yote.templates.debug = true;
 		    'Give me arguments alpha beta zappa wack Tootx and wack',
 		    '<$$ templatename args $$>, <??? function ???>' );
         
-	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <$$$ set varname function(args) { that returns a list } $$$>, <@ template list maxrows @>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <@ template list maxrows @>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
 	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
 	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
@@ -193,7 +193,7 @@ $.yote.templates.debug = true;
 
     <script type="text/template" class="yote_template_definition" template_name="VarTestPartTwo">
       <??? function( ctx ) { ctx.vars.e = 'x'; return ''; } ???>
-      <?? function( ctx ) { return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); } ??>
+      <?? return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTest">
