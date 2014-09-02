@@ -45,7 +45,17 @@ sub _init {
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC METHODS *
 # ------------------------------------------------------------------------------------------
-
+sub admin_prefetch {
+    my( $self, $data, $acct ) = @_;
+    if( $acct && $acct->is_root() ) {
+        my $cron = $self->_cron();
+        my $ret = $cron->prefetch( undef, $acct );
+        push @$ret, 
+            (values %{ $self->get__handles({}) }), 
+            (values %{ $self->get__apps({}) } );
+        return $ret;
+    }    
+} #admin_prefect
 
 
 # returns cron object for root

@@ -9483,6 +9483,9 @@ $.yote = {
     _next_id:function() {
         return '__yidx_'+this._ids++;
     }, //_next_id
+    _pag_list_cache : {},
+    _pag_hash_cache : {},
+
 
     init:function( appname, token ) {
         token = token ? token : $.cookie('yoken');
@@ -9872,39 +9875,157 @@ $.yote = {
         return i;
     },
 
-    sort_list_fun:function (container,fld,is_number_sort) {
-	    return function() {
-	        var sorts = container.sort_fields || [];
-	        var sorts_rev = container.reversed_sort_idx || [];
-	        var has_sort = false;
-	        var has_sort_idx;
-	        for( var i=0; i<sorts.length; i++ ) {
-		        if( sorts[i] == fld ) {
-		            has_sort_idx = i;
-		            has_sort = true;
-		        }
-	        }
-	        if( has_sort > 0 && has_sort_idx == 0 ) {
-		        // top sort already, so reverse
-		        sorts_rev[ 0 ] = ! sorts_rev[ 0 ];
-	        } else if( has_sort ) {
-		        // sorted somewhere. bring to the top of the sort
-		        var orev = sorts_rev[ has_sort_idx ];
-		        sorts.splice( has_sort_idx, 1 );
-		        sorts_rev.splice( has_sort_idx, 1 );
-		        sorts.splice( 0, 0, fld );
-		        sorts_rev.splice( 0, 0, orev );
-	        } else {
-		        // not in there yet. easy, just push to the
-		        sorts.splice( 0, 0, fld );
-		        sorts_rev.splice( 0, 0, 0 );
-	        }
-	        container.is_number_sort = is_number_sort;
-	        container.set_sort_fields( sorts );
-	        container.set_reversed_sort_idx( sorts_rev );
-	        $.yote.util.refresh_ui();
-	    }
-    },
+    wrap_list:function( args ) {
+        return $.yote.data_wrapper( args );
+    }, //wrap_list
+
+    wrap_hash:function( args ) {
+        return $.yote.data_wrapper( args, true );
+    }, //wrap_hash
+
+    data_wrapper:function( args, is_hash ) {
+        var obj  = args.obj;
+        var field = is_hash ? args.hash : args.array;
+        
+
+        var size = args.size;
+        var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
+        var node = is_hash ? $.yote._pag_hash_cache[ key ] : $.yote._pag_list_cache[ key ];
+        if( ! key || (! node && ( (! obj && ! field ) ) ) ) {
+            if( is_hash ) 
+                throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
+            else
+                throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
+        }
+        var full_size = obj.count( { name : field } );
+        var server_paginate = field.match( /^_/ ) || full_size > 300;
+
+        if( ! node ) {
+            var start = args.start || 0;
+            node = {
+                _server_paginate : server_paginate,
+                _start : start,
+                _data_size : full_size,
+                _page_size  : size,
+                _filter_function     : undefined,
+                _sort_function       : undefined,
+                _transform_function  : undefined,
+                set_filter : function( filter_fun ) {
+                    this._filter_function = filter_fun;
+                },
+                set_sort : function( sort_fun ) {
+                    this._sort_function = sort_fun;
+                },
+                set_transform : function( trans_fun ) {
+                    this._transform_function = trans_fun;
+                },
+                back:function(){
+                    this._start -= this._page_size;
+                    if( this._start < 0 ) {
+                        this._start = 0;                    
+                    }
+                },
+                can_rewind:function(){
+                    return this._start > 0;
+                },
+                can_fast_forward:function(){
+                    return (this._start + this._page_size) < ( this._data_size - 1 );
+                },
+                forwards:function(){
+                    this._start += this._page_size;
+                    if( this._start >= this._data_size ) {
+                        this._start = this._data_size - 1;
+                    }
+                },
+                first:function(){
+                    this._start = 0;
+                },
+                last:function(){
+                    this._start = this._data_size - this._page_size;
+                    if( this._start < 0 ) {
+                        this._start = 0;
+                    }
+                },
+                to_list : function() {
+                    var ret;
+                    if( this._server_paginate ) {
+                        ret = this._obj.paginate( { name : this._field } ).to_list();
+                        //TODO : make this paginate for the filters rather than grabbing all
+                    } else {
+                        var o = this._obj.get( this._field );
+                        ret = o ? o.to_list() : [];
+                    }
+                    if( typeof this._filter_function !== 'undefined' ) {
+                        ret = this._arry.map( this._filter_function );
+                    }
+                    if( typeof this._sort_function !== 'undefined' ) {
+                        ret = ret.sort( this._sort_function );
+                    }
+                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
+                        if( typeof this._page_size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._page_size );
+                        else
+                            ret = ret.slice( this._start );
+                    }
+                    return ret;
+                },
+                keys : function() {
+                    var _hash;
+                    if( this._server_paginate ) {
+                        _hash = this._obj.paginate( { name : this._field, return_hash : 1 } ).to_hash();
+                    } else {
+                        var o = this._obj.get( this._field )
+                        _hash = o ? o.to_hash() : {};
+                    }
+                    var ret = Object.keys( _hash );
+                    if( typeof this._filter_function !== 'undefined' ) {
+                        var new_ret = [];
+                        for( var i=0; i<ret.length; i++ ) {
+                            var k = ret[ i ];
+                                if( this._filter_function( k, _hash[ k ] ) )
+                                    new_ret.push( k );
+                        }
+                        ret = new_ret;
+                    } 
+                    ret = ret.sort( this._sort_function );
+                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
+                        if( typeof this._page_size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._page_size );
+                        else
+                            ret = ret.slice( this._start );
+                    }
+                    return ret;
+                },
+                to_hash : function() {
+                    var h;
+                    if( this._server_paginate ) {
+                        h = this._obj.paginate( { name : this._field, return_hash : 1 } ).to_hash();
+                    } else {
+                        var o = this._obj.get( this._field );
+                        h = o ? o.to_hash() : {};
+                    }
+                    var r = {};
+                    var k = this.keys();
+                    for( var i=0; i<k.length; i++ ) {
+                        r[ k[i] ] = h[ k[i] ];
+                    }
+                    return r;
+                }
+            };
+            if( is_hash ) {
+                $.yote._pag_hash_cache[ key ] = node;
+            } else {
+                $.yote._pag_list_cache[ key ] = node;
+            }
+        }
+        if( obj && field ) {
+            node._obj = obj;
+            node._field = field;
+        }
+        return node;
+    }, //data_wrapper
+        
+
     // TODO : use prototype for the _create_obj
     _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
 	    var root = this;
@@ -10308,7 +10429,6 @@ if( ! Object.keys ) {
 if( ! Object.clone ) {
     // shallow clone
     Object.clone = function( h ) {
-        console.log( [ typeof h, h,'CLONE' ] );
         var clone = {};
         for( var key in h ) {
 	        clone[ key ] = h[ key ];
@@ -10867,7 +10987,7 @@ $.yote.templates = {
         var size = args.size;
         var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
         var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
-        if( ! key || (! node && ( (! arry && ! hash ) ) ) ) {
+        if( ! key || (! node && ( ! arry && ! hash ) ) ) {
             if( is_hash ) 
                 throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
             else
@@ -10877,30 +10997,59 @@ $.yote.templates = {
             var start = args.start || 0;
             node = {
                 _start : start,
-                _size  : size,
+                _page_size  : size,
                 _filter_function     : undefined,
                 _sort_function       : undefined,
                 _transform_function  : undefined,
-                add_filter : function( filter_fun ) {
+                set_filter : function( filter_fun ) {
                     this._filter_function = filter_fun;
                 },
-                add_sort : function( sort_fun ) {
+                set_sort : function( sort_fun ) {
                     this._sort_function = sort_fun;
                 },
-                add_transform : function( trans_fun ) {
-                    this._transform_function = filter_fun;
+                set_transform : function( trans_fun ) {
+                    this._transform_function = trans_fun;
+                },
+                can_rewind:function(){
+                    return this._start > 0;
+                },
+                can_fast_forward:function(){
+                    return (this._start + this._page_size) < ( this._data_size - 1 );
+                },
+                forwards:function(){
+                    this._start += this._page_size;
+                    if( this._start >= this._data_size ) {
+                        this._start = this._data_size - 1;
+                    }
+                },
+                first:function(){
+                    this._start = 0;
+                },
+                last:function(){
+                    this._start = this._data_size - this._page_size;
+                    if( this._start < 0 ) {
+                        this._start = 0;
+                    }
                 },
                 to_list : function() {
-                    var ret = this._arry.slice( 0 );
+                    var ret
                     if( typeof this._filter_function !== 'undefined' ) {
-                        ret = this._arry.map( this._filter_function );
+                        ret = [];
+                        for( var i=0, len = this._arry.length; i<len; i++ ) {
+                            if( this._filter_function( this._arry[ i ], i, this._arry ) ) {
+                                ret.push( this._arry[ i ] );
+                            }
+                                
+                        }
+                    } else {
+                        ret = this._arry.slice( 0 );
                     }
                     if( typeof this._sort_function !== 'undefined' ) {
                         ret = ret.sort( this._sort_function );
                     }
-                    if( typeof this._start !== 'undefined' || typeof this._size !== 'undefined' ) {
-                        if( typeof this._size !== 'undefined' ) 
-                            ret = ret.slice( this._start, this._start + this._size );
+                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
+                        if( typeof this._page_size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
                     }
@@ -10910,16 +11059,16 @@ $.yote.templates = {
                     var ret = Object.keys( this._hash );
                     if( typeof this._filter_function !== 'undefined' ) {
                         var new_ret = [];
-                        for( var i=0; i<ret.length; i++ ) {
+                        for( var i=0, len = ret.length; i<len; i++ ) {
                             var k = ret[ i ];
-                            if( this._filter_function( this._hash[ k ], k ) )
+                            if( this._filter_function( k, this._hash[ k ] ) )
                                 new_ret.push( k );
                         }
                     } 
                     ret = ret.sort( this._sort_function );
-                    if( typeof this._start !== 'undefined' || typeof this._size !== 'undefined' ) {
-                        if( typeof this._size !== 'undefined' ) 
-                            ret = ret.slice( this._start, this._start + this._size );
+                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
+                        if( typeof this._page_size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
                     }
@@ -10929,7 +11078,7 @@ $.yote.templates = {
                     var h = this._hash; 
                     var r = {};
                     var k = this.keys();
-                    for( var i=0; i<k.length; i++ ) {
+                    for( var i=0, len=k.length; i<len; i++ ) {
                         r[ k[i] ] = h[ k[i] ];
                     }
                     return r;
@@ -10940,10 +11089,14 @@ $.yote.templates = {
             else
                 $.yote.templates._pag_list_cache[ key ] = node;
         }
-        if( arry )
+        if( arry ) {
             node._arry = arry;
-        if( hash )
+            node._data_size = arry.length;
+        }
+        if( hash ) {
             node._hash = hash;
+            node._data_size = Object.keys( hash ).length;
+        }
         return node;
     }, //data_wrapper
         
@@ -10957,7 +11110,7 @@ $.yote.templates = {
 	    
 	    // sort the indexes of the fun list with the indexes of the highest priority functions coming first
 	    var idxs = [];
-	    for( var i=0; i < fun_list.length; i++ ) {
+	    for( var i=0, len=fun_list.length; i < len; i++ ) {
 	        idxs.push( i );
 	    }
 	    idxs.sort( function( a, b ) {
@@ -10967,7 +11120,7 @@ $.yote.templates = {
 
 	    //build tuples in a list [ [ positi onal idx, function, is_text, is_after_render ], ... ]
 	    var compiled = [];
-	    for( var i=0; i<idxs.length; i++ ) {
+	    for( var i=0, len=idxs.length; i<len; i++ ) {
 	        var idx = idxs[ i ];
 	        var priority = fun_list[ idx ][ 0 ];
 	        var fun_pair = fun_list[ idx ][ 1 ];
@@ -11154,7 +11307,7 @@ $.yote.templates = {
 	    } );
 	    
 	    //  now that all templates have been rendered, run their after render functions
-	    for( var i = 0 ; i < $.yote.templates._after_render_functions.length; i++ ) {
+	    for( var i=0, len=$.yote.templates._after_render_functions.length; i < len; i++ ) {
 	        $.yote.templates._after_render_functions[ i ]();
 	    }
 
@@ -11216,7 +11369,7 @@ $.yote.templates = {
 
 
 	    var res = [];
-	    for( var i=0; i < compilation.length; i++ ) {
+	    for( var i=0, len=compilation.length; i < len; i++ ) {
 		    var tuple = compilation[ i ];
 		    var idx   = tuple[ 0 ];
 		    if( tuple[ 2 ] ) { // is text
@@ -11371,7 +11524,7 @@ $.yote.templates = {
 	    var tlist = value.trim().split(/[\.]/);
 	    var subj = context;
 	    var subj_has_get = true;
-	    for( var i=0; i < tlist.length; i++ ) {
+	    for( var i=0, len=tlist.length; i < len; i++ ) {
 	        var part = tlist[ i ];
 
             if( typeof subj === 'object' ) {

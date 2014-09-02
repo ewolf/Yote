@@ -225,10 +225,7 @@ sub _container_type {
 
 sub _count {
     my( $self, $args ) = @_;
-    if( ref( $args ) ) { # TODO : standarize
-        return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
-    }
-    return Yote::ObjProvider::count( $self->{DATA}{$args} );
+    return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
 } #_count
 
 sub _hash_delete {
@@ -381,7 +378,7 @@ sub container_type {
 
 sub count {
     my( $self, $data, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, ref( $data ) ? $data->{ name } : $data );
+    die "Access Error" unless $self->_check_access( $account, 0, $data->{ name } );
     return $self->_count( $data );
 } #count
 

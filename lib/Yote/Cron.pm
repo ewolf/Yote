@@ -47,7 +47,7 @@ sub mark_done {
 sub start {
     my $cfg = shift;
     while( 1 ) {
-            print STDERR Data::Dumper->Dump(["To check Cron"]);
+        print STDERR Data::Dumper->Dump(["To check Cron"]);
 
         my $sock = new IO::Socket::INET( "127.0.0.1:$cfg->{internal_port}" );
         print $sock "CRON";
@@ -55,6 +55,19 @@ sub start {
         sleep 50;
     }
 } #start
+
+sub prefetch {
+    my( $self, $data, $acct ) = @_;
+    if( $acct && $acct->is_root() ) {
+        return [ map { $_, 
+                       @{$_->get_repeats([])}, 
+                       $_->get_repeats(),
+                       @{$_->get_scheduled_times([])},
+                       $_->get_scheduled_times() } 
+                 @{ $self->get_entries([]) }, $self->get_entries ];
+        
+    } 
+}
 
 sub check {
     my $cron = shift;
@@ -128,44 +141,44 @@ sub _mark_done {
     $entry->set_last_run( $ran_at );
     my $repeats = $entry->get_repeats();
     if( $repeats ) {
-	my( @repeats ) = @$repeats;
-	for( my $i=$#repeats; $i>=0; $i-- ) {
-	    my $rep = $repeats[$i];
-	    if( $rep->get_next_time() <= $ran_at ) {
-		if( $rep->get_repeat_infinite() ) {
-		    $rep->set_next_time( $rep->get_next_time() + $rep->get_repeat_interval() );
-		    $rep->set_next_time( $ran_at + $rep->get_repeat_interval() ) if $rep->get_next_time() <= $ran_at;
-		}
-		elsif( $rep->get_next_time() <= $ran_at ) {
-		    $rep->set_repeat_times( $rep->get_repeat_times() - 1 );
-		    if( $rep->get_repeat_times() > 0 ) {
-			$rep->set_next_time( $ran_at + $rep->get_repeat_interval() );
-		    }
-		    else {
-			splice @$repeats, $i, 1;
-			$rep->set_next_time( 0 );
-		    }
-		}
-	    }
-	    $next_time = $rep->get_next_time() && $next_time >= $rep->get_next_time() ? $next_time :  $rep->get_next_time();
-	}
+        my( @repeats ) = @$repeats;
+        for( my $i=$#repeats; $i>=0; $i-- ) {
+            my $rep = $repeats[$i];
+            if( $rep->get_next_time() <= $ran_at ) {
+                if( $rep->get_repeat_infinite() ) {
+                    $rep->set_next_time( $rep->get_next_time() + $rep->get_repeat_interval() );
+                    $rep->set_next_time( $ran_at + $rep->get_repeat_interval() ) if $rep->get_next_time() <= $ran_at;
+                }
+                elsif( $rep->get_next_time() <= $ran_at ) {
+                    $rep->set_repeat_times( $rep->get_repeat_times() - 1 );
+                    if( $rep->get_repeat_times() > 0 ) {
+                        $rep->set_next_time( $ran_at + $rep->get_repeat_interval() );
+                    }
+                    else {
+                        splice @$repeats, $i, 1;
+                        $rep->set_next_time( 0 );
+                    }
+                }
+            }
+            $next_time = $rep->get_next_time() && $next_time >= $rep->get_next_time() ? $next_time :  $rep->get_next_time();
+        }
     } #if repeats
     my $times = $entry->get_scheduled_times();
     if( $times ) {
-	my( @times ) = @$times;
- 	for( my $i=$#times; $i>=0; $i-- ) {
-	    my $sched = $times[$i];
-	    if( $sched <= $ran_at ) {
-		splice @$times, $i, 1;
-	    }
-	    elsif( $sched > $ran_at ) {
-		$next_time = $sched < $next_time ? $sched : $next_time;
-	    }
-	}
+        my( @times ) = @$times;
+        for( my $i=$#times; $i>=0; $i-- ) {
+            my $sched = $times[$i];
+            if( $sched <= $ran_at ) {
+                splice @$times, $i, 1;
+            }
+            elsif( $sched > $ran_at ) {
+                $next_time = $sched < $next_time ? $sched : $next_time;
+            }
+        }
     }
     $entry->set_next_time( $next_time );
     unless( $next_time ) {
-	$entry->set_enabled( 0 );
+        $entry->set_enabled( 0 );
     }
 } #_mark_done
 
@@ -183,22 +196,22 @@ sub _update_entry {
     my $added_on = _time();
     my $next_time;
     if( $repeats ) {
-	for my $rep (@$repeats) {
-	    next unless $rep->get_repeat_infinite() || $rep->get_repeat_times();
-	    $rep->set_next_time( $added_on + $rep->get_repeat_interval() );
-	    $next_time ||= $rep->get_next_time();
-	    $next_time = $rep->get_next_time() if $next_time > $rep->get_next_time();
-	}
+        for my $rep (@$repeats) {
+            next unless $rep->get_repeat_infinite() || $rep->get_repeat_times();
+            $rep->set_next_time( $added_on + $rep->get_repeat_interval() );
+            $next_time ||= $rep->get_next_time();
+            $next_time = $rep->get_next_time() if $next_time > $rep->get_next_time();
+        }
     } #if repeats
     my $times = $entry->get_scheduled_times();
     if( $times ) {
-	for( my $i=$#$times; $i >= 0; $i-- ) {
-	    splice( @$times, $i, 1 ) unless $times->[$i] > $added_on;
-	}
-	for my $sched ( @$times ) {
-	    $next_time ||= ( $added_on + $sched );
-	    $next_time = $sched if $sched < $next_time;
-	}
+        for( my $i=$#$times; $i >= 0; $i-- ) {
+            splice( @$times, $i, 1 ) unless $times->[$i] > $added_on;
+        }
+        for my $sched ( @$times ) {
+            $next_time ||= ( $added_on + $sched );
+            $next_time = $sched if $sched < $next_time;
+        }
     }
     $entry->set_next_time( $next_time );
     return $entry;

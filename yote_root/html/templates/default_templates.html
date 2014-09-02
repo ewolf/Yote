@@ -334,3 +334,53 @@
      }
   ?>
 </script>
+
+<script type="text/template" class="yote_template_definition" template_name="SearchHash">
+    <#
+       SearchHash searches through a hash and filters the results.
+       Provides a search box.
+       <$$ SearchHash wrappeddata keys|values optional-list-of-fields-to-search-through
+    #>
+    Search
+       <$$$ srchtxt <input type="text"> $$$>
+          <$$$ go <button type="button">$$$>Search</button>
+    <?
+      if( ctx.args.length > 1 ) {
+          var data = ctx.vars[ ctx.args[ 0 ] ];
+          var search_key = ctx.args[ 1 ] == 'keys';
+          var search_fields = ctx.args.slice( 2 );
+          if( data._last_val ) {
+              $( ctx.controls.srchtxt ).val( data._last_val );
+          }
+          $.yote.util.button_actions( {
+              button : ctx.controls.go,
+              texts : [ ctx.controls.srchtxt ],
+              action : function() {
+                  try { fsadfs() } catch(err ) {}
+                  var val = $( ctx.controls.srchtxt ).val();
+                  data._last_val = val;
+                  if( search_key ) {
+                      data.set_filter( function( k, v, a  ) {
+                          return k.match( val );
+                      } );
+                  } else if( search_fields.length > 0 ) {
+                      var has_get = $.yote._subj_has_get_p();
+                      data.set_filter( function( k, v, a ) {
+                          for( var i=0, len=search_fields.length; i<len; i++ ) {
+                              if( has_get ? v.get( search_fields[i] ).match( val ) : v[ search_fields[i] ].match( val ) ) {
+                                  return true;
+                              }
+                          }
+                          return false;
+                      } );
+                  } else {
+                      data.set_filter( function( k, v ) {
+                          return v.match( val );
+                      } );
+                  }
+                  ctx.refresh();
+              }
+          } );
+      }       
+    ?>
+</script>
