@@ -10854,10 +10854,10 @@ $.yote.templates = {
         var arry = args.array;
         var size = args.size;
         var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
-        if( ! arry || ! size || ! key ) {
+        var node = $.yote.templates._pag_list_cache[ key ];
+        if( ! key || (! node && ( ! arry || ! size ) ) ) {
             throw new Exception( 'list paginator called without array and or size' );
         }
-        var node = $.yote.templates._pag_list_cache[ key ];
         if( ! node ) {
             var start = args.start || 0;
             node = {
@@ -10869,7 +10869,8 @@ $.yote.templates = {
             };
             $.yote.templates._pag_list_cache[ key ] = node;
         }
-        node._arry = arry;
+        if( arry )
+            node._arry = arry;
         return node;
     }, //list_paginator
 
@@ -10877,10 +10878,10 @@ $.yote.templates = {
         var hash = args.hash;
         var size = args.size;
         var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
-        if( ! hash || ! size || ! key ) {
+        var node = $.yote.templates._pag_hash_cache[ key ];
+        if( ! key || (! node && ( ! hash || ! size ) ) ) {
             throw new Exception( 'hash paginator called without hash and or size' );
         }
-        var node = $.yote.templates._pag_hash_cache[ key ];
         if( ! node ) {
             var start = args.start || 0;
             node = {
@@ -11120,7 +11121,7 @@ $.yote.templates = {
 	    $.yote.templates._after_render_functions = [];
     }, //init
 
-    _context_scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
+    context_scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
 
     new_context:function() {
 	    return {
@@ -11128,7 +11129,7 @@ $.yote.templates = {
 	        controls : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
-	        scratch : $.yote.templates._context_scratch, // reference to common scratch area. 
+	        scratch : $.yote.templates.context_scratch, // reference to common scratch area. 
 	        _app_ : $.yote.fetch_default_app(),
 	        _acct_ : $.yote.fetch_account(),
 	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? 
@@ -11151,7 +11152,7 @@ $.yote.templates = {
 		        clone._acct_ = this._acct_;
 		        clone.parent = this;
 		        clone.get = this.get;
-		        clone.scratch = $.yote.templates._context_scratch;
+		        clone.scratch = $.yote.templates.context_scratch;
 		        return clone;
 	        } //clone
 	    };

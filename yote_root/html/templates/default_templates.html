@@ -34,11 +34,12 @@
 <script type="text/template" class="yote_template_definition" template_name="_listfillpagrow">
    <???
       var template = ctx.args[ 0 ]; // fillpagrow
-      var list     = ctx.vars[ ctx.args[ 1 ] ].to_list();
+      var pag_list = ctx.vars[ ctx.args[ 1 ] ];
+      var list     = pag_list.to_list();
       var idx      = ctx.args[ 2 ];
       var more = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
       ctx.vars._ = list[ idx ];
-      ctx.vars._index_ = idx;
+      ctx.vars._index_ = 1*idx + pag_list._start;
       return '<$$ ' + template + ' ' + more.join( ' ' ) + ' $$>';
     ???>
 </script>

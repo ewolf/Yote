@@ -125,6 +125,9 @@ $().ready(function(){
 		        '<$$ templatename args $$>, <??? function ???>' );
             
 	        is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+            
+	        is( $.yote.templates.fill_template( 'ArrayTest', undefined, [ '1' ] ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 4 : E Pea : green Spinach : wild YARRA',  'tests list and hash paginate advacnes' );
+
 	        is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
 	        is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
@@ -191,7 +194,10 @@ $().ready(function(){
                    initial_start : 0,
                    ctx : ctx,
                } );
-               
+            if( ctx.args && ctx.args.length == 1 ) {
+                ctx.vars.array_pag._start = 4;
+                ctx.vars.hash_pag._start = 3;
+            }
            ???>
        ARRAY
        <# putting the size in the array_pag because
@@ -200,6 +206,8 @@ $().ready(function(){
        <$$ listpaginate ArrayRow array_pag $$>
        <$$ hashpaginate HashRow hash_pag $$>
        YARRA
+       <??
+       ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTestPartTwo">
