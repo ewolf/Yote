@@ -414,7 +414,7 @@ sub _purge_deleted_logins {
         push @removed, scalar( @gonners );
     } #store
 
-    my $flushed = $self->_count( '_removed_logins' );
+    my $flushed = $self->_count(  { name => '_removed_logins' } );
     $self->set__removed_logins( [] );
 
     return "Flushed $flushed removed accounts. Removed $removed[0] invalid handles and $removed[1] invalid emails";

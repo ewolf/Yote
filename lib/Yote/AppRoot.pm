@@ -143,7 +143,7 @@ sub fetch_page {
             if( $file_mod_time > $last_updated ) {
                 my $html = read_file( $url );
                 if( ! $node->get_version_locked() ) {
-                    $node->set_current_version_number( $node->_count( 'versions' ) );
+                    $node->set_current_version_number( $node->_count( { name => 'versions' } ) );
                     $node->add_to_versions( $html );
                     $node->set_current_version( $html );
                 }

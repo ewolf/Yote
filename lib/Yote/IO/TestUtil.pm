@@ -252,7 +252,7 @@ sub io_independent_tests {
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
 
-    is( $root_3->count( 'array' ), 6, 'Array has 6 with count' );
+    is( $root_3->count( { name => 'array' } ), 6, 'Array has 6 with count' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3 } ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate limit 3' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, reverse => 1 } ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse limit 3' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 1, skip => 2 } ), [ 'MORE STUFF' ], 'paginate limit three from 2' );
@@ -358,7 +358,7 @@ sub io_independent_tests {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
     }
-    is( $root->_count("_handles"), 1, "1 handle stored");
+    is( $root->_count({ name => "_handles" }), 1, "1 handle stored");
     is( $root_login->get_handle(), 'root', 'handle set' );
     is( $root_login->get_email(), 'foo@bar.com', 'email set' );
     isnt( $root_login->get_password(), 'toor', 'password set' ); #password is encrypted    
@@ -524,7 +524,7 @@ sub io_independent_tests {
     $o->set_emptylist( [] );
     $root->add_to_rogers( $o );
     Yote::ObjProvider::stow_all();
-    is( $o->count( 'emptylist' ), 0, "emptylist" );
+    is( $o->count( { name => 'emptylist' } ), 0, "emptylist" );
 
     # test hash argument to new obj :
     $o = new Yote::Obj( { foof => "BARBARBAR", zeeble => [ 1, 88, { nine => "ten" } ] } );
@@ -537,7 +537,7 @@ sub io_independent_tests {
     $o->set_emptylist( [] );
     $root->add_to_rogers( $o );
     Yote::ObjProvider::stow_all();
-    is( $o->count( 'emptylist' ), 0, "emptylist" );
+    is( $o->count( { name => 'emptylist' } ), 0, "emptylist" );
 
     $app->set_weirdy( $o );
     Yote::ObjProvider::stow_all();
@@ -1266,11 +1266,11 @@ sub io_independent_tests {
 
 
     # 4 handles created now
-    is( $yote_root->_count( '_handles' ), 4, "starting handles count" );
+    is( $yote_root->_count( { name =>  '_handles' } ), 4, "starting handles count" );
     is( scalar keys %$root_handles, 4, "Starting handles" );
 
     # one of the logins has no email : the master root
-    is( $yote_root->_count( '_emails' ), 3, "starting emails count" );
+    is( $yote_root->_count( { name =>  '_emails' } ), 3, "starting emails count" );
     is( scalar keys %$root_emails, 3, "stsarting emails" );
 
     for( 1..1010 ) {
@@ -1282,16 +1282,16 @@ sub io_independent_tests {
 
     Yote::ObjProvider::stow_all();
 
-    is( $yote_root->_count( '_handles' ), 1014, "bad handles count" );
-    is( $yote_root->_count( '_emails' ), 1013, "bad emails count" );
+    is( $yote_root->_count( { name =>  '_handles' } ), 1014, "bad handles count" );
+    is( $yote_root->_count( { name =>  '_emails' } ), 1013, "bad emails count" );
 
 
     $yote_root->_purge_deleted_logins();
-    is( $yote_root->_count( '_handles' ), 4, "back to starting handles count" );
+    is( $yote_root->_count( { name =>  '_handles' } ), 4, "back to starting handles count" );
     is( scalar keys %$root_handles, 4, "back to Starting handles" );
 
     # one of the logins has no email : the master root
-    is( $yote_root->_count( '_emails' ), 3, "back to starting emails count" );
+    is( $yote_root->_count( { name =>  '_emails' } ), 3, "back to starting emails count" );
     is( scalar keys %$root_emails, 3, "back to starting emails" );
 
 
