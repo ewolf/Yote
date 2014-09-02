@@ -10,12 +10,7 @@
  .hide { display:none }
 </style>
 
-<script src="/yote/js/jquery-2.1.0.js"></script>
-<script src="/yote/js/jquery.base64.min.js"></script>
-<script src="/yote/js/jquery.cookie.js"></script>
-<script src="/yote/js/json2.js"></script>
-<script src="/yote/js/yote.js"></script>
-<script src="/yote/js/yote.templates.js"></script>
+<script src="/yote/js"></script>
 
 <script>
     <!--
@@ -91,8 +86,8 @@ $().ready(function(){
 	        <$$$ controlname html
 	        <?? function( ctx ) ....
 	        <$$ template 
-	        <@ template list max_rows @>
-	        <% template list max_rows %>
+	        <$$ listfill template list max_rows $$>
+	        <$$ hashfill template list max_rows $$>
 	        <$ var $>
 	        <$ _index_ $>
 	        <$ _hashkey_ $>
@@ -100,49 +95,49 @@ $().ready(function(){
 
 
       */
+    $.yote.templates.import_templates( '/templates/yote_templates.html' );
     $.yote.templates.import_templates( '/templates/default_templates.html' );
 
     function do_tests() {
         // init yote
-$.yote.templates.debug = true;
-	$.yote.init('Yote::Test::Template');
+        $.yote.templates.debug = false;
+	    $.yote.init('Yote::Test::Template');
         $.yote.logout();
         $.yote.reinit();
-        $.yote.debug = true;
 
- 	try {
-	    var app = $.yote.fetch_default_app();
-	    app.reset();
-	    var sandbox = app.get_sandbox();
-	    sandbox.set( 'name', 'sandy' );
+ 	    try {
+	        var app = $.yote.fetch_default_app();
+	        app.reset();
+	        var sandbox = app.get_sandbox();
+	        sandbox.set( 'name', 'sandy' );
 
-	    $.yote.templates.init();
-	    $.yote.templates.refresh();
-	    is( $.yote.templates.fill_template( 'Comments' ).trim(), 'This template has comments', '$.yote.templates.fill_template works' );
-	    is( $( '#comments' ).html().trim(), 'This template has comments', 'automatic filling of template variables' );
-	    is( $( '#comments' ).html().trim(), 'This template has comments', '<# comment template #>' );
-	    is( $.yote.templates.fill_template( 'TripleQuest' ).trim().replace( /[\n\s]+/g, ' '), 'A very simple test This template has comments Number 4 WAZ ZBorgs around', '< ??? function ??\?> effect on building templates, effect on using ??? to create variables and effect of setting values directly in the context' );
-        
-	    is( $.yote.templates.fill_template( 'SimpleTemplate' ).trim().replace( /[\n\s]+/g, ' '), 'A very simple test This template has comments', '<$$ templatename $$>' );
-        
-	    is( $.yote.templates.fill_template( 'VarTest' ).trim().replace( /[\n\s]+/g, ' '), 
-		    'Give me arguments alpha beta zappa wack Tootx and wack',
-		    '<$$ templatename args $$>, <??? function ???>' );
-        
-	    is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <@ template list maxrows @>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
-	    is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
-	    is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
+	        $.yote.templates.init();
+	        $.yote.templates.refresh();
+	        is( $.yote.templates.fill_template( 'Comments' ).trim(), 'This template has comments', '$.yote.templates.fill_template works' );
+	        is( $( '#comments' ).html().trim(), 'This template has comments', 'automatic filling of template variables' );
+	        is( $( '#comments' ).html().trim(), 'This template has comments', '<# comment template #>' );
+	        is( $.yote.templates.fill_template( 'TripleQuest' ).trim().replace( /[\n\s]+/g, ' '), 'A very simple test This template has comments Number 4 WAZ ZBorgs around', '< ??? function ??\?> effect on building templates, effect on using ??? to create variables and effect of setting values directly in the context' );
+            
+	        is( $.yote.templates.fill_template( 'SimpleTemplate' ).trim().replace( /[\n\s]+/g, ' '), 'A very simple test This template has comments', '<$$ templatename $$>' );
+            
+	        is( $.yote.templates.fill_template( 'VarTest' ).trim().replace( /[\n\s]+/g, ' '), 
+		        'Give me arguments alpha beta zappa wack Tootx and wack',
+		        '<$$ templatename args $$>, <??? function ???>' );
+            
+	        is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+	        is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
+	        is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
 
-	    is( $( '#after_render' ).text().trim().replace( /[\n\s]+/g, ' '), 'TEST', 'after render function' );
+	        is( $( '#after_render' ).text().trim().replace( /[\n\s]+/g, ' '), 'TEST', 'after render function' );
 
-//	    is( $.yote.templates.fill_template( '' ).trim().replace( /[\n\s]+/g, ' '), '', '' );
-	    
- 	}
- 	catch( err ) {
- 	    fail( err )();
+            //	    is( $.yote.templates.fill_template( '' ).trim().replace( /[\n\s]+/g, ' '), '', '' );
+	        
+ 	    }
+ 	    catch( err ) {
+ 	        fail( err )();
+ 	        wrap_up();
+ 	    }
  	    wrap_up();
- 	}
- 	wrap_up();
 
     } //do_tests
     do_tests();
@@ -181,19 +176,35 @@ $.yote.templates.debug = true;
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="ArrayTest">
-       <??? function( ctx ) {
+       <???
                ctx.vars.array = [ "A", "C", "B", "D", "E" ];
                ctx.vars.hash = {  Apple : 'butter', Spinach : 'wild', Daikon : 'radish', Lemon : 'yellow', Pea : 'green'};
-           } ???>
+               ctx.vars.array_pag = $.yote.templates.list_paginator( {
+                   array : ctx.vars.array, 
+                   size  : 3,
+                   initial_start : 0,
+                   ctx : ctx,
+               } );
+               ctx.vars.hash_pag = $.yote.templates.hash_paginator( {
+                   hash  : ctx.vars.hash, 
+                   size  : 3,
+                   initial_start : 0,
+                   ctx : ctx,
+               } );
+               
+           ???>
        ARRAY
-       <@ ArrayRow @array 3 @>
-       <% HashRow %hash 3 %>
+       <# putting the size in the array_pag because
+          the array_pag might be needed for paginations
+          control html #>
+       <$$ listpaginate ArrayRow array_pag $$>
+       <$$ hashpaginate HashRow hash_pag $$>
        YARRA
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTestPartTwo">
       <??? function( ctx ) { ctx.vars.e = 'x'; return ''; } ???>
-      <?? return ctx.args.join(" ").toLowerCase() + ' ' + ctx.get( 'x' ) + ' ' + ctx.get( 'y' ) + ctx.get('e'); ??>
+      <?? return ctx.args.join(" ").toLowerCase() + ' ' + ctx.vars.x + ' ' + ctx.vars.y + ctx.vars.e; ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="VarTest">
@@ -205,8 +216,12 @@ $.yote.templates.debug = true;
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="TripleQuest">
-      <??? function( ctx ) { ctx.set( 'foo', 1 + 3 ); return '<?? function( ctx ) { ctx.vars.fool = "Borgs around";ctx.vars.bar = "WAZ Z"; return ""; } ??><$$ SimpleTemplate $$>'; } ???>
-      <?? function( ctx ) { return "Number " + ctx.get( 'foo' ) + ' ' + ctx.get( 'bar' ) + ctx.get( 'fool' ); } ??>
+      <??? 
+         ctx.vars.foo = 1 + 3; 
+         return '<?? ctx.vars.fool = "Borgs around";ctx.vars.bar = "WAZ Z"; return ""; ??>' +
+          '<$$ SimpleTemplate $$>'; 
+      ???>
+      <?? return "Number " + ctx.vars.foo + ' ' + ctx.vars.bar + ctx.vars.fool; ??>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="SimpleTemplate">

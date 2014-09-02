@@ -18,84 +18,84 @@
 
 <script>
     var tests = 0;
-    var failed = 0;
-    var calls_made = 0;
-    $.yote.old_message = $.yote.message;
-    $.yote.message = function( params ) {
-        calls_made++;
-        return $.yote.old_message( params );
+var failed = 0;
+var calls_made = 0;
+$.yote.old_message = $.yote.message;
+$.yote.message = function( params ) {
+    calls_made++;
+    return $.yote.old_message( params );
+}
+
+
+function fail( test ) {
+    return function(d) {
+        ++failed;
+        ++tests;
+        $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
     }
+}
+function pass( test ) {
+    return function(d) {
+        ++tests;
+        $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
+    }
+}
+function is( result, expected, msg ) {
+    if( result === expected ) {
+ 	    pass( msg )();
+    }
+    else {
+ 	    fail( msg + "( expected '" + expected + "' and got '" + result +"')" )();
+    }
+}
+function ok( result, msg ) {
+    if( result === true ) {
+ 	    pass( msg )();
+    }
+    else { 
+ 	    fail( msg )();
+    }
+}
+function wrap_up() {
+    $( '#results' ).append( "<BR>Calls made " + calls_made + "<BR>" );
+    if( failed > 0 ) {
+        $('#results').append( "Failed " + failed + " tests out of " + tests );
+    } else {
+        $('#results').append( "Passed all " + tests + " tests" );
+    }
+    var d = new Date();
+    var t2 = d.getTime();
+    $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
+ 				                      pass( "remove login" ), fail( "remove login" ) );
+    $.yote.logout();
+    var d2 = new Date();
+    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+} //wrap_up
+var step_count = 0;
+function step( msg ) {
+    console.log( "step " + step_count + ':' + msg  );
+    step_count++;
+}
+$().ready(function(){ 
+    /* check 
+     *    account creation   ^
+     *    removing account   ^
+     *    login              ^
+     *    app fetching       ^
+     *    object methods     ^
+     *    returned scalar    ^
+     *    array              
+     *    hash
+     *    object
+     */
+    function do_tests() {
+        // init yote
+        $.yote.init();
+        $.yote.logout();
+        $.yote.reinit();
+        $.yote.debug = false;
 
-
- function fail( test ) {
-     return function(d) {
-         ++failed;
-         ++tests;
-         $('#tests').append( "<span class=fail>FAILED : </span>" + test + '<BR>' );
-     }
- }
- function pass( test ) {
-     return function(d) {
-         ++tests;
-         $('#tests').append( "<span class=pass>PASSED : </span>" + test + '<BR>' );
-     }
- }
- function is( result, expected, msg ) {
-     if( result === expected ) {
- 	pass( msg )();
-     }
-     else {
- 	fail( msg + "( expected '" + expected + "' and got '" + result +"')" )();
-     }
- }
- function ok( result, msg ) {
-     if( result === true ) {
- 	pass( msg )();
-     }
-     else { 
- 	fail( msg )();
-     }
- }
- function wrap_up() {
-     $( '#results' ).append( "<BR>Calls made " + calls_made + "<BR>" );
-     if( failed > 0 ) {
-         $('#results').append( "Failed " + failed + " tests out of " + tests );
-     } else {
-         $('#results').append( "Passed all " + tests + " tests" );
-     }
-     var d = new Date();
-     var t2 = d.getTime();
-     $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
- 				      pass( "remove login" ), fail( "remove login" ) );
-     $.yote.logout();
-     var d2 = new Date();
-     $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
- } //wrap_up
- var step_count = 0;
- function step( msg ) {
-     console.log( "step " + step_count + ':' + msg  );
-     step_count++;
- }
- $().ready(function(){ 
-     /* check 
-      *    account creation   ^
-      *    removing account   ^
-      *    login              ^
-      *    app fetching       ^
-      *    object methods     ^
-      *    returned scalar    ^
-      *    array              
-      *    hash
-      *    object
-      */
-     function do_tests() {
-         // init yote
-         $.yote.init();
-         $.yote.logout();
-         $.yote.reinit();
-         $.yote.debug = false;
-
- 	 try {
+ 	    try {
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
             var nologin_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
@@ -108,47 +108,47 @@
             step('get app testappneedslogin');
 
             var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
- 	    login_app.purge_app();
+ 	        login_app.purge_app();
             login_app._reset();
             step('scalar called on testappneedslogin');
             var scalar = login_app.scalar( {}, 
-                                       fail("required login returned scalar without login"),
- 	                               pass("required login returned nothingwithout login") );
+                                           fail("required login returned scalar without login"),
+ 	                                       pass("required login returned nothingwithout login") );
             
             step('create account');
             // account creation. 
             $.yote.fetch_root().create_login( { h: 'unit_test_account0', p: 'ut',e: 'nobodyelse@fenowyn.com' },
- 					      pass("create first account"), pass("create first account already existed") );
+ 					                          pass("create first account"), pass("create first account already existed") );
 
             $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
- 					      pass("create first account"), fail("create account") );
- 	    
+ 					                          pass("create first account"), fail("create account") );
+ 	        
             step('create account with same handle');
             $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'zobody@fenowyn.com' },
- 					      fail("created account with same handle"), pass("refused to create account with same handle") );
+ 					                          fail("created account with same handle"), pass("refused to create account with same handle") );
 
             $.yote.fetch_root().create_login( { h: 'nunit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
- 					      fail("created account with same email"), pass("refused to create account with same email") );
- 	    
+ 					                          fail("created account with same email"), pass("refused to create account with same email") );
+ 	        
             step('login with wrong password');
- 	    $.yote.login( 'unit_test_account','uz',
- 			  fail( "able to log in with wrong password" ),
- 			  pass( "unable to log in with wrong password" ) );
+ 	        $.yote.login( 'unit_test_account','uz',
+ 			              fail( "able to log in with wrong password" ),
+ 			              pass( "unable to log in with wrong password" ) );
             step('login with correct password');
             $.yote.login( 'unit_test_account', 'ut',
- 			  pass( "able to log in" ),
- 			  fail( "unable to log in" ) );
+ 			              pass( "able to log in" ),
+ 			              fail( "unable to log in" ) );
 
             step('login has token');
- 	    ok( $.yote.token != '', 'login has token', 'token missing from login' );
- 	    ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
+ 	        ok( $.yote.token != '', 'login has token', 'token missing from login' );
+ 	        ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
 
             login_app.reset();
 
- 	    var token_login = $.yote.fetch_root().token_login( $.yote.token );
- 	    ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );	
+ 	        var token_login = $.yote.fetch_root().token_login( $.yote.token );
+ 	        ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );	
 
-	    login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
+	        login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
 
             //app that requires login should allow scalar now
             step('scalar called on testappneedslogin to succeed');
@@ -156,13 +156,13 @@
             ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
             // have a Yote object returned
             step('yote_obj get called on testappneedslogin to succeed');
- 	    
+ 	        
             var obj = login_app.get_yote_obj();
             if( typeof obj !== 'object' ) {
- 		fail( "yote_obj not returned" )();
- 		return;      
+ 		        fail( "yote_obj not returned" )();
+ 		        return;      
             }
- 	    is( login_app.list().length(), 3, " list properly returned " );
+ 	        is( login_app.list().length(), 3, " list properly returned " );
 
             // try passing in a javascript proxy object as a data parameter
             var o1 = login_app.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
@@ -192,16 +192,16 @@
             o3._send_update();
             is( o3.get_Text(), 'baz', 'correct object 2 text directly' );
 
- 	    //Text is writable, zap doesn't exist and so it not, and bext is not writeable
- 	    is( login_app.get_Text(), 'inity', "TANL initied text" );
- 	    is( login_app.get_zap(), 'zappy', "TANL initied zap" );
- 	    ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );
- 	    ok( typeof o3[ 'set_bext' ] !== undefined, "bext is there" );
- 	    is( o3[ 'set_zap' ], undefined, "zap is not there" );
+ 	        //Text is writable, zap doesn't exist and so it not, and bext is not writeable
+ 	        is( login_app.get_Text(), 'inity', "TANL initied text" );
+ 	        is( login_app.get_zap(), 'zappy', "TANL initied zap" );
+ 	        ok( typeof o3[ 'set_Text' ] !== undefined, "text is there" );
+ 	        ok( typeof o3[ 'set_bext' ] !== undefined, "bext is there" );
+ 	        is( o3[ 'set_zap' ], undefined, "zap is not there" );
 
             login_app._send_update({Text:'baf',bext:'Again',zip:'zap'});
- 	    is( login_app.get_Text(), 'baf', "TANL changed text" ); 
- 	    is( login_app.get_zap(), 'zappy', "TANL unchnaged zap" );
+ 	        is( login_app.get_Text(), 'baf', "TANL changed text" ); 
+ 	        is( login_app.get_zap(), 'zappy', "TANL unchnaged zap" );
 
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
@@ -218,20 +218,20 @@
             is( arry.length(), 4, 'length of array returned' );
             is( arry.get(0), 'A', 'element 0 correct' );
 
- 	    // test sorting functions
- 	    step( 'testing sorting function' );
- 	    var tosortarry = arry.get( 3 );
- 	    is( tosortarry.length(), 6, 'length of sorting array' );
- 	    is( tosortarry.get(0), 'b', 'first el' );
- 	    is( tosortarry.get(5), 'c', 'last el' );
- 	    var sortedarry = tosortarry.sort();
- 	    is( sortedarry.length, 6, 'sorted array length' );
- 	    is( sortedarry[0], 'a', 'first el sorted array' );
- 	    is( sortedarry[5], 'f', 'last el sorted array' );
- 	    sortedarry = tosortarry.sort(function( a,b ) { if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
- 	    is( sortedarry[5], 'a', 'last el rev sorted array' );
- 	    is( sortedarry[0], 'f', 'first el rev sorted array' );
- 	    
+ 	        // test sorting functions
+ 	        step( 'testing sorting function' );
+ 	        var tosortarry = arry.get( 3 );
+ 	        is( tosortarry.length(), 6, 'length of sorting array' );
+ 	        is( tosortarry.get(0), 'b', 'first el' );
+ 	        is( tosortarry.get(5), 'c', 'last el' );
+ 	        var sortedarry = tosortarry.sort();
+ 	        is( sortedarry.length, 6, 'sorted array length' );
+ 	        is( sortedarry[0], 'a', 'first el sorted array' );
+ 	        is( sortedarry[5], 'f', 'last el sorted array' );
+ 	        sortedarry = tosortarry.sort(function( a,b ) { if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
+ 	        is( sortedarry[5], 'a', 'last el rev sorted array' );
+ 	        is( sortedarry[0], 'f', 'first el rev sorted array' );
+ 	        
 
             //check if el 2 is object
             var inobj = arry.get(2);
@@ -267,491 +267,37 @@
             var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
             is( $.yote._cache_size(), 2, "cache with loginapp and root in loginapp" );
 
- 	    var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
- 	    hello_app.hello();
- 	    is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
+ 	        var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
+ 	        hello_app.hello();
+ 	        is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
- 	    // testing pagination
- 	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : 'foo_array' }, 5 );
- 	    $.yote.debug = true;
- 	    var pag_list = pag.to_list();
+ 	        // testing pagination
+ 	        //timing tests
 
- 	    is( pag.full_size(), 26, "26 letters of the alphabet" );
- 	    is( pag.get( 0 ), "A", "first letter" );
- 	    is( pag_list[ 0 ], "A", "first letter output list" );
- 	    is( pag.page_size_limit, 5, "Size of 5" );
- 	    is( pag_list.length, 5, "output list has 5" );
- 	    is( pag.get( 4 ), "E", "fifth letter" );
- 	    is( pag_list[ 4 ], "E", "fifth letter output list" );
- 	    pag.forwards();
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 0 ], "F", "first letter output list after forward" );
- 	    is( pag.get( 0 ), "F", " first after forward" );
- 	    is( pag.get( 4 ), "J", " fifth after forward" );
- 	    is( pag_list[ 4 ], "J", "fifth letter output list after forward" );
- 	    pag.seek( 22 );
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 0 ], "W", "output list; starting at w" );
- 	    is( pag.get( 0 ), "W", "Starting at w" );
- 	    is( pag.get( 3 ), "Z", "Ending with Z" );
- 	    is( pag_list[ 3 ], "Z", "output list; ending with Z" );
- 	    pag.last();
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 4 ], "Z", "output list; Z is last" );
- 	    is( pag.get( 4 ), "Z", "Z is last" );
- 	    is( pag.get( 0 ), "V", "start with V" );
- 	    is( pag_list[ 0 ], "V", "output list after last, start with V" );
- 	    pag.back();
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 0 ], "Q", "output list after last, start with Q" );
- 	    is( pag.get( 0 ), "Q", "Q is for Rewind" );
- 	    is( pag.get( 4 ), "U", "U is for U Rewind" );
- 	    pag.first();
- 	    is( pag.get( 0 ), "A", "Back to A" );
- 	    is( pag.get( 4 ), "E", "Back to E" );
+ 	        var needs = 4;
 
- 	    var bar_hash = hello_app.get_bar_hash().to_hash();
- 	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
- 	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
- 	    is( hpag.page_count(), 10, "10 in buffer" );
+ 	        function meets() {
+ 		        needs--;
+ 		        if( needs == 0 ) {
+ 		            wrap_up();
+ 		        }
+ 	        }
 
- 	    //go through them all and see if there is a-z but no more than that.
- 	    var pag_ok = true;
- 	    var rounds = 0;
- 	    while( pag_ok && hpag.can_fast_forward() ) {
- 		if( rounds > 0 ) {hpag.fast_forward(); }
- 		for( var k in hpag.contents ) {
- 		    bar_hash[ k ]++;
- 		    pag_ok = pag_ok && bar_hash[ k ] == 2;
- 		}
- 		++rounds;
+
+ 	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
+ 	        login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
+ 	        login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
+ 	        login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
  	    }
- 	    for( var k in bar_hash ) {
- 		pag_ok = pag_ok && bar_hash[ k ] == 2;
+ 	    catch( err ) {
+ 	        fail( err )();
+ 	        wrap_up();
  	    }
- 	    is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
- 	    ok( pag_ok, "all letters are present and there are no extra ones" );
+    } //do_tests
 
- 	    var pag = hello_app.wrap_list( { wrap_key : 'key', collection_name : '_foo_array' }, 5 );
- 	    var pag_list = pag.to_list();
- 	    is( pag.full_size(), 26, "26 letters of the alphabet" );
- 	    is( pag.get( 0 ), "A", "first letter" );
- 	    is( pag_list[ 0 ], "A", "first letter output list" );
- 	    is( pag.page_size_limit, 5, "Size of 5" );
- 	    is( pag_list.length, 5, "output list has 5" );
- 	    is( pag.get( 4 ), "E", "fifth letter" );
- 	    is( pag_list[ 4 ], "E", "fifth letter output list" );
- 	    pag.forwards();
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 0 ], "F", "first letter output list after forward" );
- 	    is( pag.get( 0 ), "F", " first after forward" );
- 	    is( pag.get( 4 ), "J", " fifth after forward" );
- 	    is( pag_list[ 4 ], "J", "fifth letter output list after forward" );
- 	    pag.seek( 22 );
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 0 ], "W", "output list; starting at w" );
- 	    is( pag.get( 0 ), "W", "Starting at w" );
- 	    is( pag.get( 3 ), "Z", "Ending with Z" );
- 	    is( pag_list[ 3 ], "Z", "output list; ending with Z" );
- 	    pag.last();
- 	    pag.sort_fields = [];
- 	    pag_list = pag.to_list();
- 	    is( pag_list[ 4 ], "Z", "output list; Z is last" );
- 	    is( pag.get( 4 ), "Z", "Z is last" );
- 	    is( pag.get( 0 ), "V", "start with V" );
- 	    is( pag_list[ 0 ], "V", "output list after last, start with V" );
- 	    pag.back();
- 	    pag_list = pag.to_list();
- 	    pag.sort_fields = undefined;
- 	    pag.search_fields = [];
- 	    is( pag_list[ 0 ], "Q", "output list after last, start with Q" );
- 	    is( pag.get( 0 ), "Q", "Q is for Rewind" );
- 	    is( pag.get( 4 ), "U", "U is for U Rewind" );
- 	    pag.first();
- 	    pag_list = pag.to_list();
- 	    pag.search_values = [];
- 	    is( pag_list[ 0 ], "A", "first in list after first" );
- 	    is( pag_list[ 4 ], "E", "last in list after first" );
- 	    is( pag.get( 0 ), "A", "Back to A" );
- 	    is( pag.get( 4 ), "E", "Back to E" );
+    do_tests();
 
- 	    var bar_hash = hello_app.get_bar_hash().to_hash();
- 	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
- 	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
- 	    is( hpag.page_count(), 10, "10 in buffer" );
-
- 	    //go through them all and see if there is a-z but no more than that.
- 	    var pag_ok = true;
- 	    var rounds = 0;
- 	    while( pag_ok && hpag.can_fast_forward() ) {
- 		if( rounds > 0 ) {hpag.fast_forward(); }
- 		for( var k in hpag.contents ) {
- 		    bar_hash[ k ]++;
- 		    pag_ok = pag_ok && bar_hash[ k ] == 2;
- 		}
- 		++rounds;
- 	    }
- 	    for( var k in bar_hash ) {
- 		pag_ok = pag_ok && bar_hash[ k ] == 2;
- 	    }
- 	    is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
- 	    ok( pag_ok, "all letters are present and there are no extra ones" );
- 	    
-	    test_alpha_hash_paginator( 'obj property wrap', function() { return hello_app.wrap_hash( { collection_name : 'foo_hash' }, 5 ) } );
-	     
-	     var foo_hash_native = {"11":"L","21":"V","7":"H","17":"R","2":"C","22":"W","1":"B","18":"S","0":"A","23":"X","16":"Q","13":"N","25":"Z","6":"G","3":"D","9":"J","12":"M","20":"U","14":"O","15":"P","8":"I","4":"E","24":"Y","19":"T","10":"K","5":"F"};
-	     test_alpha_hash_paginator( 'native wrap', function() { 
-		 return $.yote.wrap_native_container( {
-		     page_size : 5,
-		     hash : foo_hash_native,
-		     cache_key : "K1",
-		     wrap_key  : "WK",
-		     is_list   : false,
-		 } ) } );
-
- 	    // pag = hello_app.wrap_hash( { collection_name : 'foo_hash' }, 5 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
- 	    // // A B  K L   M    N  O  P  Q  R    S  T  C  U  V    W  X  Y  Z   D E  F G H   I J
- 	    // // 0 1 10 11 12   13 14 15 16 17   18 19  2 20 21   22 23 24 25   3 4  5 6 7   8 9
-            // // 0   * seek 2                                                          22 seek
-
- 	    // is( pag.full_size(), 26, "26 letters of the alphabet" );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter" );
- 	    // is( pag_keys[ 0 ], '0', "first index at start" );
- 	    // is( pag.page_size_limit, 5, "Size of 5" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter" );
- 	    // pag.forwards();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "N", " first after forward" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "R", " last after forward" );
-
- 	    // pag.seek( 2 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "K", "small seek k start" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o end" );
-
-
- 	    // pag.seek( 22 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "G", "big seek Starting at G" );
- 	    // is( pag_hash[ pag_keys[ 3 ] ], "J", "big seek Ending with J" );
- 	    // is( pag_keys.length, 4, "keys length after seek" );
- 	    // pag.last();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "J", "J is last" );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "F", "last start with F" );
- 	    // pag.back();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "X", "X is for Rewind first" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "E", "E is for Rewind last" );
- 	    // pag.first();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "A", "Back to A" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "M", "Back to M" );
-
- 	    // // check to see if hash search function works. Search for all 3 keys :
- 	    // //   13 : N, 23 : X, 3 : D
- 	    // pag.set_hashkey_search_criteria( '3' );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
- 	    // is( pag_keys.length, 3, '3 pag keys matching the string 3' );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "N", "first matched 3 key" );
- 	    // is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key" );
- 	    // is( pag_hash[ pag_keys[ 2 ] ], "D", "third matched 3 key" );
- 	    
- 	    // pag = hello_app.wrap_hash( { collection_name : '_foo_hash' }, 5 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // // A B  K L   M    N  O  P  Q  R    S  T  C  U  V    W  X  Y  Z   D E  F G H   I J
- 	    // // 0 1 10 11 12   13 14 15 16 17   18 19  2 20 21   22 23 24 25   3 4  5 6 7   8 9
-            // // 0   * seek 2                                                          22 seek
-
- 	    // is( pag.full_size(), 26, "26 letters of the alphabet" );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter" );
- 	    // is( pag_keys[ 0 ], '0', "first index at start" );
- 	    // is( pag.page_size_limit, 5, "Size of 5" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter" );
- 	    // pag.forwards();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "N", " first after forward" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "R", " last after forward" );
-
- 	    // pag.seek( 2 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "K", "small seek k start" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o end" );
-
-
- 	    // pag.seek( 22 );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "G", "big seek Starting at G" );
- 	    // is( pag_hash[ pag_keys[ 3 ] ], "J", "big seek Ending with J" );
- 	    // is( pag_keys.length, 4, "keys length after seek" );
- 	    // pag.last();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "J", "J is last" );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "F", "last start with F" );
- 	    // pag.back();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "X", "X is for Rewind first" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "E", "E is for Rewind last" );
- 	    // pag.first();
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
- 	    // pag_keys.sort();
-
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "A", "Back to A" );
- 	    // is( pag_hash[ pag_keys[ 4 ] ], "M", "Back to M" );
-
- 	    // // check to see if hash search function works. Search for all 3 keys :
- 	    // //   13 : N, 23 : X, 3 : D
-
- 	    // pag.set_hashkey_search_criteria( '3' );
- 	    // pag_hash = pag.to_hash();
- 	    // pag_keys = Object.keys( pag_hash );
-
- 	    // pag_keys.sort();
- 	    // is( pag_keys.length, 3, '3 pag keys matching the string 3' );
- 	    // is( pag_hash[ pag_keys[ 0 ] ], "N", "first matched 3 key" );
- 	    // is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key" );
- 	    // is( pag_hash[ pag_keys[ 2 ] ], "D", "third matched 3 key" );
-
- 	    var bar_hash = hello_app.get_bar_hash().to_hash();
- 	    var hpag = hello_app.hash_paginator( 'bar_hash', 10 );
- 	    is( hpag.full_size, 26, "26 letters of the alphabet" );
- 	    is( hpag.page_size_limit, 10, "Page Size of 10" );
- 	    is( hpag.page_count(), 10, "10 in buffer" );
- 	    
- 	    
-
- 	    //go through them all and see if there is a-z but no more than that.
- 	    var pag_ok = true;
- 	    var rounds = 0;
- 	    while( pag_ok && hpag.can_fast_forward() ) {
- 		if( rounds > 0 ) {hpag.fast_forward(); }
- 		for( var k in hpag.contents ) {
- 		    bar_hash[ k ]++;
- 		    pag_ok = pag_ok && bar_hash[ k ] == 2;
- 		}
- 		++rounds;
- 	    }
- 	    for( var k in bar_hash ) {
- 		pag_ok = pag_ok && bar_hash[ k ] == 2;
- 	    }
- 	    is( rounds, 3, "took 3 rounds of 10 to go through the alphabet" );
- 	    ok( pag_ok, "all letters are present and there are no extra ones" );
-
- 	    //timing tests
-
- 	    var needs = 4;
-
- 	    function meets() {
- 		needs--;
- 		if( needs == 0 ) {
- 		    wrap_up();
- 		}
- 	    }
-
-
- 	    login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
- 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
- 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
- 	    login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
- 	}
- 	catch( err ) {
- 	    fail( err )();
- 	    wrap_up();
- 	}
-     } //do_tests
-
-     do_tests();
-
- } ); //ready
-
- function test_alpha_hash_paginator( str, pag_maker ) {
-     var pag = pag_maker();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-     // A B  K L   M    N  O  P  Q  R    S  T  C  U  V    W  X  Y  Z   D E  F G H   I J
-     // 0 1 10 11 12   13 14 15 16 17   18 19  2 20 21   22 23 24 25   3 4  5 6 7   8 9
-     // 0   * seek 2                                                          22 seek
-
-     is( pag.full_size(), 26, "26 letters of the alphabet " + '(' + str + ')');
-     is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter"  + '(' + str + ')' );
-     is( pag_keys[ 0 ], '0', "first index at start"  + '(' + str + ')' );
-     is( pag.page_size_limit, 5, "Size of 5"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter"  + '(' + str + ')' );
-     pag.forwards();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "N", " first after forward"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "R", " last after forward"  + '(' + str + ')' );
-
-     pag.seek( 2 );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-     is( pag_hash[ pag_keys[ 0 ] ], "K", "small seek k start"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o end"  + '(' + str + ')' );
-
-
-     pag.seek( 22 );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-     is( pag_hash[ pag_keys[ 0 ] ], "G", "big seek Starting at G"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 3 ] ], "J", "big seek Ending with J"  + '(' + str + ')' );
-     is( pag_keys.length, 4, "keys length after seek"  + '(' + str + ')' );
-     pag.last();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 4 ] ], "J", "J is last"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 0 ] ], "F", "last start with F"  + '(' + str + ')' );
-     pag.back();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "X", "X is for Rewind first"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "E", "E is for Rewind last"  + '(' + str + ')' );
-     pag.first();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "A", "Back to A"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "M", "Back to M"  + '(' + str + ')' );
-
-     // check to see if hash search function works. Search for all 3 keys :
-     //   13 : N, 23 : X, 3 : D
-     pag.set_hashkey_search_criteria( '3' );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-     is( pag_keys.length, 3, '3 pag keys matching the string 3' );
-     is( pag_hash[ pag_keys[ 0 ] ], "N", "first matched 3 key"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 2 ] ], "D", "third matched 3 key"  + '(' + str + ')' );
-     
-     pag = pag_maker();
-     pag.set_hashkey_search_criteria( '' );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     // A B  K L   M    N  O  P  Q  R    S  T  C  U  V    W  X  Y  Z   D E  F G H   I J
-     // 0 1 10 11 12   13 14 15 16 17   18 19  2 20 21   22 23 24 25   3 4  5 6 7   8 9
-     // 0   * seek 2                                                          22 seek
-     is( pag.full_size(), 26, "26 letters of the alphabet after reload"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 0 ] ], "A", "first letter"  + '(' + str + ')' );
-     is( pag_keys[ 0 ], '0', "first index at start"  + '(' + str + ')' );
-     is( pag.page_size_limit, 5, "Size of 5"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "M", "fifth letter"  + '(' + str + ')' );
-     pag.forwards();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "N", " first after forward"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "R", " last after forward"  + '(' + str + ')' );
-
-     pag.seek( 2 );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "K", "small seek k start"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "O", "small seek o end"  + '(' + str + ')' );
-
-
-     pag.seek( 22 );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "G", "big seek Starting at G"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 3 ] ], "J", "big seek Ending with J"  + '(' + str + ')' );
-     is( pag_keys.length, 4, "keys length after seek"  + '(' + str + ')' );
-     pag.last();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 4 ] ], "J", "J is last"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 0 ] ], "F", "last start with F"  + '(' + str + ')' );
-     pag.back();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "X", "X is for Rewind first"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "E", "E is for Rewind last"  + '(' + str + ')' );
-     pag.first();
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-     pag_keys.sort();
-
-     is( pag_hash[ pag_keys[ 0 ] ], "A", "Back to A"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 4 ] ], "M", "Back to M"  + '(' + str + ')' );
-
-     // check to see if hash search function works. Search for all 3 keys :
-     //   13 : N, 23 : X, 3 : D
-
-     pag.set_hashkey_search_criteria( '3' );
-     pag_hash = pag.to_hash();
-     pag_keys = Object.keys( pag_hash );
-
-     pag_keys.sort();
-     is( pag_keys.length, 3, '3 pag keys matching the string 3' );
-     is( pag_hash[ pag_keys[ 0 ] ], "N", "first matched 3 key"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 1 ] ], "X", "second matched 3 key"  + '(' + str + ')' );
-     is( pag_hash[ pag_keys[ 2 ] ], "D", "third matched 3 key"  + '(' + str + ')' );
-
- } //test_alpha_hash_paginator( str, pag )  
-
+} ); //ready
 </script>
 
 </head>

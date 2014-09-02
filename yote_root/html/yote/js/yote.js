@@ -24,6 +24,7 @@ if( typeof $.yote === 'object' ) {
 
 $.yote = {
     url:yote_scr_url,
+    has_updated :false,
     guest_token:0,
     token:0,
     port:null,
@@ -33,7 +34,6 @@ $.yote = {
     debug:false,
     app:null,
     root:null,
-    wrap_cache:{},
     need_reinit:false,
 
     _ids:0,
@@ -137,6 +137,8 @@ $.yote = {
 	        return [ r.get(0), r.get(1), r.get(2), r.get(3) ];
 	    }
     }, //fetch_initial
+
+    _subj_has_get_p : function() { return true; },
 
     get_by_id:function( id ) {
 	    return $.yote.objs[id+''] || $.yote.fetch_default_app().fetch(id).get(0);
@@ -247,7 +249,9 @@ $.yote = {
 
 		            if( typeof data.err === 'undefined' ) {
 			            //dirty objects that may need a refresh
+                        $.yote.has_updated = false;
 			            if( typeof data.d === 'object' ) {
+                            $.yote.has_updated = true;                            
 			                for( var oid in data.d ) {
 				                if( root._is_in_cache( oid ) ) {
 				                    
@@ -416,168 +420,6 @@ $.yote = {
 	    } ).submit();
     }, //upload_message
 
-    wrap_native_container:function( args ) { // args {  list : somelist, cache_key : key identifying item, wrap_key : key identifying template, field_key : other key identifying item }
-	    /* keys explained :
-           cache_key - identifies this list
-		   wrap_key  - identifies which template the list is used in
-		   field_key - 
-	    */
-	    if( ! $.yote.wrap_cache[ args.cache_key ] ) {
-	        $.yote.wrap_cache[ args.cache_key ] = {};
-	    }
-	    if( $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] ) {
-	        var wrapper = $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ];
-	        wrapper.list = args.list || [];
-	        wrapper.hash = args.hash || {};
-	        return wrapper;
-	    }
-	    var ret = {
-	        wrap_type : 'native',
-	        list : args.list,
-	        hash : args.hash,
-	        page_size_limit : args.page_size * 1,
-	        start:0,
-	        is_list : args.is_list,
-	        id : $.yote._next_id(),
-	        page_size : function() { if( typeof this.page_size_limit !== 'undefined' && ! Number.isNaN( this.page_size_limit ) ) return this.page_size_limit;
-				                     this.page_size_limit = 1* this.full_size(); 
-				                     return this.page_size_limit;
-				                   },
-	        full_size:function() { return this.is_list ?  this.list.length : Object.size( this.hash ) },
-	        to_list : function() {
-		        var me = this;
-		        var olist = me.list;
-		        if( me.sort_fields.length > 0 ) {
-		            olist = olist.sort( function( a, b ) {
-			            for( var i=0; i < me.sort_fields.length; i++ ) {
-			                if( me.reversed_sort_idx[ i ] ) {
-				                var c = a;
-				                a = b;
-				                b = c;
-			                }
-			                if( typeof a === 'object' && typeof b === 'object' ) {
-				                if( me.is_number_sort )
-				                    return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
-				                a = a.get( me.sort_fields[i] ).toLowerCase();
-				                b = b.get( me.sort_fields[i] ).toLowerCase();
-			                    //	return a > b ? 1 : a < b ? -1 : 0;
-				                return a - b;
-			                }
-			                return 0;
-			            }
-		            } );
-		            if( me.sort_reverse ) olist.reverse();
-		        }
-		        var ret = [];
-		        me.length = 0;
-		        for( var i=0; i < olist.length; i++ ) {
-		            if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
-			            if( me.search_fields && me.search_fields.length > 0 ) {
-			                var match = false;
-			                for( var j=0; j<me.search_values.length; j++ ) {
-				                for( var k=0; k<me.search_fields.length; k++ ) {
-				                    match = match || typeof olist[ i ] === 'object' && olist[ i ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
-				                }
-			                }
-			                if( match ) {
-				                me.length++;
-				                if( i >= me.start && ret.length < me.page_size() )
-				                    ret.push( olist[i] );
-			                }
-			            }
-		            }
-		            else {
-			            if( i >= me.start && ( me.page_size()==0 || ret.length < me.page_size()) ) {
-			                me.length++;
-			                ret.push( olist[i] );
-			            }
-		            }
-		        }
-		        return ret;
-	        },
-	        to_hash : function() {
-		        var me = this;
-		        var ret = {};
-		        if( ! me.hash ) return ret;
-		        var ohash  = me.hash;
-		        var hkeys = Object.keys( ohash );
-
-		        hkeys.sort();
-		        if( me.sort_reverse ) hkeys.reverse();
-
-		        me.length = 0;
-		        for( var i=0; i < hkeys.length && me.length < me.page_size(); i++ ) {
-		            if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
-			            if( me.search_fields && me.search_fields.length > 0 ) {
-			                var match = false;
-			                for( var j=0; j<me.search_values.length; j++ ) {
-				                for( var k=0; k<me.search_fields.length; k++ ) {
-				                    match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
-				                }
-			                }
-			                if( match ) {
-				                var k = hkeys[ i ];
-				                if( i >= me.start && me.length < me.page_size() &&
-				                    ( ! me.hashkey_search_value ||
-				                      k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
-				                {
-				                    ret[ k ] = ohash[ k ];
-				                    me.length++;
-				                }
-			                }
-			            }
-		            }
-		            else {
-			            if( i >= me.start && me.length < me.page_size() ) {
-			                var k = hkeys[ i ];
-			                if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
-				                ret[ k ] = ohash[ k ];
-				                me.length++;
-			                }
-			            }
-		            }
-		        }
-		        return ret;
-	        },
-	        is_number_sort : args.is_number_sort,
-	        remove : function( idx ) { return delete this.list[ idx ]; },
-	        remove_item : function( item ) { 
-                if( ! is_list ) {
-                    console.log( "Error, remove_item called on hash. It should be called on a list." );
-                    return;
-                }
-                
-                for( var i=0; i<this.list.length; i++ ) {
-                    var list_item = this.list.length[ i ];
-                    if( ( typeof item === 'object' && item.is && item.is( list_item ) ) || ( item == list_item ) ) {
-                        return delete this.list[ i ]; 
-                    }
-                }
-            }, //remove_item
-	        set_hashkey_search_criteria:function( hashkey_search ) { 
-		        hs = hashkey_search || '';
-		        this.hashkey_search_value = hs.split(/ +/);
-	        },
-	        set_search_criteria:function( hashkey_search ) {},
-	        get:function( idx ) { return this.list[ idx ] },
-	        seek:function( topos ) { this.start = topos*1; },
-	        forwards:function( ) { this.start = this.start*1 +  this.page_size()*1; if( this.start >= this.full_size() ) this.start = this.full_size() - 1; },
-	        can_rewind:function( ) { return this.start > 0; },
-	        can_fast_forward:function( ) { return this.start + this.page_size_limit*1 < this.full_size(); },
-	        back:function( ) { this.start -= this.page_size(); if( this.start < 0 ) this.start = 0; },
-	        first:function( ) { this.start = 0; },
-	        last:function( ) { this.start = this.full_size() - this.page_size(); },
-	        search_values : args.search_value || [],
-	        search_fields : args.search_field || [],
-	        sort_fields   : args.sort_fields  || [],
-	        set_sort_fields : function( sf ) { this.sort_fields = sf; },
-	        set_reversed_sort_idx : function( sf ) { this.reversed_sort_idx = sf; },
-	        reversed_sort_idx : args.reversed_sort_idx || [], //which index to reverse
-	        hashkey_search_value : args.hashkey_search_value || undefined,
-	    };
-	    $.yote.wrap_cache[ args.cache_key ][ args.wrap_key ] = ret;
-	    return ret;
-    },
 
     _cache_size:function() { //used for unit tests
         var i = 0;
@@ -620,10 +462,6 @@ $.yote = {
 	        $.yote.util.refresh_ui();
 	    }
     },
-    clear_wrap_cache:function() { 
-        $.yote.wrap_cache = {};
-    },
-
     // TODO : use prototype for the _create_obj
     _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
 	    var root = this;
@@ -658,402 +496,7 @@ $.yote = {
 		        sort:function(sortfun) {
 		            var res = this.values().sort( sortfun );
 		            return res;
-		        },
-		        wrap_list:function( args, size ) {
-		            args.size = size;
-		            return this.wrap( args );
-		        },
-		        wrap_hash:function( args, size ) {
-		            args.is_hash = true;
-		            args.size = size;
-		            return this.wrap( args );
-		        },
-		        wrap:function( args ) {
-		            var ctx = args.context || {};
-		            var host_obj = this;
-		            var fld = args.collection_name;
-
-		            var cache_key = host_obj.id;
-
-		            if( ! $.yote.wrap_cache[ cache_key ] ) {
-			            $.yote.wrap_cache[ cache_key ] = {};
-		            }
-		            // in order to preserve the pagination state of this list wrapper accross refresh,
-		            // the internal pagination wrapper object is stored in a cache. The cache is keyed by
-		            //  a cache key that is the host objects id, the wrap_key which identifies which template
-		            // this is in, and a fld which is the collection name in the host object.
-
-		            // TODO : better wrap_key. Suggest it be a path of templates that traces to the root html document.
-		            // NEED to then have a parent_template functioning well
-		            if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
-			            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
-		            }
-		            if( $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] ) {
-			            return $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ];
-		            }
-		            var ol, page_out = false;
-		            // check to see if this object is already loaded in the cache.
-		            if( $.yote._is_in_cache( '' + host_obj._d[ fld ] ) ) {
-			            ol = host_obj.get( fld ).length();
-		            }
-		            else {
-			            ol = host_obj.count( fld );
-			            // see if the whole list can be obtained at once
-			            page_out = fld.charAt( 0 ) == '_'  || ol > (ctx.threshhold || 200);
-		            }
-		            if( ! $.yote.wrap_cache[ cache_key ] ) {
-			            $.yote.wrap_cache[ cache_key ] = {};
-		            }
-		            if( ! $.yote.wrap_cache[ cache_key ][ args.wrap_key ] ) {
-			            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
-		            }
-		            if( ! page_out ) {
-			            var collection_obj = host_obj.get( fld );
-			            if( ! collection_obj ) {
-			                console.log( "warning '" + fld + "' not found in object. defaulting to page out list." );
-			                page_out = true;
-                            //remove this from the cache since this might be filled in on refresh
-                            $.yote.wrap_cache[ cache_key ][ args.wrap_key ] = {};
-			            }
-		            }
-		            var ret = {
-			            wrap_type : 'collection obj',
-			            page_out      : page_out,
-			            collection_obj     : collection_obj,
-			            id                 : host_obj.id,
-			            host_obj           : host_obj,
-			            field              : fld,
-			            start              : ctx.start || 0,
-			            page_size_limit     : 1*args.size || 0,
-			            search_values : ctx.search_value || [],
-			            search_fields : ctx.search_field || [],
-			            sort_fields   : ctx.sort_fields  || [],
-			            is_number_sort : ctx.is_number_sort,
-			            reversed_sort_idx : ctx.reversed_sort_idx || [], //which index to reverse
-			            set_sort_fields : function( sf ) { this.sort_fields = sf; },
-			            set_reversed_sort_idx : function( sf ) { this.reversed_sort_idx = sf; },
-			            hashkey_search_value : ctx.hashkey_search_value || undefined,
-			            sort_reverse  : ctx.sort_reverse || undefined,
-			            is_hash       : args.is_hash,
-			            full_size : function() {
-			                var me = this;
-			                if( me.page_out ) {
-				                var c = 1 * me.host_obj.count( me.field );
-				                return c;
-			                }
-			                if( me.is_hash ) {
- 				                return Object.size( me.collection_obj._d );
-			                }
-			                return me.collection_obj.length();
-			            }, //full_size
-			            to_list : function() {
-			                var me = this;
-			                if( me.page_out ) {
-				                me.length = 1*me.host_obj.count( {
-				                    name  : me.field,
-				                    search_fields : me.search_fields,
-				                    search_terms  : me.search_values,
-				                } );
-				                var res = me.host_obj.paginate( {
-				                    name  : me.field,
-				                    limit : me.page_size_limit * 1,
-				                    skip  : me.start,
-				                    search_fields : me.search_fields,
-				                    search_terms  : me.search_values,
-				                    reverse : me.sort_reverse,
-				                    reversed_orders : me.reversed_sort_idx,
-				                    sort_fields : me.sort_fields
-				                } );
-				                return res ? res.to_list() : [];
-			                }
-			                else {
-				                var ret = [];
-				                if( ! me.collection_obj ) return ret;
-				                var olist = me.collection_obj.to_list();
-				                if( me.sort_fields.length > 0 ) {
-				                    olist = olist.sort( function( a, b ) {
-					                    for( var i=0; i < me.sort_fields.length; i++ ) {
-					                        if( me.reversed_sort_idx[ i ] ) {
-						                        var c = a;
-						                        a = b;
-						                        b = c;
-					                        }
-					                        if( typeof a === 'object' && typeof b === 'object' ) {
-						                        if( me.is_number_sort )
-						                            return a.get( me.sort_fields[i] ) - b.get( me.sort_fields[i] );
-						                        a = a.get( me.sort_fields[i] ).toLowerCase();
-						                        b = b.get( me.sort_fields[i] ).toLowerCase();
-						                        return a > b ? 1 : a < b ? -1 : 0;
-					                        }
-					                        return 0;
-					                    }
-				                    } );
-				                }
-
-				                if( me.sort_reverse ) {
-                                    olist = olist.reverse();
-                                }
-				                me.length = 0;
-				                for( var i=0; i < olist.length; i++ ) {
-				                    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
-					                    if( me.search_fields && me.search_fields.length > 0 ) {
-					                        var match = false;
-					                        for( var j=0; j<me.search_values.length; j++ ) {
-						                        for( var k=0; k<me.search_fields.length; k++ ) {
-						                            match = match || typeof olist[ i ] === 'object' && olist[ i ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
-						                        }
-					                        }
-					                        if( match ) {
-						                        me.length++;
-						                        if( i >= me.start && ret.length < me.page_size_limit )
-						                            ret.push( olist[i] );
-					                        }
-					                    }
-				                    }
-				                    else {
-					                    if( i >= me.start && ( me.page_size_limit==0 || ret.length < me.page_size_limit) ) {
-					                        me.length++;
-					                        ret.push( olist[i] );
-					                    }
-				                    }
-				                }
-				                return ret;
-			                }
-			            },
-			            to_hash : function() {
-			                var me = this;
-			                if( me.page_out ) {
-				                me.length = 1*me.host_obj.count( {
-				                    name  : me.field,
-				                    search_fields : me.search_fields,
-				                    search_terms  : me.search_values,
-				                    hashkey_search : me.hashkey_search_value,
-				                } );
-				                var res = me.host_obj.paginate( {
-				                    name  : me.field,
-				                    limit : me.page_size_limit*1,
-				                    skip  : me.start,
-				                    search_fields : me.search_fields,
-				                    search_terms  : me.search_values,
-				                    hashkey_search : me.hashkey_search_value,
-				                    reverse : me.sort_reverse,
-				                    sort_fields : me.sort_fields,
-				                    return_hash : true,
-				                } );
-				                return res ? res.to_hash() : {};
-			                }
-			                else {
-				                var ret = {};
-				                if( ! me.collection_obj ) return ret;
-				                var ohash  = me.collection_obj.to_hash();
-				                var hkeys = me.collection_obj.keys();
-
-				                hkeys.sort();
-				                if( me.sort_reverse ) hkeys.reverse();
-
-				                me.length = 0;
-
-				                for( var i=0; i < hkeys.length && me.length < me.page_size_limit; i++ ) {
-				                    if( me.search_values && me.search_fields && me.search_values.length > 0 && me.search_fields.length > 0 ) {
-					                    if( me.search_fields && me.search_fields.length > 0 ) {
-					                        var match = false;
-					                        for( var j=0; j<me.search_values.length; j++ ) {
-						                        for( var k=0; k<me.search_fields.length; k++ ) {
-						                            match = match || typeof ohash[ hkeys[ i ] ] === 'object' && ohash[ hkeys[ i ] ].get( me.search_fields[k] ).toLowerCase().indexOf( me.search_values[ j ].toLowerCase() ) != -1;
-						                        }
-					                        }
-					                        if( match ) {
-						                        var k = hkeys[ i ];
-						                        if( i >= me.start && me.length < me.page_size_limit &&
-						                            ( ! me.hashkey_search_value ||
-						                              k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) )
-						                        {
-						                            ret[ k ] = ohash[ k ];
-						                            me.length++;
-						                        }
-					                        }
-					                    }
-				                    }
-				                    else {
-					                    if( i >= me.start && me.length < me.page_size_limit ) {
-					                        var k = hkeys[ i ];
-					                        if( ! me.hashkey_search_value || k.toLowerCase().indexOf( me.hashkey_search_value ) != -1 ) {
-						                        ret[ k ] = ohash[ k ];
-						                        me.length++;
-					                        }
-					                    }
-				                    }
-				                }
-				                return ret;
-			                }
-			            }, //to_hash
-			            set_hashkey_search_criteria:function( hashkey_search ) {
-			                hs = hashkey_search || '';
-			                this.hashkey_search_value = hs.split(/ +/);
-			            },
-			            get_hashkey_search_criteria:function() {
-			                return this.hashkey_search_value ? this.hashkey_search_value.join(' ') : '';
-			            },
-			            set_search_criteria:function( fields, values ) {
-			                if( ! values ) {
-				                this.search_fields = undefined;
-				                return;
-			                }
-			                var has_val = false;
-			                for( var i=0; i<values.length; i++ ) {
-				                has_val = has_val || (values[ i ] && values[ i ] != '' );
-			                }
-			                if( has_val ) {
-				                this.search_fields = fields;
-				                this.search_values = values;
-			                }
-			                else {
-				                this.search_fields = undefined;
-			                }
-			            }, //set_search_criteria
-			            get : function( idx ) {
-			                if( this.page_out ) {
-				                if( this.is_hash )
-				                    return this.host_obj.hash_fetch( { name : this.field, index : idx + this.start } );
-				                return this.host_obj.list_fetch( { name : this.field, index : idx + this.start } );
-			                }
-			                if( this.is_hash ) {
-				                return this.collection_obj.get( idx );
-			                }
-			                return this.collection_obj.get( this.start + idx );
-			            }, //get
-			            add_item : function ( item ) {
-                            if( this.is_hash ) {
-                                console.log( "Error, add_item called on hash. It should be called on a list." );
-                                return;
-                            }
-                            return this.host_obj.add_to( { name : this.field, items : [ item ] } );
-                        },
-			            hash_item : function ( key, item ) {
-                            if( ! this.is_hash ) {
-                                console.log( "Error, hash_item called on list. It should be called on a hash." );
-                                return;
-                            }
-                            return this.host_obj.hash( { name : this.field, value : item, key : key } );
-                        },
-
-			            remove_item : function ( item ) {
-                            if( this.is_hash ) {
-                                console.log( "Error, remove_item called on hash. It should be called on a list." );
-                                return;
-                            }
-                            return this.host_obj.remove_from( { name : this.field, items : [ item ] } );
-                        },
-			            remove : function ( idx ) {
-			                var ret = this.is_hash ? 
-				                this.host_obj.delete_key( { name : this.field, index : idx } ) :
-			                this.host_obj.list_delete( { name : this.field, index : idx + this.start } );
-			                
-			                var fs = this.full_size();
-			                if( this.start >= fs )
-				                this.start = fs - 1;
-			                return ret;
-			            }, //remove
-			            seek:function(topos) {
-			                this.start = topos;
-			            },
-			            back_one:function() {
-			                this.start--;
-			            },
-			            forwards:function(){
-			                var towards = this.start + this.page_size_limit;
-			                this.start = towards > this.full_size() ? (this.length-1) : towards;
-			            },
-			            can_rewind : function() {
-			                return this.start > 0;
-			            },
-			            can_fast_forward : function() {
-			                return this.start + this.page_size_limit < this.full_size();
-			            },
-			            back:function(){
-			                var towards = this.start - (this.page_size_limit);
- 			                this.start = towards < 0 ? 0 : towards;
-			            },
-			            first:function(){
-			                this.start = 0;
-			            },
-			            last:function(){
-			                this.start = this.full_size() - this.page_size_limit;
-			            }
-		            };
-		            $.yote.wrap_cache[ cache_key ][ args.wrap_key ][ fld ] = ret;
-		            return ret;
-		        }, //wrap
-
-		        paginator:function( fieldname, is_hash, size, start ) {
-		            var obj = this;
-		            var st = start || 0;
-		            var pag = {
-			            field      : fieldname,
-			            full_size  : 1 * obj.count( fieldname ),
-			            page_size_limit  : size*1,
-			            start      : st,
-			            contents   : [],
-			            is_hash    : is_hash,
-			            get : function( idx ) {
-			                return this.contents[ idx ];
-			            },
-			            page_count : function() {
-			                if( this.is_hash ) {
-				                return Object.size( this.contents );
-			                } else {
-				                return this.contents.length;
-			                }
-			            },
-			            seek : function( idx ) {
-			                if( this.is_hash ) {
-				                this.contents = obj.paginate( { name : this.field, limit : this.page_size_limit, skip : idx, return_hash : true } ).to_hash();
-			                }
-			                else {
-				                var res = obj.paginate( { name : this.field, limit : this.page_size_limit, skip : idx } );
-				                this.contents = [];
-				                for( var i=0; i < res.length(); i++ ) {
-				                    this.contents.push( res.get( i ) );
-				                }
-			                }
-			                this.start = idx;
-			            },
-			            can_rewind : function() {
-			                return this.start > 0;
-			            },
-			            rewind : function() {
-			                if( this.start > 0 ) {
-				                var to = this.start - this.page_size_limit;
-				                if( to < 0 ) { to = 0 };
-				                this.seek( to );
-			                }
-			            },
-			            can_fast_forward : function() {
-			                return this.start + this.page_size_limit < this.full_size;
-			            },
-			            fast_forward : function() {
-			                var to = this.start + this.page_size_limit;
-			                if( to < this.full_size ) {
-				                this.seek( to );
-			                }
-			            },
-			            end: function() {
-			                this.seek( this.full_size - this.page_size_limit );
-			            },
-			            to_beginning : function() {
-			                this.seek( 0 );
-			            }
-		            };
-		            pag.seek( st );
-		            return pag;
-		        }, // paginator
-		        list_paginator:function( listname, size, start ) {
-		            return this.paginator( listname, false, size, start );
-		        },
-		        hash_paginator:function( hashname, size, start ) {
-		            return this.paginator( hashname, true, size, start );
 		        }
-
 	        };
 	        if( o.class == 'HASH' ) {
 		        o.to_hash = function() {
@@ -1238,7 +681,6 @@ $.yote = {
     _dump_cache:function() {
         this.objs = {};
 	    this.apps = {};
-	    this.wrap_cache = {};
 	    this.yote_root   = undefined;
 	    this.default_app = undefined;
         this._app_id = undefined;
