@@ -59,12 +59,14 @@ sub start {
 sub prefetch {
     my( $self, $data, $acct ) = @_;
     if( $acct && $acct->is_root() ) {
-        return [ map { $_, 
+        return [ $self->get_entries(),
+                 ( map { $_, 
                        @{$_->get_repeats([])}, 
                        $_->get_repeats(),
                        @{$_->get_scheduled_times([])},
                        $_->get_scheduled_times() } 
-                 @{ $self->get_entries([]) }, $self->get_entries ];
+                 @{ $self->get_entries([]) } )
+            ];
         
     } 
 }

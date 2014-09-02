@@ -79,12 +79,11 @@ if we are our experiences then we are both sides of them.
 
       $().ready(function(){
           $.yote.debug = false;
+$.yote.debug = true;
 	      $.yote.templates.import_templates( '/templates/default_templates.html' );
 	      $.yote.templates.import_templates( '/templates/yote_templates.html' );
 	      $.yote.init(  );
-$.yote.debug = true;
           $.yote.fetch_root().admin_prefetch();
-$.yote.debug = false;
 	      $.yote.templates.init();
 	      $.yote.templates.refresh();
       });
