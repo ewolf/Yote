@@ -44,47 +44,80 @@ $.yote.templates = {
 
     _pag_list_cache : {},
     _pag_hash_cache : {},
-    list_paginator:function( args ) {
-        var arry = args.array;
-        var size = args.size;
-        var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
-        var node = $.yote.templates._pag_list_cache[ key ];
-        if( ! key || (! node && ( ! arry || ! size ) ) ) {
-            throw new Exception( 'list paginator called without array and or size' );
-        }
-        if( ! node ) {
-            var start = args.start || 0;
-            node = {
-                _start : start,
-                _size  : size,
-                to_list : function() {
-                    return this._arry.slice( this._start, this._start + this._size );
-                }
-            };
-            $.yote.templates._pag_list_cache[ key ] = node;
-        }
-        if( arry )
-            node._arry = arry;
-        return node;
-    }, //list_paginator
 
-    hash_paginator:function( args ) {
+    wrap_list:function( args ) {
+        return $.yote.templates.data_wrapper( args );
+    }, //wrap_list
+
+    wrap_hash:function( args ) {
+        return $.yote.templates.data_wrapper( args, true );
+    }, //wrap_hash
+
+    data_wrapper:function( args, is_hash ) {
+        var arry = args.array;
         var hash = args.hash;
         var size = args.size;
         var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
-        var node = $.yote.templates._pag_hash_cache[ key ];
-        if( ! key || (! node && ( ! hash || ! size ) ) ) {
-            throw new Exception( 'hash paginator called without hash and or size' );
+        var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
+        if( ! key || (! node && ( (! arry && ! hash ) ) ) ) {
+            if( is_hash ) 
+                throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
+            else
+                throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
         }
         if( ! node ) {
             var start = args.start || 0;
             node = {
                 _start : start,
                 _size  : size,
-                keys : function() {
-                    return Object.keys( this._hash ).sort().slice( this._start, this._start + this._size );
+                _filter_function     : undefined,
+                _sort_function       : undefined,
+                _transform_function  : undefined,
+                add_filter : function( filter_fun ) {
+                    this._filter_function = filter_fun;
                 },
-                slice : function() {
+                add_sort : function( sort_fun ) {
+                    this._sort_function = sort_fun;
+                },
+                add_transform : function( trans_fun ) {
+                    this._transform_function = filter_fun;
+                },
+                to_list : function() {
+                    var ret = this._arry.slice( 0 );
+                    if( typeof this._filter_function !== 'undefined' ) {
+                        ret = this._arry.map( this._filter_function );
+                    }
+                    if( typeof this._sort_function !== 'undefined' ) {
+                        ret = ret.sort( this._sort_function );
+                    }
+                    if( typeof this._start !== 'undefined' || typeof this._size !== 'undefined' ) {
+                        if( typeof this._size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._size );
+                        else
+                            ret = ret.slice( this._start );
+                    }
+                    return ret;
+                },
+                keys : function() {
+                    var ret = Object.keys( this._hash );
+                    if( typeof this._filter_function !== 'undefined' ) {
+                        var new_ret = [];
+                        for( var i=0; i<ret.length; i++ ) {
+                            var k = ret[ i ];
+                            if( this._filter_function( this._hash[ k ], k ) )
+                                new_ret.push( k );
+                        }
+                    } 
+                    ret = ret.sort( this._sort_function );
+                    if( typeof this._start !== 'undefined' || typeof this._size !== 'undefined' ) {
+                        if( typeof this._size !== 'undefined' ) 
+                            ret = ret.slice( this._start, this._start + this._size );
+                        else
+                            ret = ret.slice( this._start );
+                    }
+                    return ret;
+                },
+                to_hash : function() {
                     var h = this._hash; 
                     var r = {};
                     var k = this.keys();
@@ -94,11 +127,17 @@ $.yote.templates = {
                     return r;
                 }
             };
-            $.yote.templates._pag_hash_cache[ key ] = node;
+            if( is_hash )
+                $.yote.templates._pag_hash_cache[ key ] = node;
+            else
+                $.yote.templates._pag_list_cache[ key ] = node;
         }
-        node._hash = hash;
+        if( arry )
+            node._arry = arry;
+        if( hash )
+            node._hash = hash;
         return node;
-    }, //hash_paginator
+    }, //data_wrapper
         
     register_template:function( key, value ) {
 	    $.yote.templates._compile_template( key, value );

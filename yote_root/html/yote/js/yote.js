@@ -872,3 +872,4 @@ if( ! Object.clone ) {
         return clone;
     }
 }
+

@@ -102,7 +102,7 @@
 <script type="text/template" class="yote_template_definition" template_name="_hashfillpagrow">
    <???
       var template = ctx.args[ 0 ]; // fillpagrow
-      var hash     = ctx.vars[ ctx.args[ 1 ] ].slice();
+      var hash     = ctx.vars[ ctx.args[ 1 ] ].to_hash();
       var key      = ctx.args[ 2 ];
       var more = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
       ctx.vars._ = hash[ key ];

@@ -79,6 +79,7 @@ if we are our experiences then we are both sides of them.
       $().ready(function(){
           $.yote.debug = false;
 	      $.yote.templates.import_templates( '/templates/default_templates.html' );
+	      $.yote.templates.import_templates( '/templates/yote_templates.html' );
 	      $.yote.init(  );
 	      $.yote.templates.init();
 	      $.yote.templates.refresh();
@@ -323,7 +324,14 @@ if we are our experiences then we are both sides of them.
 
    <script type="text/template" class="yote_template_definition" template_name="Cron">
      <???
-         ctx.vars.cron = ctx._app_.cron();
+        ctx.vars.cron = ctx._app_.cron();
+        var cron_pag = $.yote.templates.list_paginator( {
+            array : ctx.vars.cron.get( 'entries' ), 
+            size  : 5,
+            initial_start : 0,
+            ctx : ctx,
+        } );
+alert(cron_pag.to_list());
      ???>
      <A NAME="Cron">
        <H3>Crons</H3>
@@ -331,7 +339,7 @@ if we are our experiences then we are both sides of them.
            <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
            <th>Schedule</th> <th>Delete</th>
          </tr>
-         <@ Cron_Row cron@entries 5 @>
+         <$$ listpaginate Cron_Row cron@entries $$>
        </table>
        <$$ Paginator cron@entries $$> <br>
 
@@ -399,7 +407,16 @@ if we are our experiences then we are both sides of them.
         var root = $.yote.fetch_root();
         ctx.vars.root = root;
         var app_count = root.count( '_apps' );
-        var pag = root.wrap_hash( { collection_name : '_apps', cache_key : 'foo', wrap_key : 'bar' }, app_count );
+        var pag = $.yote.hash_paginator( {
+            obj  : root,
+            hash : 
+            size  : 5,
+            initial_start : 0,
+            ctx : ctx,
+        } );
+
+root.wrap_hash( { collection_name : '_apps', cache_key : 'foo', wrap_key : 'bar' }, app_count );
+
         var app_hash = pag.to_hash();
         var apps = {};
         for( var k in app_hash ) {

@@ -182,13 +182,13 @@ $().ready(function(){
        <???
                ctx.vars.array = [ "A", "C", "B", "D", "E" ];
                ctx.vars.hash = {  Apple : 'butter', Spinach : 'wild', Daikon : 'radish', Lemon : 'yellow', Pea : 'green'};
-               ctx.vars.array_pag = $.yote.templates.list_paginator( {
+               ctx.vars.array_pag = $.yote.templates.wrap_list( {
                    array : ctx.vars.array, 
                    size  : 3,
                    initial_start : 0,
                    ctx : ctx,
                } );
-               ctx.vars.hash_pag = $.yote.templates.hash_paginator( {
+               ctx.vars.hash_pag = $.yote.templates.wrap_hash( {
                    hash  : ctx.vars.hash, 
                    size  : 3,
                    initial_start : 0,
@@ -196,7 +196,7 @@ $().ready(function(){
                } );
             if( ctx.args && ctx.args.length == 1 ) {
                 ctx.vars.array_pag._start = 4;
-                ctx.vars.hash_pag._start = 3;
+                ctx.vars.hash_pag._start  = 3;
             }
            ???>
        ARRAY
