@@ -29,12 +29,13 @@ $.yote.message = function( params ) {
         total_js_time += (window.performance.now() - start_js_time);
     }
 
-    return $.yote.old_message( params );
+    var ret =  $.yote.old_message( params );
 
     // excludes io from js performance
     if( js_timer_active ) {
         start_js_time = window.performance.now();
     }
+    return ret;
 }
 
 
