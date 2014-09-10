@@ -20,21 +20,19 @@
     var tests = 0;
 var failed = 0;
 var calls_made = 0;
-var total_js_time = 0, start_js_time, js_timer_active = true;
+var total_js_time = 0, start_js_time;
 var t2;
 $.yote.old_message = $.yote.message;
 $.yote.message = function( params ) {
     calls_made++;
-    if( js_timer_active ) {
-        total_js_time += (window.performance.now() - start_js_time);
-    }
+
+    total_js_time += (window.performance.now() - start_js_time);
 
     var ret =  $.yote.old_message( params );
 
     // excludes io from js performance
-    if( js_timer_active ) {
-        start_js_time = window.performance.now();
-    }
+    start_js_time = window.performance.now();
+
     return ret;
 }
 
@@ -292,7 +290,7 @@ $().ready(function(){
  		            wrap_up();
  		        }
  	        }
-            js_timer_active = false;
+
             total_js_time += (window.performance.now() - start_js_time);
 
  	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
