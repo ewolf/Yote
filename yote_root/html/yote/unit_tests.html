@@ -78,7 +78,7 @@ function wrap_up() {
     $.yote.logout();
     $('#tests').append( "<br>tests completed in " + Math.round(window.performance.now() - t2)/1000 + " seconds" );
 
-    $('#tests').append( "<br>javascript time : " + Math.round(total_js_time)/1000 + " seconds" );
+    $('#tests').append( "<br>javascript time : " + Math.round(total_js_time) + " ms" );
 } //wrap_up
 var step_count = 0;
 function step( msg ) {
