@@ -20,10 +20,21 @@
     var tests = 0;
 var failed = 0;
 var calls_made = 0;
+var total_js_time = 0, start_js_time, js_timer_active = true;
+var t2;
 $.yote.old_message = $.yote.message;
 $.yote.message = function( params ) {
     calls_made++;
+    if( js_timer_active ) {
+        total_js_time += (window.performance.now() - start_js_time);
+    }
+
     return $.yote.old_message( params );
+
+    // excludes io from js performance
+    if( js_timer_active ) {
+        start_js_time = window.performance.now();
+    }
 }
 
 
@@ -52,7 +63,7 @@ function ok( result, msg ) {
     if( result === true ) {
  	    pass( msg )();
     }
-    else { 
+    else {
  	    fail( msg )();
     }
 }
@@ -63,37 +74,36 @@ function wrap_up() {
     } else {
         $('#results').append( "Passed all " + tests + " tests" );
     }
-    var d = new Date();
-    var t2 = d.getTime();
     $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
  				                      pass( "remove login" ), fail( "remove login" ) );
     $.yote.logout();
-    var d2 = new Date();
-    $('#tests').append( "<br>tests completed in " + Math.round(d2.getTime() - t2) + " ms" );
+    $('#tests').append( "<br>tests completed in " + Math.round(window.performance.now() - t2)/1000 + " seconds" );
+
+    $('#tests').append( "<br>javascript time : " + Math.round(total_js_time)/1000 + " seconds" );
 } //wrap_up
 var step_count = 0;
 function step( msg ) {
     console.log( "step " + step_count + ':' + msg  );
     step_count++;
 }
-$().ready(function(){ 
-    /* check 
+$().ready(function(){
+    /* check
      *    account creation   ^
      *    removing account   ^
      *    login              ^
      *    app fetching       ^
      *    object methods     ^
      *    returned scalar    ^
-     *    array              
+     *    array
      *    hash
      *    object
      */
     function do_tests() {
         // init yote
+        $.yote.debug = false;
         $.yote.init();
         $.yote.logout();
         $.yote.reinit();
-        $.yote.debug = false;
 
  	    try {
             //fetch app that doesn't require login and get scalar
@@ -103,7 +113,7 @@ $().ready(function(){
             step('scalar called on testappnologin');
             var scalar = nologin_app.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
             is( scalar, "BEEP", "value of login scalar" );
-            
+
             //fetch app that requires login and get scalar
             step('get app testappneedslogin');
 
@@ -111,25 +121,25 @@ $().ready(function(){
  	        login_app.purge_app();
             login_app._reset();
             step('scalar called on testappneedslogin');
-            var scalar = login_app.scalar( {}, 
+            var scalar = login_app.scalar( {},
                                            fail("required login returned scalar without login"),
  	                                       pass("required login returned nothingwithout login") );
-            
+
             step('create account');
-            // account creation. 
+            // account creation.
             $.yote.fetch_root().create_login( { h: 'unit_test_account0', p: 'ut',e: 'nobodyelse@fenowyn.com' },
  					                          pass("create first account"), pass("create first account already existed") );
 
             $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
  					                          pass("create first account"), fail("create account") );
- 	        
+
             step('create account with same handle');
             $.yote.fetch_root().create_login( { h: 'unit_test_account', p: 'ut', e: 'zobody@fenowyn.com' },
  					                          fail("created account with same handle"), pass("refused to create account with same handle") );
 
             $.yote.fetch_root().create_login( { h: 'nunit_test_account', p: 'ut', e: 'nobody@fenowyn.com'},
  					                          fail("created account with same email"), pass("refused to create account with same email") );
- 	        
+
             step('login with wrong password');
  	        $.yote.login( 'unit_test_account','uz',
  			              fail( "able to log in with wrong password" ),
@@ -146,7 +156,7 @@ $().ready(function(){
             login_app.reset();
 
  	        var token_login = $.yote.fetch_root().token_login( $.yote.token );
- 	        ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );	
+ 	        ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );
 
 	        login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
 
@@ -156,11 +166,11 @@ $().ready(function(){
             ok( typeof scalar !== 'object' && scalar === 'ZEEP', "no login scalar");
             // have a Yote object returned
             step('yote_obj get called on testappneedslogin to succeed');
- 	        
+
             var obj = login_app.get_yote_obj();
             if( typeof obj !== 'object' ) {
  		        fail( "yote_obj not returned" )();
- 		        return;      
+ 		        return;
             }
  	        is( login_app.list().length(), 3, " list properly returned " );
 
@@ -200,18 +210,18 @@ $().ready(function(){
  	        is( o3[ 'set_zap' ], undefined, "zap is not there" );
 
             login_app._send_update({Text:'baf',bext:'Again',zip:'zap'});
- 	        is( login_app.get_Text(), 'baf', "TANL changed text" ); 
+ 	        is( login_app.get_Text(), 'baf', "TANL changed text" );
  	        is( login_app.get_zap(), 'zappy', "TANL unchnaged zap" );
 
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
             is( o3.get('zip'), undefined, 'correct object 2 text directly' );
 
-            pass( "no login returns yote obj" )();      
+            pass( "no login returns yote obj" )();
             step('name get called on testappneedslogin to succeed');
             var initval = obj.get_name();
             is( initval, 'INITY', "yote object inited on server side" );
-            
+
             // have yote array returned
             step('array called on testappneedslogin to succeed');
             var arry = login_app.array();
@@ -231,11 +241,11 @@ $().ready(function(){
  	        sortedarry = tosortarry.sort(function( a,b ) { if( a > b ) { return -1; } if( a < b ) { return 1; } return 0 ; });
  	        is( sortedarry[5], 'a', 'last el rev sorted array' );
  	        is( sortedarry[0], 'f', 'first el rev sorted array' );
- 	        
+
 
             //check if el 2 is object
             var inobj = arry.get(2);
-            
+
             step('name get called on testappneedslogin to succeed');
             is( inobj.get_name(), 'INITY', "yote object inited on server side" );
 
@@ -257,7 +267,7 @@ $().ready(function(){
             step('2nd hash peanut value');
             is( inh.get('peanut'), 'Butter', 'first value inner hash' );
             step('2nd hash ego object with id');
-            is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' ); 
+            is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' );
             step('2nd hash ego object with name');
             is( inh.get('ego').get_name(), 'INITY', 'object stored in inner hash' );
 
@@ -273,7 +283,6 @@ $().ready(function(){
 
  	        // testing pagination
  	        //timing tests
-
  	        var needs = 4;
 
  	        function meets() {
@@ -282,18 +291,22 @@ $().ready(function(){
  		            wrap_up();
  		        }
  	        }
-
+            js_timer_active = false;
+            total_js_time += (window.performance.now() - start_js_time);
 
  	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
+
  	    }
  	    catch( err ) {
  	        fail( err )();
  	        wrap_up();
  	    }
     } //do_tests
+    start_js_time = window.performance.now();
+    t2 = window.performance.now();
 
     do_tests();
 
