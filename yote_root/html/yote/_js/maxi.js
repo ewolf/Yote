@@ -10986,7 +10986,9 @@ $.yote.templates = {
         var hash = args.hash;
         var size = args.size;
         var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
+
         var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
+
         if( ! key || (! node && ( ! arry && ! hash ) ) ) {
             if( is_hash ) 
                 throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
@@ -11014,7 +11016,13 @@ $.yote.templates = {
                     return this._start > 0;
                 },
                 can_fast_forward:function(){
-                    return (this._start + this._page_size) < ( this._data_size - 1 );
+                    return (this._start + this._page_size) < this._data_size;
+                },
+                back:function(){
+                    this._start -= this._page_size;
+                    if( this._start < 0 ) {
+                        this._start = 0;
+                    }
                 },
                 forwards:function(){
                     this._start += this._page_size;
@@ -11030,6 +11038,9 @@ $.yote.templates = {
                     if( this._start < 0 ) {
                         this._start = 0;
                     }
+                },
+                set_size : function( newsize ) {
+                    this._page_size = Number(newsize);
                 },
                 to_list : function() {
                     var ret
@@ -11064,6 +11075,7 @@ $.yote.templates = {
                             if( this._filter_function( k, this._hash[ k ] ) )
                                 new_ret.push( k );
                         }
+                        ret = new_ret;
                     } 
                     ret = ret.sort( this._sort_function );
                     if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
@@ -11089,6 +11101,7 @@ $.yote.templates = {
             else
                 $.yote.templates._pag_list_cache[ key ] = node;
         }
+
         if( arry ) {
             node._arry = arry;
             node._data_size = arry.length;
@@ -11315,7 +11328,7 @@ $.yote.templates = {
 	    $.yote.templates._after_render_functions = [];
     }, //init
 
-    context_scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
+    scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
 
     new_context:function() {
 	    return {
@@ -11323,7 +11336,7 @@ $.yote.templates = {
 	        controls : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
-	        scratch : $.yote.templates.context_scratch, // reference to common scratch area. 
+	        scratch : $.yote.templates.scratch, // reference to common scratch area. 
 	        _app_ : $.yote.fetch_default_app(),
 	        _acct_ : $.yote.fetch_account(),
 	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? 
@@ -11333,6 +11346,9 @@ $.yote.templates = {
                                    : this.vars[ key ]; },
 	        id:$.yote.templates._next_id(),
             refresh : $.yote.templates.refresh,
+            parse : function( vari ) {
+                return $.yote.templates._parse_val( vari, this, true )
+            },
 	        clone : function() {
 		        var clone = {
 		            vars     : Object.clone( this.vars ),
@@ -11345,8 +11361,9 @@ $.yote.templates = {
 		        clone._app_ = this._app_;
 		        clone._acct_ = this._acct_;
 		        clone.parent = this;
+                clone.parse = this.parse;
 		        clone.get = this.get;
-		        clone.scratch = $.yote.templates.context_scratch;
+		        clone.scratch = $.yote.templates.scratch;
 		        return clone;
 	        } //clone
 	    };
@@ -11527,11 +11544,62 @@ $.yote.templates = {
 	    for( var i=0, len=tlist.length; i < len; i++ ) {
 	        var part = tlist[ i ];
 
+            //check if this must be paginated
+            var array_pag_pair = part.split( /\@\@/ );
+            if( array_pag_pair.length == 2 ) {
+                if( array_pag_pair[ 0 ] == '' ) {
+                    subj = subj_has_get ? subj.get( array_pag_pair[ 1 ] ).to_list() : subj[ array_pag_pair[ 1 ] ];
+                    return $.yote.templates.wrap_list( {
+                        array : subj,
+                        key : context.template_path + '#' + value,
+                    }); //TODO - missing var case, and what if its not at the end?
+                } else {
+                    part = array_pag_pair[ 0 ];
+                }
+                var arr_pagname = array_pag_pair[ 1 ];
+            }
+            else {
+                var array_pair = part.split( /\@/ );
+                if( array_pair.length == 2 ) {
+                    if( array_pair[ 0 ] == '' ) {
+                        subj = subj_has_get ? subj.get( array_pair[ 1 ] ).to_list() : subj[ array_pair[ 1 ] ];
+                        return subj; //TODO - missing var case, and what if its not at the end?
+                    } else {
+                        part = array_pair[ 0 ];
+                    }
+                    var arrname = array_pair[ 1 ];
+                } else {
+                    var hash_pair = part.split( /\%/ );
+                    if( hash_pair.length == 2 ) {
+                        if( hash_pair[ 0 ] == '' ) {
+                            subj = subj_has_get ? subj.get( hash_pair[ 1 ] ).to_hash() : subj[ hash_pair[ 1 ] ];
+                            return subj; //TODO - missing var case, and what if its not at the end?
+                        } else {
+                            part = hash_pair[ 0 ];
+                        }
+                        var hashname = hash_pair[ 1 ];
+                    }
+                }
+            }
+
             if( typeof subj === 'object' ) {
 		        subj = subj_has_get ? subj.get( part ) : subj[ part ];
                 subj_has_get = $.yote._subj_has_get_p();
 	        }
 	        if( typeof subj === 'undefined' ) return no_literal ? undefined : value;
+
+            if( arrname ) {
+                // TODO - handle missing var case?
+                subj = subj_has_get ? subj.get( arrname ).to_list() : subj[ arrname ];
+            } else if( hashname ) {
+                subj = subj_has_get ? subj.get( hashname ).to_hash() : subj[ hashname ];
+            } else if( arr_pagname ) {
+                subj = subj_has_get ? subj.get( arr_pagname ).to_list() : subj[ arr_pagname ];
+                subj = $.yote.templates.wrap_list( {
+                    array : subj,
+                    key : context.template_path + '#' + value,
+                }); //TODO - missing var case, and what if its not at the end?
+            }
 	    }
 	    return subj;
     }, //_parse_val
