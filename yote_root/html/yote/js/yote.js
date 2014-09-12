@@ -503,6 +503,9 @@ $.yote = {
                         this._start = 0;
                     }
                 },
+                set_size : function( newsize ) {
+                    this._page_size = Number(newsize);
+                },
                 to_list : function() {
                     var ret;
                     if( this._server_paginate ) {

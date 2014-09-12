@@ -90,8 +90,11 @@
 
     if( ctx.args.length > 1 ) {
         var template = ctx.args[ 0 ];
-        var pag_keys = ctx.parse( ctx.args[ 1 ] ).keys();
-        var more     = ctx.args.length > 2 ? ctx.args.slice( 2 ) : [];
+        var pag_hash = ctx.parse( ctx.args[ 1 ] );
+        var pag_keys = pag_hash.keys();
+        var size     = ctx.args[ 2 ];
+        var more     = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+        pag_hash.set_size( size );
         return pag_keys.map( function ( item, idx ) {
             return '<$$ _hashfillpagrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + item + ' ' + more.join(' ') + ' $$>';
         } ).join('');

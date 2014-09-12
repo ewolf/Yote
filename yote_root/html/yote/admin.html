@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Yote Admin Page (YAP)</title>
 
-    <script src="/yote/JS"></script>
+    <script src="/yote/js"></script>
 
     <link href="/yote.css" rel="stylesheet" type="text/css" media="all" />
     <link href="/css/main.css" rel="stylesheet" type="text/css" media="all" />
@@ -92,19 +92,12 @@ $.yote.debug = true;
 
 
 <script type="text/template" class="yote_template_definition" template_name="Entry_Repeat">
-  <??? 
-    ctx.vars.repeats = $.yote.wrap_list( { 
-           array : 'repeats',
-           obj   : ctx.vars._,
-           ctx   : ctx
-        } );
-    ???>
   <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>
                         <th>Delete</th>
                   </tr>
-      <$$ listpaginate Cron_Repeat_Row repeats $$>
+      <$$ listpaginate Cron_Repeat_Row _@@repeats $$>
   </table>
-  <$$ Paginator repeats $$>
+  <$$ Paginator _@@repeats $$>
   <$$$ newrep <button type="button">add repeat</button> $$$>
     <?
         $( ctx.controls.newrep ).click( function() {
@@ -141,17 +134,10 @@ $.yote.debug = true;
 
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Objects">
-    <??? 
-       ctx.vars.attached_objects = $.yote.wrap_hash( { 
-           hash  : 'attached_objects',
-           obj   : ctx.vars._,
-           ctx   : ctx
-       } );
-    ???>
     <table> <TR> <TH>Object Name</TH> <TH>Class</TH> <TH>Remove</TH> </TR>
-      <$$ hashpaginate Attached_Obj_Row attached_objects $$>
+      <$$ hashpaginate Attached_Obj_Row admin%%attached_objects $$>
     </table>
-    <$$ Paginator attached_objects $$>
+    <$$ Paginator admin%%attached_objects $$>
     <$$ Add_Attached $$>
   </script>
 
@@ -211,11 +197,13 @@ $.yote.debug = true;
 
   <script type="text/template" class="yote_template_definition" template_name="Users">
    <??? 
+/*
       ctx.vars.handles = $.yote.wrap_hash( { 
              hash  : '_handles',
              obj   : ctx._app_,
              ctx   : ctx
           } );
+*/
     ???>
 
     <a NAME="Users">
@@ -411,6 +399,9 @@ $.yote.debug = true;
    </script>
 
    <script type="text/template" class="yote_template_definition" template_name="App_Row">
+     <???
+        ctx.vars.admin = ctx.vars._.admin_prefetch();
+      ???>
      <tr>   <td><$ _hashkey_ $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
        <td><?? return ctx.vars._.count('_account_roots'); ??> </td>   
        <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
@@ -431,21 +422,23 @@ $.yote.debug = true;
     <A NAME="App">
     <H3>Applications Installed</H3>
     <???
+/*
         ctx.vars.apps = $.yote.wrap_hash( { 
             hash  : '_apps',
             obj   : ctx._app_,
             ctx   : ctx,
             size  : 3
         } );
+*/
     ???>
     <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
         <th>Number of Users</th>   <th>Email Settings</th> 
         <th>Attached Objects</th>  <th>Reset</th>
       </tr>
-      <$$ hashpaginate App_Row apps $$>
+      <$$ hashpaginate App_Row admin_data%%apps 3 $$>
     </table>
-    <$$ Paginator apps $$> <br>
-    <$$ SearchHash apps keys $$>
+    <$$ Paginator admin_data%%apps $$> <br>
+    <$$ SearchHash admin_data%%apps keys $$>
     <???
         var pc = $.yote.fetch_root().count( '_purged_apps' );
         if( pc > 0 ) {
@@ -496,6 +489,9 @@ $.yote.debug = true;
 
 
   <script type="text/template" class="yote_template_definition" template_name="AdminBody">
+    <???
+       ctx.vars.admin_data = ctx._app_.admin_prefetch();
+     ???>
     <DIV class="mainpanel">
       <SECTION>
 	<DIV class="page-header">

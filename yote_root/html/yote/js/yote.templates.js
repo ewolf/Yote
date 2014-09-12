@@ -172,7 +172,7 @@ $.yote.templates = {
                 $.yote.templates._pag_hash_cache[ key ] = node;
             else
                 $.yote.templates._pag_list_cache[ key ] = node;
-        }
+        } //if needs a node
 
         if( arry ) {
             node._arry = arry;
@@ -620,12 +620,21 @@ $.yote.templates = {
             var array_pag_pair = part.split( /\@\@/ );
             if( array_pag_pair.length == 2 ) {
                 if( array_pag_pair[ 0 ] == '' ) {
-                    subj = subj_has_get ? subj.get( array_pag_pair[ 1 ] ).to_list() : subj[ array_pag_pair[ 1 ] ];
-                    return $.yote.templates.wrap_list( {
-                        array : subj,
-                        key : context.template_path + '#' + value,
-                    }); //TODO - missing var case, and what if its not at the end?
+                    if( subj_has_get ) {
+                        return $.yote.wrap_list( {
+                            obj   : subj,
+                            array : array_pag_pair[ 1 ],
+                            key   : context.template_path + '#' + value,
+                        });  
+                    } else {
+                        return $.yote.wrap_list( {
+                            array: subj[ array_pag_pair[ 1 ] ],
+                            key  : context.template_path + '#' + value,
+                        }); 
+                    }
                 } else {
+
+///should also be return here
                     part = array_pag_pair[ 0 ];
                 }
                 var arr_pagname = array_pag_pair[ 1 ];
@@ -634,22 +643,42 @@ $.yote.templates = {
                 var array_pair = part.split( /\@/ );
                 if( array_pair.length == 2 ) {
                     if( array_pair[ 0 ] == '' ) {
-                        subj = subj_has_get ? subj.get( array_pair[ 1 ] ).to_list() : subj[ array_pair[ 1 ] ];
-                        return subj; //TODO - missing var case, and what if its not at the end?
+                        return subj_has_get ? subj.get( array_pair[ 1 ] ).to_list() : subj[ array_pair[ 1 ] ];
                     } else {
                         part = array_pair[ 0 ];
                     }
                     var arrname = array_pair[ 1 ];
                 } else {
-                    var hash_pair = part.split( /\%/ );
-                    if( hash_pair.length == 2 ) {
-                        if( hash_pair[ 0 ] == '' ) {
-                            subj = subj_has_get ? subj.get( hash_pair[ 1 ] ).to_hash() : subj[ hash_pair[ 1 ] ];
-                            return subj; //TODO - missing var case, and what if its not at the end?
+                    var hash_pag_pair = part.split( /\%\%/ );
+                    if( hash_pag_pair.length == 2 ) {
+                        if( hash_pag_pair[ 0 ] == '' ) {
+                            if( subj_has_get ) {
+                                return $.yote.wrap_hash( {
+                                    obj  : subj,
+                                    hash : hash_pag_pair[ 1 ],
+                                    key  : context.template_path + '#' + value,
+                                }); 
+                            } else {
+                                return $.yote.wrap_hash( {
+                                    hash : subj[ hash_pag_pair[ 1 ] ],
+                                    key  : context.template_path + '#' + value,
+                                }); 
+                            }
                         } else {
-                            part = hash_pair[ 0 ];
+                            part = hash_pag_pair[ 0 ];
                         }
-                        var hashname = hash_pair[ 1 ];
+                        var hash_pagname = hash_pag_pair[ 1 ];
+                    }
+                    else {
+                        var hash_pair = part.split( /\%/ );
+                        if( hash_pair.length == 2 ) {
+                            if( hash_pair[ 0 ] == '' ) {
+                                return subj_has_get ? subj.get( hash_pair[ 1 ] ).to_hash() : subj[ hash_pair[ 1 ] ];
+                            } else {
+                                part = hash_pair[ 0 ];
+                            }
+                            var hashname = hash_pair[ 1 ];
+                        }
                     }
                 }
             }
@@ -661,16 +690,35 @@ $.yote.templates = {
 	        if( typeof subj === 'undefined' ) return no_literal ? undefined : value;
 
             if( arrname ) {
-                // TODO - handle missing var case?
                 subj = subj_has_get ? subj.get( arrname ).to_list() : subj[ arrname ];
             } else if( hashname ) {
                 subj = subj_has_get ? subj.get( hashname ).to_hash() : subj[ hashname ];
             } else if( arr_pagname ) {
-                subj = subj_has_get ? subj.get( arr_pagname ).to_list() : subj[ arr_pagname ];
-                subj = $.yote.templates.wrap_list( {
-                    array : subj,
-                    key : context.template_path + '#' + value,
-                }); //TODO - missing var case, and what if its not at the end?
+                if( subj_has_get ) {
+                    subj = $.yote.wrap_hash( {
+                        obj  : subj,
+                        array : arr_pagname,
+                        key  : context.template_path + '#' + value,
+                    }); 
+                } else {
+                    subj = $.yote.wrap_hash( {
+                        array : subj[ arr_pagname ],
+                        key  : context.template_path + '#' + value,
+                    }); 
+                }
+            } else if( hash_pagname ) {
+                if( subj_has_get ) {
+                    subj = $.yote.wrap_hash( {
+                        obj  : subj,
+                        hash : hash_pagname,
+                        key  : context.template_path + '#' + value,
+                    }); 
+                } else {
+                    subj = $.yote.wrap_hash( {
+                        hash : subj[ hash_pagname ],
+                        key  : context.template_path + '#' + value,
+                    }); 
+                }
             }
 	    }
 	    return subj;

@@ -65,6 +65,16 @@ sub account {
     return $account;
 } #account
 
+sub admin_prefetch {
+    my( $self, $data, $acct ) = @_;
+    if( $acct && $acct->is_root() ) {
+        return {
+            attached_objects => $self->get__attached_objects({}),
+        };
+    }    
+} #admin_prefect
+
+
 sub create_login {
     my( $self, $args, $dummy, $env ) = @_;
     my( $handle, $email, $password ) = ( $args->{h}, $args->{e}, $args->{p} );

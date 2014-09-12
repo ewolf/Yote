@@ -50,10 +50,12 @@ sub admin_prefetch {
     if( $acct && $acct->is_root() ) {
         my $cron = $self->_cron();
         my $ret = $cron->prefetch( undef, $acct );
-        push @$ret, 
-            (values %{ $self->get__handles({}) }), 
-            (values %{ $self->get__apps({}) } );
-        return $ret;
+        return {
+            cron    => $cron,
+            other   => $ret,
+            handles => $self->get__handles({}),
+            apps    => $self->get__apps({}),
+        };
     }    
 } #admin_prefect
 
