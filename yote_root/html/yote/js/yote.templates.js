@@ -6,19 +6,19 @@
  *
  * Version 0.103
  */
-if( ! $.yote ) { 
+if( ! $.yote ) {
     $.yote = {
         fetch_default_app: function() { return undefined; },
         fetch_account: function() { return undefined; },
         _subj_has_get_p:function() { return false; },
-    }; 
+    };
 }
 $.yote.templates = {
 
 
     _after_render_functions : [],
     _compiled_templates : {},
-    
+
     _ids : 0,
     _next_id:function() {
         return '__ytidx_'+this._ids++;
@@ -62,7 +62,7 @@ $.yote.templates = {
         var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
 
         if( ! key || (! node && ( ! arry && ! hash ) ) ) {
-            if( is_hash ) 
+            if( is_hash )
                 throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
             else
                 throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
@@ -122,7 +122,7 @@ $.yote.templates = {
                             if( this._filter_function( this._arry[ i ], i, this._arry ) ) {
                                 ret.push( this._arry[ i ] );
                             }
-                                
+
                         }
                     } else {
                         ret = this._arry.slice( 0 );
@@ -131,7 +131,7 @@ $.yote.templates = {
                         ret = ret.sort( this._sort_function );
                     }
                     if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
+                        if( typeof this._page_size !== 'undefined' )
                             ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
@@ -148,10 +148,10 @@ $.yote.templates = {
                                 new_ret.push( k );
                         }
                         ret = new_ret;
-                    } 
+                    }
                     ret = ret.sort( this._sort_function );
                     if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
+                        if( typeof this._page_size !== 'undefined' )
                             ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
@@ -159,7 +159,7 @@ $.yote.templates = {
                     return ret;
                 },
                 to_hash : function() {
-                    var h = this._hash; 
+                    var h = this._hash;
                     var r = {};
                     var k = this.keys();
                     for( var i=0, len=k.length; i<len; i++ ) {
@@ -184,15 +184,15 @@ $.yote.templates = {
         }
         return node;
     }, //data_wrapper
-        
+
     register_template:function( key, value ) {
-	    $.yote.templates._compile_template( key, value );
+	$.yote.templates._compile_template( key, value );
     }, //register template
 
     _compile_template:function( key, value ) {
 	    // fun list = a list of ( priority, function ) couples
 	    var fun_list = $.yote.templates._parse_template( value, key );
-	    
+
 	    // sort the indexes of the fun list with the indexes of the highest priority functions coming first
 	    var idxs = [];
 	    for( var i=0, len=fun_list.length; i < len; i++ ) {
@@ -216,7 +216,7 @@ $.yote.templates = {
 		            compiled.push( [ idx, item, true, false ] );
 		        } else if( priority == 3 || priority == 0 ) { //building functions, so process results again
 		            compiled.push( [ idx, function( ctx ) {
-			            var ret = $.yote.templates.fill_template_direct( item( ctx ), ctx, key ); 
+			            var ret = $.yote.templates.fill_template_direct( item( ctx ), ctx, key );
 			            return ret;
 		            }, false, false ] );
 		        } else { // build with a function that returns
@@ -259,7 +259,7 @@ $.yote.templates = {
         var funparts = str.match( /^\s*function\s*\(([^\),]+)[^)]*\)\s*\{([\s\S]*)\}\s*$/ );
         if( funparts && funparts.length == 3 )
             return new Function( 'var ' + funparts[ 1 ] + ' = arguments[0];' + funparts[ 2 ] );
-        // assumed to be the function without 'function( ctx )' 
+        // assumed to be the function without 'function( ctx )'
         return new Function( 'var ctx = arguments[0];' + str );
     }, //_to_function
 
@@ -281,13 +281,13 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template_txt, '???', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 2 );
             var B = $.yote.templates._parse_template( parts[ 2 ], template_name, 1 );
-	        try { 
+	        try {
                 var f = $.yote.templates._to_function( parts[1] );
                 A.push( [ 0, f ] );
                 A.push.apply( A, B );
                 return A;
 	        }
-            
+
 	        catch( err ) {
 		        console.log( "Error in compiling '" + template_name + "' in function <??? " + parts[1] + " ???> : " + err);
                 A.push.apply( A, B );
@@ -309,13 +309,13 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template_txt, '??', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 4 );
             var B = $.yote.templates._parse_template( parts[ 2 ], template_name, 3 );
-	        try { 
+	        try {
 		        var f = $.yote.templates._to_function( parts[1] );
                 A.push( [ 3, f ] );
                 A.push.apply( A, B );
                 return A;
 	        }
-            
+
 	        catch( err ) {
 		        console.log( "Error in compiling '" + template_name + "' in function <?? " + parts[1] + " ??> : " + err);
                 A.push.apply( A, B );
@@ -351,7 +351,7 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template_txt, '?', template_name );
             var A = $.yote.templates._parse_template( parts[ 0 ], template_name, 8 );
             A.push.apply( A, $.yote.templates._parse_template( parts[ 2 ], template_name, 7 ) );
-	        try { 
+	        try {
 		        var fun = $.yote.templates._to_function( parts[1] );
 		        A.push( [ 8, fun ] ); //can be put on the end as this doesn't change the html rendered
 	        }
@@ -360,7 +360,7 @@ $.yote.templates = {
 	        }
 	        return A;
 	    } // <?
-	    
+
 	    if( typeof template_txt === 'string' )
             return [ [ 7, template_txt ] ];
 	    return [ ];
@@ -384,13 +384,13 @@ $.yote.templates = {
 		        console.log( "Error : template '" + templ_name + "' not found" );
 		        return;
 	        }
-	        try { 
+	        try {
 		        el.empty().append( $.yote.templates.fill_template( templ_name ) );
 	        } catch( Err ) {
 		        console.log( "Error filling template '" + templ_name + '" : ' + Err );
 	        }
 	    } );
-	    
+
 	    //  now that all templates have been rendered, run their after render functions
 	    for( var i=0, len=$.yote.templates._after_render_functions.length; i < len; i++ ) {
 	        $.yote.templates._after_render_functions[ i ]();
@@ -408,13 +408,13 @@ $.yote.templates = {
 	        controls : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
-	        scratch : $.yote.templates.scratch, // reference to common scratch area. 
+	        scratch : $.yote.templates.scratch, // reference to common scratch area.
 	        _app_ : $.yote.fetch_default_app(),
 	        _acct_ : $.yote.fetch_account(),
-	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ? 
-                                   ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ? 
+	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ?
+                                   ( key == '_app_' ? $.yote.fetch_default_app() : key == '_acct_' ?
                                      $.yote.fetch_account() :
-                                     undefined ) 
+                                     undefined )
                                    : this.vars[ key ]; },
 	        id:$.yote.templates._next_id(),
             refresh : $.yote.templates.refresh,
@@ -442,10 +442,10 @@ $.yote.templates = {
     }, //new_context
 
     fill_template:function( template_name, old_context, args ) {
-	    var compilation = $.yote.templates._compiled_templates[ template_name ];	
-	    if( ! compilation ) { 
+	    var compilation = $.yote.templates._compiled_templates[ template_name ];
+	    if( ! compilation ) {
 	        console.log( "Error : Template '" + template_name + '" not found.' );
-	        return ''; 
+	        return '';
 	    }
 	    var context = old_context ? old_context.clone() : $.yote.templates.new_context();
 	    context.template_id = $.yote.templates._next_id();
@@ -477,7 +477,7 @@ $.yote.templates = {
 	                console.log( "Runtime Error filling template '" + template_name + " : " + err + ' in function : ' + tuple[1]);
 	            }
 		    }
-	    } 
+	    }
 
 	    return res.join('');
     }, //fill_template
@@ -494,7 +494,7 @@ $.yote.templates = {
 	    // function buliding template ( highest precidence )
 	    while( template.indexOf( '<???' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template, '???', template_name );
-	        try { 
+	        try {
 		        var f = $.yote.templates._to_function( parts[1] );
                 var txt = f( context );
 		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
@@ -508,15 +508,15 @@ $.yote.templates = {
 	    // variable and control definitions for template
 	    while( template.indexOf( '<$$$' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template, '$$$', template_name );
-	        template = parts[ 0 ] + 
-		        $.yote.templates._register( parts[ 1 ], context ) 
+	        template = parts[ 0 ] +
+		        $.yote.templates._register( parts[ 1 ], context )
 		        + parts[ 2 ];
 	    } // $$$
 
 	    // function buliding template
 	    while( template.indexOf( '<??' ) > -1 ) {
 	        var parts = $.yote.templates._template_parts( template, '??', template_name );
-	        try { 
+	        try {
 		        var f = $.yote.templates._to_function( parts[1] );
                 var txt = f( context );
 		        template = parts[ 0 ] + ( typeof txt === 'undefined' ? '' : txt ) + parts[ 2 ];
@@ -549,11 +549,11 @@ $.yote.templates = {
 	    while( template.indexOf( '<?' ) > -1 ) {
 	        // functions to be run after rendering is done
 	        var parts = $.yote.templates._template_parts( template, '?', template_name );
-	        try { 
+	        try {
 		        var fun = $.yote.templates._to_function( parts[1] );
-		        $.yote.templates._after_render_functions.push( 
-		            (function( f, ctx ) { return function() { 
-			            try { 
+		        $.yote.templates._after_render_functions.push(
+		            (function( f, ctx ) { return function() {
+			            try {
 			                alert( 'need context bottled up...need to  have a template registry path --> template' );
 			                f( ctx );
 			            } catch( Err ) {
@@ -569,7 +569,7 @@ $.yote.templates = {
 
 	    return template;
     }, //fill_template_direct
-    
+
 
     // fill
     _template_parts:function( txt, sigil, template_name ) {
@@ -579,13 +579,13 @@ $.yote.templates = {
 	    if( end == -1 ) throw new Error( "Error, mismatched template start and end sigils (" + sigil + ") for template '" + template_name + "' : " + txt );
 	    var len   = sigil.length + 1;
 
-	    // recalculate the start if need be...this chunk should not have two 
-	    // starts in a row..actally just reverse the string and find the 
+	    // recalculate the start if need be...this chunk should not have two
+	    // starts in a row..actally just reverse the string and find the
 	    // first rev_sigel...so
 	    //   '<$$ <$$ foo bar $$>' ---> <$$ rab oof $$> $$>
 	    //                          end ^           ^ lenstring - indexof rev is start
 	    // however, the while loop will work as well
-	    
+
 	    while( txt.substring( start + len, end ).indexOf( '<' + sigil ) >= 0 ) {
             if( txt.substring( start + len, end ).indexOf( '<' + sigil ) < start ) {
 	            console.log( "Template error for '"+template_name+"' : unable to find close of <" + sigil + ' : ' + txt );
@@ -602,7 +602,7 @@ $.yote.templates = {
 		         txt.substring( start + len, end ).trim(),
 		         txt.substring( end+len ) ];
     }, //_template_parts
-    
+
     // pass in a value/variable (calling this vavar) name string, a context and a boolean.
     // if the boolean is false, then if the vavar name is not defined in the context, it is returned literally
     // so   _parse_val( "FOO", { context object with foo defined as "bar" }, true ) --> "bar"
@@ -619,22 +619,19 @@ $.yote.templates = {
             //check if this must be paginated
             var array_pag_pair = part.split( /\@\@/ );
             if( array_pag_pair.length == 2 ) {
+                if( subj_has_get ) {
+                    return $.yote.wrap_list( {
+                        obj   : array_pag_pair[ 0 ] == '' ? subj : subj.get( array_pag_pair[ 0 ] ),
+                        array : array_pag_pair[ 1 ],
+                        key   : context.template_path + '#' + value,
+                    });
+                }
                 if( array_pag_pair[ 0 ] == '' ) {
-                    if( subj_has_get ) {
-                        return $.yote.wrap_list( {
-                            obj   : subj,
-                            array : array_pag_pair[ 1 ],
-                            key   : context.template_path + '#' + value,
-                        });  
-                    } else {
-                        return $.yote.wrap_list( {
-                            array: subj[ array_pag_pair[ 1 ] ],
-                            key  : context.template_path + '#' + value,
-                        }); 
-                    }
+                    return $.yote.wrap_list( {
+                        array: subj[ array_pag_pair[ 1 ] ],
+                        key  : context.template_path + '#' + value,
+                    });
                 } else {
-
-///should also be return here
                     part = array_pag_pair[ 0 ];
                 }
                 var arr_pagname = array_pag_pair[ 1 ];
@@ -651,19 +648,18 @@ $.yote.templates = {
                 } else {
                     var hash_pag_pair = part.split( /\%\%/ );
                     if( hash_pag_pair.length == 2 ) {
+                        if( subj_has_get ) {
+                            return $.yote.wrap_hash( {
+                                obj  : hash_pag_pair[ 0 ] == '' ? subj : subj.get( hash_pag_pair[ 0 ] ),
+                                hash : hash_pag_pair[ 1 ],
+                                key  : context.template_path + '#' + value,
+                            });
+                        }
                         if( hash_pag_pair[ 0 ] == '' ) {
-                            if( subj_has_get ) {
-                                return $.yote.wrap_hash( {
-                                    obj  : subj,
-                                    hash : hash_pag_pair[ 1 ],
-                                    key  : context.template_path + '#' + value,
-                                }); 
-                            } else {
-                                return $.yote.wrap_hash( {
-                                    hash : subj[ hash_pag_pair[ 1 ] ],
-                                    key  : context.template_path + '#' + value,
-                                }); 
-                            }
+                            return $.yote.wrap_hash( {
+                                hash : subj[ hash_pag_pair[ 1 ] ],
+                                key  : context.template_path + '#' + value,
+                            });
                         } else {
                             part = hash_pag_pair[ 0 ];
                         }
@@ -699,12 +695,12 @@ $.yote.templates = {
                         obj  : subj,
                         array : arr_pagname,
                         key  : context.template_path + '#' + value,
-                    }); 
+                    });
                 } else {
                     subj = $.yote.wrap_hash( {
                         array : subj[ arr_pagname ],
                         key  : context.template_path + '#' + value,
-                    }); 
+                    });
                 }
             } else if( hash_pagname ) {
                 if( subj_has_get ) {
@@ -712,12 +708,12 @@ $.yote.templates = {
                         obj  : subj,
                         hash : hash_pagname,
                         key  : context.template_path + '#' + value,
-                    }); 
+                    });
                 } else {
                     subj = $.yote.wrap_hash( {
                         hash : subj[ hash_pagname ],
                         key  : context.template_path + '#' + value,
-                    }); 
+                    });
                 }
             }
 	    }
@@ -756,7 +752,7 @@ $.yote.templates = {
 
 
     fill_template_variable:function( vari, context, args ) {
-	    //   $.yote.templates._parse_val returns 
+	    //   $.yote.templates._parse_val returns
 	    var res = $.yote.templates._parse_val( vari, context, true );
 	    return typeof res === 'undefined' ? args[ 0 ] ? args[ 0 ] : '' : res;
     }, //fill_template_variable

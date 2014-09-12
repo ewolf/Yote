@@ -10,7 +10,7 @@
  .hide { display:none }
 </style>
 
-<script src="/yote/js"></script>
+<script src="/yote/JS"></script>
 
 <script>
     <!--
@@ -124,7 +124,7 @@ $().ready(function(){
 		        'Give me arguments alpha beta zappa wack Tootx and wack',
 		        '<$$ templatename args $$>, <??? function ???>' );
             
-	        is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+	        is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template @list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
             
 	        is( $.yote.templates.fill_template( 'ArrayTest', undefined, [ '1' ] ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 4 : E Pea : green Spinach : wild YARRA',  'tests list and hash paginate advacnes' );
 
@@ -203,8 +203,8 @@ $().ready(function(){
        <# putting the size in the array_pag because
           the array_pag might be needed for paginations
           control html #>
-       <$$ listpaginate ArrayRow array_pag $$>
-       <$$ hashpaginate HashRow hash_pag $$>
+       <$$ listpaginate ArrayRow @@array 3 $$>
+       <$$ hashpaginate HashRow @@hash 3 $$>
        YARRA
        <??
        ??>
@@ -247,6 +247,7 @@ $().ready(function(){
 </templates>
 
 <body>
+asdfasasdf  fd
   <h1>Yote Template Tests</h1>
   <div  id="comments" class="yote_template hide" template="Comments"></div>
   <div  id="after_render" class="yote_template hide" template="AfterRender"></div>
