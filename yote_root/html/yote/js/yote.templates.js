@@ -1,10 +1,10 @@
 /*
  * LICENSE AND COPYRIGHT
  *
- * Copyright (C) 2014 Eric Wolf
+ * Copyright (C) 2014 Eric Wolf   ( coyocanid@gmail.com )
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.103
+ * Version 0.104
  */
 if( ! $.yote ) {
     $.yote = {
@@ -410,6 +410,7 @@ $.yote.templates = {
     new_context:function() {
 	    return {
 	        vars : {},
+	        functions : {},
 	        controls : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
@@ -428,11 +429,12 @@ $.yote.templates = {
             },
 	        clone : function() {
 		        var clone = {
-		            vars     : Object.clone( this.vars ),
-		            id       : $.yote.templates._next_id(),
-		            controls : Object.clone( this.controls ),
-		            args     : Object.clone( this.args ),
-                    refresh  : this.refresh,
+		            vars      : Object.clone( this.vars ),
+		            functions : Object.clone( this.functions ),
+		            id        : $.yote.templates._next_id(),
+		            controls  : Object.clone( this.controls ),
+		            args      : Object.clone( this.args ),
+                    refresh   : this.refresh,
 		        }; //TODO : add hash key and index
 		        clone.clone = this.clone;
 		        clone._app_ = this._app_;
@@ -725,3 +727,33 @@ $.yote.templates = {
 
 
 }//$.yote.templates
+
+
+if( ! Object.size ) {
+    Object.size = function(obj) {
+	    var size = 0, key;
+	    for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+	    }
+	    return size;
+    };
+}
+if( ! Object.keys ) {
+    Object.keys = function( t ) {
+    	var k = []
+	    for( var key in t ) {
+	        k.push( key );
+	    }
+	    return k;
+    }
+}
+if( ! Object.clone ) {
+    // shallow clone
+    Object.clone = function( h ) {
+        var clone = {};
+        for( var key in h ) {
+	        clone[ key ] = h[ key ];
+        }
+        return clone;
+    }
+}

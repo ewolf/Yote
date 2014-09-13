@@ -35,6 +35,59 @@
     ?>
 </script>
 
+<script type="text/template" class="yote_template_definition" template_name="Logged_in">
+   Logged in as <$ _acct_.handle $><BR>
+   <$$$ logout <a href="#">Log Out</a> $$$>
+   <?
+     $( ctx.controls.logout ).click( function() {
+         $.yote.logout();
+         $.yote.reinit();
+         ctx.refresh();
+     } );
+    ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Login">
+   <$$$ messages <span><$ _app_.login_message "Please Log In" $></span> $$$><BR>
+   <$$$ handle <input placeholder="handle" type="text"> $$$>
+   <$$$ password <input placeholder="password" type="password"> $$$>
+   <$$$ login <button type="BUTTON">Log In</button> $$$>
+     <BR>
+   <$$$ forgot <a href="#">Forgot Account</a> $$$>
+   <$$$ create <a href="#">Create Account</a> $$$>
+   <?
+       $.yote.util.button_actions({
+           button :  ctx.controls.login,
+           texts  :  [ ctx.controls.handle, ctx.controls.password ],
+           action : function() {
+               $.yote.login( $( ctx.controls.handle ).val(),
+                             $( ctx.controls.password ).val(),
+                             function(msg) {
+                                 if( ctx.scratch.requires_admin && ! $.yote.has_root_permissions() ) {
+                                     $( ctx.controls.messages ).empty().append( "Error : root login required" );
+                                     $.yote.logout();
+                                     $.yote.need_reinit = true;
+                                 }
+                                 $.yote.reinit();
+                                 ctx.refresh();
+                             },
+                             function(err) {
+                                 $( ctx.controls.messages ).empty().append( err );
+                             } );
+           }
+           } );
+         $( ctx.controls.forgot ).click( function() {
+             ctx.scratch.forgot_login = true;
+             ctx.refresh();
+         } );
+         $( ctx.controls.create ).click( function() {
+             ctx.scratch.create_login = true;
+             ctx.refresh();
+         } );
+    ?>
+</script>
+
+
 
 
 <script type="text/template" class="yote_template_definition" template_name="CreateLogin">

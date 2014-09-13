@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+
+  LICENSE AND COPYRIGHT
+ 
+  Copyright (C) 2014 Eric Wolf  ( coyocanid@gmail.com )
+  This module is free software; it can be used under the terms of the artistic license
+ 
+  ---------------------------------------------------------------------------------------------
+
+  This html demonstrates the use of Yote templates to build a simple rolodex app that saves 
+  data locally to your browser local storage.
+
+  Needed to work :
+     This file
+
+     yote.templates.js
+     yote.util.js
+     jquery
+     json2.js
+     
+-->
+
+  <head>
+    <title>Rolodex</title>
+
+    <style>
+      .box { 
+      border: solid 2px black;
+      padding: 4px;
+      display: inline-block;
+      }
+      th { 
+      background-color: lightgrey;
+      margin: 6px;
+      }
+      td { 
+      text-align: center;
+      background-color: #eee;
+      margin: 4px;
+      }
+    </style>
+
+    <script src="/yote/js/jquery-2.1.0.js"></script>
+    <script src="/yote/js/yote.templates.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <script src="/yote/js/json2.js"></script>
+
+    <script>
+
+$().ready(function(){
+
+    $.yote.templates.import_templates( '/templates/default_templates.html' );
+
+    // fetch data from local storage or crete if none exists
+    var rolo_data_raw = localStorage.getItem( 'rolodex' );
+    var rolodex;
+    if( rolo_data_raw ) {
+        rolodex = { data : JSON.parse( rolo_data_raw ) };
+    } else {
+        rolodex = { data : [] }; 
+    }
+    rolodex.save = function() {
+        localStorage.setItem( 'rolodex', JSON.stringify( this.data ) );
+v    }
+    rolodex.remove_entry = function( idx ) {
+        this.data.splice( idx, 1 );
+        this.init();
+        this.save();
+    }
+    rolodex.add_entry = function( entry ) {
+        // entry should have name, email, phone
+        entry.id = this.lastidx;
+        this.lastidx++;
+        if( ! entry.name ) entry.name = '';
+        if( ! entry.phone ) entry.phone = '';
+        if( ! entry.email ) entry.email = '';
+        this.data.push( entry );
+        this.names[ entry.name ]  = entry;
+        this.phones[ entry.phone ] = entry;
+        this.emails[ entry.email ] = entry;
+        this.save();
+    }
+    rolodex.init = function() {
+        var names  = {};
+        var phones = {};
+        var emails = {};
+        this.lastidx = this.data.length
+        for( var i=0, len = this.data.length; i < len ; i++ ) {
+            var node = this.data[ i ];
+            node.id = i;
+            names[ node.name ] = node;
+            phones[ node.phone ] = node;
+            emails[ node.phone ] = node;
+        }
+        this.names  = names;
+        this.phones = phones;
+        this.emails = emails;
+    };
+    rolodex.search = function( str ) {
+        if( ! str || str.trim().length == 0 ) return this.data;
+        str = str.toLowerCase();
+        var res = []
+        for( var i=0, len = this.data.length; i < len ; i++ ) {
+            var node = this.data[ i ];
+            if( node.name.toLowerCase().indexOf( str ) >= 0 || node.phone.toLowerCase().indexOf( str ) >= 0 || node.email.toLowerCase().indexOf( str ) >= 0 ) {
+                res.push( node );
+            }
+        }
+        return res;
+    }
+    window.rolodex = rolodex;
+
+    rolodex.init();
+
+    $.yote.templates.init();
+	$.yote.templates.refresh();
+
+} ); //ready
+    </script>
+
+  </head>
+
+  <templates>
+
+    <script type="text/template" class="yote_template_definition" template_name="Rolo">
+      <# 
+           This is a simple rolodex that uses local storage for persistance.
+           this means the data you enter will be available on the same browser on reload.
+       #>
+      <??? // run first in template created
+            ctx.vars.rolodex = rolodex;
+            ctx.vars.entry_count = rolodex.data.length;
+      ???>
+      <div class="box">
+      Check out this rolodex. It has <$ entry_count $> entries.
+      </div>
+      <??  //only show the table if there are entries
+         return ctx.vars.entry_count > 0 ? '<br><$$ PaginateEntries $$><br>' : '';
+       ??>
+      <$$ LookupEntry $$>
+      <$$ AddEntry $$>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="PaginateEntries">
+      <???
+            ctx.vars.entries = rolodex.search( ctx.scratch.search );
+       ???>
+      <div class="box">
+       <?? return ctx.scratch.search ? 'searching for <b>' + ctx.scratch.search + '</b><br>' : '' ??>
+       <table>
+         <tr> <th> Name </th>  <th> Email </th>  <th> Phone </th> <th> Delete </th> </tr>
+         <$$ listpaginate EntryRow entries@@ 4 $$> 
+       </table>
+      </div>
+      <$$ Paginator entries@@ $$>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="EntryRow">
+      <tr> <td> <$ _.name $> </td> <td> <$ _.email $> </td> <td> <$ _.phone $> </td> <td> <$$$ del <a href="#">$$$>delete</a> </td> </tr>
+      <?  //remove the entry after a confirm
+          $( ctx.controls.del ).click( function() { 
+              if( confirm( "remove this entry?" ) ) {
+                  rolodex.remove_entry( ctx.vars._index_ );
+                  ctx.refresh();
+              }
+          } );
+       ?>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="LookupEntry">
+     <div class="box">
+        <h3>Search</h3> for entries 
+        <??? return '<$$$ search <input placeholder="search" type="text" value="' + 
+                    (ctx.scratch.search ? ctx.scratch.search : '' ) +  '">$$$>'; ???>
+             <$$$ go <button type="button">search</button> $$$>
+     </div> <br>
+     <?
+         $.yote.util.button_actions( {
+             button : ctx.controls.go,
+             texts  : [ ctx.controls.search ],
+             action : function() {
+                 ctx.scratch.search = $( ctx.controls.search ).val();
+                 ctx.refresh();
+             }
+         } );
+      ?>
+    </script>
+
+    <script type="text/template" class="yote_template_definition" template_name="AddEntry">
+      <div class="box">
+       <h3>New Entry</h3>
+       Name <$$$ name <input type="text"> $$$> <BR>
+       Phone <$$$ phone <input type="text"> $$$> <BR>
+       Email <$$$ email <input type="text"> $$$> <BR>
+       <$$$ add <button type="button"> $$$>Add</button>
+      </div>
+      <? // run after template is rendered
+           $.yote.util.button_actions( {
+               button : ctx.controls.add,
+               texts  : [ ctx.controls.name, ctx.controls.phone, ctx.controls.email ],
+               action : function() {
+                   rolodex.add_entry( {
+                       name : $( ctx.controls.name ).val(), 
+                       phone : $( ctx.controls.phone ).val(),
+                       email : $( ctx.controls.email ).val()
+                   } );
+                   ctx.refresh();
+               }
+           } );
+       ?>
+    </script>
+  </templates>
+
+  <body>
+   <h1>Rolodex Demo</h1>
+   <div  id="comments" class="yote_template hide" template="Rolo"></div>
+ </body>
+
+</html>
