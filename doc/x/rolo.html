@@ -57,15 +57,15 @@
         display: block;
     }
     .comment {
-        background-color: #Dca;
+        background-color: #EDB;
         display: inline-block;
     }
     .function {
-        background-color: lightgreen;
+        background-color: #BEB;
         display: inline-block;
     }
     .value {
-        background-color: lightblue;
+        background-color: #BEE;
     }
     .showright {
         float:right;
@@ -73,7 +73,7 @@
         margin: 2px;
         background-color: #8DF;
     }
-
+    .hide { display: none; }
     </style>
 
     <script src="./yote/js/jquery-2.1.0.js"></script>
@@ -157,6 +157,77 @@ $().ready(function(){
 
   <templates>
 
+    <script type="text/template" class="yote_template_definition" template_name="RoloSource">
+      <$$$ show <a href="#"> $$$><span class="hide showhide">-</span><span class="showhide">+</span> show source for rolodex javascript object</a>
+      <span class="hide showhide"">
+<pre>
+    // fetch data from local storage or crete if none exists
+    var rolo_data_raw = localStorage.getItem( 'rolodex' );
+    var rolodex;
+    if( rolo_data_raw ) {
+        rolodex = { data : JSON.parse( rolo_data_raw ) };
+    } else {
+        rolodex = { data : [] };
+    }
+    rolodex.save = function() {
+        localStorage.setItem( 'rolodex', JSON.stringify( this.data ) );
+    }
+    rolodex.remove_entry = function( idx ) {
+        this.data.splice( idx, 1 );
+        this.init();
+        this.save();
+    }
+    rolodex.add_entry = function( entry ) {
+        // entry should have name, email, phone
+        entry.id = this.lastidx;
+        this.lastidx++;
+        if( ! entry.name ) entry.name = '';
+        if( ! entry.phone ) entry.phone = '';
+        if( ! entry.email ) entry.email = '';
+        this.data.push( entry );
+        this.names[ entry.name ]  = entry;
+        this.phones[ entry.phone ] = entry;
+        this.emails[ entry.email ] = entry;
+        this.save();
+    }
+    rolodex.init = function() {
+        var names  = {};
+        var phones = {};
+        var emails = {};
+        this.lastidx = this.data.length
+        for( var i=0, len = this.data.length; i &lt; len ; i++ ) {
+            var node = this.data[ i ];
+            node.id = i;
+            names[ node.name ] = node;
+            phones[ node.phone ] = node;
+            emails[ node.phone ] = node;
+        }
+        this.names  = names;
+        this.phones = phones;
+        this.emails = emails;
+    };
+    rolodex.search = function( str ) {
+        if( ! str || str.trim().length == 0 ) return this.data;
+        str = str.toLowerCase();
+        var res = []
+        for( var i=0, len = this.data.length; i &lt; len ; i++ ) {
+            var node = this.data[ i ];
+            if( node.name.toLowerCase().indexOf( str ) &gt;= 0 || node.phone.toLowerCase().indexOf( str ) &gt;= 0 || node.email.toLowerCase().indexOf( str ) &gt;= 0 ) {
+                res.push( node );
+            }
+        }
+        return res;
+    }
+    window.rolodex = rolodex;
+    rolodex.init();
+    </pre>
+        </span>
+      <?
+          $( ctx.controls.show ).click( function() {
+             $( '.showhide' ).toggleClass( 'hide' );
+          } );
+       ?>
+    </script>
 
     <script type="text/template" class="yote_template_definition" template_name="Rolo">
       <#
@@ -171,9 +242,9 @@ $().ready(function(){
       Check out this rolodex. It has <$ entry_count $> entries.
       </div>
       <??  //only show the table if there are entries
-         return ctx.vars.entry_count > 0 ? '<br><$$ PaginateEntries $$><br>' : '';
+         return ctx.vars.entry_count > 0 ? '<br><$$ PaginateEntries $$><br><$$ LookupEntry $$>' : '';
        ??>
-      <$$ LookupEntry $$>
+      <br>
       <$$ AddEntry $$>
     </script>
 
@@ -257,20 +328,27 @@ $().ready(function(){
    <section>
      <h3>The Setup</h3>
      <p>
-       The full source of this demo can of course be seen by viewing sorce on this file.
-       There is a <strong>rolodex</strong> javascript object that uses local storage to fetch and store
-       rolodex entries. The purpose of this demo is not to show how to create such a creature
+       The full source of this demo can of course be seen by viewing 
+       sorce on this file. There is a <strong>rolodex</strong> javascript 
+       object that uses local storage to fetch and store rolodex entries. 
+       The purpose of this demo is not to show how to create such a creature
        but how it would fit in the templates.
      </p>
      <p>
-       The api of this object, however, is relevant and the rolodes object has the following functions :
+       The api of this object, however, is relevant and the rolodex object
+       has the following functions :
        <ul>
-         <li><strong>add_entry</strong> - takes an object with name, phone, email fields.</li>
-         <li><strong>remove_entry</strong> - takes the index of the entry and removes it.</li>
-         <li><strong>search</strong> - takes a string and searches the entries' data and returns a list of those entries that match.</li>
+         <li><strong>add_entry</strong> - takes an object with name, 
+           phone, email fields.</li>
+         <li><strong>remove_entry</strong> - takes the index of the 
+           entry and removes it.</li>
+         <li><strong>search</strong> - takes a string and searches the 
+           entries' data and returns a list of those entries that match.</li>
        </ul>
-       Furthermore, this object is assigned to <strong>window</strong> as <strong>window</strong>.<i>rolodex</i>.
+       Furthermore, this object is assigned to <strong>window</strong> 
+       as <strong>window</strong>.<i>rolodex</i>.
      </p>
+     <div  id="comments" class="yote_template" template="RoloSource"></div>
    </section>
 
    <section>
@@ -310,8 +388,8 @@ $().ready(function(){
    // the output of this becomes part of the template, and any other template tags contained
    // within are executed afterwards as long as they have lower precedence.
 
-   return ctx.vars.entry_count &gt; 0 ? '&lt;br&gt;&lt;$$ PaginateEntries $$&gt;&lt;br&gt;' +
-       '&lt;$$ LookupEntry $$&gt;&lt;br&gt;' : '';
+   return ctx.vars.entry_count &gt; 0 ? '&lt;br&gt;<span class="value">&lt;$$ PaginateEntries $$&gt;</span>&lt;br&gt;' +
+       '<span class="value">&lt;$$ LookupEntry $$&gt;</span>&lt;br&gt;' : '';
 ??&gt;</span>
 
      <span class="comment">&lt;# insert the AddEntry template into this one. #&gt;</span>
@@ -361,10 +439,17 @@ $().ready(function(){
    <section>
      <h3>Defining the rest of the templates</h3>
      <p>
-       The <strong>Rolodex</strong> template had a few other templates it needed inserted into it. Those are 
+       The <strong>Rolodex</strong> template had a few other templates it needed inserted into it. Those are
        namely <strong>AddEntry, LookupEntry</strong> and <strong> PaginateEntries</strong>. An
        <strong>EntryRow</strong> template is also needed in order to show multiple items
          in the rolodex at once.
+     </p>
+     <p>
+       As is sounds, AddEntry template has inputs to add new entries to the 
+       rolodex. The controls assigned are unique to this context and are 
+       copied to any children contexts of this one. After the html is
+       rendered, the button_actions function is run and it links up
+       the controls to the rolodex object.
      </p>
      <pre>
        <code class="example">
@@ -376,7 +461,7 @@ $().ready(function(){
        Email <span class="value">&lt;$$$ email &lt;input type="text"&gt; $$$&gt;</span> &lt;BR&gt;
        <span class="value">&lt;$$$ add &lt;button type="button"&gt; $$$&gt;</span> Add&lt;/button&gt;
       &lt;/div&gt;
-      <span class="function">&lt;? // run after template is rendered. 
+      <span class="function">&lt;? // run after template is rendered.
    // Button actions runs the action when the text inputs are filled in and
    // runs the action. The rolodex object ( outlined above ) runs the add
    // entry method and then all the templates are refreshed.
@@ -395,79 +480,102 @@ $().ready(function(){
        ?&gt;</span>
     &lt;/script&gt;
   &lt;/script&gt;
-
+       </code>
+     </pre>
+     <p>
+       
+     </p>
+     <pre>
+       <code class="example">
 
   &lt;script type="text/template" class="yote_template_definition" template_name="<strong>PaginateEntries</strong>"&gt;
-    &lt;#
-        fills the template for each item in the list up to pagination size.
-           remembers pagination state across reloads
-        arguments :
-            template
-            paginated list object
-            size of pagination
 
-        Adds the following variables to the context :
-            _       : list item being rendered
-            _index_ : the index of the item in the list
+      <span class="function">&lt;???
+    ctx.vars.entries = rolodex.search( ctx.scratch.search );
+???&gt;</span>
 
-        Paginated list objects are specified by @@
+      &lt;div class="box"&gt;
 
-        Example : <$$ ListPaginate myTemplate myList@@ 10 $$&gt;
-     #&gt;
-    <???
+       <span class="function">&lt;?? return ctx.scratch.search ? 'searching for &lt;b&gt;' + ctx.scratch.search + '&lt;/b&gt;&lt;br&gt;' : '' ??&gt;</span>
 
-    if( ctx.args.length &gt; 1 ) {
-        var template = ctx.args[ 0 ];
-        var pag_list = ctx.parent.parse( ctx.args[ 1 ] );
-        var size     = ctx.args[ 2 ];
-        var more     = ctx.args.length &gt; 3 ? ctx.args.slice( 3 ) : [];
-        pag_list.set_size( size );
-        return pag_list.to_list().map( function ( item, idx ) {
-            return '<$$ _listfillpagrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + idx + ' ' + more.join(' ') + ' $$&gt;';
-        } ).join('');
-    }
-    console.log( 'error in template ListPaginate : not enough arguments ( requires 2 ) : ' + '<$$ ListPaginate ' + ctx.args.join(' ') + ' $$&gt;' );
-    return '';
-    ???&gt;
+       &lt;table&gt;
+         &lt;tr&gt; &lt;th&gt; Name &lt;/th&gt;  &lt;th&gt; Email &lt;/th&gt;  &lt;th&gt; Phone &lt;/th&gt; &lt;th&gt; Delete &lt;/th&gt; &lt;/tr&gt;
+
+         <span class="comment">&lt;# ListPaginate is a standard yote template included by default. It takes 3 arguments <ul><li>template to fill with each item in the list</li><li>the list</li><li>the maximum number in that list to show</li></ul> The @@ in the entries@@ indicates that the variable should be interpreted as a paginated list. 
+ Were it a single @ character, it would be interpreted as a normal list. 
+#&gt;</span>
+
+         <span class="value">&lt;$$ ListPaginate EntryRow entries@@ 4 $$&gt;</span>
+
+       &lt;/table&gt;
+      &lt;/div&gt;
+      &lt;br&gt;
+      &lt;$$ Paginator entries@@ $$&gt;
   &lt;/script&gt;
-
+       </code>
+     </pre>
+     <p>
+       
+     </p>
+     <pre>
+       <code class="example">
 
   &lt;script type="text/template" class="yote_template_definition" template_name="<strong>EntryRow</strong>"&gt;
   &lt;/script&gt;
+      &lt;tr&gt; 
+        &lt;td&gt; &lt;$ _.name $&gt; &lt;/td&gt; 
+        &lt;td&gt; &lt;$ _.email $&gt; &lt;/td&gt; 
+        &lt;td&gt; &lt;$ _.phone $&gt; &lt;/td&gt;
+        &lt;td&gt; <span class="value">&lt;$$$ del &lt;a href="#"&gt;$$$&gt;</span>delete&lt;/a&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+      <span class="function">&lt;?  //remove the entry after a confirm
+    $( ctx.controls.del ).click( function() {
+        if( confirm( "remove this entry?" ) ) {
+            rolodex.remove_entry( ctx.vars._index_ );
+            ctx.refresh();
+        }
+    } );
+?&gt;</span>
+  &lt;/script&gt;
+       </code>
+     </pre>
+
+     <pre>
+       <code class="example">
 
   &lt;script type="text/template" class="yote_template_definition" template_name="<strong>LookupEntry</strong>"&gt;
      &lt;div class="box"&gt;
         &lt;h3&gt;Search&lt;/h3&gt; for entries
 
-   <code class="function">      &lt;??? 
-          // build a search input and start it off with the value of search, if any.
-          // scratch is a lookup table in the context that is shared by every context.
+        <span class="function">&lt;???
+   // build a search input and start it off with the value of search, if any.
+   // scratch is a lookup table in the context that is shared by every context.
 
-          return '&lt;$$$ search &lt;input placeholder="search" type="text" value="' +
-                  (ctx.scratch.search ? ctx.scratch.search : '' ) +  '"&gt;$$$&gt;'; 
-      ???&gt; </code>
+   return '&lt;$$$ search &lt;input placeholder="search" type="text" value="' +
+             (ctx.scratch.search ? ctx.scratch.search : '' ) +  '"&gt;$$$&gt;';
+???&gt; </span>
 
-        <code="comment">&lt;# assigns an id to the button and ads it to the controls lookup in the context with the name go #&gt;</code>        &lt;$$$ go &lt;button type="button"&gt;$$$&gt;search&lt;/button&gt; 
+        <span class="comment">&lt;# assigns an id to the button and ads it to the controls lookup in the context with the name go #&gt;</span>
+        <span class="value">&lt;$$$ go &lt;button type="button"&gt;$$$&gt;search&lt;/button&gt;</span>
 
-        &lt;/div&gt;
-        &lt;br&gt; 
-     <code class="function">
-   &lt;?
-         // the ? tag is run <i>after</i> the template is rendered. This allows event handlers to
-         // be attached to the controls in the template.
-         // button actions wires up text inputs and a button with the behavior that the button is not
-         // enabled until the text inputs are full. 
-         // The action is what happens when the button is pressed or enter is hit when the 
-         // focus is on the last text input.
-         $.yote.util.button_actions( {
-             button : ctx.controls.go,
-             texts  : [ ctx.controls.search ],
-             action : function() {
-                 ctx.scratch.search = $( ctx.controls.search ).val();
-                 ctx.refresh();
-             }
-         } );
-     ?&gt;</code>  
+    &lt;/div&gt;
+
+   <span class="function">&lt;?
+  // the ? tag is run <i>after</i> the template is rendered. This allows event handlers to
+  // be attached to the controls in the template.
+  // button actions wires up text inputs and a button with the behavior that the button is not
+  // enabled until the text inputs are full.
+  // The action is what happens when the button is pressed or enter is hit when the
+  // focus is on the last text input.
+  $.yote.util.button_actions( {
+      button : ctx.controls.go,
+      texts  : [ ctx.controls.search ],
+      action : function() {
+          ctx.scratch.search = $( ctx.controls.search ).val();
+          ctx.refresh();
+      }
+  } );
+?&gt;</span>
 &lt;/script&gt; </code> </pre>
    </section>
    </div>
