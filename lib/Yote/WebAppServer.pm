@@ -36,7 +36,7 @@ sub new {
 sub accesslog {
     my( $msg ) = @_;
     my $t = strftime "%Y-%m-%d %H:%M:%S", gmtime;
-#    print $Yote::WebAppServer::ACCESS "$t : $msg\n";
+    print $Yote::WebAppServer::ACCESS "$t : $msg\n";
 }
 
 
@@ -58,7 +58,7 @@ sub start {
     # make sure the filehelper knows where the data directory is
     $self->{args}{webroot} = $self->{ args }{ yote_root } . '/html';
     $self->{args}{data_dir} = $self->{ args }{ yote_root } . '/data';
-    $Yote::WebAppServer::LOG_DIR       = $self->{args}{log_dir};
+    $Yote::WebAppServer::LOG_DIR       = $self->{args}{yote_root} . '/log';
     $Yote::WebAppServer::FILE_DIR      = $self->{args}{data_dir} . '/holding';
     $Yote::WebAppServer::WEB_DIR       = $self->{args}{webroot};
     $Yote::WebAppServer::UPLOAD_DIR    = $self->{args}{webroot}. '/uploads';
@@ -239,8 +239,6 @@ sub _process_http_request {
         #
         # Serve up a web page. TODO : replace this with a library specialized in this.
         #
-        accesslog( "$uri from [ $ENV{ REMOTE_ADDR } ][ $ENV{ HTTP_REFERER } ]" );
-        iolog( $uri );
 
         my $root = $self->{args}{webroot};
         my $dest = '/' . join('/',@path);
@@ -257,7 +255,8 @@ sub _process_http_request {
             #
             # Check for javascript directory to minify and
             # return a consolidated javascript file
-            #                                                                                                                                                                
+            #                                                                                                                                   
+                             
             if( $may_minify ) {
                 $dest = _minify_dir( $root, lc($dest), $1, $may_minify_debug );
             }
@@ -279,6 +278,7 @@ sub _process_http_request {
         # Read in the headers
         #
         if( open( my $IN, '<', "$root/$dest" ) ) {
+            accesslog( "$uri from [ $ENV{ REMOTE_ADDR } ][ $ENV{ HTTP_REFERER } ]" );
 
             print $socket "HTTP/1.0 200 OK\015\012";
             my $is_html = 0;

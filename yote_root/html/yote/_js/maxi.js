@@ -10938,6 +10938,7 @@ if( ! $.yote ) {
     $.yote = {
         fetch_default_app: function() { return undefined; },
         fetch_account: function() { return undefined; },
+        reinit:function() {},
         _wrap_list:function() {
             throw new Exception( 'yote system not present: cannot wrap yote list' );
         }, //wrap_list
@@ -11052,7 +11053,7 @@ $.yote.templates = {
                     if( typeof this._filter_function !== 'undefined' ) {
                         ret = [];
                         for( var i=0, len = this._arry.length; i<len; i++ ) {
-                            if( this._filter_function( this._arry[ i ], i, this._arry ) ) {
+                            if( this._filter_function( i, this._arry[ i ], this._arry ) ) {
                                 ret.push( this._arry[ i ] );
                             }
 
@@ -11077,7 +11078,7 @@ $.yote.templates = {
                         var new_ret = [];
                         for( var i=0, len = ret.length; i<len; i++ ) {
                             var k = ret[ i ];
-                            if( this._filter_function( k, this._hash[ k ] ) )
+                            if( this._filter_function( k, this._hash[ k ], this._hash ) )
                                 new_ret.push( k );
                         }
                         ret = new_ret;
@@ -11340,6 +11341,7 @@ $.yote.templates = {
 	        vars : {},
 	        functions : {},
 	        controls : {},
+	        control_ids : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
 	        scratch : $.yote.templates.scratch, // reference to common scratch area.
@@ -11361,6 +11363,7 @@ $.yote.templates = {
 		            functions : Object.clone( this.functions ),
 		            id        : $.yote.templates._next_id(),
 		            controls  : Object.clone( this.controls ),
+		            control_ids  : Object.clone( this.control_ids ),
 		            args      : Object.clone( this.args ),
                     refresh   : this.refresh,
 		        }; //TODO : add hash key and index
@@ -11644,6 +11647,7 @@ $.yote.templates = {
 		        rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
         }
 	    context.controls[ varname ] = '#' + ctrl_id;
+	    context.control_ids[ varname ] = ctrl_id;
 	    return rest;
 
         return '';

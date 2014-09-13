@@ -125,7 +125,7 @@ $.yote.templates = {
                     if( typeof this._filter_function !== 'undefined' ) {
                         ret = [];
                         for( var i=0, len = this._arry.length; i<len; i++ ) {
-                            if( this._filter_function( this._arry[ i ], i, this._arry ) ) {
+                            if( this._filter_function( i, this._arry[ i ], this._arry ) ) {
                                 ret.push( this._arry[ i ] );
                             }
 
@@ -150,7 +150,7 @@ $.yote.templates = {
                         var new_ret = [];
                         for( var i=0, len = ret.length; i<len; i++ ) {
                             var k = ret[ i ];
-                            if( this._filter_function( k, this._hash[ k ] ) )
+                            if( this._filter_function( k, this._hash[ k ], this._hash ) )
                                 new_ret.push( k );
                         }
                         ret = new_ret;
