@@ -141,8 +141,6 @@ $.yote = {
 	    }
     }, //fetch_initial
 
-    _subj_has_get_p : function() { return true; },
-
     get_by_id:function( id ) {
 	    return $.yote.objs[id+''] || $.yote.fetch_default_app().fetch(id).get(0);
     },
@@ -432,21 +430,15 @@ $.yote = {
         return i;
     },
 
-    wrap_list:function( args ) {
-        return $.yote.data_wrapper( args );
+    _wrap_list:function( obj, field, key ) {
+        return $.yote._data_wrapper( obj, field, key );
     }, //wrap_list
 
-    wrap_hash:function( args ) {
-        return $.yote.data_wrapper( args, true );
+    _wrap_hash:function( obj, field, key ) {
+        return $.yote._data_wrapper( obj, field, key, true );
     }, //wrap_hash
 
-    data_wrapper:function( args, is_hash ) {
-        var obj  = args.obj;
-        var field = is_hash ? args.hash : args.array;
-        
-
-        var size = args.size;
-        var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
+    _data_wrapper:function( obj, field, key, is_hash ) {
         var node = is_hash ? $.yote._pag_hash_cache[ key ] : $.yote._pag_list_cache[ key ];
         if( ! key || (! node && ( (! obj && ! field ) ) ) ) {
             if( is_hash ) 
@@ -458,12 +450,12 @@ $.yote = {
         var server_paginate = field.match( /^_/ ) || full_size > 300;
 
         if( ! node ) {
-            var start = args.start || 0;
+            var start = 0;
             node = {
                 _server_paginate : server_paginate,
                 _start : start,
                 _data_size : full_size,
-                _page_size  : size,
+                _page_size  : 0,
                 _filter_function     : undefined,
                 _sort_function       : undefined,
                 _transform_function  : undefined,

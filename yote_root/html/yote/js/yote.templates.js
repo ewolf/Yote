@@ -10,7 +10,13 @@ if( ! $.yote ) {
     $.yote = {
         fetch_default_app: function() { return undefined; },
         fetch_account: function() { return undefined; },
-        _subj_has_get_p:function() { return false; },
+        _wrap_list:function() {
+            throw new Exception( 'yote system not present: cannot wrap yote list' );
+        }, //wrap_list
+
+        _wrap_hash:function() {
+            throw new Exception( 'yote system not present: cannot wrap yote hash' );
+        }, //wrap_hash
     };
 }
 $.yote.templates = {
@@ -45,19 +51,17 @@ $.yote.templates = {
     _pag_list_cache : {},
     _pag_hash_cache : {},
 
-    wrap_list:function( args ) {
-        return $.yote.templates.data_wrapper( args );
-    }, //wrap_list
+    _wrap_list:function( array, key ) {
+        return $.yote.templates._data_wrapper( array, key );
+    }, //_wrap_list
 
-    wrap_hash:function( args ) {
-        return $.yote.templates.data_wrapper( args, true );
-    }, //wrap_hash
+    _wrap_hash:function( hash, key ) {
+        return $.yote.templates._data_wrapper( hash, key, true );
+    }, //_wrap_hash
 
-    data_wrapper:function( args, is_hash ) {
-        var arry = args.array;
-        var hash = args.hash;
-        var size = args.size;
-        var key  = args.key || ( args.ctx ? args.ctx.template_path : undefined );
+    _data_wrapper:function( struct, key, is_hash ) {
+        var arry = struct;
+        var hash = struct;
 
         var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
 
@@ -68,10 +72,11 @@ $.yote.templates = {
                 throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
         }
         if( ! node ) {
-            var start = args.start || 0;
+            var start = 0;
             node = {
+                id : $.yote.templates._next_id(),
                 _start : start,
-                _page_size  : size,
+                _page_size  : 0,
                 _filter_function     : undefined,
                 _sort_function       : undefined,
                 _transform_function  : undefined,
@@ -183,7 +188,7 @@ $.yote.templates = {
             node._data_size = Object.keys( hash ).length;
         }
         return node;
-    }, //data_wrapper
+    }, //_data_wrapper
 
     register_template:function( key, value ) {
 	$.yote.templates._compile_template( key, value );
@@ -610,113 +615,74 @@ $.yote.templates = {
     // in addition, the vavar contains period characters, those are treated as separators.
     //      _parse_val( "foo.bar.baz", { context object with foo object that has a bar object that has a baz field with the value of "yup" } ) --> "yup"
     _parse_val:function( value, context, no_literal ) {
-	    var tlist = value.trim().split(/[\.]/);
+
+        /*
+          Check to see if this has been designated as a list or hash or wrapped list or hash.
+         */
+        var is_list = false, is_hash = false, is_wrapped_list = false, is_wrapped_hash = false;
+        var orig_val = value;
+
+        if( value[ value.length - 1 ] == '@' ) {
+            if( value[ value.length - 2 ] == '@' ) {
+                is_wrapped_list = true;
+                value = value.substring( 0, value.length - 2 );
+            } else {
+                is_list = true;                
+                value = value.substring( 0, value.length - 1 );
+            }
+        }
+        else if( value[ value.length - 1 ] == '%' ) {
+            if( value[ value.length - 2 ] == '%' ) {
+                is_wrapped_hash = true;
+                value = value.substring( 0, value.length - 2 );
+            } else {
+                is_hash = true;
+                value = value.substring( 0, value.length - 1 );
+            }
+        }
+        
 	    var subj = context;
-	    var subj_has_get = true;
-	    for( var i=0, len=tlist.length; i < len; i++ ) {
-	        var part = tlist[ i ];
-
-            //check if this must be paginated
-            var array_pag_pair = part.split( /\@\@/ );
-            if( array_pag_pair.length == 2 ) {
-                if( subj_has_get ) {
-                    return $.yote.wrap_list( {
-                        obj   : array_pag_pair[ 0 ] == '' ? subj : subj.get( array_pag_pair[ 0 ] ),
-                        array : array_pag_pair[ 1 ],
-                        key   : context.template_path + '#' + value,
-                    });
-                }
-                if( array_pag_pair[ 0 ] == '' ) {
-                    return $.yote.wrap_list( {
-                        array: subj[ array_pag_pair[ 1 ] ],
-                        key  : context.template_path + '#' + value,
-                    });
-                } else {
-                    part = array_pag_pair[ 0 ];
-                }
-                var arr_pagname = array_pag_pair[ 1 ];
-            }
-            else {
-                var array_pair = part.split( /\@/ );
-                if( array_pair.length == 2 ) {
-                    if( array_pair[ 0 ] == '' ) {
-                        return subj_has_get ? subj.get( array_pair[ 1 ] ).to_list() : subj[ array_pair[ 1 ] ];
-                    } else {
-                        part = array_pair[ 0 ];
-                    }
-                    var arrname = array_pair[ 1 ];
-                } else {
-                    var hash_pag_pair = part.split( /\%\%/ );
-                    if( hash_pag_pair.length == 2 ) {
-                        if( subj_has_get ) {
-                            return $.yote.wrap_hash( {
-                                obj  : hash_pag_pair[ 0 ] == '' ? subj : subj.get( hash_pag_pair[ 0 ] ),
-                                hash : hash_pag_pair[ 1 ],
-                                key  : context.template_path + '#' + value,
-                            });
-                        }
-                        if( hash_pag_pair[ 0 ] == '' ) {
-                            return $.yote.wrap_hash( {
-                                hash : subj[ hash_pag_pair[ 1 ] ],
-                                key  : context.template_path + '#' + value,
-                            });
-                        } else {
-                            part = hash_pag_pair[ 0 ];
-                        }
-                        var hash_pagname = hash_pag_pair[ 1 ];
-                    }
-                    else {
-                        var hash_pair = part.split( /\%/ );
-                        if( hash_pair.length == 2 ) {
-                            if( hash_pair[ 0 ] == '' ) {
-                                return subj_has_get ? subj.get( hash_pair[ 1 ] ).to_hash() : subj[ hash_pair[ 1 ] ];
-                            } else {
-                                part = hash_pair[ 0 ];
-                            }
-                            var hashname = hash_pair[ 1 ];
-                        }
-                    }
+        var start = 0;
+        var vari;
+        var prev_is_get = true; // the context is the first subj
+        var last_dot = value.lastIndexOf( '.' );
+        var last_pipe = value.lastIndexOf( '|' );
+        var last_sep = last_dot > last_pipe ? last_dot : last_pipe;
+        for( var i=0, len = value.length; i<len; i++ ) {
+            if( value[ i ] == '.' || value[ i ] == '|' ) {
+                vari = value.substring( start, i );
+                if( last_sep >= i ) {
+                    //not yet at last seperator
+                    subj = prev_is_get ? subj.get( vari ) : subj[ vari ];
+                    prev_is_get = value[ i ] == '|';
+                    start = i + 1;
                 }
             }
+        }
 
-            if( typeof subj === 'object' ) {
-		        subj = subj_has_get ? subj.get( part ) : subj[ part ];
-                subj_has_get = $.yote._subj_has_get_p();
-	        }
-	        if( typeof subj === 'undefined' ) return no_literal ? undefined : value;
-
-            if( arrname ) {
-                subj = subj_has_get ? subj.get( arrname ).to_list() : subj[ arrname ];
-            } else if( hashname ) {
-                subj = subj_has_get ? subj.get( hashname ).to_hash() : subj[ hashname ];
-            } else if( arr_pagname ) {
-                if( subj_has_get ) {
-                    subj = $.yote.wrap_hash( {
-                        obj  : subj,
-                        array : arr_pagname,
-                        key  : context.template_path + '#' + value,
-                    });
-                } else {
-                    subj = $.yote.wrap_hash( {
-                        array : subj[ arr_pagname ],
-                        key  : context.template_path + '#' + value,
-                    });
-                }
-            } else if( hash_pagname ) {
-                if( subj_has_get ) {
-                    subj = $.yote.wrap_hash( {
-                        obj  : subj,
-                        hash : hash_pagname,
-                        key  : context.template_path + '#' + value,
-                    });
-                } else {
-                    subj = $.yote.wrap_hash( {
-                        hash : subj[ hash_pagname ],
-                        key  : context.template_path + '#' + value,
-                    });
-                }
+        vari = value.substring( start, value.length );
+        if( prev_is_get && last_sep >= 0 ) {
+            if( is_list || is_hash ) {
+                subj = subj.get( vari ).to_list();
+            } else if( is_hash ) {
+                subj = subj.get( vari ).to_hash();
+            } else if( is_wrapped_list ) {
+                subj = $.yote._wrap_list( subj, vari, context.template_path + '#' + orig_val );
+            } else if( is_wrapped_hash ) {
+                subj = $.yote._wrap_hash( subj, vari, context.template_path + '#' + orig_val );                
+            } else {
+                subj = subj.get( vari );
             }
-	    }
+        } else {
+            subj = last_sep >= 0 ? subj[ vari ] : subj.get( vari );
+            if( is_wrapped_list ) {
+                subj = $.yote.templates._wrap_list( subj, context.template_path + '#' + orig_val );
+            } else if( is_wrapped_hash ) {
+                subj = $.yote.templates._wrap_hash( subj, context.template_path + '#' + orig_val );
+            }
+        }
+	    if( typeof subj === 'undefined' ) return no_literal ? undefined : orig_val;
+
 	    return subj;
     }, //_parse_val
 
