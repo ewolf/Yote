@@ -86,8 +86,8 @@ $().ready(function(){
 	        <$$$ controlname html
 	        <?? function( ctx ) ....
 	        <$$ template 
-	        <$$ listfill template list max_rows $$>
-	        <$$ hashfill template list max_rows $$>
+	        <$$ List template list max_rows $$>
+	        <$$ Hash template list max_rows $$>
 	        <$ var $>
 	        <$ _index_ $>
 	        <$ _hashkey_ $>
@@ -124,7 +124,7 @@ $().ready(function(){
 		        'Give me arguments alpha beta zappa wack Tootx and wack',
 		        '<$$ templatename args $$>, <??? function ???>' );
             
-	        is( $.yote.templates.fill_template( 'PaginationTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template @list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+	        is( $.yote.templates.fill_template( 'PaginationTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ List template @list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
             
 	        is( $.yote.templates.fill_template( 'PaginationTest', undefined, [ '1' ] ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 4 : E Pea : green Spinach : wild YARRA',  'tests list and hash paginate advances' );
 
@@ -153,6 +153,14 @@ $().ready(function(){
 </head>
 
 <templates>
+
+    <script type="text/template" class="yote_template_definition" template_name="SelTest">
+       <??? ctx.vars.myHash = { '1' : "Number One", '2' : "Lets Go" }; ???>
+       <$$ BuildSelectFromHash myHash% mySelect 2 $$>
+       <?
+            $( ctx.controls.mySelect ).click( function() { alert( 'clicked ' + $( ctx.controls.mySelect ).val() ) } );
+       ?>
+    </script>
 
     <script type="text/template" class="yote_template_definition" template_name="AfterRender">
       <$$$ ar_div <div></div>$$$>
@@ -186,8 +194,8 @@ $().ready(function(){
                ctx.vars.hash = {  Poke : "MON", Crate : "BARREL", Nose : "RED" };
            ???>
        LISTYHASHY
-       <$$ listfill ArrayRow array@ $$>
-       <$$ hashfill HashRow hash% $$>
+       <$$ List ArrayRow array@ $$>
+       <$$ Hash HashRow hash% $$>
        BEETS
        <??
        ??>
@@ -209,8 +217,8 @@ $().ready(function(){
        <# putting the size in the array_pag because
           the array_pag might be needed for paginations
           control html #>
-       <$$ listpaginate ArrayRow array@@ 3 $$>
-       <$$ hashpaginate HashRow hash%% 3 $$>
+       <$$ ListPaginate ArrayRow array@@ 3 $$>
+       <$$ HashPaginate HashRow hash%% 3 $$>
        YARRA
        <??
        ??>
@@ -260,5 +268,7 @@ $().ready(function(){
   <div  id="eddy" class="yote_template" template="Ed"></div>
   <div id="tests"></div>
   <div id="results"></div>
+
+  <div  id="after_render" class="yote_template" template="SelTest"></div>
 </body>
 </html>

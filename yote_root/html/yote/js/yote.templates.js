@@ -10,6 +10,7 @@ if( ! $.yote ) {
     $.yote = {
         fetch_default_app: function() { return undefined; },
         fetch_account: function() { return undefined; },
+        reinit:function() {},
         _wrap_list:function() {
             throw new Exception( 'yote system not present: cannot wrap yote list' );
         }, //wrap_list
@@ -412,6 +413,7 @@ $.yote.templates = {
 	        vars : {},
 	        functions : {},
 	        controls : {},
+	        control_ids : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
 	        scratch : $.yote.templates.scratch, // reference to common scratch area.
@@ -433,6 +435,7 @@ $.yote.templates = {
 		            functions : Object.clone( this.functions ),
 		            id        : $.yote.templates._next_id(),
 		            controls  : Object.clone( this.controls ),
+		            control_ids  : Object.clone( this.control_ids ),
 		            args      : Object.clone( this.args ),
                     refresh   : this.refresh,
 		        }; //TODO : add hash key and index
@@ -664,14 +667,18 @@ $.yote.templates = {
 
         vari = value.substring( start, value.length );
         if( prev_is_get && last_sep >= 0 ) {
-            if( is_list || is_hash ) {
+            if( is_list ) { 
                 subj = subj.get( vari ).to_list();
             } else if( is_hash ) {
                 subj = subj.get( vari ).to_hash();
             } else if( is_wrapped_list ) {
+                subj = subj.class == 'ARRAY' ?
+                subj = $.yote.templates._wrap_list( subj.get( vari ).to_list(), context.template_path + '#' + orig_val ) :
                 subj = $.yote._wrap_list( subj, vari, context.template_path + '#' + orig_val );
             } else if( is_wrapped_hash ) {
-                subj = $.yote._wrap_hash( subj, vari, context.template_path + '#' + orig_val );                
+                subj = subj.class == 'HASH' ?
+                    $.yote.templates._wrap_hash( subj.get( vari ).to_hash(), context.template_path + '#' + orig_val ) :
+                    $.yote._wrap_hash( subj, vari, context.template_path + '#' + orig_val );                
             } else {
                 subj = subj.get( vari );
             }
@@ -712,6 +719,7 @@ $.yote.templates = {
 		        rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
         }
 	    context.controls[ varname ] = '#' + ctrl_id;
+	    context.control_ids[ varname ] = ctrl_id;
 	    return rest;
 
         return '';

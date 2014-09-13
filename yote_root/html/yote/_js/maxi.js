@@ -9889,10 +9889,11 @@ $.yote = {
             else
                 throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
         }
-        var full_size = obj.count( { name : field } );
-        var server_paginate = field.match( /^_/ ) || full_size > 300;
 
         if( ! node ) {
+            var full_size = obj.count( { name : field } );
+            var server_paginate = field.match( /^_/ ) || full_size > 300;
+
             var start = 0;
             node = {
                 _server_paginate : server_paginate,
@@ -10012,6 +10013,10 @@ $.yote = {
             } else {
                 $.yote._pag_list_cache[ key ] = node;
             }
+        } else if( node.server_paginate ) {
+            node._data_size = obj.count( { name : field } );
+        } else {
+            node._data_size = is_hash ? Object.count( node._obj.get( node._field ).to_hash() ) : node._obj.get( node._field ).to_list().length;
         }
         if( obj && field ) {
             node._obj = obj;
@@ -10924,10 +10929,10 @@ if (!JSON) {
 /*
  * LICENSE AND COPYRIGHT
  *
- * Copyright (C) 2014 Eric Wolf
+ * Copyright (C) 2014 Eric Wolf   ( coyocanid@gmail.com )
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.103
+ * Version 0.104
  */
 if( ! $.yote ) {
     $.yote = {
@@ -11333,6 +11338,7 @@ $.yote.templates = {
     new_context:function() {
 	    return {
 	        vars : {},
+	        functions : {},
 	        controls : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
@@ -11351,11 +11357,12 @@ $.yote.templates = {
             },
 	        clone : function() {
 		        var clone = {
-		            vars     : Object.clone( this.vars ),
-		            id       : $.yote.templates._next_id(),
-		            controls : Object.clone( this.controls ),
-		            args     : Object.clone( this.args ),
-                    refresh  : this.refresh,
+		            vars      : Object.clone( this.vars ),
+		            functions : Object.clone( this.functions ),
+		            id        : $.yote.templates._next_id(),
+		            controls  : Object.clone( this.controls ),
+		            args      : Object.clone( this.args ),
+                    refresh   : this.refresh,
 		        }; //TODO : add hash key and index
 		        clone.clone = this.clone;
 		        clone._app_ = this._app_;
@@ -11585,14 +11592,18 @@ $.yote.templates = {
 
         vari = value.substring( start, value.length );
         if( prev_is_get && last_sep >= 0 ) {
-            if( is_list || is_hash ) {
+            if( is_list ) { 
                 subj = subj.get( vari ).to_list();
             } else if( is_hash ) {
                 subj = subj.get( vari ).to_hash();
             } else if( is_wrapped_list ) {
+                subj = subj.class == 'ARRAY' ?
+                subj = $.yote.templates._wrap_list( subj.get( vari ).to_list(), context.template_path + '#' + orig_val ) :
                 subj = $.yote._wrap_list( subj, vari, context.template_path + '#' + orig_val );
             } else if( is_wrapped_hash ) {
-                subj = $.yote._wrap_hash( subj, vari, context.template_path + '#' + orig_val );                
+                subj = subj.class == 'HASH' ?
+                    $.yote.templates._wrap_hash( subj.get( vari ).to_hash(), context.template_path + '#' + orig_val ) :
+                    $.yote._wrap_hash( subj, vari, context.template_path + '#' + orig_val );                
             } else {
                 subj = subj.get( vari );
             }
@@ -11648,4 +11659,34 @@ $.yote.templates = {
 
 
 }//$.yote.templates
+
+
+if( ! Object.size ) {
+    Object.size = function(obj) {
+	    var size = 0, key;
+	    for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+	    }
+	    return size;
+    };
+}
+if( ! Object.keys ) {
+    Object.keys = function( t ) {
+    	var k = []
+	    for( var key in t ) {
+	        k.push( key );
+	    }
+	    return k;
+    }
+}
+if( ! Object.clone ) {
+    // shallow clone
+    Object.clone = function( h ) {
+        var clone = {};
+        for( var key in h ) {
+	        clone[ key ] = h[ key ];
+        }
+        return clone;
+    }
+}
 

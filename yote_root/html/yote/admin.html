@@ -83,7 +83,7 @@ $.yote.debug = true;
 	      $.yote.templates.import_templates( '/templates/default_templates.html' );
 	      $.yote.templates.import_templates( '/templates/yote_templates.html' );
 	      $.yote.init(  );
-          $.yote.fetch_root().admin_prefetch();
+          window.admin_data = $.yote.default_app.admin_prefetch();
 	      $.yote.templates.init();
 	      $.yote.templates.refresh();
       });
@@ -95,9 +95,9 @@ $.yote.debug = true;
   <table border=1><tr>  <th>Interval (mins)</th>     <th>Infinite Repeat</th>   <th>Repeats</th>
                         <th>Delete</th>
                   </tr>
-      <$$ listpaginate Cron_Repeat_Row _@@repeats $$>
+      <$$ ListPaginate Cron_Repeat_Row _|repeats@@ $$>
   </table>
-  <$$ Paginator _@@repeats $$>
+  <$$ Paginator _|repeats@@ $$>
   <$$$ newrep <button type="button">add repeat</button> $$$>
     <?
         $( ctx.controls.newrep ).click( function() {
@@ -135,9 +135,9 @@ $.yote.debug = true;
 
   <script type="text/template" class="yote_template_definition" template_name="Attached_Objects">
     <table> <TR> <TH>Object Name</TH> <TH>Class</TH> <TH>Remove</TH> </TR>
-      <$$ hashpaginate Attached_Obj_Row admin%%attached_objects $$>
+      <$$ HashPaginate Attached_Obj_Row admin|attached_objects%% $$>
     </table>
-    <$$ Paginator admin%%attached_objects $$>
+    <$$ Paginator admin|attached_objects%% $$>
     <$$ Add_Attached $$>
   </script>
 
@@ -215,15 +215,15 @@ $.yote.debug = true;
           <th>Was Validated</th>
           <th>Reset Password</th>
         </tr>
-        <$$ hashpaginate User_Row handles $$>
+        <$$ HashPaginate User_Row admin_data|handles%% 10 $$>
       </table>
-      <$$ Paginator handles $$> <br>
-       <$$ SearchHash handles values handle email $$>
+      <$$ Paginator admin_data|handles%% $$> <br>
+       <$$ SearchHash admin_data|handles%% values handle email $$>
        <br>
        user logins removed : <$$$ rl <span></span> $$$><br>
        <$$$ purge_users <button type="button">Flush all removed users</button> $$$>
        <?
-           var pu = 1*ctx._app_.count( '_removed_logins' );
+           var pu = 1*ctx._app_.count( { name : '_removed_logins' } );
            $( ctx.controls.rl ).text( pu );
            if( pu == 0 ) {
                $( ctx.controls.purge_users ).prop( 'disabled', true );
@@ -292,18 +292,11 @@ $.yote.debug = true;
    </script>
 
    <script type="text/template" class="yote_template_definition" template_name="Entry_Schedule">
-    <??? 
-       ctx.vars.scheduled_times = $.yote.wrap_list( { 
-           array : 'scheduled_times',
-           obj   : ctx.vars._,
-           ctx   : ctx
-       } );
-    ???>
 
      <table border=1><tr>  <th>Scheduled Time</th> <th>Delete</th> </tr>
-       <$$ listpaginate Cron_Schedule_Row scheduled_times $$>
+       <$$ ListPaginate Cron_Schedule_Row _|scheduled_times@@ 10 $$>
      </table>
-     <$$ Paginator scheduled_times $$>
+     <$$ Paginator _|scheduled_times@@ $$>
      <$$$ new_schedule_time <input type="datetime-local"> $$$>
      <$$$ new_schedule <button type="button">Schedule Time</button> $$$>
      <?
@@ -340,24 +333,16 @@ $.yote.debug = true;
    </script>
 
    <script type="text/template" class="yote_template_definition" template_name="Cron">
-     <???
-        ctx.vars.cron = ctx._app_.cron();
-        ctx.vars.cron_pag = $.yote.templates.wrap_list( {
-            array : ctx.vars.cron.get( 'entries' ).to_list(), 
-            size  : 5,
-            initial_start : 0,
-            ctx : ctx,
-        } );
-     ???>
+     <??? ctx.vars.cron = ctx.vars.admin_data.get('cron'); ???>
      <A NAME="Cron">
        <H3>Crons</H3>
        <table border=1><tr>  <th>Name</th>     <th>Enabled</th>   <th>Notes</th>
            <th>Script</th>   <th>Next Run</th>  <th>Repeat</th>
            <th>Schedule</th> <th>Delete</th>
          </tr>
-         <$$ listpaginate Cron_Row cron_pag $$>
+         <$$ ListPaginate Cron_Row cron|entries@@ 10 $$>
        </table>
-       <$$ Paginator cron_pag $$> <br>
+       <$$ Paginator cron|entries@@ $$> <br>
 
        <$$$ newbutton <button type="button">Add Cron</button>$$$>
        <?
@@ -403,7 +388,7 @@ $.yote.debug = true;
         ctx.vars.admin = ctx.vars._.admin_prefetch();
       ???>
      <tr>   <td><$ _hashkey_ $></td>     <td><$$ edit _ host_name $$></td>   <td><$$ edit _ host_u2rl $$></td>
-       <td><?? return ctx.vars._.count('_account_roots'); ??> </td>   
+       <td><?? return ctx.vars._.count( { name : '_account_roots' } ); ??> </td>   
        <td><$$ Email_Settings $$></td>  <td><$$ Attached_Objects $$></td>
        <td><$$$ reset_b <button type="button">Reset</button>$$$></td>
      </tr>
@@ -430,17 +415,18 @@ $.yote.debug = true;
             size  : 3
         } );
 */
+console.log( ctx.parse( 'admin_data' ), ctx.parse( 'admin_data|apps%%' ), "P" );
     ???>
     <table border=1><tr>  <th>Name</th>     <th>Host</th>   <th>Host URL</th>
         <th>Number of Users</th>   <th>Email Settings</th> 
         <th>Attached Objects</th>  <th>Reset</th>
       </tr>
-      <$$ hashpaginate App_Row admin_data%%apps 3 $$>
+      <$$ HashPaginate App_Row admin_data|apps%% 3 $$>
     </table>
-    <$$ Paginator admin_data%%apps $$> <br>
-    <$$ SearchHash admin_data%%apps keys $$>
+    <$$ Paginator admin_data|apps%% $$> <br>
+    <$$ SearchHash admin_data|apps%% keys $$>
     <???
-        var pc = $.yote.fetch_root().count( '_purged_apps' );
+        var pc = $.yote.fetch_root().count( { name : '_purged_apps' } );
         if( pc > 0 ) {
             return pc + ' apps thate have been purged <$$$ purge_apps <button type="button">Flush all Purged Apps</button> $$$>';
 	    } 
@@ -490,7 +476,8 @@ $.yote.debug = true;
 
   <script type="text/template" class="yote_template_definition" template_name="AdminBody">
     <???
-       ctx.vars.admin_data = ctx._app_.admin_prefetch();
+       ctx.vars.admin_data = window.admin_data;
+       ctx.vars.root = $.yote.default_app;
      ???>
     <DIV class="mainpanel">
       <SECTION>
