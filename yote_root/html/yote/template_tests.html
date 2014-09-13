@@ -124,9 +124,11 @@ $().ready(function(){
 		        'Give me arguments alpha beta zappa wack Tootx and wack',
 		        '<$$ templatename args $$>, <??? function ???>' );
             
-	        is( $.yote.templates.fill_template( 'ArrayTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template @list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
+	        is( $.yote.templates.fill_template( 'PaginationTest' ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 0 : A 1 : C 2 : B Apple : butter Daikon : radish Lemon : yellow YARRA', 'tests <??? function(ctx) { that puts a list in context } ???>, <$$ listfill template @list maxrows $$>, <$ _index_ $> <$ _hashkey_ $> and <$ _ $> ' );
             
-	        is( $.yote.templates.fill_template( 'ArrayTest', undefined, [ '1' ] ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 4 : E Pea : green Spinach : wild YARRA',  'tests list and hash paginate advances' );
+	        is( $.yote.templates.fill_template( 'PaginationTest', undefined, [ '1' ] ).trim().replace( /[\n\s]+/g, ' '), 'ARRAY 4 : E Pea : green Spinach : wild YARRA',  'tests list and hash paginate advances' );
+
+	        is( $.yote.templates.fill_template( 'ArrayHashTest' ).trim().replace( /[\n\s]+/g, ' '), 'LISTYHASHY 0 : A 1 : C 2 : B 3 : D 4 : E 5 : N Crate : BARREL Nose : RED Poke : MON BEETS',  'tests list and hash non-paginated' );
 
 	        is( $.yote.templates.fill_template( 'SandBox' ).trim().replace( /[\n\s]+/g, ' '), 'sandy sandy sandy', '<$ app.sandbox.name $>' );
 	        is( $.yote.templates.fill_template( 'Vars' ).trim().replace( /[\n\s]+/g, ' '), 'My name is unknown', 'default value for get' );
@@ -178,7 +180,21 @@ $().ready(function(){
       <$ _hashkey_ $> : <$ _ $> 
     </script>
 
-    <script type="text/template" class="yote_template_definition" template_name="ArrayTest">
+    <script type="text/template" class="yote_template_definition" template_name="ArrayHashTest">
+       <???
+               ctx.vars.array = [ "A", "C", "B", "D", "E", "N" ];
+               ctx.vars.hash = {  Poke : "MON", Crate : "BARREL", Nose : "RED" };
+           ???>
+       LISTYHASHY
+       <$$ listfill ArrayRow array@ $$>
+       <$$ hashfill HashRow hash% $$>
+       BEETS
+       <??
+       ??>
+    </script>
+
+
+    <script type="text/template" class="yote_template_definition" template_name="PaginationTest">
        <???
                ctx.vars.array = [ "A", "C", "B", "D", "E" ];
                ctx.vars.hash = {  Apple : 'butter', Spinach : 'wild', Daikon : 'radish', Lemon : 'yellow', Pea : 'green'};

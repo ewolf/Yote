@@ -13,7 +13,7 @@
        #>
     <??? 
        if( ctx.args.length > 1 ) { 
-           var obj = ctx.vars[ ctx.args[ 0 ] ];
+           var obj = ctx.parse( ctx.args[ 0 ] )
            ctx.set( 'object', obj );
            var fld = ctx.args[ 1 ];
            var lbl = ctx.args[ 2 ] || '';
@@ -130,7 +130,7 @@
      #>
     <???
        if( ctx.args.length > 1 ) { 
-           ctx.vars.object = ctx.vars[ ctx.args[ 0 ] ];
+           ctx.vars.object = ctx.parse( ctx.args[ 0 ] );
            ctx.vars.field = ctx.args[ 1 ];
            return '<$$$ input_div <div class="input_div"> $$$>' + 
                      '<$$$ noedit_span <span class="edit_allowed"> $$$></span>' +
@@ -222,7 +222,7 @@
     <???
       if( ctx.args.length > 1 ) { 
           var fld = ctx.args[ 1 ];
-	      var obj =  ctx.vars[ ctx.args[ 0 ] ];
+	      var obj =  ctx.parse( ctx.args[ 0 ] );
           ctx.set( 'object', obj );
           var fld = ctx.args[ 1 ];
 	      ctx.set( 'escaped', obj.get( fld ) );

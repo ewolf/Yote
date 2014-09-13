@@ -130,7 +130,7 @@
         var template = ctx.args[ 0 ];
         var hash = ctx.parse( ctx.args[ 1 ] );
         var more = ctx.args.length > 2 ? ctx.args.slice( 2 ) : [];
-        var keys = Object.keys( hash );
+        var keys = Object.keys( hash ).sort();
         return keys.map( function ( item, idx ) {
             return '<$$ _hashfillrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + keys[idx] + ' ' + more.join(' ') + ' $$>';
         } ).join('');
