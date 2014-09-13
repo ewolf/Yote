@@ -1,0 +1,397 @@
+<!--
+
+  LICENSE AND COPYRIGHT
+ 
+  Copyright (C) 2014 Eric Wolf  ( coyocanid@gmail.com )
+  This module is free software; it can be used under the terms of the artistic license
+ 
+  ---------------------------------------------------------------------------------------------
+    
+   The following templates are included in this set :
+
+     List
+     ListPaginate
+     Hash
+     HashPaginate
+     Paginator
+
+     SearchHash
+     edit_hash_with_select_scalars
+     list_remove_button
+     
+-->
+
+<style>
+.editing {
+    background-color: lightyellow;
+    border: solid 2px black;
+    padding-right: 10px;
+    min-width:100px; }
+.edit_allowed {
+    padding-right: 10px;
+}
+</style>
+
+<script type="text/template" class="yote_template_definition" template_name="ListPaginate">
+    <#
+        fills the template for each item in the list up to pagination size.
+           remembers pagination state across reloads
+        arguments :
+            template
+            paginated list object
+            size of pagination
+
+        Adds the following variables to the context :
+            _       : list item being rendered
+            _index_ : the index of the item in the list
+
+        Paginated list objects are specified by @@
+
+        Example : <$$ ListPaginate myTemplate myList@@ 10 $$>
+     #>
+    <???
+
+    if( ctx.args.length > 1 ) {
+        var template = ctx.args[ 0 ];
+        var pag_list = ctx.parent.parse( ctx.args[ 1 ] );
+        var size     = ctx.args[ 2 ];
+        var more     = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+        pag_list.set_size( size );
+        return pag_list.to_list().map( function ( item, idx ) {
+            return '<$$ _listfillpagrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + idx + ' ' + more.join(' ') + ' $$>';
+        } ).join('');
+    }
+    console.log( 'error in template ListPaginate : not enough arguments ( requires 2 ) : ' + '<$$ ListPaginate ' + ctx.args.join(' ') + ' $$>' );
+    return '';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="_listfillpagrow">
+   <???
+      var template = ctx.args[ 0 ]; // fillpagrow
+      var pag_list = ctx.parent.parent.parse( ctx.args[ 1 ] );
+      var list     = pag_list.to_list();
+      var idx      = ctx.args[ 2 ];
+      var more = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+      ctx.vars._ = list[ idx ];
+      ctx.vars._index_ = Number(idx) + pag_list._start;
+      return '<$$ ' + template + ' ' + more.join( ' ' ) + ' $$>';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="List">
+    <#
+        fills the template for each item in the list
+        arguments :
+            template
+            list
+
+        Adds the following variables to the context :
+            _       : list item being rendered
+            _index_ : the index of the item in the list
+
+       List objects are specified by @
+
+        Example : <$$ List myTemplate myList@ $$>
+     #>
+    <???
+    if( ctx.args.length > 1 ) {
+        var template = ctx.args[ 0 ];
+        var list = ctx.parse( ctx.args[ 1 ] );
+        var more = ctx.args.length > 2 ? ctx.args.slice( 2 ) : [];
+        return list.map( function ( item, idx ) {
+            return '<$$ _listfillrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + idx + ' ' + more.join(' ') + ' $$>';
+        } ).join('');
+    }
+    console.log( 'error in template List : not enough arguments ( requires 2 ) : ' + '<$$ List ' + ctx.args.join(' ') + ' $$>' );
+    return '';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="_listfillrow">
+   <???
+      var template = ctx.args[ 0 ];
+      var list     = ctx.parse( ctx.args[ 1 ] );
+      var idx      = ctx.args[ 2 ];
+      var more = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+      ctx.vars._ = list[ idx ];
+      ctx.vars._index_ = idx;
+      return '<$$ ' + template + ' ' + more.join( ' ' ) + ' $$>';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="HashPaginate">
+    <#
+        fills the template for each item in the hash up to pagination size.
+           remembers pagination state across reloads. The results are sorted
+           by key.
+
+        arguments :
+            template
+            paginated list object
+            size of pagination
+
+        Adds the following variables to the context :
+            _         : hash value being rendered
+            _hashkey_ : hashkey associated witht eh value.
+
+        Paginated hash objects are specified by %%
+
+        Example : <$$ HashPaginate myTemplate myHash%% 10 $$>
+     #>
+    <???
+
+    if( ctx.args.length > 1 ) {
+        var template = ctx.args[ 0 ];
+        var pag_hash = ctx.parent.parse( ctx.args[ 1 ] );
+        var size     = ctx.args[ 2 ];
+        pag_hash.set_size( size );
+        var more     = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+        var pag_keys = pag_hash.keys();
+        return pag_keys.map( function ( item, idx ) {
+            return '<$$ _hashfillpagrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + item + ' ' + more.join(' ') + ' $$>';
+        } ).join('');
+    }
+    console.log( 'error in template HashPaginate : not enough arguments ( requires 2 ) : ' + '<$$ HashPaginate ' + ctx.args.join(' ') + ' $$>' );
+    return '';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="_hashfillpagrow">
+   <???
+      var template = ctx.args[ 0 ]; // fillpagrow
+      var hash_pag = ctx.parent.parent.parse( ctx.args[ 1 ] );
+      var hash     = hash_pag.to_hash();
+      var key      = ctx.args[ 2 ];
+      var more     = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+      ctx.vars._ = hash[ key ];
+      ctx.vars._hashkey_ = key;
+      return '<$$ ' + template + ' ' + more.join( ' ' ) + ' $$>';
+    ???>
+</script>
+
+
+<script type="text/template" class="yote_template_definition" template_name="Hash">
+    <#
+        fills the template for each item in the hash in the alphabetical order of pagination key
+
+        arguments :
+            template
+            paginated list object
+
+        Adds the following variables to the context :
+            _         : hash value being rendered
+            _hashkey_ : hashkey associated witht eh value.
+
+        Paginated hash objects are specified by %%
+
+        Example : <$$ Hash myTemplate myHash%% $$>
+     #>
+    <???
+    if( ctx.args.length > 1 ) {
+        var template = ctx.args[ 0 ];
+        var hash = ctx.parse( ctx.args[ 1 ] );
+        var more = ctx.args.length > 2 ? ctx.args.slice( 2 ) : [];
+        var keys = Object.keys( hash ).sort();
+        return keys.map( function ( item, idx ) {
+            return '<$$ _hashfillrow ' + template + ' ' + ctx.args[ 1 ] + ' ' + keys[idx] + ' ' + more.join(' ') + ' $$>';
+        } ).join('');
+    }
+    console.log( 'error in template Hash : not enough arguments ( requires 2 ) : ' + '<$$ Hash ' + ctx.args.join(' ') + ' $$>' );
+    return '';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="_hashfillrow">
+   <???
+      var template = ctx.args[ 0 ];
+      var hash     = ctx.parse( ctx.args[ 1 ] );
+      var key      = ctx.args[ 2 ];
+      var more = ctx.args.length > 3 ? ctx.args.slice( 3 ) : [];
+      ctx.vars._ = hash[ key ];
+      ctx.vars._hashkey_ = key;
+      return '<$$ ' + template + ' ' + more.join( ' ' ) + ' $$>';
+    ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="BuildSelectFromHash">
+   <#
+      Builds a select object from a hash. Assigns the control name passed in to the calling template context.
+      Usage :  <$$ BuildSelectFromHash myHash% controlName optionalDefaultValue $$>
+               <?  $( ctx.controls.controlName ).click( function(){ alert( "I now have value : " + $( ctx.vars.controlName ).val() ) } );
+    #>
+    <???
+       if( ctx.args.length == 2 || ctx.args.length == 3 ) {
+           var hash = ctx.parse( ctx.args[ 0 ] );
+           var buf = '<$$$ ' + ctx.args[ 1 ] + ' <select> $$$>';
+           for( var key in hash ) {
+               buf += '<option value="' + key + '" ' + (ctx.args[2] == key ? ' selected="selected" ': '' ) + ' >' + hash[ key ] + '</option>';
+           }
+           return buf + '</select>';
+       } else {
+           console.log( "Error in template BuildSelectFromHash : wrong number of arguments" );
+       }
+     ???>
+     <??
+         ctx.parent.controls[ ctx.args[ 1 ] ] = ctx.controls[ ctx.args[ 1 ] ];
+      ??>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="escape_html">
+  <???
+      if( ctx.args.length*1 == 1 ) {
+          var val = ctx.parse( ctx.args[ 0 ] );
+          return val;
+	  }
+      return 'xxxx';
+  ???>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="list_remove_button">
+    <???
+        var collection_to_remove_from = ctx.args[ 0 ] || ctx.vars.__;
+        ctx.set( 'collection_to_remove_from', collection_to_remove_from );
+
+        var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
+        ctx.set( 'remove_key', key_to_remove );
+
+        var lbl = ctx.args[ 2 ] || 'Remove';
+        return '<$$$ remove_button <button type="button">$$$>' + lbl + '</button>';
+    ???>
+    <?
+        $( ctx.controls.remove_button ).click( function() {
+            ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
+            ctx.refresh();
+        } );
+     ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="list_remove_ask">
+    <???
+        var collection_to_remove_from = ctx.args[ 0 ] || ctx.vars.__;
+        ctx.set( 'collection_to_remove_from', collection_to_remove_from );
+        var key_to_remove = ctx.args[ 1 ] || ctx.hashkey_or_index;
+        ctx.set( 'remove_key', key_to_remove );
+
+        var lbl = ctx.args[ 2 ] || 'Remove';
+        return '<$$$ remove_button <button type="button">$$$>' + lbl + '</button>';
+    ???>
+    <?
+        $( ctx.controls.remove_button ).click( function() {
+            if( confirm( "Are you sure you want to delete this?" ) ) {
+                ctx.vars.collection_to_remove_from.remove( ctx.vars.remove_key );
+                ctx.refresh();
+            }
+        } );
+     ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="Paginator">
+ <???
+     var collection = ctx.parent.parse( ctx.args[ 0 ] );
+     if( collection.can_rewind() || collection.can_fast_forward() ) {
+         return '<$$$ paginate_to_beginning_button <button type="BUTTON">&laquo;</button> $$$>' +
+      '<$$$ paginate_back_button <button type="BUTTON">&lsaquo;</button> $$$>' +
+      '<$$$ paginate_forward_button <button type="BUTTON">&rsaquo;</button> $$$>' +
+      '<$$$ paginate_to_end_button <button type="BUTTON">&raquo;</button> $$$>';
+     }
+      return '';
+  ???>
+ <?
+
+     if( ctx.args.length < 1 ) return;
+
+     var collection = ctx.parent.parse( ctx.args[ 0 ] );
+
+     if( ! collection || ! collection.can_rewind ) { //test if it has that function
+         console.log( 'warning : init_paginator called for something not a list or hash' );
+         return;
+     }
+     var pag_begin_button_id    = ctx.controls.paginate_to_beginning_button,
+          pag_back_button_id    =  ctx.controls.paginate_back_button,
+          pag_forward_button_id =  ctx.controls.paginate_forward_button,
+          pag_end_button_id     =  ctx.controls.paginate_to_end_button;
+
+     if( collection.can_rewind() ) {
+         $( pag_begin_button_id ).attr( 'disabled', false );
+         $(  pag_back_button_id ).attr( 'disabled', false );
+         $(  pag_begin_button_id ).click( function() { 
+                           collection.first();
+                           $.yote.reinit();
+                           ctx.refresh(); 
+                           } );
+         $(  pag_back_button_id ).click( function() { 
+                           collection.back();
+                           $.yote.reinit();
+                           ctx.refresh(); 
+                           } );
+     } else {
+         $(  pag_begin_button_id ).attr( 'disabled', true );
+         $(  pag_back_button_id ).attr( 'disabled', true );
+     }
+     if( collection.can_fast_forward() ) {
+         $(  pag_forward_button_id ).attr( 'disabled', false );
+         $(  pag_end_button_id ).attr( 'disabled', false );
+         $(  pag_forward_button_id ).click( function() {
+             collection.forwards();
+             $.yote.reinit();
+             ctx.refresh();
+         } );
+         $(  pag_end_button_id ).click( function() { collection.last();
+                                                     $.yote.reinit();
+                                                     ctx.refresh(); } );
+     } else {
+         $(  pag_forward_button_id ).attr( 'disabled', true );
+         $(  pag_end_button_id ).attr( 'disabled', true );
+     }
+  ?>
+</script>
+
+<script type="text/template" class="yote_template_definition" template_name="SearchHash">
+    <#
+       SearchHash searches through a hash and filters the results.
+       Provides a search box.
+       <$$ SearchHash wrappeddata keys|values optional-list-of-fields-to-search-through
+    #>
+    Search
+       <$$$ srchtxt <input type="text"> $$$>
+          <$$$ go <button type="button">$$$>Search</button>
+    <?
+      if( ctx.args.length > 1 ) {
+          var data = ctx.parent.parse( ctx.args[ 0 ] );
+          var search_key = ctx.args[ 1 ] == 'keys';
+          var search_fields = ctx.args.slice( 2 );
+          if( data._last_val ) {
+              $( ctx.controls.srchtxt ).val( data._last_val );
+          }
+          $.yote.util.button_actions( {
+              button : ctx.controls.go,
+              texts : [ ctx.controls.srchtxt ],
+              action : function() {
+                  var val = $( ctx.controls.srchtxt ).val();
+                  data._last_val = val;
+                  if( search_key ) {
+                      data.set_filter( function( k, v, a  ) {
+                          return k.match( val );
+                      } );
+                  } else if( search_fields.length > 0 ) {
+                      var has_get = $.yote._subj_has_get_p();
+                      data.set_filter( function( k, v, a ) {
+                          for( var i=0, len=search_fields.length; i<len; i++ ) {
+                              if( has_get ? v.get( search_fields[i] ).match( val ) : v[ search_fields[i] ].match( val ) ) {
+                                  return true;
+                              }
+                          }
+                          return false;
+                      } );
+                  } else {
+                      data.set_filter( function( k, v ) {
+                          return v.match( val );
+                      } );
+                  }
+                  ctx.refresh();
+              }
+          } );
+      }       
+    ?>
+</script>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  
+  <style>
+    .mono { font-family: monospace; }
+    dt { margin: 10px; }
+  </style>
+
+</head>
+
+<body>
+  <h1>Yote Templates</h1>
+  <h2>Client Side Compiled Templates</h2>
+
+  <section>
+    <h3>About</h3>
+    <p>
+      Yote templates are client side compiled templates that require jquery. They are used to build
+      modular context sensitive components to be assembled into a web page.
+      This is a stand alone component of the <a href="http://madyote.com">Yote</a> project. 
+      Yote templates can be downloaded <a href="http://madyote.com/templates/yote_templates.tar">here</a>.
+    </p>
+    <p>
+      The templates are comprised of HTML, javascript, template tags and a context. When a template is embedded in
+      an other, it is a child of that context. Each template gets a copy of its parent template's context. The context
+      stores defined control ids, functions and variables as well as arguments given to embedded templates when they
+      are embedded.
+    </p>
+    <p>
+      tl;dr <a href="#example">example</a>
+    </p>
+  </section>
+
+  <section>
+    <h3>Tags</h3>
+    <h4>In order of Precidence</h4>
+    <dl>
+      <dt>&lt;# comments #&gt;</dt>
+      <dd>
+        
+      </dd>
+      <dt>&lt;??? <i>javascript function body</i> ???&gt;</dt>
+      <dd>
+        The body is wrapped with <b>function(ctx) { ... }</b> and the return value
+        (if any) is inserted into the template. Anything added to the context is visible
+        to all lower precident tags. The return value can build lower precidence tags 
+        dynamically too.
+        <br>
+        Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
+      </dd>
+      <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
+      <dd>
+        This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and 
+        id value prepended with '#' to controls.
+        <br>
+        Example <span class="demo">&lt$$$ myButton &lt;button type="button"&gt; $$$&gt;Clickme&lt;/button&gt;</span>
+      </dd>
+      <dt>&lt;?? <i>javascript function body</i>   ??&gt;</dt>
+      <dd>
+        The body is wrapped with <b>function(ctx) { ... }</b> and the return value
+        (if any) is inserted into the template. Anything added to the context is visible
+        to all lower precident tags. The return value can build lower precidence tags 
+        dynamically too.
+        <br>
+        Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
+      </dd>
+      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i>  &gt;</dt>
+      <dd>
+      </dd>
+      <dt>&lt;$ context-variable <i>"default value"</i>  &gt;</dt>
+      <dd>
+      </dd>
+      <dt>&lt;? <i>javascript function body</i>   ?&gt;</dt>
+      <dd>
+      </dd>
+    </dl>
+    </div>
+  </section>
+
+  <section>
+    <h3>Concepts</h3>
+context
+pagination
+refreshing
+variable parsing
+arguments for inserting templates
+    <div>
+    </div>
+  </section>
+
+  <section>
+    <h3></h3>
+    <div>
+    </div>
+  </section>
+
+  <section>
+    <h3></h3>
+    <div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Synposis</h3>
+
+    <div>
+      <span><pre>
+ &lt;script&gt;
+   $().ready( function() { 
+     $.yote.templates.init();
+     $.yote.templates.refresh();
+   } );
+ &lt;/script&gt;
+
+&lt;templates&gt;
+  &lt;script type="text/template" class="yote_template_definition" template_name="Hello"&gt;
+    &lt;# renders Hello Big Templating World #&gt;
+    Hello &lt;$$ World $$&gt;
+  &lt;/script&gt;
+  &lt;script type="text/template" class="yote_template_definition" template_name="World"&gt;
+    Big Templating World
+  &lt;/script&gt;
+&lt;/templates&gt;
+
+&lt;body&gt;
+   &lt;div  id="comments" class="yote_template hide" template="Hello"&gt;&lt;/div&gt;
+&lt;/body&gt;
+      </pre></span>
+    </div>
+  </section>
+
+  <section>
+    <h3>Use</h3>
+    <p>
+      The templates can be placed anywhere in the html document outside of the head section. 
+      They are rendered in the body with a div tag of the class <i>yote_template</i> and the attribute <b>template="</b><i>template-name</i><b>"</b>. The init method <b>$.yote.templates.init()</b> must be called to parse the templates and the refresh method <b>$.yote.templates.refresh()</b> is used to populate the templates.
+    </p>
+
+    <p>
+      
+    </p>      
+  </section>
+
+  <a name="example"/>
+  <section>
+    <h3>Example - a rolodex with local storage</h3>
+    <p>
+      
+    </p>      
+  </section>
+
+</body>
+
+</html>
