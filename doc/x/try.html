@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+
+  LICENSE AND COPYRIGHT
+
+  Copyright (C) 2014 Eric Wolf  ( coyocanid@gmail.com )
+  This module is free software; it can be used under the terms of the artistic license
+
+  ---------------------------------------------------------------------------------------------
+
+  This html demonstrates the use of Yote templates to build a simple rolodex app that saves
+  data locally to your browser local storage.
+
+  Needed to work :
+     This file
+
+     yote.templates.js
+     yote.util.js
+     jquery
+     json2.js
+
+-->
+
+  <head>
+    <title>Try Yote Templates</title>
+
+    <style>
+    .box {
+        border: solid 2px black;
+         //background-color: #FEF;
+        padding: 4px;
+        margin: 4px;
+    }
+    </style>
+
+    <script src="./yote/js/jquery-2.1.0.js"></script>
+    <script src="./yote/js/yote.templates.js"></script>
+    <script src="./yote/js/yote.util.js"></script>
+    <script src="./yote/js/json2.js"></script>
+
+
+    <script>
+
+$().ready(function(){
+
+    $.yote.templates.init();
+	$.yote.templates.refresh();
+
+} ); //ready
+
+    </script>
+
+  </head>
+
+  <templates>
+
+    <script type="text/template" class="yote_template_definition" template_name="TryTemplates">
+      <div class="box">
+        <h3>Enter in a template here</h3>
+        <$$$ ta <textarea cols="80" rows="5">$$$><?? return ctx.scratch.test || '' ??></textarea>
+        <$$$ go <button type="button">$$$>Render</button>
+      </div>
+      
+      <div class="box">
+        <h3>The Results of your template</h3>
+        <?? return ctx.scratch.test ? '<$$ test $$>' : '' ??>
+      </div>
+      <?
+         $( ctx.controls.go ).click( function() {
+             var txt = $( ctx.controls.ta ).val();
+             ctx.scratch.test = txt;
+             $.yote.templates.register_template( "test", txt );
+             $.yote.templates.refresh();
+         } );
+       ?>
+    </script>
+  </templates>
+
+  <body>
+    <h1>Try Yote Templates</h1>
+    <a href="http://madyote.com/templates.html">Back to Templates</a>
+    <br>
+   <div  id="comments" class="yote_template showright" template="TryTemplates"></div>
+
+
+</html>
