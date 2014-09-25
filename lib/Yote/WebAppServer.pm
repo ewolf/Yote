@@ -312,7 +312,7 @@ sub _process_http_request {
             }
             close( $IN );
         } else {
-            accesslog( "404 NOT FOUND ($$) : $@,$! [$root/$dest]");
+            accesslog( "404 not found : $uri from [ $ENV{ REMOTE_ADDR } ][ $ENV{ HTTP_REFERER } ]" );
             errlog( "404 NOT FOUND ($$) : $@,$! [$root/$dest]");
             $self->_do404( $socket );
         }

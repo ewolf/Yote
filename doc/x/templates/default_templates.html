@@ -375,10 +375,9 @@
                           return k.match( val );
                       } );
                   } else if( search_fields.length > 0 ) {
-                      var has_get = $.yote._subj_has_get_p();
                       data.set_filter( function( k, v, a ) {
                           for( var i=0, len=search_fields.length; i<len; i++ ) {
-                              if( has_get ? v.get( search_fields[i] ).match( val ) : v[ search_fields[i] ].match( val ) ) {
+                              if( v[ search_fields[i] ].match( val ) ) {
                                   return true;
                               }
                           }

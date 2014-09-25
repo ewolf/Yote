@@ -57,9 +57,25 @@ $().ready(function(){
   <templates>
 
     <script type="text/template" class="yote_template_definition" template_name="TryTemplates">
+      <???
+	     ctx.scratch.test = localStorage.getItem( 'lasttry' ) || 'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' + 
+	 '<br>\n' + 
+	 '<$$$ go <button type="button"> $$$> click me </button>\n' +
+	 '<? \n' + 
+	 '  $( ctx.controls.go ).click( function() { \n' + 
+         '      var name = $( ctx.controls.name ).val(); \n' + 
+         '      if( name ) { \n' + 
+	 '         alert( "Hello " + name );\n' +
+	 '      } else {\n' + 
+	 '        alert( "Hello unknown person" );\n' + 
+	 '      }\n' +
+         '} );\n' + 
+         '?>';
+	 ???>
       <div class="box">
         <h3>Enter in a template here</h3>
-        <$$$ ta <textarea cols="80" rows="5">$$$><?? return ctx.scratch.test || '' ??></textarea>
+        <$$$ ta <textarea cols="80" rows="5">$$$></textarea>
+        <br>
         <$$$ go <button type="button">$$$>Render</button>
       </div>
       
@@ -68,9 +84,11 @@ $().ready(function(){
         <?? return ctx.scratch.test ? '<$$ test $$>' : '' ??>
       </div>
       <?
+	 $( ctx.controls.ta ).text( ctx.scratch.test || '' );
          $( ctx.controls.go ).click( function() {
              var txt = $( ctx.controls.ta ).val();
              ctx.scratch.test = txt;
+	     localStorage.setItem( 'lasttry', txt );
              $.yote.templates.register_template( "test", txt );
              $.yote.templates.refresh();
          } );
@@ -78,11 +96,61 @@ $().ready(function(){
     </script>
   </templates>
 
+  <hr>
+
   <body>
     <h1>Try Yote Templates</h1>
-    <a href="http://madyote.com/templates.html">Back to Templates</a>
+    The Client side Yote templates are described in detail
+    <a href="http://madyote.com/templates.html">here.</a>
     <br>
    <div  id="comments" class="yote_template showright" template="TryTemplates"></div>
+  <hr>
+
+  <section>
+    <h3>Tag Cheat Sheet</h3>
+    <h4>In order of Precedence</h4>
+    <dl>
+      <dt>&lt;# comments #&gt;</dt>
+      <dd>
+        
+      </dd>
+      <dt>&lt;??? <i>javascript function body</i> ???&gt;</dt>
+      <dd>
+        The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
+        (if any) is inserted into the template. Anything added to the context is visible
+        to all lower precedent tags. The return value can build lower precedence tags 
+        dynamically too.
+        <br>
+        Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
+      </dd>
+      <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
+      <dd>
+        This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and 
+        id value prepended with '#' to controls.
+        <br>
+        Example <span class="demo">&lt$$$ myButton &lt;button type="button"&gt; $$$&gt;Clickme&lt;/button&gt;</span>
+      </dd>
+      <dt>&lt;?? <i>javascript function body</i>   ??&gt;</dt>
+      <dd>
+        The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
+        (if any) is inserted into the template. Anything added to the context is visible
+        to all lower precedent tags. The return value can build lower precedence tags 
+        dynamically too.
+        <br>
+        Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
+      </dd>
+      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i>  &gt;</dt>
+      <dd>
+      </dd>
+      <dt>&lt;$ context-variable <i>"default value"</i>  &gt;</dt>
+      <dd>
+      </dd>
+      <dt>&lt;? <i>javascript function body</i>   ?&gt;</dt>
+      <dd>
+      </dd>
+    </dl>
+    </div>
+  </section>
 
 
 </html>
