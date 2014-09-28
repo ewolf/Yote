@@ -42,56 +42,314 @@
 
 
     <script>
-
-$().ready(function(){
-
-    $.yote.templates.init();
-	$.yote.templates.refresh();
-
-} ); //ready
-
+       window.sample_template_sets = {
+           helloworldy : [
+               { name : "Hello",
+                 body :
+                 'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' +
+	             '<br>\n' +
+	             '<$$$ go <button type="button"> $$$> click me </button>\n' +
+	             '<? \n' +
+	             '  $( ctx.controls.go ).click( function() { \n' +
+                 '      var name = $( ctx.controls.name ).val(); \n' +
+                 '      if( name ) { \n' +
+	             '         alert( "Hello " + name );\n' +
+	             '      } else {\n' +
+	             '        alert( "Hello unknown person" );\n' +
+	             '      }\n' +
+                 '} );\n' +
+                 '?>'
+               }
+           ],
+           rolodex : [
+               { name  : "Rolo",
+                 notes : 'master template',
+                 body  :
+                 '<#\n' +
+                 '    This is a simple rolodex that uses local storage for persistance.\n' +
+                 '    this means the data you enter will be available on the same browser on reload.\n' +
+                 '#>\n' +
+                 '<??? // run first in template created\n' +
+                 '    // fetch data from local storage or crete if none exists\n' +  
+                 '    var rolo_data_raw = localStorage.getItem( "rolodex" );\n' +  
+                 '    var rolodex;\n' +  
+                 '    if( rolo_data_raw ) {\n' +  
+                 '        rolodex = { data : JSON.parse( rolo_data_raw ) };\n' +  
+                 '    } else {\n' +  
+                 '        rolodex = { data : [] };\n' +  
+                 '    }\n' +  
+                 '    rolodex.save = function() {\n' +  
+                 '        localStorage.setItem( "rolodex", JSON.stringify( this.data ) );\n' +  
+                 '    }\n' +  
+                 '    rolodex.remove_entry = function( idx ) {\n' +  
+                 '        this.data.splice( idx, 1 );\n' +  
+                 '        this.init();\n' +  
+                 '        this.save();\n' +  
+                 '    }\n' +  
+                 '    rolodex.add_entry = function( entry ) {\n' +  
+                 '        // entry should have name, email, phone\n' +  
+                 '        entry.id = this.lastidx;\n' +  
+                 '        this.lastidx++;\n' +  
+                 '        if( ! entry.name ) entry.name = "";\n' +  
+                 '        if( ! entry.phone ) entry.phone = "";\n' +  
+                 '        if( ! entry.email ) entry.email = "";\n' +  
+                 '        this.data.push( entry );\n' +  
+                 '        this.names[ entry.name ]  = entry;\n' +  
+                 '        this.phones[ entry.phone ] = entry;\n' +  
+                 '        this.emails[ entry.email ] = entry;\n' +  
+                 '        this.save();\n' +  
+                 '    }\n' +  
+                 '    rolodex.init = function() {\n' +  
+                 '        var names  = {};\n' +  
+                 '        var phones = {};\n' +  
+                 '        var emails = {};\n' +  
+                 '        this.lastidx = this.data.length\n' +  
+                 '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
+                 '            var node = this.data[ i ];\n' +  
+                 '            node.id = i;\n' +  
+                 '            names[ node.name ] = node;\n' +  
+                 '            phones[ node.phone ] = node;\n' +  
+                 '            emails[ node.phone ] = node;\n' +  
+                 '        }\n' +  
+                 '        this.names  = names;\n' +  
+                 '        this.phones = phones;\n' +  
+                 '        this.emails = emails;\n' +  
+                 '    };\n' +  
+                 '    rolodex.search = function( str ) {\n' +  
+                 '        if( ! str || str.trim().length == 0 ) return this.data;\n' +  
+                 '        str = str.toLowerCase();\n' +  
+                 '        var res = []\n' +  
+                 '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
+                 '            var node = this.data[ i ];\n' +  
+                 '            if( node.name.toLowerCase().indexOf( str ) >= 0 || node.phone.toLowerCase().indexOf( str ) >= 0 || node.email.toLowerCase().indexOf( str ) >= 0 ) {\n' +  
+                 '                res.push( node );\n' +  
+                 '            }\n' +  
+                 '        }\n' +  
+                 '        return res;\n' +  
+                 '    }\n' +  
+                 '    window.rolodex = rolodex;\n' +  
+                 '\n' +  
+                 '    rolodex.init();\n' +  
+                 '    ctx.vars.rolodex = window.rolodex;\n' +
+                 '    ctx.vars.entry_count = rolodex.data.length;\n' +
+                 '???>\n' +
+                 '<div class="box">\n' +
+                 '  Check out this rolodex. It has <$ entry_count $> entries.\n' +
+                 '</div>\n' +
+                 '<??  //only show the table if there are entries\n' +
+                 '   return ctx.vars.entry_count > 0 ? "<br><$$ PaginateEntries $$><br><$$ LookupEntry $$>" : "";\n' +
+                 '??>\n' +
+                 '<br>\n' +
+                 '<$$ AddEntry $$>'
+               },
+               { name : "PaginateEntries",
+                 body :
+                 '<???\n' +
+                 '      ctx.vars.entries = rolodex.search( ctx.scratch.search );\n' +
+                 '???>\n' +
+                 '<div class="box">\n' +
+                 '  <?? return ctx.scratch.search ? "searching for <b>" + ctx.scratch.search + "</b><br>" : "" ??>\n' +
+                 '  <table>\n' +
+                 '   <tr> <th> Name </th>  <th> Email </th>  <th> Phone </th> <th> Delete </th> </tr>\n' +
+                 '   <$$ ListPaginate EntryRow entries@@ 4 $$>\n' +
+                 '  </table>\n' +
+                 '</div>\n' +
+                 '<br>\n' +
+                 '<$$ Paginator entries@@ $$>\n'
+               },
+               { name : "EntryRow",
+                 body :
+                 '<tr> <td> <$ _.name $> </td> <td> <$ _.email $> </td> <td> <$ _.phone $> </td> <td> <$$$ del <a href="#">$$$>delete</a> </td> </tr>\n' +
+                 '<?  //remove the entry after a confirm\n' +
+                 '   $( ctx.controls.del ).click( function() {\n' +
+                 '       if( confirm( "remove this entry?" ) ) {\n' +
+                 '          rolodex.remove_entry( ctx.vars._index_ );\n' +
+                 '          ctx.refresh();\n' +
+                 '       }\n' +
+                 '    } );\n' +
+                 '?>\n'
+               },
+               { name : 'LookupEntry',
+                 body :
+                 '<div class="box">\n' +
+                 '  <h3>Search</h3> for entries\n' +
+                 '  <??? return ' + "'" + '<$$$ search <input placeholder="search" type="text" value="' + "'" + ' + \n' +
+                 '        (ctx.scratch.search ? ctx.scratch.search : "" ) +  ' + "'" + '">$$$>' + "'" + '; ???>\n' +
+                 '     <$$$ go <button type="button">search</button> $$$>\n' +
+                 '</div> <br>\n' +
+                 '<?\n' +
+                 '    $.yote.util.button_actions( {\n' +
+                 '        button : ctx.controls.go,\n' +
+                 '        texts  : [ ctx.controls.search ],\n' +
+                 '        action : function() {\n' +
+                 '            ctx.scratch.search = $( ctx.controls.search ).val();\n' +
+                 '            ctx.refresh();\n' +
+                 '        }\n' +
+                 '    } );\n' +
+                 ' ?>\n'
+               },
+               { name : 'AddEntry',
+                 body :
+                 '<div class="box">\n' +
+                 '  <h3>New Entry</h3>\n' +
+                 '  Name <$$$ name <input type="text"> $$$> <BR>\n' +
+                 '  Phone <$$$ phone <input type="text"> $$$> <BR>\n' +
+                 '  Email <$$$ email <input type="text"> $$$> <BR>\n' +
+                 '  <$$$ add <button type="button"> $$$>Add</button>\n' +
+                 '</div>\n' +
+                 '<? // run after template is rendered\n' +
+                 '    $.yote.util.button_actions( {\n' +
+                 '        button : ctx.controls.add,\n' +
+                 '        texts  : [ ctx.controls.name, ctx.controls.phone, ctx.controls.email ],\n' +
+                 '        action : function() {\n' +
+                 '            rolodex.add_entry( {\n' +
+                 '                name : $( ctx.controls.name ).val(),\n' +
+                 '                phone : $( ctx.controls.phone ).val(),\n' +
+                 '                email : $( ctx.controls.email ).val()\n' +
+                 '            } );\n' +
+                 '            ctx.refresh();\n' +
+                 '        }\n' +
+                 '    } );\n' +
+                 '?>\n'
+               }
+           ]
+       };
+       $().ready(function(){
+           $.yote.templates.import_templates( "/templates/default_templates.html" );
+           $.yote.templates.init();
+       	$.yote.templates.refresh();
+       } ); //ready
     </script>
 
   </head>
 
   <templates>
 
+    <script type="text/template" class="yote_template_definition" template_name="TemplateRow">
+      <div class="box">
+        <b>template name :</b>
+        <$$$ name <input type="text" value="">$$$>
+        <$$$ del <button type="button">$$$>delete</button>
+        <$$$ render <button type="button">$$$>render</button>
+        <$$$ notediv <div style="display:none"> $$$>
+          <br>
+          <$$$ notes <input type="text" placeholder="template notes">$$$>
+          </div>
+        <br>
+        <b>template body :</b>
+        <br>
+        <$$$ body <textarea></textarea> $$$>
+        <br>
+        <$$$ errpanel <div></div>$$$>
+        <?
+          if( ctx.vars._.notes ) {
+              $( ctx.controls.notes ).append( ctx.vars._.notes );
+              $( ctx.controls.notediv ).show();
+          }
+          if( ctx.vars._.err ) {
+              $( ctx.controls.errpanel ).html( '<b>error compiling template</b> : ' + ctx.vars._.err );
+          }
+          $( ctx.controls.render ).click( function() {
+              $( '#results' ).html( '<h3>The results of template "' + ctx.vars._.name + '"</h3><div class="box">' +
+                                    '<div id="comments" class="yote_template showright" template="' + ctx.vars._.name+ '"></div>' ).addClass( 'box' );
+              $.yote.templates.register_template( ctx.vars._.name, ctx.vars._.body );
+              
+              ctx.refresh();
+          } );
+          $( ctx.controls.body ).text( ctx.vars._.body );
+          $( ctx.controls.del ).click(function() {
+              if( confirm( 'are you sure you want to delete template "' + ctx.vars._.name + '"' ) ) {
+                  delete ctx.vars.templates[ ctx.vars._.name ];
+                  localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+                  ctx.refresh();
+              }
+           } );
+          $( ctx.controls.name ).val( ctx.vars._.name );
+          $( ctx.controls.name + ',' + ctx.controls.body ).change( function() {
+              delete ctx.vars.templates[ ctx.vars._.name ];
+              var tmpl = { name: $(ctx.controls.name).val(), body:$( ctx.controls.body).val() };
+              ctx.vars.templates[ $(ctx.controls.name).val() ] = tmpl;
+               try {
+                   $.yote.templates.register_template( tmpl.name, tmpl.body );
+               } catch( err ) {
+                   tmpl.err = err.message;
+                   $.yote.templates.unregister_template( tmpl.name );
+                   localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+                   $( ctx.controls.errpanel ).val( 'error compiling template : ' + err );
+               }
+               localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+          } );
+        ?>
+      </div>
+    </script>
+
     <script type="text/template" class="yote_template_definition" template_name="TryTemplates">
       <???
-	     ctx.scratch.test = localStorage.getItem( 'lasttry' ) || 'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' + 
-	 '<br>\n' + 
-	 '<$$$ go <button type="button"> $$$> click me </button>\n' +
-	 '<? \n' + 
-	 '  $( ctx.controls.go ).click( function() { \n' + 
-         '      var name = $( ctx.controls.name ).val(); \n' + 
-         '      if( name ) { \n' + 
-	 '         alert( "Hello " + name );\n' +
-	 '      } else {\n' + 
-	 '        alert( "Hello unknown person" );\n' + 
-	 '      }\n' +
-         '} );\n' + 
-         '?>';
+         ctx.vars.templates = JSON.parse( localStorage.getItem( 'templates' ) ) || window.sample_templates['hello'];
+         for( tname in ctx.vars.templates ) {
+             var tmpl = ctx.vars.templates[ tname ];
+             try {
+                 $.yote.templates.register_template( tmpl.name, tmpl.body );
+             } catch( err ) {
+                 tmpl.err = err.message;
+                 $.yote.templates.unregister_template( tmpl.name );
+                 localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+             }
+         }
 	 ???>
+      <$$$ results <div></div> $$$>
       <div class="box">
-        <h3>Enter in a template here</h3>
-        <$$$ ta <textarea cols="80" rows="5">$$$></textarea>
+        <h3>Define Templates</h3>
+        <$$$ delete_all <a href="#">delete all</a> $$$>
         <br>
+        Sample template sets : 
+        <$$$ which <select></select> $$$>
+        <$$$ loadb <button type="button">load</button> $$$>
+        <$$ Hash TemplateRow templates% $$>
+      </div>
+      <div class="box">
+        <$$$ newtname <input type="text" placeholder="template name">$$$>
+        <br>
+        <$$$ newtbody <textarea placeholder="template body" cols="80" rows="4">$$$></textarea>
+        <br>
+        <$$$ newt <button type="button">$$$>New Template</button>
+      </div>
+      <div class="box">
         <$$$ go <button type="button">$$$>Render</button>
       </div>
-      
-      <div class="box">
-        <h3>The Results of your template</h3>
-        <?? return ctx.scratch.test ? '<$$ test $$>' : '' ??>
-      </div>
+
       <?
-	 $( ctx.controls.ta ).text( ctx.scratch.test || '' );
-         $( ctx.controls.go ).click( function() {
-             var txt = $( ctx.controls.ta ).val();
-             ctx.scratch.test = txt;
-	     localStorage.setItem( 'lasttry', txt );
-             $.yote.templates.register_template( "test", txt );
-             $.yote.templates.refresh();
+         $.yote.util.button_actions( {
+             button : ctx.controls.newt,
+             texts  : [ ctx.controls.newtname ],
+             action : function() {
+                 ctx.vars.templates[ $( ctx.controls.newtname ).val() ] = { name: $( ctx.controls.newtname ).val(), body: $( ctx.controls.newtbody ).val() };
+                 localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+                 ctx.refresh();
+             }
          } );
+         $( ctx.controls.loadb ).click( function() {
+             var tmplts = window.sample_template_sets[ $(ctx.controls.which ).val() ];
+             for( var i=0,len=tmplts.length; i<len; i++ ) {
+                 var tmpl = tmplts[ i ];
+                 $.yote.templates.register_template( tmpl.name, tmpl.body );
+             }
+             localStorage.setItem( 'templates', JSON.stringify( tmplts ) );
+             ctx.refresh();
+         } );
+         $( ctx.controls.delete_all ).click( function() {
+             if( confirm( "really delete all templates?" ) ) {
+                 localStorage.setItem( 'templates', JSON.stringify( {} ) );
+                 ctx.refresh();
+             }
+         } );
+         //populate select
+         var buf = '<option></option>';
+         for( var tmplname in window.sample_template_sets ) {
+             var sample = window.sample_template_sets[ tmplname ];
+             buf += '<option value="' + tmplname + '">' + tmplname + '</option>';
+         }
+         $( ctx.controls.which ).append( buf );
        ?>
     </script>
   </templates>
@@ -102,6 +360,7 @@ $().ready(function(){
     <h1>Try Yote Templates</h1>
     The Client side Yote templates are described in detail
     <a href="http://madyote.com/templates.html">here.</a>
+    <div id="results"></div>
     <br>
    <div  id="comments" class="yote_template showright" template="TryTemplates"></div>
   <hr>
@@ -112,20 +371,20 @@ $().ready(function(){
     <dl>
       <dt>&lt;# comments #&gt;</dt>
       <dd>
-        
+
       </dd>
       <dt>&lt;??? <i>javascript function body</i> ???&gt;</dt>
       <dd>
         The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
         (if any) is inserted into the template. Anything added to the context is visible
-        to all lower precedent tags. The return value can build lower precedence tags 
+        to all lower precedent tags. The return value can build lower precedence tags
         dynamically too.
         <br>
         Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
       </dd>
       <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
       <dd>
-        This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and 
+        This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and
         id value prepended with '#' to controls.
         <br>
         Example <span class="demo">&lt$$$ myButton &lt;button type="button"&gt; $$$&gt;Clickme&lt;/button&gt;</span>
@@ -134,7 +393,7 @@ $().ready(function(){
       <dd>
         The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
         (if any) is inserted into the template. Anything added to the context is visible
-        to all lower precedent tags. The return value can build lower precedence tags 
+        to all lower precedent tags. The return value can build lower precedence tags
         dynamically too.
         <br>
         Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>

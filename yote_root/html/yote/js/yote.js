@@ -479,7 +479,7 @@ $.yote = {
                     return this._start > 0;
                 },
                 can_fast_forward:function(){
-                    return (this._start + this._page_size) < ( this._data_size - 1 );
+                    return (this._start + this._page_size) < this._data_size;
                 },
                 forwards:function(){
                     this._start += this._page_size;
