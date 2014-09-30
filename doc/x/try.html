@@ -24,10 +24,10 @@
 -->
 
   <head>
-    <title>Try Yote Templates</title>
+    <title>Interactive Template Demo</title>
 
     <style>
-    .box {
+    .boxl {
         border: solid 2px black;
          //background-color: #FEF;
         padding: 4px;
@@ -42,27 +42,24 @@
 
 
     <script>
-       window.sample_template_sets = {
-           helloworldy : [
-               { name : "Hello",
+       window.sample_sets = {
+           hello : [
+               { name : "hello", //first template must have same name as set
                  body :
                  'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' +
 	             '<br>\n' +
 	             '<$$$ go <button type="button"> $$$> click me </button>\n' +
 	             '<? \n' +
-	             '  $( ctx.controls.go ).click( function() { \n' +
-                 '      var name = $( ctx.controls.name ).val(); \n' +
-                 '      if( name ) { \n' +
-	             '         alert( "Hello " + name );\n' +
-	             '      } else {\n' +
-	             '        alert( "Hello unknown person" );\n' +
-	             '      }\n' +
-                 '} );\n' +
+                 '  $( ctx.controls.name ).val( ctx.scratch.name || "" ); //last set value\n' + 
+                 '  $( ctx.controls.go ).click( function() { \n' +
+                 '         ctx.scratch.name = $( ctx.controls.name ).val() || "unknown person";\n' + 
+	             '         alert( "Hello " + ctx.scratch.name );\n' +
+	             '      } );\n' +
                  '?>'
                }
            ],
            rolodex : [
-               { name  : "Rolo",
+               { name  : "rolodex", //first template must have same name as set
                  notes : 'master template',
                  body  :
                  '<#\n' +
@@ -212,10 +209,37 @@
                  '    } );\n' +
                  '?>\n'
                }
-           ]
+           ],
+           blank : [ { name : 'start', body : '', notes : 'write your own here' } ]
        };
        $().ready(function(){
            $.yote.templates.import_templates( "/templates/default_templates.html" );
+
+           window.sets = JSON.parse( localStorage.getItem( 'template_sets' ) || '' ) || window.sample_sets;
+           var show_set = localStorage.getItem( 'cur_set' ) || 'hello';
+           var show_template = $( '#results_tmp' ).html() || window.sample_sets[ show_set ][ 0 ].name;
+
+           function reg( tmpl ) { 
+               try {
+                   $.yote.templates.register_template( tmpl.name, tmpl.body );
+               } catch( err ) {
+                   console.log( err );
+                   tmpl.err = err.message;
+                   $.yote.templates.unregister_template( tmpl.name );
+                   localStorage.setItem( 'template_sets', JSON.stringify( sets ) );
+               }
+           }
+           for( sname in sets ) {
+               var set = sets[ sname ];
+               for( var i=0, len=set.length; i<len; i++  ) {
+                   reg( set[i] );
+               }
+           }
+
+           
+           $( '#results' ).html( '<h3>The results of template "' + show_template + '"</h3><div class="box">' +
+                                 '<div id="comments" class="yote_template" template="' + show_template + '"></div>' );
+
            $.yote.templates.init();
        	$.yote.templates.refresh();
        } ); //ready
@@ -238,7 +262,9 @@
         <br>
         <b>template body :</b>
         <br>
-        <$$$ body <textarea></textarea> $$$>
+        <$$$ body <textarea cols="80"></textarea> $$$>
+        <br>
+        <$$$ apply <button type="button"$$$>>Apply</button>
         <br>
         <$$$ errpanel <div></div>$$$>
         <?
@@ -250,64 +276,85 @@
               $( ctx.controls.errpanel ).html( '<b>error compiling template</b> : ' + ctx.vars._.err );
           }
           $( ctx.controls.render ).click( function() {
-              $( '#results' ).html( '<h3>The results of template "' + ctx.vars._.name + '"</h3><div class="box">' +
-                                    '<div id="comments" class="yote_template showright" template="' + ctx.vars._.name+ '"></div>' ).addClass( 'box' );
-              $.yote.templates.register_template( ctx.vars._.name, ctx.vars._.body );
-              
+              ctx.scratch.showing_template = ctx.vars._.name;
               ctx.refresh();
           } );
-          $( ctx.controls.body ).text( ctx.vars._.body );
+          var blen = 3;
+          if( ctx.vars._.body ) {
+             var c = ctx.vars._.body.match( /\n/g );
+             if( c ) { blen += c.length; }
+          }
+          if( blen > 30 ) blen = 30;
+          $( ctx.controls.body ).text( ctx.vars._.body ).attr( 'rows', blen );
           $( ctx.controls.del ).click(function() {
               if( confirm( 'are you sure you want to delete template "' + ctx.vars._.name + '"' ) ) {
-                  delete ctx.vars.templates[ ctx.vars._.name ];
-                  localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+                  delete ctx.vars.current_set[ ctx.vars._index_ ];
+                  localStorage.setItem( 'template_sets', JSON.stringify( ctx.vars.sample_sets ) );
                   ctx.refresh();
               }
            } );
           $( ctx.controls.name ).val( ctx.vars._.name );
-          $( ctx.controls.name + ',' + ctx.controls.body ).change( function() {
-              delete ctx.vars.templates[ ctx.vars._.name ];
+          $( ctx.controls.apply ).click( function() {
               var tmpl = { name: $(ctx.controls.name).val(), body:$( ctx.controls.body).val() };
-              ctx.vars.templates[ $(ctx.controls.name).val() ] = tmpl;
-               try {
-                   $.yote.templates.register_template( tmpl.name, tmpl.body );
-               } catch( err ) {
-                   tmpl.err = err.message;
-                   $.yote.templates.unregister_template( tmpl.name );
-                   localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
-                   $( ctx.controls.errpanel ).val( 'error compiling template : ' + err );
-               }
-               localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+              ctx.vars.current_set[ ctx.vars._index_ ] = tmpl;
+              localStorage.setItem( 'template_sets', JSON.stringify( ctx.vars.sample_sets ) );
+              ctx.refresh();
           } );
         ?>
       </div>
     </script>
 
+    <script type="text/template" class="yote_template_definition" template_name="SetRow">
+      <li><$$$ showset <a href="#">$$$><$ _hashkey_ $></a></li>
+      <? 
+         if( ctx.scratch.current_set_name == ctx.vars._hashkey_ ) {
+             $( ctx.controls.showset ).css( 'font-weight', 'bold' );
+         }
+         $( ctx.controls.showset ).click( function() {
+             var set = ctx.vars.sample_sets[ ctx.vars._hashkey_ ];
+             ctx.scratch.current_set_name = ctx.vars._hashkey_;
+             ctx.scratch.showing_template = set[ 0 ].name;
+             localStorage.setItem( 'cur_set', ctx.scratch.current_set_name );
+             $( '#results' ).empty().html( '<h3>The results of template "' + set[ 0 ].name + '"</h3><div class="box">' +
+                                           '<div id="comments" class="yote_template" template="' + set[ 0 ].name + '"></div>' );
+             ctx.refresh();
+         } );
+         ?>
+    </script>
+
     <script type="text/template" class="yote_template_definition" template_name="TryTemplates">
       <???
-         ctx.vars.templates = JSON.parse( localStorage.getItem( 'templates' ) ) || window.sample_templates['hello'];
-         for( tname in ctx.vars.templates ) {
-             var tmpl = ctx.vars.templates[ tname ];
-             try {
-                 $.yote.templates.register_template( tmpl.name, tmpl.body );
-             } catch( err ) {
-                 tmpl.err = err.message;
-                 $.yote.templates.unregister_template( tmpl.name );
-                 localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
-             }
+         ctx.vars.sample_sets = window.sets;
+         ctx.scratch.current_set_name = localStorage.getItem( 'cur_set' );
+         if( ! ctx.scratch.current_set_name ) {
+             ctx.scratch.current_set_name = 'hello';
+             ctx.scratch.showing_template = ctx.scratch.current_template.name;
          }
+         if( ! ctx.scratch.showing_template ) {
+             ctx.scratch.current_template = ctx.vars.sample_sets[ ctx.scratch.current_set_name ][ 0 ];
+             ctx.scratch.showing_template = ctx.scratch.current_template.name;
+         }
+         ctx.vars.current_set_name  = ctx.scratch.current_set_name;
+         ctx.vars.current_set = ctx.vars.sample_sets[ ctx.scratch.current_set_name ];
+         
 	 ???>
       <$$$ results <div></div> $$$>
       <div class="box">
-        <h3>Define Templates</h3>
-        <$$$ delete_all <a href="#">delete all</a> $$$>
-        <br>
-        Sample template sets : 
-        <$$$ which <select></select> $$$>
-        <$$$ loadb <button type="button">load</button> $$$>
-        <$$ Hash TemplateRow templates% $$>
+        <h3>Sample Template Sets</h3>
+        <p>
+           Here are a few sample template sets. The 'blank' set is 
+           empty so you can create your own templates there.
+        </p>
+        <ul><$$ Hash SetRow sample_sets% $$></ul>
+        <$$$ resetb <a href="#">reset to defaults</a> $$$>
       </div>
       <div class="box">
+        <h3>Edit Templates for Set <$ current_set_name $></h3>
+        <$$$ delete_all <a href="#">delete all</a> $$$>
+        <$$ List TemplateRow current_set@ $$>
+      </div>
+      <div class="box">
+        <h3>Create New Template for this set</h3>
         <$$$ newtname <input type="text" placeholder="template name">$$$>
         <br>
         <$$$ newtbody <textarea placeholder="template body" cols="80" rows="4">$$$></textarea>
@@ -323,33 +370,27 @@
              button : ctx.controls.newt,
              texts  : [ ctx.controls.newtname ],
              action : function() {
-                 ctx.vars.templates[ $( ctx.controls.newtname ).val() ] = { name: $( ctx.controls.newtname ).val(), body: $( ctx.controls.newtbody ).val() };
-                 localStorage.setItem( 'templates', JSON.stringify( ctx.vars.templates ) );
+                 var newt = { name : $( ctx.controls.newtname ).val(), body : $( ctx.controls.newtbody ).val() };
+                 ctx.vars.current_set.push( newt );
+                 localStorage.setItem( 'template_sets', JSON.stringify( ctx.vars.sample_sets ) );
                  ctx.refresh();
              }
          } );
-         $( ctx.controls.loadb ).click( function() {
-             var tmplts = window.sample_template_sets[ $(ctx.controls.which ).val() ];
-             for( var i=0,len=tmplts.length; i<len; i++ ) {
-                 var tmpl = tmplts[ i ];
-                 $.yote.templates.register_template( tmpl.name, tmpl.body );
+         $( ctx.controls.resetb ).click( function() {
+             if( confirm( "really reset all sets?" ) ) {
+                 localStorage.setItem( 'template_sets', JSON.stringify( window.sample_sets ) );
+                 ctx.scratch.current_set_name = undefined;
+                 ctx.scratch.showing_template = undefined;
+                 ctx.refresh();
              }
-             localStorage.setItem( 'templates', JSON.stringify( tmplts ) );
-             ctx.refresh();
          } );
          $( ctx.controls.delete_all ).click( function() {
-             if( confirm( "really delete all templates?" ) ) {
-                 localStorage.setItem( 'templates', JSON.stringify( {} ) );
+             if( confirm( "really delete all templates for this set?" ) ) {
+                 ctx.vars.sample_sets[ ctx.scratch.current_set_name ] = [];
+                 localStorage.setItem( 'template_sets', JSON.stringify( ctx.vars.sample_sets ) );
                  ctx.refresh();
              }
          } );
-         //populate select
-         var buf = '<option></option>';
-         for( var tmplname in window.sample_template_sets ) {
-             var sample = window.sample_template_sets[ tmplname ];
-             buf += '<option value="' + tmplname + '">' + tmplname + '</option>';
-         }
-         $( ctx.controls.which ).append( buf );
        ?>
     </script>
   </templates>
@@ -357,12 +398,28 @@
   <hr>
 
   <body>
-    <h1>Try Yote Templates</h1>
-    The Client side Yote templates are described in detail
+    <h1>Interactive Template Demo</h1>
+    <p>
+      View, modify and create demo templates. Pick from sets of sample templates on the left 
+      side of the page to see its source code. You can modify the source and the result will 
+      appear on the right side of the page.
+    </p>
+    <p>
+      In this demo, templates are grouped into sets. A 'set' is a set of templates that
+      perform a similar function. The examples automatically include the default templates
+      like <b>Hash</b> and <b>List</b>. The <b>$.yote.util</b> library is also included 
+      for its <i>button_actions</i> function.
+    </p>
+    <p>
+      
+    </p>
+    Yote templates are described in detail
     <a href="http://madyote.com/templates.html">here.</a>
-    <div id="results"></div>
-    <br>
-   <div  id="comments" class="yote_template showright" template="TryTemplates"></div>
+    <div>
+      <span style="display:none" id="results_tmp"></span>
+      <div style="float:right" id="results"></div>
+      <div  id="comments" class="yote_template" template="TryTemplates"></div>
+    </div>
   <hr>
 
   <section>
