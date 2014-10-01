@@ -10,6 +10,19 @@
          font-family: monospace; //'Lucida Console'; 
        }
   pre { margin-left: 1em; }
+  ul.nav { -webkit-padding-start: 0px }
+  ul.nav li { list-style-type: none; text-align:left }
+  div.nav {
+      margin-left: 3px;
+      padding-left: 3px;
+      float:left;
+      display:inline-block;
+      position: fixed;
+  }
+  div.main {
+      margin-left: 10em;
+      margin-right: 2em;
+  }
   </style>
 
 </head>
@@ -18,167 +31,191 @@
   <h1>Yote Templates</h1>
   <h2>Client Side Templates</h2>
 
-  <section>
-    <h3>About</h3>
-    <p>
-      Yote templates are client side compiled templates that require jquery. They are used to build
-      modular context sensitive components to be assembled into a web page.
-      This is a stand alone component of the <a href="http://madyote.com">Yote</a> project. 
-      Yote templates can be downloaded <a href="http://madyote.com/templates/yote_templates.tar">here</a>.
-    </p>
-    <p>
-      The templates are comprised of HTML, javascript, template tags and a context. When a template is embedded in
-      an other, it is a child of that context. Each template gets a copy of its parent template's context. The context
-      stores defined control ids, functions and variables as well as arguments given to embedded templates when they
-      are embedded.
-    </p>
-    <p>
-      <strong style="font-size:larger"><a href="./try.html">Try out the templates</a></strong> in your browser.
-    </p>
-    <p>
-      <b>tl;dr :</b> <a href="./rolo.html">example creating a functional rolodex</a>
-    </p>
-  </section>
+  <div class="nav">
+    <ul class="nav">
+      <li><a href="#about">About</a></li>
+      <li><a href="#synopsis">Synopsis</a></li>
+      <li><a href="#getting_started">getting started</a></li>
+      <li><a href="#tags">Tags</a></li>
+      <li><a href="#concepts">Concepts</a></li>
+    </ul>
+  </div>
+  <div class="main">
+    <section>
+      <A name="about">
+      <h3>About</h3>
+      <p>
+        Yote templates are client side compiled templates that require jquery. They are used to build
+        modular context sensitive components to be assembled into a web page.
+        This is a stand alone component of the <a href="http://madyote.com">Yote</a> project. 
+      </p>
+      <p>
+        This tool allows you to build a library of tools. The templates can be reused in different situation as 
+        they can be given arguments that they react too. Javascript is an important part of the templates; 
+        javascript functions are executed at different points in the template creation and logic can radically
+        change the template.
+      </p>
+      <p>
+        Yote templates can be downloaded <strong style="font-size:larger"><a href="http://madyote.com/templates/yote_templates.tar">here</a></strong>.
+      </p>
+      <p>
+        The templates are comprised of HTML, javascript, template tags and a context. When a template is embedded in
+        an other, it is a child of that context. Each template gets a copy of its parent template's context. The context
+        stores defined control ids, functions and variables as well as arguments given to embedded templates when they
+        are embedded.
+      </p>
+      <p>
+        <strong style="font-size:larger"><a href="./try.html">Try out the interactive sample templates demo</a></strong> in your browser.
+      </p>
+    </section>
 
-  <section>
-    <h3>Synposis</h3>
+    <section>
+      <A name="synopsis">
+      <h3>Synposis</h3>
 
       <pre><code>&lt;!-- Define Templates --&gt;
- &lt;templates&gt;
+          &lt;templates&gt;
 
-   &lt;script type="text/template" class="yote_template_definition" template_name="Hello"&gt;
-     <b>&lt;#</b> renders Hello Big Templating World with a button underneath <b>#&gt;</b>
-     <b>&lt;#</b> The button alerts 'Hello There, you' when clicked <b>#&gt;</b>
-     Hello <b>&lt;$$</b> World <b>$$&gt;</b>
-   &lt;/script&gt;
+          &lt;script type="text/template" class="yote_template_definition" template_name="Hello"&gt;
+          <b>&lt;#</b> renders Hello Big Templating World with a button underneath <b>#&gt;</b>
+          <b>&lt;#</b> The button alerts 'Hello There, you' when clicked <b>#&gt;</b>
+          Hello <b>&lt;$$</b> World <b>$$&gt;</b>
+          &lt;/script&gt;
 
-   &lt;script type="text/template" class="yote_template_definition" template_name="World"&gt;
-     <b>&lt;???</b> ctx.vars.whatisthis = 'Templating' <b>???&gt;</b>
-     Big <b>&lt;$</b> whatisthis <b>$&gt;</b> <b>&lt;??</b> return 'World' <b>??&gt;</b>
-     &lt;br&gt;
-     <b>&lt;$$</b> ButtonTemplate "There, you" <b>$$&gt;</b>
-   &lt;/script&gt;
+          &lt;script type="text/template" class="yote_template_definition" template_name="World"&gt;
+          <b>&lt;???</b> ctx.vars.whatisthis = 'Templating' <b>???&gt;</b>
+          Big <b>&lt;$</b> whatisthis <b>$&gt;</b> <b>&lt;??</b> return 'World' <b>??&gt;</b>
+          &lt;br&gt;
+          <b>&lt;$$</b> ButtonTemplate "There, you" <b>$$&gt;</b>
+          &lt;/script&gt;
 
-   &lt;script type="text/template" class="yote_template_definition" template_name="ButtonTemplate"&gt;
-     <b>&lt;$$$</b> myButton &lt;button type="button"&gt; <b>$$$&gt;</b> Click Me &lt;/button&gt;
-     <b>&lt;?</b>
-         $( ctx.controls.myButton ).click( function() { alert( "Hello " + ctx.args[ 0 ] ) } );
-     <b>?&gt;</b>
-   &lt;/script&gt;
+          &lt;script type="text/template" class="yote_template_definition" template_name="ButtonTemplate"&gt;
+          <b>&lt;$$$</b> myButton &lt;button type="button"&gt; <b>$$$&gt;</b> Click Me &lt;/button&gt;
+          <b>&lt;?</b>
+          $( ctx.controls.myButton ).click( function() { alert( "Hello " + ctx.args[ 0 ] ) } );
+          <b>?&gt;</b>
+          &lt;/script&gt;
 
- &lt;/templates&gt;
+          &lt;/templates&gt;
 
-&lt;!-- Insert Templates --&gt;
- &lt;body&gt;
-    &lt;div  id="comments" class="yote_template hide" template="Hello"&gt;&lt;/div&gt;
- &lt;/body&gt;
+          &lt;!-- Insert Templates --&gt;
+          &lt;body&gt;
+          &lt;div  id="comments" class="yote_template hide" template="Hello"&gt;&lt;/div&gt;
+          &lt;/body&gt;
 
-&lt;!-- Activate Templates --&gt;
- &lt;script&gt;
-   $().ready( function() { 
-     $.yote.templates.init();
-     $.yote.templates.refresh();
-   } );
- &lt;/script&gt;
+          &lt;!-- Activate Templates --&gt;
+          &lt;script&gt;
+          $().ready( function() { 
+          $.yote.templates.init();
+          $.yote.templates.refresh();
+          } );
+          &lt;/script&gt;
 
       </code></pre>
-  </section>
+    </section>
+
+    <section>
+      <A name="getting_started">
+      <h3>Getting Started</h3>
+      Download the javascript. Create an html file for your templates.
+    </section>
+
+    <section>
+      <A name="tags">
+      <h3>Tags</h3>
+      <h4>In order of Precedence</h4>
+      <dl>
+        <dt>&lt;# comments #&gt;</dt>
+        <dd>
+          
+        </dd>
+        <dt>&lt;??? <i>javascript function body</i> ???&gt;</dt>
+        <dd>
+          The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
+          (if any) is inserted into the template. Anything added to the context is visible
+          to all lower precedent tags. The return value can build lower precedence tags 
+          dynamically too.
+          <br>
+          Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
+        </dd>
+        <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
+        <dd>
+          This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and 
+          id value prepended with '#' to controls.
+          <br>
+          Example <span class="demo">&lt$$$ myButton &lt;button type="button"&gt; $$$&gt;Clickme&lt;/button&gt;</span>
+        </dd>
+        <dt>&lt;?? <i>javascript function body</i>   ??&gt;</dt>
+        <dd>
+          The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
+          (if any) is inserted into the template. Anything added to the context is visible
+          to all lower precedent tags. The return value can build lower precedence tags 
+          dynamically too.
+          <br>
+          Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
+        </dd>
+        <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i>  &gt;</dt>
+        <dd>
+        </dd>
+        <dt>&lt;$ context-variable <i>"default value"</i>  &gt;</dt>
+        <dd>
+        </dd>
+        <dt>&lt;? <i>javascript function body</i>   ?&gt;</dt>
+        <dd>
+        </dd>
+      </dl>
+    </section>
 
   <section>
-    <h3>Tags</h3>
-    <h4>In order of Precedence</h4>
-    <dl>
-      <dt>&lt;# comments #&gt;</dt>
-      <dd>
-        
-      </dd>
-      <dt>&lt;??? <i>javascript function body</i> ???&gt;</dt>
-      <dd>
-        The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
-        (if any) is inserted into the template. Anything added to the context is visible
-        to all lower precedent tags. The return value can build lower precedence tags 
-        dynamically too.
-        <br>
-        Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
-      </dd>
-      <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
-      <dd>
-        This generates a unique id for the control and assigns it to it and assigns the id value to control_ids and 
-        id value prepended with '#' to controls.
-        <br>
-        Example <span class="demo">&lt$$$ myButton &lt;button type="button"&gt; $$$&gt;Clickme&lt;/button&gt;</span>
-      </dd>
-      <dt>&lt;?? <i>javascript function body</i>   ??&gt;</dt>
-      <dd>
-        The body is wrapped with <strong>function(ctx) { ... }</strong> and the return value
-        (if any) is inserted into the template. Anything added to the context is visible
-        to all lower precedent tags. The return value can build lower precedence tags 
-        dynamically too.
-        <br>
-        Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
-      </dd>
-      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i>  &gt;</dt>
-      <dd>
-      </dd>
-      <dt>&lt;$ context-variable <i>"default value"</i>  &gt;</dt>
-      <dd>
-      </dd>
-      <dt>&lt;? <i>javascript function body</i>   ?&gt;</dt>
-      <dd>
-      </dd>
-    </dl>
-    </div>
-  </section>
-
-  <section>
+    <A name="concepts">
     <h3>Concepts</h3>
     <dl>
       <dt>context</dt>
       <dd>
-      When a template is created, a copy of the context of its parent it made and assigned to the template. This context stores variables, control ids and functions. The function tags ( question marks 1 through 3 ) are automatically wrapped with 'function( ctx ) { }'. The ctx is the context object and is automatically handled by the templating system. The ctx has the following attributes :
-<ul>
-  <li><strong>vars:</strong> this is an object that stores variable names to values. It can be directly used like ctx.vars.myVar = "foo"; ctx.vars.myObj = { a : { b : { c : 12 } } };</li>
-  <li><strong>parse:</strong> this is a function that takes a string and looks up the value that the string represents. The string can be period separated which represents chained objects. In the myObj example above, it is true that 12 == ctx.parse( "myObj.a.b.c" );. If the string ends with a @, the string is a list. If it ends with @@, it is a paginated list. If the string ends with %, it is a hash. %% indicates a paginated hash ( with keys sorted alphabetically ). The lists and hashes and paginated lists and hashes are used by some default templates.</li>
-  <li><strong>functions:</strong> this is an object that stores functions. It can be directly used like ctx.functions.myFun = function() { alert( "foo" ); } </li>
-  <li><strong>controls:</strong> this is automatically populated with the $$$ tag. It is an object that associates control names with control ids ( prepended with # for easy jquery lookup ). It should not be written to manually but can be accessed.</li>
-  <li><strong>control_ids:</strong> This is exactly like the controls objects except that it does not prepend the # to the control id.</li>
-  <li><strong>args:</strong> This is populated automatically by the system with a list of arguments that are passed after the template name with the $$ tag. args is a list of strings.</li>
-  <li><strong>parent:</strong> The context object of the parent of this template.</li>
-  <li><strong>scratch:</strong> An object that all contexts share. This is not copied, but is referenced.</li>
-  <li><strong>refresh:</strong> a method that refreshes all of the templates on the page. Note that pagination state is preserved between refresh.</li>
-</ul>
+        When a template is created, a copy of the context of its parent it made and assigned to the template. This context stores variables, control ids and functions. The function tags ( question marks 1 through 3 ) are automatically wrapped with 'function( ctx ) { }'. The ctx is the context object and is automatically handled by the templating system. The ctx has the following attributes :
+        <ul>
+          <li><strong>vars:</strong> this is an object that stores variable names to values. It can be directly used like ctx.vars.myVar = "foo"; ctx.vars.myObj = { a : { b : { c : 12 } } };</li>
+          <li><strong>parse:</strong> this is a function that takes a string and looks up the value that the string represents. The string can be period separated which represents chained objects. In the myObj example above, it is true that 12 == ctx.parse( "myObj.a.b.c" );. If the string ends with a @, the string is a list. If it ends with @@, it is a paginated list. If the string ends with %, it is a hash. %% indicates a paginated hash ( with keys sorted alphabetically ). The lists and hashes and paginated lists and hashes are used by some default templates.</li>
+          <li><strong>functions:</strong> this is an object that stores functions. It can be directly used like ctx.functions.myFun = function() { alert( "foo" ); } </li>
+          <li><strong>controls:</strong> this is automatically populated with the $$$ tag. It is an object that associates control names with control ids ( prepended with # for easy jquery lookup ). It should not be written to manually but can be accessed.</li>
+          <li><strong>control_ids:</strong> This is exactly like the controls objects except that it does not prepend the # to the control id.</li>
+          <li><strong>args:</strong> This is populated automatically by the system with a list of arguments that are passed after the template name with the $$ tag. args is a list of strings.</li>
+          <li><strong>parent:</strong> The context object of the parent of this template.</li>
+          <li><strong>scratch:</strong> An object that all contexts share. This is not copied, but is referenced.</li>
+          <li><strong>refresh:</strong> a method that refreshes all of the templates on the page. Note that pagination state is preserved between refresh.</li>
+        </ul>
       </dd>
 
       <dt>pagination</dt>
       <dd>
-	The context, using parse, can generate a pagination wrapper around a list or hash. The state of pagination is preserved across page refreshes. The pagination object has the following methods :
-	<ul>
-	  <li><strong>set_filter:</strong> Takes a function that takes 3 argumnets : index or hashkey, the value and the hash or list</li>
-	  <li><strong>set_sort:</strong> Takes a function and passes it to the sort routine to sort the results.</li>
-	  <li><strong>can_rewind:</strong> true when the paginators position is greater than zero.</li>
-	  <li><strong>can_fast_forward:</strong> true when the paginators position is less than the number of items it has.</li>
-	  <li><strong>back:</strong> sets the pagination position back a pagination size with a min val of 0.</li>
-	  <li><strong>forwards:</strong> advances the pagination position forwards a pagination size with a maxiumum of one less than the number of items in the pagination.</li>
-	  <li><strong>first:</strong> moves the pagination position to zero.</li>
-	  <li><strong>last:</strong> moves the pagination position to the number of items minus the pagination size</li>
-	  <li><strong>set_size:</strong> Sets the pagination size</li>
-	  <li><strong>to_list:</strong></li>
-	  <li><strong>to_hash:</strong></li>
-	  <li><strong>keys:</strong></li>
-	</ul>
+	    The context, using parse, can generate a pagination wrapper around a list or hash. The state of pagination is preserved across page refreshes. The pagination object has the following methods :
+	    <ul>
+	      <li><strong>set_filter:</strong> Takes a function that takes 3 argumnets : index or hashkey, the value and the hash or list</li>
+	      <li><strong>set_sort:</strong> Takes a function and passes it to the sort routine to sort the results.</li>
+	      <li><strong>can_rewind:</strong> true when the paginators position is greater than zero.</li>
+	      <li><strong>can_fast_forward:</strong> true when the paginators position is less than the number of items it has.</li>
+	      <li><strong>back:</strong> sets the pagination position back a pagination size with a min val of 0.</li>
+	      <li><strong>forwards:</strong> advances the pagination position forwards a pagination size with a maxiumum of one less than the number of items in the pagination.</li>
+	      <li><strong>first:</strong> moves the pagination position to zero.</li>
+	      <li><strong>last:</strong> moves the pagination position to the number of items minus the pagination size</li>
+	      <li><strong>set_size:</strong> Sets the pagination size</li>
+	      <li><strong>to_list:</strong></li>
+	      <li><strong>to_hash:</strong></li>
+	      <li><strong>keys:</strong></li>
+	    </ul>
       </dd>
 
       <dt>refreshing</dt>
       <dd>
-	The context has a refresh method which refreshes all templates on the page, preserving pagination status and anything in the context 'scratch'.
+	    The context has a refresh method which refreshes all templates on the page, preserving pagination status and anything in the context 'scratch'.
       </dd>
       <dt>variable parsing</dt>
       <dd>
-	Variables are in the form a.c.d where a is an object attached to the current context's vars attribute. c is obtained by calling ctx.vars.a[ 'c' ], and d is obtained by calling ctx.vars.a[ 'c' ][ 'd' ]. If the variable ends with @@ or %%, it is automatically wrapped with a pagination object.
+	    Variables are in the form a.c.d where a is an object attached to the current context's vars attribute. c is obtained by calling ctx.vars.a[ 'c' ], and d is obtained by calling ctx.vars.a[ 'c' ][ 'd' ]. If the variable ends with @@ or %%, it is automatically wrapped with a pagination object.
       </dd>
       <dt>arguments for inserting templates</dt>
       <dd>
-	When a template is inserted with $$, it requires a template name to put there. It also allows a variable list of arguments that the template can parse as it sees fit. It could parse using the context object or accept it as a string.. Any quoted words (with single or double quotes) is counted as one argument.
+	    When a template is inserted with $$, it requires a template name to put there. It also allows a variable list of arguments that the template can parse as it sees fit. It could parse using the context object or accept it as a string.. Any quoted words (with single or double quotes) is counted as one argument.
       </dd>
     </dl>
   </section>
@@ -196,6 +233,7 @@
   </section>
 
   <section>
+    <A name="use">
     <h3>Use</h3>
     <p>
       The templates can be placed anywhere in the html document outside of the head section. 
@@ -206,7 +244,7 @@
       
     </p>      
   </section>
-
+</div>
 </body>
 
 </html>
