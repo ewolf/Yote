@@ -74,42 +74,44 @@
       <h3>Synposis</h3>
 
       <pre><code>&lt;!-- Define Templates --&gt;
-          &lt;templates&gt;
+      &lt;templates&gt;
 
-          &lt;script type="text/template" class="yote_template_definition" template_name="Hello"&gt;
-          <b>&lt;#</b> renders Hello Big Templating World with a button underneath <b>#&gt;</b>
-          <b>&lt;#</b> The button alerts 'Hello There, you' when clicked <b>#&gt;</b>
-          Hello <b>&lt;$$</b> World <b>$$&gt;</b>
-          &lt;/script&gt;
+         &lt;script type="text/template" class="yote_template_definition" template_name="Hello"&gt;
+              <b>&lt;#</b> renders Hello Big Templating World with a button underneath <b>#&gt;</b>
+              <b>&lt;#</b> The button alerts 'Hello There, you' when clicked <b>#&gt;</b>
+              Hello <b>&lt;$$</b> World <b>$$&gt;</b>
+         &lt;/script&gt;
 
-          &lt;script type="text/template" class="yote_template_definition" template_name="World"&gt;
-          <b>&lt;???</b> ctx.vars.whatisthis = 'Templating' <b>???&gt;</b>
-          Big <b>&lt;$</b> whatisthis <b>$&gt;</b> <b>&lt;??</b> return 'World' <b>??&gt;</b>
-          &lt;br&gt;
-          <b>&lt;$$</b> ButtonTemplate "There, you" <b>$$&gt;</b>
-          &lt;/script&gt;
+         &lt;script type="text/template" class="yote_template_definition" template_name="World"&gt;
+              <b>&lt;???</b> ctx.vars.whatisthis = 'Templating' <b>???&gt;</b>
+              Big <b>&lt;$</b> whatisthis <b>$&gt;</b> <b>&lt;??</b> return 'World' <b>??&gt;</b>
+              &lt;br&gt;
+              <b>&lt;#</b> The "There, you" below is an argument to the ButtonTemplate template.
+                  It can be a variable name for context variables and can be dynamically generated.  <b>#&gt;</b>
+              <b>&lt;$$</b> ButtonTemplate "There, you" <b>$$&gt;</b>
+         &lt;/script&gt;
 
-          &lt;script type="text/template" class="yote_template_definition" template_name="ButtonTemplate"&gt;
-          <b>&lt;$$$</b> myButton &lt;button type="button"&gt; <b>$$$&gt;</b> Click Me &lt;/button&gt;
-          <b>&lt;?</b>
-          $( ctx.controls.myButton ).click( function() { alert( "Hello " + ctx.args[ 0 ] ) } );
-          <b>?&gt;</b>
-          &lt;/script&gt;
+         &lt;script type="text/template" class="yote_template_definition" template_name="ButtonTemplate"&gt;
+              <b>&lt;$$$</b> myButton &lt;button type="button"&gt; <b>$$$&gt;</b> Click Me &lt;/button&gt;
+              <b>&lt;?</b>
+                $( ctx.controls.myButton ).click( function() { alert( "Hello " + ctx.args[ 0 ] ) } );
+              <b>?&gt;</b>
+         &lt;/script&gt;
 
-          &lt;/templates&gt;
+      &lt;/templates&gt;
 
-          &lt;!-- Insert Templates --&gt;
-          &lt;body&gt;
+&lt;!-- Insert Templates --&gt;
+        &lt;body&gt;
           &lt;div  id="comments" class="yote_template hide" template="Hello"&gt;&lt;/div&gt;
-          &lt;/body&gt;
+        &lt;/body&gt;
 
-          &lt;!-- Activate Templates --&gt;
-          &lt;script&gt;
+&lt;!-- Activate Templates --&gt;
+        &lt;script&gt;
           $().ready( function() { 
-          $.yote.templates.init();
-          $.yote.templates.refresh();
+            $.yote.templates.init();
+            $.yote.templates.refresh();
           } );
-          &lt;/script&gt;
+        &lt;/script&gt;
 
       </code></pre>
     </section>

@@ -215,7 +215,7 @@
        $().ready(function(){
            $.yote.templates.import_templates( "/templates/default_templates.html" );
 
-           window.sets = JSON.parse( localStorage.getItem( 'template_sets' ) || '' ) || window.sample_sets;
+           window.sets = JSON.parse( localStorage.getItem( 'template_sets' ) || '""' ) || window.sample_sets;
            var show_set = localStorage.getItem( 'cur_set' ) || 'hello';
            var show_template = $( '#results_tmp' ).html() || window.sample_sets[ show_set ][ 0 ].name;
 
