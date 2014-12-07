@@ -47,8 +47,6 @@ sub mark_done {
 sub start {
     my $cfg = shift;
     while( 1 ) {
-        print STDERR Data::Dumper->Dump(["To check Cron"]);
-
         my $sock = new IO::Socket::INET( "127.0.0.1:$cfg->{internal_port}" );
         print $sock "CRON";
         close $sock;

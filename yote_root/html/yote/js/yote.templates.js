@@ -387,24 +387,41 @@ $.yote.templates = {
 	    $( '.yote_template_definition' ).each( function() {
 	        $.yote.templates.register_template( $( this ).attr( 'template_name' ), $( this ).text() );
 	    } );
+	    $.yote.templates.register_template( '__BODY__', $( 'body' ).text() );
     }, //init
 
     // rebuild the UI, refreshing all templates
     refresh:function() {
 	    // fill all the templates defined in the body
 	    $( '.yote_template' ).each( function() {
-	        var el = $( this );
-	        var templ_name = el.attr( 'template' );
+	        var $el = $( this );
+	        var templ_name = $el.attr( 'template' );
 	        if( ! $.yote.templates._compiled_templates[ templ_name ] ) {
 		        console.log( "Error : template '" + templ_name + "' not found" );
 		        return;
 	        }
 	        try {
-		        el.empty().append( $.yote.templates.fill_template( templ_name ) );
+		        $el.empty().append( $.yote.templates.fill_template( templ_name ) );
 	        } catch( Err ) {
 		        console.log( "Error filling template '" + templ_name + '" : ' + Err );
 	        }
 	    } );
+
+	    var $el = $( 'body' );
+	    var templ_name = '__BODY__';
+	    if( ! $.yote.templates._compiled_templates[ templ_name ] ) {
+		    console.log( "Error : template '" + templ_name + "' not found" );
+		    return;
+	    }
+        var initial = $el.html();
+	    try {
+            var filled = $.yote.templates.fill_template( templ_name );
+		    $el.empty().append( filled );
+	    } catch( Err ) {
+            $el.empty().append( initial );
+		    console.log( "Error filling template '" + templ_name + '" : ' + Err );
+	    }
+
 
 	    //  now that all templates have been rendered, run their after render functions
 	    for( var i=0, len=$.yote.templates._after_render_functions.length; i < len; i++ ) {
@@ -413,7 +430,7 @@ $.yote.templates = {
 
 	    // reset so next refresh is clean
 	    $.yote.templates._after_render_functions = [];
-    }, //init
+    }, //refresh
 
     scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
 
@@ -423,6 +440,7 @@ $.yote.templates = {
 	        functions : {},
 	        controls : {},
 	        control_ids : {},
+            control : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
 	        scratch : $.yote.templates.scratch, // reference to common scratch area.
@@ -444,6 +462,7 @@ $.yote.templates = {
 		            functions : Object.clone( this.functions ),
 		            id        : $.yote.templates._next_id(),
 		            controls  : Object.clone( this.controls ),
+                    control   : Object.clone( this.control ),
 		            control_ids  : Object.clone( this.control_ids ),
 		            args      : Object.clone( this.args ),
                     refresh   : this.refresh,
@@ -734,12 +753,10 @@ $.yote.templates = {
             if( rest )
 		        rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
         }
+	    context.control[ varname ] = $( '#' + ctrl_id );
 	    context.controls[ varname ] = '#' + ctrl_id;
 	    context.control_ids[ varname ] = ctrl_id;
 	    return rest;
-
-        return '';
-
     }, //_register
 
 

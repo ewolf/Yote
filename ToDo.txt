@@ -1,5 +1,7 @@
 The stack :
 
+- plop templates in the body. Why the hell not?
+
 - remove as much eval as possible
 
 - redo lists or hashes as default pagination templates. the paginator would use scratch to store limit and offset data
