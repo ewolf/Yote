@@ -14,10 +14,10 @@
     <??? 
        if( ctx.args.length > 1 ) { 
            var obj = ctx.parse( ctx.args[ 0 ] )
-           ctx.set( 'object', obj );
+           ctx.vars.object = obj;
            var fld = ctx.args[ 1 ];
            var lbl = ctx.args[ 2 ] || '';
-           ctx.set( 'field', fld );
+           ctx.field = fld;
            return '<label for="<?? return ctx.controls.checkbox.substring(1);??>">' + 
                '<$$$ checkbox <input type="checkbox" ' + ( 1*obj.get( fld ) > 0 ? ' checked ' : '' ) + '>$$$>' + 
                lbl + '<label>';
@@ -271,7 +271,7 @@
        return $.yote.has_root_permissions() ?
 	             '<$$ edit_html ' + ctx.args.join( ' ' ) + ' $$>' 
                 : 
-                 '<$ ' + ctx.args.join('.') + '$>'; 
+                 '<$ ' + ctx.args.join('|') + '$>'; 
   ???>
 </script>
 
@@ -289,7 +289,7 @@
      return $.yote.has_root_permissions() ? 
          '<$$ edit ' + ctx.args.join( ' ' ) + ' $$>' 
           : 
-         '<$ ' + ctx.args.join('.') + '$>'; 
+         '<$ ' + ctx.args.join('|') + '$>'; 
    ???>
 </script>
 
@@ -302,11 +302,11 @@
     <???
       if( ctx.args.length > 1 ) { 
           var fld = ctx.args[ 1 ];
-	      var obj =  ctx.parse( ctx.args[ 0 ] );
-          ctx.set( 'object', obj );
+	  var obj =  ctx.parse( ctx.args[ 0 ] );
+          ctx.vars.object = obj;
           var fld = ctx.args[ 1 ];
-	      ctx.set( 'escaped', obj.get( fld ) );
-          ctx.set( 'field', fld );
+	  ctx.vars.escaped = obj.get( fld );
+          ctx.vars.field = fld;
           return '<$$$ input_div <div class="input_div"> $$$>' + 
                     '<$$$ noedit_span <span class="edit_allowed"> $$$>' + 
                        '<$ object.' + fld + ' $>' + 
@@ -324,6 +324,7 @@
     ???> 
     <? 
       $( ctx.controls.editarea ).text( ctx.vars.escaped );
+      $( ctx.controls.noedit_span ).html( ctx.vars.escaped );
 
       $( ctx.controls.input_div ).mouseleave( function() { 
           $( ctx.controls.noedit_span ).removeClass( 'editing' );
