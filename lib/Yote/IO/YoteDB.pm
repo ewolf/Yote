@@ -35,9 +35,22 @@ sub new {
 
 # ------------------------------------------------
 
-
+#
+# Dummy stub. Does nothing as this datastore
+# automatically commits transactions
+#
 sub commit_transaction {}
 
+#
+# Given a host object id and a container name,
+# this returns the reference type of what
+# is in that container.
+# for example :
+#   my $obj = new Yote::Obj;
+#   $obj->set_foo( [ 'My', "List", "Of", "Stuff" ] );
+#   $obj->container_type( 'foo' ); <--- returns 'ARRAY'
+#   
+#
 sub container_type {
     my( $self, $host_id, $container_name ) = @_;
     my $obj = $self->fetch( $host_id );
@@ -83,8 +96,43 @@ sub count {
     return 0;
 } #count
 
-
+#
+# Dummy stub. Does nothing.
+#
 sub disconnect {}
+
+#
+# Makes sure this datastore is set up and functioning.
+#
+sub ensure_datastore {
+    my $self = shift;
+    $self->{STORE_MANAGER}->ensure_datastore();
+} #ensure_datastore
+
+
+#
+# Return a list reference containing [ id, class, data ] that 
+# corresponds to the $id argument. This is used by Yote::ObjProvider
+# to build the yote object.
+#
+sub fetch {
+    my( $self, $id ) = @_;
+    my $ret = $self->_fetch( $id );
+    return undef unless $ret;
+    $ret->[DATA] = from_json( $ret->[DATA] );
+    return $ret;
+} #fetch
+
+
+sub first_id {
+    return 1;
+}
+
+sub get_id {
+    my( $self, $class ) = @_;
+    return $self->{OBJ_INDEX}->next_id;
+}
+
 
 #
 # Returns a paginated list of objects attached to the 
@@ -97,8 +145,8 @@ sub disconnect {}
 #                      searches each field in this list with the matching
 #                      term from the search_terms at the same index.
 #                      if present, hashkey_search is ignored.
-#    hashkey_search  - if true, this only searches the object property
-#                      names. 
+#    hashkey_search -  search on the field names rather than the fields.
+#                      Makes no sense if search_fields is given.
 #    reverse         - reverse the return array
 #    sort_fields     - the fields to sort these on
 #    reversed_orders - a list of booleans corresponding to sort_fields. 
@@ -213,11 +261,56 @@ sub paginate {
     return [];
 } #paginate
 
+#
+# Saves the object data for object $id to the data store.
+#
+sub stow {
+    my( $self, $id, $class, $data ) = @_;
+
+    my $save_data = "$class " . to_json($data);
+    my $save_size = do { use bytes; length( $save_data ); };
+
+    my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    # check to see if this is already in a table and 
+    # it still fits in that table
+    if( $current_store_id ) {
+        my $store = $self->{STORE_MANAGER}->get_store( $current_store_id );
+        if( $store->size() <= $save_size ) {
+            return $store->put_record( $current_store_idx, [$save_data] );
+        } 
+        # otherwise delete the current record in that store
+        $store->delete( $current_store_id );
+    }
+    
+    # find a store large enough and store it there.
+    my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
+    my $store_idx = $store->next_id;
+    $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
+    $store->put_record( $store_idx, [$save_data] );
+    
+} #stow
+
+#
+# Takes a list of object data references and stows them all in the datastore.
+#
+sub stow_all {
+    my( $self, $objs ) = @_;
+    for my $o ( @$objs ) {
+        $#self->stow( @$o );
+    }
+}
 
 # -------------------- private
 
 #
-# Return true if the obj matches the criteria
+# Return true if the obj matches the criteria.
+#    search_terms   - a list of terms to match
+#    search_fields  - if given, must be same size as search_terms
+#                     searches each field in this list with the matching
+#                     term from the search_terms at the same index.
+#                     if present, hashkey_search is ignored.
+#    hashkey_search - search on the field names rather than the fields.
+#                     Makes no sense if search_fields is given.
 #
 sub _matches {
     my( $self, $obj_data, $search_terms, $search_fields, $hashkey_search ) = @_;
@@ -256,15 +349,10 @@ sub _matches {
     return 0;
 } #_matches
 
-
-sub fetch {
-    my( $self, $id ) = @_;
-    my $ret = $self->_fetch( $id );
-    return undef unless $ret;
-    $ret->[DATA] = from_json( $ret->[DATA] );
-    return $ret;
-} #fetch
-
+#
+# Returns [ id, class, raw data ] of the record associated with that object id.
+# The raw data is a JSON string, not an object reference.
+#
 sub _fetch {
     my( $self, $id ) = @_;
 
@@ -279,52 +367,6 @@ sub _fetch {
     return [$id,$class,$data];
 } #_fetch
 
-sub stow {
-    my( $self, $id, $class, $data ) = @_;
-
-    my $save_data = "$class " . to_json($data);
-    my $save_size = do { use bytes; length( $save_data ); };
-
-    my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-    # check to see if this is already in a table and 
-    # it still fits in that table
-    if( $current_store_id ) {
-        my $store = $self->{STORE_MANAGER}->get_store( $current_store_id );
-        if( $store->size() <= $save_size ) {
-            return $store->put_record( $current_store_idx, [$save_data] );
-        } 
-        # otherwise delete the current record in that store
-        $store->delete( $current_store_id );
-    }
-    
-    # find a store large enough and store it there.
-    my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
-    my $store_idx = $store->next_id;
-    $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
-    $store->put_record( $store_idx, [$save_data] );
-    
-} #stow
-
-sub stow_all {
-    my( $self, $objs ) = @_;
-    for my $o ( @$objs ) {
-        $#self->stow( @$o );
-    }
-}
-
-sub ensure_datastore {
-    my $self = shift;
-    $self->{STORE_MANAGER}->ensure_datastore();
-} #ensure_datastore
-
-sub first_id {
-    return 1;
-}
-
-sub get_id {
-    my( $self, $class ) = @_;
-    return $self->{OBJ_INDEX}->next_id;
-}
 
 1;
 
