@@ -252,6 +252,7 @@ sub io_independent_tests {
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
     is( $root_3->count( { name => 'array' } ), 6, 'Array has 6 with count' );
+
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3 } ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate limit 3' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, reverse => 1 } ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse limit 3' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 1, skip => 2 } ), [ 'MORE STUFF' ], 'paginate limit three from 2' );
@@ -334,6 +335,7 @@ sub io_independent_tests {
 #
 #                                          #
     $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+
     Yote::ObjProvider::stow_all();
     eval {
         $root->create_login();
@@ -351,12 +353,15 @@ sub io_independent_tests {
     Yote::ObjProvider::stow_all();
     my $root_login = $root->_hash_fetch( "_handles", "root");
     my $root_acct = new Yote::Account( { login => $root_login } );
-    
+
+#    print STDERR Data::Dumper->Dump([$root->get__handles,$root->get__handles()->{root},$root_login,"HANDY"]);
+
 
     unless( $root_login ) {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
     }
+
     is( $root->_count({ name => "_handles" }), 1, "1 handle stored");
     is( $root_login->get_handle(), 'root', 'handle set' );
     is( $root_login->get_email(), 'foo@bar.com', 'email set' );
@@ -432,6 +437,7 @@ sub io_independent_tests {
     is( $root->_hash_fetch( "hashfoo", "zort"), "zot", "hash_fetch with hash" );
 
     Yote::ObjProvider::stow_all();
+
     my $app = $root->_hash_fetch( '_apps', 'Yote::Test::TestAppNeedsLogin' );
     $app->add_to_azzy( "A","B","C","D");
     Yote::ObjProvider::stow_all();
@@ -496,9 +502,9 @@ sub io_independent_tests {
     is_deeply( $res, { 'Bingo' => "BARFO" }, ' paginate for hash using hashkey_search with nonhit search term' );
 
     $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "R" ] } );
-    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using hashkey_search with nonhit search term' );
+    is_deeply( $res, { 'Bingo' => "BARFO" }, ' search_terms for hash using return_hash with nonhit search term' );
 
-    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
+    $res = $app->_paginate( { name => 'hsh', return_hash => 1, search_terms => [ "O" ], hashkey_search => [ "Z" ] } );
     is_deeply( $res, { 'baz/bof' => "FOOME" }, ' search_terms for hash using search terma and hashkey_search with nonhit search term' );
     my $count = $app->_count( { name => 'hsh', return_hash => 1, search_terms => [ "g" ], hashkey_search => [ "Z" ] } );
     is( $count, 1, "one results for count using hash and hashkey and search terms" );
@@ -1333,8 +1339,8 @@ sub io_independent_tests {
     like( $@, qr/^Access Error/,"nonroot nonowner account unable to paginate user obj private container" );
     is_deeply( $uo->paginate( { name => "foo", }, $cute_notroot_acct ), [], "nonroot, noncreator can paginate user obj public container" );
     eval { 
-	$ro->hash( { name => "foo", value => 'bar' }, $cute_notroot_acct );
-	fail( "nonroot, nocreator account able to insert into into user obj private container" );
+        $ro->hash( { name => "foo", value => 'bar' }, $cute_notroot_acct );
+        fail( "nonroot, nocreator account able to insert into into user obj private container" );
     };
     like( $@, qr/^Access Error/,"nonroot nonowner account unable to insert data into  user obj public container" );
 } #io_independent_tests

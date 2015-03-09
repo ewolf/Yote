@@ -267,6 +267,7 @@ sub _hash_insert {
 
 sub _hash_fetch {
     my( $self, $hashname, $key ) = @_;
+    print STDERR Data::Dumper->Dump([$self->{DATA},$hashname,$key,"OHF"]);
     my $hash_id = $self->{DATA}{$hashname};
     return unless $hash_id;
     return Yote::ObjProvider::hash_fetch( $hash_id, $key );

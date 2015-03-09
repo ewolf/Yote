@@ -19,6 +19,21 @@ sub new {
     }, $class;
 } #new
 
+sub filehandle {
+    my $self = shift;
+    close $self->{FILEHANDLE};
+    open $self->{FILEHANDLE}, "+<$self->{FILENAME}";
+    return $self->{FILEHANDLE};
+}
+
+
+sub unlink {
+    # TODO : more checks
+    my $self = shift;
+    close $self->filehandle;
+    unlink $self->{FILENAME};
+}
+
 sub size {
     return shift->{SIZE};
 }
@@ -29,13 +44,13 @@ sub size {
 sub push {
     my( $self, $data ) = @_;
 
-    my $fh = $self->{FILEHANDLE};
-    flock $fh, LOCK_EX;
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
 
     my $next_id = 1 + $self->entries;
     $self->put_record( $next_id, $data );
     
-    flock $fh, LOCK_UN;
+#    flock $fh, LOCK_UN;
 
     return $next_id;
 } #push
@@ -46,16 +61,15 @@ sub push {
 sub pop {
     my( $self ) = @_;
 
-    my $fh = $self->{FILEHANDLE};
-    flock $fh, LOCK_EX;
+#    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
 
     my $entries = $self->entries;
     return undef unless $entries;
     my $ret = $self->get_record( $entries );
-
-    truncate $self->{FILEHANDLE}, $entries * $self->{SIZE};
+    truncate $self->filehandle, ($entries-1) * $self->{SIZE};
     
-    flock $fh, LOCK_UN;
+#    flock $fh, LOCK_UN;
 
     return $ret;
     
@@ -66,9 +80,10 @@ sub pop {
 #
 sub put_record {
     my( $self, $idx, $data ) = @_;
-    my $fh = $self->{FILEHANDLE};
-    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET;
+    my $fh = $self->filehandle;
+    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET or die "Could not seek : $@ $!";
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
+
     my $to_write_length = do { use bytes; length( $to_write ); };
     if( $to_write_length < $self->{SIZE} ) {
         my $del = $self->{SIZE} - $to_write_length;
@@ -76,33 +91,70 @@ sub put_record {
         my $to_write_length = do { use bytes; length( $to_write ); };
         die "$to_write_length vs $self->{SIZE}" unless $to_write_length == $self->{SIZE};
     }
-    syswrite $fh, $to_write;
+    my $swv = syswrite $fh, $to_write;
+    defined( $swv ) or die "Could not write : $@ $!";
     return 1;
 } #put_record
 
 sub get_record {
     my( $self, $idx ) = @_;
-    my $fh = $self->{FILEHANDLE};
-    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET;
-    sysread $fh, my $data, $self->{SIZE};
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
+    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{SIZE} * ($idx-1)) : $@ $!";
+    my $srv = sysread $fh, my $data, $self->{SIZE};
+    defined( $srv ) or die "Could not read : $@ $!";
+#    flock $fh, LOCK_UN;
     return [unpack( $self->{TMPL}, $data )];
 } #get_record
 
 sub entries {
     # return how many entries this index has
     my $self = shift;
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
     my $filesize = -s $self->{FILENAME};
+#    flock $fh, LOCK_UN;
     return int( $filesize / $self->{SIZE} );
 }
 
-sub next_id {
-    my( $self, $idx ) = @_;
+#
+# Empties out this file. Eeek
+#
+sub empty {
+    my $self = shift;
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
+    truncate $self->{FILENAME}, 0;
+#    flock $fh, LOCK_UN;
+    return undef;
+} #empty
 
-    my $fh = $self->{FILEHANDLE};
-    flock $fh, LOCK_EX;
+#
+# Makes sure there at least this many entries.
+#
+sub ensure_entry_count {
+    my( $self, $count ) = @_;
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
+
+    my $entries = $self->entries;
+    if( $count > $entries ) {
+        for( (1+$entries)..$count ) {
+            $self->put_record( $_, [] );            
+        }
+    } 
+
+#    flock $fh, LOCK_UN;
+} #ensure_entry_count
+
+sub next_id {
+    my( $self ) = @_;
+
+    my $fh = $self->filehandle;
+#    flock $fh, LOCK_EX;
     my $next_id = 1 + $self->entries;
     $self->put_record( $next_id, [] );
-    flock $fh, LOCK_UN;
+#    flock $fh, LOCK_UN;
     return $next_id;
 } #next_id
 

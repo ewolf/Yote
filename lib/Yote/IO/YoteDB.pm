@@ -17,7 +17,7 @@ use constant {
 };
 
 #
-# This the main index and stores in which table and position 
+# This the main index and stores in which table and position
 # in that table that this object lives.
 #
 sub new {
@@ -28,7 +28,7 @@ sub new {
     # LIII template is a long ( for object id, then the table id, then the index in that table
     return bless {
         args          => $args,
-        OBJ_INDEX     => new Yote::IO::FixedStore( "LII", $filename ),
+        OBJ_INDEX     => new Yote::IO::FixedRecycleStore( "LII", $filename ),
         STORE_MANAGER => new Yote::IO::StoreManager( $args ),
     }, $class;
 } #new
@@ -49,13 +49,13 @@ sub commit_transaction {}
 #   my $obj = new Yote::Obj;
 #   $obj->set_foo( [ 'My', "List", "Of", "Stuff" ] );
 #   $obj->container_type( 'foo' ); <--- returns 'ARRAY'
-#   
+#
 #
 sub container_type {
     my( $self, $host_id, $container_name ) = @_;
     my $obj = $self->fetch( $host_id );
     if( $obj ) {
-        my $container = $obj->[CLASS] eq 'ARRAY' ? 
+        my $container = $obj->[CLASS] eq 'ARRAY' ?
             $self->fetch( $obj->[DATA][$container_name] ) :
             $self->fetch( $obj->[DATA]{$container_name} );
         if( $container ) {
@@ -66,16 +66,16 @@ sub container_type {
 } #container_type
 
 #
-# Returns the count of objects attached to the 
+# Returns the count of objects attached to the
 # host obj_id that match the criteria.
-# arguments are 
+# arguments are
 #    search_terms   - a list of terms to match
 #    search_fields  - if given, must be same size as search_terms
 #                     searches each field in this list with the matching
 #                     term from the search_terms at the same index.
 #                     if present, hashkey_search is ignored.
 #    hashkey_search - if true, this only searches the object property
-#                     names. 
+#                     names.
 #
 sub count {
     my( $self, $obj_id, $args ) = @_;
@@ -89,8 +89,8 @@ sub count {
         if( @$fields ) {
             return scalar(
                 grep { $self->_matches( $_, $terms, $fields, $hashkey_search ) }
-                map { $self->_fetch($_) } 
-                grep { ! /^v/ } 
+                map { $self->_fetch($_) }
+                grep { ! /^v/ }
                 ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata)
                 );
         } elsif( @$terms ) {
@@ -117,11 +117,12 @@ sub disconnect {}
 sub ensure_datastore {
     my $self = shift;
     $self->{STORE_MANAGER}->ensure_datastore();
+    $self->first_id;
 } #ensure_datastore
 
 
 #
-# Return a list reference containing [ id, class, data ] that 
+# Return a list reference containing [ id, class, data ] that
 # corresponds to the $id argument. This is used by Yote::ObjProvider
 # to build the yote object.
 #
@@ -138,6 +139,10 @@ sub fetch {
 # all active objects.
 #
 sub first_id {
+    my $OI = shift->{OBJ_INDEX};
+    if( $OI->entries < 1 ) {
+        return $OI->next_id;
+    }
     return 1;
 } #first_id
 
@@ -145,7 +150,9 @@ sub first_id {
 # Create a new object id and return it.
 #
 sub get_id {
-    return shift->{OBJ_INDEX}->next_id;
+    my $self = shift;
+    my $x = $self->{OBJ_INDEX}->next_id;
+    return $x;
 } #get_id
 
 
@@ -156,24 +163,28 @@ sub get_id {
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
     my $obj = $self->fetch( $list_id );
-    die "list insert called for non-list" unless ref( $obj->{DATA} ) eq 'ARRAY';
-    if( defined $idx ) {
-        splice @{$obj->{DATA}}, $idx, 0, $val;
-    } else {
-        push @{$obj->{DATA}}, $val;
+    if( ref( $obj->[DATA] ) ne 'ARRAY' ) {
+        $obj->[DATA]{ $idx } = $val;
+    }
+    else {
+        if( defined $idx ) {
+            splice @{$obj->[DATA]}, $idx, 0, $val;
+        } else {
+            push @{$obj->[DATA]}, $val;
+        }
     }
     $self->stow( @$obj );
     return;
 } #list_insert
 
 sub max_id {
-    return shift->{OBJ_INDEX}->size;
+    return shift->{OBJ_INDEX}->entries;
 }
 
 #
-# Returns a paginated list of objects attached to the 
+# Returns a paginated list of objects attached to the
 # host obj_id that match the criteria.
-# arguments are 
+# arguments are
 #    limit           - return no more than this amount
 #    skip            - skip this many entries to paginate
 #    search_terms    - a list of terms to match
@@ -181,14 +192,15 @@ sub max_id {
 #                      searches each field in this list with the matching
 #                      term from the search_terms at the same index.
 #                      if present, hashkey_search is ignored.
+#    sort           -  with non field sort, sorts alphabetically if 1
 #    hashkey_search -  search on the field names rather than the fields.
 #                      Makes no sense if search_fields is given.
 #    reverse         - reverse the return array
 #    sort_fields     - the fields to sort these on
-#    reversed_orders - a list of booleans corresponding to sort_fields. 
+#    reversed_orders - a list of booleans corresponding to sort_fields.
 #                      If the second reversed_orders entry is true, then
 #                      the 2nd field to sort on will be sorted in reverse.
-#    numeric_fields  - a list of booleans corresponding to sort_fields. 
+#    numeric_fields  - a list of booleans corresponding to sort_fields.
 #                      If the second numeric_fields entry is true, then
 #                      the 2nd field to sort on will be sorted numerically
 #                      rather than as strings which is the default.
@@ -197,159 +209,226 @@ sub paginate {
     my( $self, $obj_id, $args ) = @_;
 
     my $idx = 0;
-    
-    my $obj = $self->fetch( $obj_id );
-    if( $obj ) {
-        my $odata = $obj->[DATA];
-        my $search_terms  = $args->{ search_terms }  || [];
-        my $search_fields = $args->{ search_fields } || [];
-        my $sort_fields   = $args->{ sort_fields }   || [];
-        my( $hashkey_search, $skip, $limit, $reverse ) = @$args{ 'hashkey_search', 'skip', 'limit', 'reverse' };
 
-        #
-        # Case: The object is a container and we are interested in its scalar fields
-        #
-        unless( @$search_fields ) {
-            my( $cands ) = ($obj->[CLASS] eq 'ARRAY' ? @$odata : $hashkey_search ? keys %$odata : values %$odata );
-            if( @$search_terms ) {
-                my( @newc );
-                for my $cand (@$cands) {
+    my $obj = $self->fetch( $obj_id );
+    my $return_hash = $args->{return_hash};
+    if( $obj ) {
+        my $odata           = $obj->[DATA];
+        my $search_terms    = $args->{ search_terms }  || [];
+        my $search_fields   = $args->{ search_fields } || [];
+        my $sort_fields     = $args->{ sort_fields }   || [];
+        my $reversed_orders = $args->{ reversed_orders }   || [];
+        my $hashkey_search  = $args->{ hashkey_search } || [];
+        die "Number of search terms must mach number of search fields" if @$search_fields && @$search_fields != @$search_terms;
+        my( $skip, $limit, $reverse, $sort ) = @$args{ 'skip', 'limit', 'reverse', 'sort' };
+        $skip //= 0;
+        my $is_array = $obj->[CLASS] eq 'ARRAY';
+
+        my $cand_ids = $is_array ? [0..$#$odata] : [sort keys %$odata];
+
+         if( @$search_terms || @$hashkey_search ) {
+            my( @newc );
+            if( @$search_terms && @$search_fields == 0 ) {
+                for my $cand (@$cand_ids) {
+                    my $cval = $is_array ? $odata->[$cand] : $odata->{$cand};
                   TERM:
                     for my $term (@$search_terms) {
-                        if( $cand =~ /^v.*$term/ ) {
+                    print STDERR Data::Dumper->Dump(["CHECKA",$cand,$term,$cval]);
+
+                        if( $cval =~ /^v.*$term/i ) {
                             push @newc, $cand;
                             last TERM;
                         }
                     }
                 } #each cand
-                $cands = \@newc;
+            } #if tosearch
+            else {
+                @newc = @$cand_ids;
             }
-            if( $reverse ) {
-                $cands = [ reverse @$cands ];
+                    print STDERR Data::Dumper->Dump([\@newc,$search_terms,"C 1 "]);
+
+            if( @$hashkey_search ) {
+                my @newnewc;
+                for my $cand (@newc) {
+                  H_TERM:
+                    for my $term (@$hashkey_search) {
+                        print STDERR Data::Dumper->Dump([$term,$cand,"Check"]);
+                        if( $cand =~ /$term/i ) {
+                            push @newnewc, $cand;
+                            last H_TERM;
+                        }
+                    }
+                } #each cand
+                (@newc) = @newnewc;
+            } #if tosearch
+
+            $cand_ids = \@newc;
+                    print STDERR Data::Dumper->Dump([$cand_ids,"C 2 "]);
+        } # if a hashkey or search term
+
+
+        if( @$sort_fields || @$search_fields ) {
+
+            # limit to results having objects behind them
+            $cand_ids = [ grep { scalar($is_array ? $odata->[$cand_ids->[$_]] : $odata->[$cand_ids->{$_}] ) !~ /^v/ } (0..$#$cand_ids)];
+
+            my( @newc, %cdata );
+            for (0..$#$cand_ids) {
+                my $cand_data = $self->_fetch( $_ );
+                if( $self->_matches( $cand_data, $search_terms, $search_fields ) ) {
+                    push @newc, $_;
+                    $cand_data->[DATA] = from_json( $cand_data->[DATA] );
+                    $cdata{ $cand_data->[ID] } = $cand_data;
+                }
             }
-            return $cands;
-        }
+            $cand_ids = \@newc;
 
-        my( @cand_ids ) = grep { index($_,'v') != 0 } ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata);
-        if( $args->{reverse} && @$sort_fields == 0 ) {
-            (@cand_ids) = reverse @cand_ids;
-        }
-
-        my( @accepted_cand_data, $tries );
-        for my $cand_id (@cand_ids) {
-            my $cand_data = $self->_fetch( $cand_id );
-            next unless $self->_matches( $cand_data, $search_terms, $search_fields, $hashkey_search );
-            ++$tries;
-            if( @$sort_fields == 0 ) {
-                if( defined( $limit ) ) {
-                    next if $skip >= $tries;
-                    push @accepted_cand_data, $cand_data->[ID];
-                    if( @accepted_cand_data >= $limit ) {
-                        return \@accepted_cand_data;
+            my $numeric_fields = $args->{ numeric_fields } || [];
+            for my $fld_idx ( 0..$#$sort_fields ) {
+                my $fld = $sort_fields->[ $fld_idx ];
+                if( $reversed_orders->[ $fld_idx ] ) {
+                    if( $is_array ) {
+                        if( $numeric_fields->[ $fld_idx ] ) {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$b]]} <=> $cdata{$odata->[$cand_ids->[$a]]} } (0..$#$cand_ids) ];
+                        } else {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$b]]} cmp $cdata{$odata->[$cand_ids->[$a]]} } (0..$#$cand_ids) ];
+                        }
+                    } else {
+                        if( $numeric_fields->[ $fld_idx ] ) {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$b}]} <=> $cdata{$odata->[$cand_ids->{$a}]} } (0..$#$cand_ids) ];
+                         } else {
+                           $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$b}]} cmp $cdata{$odata->[$cand_ids->{$a}]} } (0..$#$cand_ids) ];
+                         }
                     }
                 } else {
-                    push @accepted_cand_data, $cand_data->[ID];
+                    if( $is_array ) {
+                        if( $numeric_fields->[ $fld_idx ] ) {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$a]]} <=> $cdata{$odata->[$cand_ids->[$b]]} } (0..$#$cand_ids) ];
+                        } else {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$a]]} cmp $cdata{$odata->[$cand_ids->[$b]]} } (0..$#$cand_ids) ];
+                        }
+                    } else {
+                        if( $numeric_fields->[ $fld_idx ] ) {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$a}]} <=> $cdata{$odata->[$cand_ids->{$b}]} } (0..$#$cand_ids) ];
+                        } else {
+                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$a}]} cmp $cdata{$odata->[$cand_ids->{$b}]} } (0..$#$cand_ids) ];
+                        }
+                    }
                 }
-            } elsif( $cand_data ) {
-                push @accepted_cand_data, $cand_data;
             }
-        } #each cand
-        if( @$sort_fields == 0 ) {
-            return [map { $_->[ID] } @accepted_cand_data];
-        }
-
-        my( @converted_arrays );
-        for my $cand (@accepted_cand_data) {
-            my $data = from_json( $cand->[DATA] );
-            if( $cand->[DATA] eq 'ARRAY' ) {
-                # temporarily convert arrays to hashes for comparison.
-                # later convert them back
-                push @converted_arrays, $cand;
-                $data = { map { $_ => $data->[$_] } (0..$#$data) };
-            }
-            $cand->[DATA] = $data;
-        }
-
-        my $reversed_orders = $args->{ reversed_orders } || [];
-        my $numeric_fields = $args->{ numeric_fields } || [];
-        for my $fld_idx ( 0..$#$sort_fields ) {
-            my $fld = $sort_fields->[ $fld_idx ];
-            if( $reversed_orders->[ $fld_idx ] ) {
-                if( $numeric_fields->[ $fld_idx ] ) {
-                    @accepted_cand_data = sort {
-                        $b->[DATA]{$fld} <=> $a->[DATA]{$fld}
-                    } @accepted_cand_data;
-                } else {
-                    @accepted_cand_data = sort {
-                        $b->[DATA]{$fld} cmp $a->[DATA]{$fld}
-                    } @accepted_cand_data;
-                }
-            } elsif( $numeric_fields->[ $fld_idx ] ) {
-                @accepted_cand_data = sort {
-                    $a->[DATA]{$fld} <=> $b->[DATA]{$fld}
-                } @accepted_cand_data;
+        } elsif( $sort ) {
+            if( $is_array ) {
+                $cand_ids = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_ids ];
             } else {
-                @accepted_cand_data = sort {
-                    $a->[DATA]{$fld} cmp $b->[DATA]{$fld}
-                } @accepted_cand_data;
+                $cand_ids = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_ids ];
             }
         }
-        
-        #convert back array candidate data from hash back to array
-        for my $arr_cand (@converted_arrays) {
-             $arr_cand->[DATA] = [ map { $arr_cand->[DATA]{$_} } sort keys %{$arr_cand->[DATA]} ];
+        if( $reverse ) {
+            $cand_ids = [ reverse @$cand_ids ];
         }
-        if( $args->{reverse} ) {
-            @accepted_cand_data = reverse @accepted_cand_data;
+        if( defined( $limit ) ) {
+            $skip += 0;
+            my $to = $skip + ( $limit - 1 );
+            $to = $to > $#$cand_ids ? $#$cand_ids : $to;
+            $cand_ids =  [@$cand_ids[$skip..$to]];
         }
-
-        if( $args->{limit} ) {
-            if( $args->{skip} ) {
-                if( $args->{skip} > @accepted_cand_data ) {
-                    @accepted_cand_data = ();
-                } else {
-                    @accepted_cand_data = @accepted_cand_data[$args->{skip}..$#accepted_cand_data];
-                }
+        if( $return_hash ) {
+            if( $is_array ) {
+                return { map { $cand_ids->[$_] => $odata->[$cand_ids->[$_]] } (0..$#$cand_ids) };
             }
-            $#accepted_cand_data = $args->{limit} if $args->{limit} > @accepted_cand_data;
+            return { map { $cand_ids->[$_] => $odata->{$cand_ids->[$_]} } (0..$#$cand_ids) };
         }
+        elsif( $is_array ) {
+            return [map { $odata->[$_] } @$cand_ids];
+        }
+        return [map { $odata->{$_} } @$cand_ids];
 
-        return \@accepted_cand_data;
-    } #if host obj found
-
+    } #if obj
+    return {} if $return_hash;
     return [];
 } #paginate
+
+#
+#
+#
+sub recycle_objects {
+    return shift->_recycle_objects;
+} #recycle_objects
+
+sub _recycle_objects {
+    my( $self, $keep_id, $store ) = @_;
+    my $is_first = 0;
+    unless( $keep_id ) {
+        $keep_id //= $self->first_id;
+        $is_first = 1;
+    }
+    unless( $store ) {
+        # todo ... pick randomized name as this is temporary
+        $store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
+        $store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+    }
+    my( $has ) = @{ $store->get_record( $keep_id ) };
+    return if $has;
+
+    $store->put_record( $keep_id, [ 1 ] );
+    my( @queue );
+    my $item = $self->fetch( $keep_id );
+    if( ref( $item->[DATA] ) eq 'ARRAY' ) {
+        ( @queue ) = grep { /^[^v]/ } @{$item->[DATA]};
+    } else {
+        ( @queue ) = grep { /^[^v]/ } values %{$item->[DATA]};
+    }
+    for my $keeper ( @queue ) {
+        $self->_recycle_objects( $keeper, $store );
+    }
+    if( $is_first ) {
+        # the purge begins here
+        my $count = 0;
+        my $cands = $store->entries;
+        for( 1..$cands) {
+            my( $rec ) = @{ $store->get_record( $_ ) };
+            if( ! $rec ) {
+                ++$count;
+                my $o = $self->fetch( $_ );
+            }
+        }
+        # remove recycle datastore
+        $store->unlink;
+
+        return $count;
+    }
+} #recycle_objects
 
 #
 # Saves the object data for object $id to the data store.
 #
 sub stow {
     my( $self, $id, $class, $data ) = @_;
-
     my $save_data = "$class " . to_json($data);
     my $save_size = do { use bytes; length( $save_data ); };
     my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-    # check to see if this is already in a table and 
-    # it still fits in that table
+
+    # check to see if this is already in a store and record that store.
     if( $current_store_id ) {
-        my $store = $self->{STORE_MANAGER}->get_store( $current_store_id );
-        print STDERR Data::Dumper->Dump(["RESTOWWWW $id",$store,$save_size,$store->size()]);
-        if( $store->size() >= $save_size ) {
-            print STDERR Data::Dumper->Dump(["RIGHTONW"]);
-            return $store->put_record( $current_store_idx, [$save_data] );
-        } 
-        # otherwise delete the current record in that store
-        $store->delete( $current_store_id );
-    print STDERR Data::Dumper->Dump(["REFIND $id"]);
+        my $old_store = $self->{STORE_MANAGER}->get_store( $current_store_id );
+        if( $old_store->{SIZE} >= $save_size ) {
+            $old_store->put_record( $current_store_idx, [$save_data] );
+            return;
+        }
+        $old_store->delete( $current_store_idx );
     }
-    
+
     # find a store large enough and store it there.
     my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
     my $store_idx = $store->next_id;
-    print STDERR Data::Dumper->Dump(["STOWWWW $id",$store_id,$store_idx]);
+
+# okey, looks like the providing the next index is not working well with the recycling. is providing the same one?
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
-    return $store->put_record( $store_idx, [$save_data] );
+
+    my $ret = $store->put_record( $store_idx, [$save_data] );
+
+    return $ret;
 } #stow
 
 #
@@ -379,13 +458,13 @@ sub stow_all {
 #
 sub _matches {
     my( $self, $obj_data, $search_terms, $search_fields, $hashkey_search ) = @_;
-    
+
     return 1 unless @$search_terms;
 
     #
     # quick check. If no search term is found in the raw ( json string )
     # data of the object, then there can be no match.
-    # 
+    #
     my $has = 0;
     for my $term (@$search_terms) {
         if( index( $obj_data->[RAW_DATA], $term ) > -1 ) {
@@ -398,11 +477,11 @@ sub _matches {
     my $is_arry = $obj_data->[CLASS] eq 'ARRAY';
     if( @$search_fields ) {
         for my $search_idx (0..$#$search_fields) {
-            my $fld = $is_arry ? $data->[ $search_fields->[0] ] : 
+            my $fld = $is_arry ? $data->[ $search_fields->[0] ] :
                 $data->{ $search_fields->[0] };
             return 1 if $fld =~ /^v.*$search_terms->[$search_idx]/;
         }
-    } 
+    }
     else {
         my( @field_data ) = ($is_arry ? @$data : $hashkey_search ? keys %$data : values %$data );
         for my $fld (@field_data) {
@@ -422,9 +501,11 @@ sub _fetch {
     my( $self, $id ) = @_;
 
     my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+
     return undef unless $store_id;
-    print STDERR Data::Dumper->Dump([$id,$store_id,$store_idx,"FETCH $id"]);
+
     my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
+
     my $pos = index( $data, ' ' );
     die "Malformed record '$data'" if $pos == -1;
     my $class = substr $data, 0, $pos;
@@ -477,7 +558,7 @@ sub list_fetch {
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
     my $obj = $self->fetch( $hash_id );
-    die "hash_fetch called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
+    return $obj->[DATA][$key] if ref( $obj->[DATA] ) eq 'ARRAY';
     return $obj->[DATA]{$key};
 } #hash_fetch
 
