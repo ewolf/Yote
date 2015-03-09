@@ -13,6 +13,7 @@ use Yote::IO::YoteDB;
 use Yote::IO::TestUtil;
 
 use Data::Dumper;
+use Devel::Refcount qw(refcount);
 use File::Temp qw/ :mktemp tempdir /;
 use File::Spec::Functions qw( catdir updir );
 use Test::More;
@@ -89,9 +90,11 @@ sub test_suite {
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+3, "highest id in database $ROOT_START+3" );
     my $newo = new Yote::Obj();
+
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+4, "highest id in database $ROOT_START+4" );
     my $somehash = {"preArray" => $newo};
+
     $newo->set_somehash( $somehash ); #testing for recursion
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+5, "highest id in database $ROOT_START+5" );

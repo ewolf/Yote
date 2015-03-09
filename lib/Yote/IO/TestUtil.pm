@@ -847,7 +847,6 @@ sub io_independent_tests {
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 0 } );
     is_deeply( $res, { 1 => "LALA" }, "return hash num sort chunk 1" );
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 1 } );
-    print STDERR Data::Dumper->Dump([$root->get_el_hash(),$res]);exit;
     is_deeply( $res, { 2 => "ERF" }, "return hash num sort chunk 2" );
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 2 } );
     is_deeply( $res, { 10 => "ERF" }, "return hash num sort chunk 3" );
@@ -1280,19 +1279,19 @@ sub io_independent_tests {
     # one of the logins has no email : the master root
     is( $yote_root->_count( { name =>  '_emails' } ), 3, "starting emails count" );
     is( scalar keys %$root_emails, 3, "stsarting emails" );
+    if(1) {  #make this false to speed up tests
+        for( 1..1010 ) {
+            $root_handles->{ "BAD_HANDLE_$_" } = "DELME";
+            $root_emails->{ "BAD_HANDLE_$_" } = "DELME";
+        }
+        is( scalar keys %$root_handles, 1014, "Added bad handles" );
+        is( scalar keys %$root_emails, 1013, "added bad emails" );
 
-    for( 1..1010 ) {
-        $root_handles->{ "BAD_HANDLE_$_" } = "DELME";
-        $root_emails->{ "BAD_HANDLE_$_" } = "DELME";
+        Yote::ObjProvider::stow_all();
+
+        is( $yote_root->_count( { name =>  '_handles' } ), 1014, "bad handles count" );
+        is( $yote_root->_count( { name =>  '_emails' } ), 1013, "bad emails count" );
     }
-    is( scalar keys %$root_handles, 1014, "Added bad handles" );
-    is( scalar keys %$root_emails, 1013, "added bad emails" );
-
-    Yote::ObjProvider::stow_all();
-
-    is( $yote_root->_count( { name =>  '_handles' } ), 1014, "bad handles count" );
-    is( $yote_root->_count( { name =>  '_emails' } ), 1013, "bad emails count" );
-
 
     $yote_root->_purge_deleted_logins();
     is( $yote_root->_count( { name =>  '_handles' } ), 4, "back to starting handles count" );

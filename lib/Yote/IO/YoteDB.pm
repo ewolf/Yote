@@ -325,7 +325,7 @@ sub paginate {
           }
         }
       } #sort
-    } elsif ( $sort ) {
+    } elsif ( $sort || $numeric ) {
       if ( $is_array ) {
         if ( $numeric ) {
           $cand_keys = [ sort { substr( $odata->[$a], 1 ) <=> substr( $odata->[$b], 1 ) } @$cand_keys ];
@@ -334,6 +334,7 @@ sub paginate {
         }
       } elsif ( $numeric ) {
         $cand_keys = [ sort { substr( $odata->{$a}, 1 ) <=> substr( $odata->{$b}, 1 ) } @$cand_keys ];
+        $cand_keys = [ sort { $a <=> $b } @$cand_keys ];
       } else {
         $cand_keys = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_keys ];
       }
@@ -414,8 +415,8 @@ sub _recycle_objects {
       my( $rec ) = @{ $keep_store->get_record( $_ ) };
       my $wf = $Yote::ObjProvider::WEAK_REFS->{$_};
 
-      "OKEY, we have to fight cicular references. if an object in weak reference only references other things in
-weak references, then it can be removed";
+      #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
+      # weak references, then it can be removed";
       if ( ! $rec ) {
         if( $wf ) {
           push @weaks, [ $_, $wf ];
@@ -444,12 +445,18 @@ weak references, then it can be removed";
         }
       }
     } #each weak
+    @weaks = ();
 
+    # can delete things with only references to the WEAK and DIRTY caches.
+    my( @to_delete );
     for( keys %weak_only_check ) {
-      if( $weak_only_check{$_} >= (refcount($Yote::ObjProvider::WEAK_REFS->{$_})-1 )) {
+      if( $weak_only_check{$_} >= (refcount($Yote::ObjProvider::WEAK_REFS->{$_}) - ( $Yote::ObjProvider::DIRTY->{$_} ? 1 : 0 ) )) {
+          push @to_delete, $_;
           ++$count;
-          $self->{OBJ_INDEX}->delete( $_, 1 );
       }
+    }
+    for( @to_delete ) {
+        $self->{OBJ_INDEX}->delete( $_, 1 );
     }
 
     # remove recycle datastore
