@@ -6,6 +6,15 @@ use Yote::IO::FixedStore;
 use Yote::IO::StoreManager;
 
 use File::Path qw(make_path);
+use JSON;
+
+use constant {
+    ID => 0,
+    CLASS => 1,
+    DATA => 2,
+    RAW_DATA => 2,
+    MAX_LENGTH => 1025,
+};
 
 #
 # This the main index and stores in which table and position 
@@ -16,7 +25,7 @@ sub new {
     my $class = ref( $pkg ) || $pkg;
     make_path( $args->{ store } );
     my $filename = "$args->{ store }/OBJ_INDEX";
-    # LII template is a long ( for object id, then the table id, then the index in that table
+    # LIII template is a long ( for object id, then the table id, then the index in that table
     return bless {
         args          => $args,
         OBJ_INDEX     => new Yote::IO::FixedStore( "LII", $filename ),
@@ -24,18 +33,256 @@ sub new {
     }, $class;
 } #new
 
+# ------------------------------------------------
+
+
+sub commit_transaction {}
+
+sub container_type {
+    my( $self, $host_id, $container_name ) = @_;
+    my $obj = $self->fetch( $host_id );
+    if( $obj ) {
+        my $container = $obj->[CLASS] eq 'ARRAY' ? 
+            $self->fetch( $obj->[DATA][$container_name] ) :
+            $self->fetch( $obj->[DATA]{$container_name} );
+        if( $container ) {
+            return $obj->[CLASS];
+        }
+    }
+    return undef;
+} #container_type
+
+#
+# Returns the count of objects attached to the 
+# host obj_id that match the criteria.
+# arguments are 
+#    search_terms   - a list of terms to match
+#    search_fields  - if given, must be same size as search_terms
+#                     searches each field in this list with the matching
+#                     term from the search_terms at the same index.
+#                     if present, hashkey_search is ignored.
+#    hashkey_search - if true, this only searches the object property
+#                     names. 
+#
+sub count {
+    my( $self, $obj_id, $args ) = @_;
+
+    my $obj = $self->fetch( $host_id );
+    if( $obj ) {
+        my $odata  = $obj->[DATA];
+        my $terms  = $args->{ search_terms } || [];
+        my $fields = $args->{ search_fields } || [];
+        my $hashkey_search = $args->{ hashkey_search };
+        return scalar(
+            grep { $self->_matches( $_, $terms, $fields, $hashkey_search ) }
+            map { $self->_fetch($_) } 
+            grep { ! /^v/ } 
+            ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata)
+            );
+    }
+    return 0;
+} #count
+
+
+sub disconnect {}
+
+#
+# Returns a paginated list of objects attached to the 
+# host obj_id that match the criteria.
+# arguments are 
+#    limit           - return no more than this amount
+#    skip            - skip this many entries to paginate
+#    search_terms    - a list of terms to match
+#    search_fields   - if given, must be same size as search_terms
+#                      searches each field in this list with the matching
+#                      term from the search_terms at the same index.
+#                      if present, hashkey_search is ignored.
+#    hashkey_search  - if true, this only searches the object property
+#                      names. 
+#    reverse         - reverse the return array
+#    sort_fields     - the fields to sort these on
+#    reversed_orders - a list of booleans corresponding to sort_fields. 
+#                      If the second reversed_orders entry is true, then
+#                      the 2nd field to sort on will be sorted in reverse.
+#    numeric_fields  - a list of booleans corresponding to sort_fields. 
+#                      If the second numeric_fields entry is true, then
+#                      the 2nd field to sort on will be sorted numerically
+#                      rather than as strings which is the default.
+#
+sub paginate {
+    my( $self, $obj_id, $args ) = @_;
+
+    my $idx = 0;
+    
+    my $obj = $self->fetch( $host_id );
+    if( $obj ) {
+        my $odata = $obj->[DATA];
+        my $search_terms  = $args->{ search_terms } || [];
+        my $search_fields = $args->{ search_fields } || [];
+        my $sort_fields   = $args->{ sort_fields } || [];
+        my( $hashkey_search, $skip, $limit ) = @$args{ 'hashkey_search', 'skip', 'limit' };
+
+
+        my( @cand_ids ) = grep { index($_,'v') != 0 } ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata);
+        if( $args->{reverse} && @$sort_fields == 0 ) {
+            (@cand_ids) = reverse @cand_ids;
+        }
+
+        my( @accepted_cand_data, $tries );
+        for my $cand_id (@cand_ids) {
+            my $cand_data = $self->_fetch( $cand_id );
+            next unless $self->_matches( $cand_data, $search_terms, $search_fields, $hashkey_search );
+            ++$tries;
+            if( @$sort_fields == 0 ) {
+                if( defined( $limit ) ) {
+                    next if $skip >= $tries;
+                    push @accepted_cand_data, $cand_data->[ID];
+                    if( @accepted_cand_data >= $limit ) {
+                        return \@accepted_cand_data;
+                    }
+                } else {
+                    push @accepted_cand_data, $cand_data->[ID];
+                }
+            } elsif( $cand_data ) {
+                push @accepted_cand_data, $cand_data;
+            }
+        } #each cand
+        if( @$sort_fields == 0 ) {
+            return [map { $_->[ID] } @accepted_cand_data];
+        }
+
+        my( @converted_arrays );
+        for my $cand (@accepted_cand_data) {
+            my $data = from_json( $cand->[DATA] );
+            if( $cand->[DATA] eq 'ARRAY' ) {
+                # temporarily convert arrays to hashes for comparison.
+                # later convert them back
+                push @converted_arrays, $cand;
+                $data = { map { $_ => $data->[$_] } (0..$#$data) };
+            }
+            $cand->[DATA] = $data;
+        }
+
+        my $reversed_orders = $args->{ reversed_orders } || [];
+        my $numeric_fields = $args->{ numeric_fields } || [];
+        for my $fld_idx ( 0..$#$sort_fields ) {
+            my $fld = $sort_fields->[ $fld_idx ];
+            if( $reversed_orders->[ $fld_idx ] ) {
+                if( $numeric_fields->[ $fld_idx ] ) {
+                    @accepted_cand_data = sort {
+                        $b->[DATA]{$fld} <=> $a->[DATA]{$fld}
+                    } @accepted_cand_data;
+                } else {
+                    @accepted_cand_data = sort {
+                        $b->[DATA]{$fld} cmp $a->[DATA]{$fld}
+                    } @accepted_cand_data;
+                }
+            } elsif( $numeric_fields->[ $fld_idx ] ) {
+                @accepted_cand_data = sort {
+                    $a->[DATA]{$fld} <=> $b->[DATA]{$fld}
+                } @accepted_cand_data;
+            } else {
+                @accepted_cand_data = sort {
+                    $a->[DATA]{$fld} cmp $b->[DATA]{$fld}
+                } @accepted_cand_data;
+            }
+        }
+        
+        #convert back array candidate data from hash back to array
+        for my $arr_cand (@converted_arrays) {
+             $cand->[DATA] = [ map { $cand->[DATA]{$_} } sort keys %{$cand->[DATA]} ];
+        }
+        if( $args->{reverse} ) {
+            @accepted_cand_data = reverse @accepted_cand_data;
+        }
+
+        if( $args->{limit} ) {
+            if( $args->{skip} ) {
+                if( $args->{skip} > @accepted_cand_data ) {
+                    @accepted_cand_data = ();
+                } else {
+                    @accepted_cand_data = @accepted_cand_data[$args->{skip}..$#accepted_cand_data];
+                }
+            }
+            $#accepted_cand_data = $args->{limit} if $args->{limit} > @accepted_cand_data;
+        }
+
+        return \@accepted_cand_data;
+    } #if host obj found
+
+    return [];
+} #paginate
+
+
+# -------------------- private
+
+#
+# Return true if the obj matches the criteria
+#
+sub _matches {
+    my( $self, $obj_data, $search_terms, $search_fields, $hashkey_search ) = @_;
+    
+    return 1 unless @$search_terms;
+
+    #
+    # quick check. If no search term is found in the raw ( json string )
+    # data of the object, then there can be no match.
+    # 
+    my $has = 0;
+    for my $term (@$search_terms) {
+        if( index( $obj_data->[RAW_DATA], $term ) > -1 ) {
+            $has = 1;
+            break;
+        }
+    }
+    return 0 unless $has;
+    my $data = from_json( $obj_data->[RAW_DATA] );
+    my $is_arry = $obj_data->[CLASS] eq 'ARRAY';
+    if( @$search_fields ) {
+        for my $search_idx (0..$#search_fields) {
+            my $fld = $is_arry ? $data->[ $search_fields[0] ] : 
+                $data->{ $search_fields[0] };
+            return 1 if $fld =~ /^v.*$search_terms[$search_idx]/;
+        }
+    } 
+    else {
+        my( @field_data ) = ($is_arry ? @$data : $hashkey_search ? keys %$data : values %$data );
+        for my $fld (@field_data) {
+            for my $search_term (@$search_terms) {
+                return 1 if $fld =~ /^v.*$search_term/;
+            }
+        }
+    }
+    return 0;
+} #_matches
+
+
 sub fetch {
+    my( $self, $id ) = @_;
+    my $ret = $self->_fetch( $id );
+    return undef unless $ret;
+    $ret->[DATA] = from_json( $ret->[DATA] );
+    return $ret;
+} #fetch
+
+sub _fetch {
     my( $self, $id ) = @_;
 
     my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-    return $self->{STORE_MANAGER}->get_record( $store_id, $store_idx );
+    return undef unless $store_id;
+    my $data = $self->{STORE_MANAGER}->get_record( $store_id, $store_idx );
+    my $pos = index( $data, ' ' );
+    die "Malformed record" if $pos == -1;
+    my $class = substr $data, 0, $pos;
+    my $val   = substr $data, $pos + 1;
 
-} #fetch
+    return [$id,$class,$data];
+} #_fetch
 
 sub stow {
     my( $self, $id, $class, $data ) = @_;
 
-    my $save_data = "$class $data";
+    my $save_data = "$class " . to_json($data);
     my $save_size = do { use bytes; length( $save_data ); };
 
     my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
@@ -57,6 +304,13 @@ sub stow {
     $store->put_record( $store_idx, [$save_data] );
     
 } #stow
+
+sub stow_all {
+    my( $self, $objs ) = @_;
+    for my $o ( @$objs ) {
+        $#self->stow( @$o );
+    }
+}
 
 sub ensure_datastore {
     my $self = shift;

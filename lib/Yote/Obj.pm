@@ -724,7 +724,10 @@ Adds the items to the list attached to this object specified by name.
 
 =item container_type( container_name )
 
-returns the class name of the given container from this host object.
+Returns the class name of the given container from this host object.
+For example, if Yote::Obj $o has an array attached to its myarray field,
+The syntax is $o->container_type( 'myarray' ) <--- returns 'ARRAY';
+
 
 =item count( field_name )
 

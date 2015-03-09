@@ -486,7 +486,9 @@ Requests the data store used commit the transaction.
 
 =item container_type( host_id, container_name )
 
-returns the class name of the given container from a host class.
+Returns the class name of the given container from a host class.
+For example, if Yote::Obj $o has an array attached to its myarray field,
+The syntax is Yote::ObjProvider::container_type( $o, 'myarray' ) <--- returns 'ARRAY';
 
 =item count( container_id, args )
 
