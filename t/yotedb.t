@@ -132,7 +132,7 @@ sub test_suite {
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
 
     Yote::ObjProvider::stow_all();
-    my $recycled = Yote::ObjProvider::recycle_objects();
+    $recycled = Yote::ObjProvider::recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
 
     my $recyc_ids = $Yote::ObjProvider::DATASTORE->get_recycled_ids;

@@ -58,11 +58,8 @@ sub container_type {
   my $obj = $self->fetch( $host_id );
   if ( $obj ) {
     my $id = $obj->[CLASS] eq 'ARRAY' ? $obj->[DATA][$container_name] : $obj->[DATA]{$container_name};
-    print STDERR Data::Dumper->Dump([$obj,"CONTAINER TYPE '$container_name','$id'"]);
     if ( $id =~ /^\d+$/ ) {
       my $container = $self->fetch( $id );
-      print STDERR Data::Dumper->Dump([$container,"CONTAINER IS"]);
-
       if ( $container ) {
         return $container->[CLASS];
       }
@@ -168,7 +165,6 @@ sub get_id {
 #
 sub list_insert {
   my( $self, $list_id, $val, $idx ) = @_;
-  print STDERR Data::Dumper->Dump(["LISTI $list_id ( $val )"]);
   my $obj = $self->fetch( $list_id ) || [ $list_id, 'ARRAY', [] ];
 
   if ( ref( $obj->[DATA] ) ne 'ARRAY' ) {
@@ -180,7 +176,6 @@ sub list_insert {
       push @{$obj->[DATA]}, $val;
     }
   }
-  print STDERR Data::Dumper->Dump([$obj,"LI STOW"]);
   $self->stow( @$obj );
   return;
 } #list_insert
@@ -429,7 +424,6 @@ weak references, then it can be removed";
         else {
           ++$count;
           $self->{OBJ_INDEX}->delete( $_, 1 );
-          print STDERR Data::Dumper->Dump(["DELETE $_"]);
         }
       }
     }
@@ -455,7 +449,6 @@ weak references, then it can be removed";
       if( $weak_only_check{$_} >= (refcount($Yote::ObjProvider::WEAK_REFS->{$_})-1 )) {
           ++$count;
           $self->{OBJ_INDEX}->delete( $_, 1 );
-          print STDERR Data::Dumper->Dump(["DELETE WEAK $_"]);
       }
     }
 
@@ -481,7 +474,7 @@ sub stow {
       $old_store->put_record( $current_store_idx, [$save_data] );
       return;
     }
-    $old_store->delete( $current_store_idx );
+    $old_store->delete( $current_store_idx, 1 );
   }
 
   # find a store large enough and store it there.
@@ -566,7 +559,6 @@ sub _fetch {
   my( $self, $id ) = @_;
 
   my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-  print STDERR Data::Dumper->Dump(["FETCH $id"]);
   return undef unless $store_id;
 
   my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };

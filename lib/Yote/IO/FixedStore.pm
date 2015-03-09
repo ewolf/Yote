@@ -153,7 +153,6 @@ sub next_id {
     my $fh = $self->filehandle;
 #    flock $fh, LOCK_EX;
     my $next_id = 1 + $self->entries;
-    print STDERR Data::Dumper->Dump(["CREATING $next_id"]) if $self->{TMPL} eq 'LII';
     $self->put_record( $next_id, [] );
 #    flock $fh, LOCK_UN;
     return $next_id;

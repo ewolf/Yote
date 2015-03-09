@@ -798,9 +798,8 @@ sub io_independent_tests {
     $root->set_o_hash( undef );
     Yote::ObjProvider::stow_all();	
     is( $root->_container_type( 'o_hash' ), '', 'container type detect no class once hash removed' );
-    print STDERR Data::Dumper->Dump(["TO GET Z_LIST --------------------------------------------------"]);
+
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
-    print STDERR Data::Dumper->Dump([" --------------------------------------------------"]);
 
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
 
@@ -815,7 +814,7 @@ sub io_independent_tests {
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
 
-    my $el_list = $root->get_el_list();
+    $el_list = $root->get_el_list();
 
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 

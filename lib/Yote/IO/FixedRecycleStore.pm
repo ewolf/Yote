@@ -34,7 +34,6 @@ sub get_recycled_ids {
 sub next_id {
     my $self = shift;
     my $recycled_id = $self->{RECYCLER}->pop;
-    if( $recycled_id ) { print STDERR Data::Dumper->Dump(["USING RECYCLED $recycled_id->[0]"]); }
     return $recycled_id ? $recycled_id->[0] : $self->SUPER::next_id;
 } #next_id
 
