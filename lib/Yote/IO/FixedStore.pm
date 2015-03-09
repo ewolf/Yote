@@ -77,6 +77,7 @@ sub put_record {
         die "$to_write_length vs $self->{SIZE}" unless $to_write_length == $self->{SIZE};
     }
     syswrite $fh, $to_write;
+    return 1;
 } #put_record
 
 sub get_record {

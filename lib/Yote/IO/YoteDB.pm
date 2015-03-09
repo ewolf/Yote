@@ -123,15 +123,39 @@ sub fetch {
     return $ret;
 } #fetch
 
-
+#
+# The first object in a yote data store can trace a reference to
+# all active objects.
+#
 sub first_id {
     return 1;
-}
+} #first_id
 
+#
+# Create a new object id and return it.
+#
 sub get_id {
-    my( $self, $class ) = @_;
+    my( $self ) = @_;
     return $self->{OBJ_INDEX}->next_id;
-}
+} #get_id
+
+
+#
+# Add the value or id to the list, at an optional index.
+# Will die if the list_id does not point to a list.
+#
+sub list_insert {
+    my( $self, $list_id, $val, $idx ) = @_;
+    my $obj = $self->fetch( $list_id );
+    die "list insert called for non-list" unless ref( $obj->{DATA} ) eq 'ARRAY';
+    if( defined $idx ) {
+        splice @{$obj->{DATA}}, $idx, 0, $val;
+    } else {
+        push @{$obj->{DATA}}, $val;
+    }
+    $self->stow( @$obj );
+    return;
+} #list_insert
 
 
 #
@@ -286,19 +310,21 @@ sub stow {
     my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
     my $store_idx = $store->next_id;
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
-    $store->put_record( $store_idx, [$save_data] );
-    
+    return $store->put_record( $store_idx, [$save_data] );
 } #stow
 
 #
 # Takes a list of object data references and stows them all in the datastore.
+# returns how many are stowed.
 #
 sub stow_all {
     my( $self, $objs ) = @_;
+    my $count = 0;
     for my $o ( @$objs ) {
-        $#self->stow( @$o );
+        $count += $self->stow( @$o );
     }
-}
+    return $count;
+} #stow_all
 
 # -------------------- private
 
@@ -366,6 +392,61 @@ sub _fetch {
 
     return [$id,$class,$data];
 } #_fetch
+
+
+sub hash_delete {
+    my( $self, $hash_id, $key ) = @_;
+    my $obj = $self->fetch( $hash_id );
+    die "hash_delete called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    delete $obj->[DATA]{ $key };
+    return $self->stow( @$obj );
+} #hash_delete
+
+
+sub hash_insert {
+    my( $self, $hash_id, $key, $val ) = @_;
+    my $obj = $self->fetch( $hash_id );
+    die "hash_insert called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    $obj->[DATA]{ $key } = $val;
+    return $self->stow( @$obj );
+} #hash_insert
+
+#
+# Delete the first occurance of val or the thing at the given index.
+#
+sub list_delete {
+    my( $self, $list_id, $val, $idx ) = @_;
+    my $obj = $self->fetch( $list_id );
+    die "list_delete called for non array" if ref( $obj->{DATA} ) ne 'ARRAY';
+    my $list = $obj->[DATA];
+    my $actual_index = $idx;
+    if( $val ) {
+        ( $actual_index ) = grep { $list->[$_] eq $val  } (0..$#$list);
+    }
+    splice @$list, $actual_index, 1;
+    return $self->stow( @$obj );
+} #list_delete
+
+sub list_fetch {
+    my( $self, $list_id, $idx ) = @_;
+    my $obj = $self->fetch( $list_id );
+    die "list_fetch called for non array" if ref( $obj->{DATA} ) ne 'ARRAY';
+    return $obj->[DATA][$idx];
+} #list_fetch
+
+sub hash_fetch {
+    my( $self, $hash_id, $key ) = @_;
+    my $obj = $self->fetch( $hash_id );
+    die "hash_fetch called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    return $obj->[DATA]{$key};
+} #hash_fetch
+
+sub hash_has_key {
+    my( $self, $hash_id, $key ) = @_;
+    my $obj = $self->fetch( $hash_id );
+    die "hash_has_key called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    return defined $obj->[DATA]{$key};
+} #hash_has_key
 
 
 1;
