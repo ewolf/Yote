@@ -569,23 +569,22 @@ sub io_independent_tests {
     $searchlist = $o->get_searchlist();
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 4, 0 );
     %resids = map { $_->{ID} => 1 } @$res;
-    print STDERR Data::Dumper->Dump([$res,\%resids,\%ids,"RRR"]);
     is_deeply( \%resids, \%ids, "Got correct search matches" );
 
 
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ] } );
     is( @$res, 3, "Three search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ], limit => 2 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
 
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2, skip => 1 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ], limit => 2, skip => 1 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
@@ -599,23 +598,23 @@ sub io_independent_tests {
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
     is( $o->count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } ), 2, "2 returned from count search" );
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ] } );
     is( @$res, 3, "Three search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches" );
 
-    is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } ), 3, "3 returned from count search" );
+    is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ] } ), 3, "3 returned from count search" );
 
 
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ], limit => 2 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 2 );
     %resids = map { $_->{ID} => 1 } @$res;
     is_deeply( \%ids, \%resids, "Got correct search matches. limited" );
-    is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } ), 3, "3 returned from count search" );
+    is( $o->count( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ] } ), 3, "3 returned from count search" );
 
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ], limit => 2, skip => 1 } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie', 'foobie' ], limit => 2, skip => 1 } );
     is( @$res, 2, "Two paginated search results" );
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 2, 4 );
     %resids = map { $_->{ID} => 1 } @$res;
@@ -626,9 +625,10 @@ sub io_independent_tests {
     Yote::ObjProvider::stow_all();
 
     $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
+    print STDERR Data::Dumper->Dump([$res,"RRR"]);
     my @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
-
+exit;
     $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );

@@ -272,49 +272,54 @@ sub paginate {
             for (@$cand_keys) {
                 my $cand_data = $self->_fetch( $is_array ? $odata->[$_] : $odata->{$_} );
                 if( $self->_matches( $cand_data, $search_terms, $search_fields ) ) {
-                    print STDERR Data::Dumper->Dump([$cand_data,"MATCHES",$search_terms,$search_fields]);
                     push @newc, $_;
                     $cand_data->[DATA] = from_json( $cand_data->[DATA] );
+                    if( $cand_data->[CLASS] eq 'ARRAY' ) { #convert to hashes just for simplicity in comparing
+                        my $arry = $cand_data->[DATA];
+                        $cand_data->[DATA] = { map { $_ => $arry->[$_] } (0..$#$arry) };
+                    }
                     $cdata{ $cand_data->[ID] } = $cand_data;
                 }
             }
             $cand_keys = \@newc;
-            print STDERR Data::Dumper->Dump([$cand_keys,"CKCKCK"]);
+
+            print STDERR Data::Dumper->Dump([\%cdata,"CDATA"]);
+
             my $numeric_fields = $args->{ numeric_fields } || [];
             for my $fld_idx ( 0..$#$sort_fields ) {
                 my $fld = $sort_fields->[ $fld_idx ];
+                print STDERR Data::Dumper->Dump(["Sort by '$fld'",$cand_keys]);
                 if( $reversed_orders->[ $fld_idx ] ) {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->[$b]} <=> $cdata{$odata->[$a]} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$b]}[DATA]{$fld} <=> $cdata{$odata->[$a]}[DATA]{$fld} } (@$cand_keys) ];
                         } else {
-                            $cand_keys = [ sort { $cdata{$odata->[$b]} cmp $cdata{$odata->[$a]} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$b]}[DATA]{$fld} cmp $cdata{$odata->[$a]}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->{$b}} <=> $cdata{$odata->{$a}} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$b}}[DATA]{$fld} <=> $cdata{$odata->{$a}}[DATA]{$fld} } (@$cand_keys) ];
                          } else {
-                            $cand_keys = [ sort { $cdata{$odata->{$b}} cmp $cdata{$odata->{$a}} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$b}}[DATA]{$fld} cmp $cdata{$odata->{$a}}[DATA]{$fld} } (@$cand_keys) ];
                          }
                     }
                 } else {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->[$a]} <=> $cdata{$odata->[$b]} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$a]}[DATA]{$fld} <=> $cdata{$odata->[$b]}[DATA]{$fld} } (@$cand_keys) ];
                         } else {
-                            $cand_keys = [ sort { $cdata{$odata->[$a]} cmp $cdata{$odata->[$b]} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$a]}[DATA]{$fld} cmp $cdata{$odata->[$b]}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->{$a}} <=> $cdata{$odata->{$b}} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$a}}[DATA]{$fld} <=> $cdata{$odata->{$b}}[DATA]{$fld} } (@$cand_keys) ];
                         } else {
-                            $cand_keys = [ sort { $cdata{$odata->{$a}} cmp $cdata{$odata->{$b}} } (@$cand_keys) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$a}}[DATA]{$fld} cmp $cdata{$odata->{$b}}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     }
                 }
+                print STDERR Data::Dumper->Dump(["SortED by '$fld'",$cand_keys]);
             } #sort
-            print STDERR Data::Dumper->Dump([$cand_keys,"AFTER SOORT"]);
-
         } elsif( $sort ) {
             if( $is_array ) {
                 $cand_keys = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_keys ];
@@ -339,7 +344,6 @@ sub paginate {
             return { map { $cand_keys->[$_] => $odata->{$cand_keys->[$_]} } (0..$#$cand_keys) };
         }
         elsif( $is_array ) {
-            print STDERR Data::Dumper->Dump(["RET ARRAY",$cand_keys,[ map { $odata->[$_] } @$cand_keys ]]);
             return [ map { $odata->[$_] } @$cand_keys ];
         }
 
@@ -477,12 +481,10 @@ sub _matches {
     return 0 unless $has;
     my $data = from_json( $obj_data->[RAW_DATA] );
     my $is_arry = $obj_data->[CLASS] eq 'ARRAY';
-    print STDERR Data::Dumper->Dump([$obj_data,"CHECK"]);
     if( @$search_fields ) {
         for my $search_idx (0..$#$search_fields) {
             my $fld = $is_arry ? $data->[ $search_fields->[$search_idx] ] :
                 $data->{ $search_fields->[$search_idx] };
-            print STDERR Data::Dumper->Dump(["Checking $search_fields->[$search_idx] with val '$fld' with '$search_terms->[$search_idx]'" ]);
             return 1 if $fld =~ /^v.*$search_terms->[$search_idx]/;
         }
     }
