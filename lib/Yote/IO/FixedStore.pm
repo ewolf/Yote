@@ -100,10 +100,8 @@ sub next_id {
 
     my $fh = $self->{FILEHANDLE};
     flock $fh, LOCK_EX;
-
     my $next_id = 1 + $self->entries;
     $self->put_record( $next_id, [] );
-
     flock $fh, LOCK_UN;
     return $next_id;
 } #next_id

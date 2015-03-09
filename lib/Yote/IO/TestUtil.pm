@@ -251,7 +251,6 @@ sub io_independent_tests {
     is_deeply( $root_3, $root, "recursive data structure" );
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
-
     is( $root_3->count( { name => 'array' } ), 6, 'Array has 6 with count' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3 } ), [ 'THIS IS AN ARRAY', 'With more than one thing', 'MORE STUFF' ], 'paginate limit 3' );
     is_deeply( $root_3->_paginate( { name => 'array', limit => 3, reverse => 1 } ), [ 'MORE STUFF', 'MORE STUFF', 'MORE STUFF' ], 'paginate reverse limit 3' );

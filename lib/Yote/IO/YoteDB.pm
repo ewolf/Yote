@@ -79,19 +79,29 @@ sub container_type {
 #
 sub count {
     my( $self, $obj_id, $args ) = @_;
-
     my $obj = $self->fetch( $obj_id );
     if( $obj ) {
         my $odata  = $obj->[DATA];
         my $terms  = $args->{ search_terms } || [];
         my $fields = $args->{ search_fields } || [];
         my $hashkey_search = $args->{ hashkey_search };
-        return scalar(
-            grep { $self->_matches( $_, $terms, $fields, $hashkey_search ) }
-            map { $self->_fetch($_) } 
-            grep { ! /^v/ } 
-            ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata)
-            );
+
+        if( @$fields ) {
+            return scalar(
+                grep { $self->_matches( $_, $terms, $fields, $hashkey_search ) }
+                map { $self->_fetch($_) } 
+                grep { ! /^v/ } 
+                ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata)
+                );
+        } elsif( @$terms ) {
+            my $count = 0;
+            my( @cands ) = ($obj->[CLASS] eq 'ARRAY' ? @$odata : $hashkey_search ? keys %$odata : values %$odata );
+            for my $cand (@cands) {
+                $count++ if grep { $cand =~ /$_/ } @$terms;
+            }
+            return $count;
+        }
+        return scalar($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata);
     }
     return 0;
 } #count
@@ -191,11 +201,34 @@ sub paginate {
     my $obj = $self->fetch( $obj_id );
     if( $obj ) {
         my $odata = $obj->[DATA];
-        my $search_terms  = $args->{ search_terms } || [];
+        my $search_terms  = $args->{ search_terms }  || [];
         my $search_fields = $args->{ search_fields } || [];
-        my $sort_fields   = $args->{ sort_fields } || [];
-        my( $hashkey_search, $skip, $limit ) = @$args{ 'hashkey_search', 'skip', 'limit' };
+        my $sort_fields   = $args->{ sort_fields }   || [];
+        my( $hashkey_search, $skip, $limit, $reverse ) = @$args{ 'hashkey_search', 'skip', 'limit', 'reverse' };
 
+        #
+        # Case: The object is a container and we are interested in its scalar fields
+        #
+        unless( @$search_fields ) {
+            my( $cands ) = ($obj->[CLASS] eq 'ARRAY' ? @$odata : $hashkey_search ? keys %$odata : values %$odata );
+            if( @$search_terms ) {
+                my( @newc );
+                for my $cand (@$cands) {
+                  TERM:
+                    for my $term (@$search_terms) {
+                        if( $cand =~ /^v.*$term/ ) {
+                            push @newc, $cand;
+                            last TERM;
+                        }
+                    }
+                } #each cand
+                $cands = \@newc;
+            }
+            if( $reverse ) {
+                $cands = [ reverse @$cands ];
+            }
+            return $cands;
+        }
 
         my( @cand_ids ) = grep { index($_,'v') != 0 } ($obj->[CLASS] eq 'ARRAY' ? @$odata : values %$odata);
         if( $args->{reverse} && @$sort_fields == 0 ) {
@@ -222,7 +255,6 @@ sub paginate {
             }
         } #each cand
         if( @$sort_fields == 0 ) {
-            print STDERR Data::Dumper->Dump([\@accepted_cand_data]);
             return [map { $_->[ID] } @accepted_cand_data];
         }
 
@@ -296,22 +328,26 @@ sub stow {
 
     my $save_data = "$class " . to_json($data);
     my $save_size = do { use bytes; length( $save_data ); };
-
     my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     # check to see if this is already in a table and 
     # it still fits in that table
     if( $current_store_id ) {
         my $store = $self->{STORE_MANAGER}->get_store( $current_store_id );
-        if( $store->size() <= $save_size ) {
+        print STDERR Data::Dumper->Dump(["RESTOWWWW $id",$store,$save_size,$store->size()]);
+        if( $store->size() >= $save_size ) {
+            print STDERR Data::Dumper->Dump(["RIGHTONW"]);
             return $store->put_record( $current_store_idx, [$save_data] );
         } 
         # otherwise delete the current record in that store
         $store->delete( $current_store_id );
+    print STDERR Data::Dumper->Dump(["REFIND $id"]);
     }
     
     # find a store large enough and store it there.
     my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
     my $store_idx = $store->next_id;
+    print STDERR Data::Dumper->Dump(["STOWWWW $id",$store_id,$store_idx]);
+
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
     return $store->put_record( $store_idx, [$save_data] );
 } #stow
@@ -387,6 +423,7 @@ sub _fetch {
 
     my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     return undef unless $store_id;
+    print STDERR Data::Dumper->Dump([$id,$store_id,$store_idx,"FETCH $id"]);
     my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
     my $pos = index( $data, ' ' );
     die "Malformed record '$data'" if $pos == -1;
