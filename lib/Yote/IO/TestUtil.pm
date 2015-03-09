@@ -32,7 +32,7 @@ after {
 sub pass_permission {
     my( $obj, $acct, $cmd, $data, $msg ) = @_;
     eval {
-	$obj->$cmd( $data, $acct );
+        $obj->$cmd( $data, $acct );
     };
     my $err = $@;
     $err =~ s/at \/\S+\.pm.*//s;
@@ -42,7 +42,7 @@ sub pass_permission {
 sub fail_permission {
     my( $obj, $acct, $cmd, $data, $msg ) = @_;
     eval {
-	$obj->$cmd( $data, $acct );
+        $obj->$cmd( $data, $acct );
     };
     my $err = $@;
     $err =~ s/ at \/\S+\.pm.*//s;
@@ -388,7 +388,7 @@ sub io_independent_tests {
     $res = $root->_update_master_root( 'realroot', $rpass );
     my $master_account = new Yote::Account( { login => $res } );
     eval {
-	my $rrl = $root->login( { h => 'realroot', p => 'wrongpass' } );
+        my $rrl = $root->login( { h => 'realroot', p => 'wrongpass' } );
     };
     like( $@, qr/incorrect login/i, "Wrong log in" );
     my $rrl = $root->login( { h => 'realroot', p => 'realpass' } );
@@ -546,11 +546,11 @@ sub io_independent_tests {
 
     # test search_list
     $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "foobie", b => "oobie", c => "goobol" } ),
-			   new Yote::Obj( { n => "two", a => "bar", b => "car", c => "war" } ),
-			   new Yote::Obj( { n => "three", c => "foobie", b => "xxx" } ),
-			   new Yote::Obj( { n => "four", 'q' => "foobie", b => "xxx" } ),
-			   new Yote::Obj( { n => "five", a => "foobie", b => "car", c => "war" } ),
-	);
+                           new Yote::Obj( { n => "two", a => "bar", b => "car", c => "war" } ),
+                           new Yote::Obj( { n => "three", c => "foobie", b => "xxx" } ),
+                           new Yote::Obj( { n => "four", 'q' => "foobie", b => "xxx" } ),
+                           new Yote::Obj( { n => "five", a => "foobie", b => "car", c => "war" } ),
+        );
     Yote::ObjProvider::stow_all();
 
     $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
@@ -624,58 +624,57 @@ sub io_independent_tests {
     $o->add_to_searchlist( new Yote::Obj( { n => "one", a => "aoobie", b => "oobie" } ) );
     Yote::ObjProvider::stow_all();
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
-    print STDERR Data::Dumper->Dump([$res,"RRR"]);
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ] } );
     my @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
-exit;
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
+
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], reversed_orders => [ 1, 1 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 0, 1 ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], reversed_orders => [ 1, 0 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 0, 5, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct mixed sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 3} );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 3} );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
 
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 4, skip => 2} );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 4, skip => 2} );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
     is( 4, @$res, "lim sort 4 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 8, skip => 3 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 8, skip => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
 
 
     # paginate for sort
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 1, 1 ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], reversed_orders => [ 1, 1 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } reverse( 4, 3, 5, 0, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct reversed sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], reversed_orders => [ 0, 1 ] } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], reversed_orders => [ 1, 0 ] } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 0, 5, 2, 1 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct mixed sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 3 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 4, 3, 5 );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct limited sort order" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 4, skip => 2 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 4, skip => 2 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 5, 0, 2, 1 );
     is( 4, @$res, "lim sort 4 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct sort order pag" );
 
-    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'n', 'a' ], limit => 8, skip => 3 } );
+    $res = $o->paginate( { name => 'searchlist', sort_fields => [ 'a', 'n' ], limit => 8, skip => 3 } );
     @ids = map { $searchlist->[ $_ ]->{ID} } ( 0, 2, 1 );
     is( 3, @$res, "pag sort 3 results" );
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "Got correct pag sort order" );
@@ -714,14 +713,14 @@ exit;
     is_deeply( \@ids, [ map { $_->{ID} } @$res ], "empty  search terms and sort_fields no problemo" );
 
     my $num_objs = [
-	new Yote::Obj( { n => 1, l => "C", l2 => "D"    } ), #0
-	new Yote::Obj( { n => 2, l => "D", l2 => "D"   } ),  #1
-	new Yote::Obj( { n => 5, l => "E", l2 => "A"      } ), # 2
-	new Yote::Obj( { n => 20, l => "G", l2=>"D"         } ), #3
-	new Yote::Obj( { n => 22, l => "B", l2 => "B"          } ), #4
-	new Yote::Obj( { n => 100, l => "A" , l2 => "Q"       } ),  #5
-	new Yote::Obj( { n => 1000, l => "F", l2=> "A"        } ), #6
-	];
+        new Yote::Obj( { n => 1, l => "C", l2 => "D"    } ), #0
+        new Yote::Obj( { n => 2, l => "D", l2 => "D"   } ),  #1
+        new Yote::Obj( { n => 5, l => "E", l2 => "A"      } ), # 2
+        new Yote::Obj( { n => 20, l => "G", l2=>"D"         } ), #3
+        new Yote::Obj( { n => 22, l => "B", l2 => "B"          } ), #4
+        new Yote::Obj( { n => 100, l => "A" , l2 => "Q"       } ),  #5
+        new Yote::Obj( { n => 1000, l => "F", l2=> "A"        } ), #6
+        ];
     $new_obj->set_llama( $num_objs );
     Yote::ObjProvider::stow_all();
     $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n' ], numeric_fields => [ 1 ] } );
@@ -733,10 +732,10 @@ exit;
     $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n' ], numeric_fields => [ 0 ] } );
     is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 0, 5, 6, 1, 3, 4, 2 ) ], "Non Numeric sort" );
 
-    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'l2', 'n' ], numeric_fields => [ 0, 1 ] } );
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n', 'l2' ], numeric_fields => [ 1, 0 ] } );
     is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 2, 6, 4, 0, 1, 3, 5  ) ], "Mixed" );
 
-    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'l2', 'n' ], numeric_fields => [ 0, 0 ] } );
+    $res = $new_obj->paginate( { name => 'llama', sort_fields => [ 'n', 'l2' ], numeric_fields => [ 0, 0 ] } );
     is_deeply( $res, [ map { $num_objs->[ $_ ] } ( 6, 2, 4, 0, 1, 3, 5  ) ], "Mixed nonnum" );
 
     my $nums = [ qw/1 5 10 100 2 22/ ];
@@ -760,17 +759,17 @@ exit;
     #
     Yote::ObjProvider::recycle_objects();
     {
-	my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
-	my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
-	$root->_add_to( 'o_list', $o2a );
-	$root->_add_to( 'o_list', $o2b );
-	Yote::ObjProvider::stow_all();
-	is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
-	my $objs = Yote::ObjProvider::recycle_objects();
-	is( $objs, 0, 'add_to(  not recycled' );
-	$root->_remove_from( 'o_list', $o2a );
-	$root->_remove_from( 'o_list', $o2b );
-	Yote::ObjProvider::stow_all();
+        my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
+        my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
+        $root->_add_to( 'o_list', $o2a );
+        $root->_add_to( 'o_list', $o2b );
+        Yote::ObjProvider::stow_all();
+        is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
+        my $objs = Yote::ObjProvider::recycle_objects();
+        is( $objs, 0, 'add_to(  not recycled' );
+        $root->_remove_from( 'o_list', $o2a );
+        $root->_remove_from( 'o_list', $o2b );
+        Yote::ObjProvider::stow_all();
     }
     my $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'remove_from(  is recycled' );
@@ -781,17 +780,17 @@ exit;
     is( $root->_container_type( 'o_list' ), '', 'container type detect no class once list removed' );
 
     {
-	my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling" } );
-	my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling" } );
-	$root->_hash_insert( 'o_hash', "KEYA", $o2a );
-	$root->_hash_insert( 'o_hash', "KEYB", $o2b );
-	Yote::ObjProvider::stow_all();
-	is( $root->_container_type( 'o_hash' ), 'HASH', 'container type detect hash' );
-	my $objs = Yote::ObjProvider::recycle_objects();
-	is( $objs, 0, 'hash(  not recycled' );
-	$root->_hash_delete( 'o_hash', "KEYA" );
-	$root->_hash_delete( 'o_hash', "KEYB" );
-	Yote::ObjProvider::stow_all();	
+        my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling" } );
+        my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling" } );
+        $root->_hash_insert( 'o_hash', "KEYA", $o2a );
+        $root->_hash_insert( 'o_hash', "KEYB", $o2b );
+        Yote::ObjProvider::stow_all();
+        is( $root->_container_type( 'o_hash' ), 'HASH', 'container type detect hash' );
+        my $objs = Yote::ObjProvider::recycle_objects();
+        is( $objs, 0, 'hash(  not recycled' );
+        $root->_hash_delete( 'o_hash', "KEYA" );
+        $root->_hash_delete( 'o_hash', "KEYB" );
+        Yote::ObjProvider::stow_all();	
     }
     $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'hash delete  is recycled' );
@@ -862,17 +861,17 @@ exit;
     my $login_test = $root->login( { h => 'zoot', p => 'naughty' } )->{l};
     ok( $login_test, "Login Test Zoot not disabled" );
     eval {
-	$root->disable_login( $login_test, $zoot_acct ); 
+        $root->disable_login( $login_test, $zoot_acct ); 
     };
     like( $@, qr/Access Error/, "Need root to disable login" );
     $root->disable_login( $login_test, $root_acct ); 
     $login_test->set__is_disabled( 1 );
     eval {
-	$login_test = $root->login( { h => 'zoot', p => 'naughty' } );
+        $login_test = $root->login( { h => 'zoot', p => 'naughty' } );
     };
     like( $@, qr/Access Error/, "Login disabling works" );
     eval {
-	$root->enable_login( $login_test, $zoot_acct ); 
+        $root->enable_login( $login_test, $zoot_acct ); 
     };
     like( $@, qr/Access Error/, "Need root to enable login" );
     $root->enable_login( $login_test, $root_acct ); 
@@ -881,12 +880,12 @@ exit;
     is( $login_test, $zoot_login, "Able to log in once reeanbled." );
 
     eval {
-	$root->disable_login( $new_master_login, $root_acct ); 
+        $root->disable_login( $new_master_login, $root_acct ); 
     };
     like( $@, qr/Cannot disable master root login/, "cannot disable master root login" );
 
     eval {
-	$root->disable_account( $master_account, $root_acct ); 
+        $root->disable_account( $master_account, $root_acct ); 
     };
     like( $@, qr/Cannot disable master root account/, "cannot disable master root account" );
 
@@ -1174,17 +1173,17 @@ exit;
     $TIMEVAR = 0;
 
     my $entry = new Yote::Obj( {
- 	enabled => 1,
-	repeats => [
-	    new Yote::Obj( { repeat_infinite => 1, repeat_interval => 14 } ),
-	    new Yote::Obj( { repeat_times => 1, repeat_interval => 3 } ),
-	    ],
-	scheduled_times => [
-	    88,
-	    44,
-	    99,
-	    ],
-			       } );
+        enabled => 1,
+        repeats => [
+            new Yote::Obj( { repeat_infinite => 1, repeat_interval => 14 } ),
+            new Yote::Obj( { repeat_times => 1, repeat_interval => 3 } ),
+            ],
+            scheduled_times => [
+                88,
+                44,
+                99,
+            ],
+                               } );
     $cron->add_entry( $entry );
 
     is( $entry->get_next_time(), 3, "Cron entry 1" );
@@ -1277,8 +1276,8 @@ exit;
     is( scalar keys %$root_emails, 3, "stsarting emails" );
 
     for( 1..1010 ) {
-	$root_handles->{ "BAD_HANDLE_$_" } = "DELME";
-	$root_emails->{ "BAD_HANDLE_$_" } = "DELME";
+        $root_handles->{ "BAD_HANDLE_$_" } = "DELME";
+        $root_emails->{ "BAD_HANDLE_$_" } = "DELME";
     }
     is( scalar keys %$root_handles, 1014, "Added bad handles" );
     is( scalar keys %$root_emails, 1013, "added bad emails" );
@@ -1321,8 +1320,8 @@ exit;
     is_deeply( $ro->paginate( { name => "_foo", }, $master_acct ), [], "master root can paginate root obj private container" );
     is_deeply( $ro->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate root obj private container" );
     eval { 
-	$ro->paginate( { name => "_foo", }, $toot_notroot_acct );
-	fail( "nonroot account able to paginate root obj private container" );
+        $ro->paginate( { name => "_foo", }, $toot_notroot_acct );
+        fail( "nonroot account able to paginate root obj private container" );
     };
     like( $@, qr/^Access Error/,"nonroot account unable to paginate root obj private container" );
 
@@ -1331,8 +1330,8 @@ exit;
     is_deeply( $uo->paginate( { name => "_foo", }, $zoot_root_acct ), [], "other root can paginate user obj private container" );
     is_deeply( $uo->paginate( { name => "_foo", }, $toot_notroot_acct ), [], "creator can paginate user obj private container" );
     eval { 
-	$ro->paginate( { name => "_foo", }, $cute_notroot_acct );
-	fail( "nonroot account able to paginate root obj private container" );
+        $ro->paginate( { name => "_foo", }, $cute_notroot_acct );
+        fail( "nonroot account able to paginate root obj private container" );
     };
     like( $@, qr/^Access Error/,"nonroot nonowner account unable to paginate user obj private container" );
     is_deeply( $uo->paginate( { name => "foo", }, $cute_notroot_acct ), [], "nonroot, noncreator can paginate user obj public container" );

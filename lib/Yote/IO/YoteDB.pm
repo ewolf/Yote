@@ -59,7 +59,7 @@ sub container_type {
             $self->fetch( $obj->[DATA][$container_name] ) :
             $self->fetch( $obj->[DATA]{$container_name} );
         if( $container ) {
-            return $obj->[CLASS];
+            return $container->[CLASS];
         }
     }
     return undef;
@@ -162,7 +162,8 @@ sub get_id {
 #
 sub list_insert {
     my( $self, $list_id, $val, $idx ) = @_;
-    my $obj = $self->fetch( $list_id );
+    my $obj = $self->fetch( $list_id ) || [ $list_id, 'ARRAY', [] ];
+
     if( ref( $obj->[DATA] ) ne 'ARRAY' ) {
         $obj->[DATA]{ $idx } = $val;
     }
@@ -193,6 +194,7 @@ sub max_id {
 #                      term from the search_terms at the same index.
 #                      if present, hashkey_search is ignored.
 #    sort           -  with non field sort, sorts alphabetically if 1
+#    numeric        -  with non field sort, sorts numerically if 1 and sort is given
 #    hashkey_search -  search on the field names rather than the fields.
 #                      Makes no sense if search_fields is given.
 #    reverse         - reverse the return array
@@ -220,7 +222,8 @@ sub paginate {
         my $reversed_orders = $args->{ reversed_orders }   || [];
         my $hashkey_search  = $args->{ hashkey_search } || [];
         die "Number of search terms must mach number of search fields" if @$search_fields && @$search_fields != @$search_terms;
-        my( $skip, $limit, $reverse, $sort ) = @$args{ 'skip', 'limit', 'reverse', 'sort' };
+        my( $skip, $limit, $reverse, $sort, $numeric ) = @$args{ 'skip', 'limit', 'reverse', 'sort', 'numeric' };
+
         $skip //= 0;
         my $is_array = $obj->[CLASS] eq 'ARRAY';
 
@@ -283,22 +286,21 @@ sub paginate {
             }
             $cand_keys = \@newc;
 
-            print STDERR Data::Dumper->Dump([\%cdata,"CDATA"]);
-
             my $numeric_fields = $args->{ numeric_fields } || [];
             for my $fld_idx ( 0..$#$sort_fields ) {
                 my $fld = $sort_fields->[ $fld_idx ];
-                print STDERR Data::Dumper->Dump(["Sort by '$fld'",$cand_keys]);
                 if( $reversed_orders->[ $fld_idx ] ) {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->[$b]}[DATA]{$fld} <=> $cdata{$odata->[$a]}[DATA]{$fld} } (@$cand_keys) ];
+                            $cand_keys = [ sort { substr( $cdata{$odata->[$b]}[DATA]{$fld}, 1 ) <=> 
+                                                      substr( $cdata{$odata->[$a]}[DATA]{$fld}, 1 ) } (@$cand_keys) ];
                         } else {
                             $cand_keys = [ sort { $cdata{$odata->[$b]}[DATA]{$fld} cmp $cdata{$odata->[$a]}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->{$b}}[DATA]{$fld} <=> $cdata{$odata->{$a}}[DATA]{$fld} } (@$cand_keys) ];
+                            $cand_keys = [ sort { substr( $cdata{$odata->{$b}}[DATA]{$fld}, 1 ) <=> 
+                                                      substr( $cdata{$odata->{$a}}[DATA]{$fld}, 1 ) } (@$cand_keys) ];
                          } else {
                             $cand_keys = [ sort { $cdata{$odata->{$b}}[DATA]{$fld} cmp $cdata{$odata->{$a}}[DATA]{$fld} } (@$cand_keys) ];
                          }
@@ -306,23 +308,30 @@ sub paginate {
                 } else {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->[$a]}[DATA]{$fld} <=> $cdata{$odata->[$b]}[DATA]{$fld} } (@$cand_keys) ];
+                            $cand_keys = [ sort { substr( $cdata{$odata->[$a]}[DATA]{$fld}, 1 ) <=>
+                                                      substr( $cdata{$odata->[$b]}[DATA]{$fld}, 1 ) } (@$cand_keys) ];
                         } else {
                             $cand_keys = [ sort { $cdata{$odata->[$a]}[DATA]{$fld} cmp $cdata{$odata->[$b]}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_keys = [ sort { $cdata{$odata->{$a}}[DATA]{$fld} <=> $cdata{$odata->{$b}}[DATA]{$fld} } (@$cand_keys) ];
+                            $cand_keys = [ sort { substr( $cdata{$odata->{$a}}[DATA]{$fld}, 1 ) <=> 
+                                                      substr( $cdata{$odata->{$b}}[DATA]{$fld}, 1 ) } (@$cand_keys) ];
                         } else {
                             $cand_keys = [ sort { $cdata{$odata->{$a}}[DATA]{$fld} cmp $cdata{$odata->{$b}}[DATA]{$fld} } (@$cand_keys) ];
                         }
                     }
                 }
-                print STDERR Data::Dumper->Dump(["SortED by '$fld'",$cand_keys]);
             } #sort
         } elsif( $sort ) {
             if( $is_array ) {
-                $cand_keys = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_keys ];
+                if( $numeric ) {
+                    $cand_keys = [ sort { substr( $odata->[$a], 1 ) <=> substr( $odata->[$b], 1 ) } @$cand_keys ];
+                } else {
+                    $cand_keys = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_keys ];
+                }
+            } elsif( $numeric ) {
+                $cand_keys = [ sort { substr( $odata->{$a}, 1 ) <=> substr( $odata->{$b}, 1 ) } @$cand_keys ];
             } else {
                 $cand_keys = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_keys ];
             }
@@ -532,7 +541,8 @@ sub hash_delete {
 
 sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
-    my $obj = $self->fetch( $hash_id );
+    my $obj = $self->fetch( $hash_id ) || [ $hash_id, 'HASH', {} ];
+
     die "hash_insert called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
     $obj->[DATA]{ $key } = $val;
     return $self->stow( @$obj );

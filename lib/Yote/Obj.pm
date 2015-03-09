@@ -129,9 +129,10 @@ sub _add_to {
     }
     else {
         my $func = "set_$listname";
+        print STDERR Data::Dumper->Dump([$self,"FOR"]);
         $self->$func( [] );
+        $list_id = $self->{DATA}{$listname};
     }
-    $list_id ||= $self->{DATA}{$listname};
     for my $d (@data) {
         Yote::ObjProvider::list_insert( $list_id, $d );
     }
