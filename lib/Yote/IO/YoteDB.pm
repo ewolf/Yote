@@ -224,124 +224,126 @@ sub paginate {
         $skip //= 0;
         my $is_array = $obj->[CLASS] eq 'ARRAY';
 
-        my $cand_ids = $is_array ? [0..$#$odata] : [sort keys %$odata];
+        my $cand_keys = $is_array ? [0..$#$odata] : [sort keys %$odata];
 
-         if( @$search_terms || @$hashkey_search ) {
-            my( @newc );
+        if( (@$search_terms&&@$search_fields == 0) || @$hashkey_search ) {
+            my( @new_keys );
             if( @$search_terms && @$search_fields == 0 ) {
-                for my $cand (@$cand_ids) {
+                for my $cand (@$cand_keys) {
                     my $cval = $is_array ? $odata->[$cand] : $odata->{$cand};
                   TERM:
                     for my $term (@$search_terms) {
-                    print STDERR Data::Dumper->Dump(["CHECKA",$cand,$term,$cval]);
-
                         if( $cval =~ /^v.*$term/i ) {
-                            push @newc, $cand;
+                            push @new_keys, $cand;
                             last TERM;
                         }
                     }
                 } #each cand
             } #if tosearch
             else {
-                @newc = @$cand_ids;
+                @new_keys = @$cand_keys;
             }
-                    print STDERR Data::Dumper->Dump([\@newc,$search_terms,"C 1 "]);
-
             if( @$hashkey_search ) {
-                my @newnewc;
-                for my $cand (@newc) {
+                my @new_new_keys;
+                for my $cand (@new_keys) {
                   H_TERM:
                     for my $term (@$hashkey_search) {
-                        print STDERR Data::Dumper->Dump([$term,$cand,"Check"]);
                         if( $cand =~ /$term/i ) {
-                            push @newnewc, $cand;
+                            push @new_new_keys, $cand;
                             last H_TERM;
                         }
                     }
                 } #each cand
-                (@newc) = @newnewc;
+                (@new_keys) = @new_new_keys;
             } #if tosearch
 
-            $cand_ids = \@newc;
-                    print STDERR Data::Dumper->Dump([$cand_ids,"C 2 "]);
+            $cand_keys = \@new_keys;
         } # if a hashkey or search term
 
 
+        # this branch, objects ar esorted or searched
         if( @$sort_fields || @$search_fields ) {
-
             # limit to results having objects behind them
-            $cand_ids = [ grep { scalar($is_array ? $odata->[$cand_ids->[$_]] : $odata->[$cand_ids->{$_}] ) !~ /^v/ } (0..$#$cand_ids)];
+
+            $cand_keys = [ 
+                grep { scalar($is_array ? $odata->[$cand_keys->[$_]] : $odata->{$cand_keys->[$_]} ) !~ /^v/ } (0..$#$cand_keys)];
 
             my( @newc, %cdata );
-            for (0..$#$cand_ids) {
-                my $cand_data = $self->_fetch( $_ );
+            for (@$cand_keys) {
+                my $cand_data = $self->_fetch( $is_array ? $odata->[$_] : $odata->{$_} );
                 if( $self->_matches( $cand_data, $search_terms, $search_fields ) ) {
+                    print STDERR Data::Dumper->Dump([$cand_data,"MATCHES",$search_terms,$search_fields]);
                     push @newc, $_;
                     $cand_data->[DATA] = from_json( $cand_data->[DATA] );
                     $cdata{ $cand_data->[ID] } = $cand_data;
                 }
             }
-            $cand_ids = \@newc;
-
+            $cand_keys = \@newc;
+            print STDERR Data::Dumper->Dump([$cand_keys,"CKCKCK"]);
             my $numeric_fields = $args->{ numeric_fields } || [];
             for my $fld_idx ( 0..$#$sort_fields ) {
                 my $fld = $sort_fields->[ $fld_idx ];
                 if( $reversed_orders->[ $fld_idx ] ) {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$b]]} <=> $cdata{$odata->[$cand_ids->[$a]]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$b]} <=> $cdata{$odata->[$a]} } (@$cand_keys) ];
                         } else {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$b]]} cmp $cdata{$odata->[$cand_ids->[$a]]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$b]} cmp $cdata{$odata->[$a]} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$b}]} <=> $cdata{$odata->[$cand_ids->{$a}]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$b}} <=> $cdata{$odata->{$a}} } (@$cand_keys) ];
                          } else {
-                           $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$b}]} cmp $cdata{$odata->[$cand_ids->{$a}]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$b}} cmp $cdata{$odata->{$a}} } (@$cand_keys) ];
                          }
                     }
                 } else {
                     if( $is_array ) {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$a]]} <=> $cdata{$odata->[$cand_ids->[$b]]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$a]} <=> $cdata{$odata->[$b]} } (@$cand_keys) ];
                         } else {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->[$a]]} cmp $cdata{$odata->[$cand_ids->[$b]]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->[$a]} cmp $cdata{$odata->[$b]} } (@$cand_keys) ];
                         }
                     } else {
                         if( $numeric_fields->[ $fld_idx ] ) {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$a}]} <=> $cdata{$odata->[$cand_ids->{$b}]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$a}} <=> $cdata{$odata->{$b}} } (@$cand_keys) ];
                         } else {
-                            $cand_ids = [ sort { $cdata{$odata->[$cand_ids->{$a}]} cmp $cdata{$odata->[$cand_ids->{$b}]} } (0..$#$cand_ids) ];
+                            $cand_keys = [ sort { $cdata{$odata->{$a}} cmp $cdata{$odata->{$b}} } (@$cand_keys) ];
                         }
                     }
                 }
-            }
+            } #sort
+            print STDERR Data::Dumper->Dump([$cand_keys,"AFTER SOORT"]);
+
         } elsif( $sort ) {
             if( $is_array ) {
-                $cand_ids = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_ids ];
+                $cand_keys = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_keys ];
             } else {
-                $cand_ids = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_ids ];
+                $cand_keys = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_keys ];
             }
         }
+
         if( $reverse ) {
-            $cand_ids = [ reverse @$cand_ids ];
+            $cand_keys = [ reverse @$cand_keys ];
         }
         if( defined( $limit ) ) {
             $skip += 0;
             my $to = $skip + ( $limit - 1 );
-            $to = $to > $#$cand_ids ? $#$cand_ids : $to;
-            $cand_ids =  [@$cand_ids[$skip..$to]];
+            $to = $to > $#$cand_keys ? $#$cand_keys : $to;
+            $cand_keys =  [@$cand_keys[$skip..$to]];
         }
         if( $return_hash ) {
             if( $is_array ) {
-                return { map { $cand_ids->[$_] => $odata->[$cand_ids->[$_]] } (0..$#$cand_ids) };
+                return { map { $cand_keys->[$_] => $odata->[$cand_keys->[$_]] } (0..$#$cand_keys) };
             }
-            return { map { $cand_ids->[$_] => $odata->{$cand_ids->[$_]} } (0..$#$cand_ids) };
+            return { map { $cand_keys->[$_] => $odata->{$cand_keys->[$_]} } (0..$#$cand_keys) };
         }
         elsif( $is_array ) {
-            return [map { $odata->[$_] } @$cand_ids];
+            print STDERR Data::Dumper->Dump(["RET ARRAY",$cand_keys,[ map { $odata->[$_] } @$cand_keys ]]);
+            return [ map { $odata->[$_] } @$cand_keys ];
         }
-        return [map { $odata->{$_} } @$cand_ids];
+
+        return [map { $odata->{$_} } @$cand_keys];
 
     } #if obj
     return {} if $return_hash;
@@ -467,7 +469,7 @@ sub _matches {
     #
     my $has = 0;
     for my $term (@$search_terms) {
-        if( index( $obj_data->[RAW_DATA], $term ) > -1 ) {
+        if( index( lc($obj_data->[RAW_DATA]), lc($term) ) > -1 ) {
             $has = 1;
             last;
         }
@@ -475,10 +477,12 @@ sub _matches {
     return 0 unless $has;
     my $data = from_json( $obj_data->[RAW_DATA] );
     my $is_arry = $obj_data->[CLASS] eq 'ARRAY';
+    print STDERR Data::Dumper->Dump([$obj_data,"CHECK"]);
     if( @$search_fields ) {
         for my $search_idx (0..$#$search_fields) {
-            my $fld = $is_arry ? $data->[ $search_fields->[0] ] :
-                $data->{ $search_fields->[0] };
+            my $fld = $is_arry ? $data->[ $search_fields->[$search_idx] ] :
+                $data->{ $search_fields->[$search_idx] };
+            print STDERR Data::Dumper->Dump(["Checking $search_fields->[$search_idx] with val '$fld' with '$search_terms->[$search_idx]'" ]);
             return 1 if $fld =~ /^v.*$search_terms->[$search_idx]/;
         }
     }

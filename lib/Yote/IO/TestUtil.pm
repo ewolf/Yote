@@ -354,9 +354,6 @@ sub io_independent_tests {
     my $root_login = $root->_hash_fetch( "_handles", "root");
     my $root_acct = new Yote::Account( { login => $root_login } );
 
-#    print STDERR Data::Dumper->Dump([$root->get__handles,$root->get__handles()->{root},$root_login,"HANDY"]);
-
-
     unless( $root_login ) {
         fail( "Root not loaded" );
         BAIL_OUT("cannot continue" );
@@ -558,7 +555,7 @@ sub io_independent_tests {
 
     $res = $o->_count( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
     is( $res, 2, "Two search resultscount" );
-    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie' ] } );
+    $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a' ], search_terms => [ 'foobie'] } );
     is( @$res, 2, "Two search results" );
     my $searchlist = $o->get_searchlist();
     my %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 0, 4 );
@@ -572,7 +569,8 @@ sub io_independent_tests {
     $searchlist = $o->get_searchlist();
     %ids = map { $searchlist->[ $_ ]->{ID} => 1 } ( 4, 0 );
     %resids = map { $_->{ID} => 1 } @$res;
-    is_deeply( \%ids, \%resids, "Got correct search matches" );
+    print STDERR Data::Dumper->Dump([$res,\%resids,\%ids,"RRR"]);
+    is_deeply( \%resids, \%ids, "Got correct search matches" );
 
 
     $res = $o->paginate( { name => 'searchlist', search_fields => [ 'a', 'c' ], search_terms => [ 'foobie' ] } );
