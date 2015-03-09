@@ -80,7 +80,7 @@ sub container_type {
 sub count {
     my( $self, $obj_id, $args ) = @_;
 
-    my $obj = $self->fetch( $host_id );
+    my $obj = $self->fetch( $obj_id );
     if( $obj ) {
         my $odata  = $obj->[DATA];
         my $terms  = $args->{ search_terms } || [];
@@ -135,8 +135,7 @@ sub first_id {
 # Create a new object id and return it.
 #
 sub get_id {
-    my( $self ) = @_;
-    return $self->{OBJ_INDEX}->next_id;
+    return shift->{OBJ_INDEX}->next_id;
 } #get_id
 
 
@@ -157,6 +156,9 @@ sub list_insert {
     return;
 } #list_insert
 
+sub max_id {
+    return shift->{OBJ_INDEX}->size;
+}
 
 #
 # Returns a paginated list of objects attached to the 
@@ -186,7 +188,7 @@ sub paginate {
 
     my $idx = 0;
     
-    my $obj = $self->fetch( $host_id );
+    my $obj = $self->fetch( $obj_id );
     if( $obj ) {
         my $odata = $obj->[DATA];
         my $search_terms  = $args->{ search_terms } || [];
@@ -220,6 +222,7 @@ sub paginate {
             }
         } #each cand
         if( @$sort_fields == 0 ) {
+            print STDERR Data::Dumper->Dump([\@accepted_cand_data]);
             return [map { $_->[ID] } @accepted_cand_data];
         }
 
@@ -262,7 +265,7 @@ sub paginate {
         
         #convert back array candidate data from hash back to array
         for my $arr_cand (@converted_arrays) {
-             $cand->[DATA] = [ map { $cand->[DATA]{$_} } sort keys %{$cand->[DATA]} ];
+             $arr_cand->[DATA] = [ map { $arr_cand->[DATA]{$_} } sort keys %{$arr_cand->[DATA]} ];
         }
         if( $args->{reverse} ) {
             @accepted_cand_data = reverse @accepted_cand_data;
@@ -351,17 +354,17 @@ sub _matches {
     for my $term (@$search_terms) {
         if( index( $obj_data->[RAW_DATA], $term ) > -1 ) {
             $has = 1;
-            break;
+            last;
         }
     }
     return 0 unless $has;
     my $data = from_json( $obj_data->[RAW_DATA] );
     my $is_arry = $obj_data->[CLASS] eq 'ARRAY';
     if( @$search_fields ) {
-        for my $search_idx (0..$#search_fields) {
-            my $fld = $is_arry ? $data->[ $search_fields[0] ] : 
-                $data->{ $search_fields[0] };
-            return 1 if $fld =~ /^v.*$search_terms[$search_idx]/;
+        for my $search_idx (0..$#$search_fields) {
+            my $fld = $is_arry ? $data->[ $search_fields->[0] ] : 
+                $data->{ $search_fields->[0] };
+            return 1 if $fld =~ /^v.*$search_terms->[$search_idx]/;
         }
     } 
     else {
@@ -384,20 +387,20 @@ sub _fetch {
 
     my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     return undef unless $store_id;
-    my $data = $self->{STORE_MANAGER}->get_record( $store_id, $store_idx );
+    my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
     my $pos = index( $data, ' ' );
-    die "Malformed record" if $pos == -1;
+    die "Malformed record '$data'" if $pos == -1;
     my $class = substr $data, 0, $pos;
     my $val   = substr $data, $pos + 1;
 
-    return [$id,$class,$data];
+    return [$id,$class,$val];
 } #_fetch
 
 
 sub hash_delete {
     my( $self, $hash_id, $key ) = @_;
     my $obj = $self->fetch( $hash_id );
-    die "hash_delete called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    die "hash_delete called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
     delete $obj->[DATA]{ $key };
     return $self->stow( @$obj );
 } #hash_delete
@@ -406,7 +409,7 @@ sub hash_delete {
 sub hash_insert {
     my( $self, $hash_id, $key, $val ) = @_;
     my $obj = $self->fetch( $hash_id );
-    die "hash_insert called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    die "hash_insert called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
     $obj->[DATA]{ $key } = $val;
     return $self->stow( @$obj );
 } #hash_insert
@@ -417,7 +420,7 @@ sub hash_insert {
 sub list_delete {
     my( $self, $list_id, $val, $idx ) = @_;
     my $obj = $self->fetch( $list_id );
-    die "list_delete called for non array" if ref( $obj->{DATA} ) ne 'ARRAY';
+    die "list_delete called for non array" if ref( $obj->[DATA] ) ne 'ARRAY';
     my $list = $obj->[DATA];
     my $actual_index = $idx;
     if( $val ) {
@@ -430,21 +433,21 @@ sub list_delete {
 sub list_fetch {
     my( $self, $list_id, $idx ) = @_;
     my $obj = $self->fetch( $list_id );
-    die "list_fetch called for non array" if ref( $obj->{DATA} ) ne 'ARRAY';
+    die "list_fetch called for non array" if ref( $obj->[DATA] ) ne 'ARRAY';
     return $obj->[DATA][$idx];
 } #list_fetch
 
 sub hash_fetch {
     my( $self, $hash_id, $key ) = @_;
     my $obj = $self->fetch( $hash_id );
-    die "hash_fetch called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    die "hash_fetch called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
     return $obj->[DATA]{$key};
 } #hash_fetch
 
 sub hash_has_key {
     my( $self, $hash_id, $key ) = @_;
     my $obj = $self->fetch( $hash_id );
-    die "hash_has_key called for array" if ref( $obj->{DATA} ) eq 'ARRAY';
+    die "hash_has_key called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
     return defined $obj->[DATA]{$key};
 } #hash_has_key
 

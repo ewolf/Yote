@@ -5,6 +5,8 @@ use strict;
 use Yote::IO::FixedStore;
 use Yote::IO::FixedRecycleStore;
 
+use File::Path qw(make_path);
+
 sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;

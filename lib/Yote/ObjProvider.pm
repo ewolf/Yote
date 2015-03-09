@@ -51,8 +51,8 @@ sub init {
     elsif( $args->{engine} eq 'mysql' ) {
         $datapkg = 'Yote::IO::Mysql';
     }
-    elsif( $args->{engine} eq 'yotefs' ) {
-        $datapkg = 'Yote::IO::YoteFS';
+    elsif( $args->{engine} eq 'yotedb' ) {
+        $datapkg = 'Yote::IO::YoteDB';
     }
     eval( "require $datapkg" );
     $DATASTORE = $datapkg->new( $args );
