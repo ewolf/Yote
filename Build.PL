@@ -83,6 +83,7 @@ my $builder = Module::Build->new(
 	'File::Slurp'           => 9999.19,
 	'File::stat'            => 0.07,
 	'File::Temp'            => 0.23,
+	'File::Touch'            => 0.23,
 	'File::UStore'          => 0.14,
     'IO::Handle'            => 1.34,
     'IO::Handle'            => 1.34,
