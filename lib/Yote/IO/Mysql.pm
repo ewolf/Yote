@@ -21,6 +21,15 @@ use constant {
     MAX_LENGTH => 1025,
 };
 
+#
+# Sets up a mysql driver. 
+# Args are as follows :
+#   host : host of mysql instance
+#   engine_port : mysql port
+#   user : mysql user
+#   password : password for mysql user
+#   store : name of database to use
+#
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;

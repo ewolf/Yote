@@ -25,6 +25,11 @@ use constant {
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
 # ------------------------------------------------------------------------------------------
+
+#
+# Sets up a sqlite driver. Args accepts a single field :
+#     store : the filename to build the sqlite file with.
+#
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;

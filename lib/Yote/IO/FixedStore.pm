@@ -50,6 +50,7 @@ sub pop {
     flock $fh, LOCK_EX;
 
     my $entries = $self->entries;
+    return undef unless $entries;
     my $ret = $self->get_record( $entries );
 
     truncate $self->{FILEHANDLE}, $entries * $self->{SIZE};
@@ -90,7 +91,6 @@ sub entries {
     # return how many entries this index has
     my $self = shift;
     my $filesize = -s $self->{FILENAME};
-    print STDERR Data::Dumper->Dump([$filesize,$self->{SIZE},"EN"]);
     return int( $filesize / $self->{SIZE} );
 }
 
@@ -104,7 +104,6 @@ sub next_id {
     $self->put_record( $next_id, [] );
 
     flock $fh, LOCK_UN;
-    print STDERR Data::Dumper->Dump(["RETURN", $next_id]);
     return $next_id;
 } #next_id
 

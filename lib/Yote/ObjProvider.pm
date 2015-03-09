@@ -37,6 +37,11 @@ sub new {
     return bless {}, $class;
 } #new
 
+#
+# Init args :
+#   engine : mongo, mysql or sqlite ( default )
+#   ..more args depencing on which IO driver is used see that io driver..
+#
 sub init {
     my $args = shift;
     my $datapkg = 'Yote::IO::SQLite';
@@ -45,6 +50,9 @@ sub init {
     }
     elsif( $args->{engine} eq 'mysql' ) {
         $datapkg = 'Yote::IO::Mysql';
+    }
+    elsif( $args->{engine} eq 'yotefs' ) {
+        $datapkg = 'Yote::IO::YoteFS';
     }
     eval( "require $datapkg" );
     $DATASTORE = $datapkg->new( $args );

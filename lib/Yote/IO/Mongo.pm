@@ -18,6 +18,16 @@ $VERSION = '0.038';
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
 # ------------------------------------------------------------------------------------------
+
+#
+# Sets up a mongo driver. 
+# Args are as follows :
+#   host : host of mongo instance
+#   engine_port : mongo port ( default 27017 )
+#   user : mongo user
+#   password : password for mongo user
+#   store : name of database to use ( default 'yote' )
+#
 sub new {
     my $pkg = shift;
     my $class = ref( $pkg ) || $pkg;
@@ -545,8 +555,8 @@ sub _connect {
     my $host = $args->{ host } || 'localhost';
     $host .= ':' . ($args->{ engine_port } || 27017);
     my %mongo_args = (
-	host => $host,
-	);
+        host => $host,
+        );
     $mongo_args{ password } = $args->{ password } if $args->{ password };
     $mongo_args{ username } = $args->{ user } if $args->{ user };
     $self->{MONGO_CLIENT} = MongoDB::MongoClient->new( %mongo_args );

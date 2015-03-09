@@ -14,7 +14,7 @@ $VERSION = '0.231';
 
 use Carp;
 use Crypt::Passwd::XS;
-use File::Path;
+use File::Path qw(make_path);
 
 ##################
 # Public Methods #
@@ -174,7 +174,7 @@ sub encrypt_pass {
 ###################
 
 sub _print_use {
-    print 'Usage : yote_server --engine=sqlite|mongo|mysql
+    print 'Usage : yote_server --engine=sqlite|mongo|mysql|yote
                     --engine_port=port-mongo-or-mysql-use
                     --profile
                     --generate
@@ -185,7 +185,7 @@ sub _print_use {
                     --password=engine-password
                     --port=yote-server-port
                     --reset_password
-                    --store=filename|mongo-db|mysq-db
+                    --store=filename|directory|mongo-db|mysq-db
                     --threads=number-of-server-processes
                     --user=engine-username
                     --yote_root=yote-root-directory
@@ -283,6 +283,13 @@ sub _get_configuration {
     elsif( $current_config->{ engine } eq 'mysql' ) {
         delete $current_config->{ engine };
     }
+    eval( "require Yote::IO::YoteDB" );
+    if( ! $@ ) {
+        push @$avail, 'yotedb';
+    }
+    elsif( $current_config->{ engine } eq 'yotedb' ) {
+        delete $current_config->{ engine };
+    }
     
     my $engine = 'sqlite';
 
@@ -295,10 +302,11 @@ sub _get_configuration {
     }
     $newconfig{ engine } = $engine;
 
-    if ( $engine eq 'sqlite' ) {
+    if ( $engine eq 'sqlite' || $engine eq 'yotedb' ) {
         my $done;
+        my $def = $engine eq 'sqlite' ? 'yote.sqlite' : 'yote';
         until( $done ) {
-            my( $dir, $store ) = ( _ask( "sqlite filename", undef, $current_config->{ store } ||  'yote.sqlite' ) =~ /(.*\/)?([^\/]+)$/ );
+            my( $dir, $store ) = ( _ask( "sqlite filename", undef, $current_config->{ store } ||  $def ) =~ /(.*\/)?([^\/]+)$/ );
             if( $store ) {
                 if( $dir && substr( $dir, 0, 1 ) eq '/' ) {
                     if( -d $dir && -w $dir ) {
@@ -315,7 +323,7 @@ sub _get_configuration {
                 elsif( -w $yote_root_dir || ( ! -d $yote_root_dir || -w "$yote_root_dir/.." ) ) {
                     if( $dir ) {
                         my $full_store = "$yote_root_dir/$dir";
-                        mkpath( $full_store );
+                        make_path( $full_store );
                         $newconfig{ store } = "$full_store/$store";
                         $done = 1;
                     }

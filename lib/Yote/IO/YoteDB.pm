@@ -69,7 +69,6 @@ sub first_id {
 
 sub get_id {
     my( $self, $class ) = @_;
-    # TODO - recycle ids that have become unused.
     return $self->{OBJ_INDEX}->next_id;
 }
 
