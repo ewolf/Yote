@@ -61,12 +61,15 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
 
+    my $recycled = Yote::ObjProvider::recycle_objects();
+
     is( ref( $root ), 'Yote::Root', 'correct root class type' );
     ok( $root->{ID} == 1, "Root has id of 1" );
     is( $fetched_root, $root, "fetch_root works same as objprovider fetch" );
 
     my $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START, "highest id in database is 1" );
+
 
 #
 # Save key value fields for simple scalars, arrays and hashes.
@@ -79,6 +82,7 @@ sub test_suite {
     $root->set_reallybig( "BIG" x 1.000);                    # 0
     $root->set_gross( 12 * 12 );                            # 1
     $root->set_array( ["THIS IS AN ARRAY"] );               # 2
+
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+2, "highest id in database $ROOT_START + 2" );
     $root->get_default_hash( { "DEFKEY" => "DEFVALUE" } );  # 2
@@ -92,12 +96,18 @@ sub test_suite {
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+5, "highest id in database $ROOT_START+5" );
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
+    undef $newo;
+    undef $somehash;
+
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+7, "highest id in database $ROOT_START+7" );
     $root->set_hash( { "KEY" => "VALUE" } );                # 2
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+8, "highest id in database $ROOT_START+8" );
     Yote::ObjProvider::stow_all();
+
+
+
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+8, "highest id in database still $ROOT_START+8" );
 
@@ -108,6 +118,15 @@ sub test_suite {
 
     Yote::ObjProvider::stow_all();
 
+    # get the ids, to see if those are avail after recycling
+    my( %old_ids );
+    {
+        my $old_ch = $root->get_cool_hash();
+        my $lpl    = $old_ch->{llamapre};
+        my $ob    = $lpl->[1];
+        my $sh    = $lpl->[2];
+        (%old_ids) = map { Yote::ObjProvider::get_id($_) => 1 } ( $old_ch, $lpl, $ob, $sh );
+    }
 
     # this resets the cool hash, overwriting what is there. 
     $root->set_cool_hash( { "llama" => ["this",new Yote::Obj(),{"Array",new Yote::Obj()}] } );  # 5 new objects
@@ -115,6 +134,12 @@ sub test_suite {
     Yote::ObjProvider::stow_all();
     my $recycled = Yote::ObjProvider::recycle_objects();
     is( $recycled, 4, "recycled 4 objects" );
+
+    my $recyc_ids = $Yote::ObjProvider::DATASTORE->get_recycled_ids;
+    is( @$recyc_ids, 4, "four recycled ids" );
+    for( @$recyc_ids ) {
+        ok( $old_ids{ $_ }, "$_ was recycled" );
+    }
 
     Yote::IO::TestUtil::io_independent_tests( $root );
 } #test suite

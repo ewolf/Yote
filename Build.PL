@@ -91,6 +91,7 @@ my $builder = Module::Build->new(
 	'Mail::Sender'          => 0,
 	'MIME::Base64'          => 0,
     'POSIX'                 => 1.32,
+    'Devel::RefCount'       => 1.32,
 	'Test::More'            => 0,
 	'Test::Pod'             => 0,
     'Time::HiRes'           => 1.9725,

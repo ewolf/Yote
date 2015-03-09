@@ -757,7 +757,7 @@ sub io_independent_tests {
     #
     # Make sure named list operations properly integrate with recycling/garbage collection.
     #
-    Yote::ObjProvider::recycle_objects();
+    my $rc = Yote::ObjProvider::recycle_objects();
     {
         my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
         my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
@@ -766,7 +766,7 @@ sub io_independent_tests {
         Yote::ObjProvider::stow_all();
         is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
         my $objs = Yote::ObjProvider::recycle_objects();
-        is( $objs, 0, 'add_to(  not recycled' );
+        ok( !$objs, 'add_to(  not recycled )' );
         $root->_remove_from( 'o_list', $o2a );
         $root->_remove_from( 'o_list', $o2b );
         Yote::ObjProvider::stow_all();
@@ -793,24 +793,30 @@ sub io_independent_tests {
         Yote::ObjProvider::stow_all();	
     }
     $objs = Yote::ObjProvider::recycle_objects();
-    is( $objs, 2, 'hash delete  is recycled' );
+    is( $objs, 2, 'hash delete is recycled' );
 
     $root->set_o_hash( undef );
     Yote::ObjProvider::stow_all();	
     is( $root->_container_type( 'o_hash' ), '', 'container type detect no class once hash removed' );
-
+    print STDERR Data::Dumper->Dump(["TO GET Z_LIST --------------------------------------------------"]);
     $root->add_to( { name => 'z_list', items => [ "A", "B" ] }, $root_acct );
+    print STDERR Data::Dumper->Dump([" --------------------------------------------------"]);
+
     is_deeply( $root->get_z_list(), [ "A", "B" ], "add to having correct obj" );
 
     $root->insert_at( { name => 'y_list', index => 2, item => "C" }, $root_acct );
     is_deeply( $root->get_y_list(), [ "C" ], "insert at to having correct obj" );
 
     $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] }, $root_acct );
+
+    my $el_list = $root->get_el_list();
+
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" }, $root_acct );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
 
     my $el_list = $root->get_el_list();
+
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
     # hash insert and hash delete key
@@ -842,6 +848,7 @@ sub io_independent_tests {
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 0 } );
     is_deeply( $res, { 1 => "LALA" }, "return hash num sort chunk 1" );
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 1 } );
+    print STDERR Data::Dumper->Dump([$root->get_el_hash(),$res]);exit;
     is_deeply( $res, { 2 => "ERF" }, "return hash num sort chunk 2" );
     $res = $root->_paginate( { name => "el_hash", return_hash => 1, limit => 1, numeric => 1, skip => 2 } );
     is_deeply( $res, { 10 => "ERF" }, "return hash num sort chunk 3" );

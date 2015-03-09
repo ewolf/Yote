@@ -123,17 +123,18 @@ sub _absorb {
 # adds the items to the list attached to this object with the given name.
 sub _add_to {
     my( $self, $listname, @data ) = @_;
+    print STDERR Data::Dumper->Dump([\@_,"ADDTO $listname",\@data]);
     my $list_id = $self->{DATA}{$listname};
     if( $list_id ) {
         Yote::ObjManager::mark_dirty( $list_id );
     }
     else {
         my $func = "set_$listname";
-        print STDERR Data::Dumper->Dump([$self,"FOR"]);
         $self->$func( [] );
         $list_id = $self->{DATA}{$listname};
     }
     for my $d (@data) {
+        print STDERR Data::Dumper->Dump([$d,"ADD TO $list_id"]);
         Yote::ObjProvider::list_insert( $list_id, $d );
     }
     my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };

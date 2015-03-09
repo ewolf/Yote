@@ -190,7 +190,6 @@ sub get_id {
     }
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$ref;
-
         if( $tied ) {
             $tied->[0] ||= $DATASTORE->get_id( "HASH" );
             __store_weak( $tied->[0], $ref );
@@ -445,9 +444,8 @@ sub __raw_data {
 
 sub __store_weak {
     my( $id, $ref ) = @_;
-    my $weak = $ref;
-    weaken( $weak );
-    $Yote::ObjProvider::WEAK_REFS->{$id} = $weak;
+    $Yote::ObjProvider::WEAK_REFS->{$id} = $ref;
+    weaken( $Yote::ObjProvider::WEAK_REFS->{$id} );
 } #__store_weak
 
 
