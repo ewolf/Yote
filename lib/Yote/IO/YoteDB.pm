@@ -1,6 +1,9 @@
 package Yote::IO::YoteDB;
 
 use strict;
+use warnings;
+
+no warnings 'uninitialized';
 
 use Yote::IO::FixedStore;
 use Yote::IO::StoreManager;
@@ -314,7 +317,8 @@ sub paginate {
           }
         }
       } #sort
-    } elsif ( $sort || $numeric ) {
+    } #end if sort or search fields
+    elsif ( $sort || $numeric ) {
       if ( $is_array ) {
         if ( $numeric ) {
           $cand_keys = [ sort { substr( $odata->[$a], 1 ) <=> substr( $odata->[$b], 1 ) } @$cand_keys ];
@@ -322,8 +326,7 @@ sub paginate {
           $cand_keys = [ sort { $odata->[$a] cmp $odata->[$b] } @$cand_keys ];
         }
       } elsif ( $numeric ) {
-        $cand_keys = [ sort { substr( $odata->{$a}, 1 ) <=> substr( $odata->{$b}, 1 ) } @$cand_keys ];
-        $cand_keys = [ sort { $a <=> $b } @$cand_keys ];
+          $cand_keys = [ sort { $a <=> $b } @$cand_keys ];
       } else {
         $cand_keys = [ sort { $odata->{$a} cmp $odata->{$b} } @$cand_keys ];
       }

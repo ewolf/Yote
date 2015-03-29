@@ -32,7 +32,6 @@ sub entries {
     my $self = shift;
     my $now_running = _time();
     my $entries = $self->get_entries([]);
-    print STDERR Data::Dumper->Dump([$entries]);
     return [grep { $_->get_enabled() && $_->get_next_time() && $now_running >= $_->get_next_time() } @$entries ];
 } #entries
 
