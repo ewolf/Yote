@@ -809,7 +809,6 @@ sub io_independent_tests {
     $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] }, $root_acct );
 
     my $el_list = $root->get_el_list();
-
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" }, $root_acct );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );

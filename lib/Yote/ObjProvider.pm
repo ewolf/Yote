@@ -11,7 +11,6 @@ use Yote::Hash;
 use Yote::Obj;
 use Yote::ObjManager;
 use Yote::Root;
-use Yote::SimpleCache;
 use Yote::IO::YoteDB;
 
 use Crypt::Passwd::XS;

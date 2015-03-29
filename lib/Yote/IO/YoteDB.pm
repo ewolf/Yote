@@ -162,7 +162,7 @@ sub list_insert {
   if ( ref( $obj->[DATA] ) ne 'ARRAY' ) {
     $obj->[DATA]{ $idx } = $val;
   } else {
-    if ( defined $idx ) {
+    if ( defined $idx && $idx < @{$obj->[DATA]} ) {
       splice @{$obj->[DATA]}, $idx, 0, $val;
     } else {
       push @{$obj->[DATA]}, $val;
@@ -600,7 +600,7 @@ sub list_delete {
   if ( $val ) {
     ( $actual_index ) = grep { $list->[$_] eq $val  } (0..$#$list);
   }
-  splice @$list, $actual_index, 1;
+  splice( @$list, $actual_index, 1 ) if $#$list >= $actual_index;
   return $self->stow( @$obj );
 } #list_delete
 
