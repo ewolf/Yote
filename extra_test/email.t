@@ -12,6 +12,8 @@ use File::Spec::Functions qw( catdir updir );
 use Test::More; # tests => 3;
 use Test::Pod;
 
+use Yote::IO::Mailer;
+
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
@@ -26,12 +28,9 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-my( $fh, $name ) = mkstemp( "/tmp/SQLiteTest.XXXX" );
-$fh->close();
-
+my $tdir = '/tmp/yoteemailtest';
 my %arg_hash = (
-    datastore      => 'Yote::SQLiteIO',
-    store          => $name,
+    store          => $tdir,
     );
 
 $arg_hash{ smtp_smtp }  = 'localhost' || Yote::_ask( "SMPT Host", undef, 'localhost' );
@@ -56,14 +55,11 @@ $arg_hash{ smtp_TLS_allowed } = $arg_hash{ smtp_TLS_allowed } eq 'Yes' ? 1 : 0;
 $arg_hash{ smtp_TLS_required } = 'No' || Yote::_ask( "Must TLS ( SSL encrypted connection ) be used", ['Yes','No'], 'No' );
 $arg_hash{ smtp_TLS_required } = $arg_hash{ smtp_TLS_required } eq 'Yes' ? 1 : 0;
 
-Yote::ObjProvider::init( %arg_hash );
-Yote::IO::Mailer::init( %arg_hash );
+Yote::ObjProvider::init( \%arg_hash );
+Yote::IO::Mailer::init( \%arg_hash );
 
-my $db = $Yote::ObjProvider::DATASTORE->database();
-test_suite( $db );
+test_suite( );
 done_testing();
-
-unlink( $name );
 
 exit( 0 );
 

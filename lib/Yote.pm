@@ -33,13 +33,12 @@ sub get_args {
         'start'    => 'start',
         'restart'  => 'restart',
         'stop'     => 'stop',
+        'status'     => 'status',
         'halt'     => 'stop',
         'shutdown' => 'stop',
         );
 
     my %argmap = (
-        e  => 'engine',
-        E  => 'engine_port',
         g  => 'generate',
         c  => 'show_config',
         f  => 'profile',
@@ -71,7 +70,7 @@ sub get_args {
         );
     my %argnames = map { $_ => 1 } values %argmap;
 
-    my %required = map { $_ => 1 } qw/engine store yote_root root_account root_password port internal_port threads smtp_auth/;
+    my %required = map { $_ => 1 } qw/store yote_root root_account root_password port internal_port threads smtp_auth/;
 
     # ---------  run variables  -----------------
 
@@ -174,20 +173,17 @@ sub encrypt_pass {
 ###################
 
 sub _print_use {
-    print 'Usage : yote_server --engine=sqlite|mongo|mysql|yote
-                    --engine_port=port-mongo-or-mysql-use
+    print 'Usage : yote_server
                     --profile
                     --generate
                     --help
                     --host=mongo-or-mysql-host
                     --internal_port=object-and-action-server-port
                     --show_config
-                    --password=engine-password
                     --port=yote-server-port
                     --reset_password
-                    --store=filename|directory|mongo-db|mysq-db
+                    --store=/path/to/data/directory
                     --threads=number-of-server-processes
-                    --user=engine-username
                     --yote_root=yote-root-directory
                           START|STOP|RESTART
 ';
@@ -267,95 +263,8 @@ sub _get_configuration {
 
     my %newconfig;
 
-    my $avail = [ 'sqlite' ];
-
-    eval( "require Yote::IO::Mongo" );
-    if( ! $@ ) {
-        push @$avail, 'mongo';
-    }
-    elsif( $current_config->{ engine } eq 'mongo' ) {
-        delete $current_config->{ engine };
-    }
-    eval( "require Yote::IO::Mysql" );
-    if( ! $@ ) {
-        push @$avail, 'mysql';
-    }
-    elsif( $current_config->{ engine } eq 'mysql' ) {
-        delete $current_config->{ engine };
-    }
-    eval( "require Yote::IO::YoteDB" );
-    if( ! $@ ) {
-        push @$avail, 'yotedb';
-    }
-    elsif( $current_config->{ engine } eq 'yotedb' ) {
-        delete $current_config->{ engine };
-    }
-    
-    my $engine = 'sqlite';
-
-    if( @$avail > 1 ) { 
-        $engine = _ask( 'This is the first time yote is being run and must be set up now.
- The first decision as to what data store to use.',
-                        $avail, $current_config->{ engine } || 'sqlite' );
-    } else {
-        print "Using sqlite as an engine. Mongo and Mysql do not appear to be installed.\n";
-    }
-    $newconfig{ engine } = $engine;
-
-    if ( $engine eq 'sqlite' || $engine eq 'yotedb' ) {
-        my $done;
-        my $def = $engine eq 'sqlite' ? 'yote.sqlite' : 'yote';
-        until( $done ) {
-            my( $dir, $store ) = ( _ask( "sqlite filename", undef, $current_config->{ store } ||  $def ) =~ /(.*\/)?([^\/]+)$/ );
-            if( $store ) {
-                if( $dir && substr( $dir, 0, 1 ) eq '/' ) {
-                    if( -d $dir && -w $dir ) {
-                        $done = 1;
-                        $newconfig{ store } = "$dir$store";
-                    }
-                    elsif( -d $dir ) {
-                        print "Directory '$dir' is not writable by this account.\n";
-                    }
-                    else {
-                        print "Directory '$dir' is not found.\n";
-                    }
-                }
-                elsif( -w $yote_root_dir || ( ! -d $yote_root_dir || -w "$yote_root_dir/.." ) ) {
-                    if( $dir ) {
-                        my $full_store = "$yote_root_dir/$dir";
-                        make_path( $full_store );
-                        $newconfig{ store } = "$full_store/$store";
-                        $done = 1;
-                    }
-                    else {
-                        $newconfig{ store } = "$yote_root_dir/data/$store";
-                        $done = 1;
-                    }
-                }
-                else {
-                    print "Directory '$yote_root_dir' is not writable by this account.\n";
-                }
-            }
-        } #done loop
-    } #sqlite
-    elsif ( lc($engine) eq 'mongo' ) {
-        $newconfig{ store }       = _ask( "MongoDB database", undef, $current_config->{ store }       || 'yote' );
-        $newconfig{ host }        = _ask( "MongoDB host",     undef, $current_config->{ host }        || 'localhost' );
-        $newconfig{ engine_port } = _ask( "MongoDB port",     undef, $current_config->{ engine_port } || 27017 );
-        $newconfig{ user }        = _ask( "MongoDB user acccount name", undef, $current_config->{ user } );
-        if ( $newconfig{ user } ) {
-            $newconfig{ password } = _ask( "MongoDB user acccount name", undef, $current_config->{ password } );
-        }
-    }
-    elsif ( lc($engine) eq 'mysql' ) {
-        $newconfig{ store }       = _ask( "MysqlDB database", undef, $current_config->{ store }       || 'yote' );
-        $newconfig{ host }        = _ask( "MysqlDB host",     undef, $current_config->{ host }        || 'localhost' );
-        $newconfig{ engine_port } = _ask( "MysqlDB port",     undef, $current_config->{ engine_port } || 27017 );
-        $newconfig{ user }        = _ask( "MysqlDB user acccount name", undef, $current_config->{ user } );
-        if ( $newconfig{ user } ) {
-            $newconfig{ password } = _ask( "MysqlDB user acccount name", undef, $current_config->{ password } );
-        }
-    }
+    $newconfig{ store } = "$yote_root_dir/data/yote";
+    make_path( $newconfig{ store } );
 
     $newconfig{ smtp_smtp }  = _ask( "SMPT Host", undef, $current_config->{ smtp_smtp } || 'localhost' );
     $newconfig{ smtp_port }  = _ask( "SMPT Port", undef, $current_config->{ smtp_port } || 25 );

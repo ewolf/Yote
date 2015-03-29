@@ -292,12 +292,10 @@ $().ready(function(){
  	        }
 
             total_js_time += (window.performance.now() - start_js_time);
-
  	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed third short time test" )(); meets() }, function( fail_resp ) { fail( "Failed third short time test" )(); meets(); }, true );
-
  	    }
  	    catch( err ) {
  	        fail( err )();

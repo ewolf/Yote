@@ -25,7 +25,7 @@ use constant {
 sub new {
   my( $pkg, $args ) = @_;
   my $class = ref( $pkg ) || $pkg;
-  make_path( $args->{ store } );
+  make_path( $args->{ store } ) unless -d $args->{ store };
   my $filename = "$args->{ store }/OBJ_INDEX";
   # LII template is a long ( for object id, then the table id, then the index in that table
   return bless {
@@ -36,12 +36,6 @@ sub new {
 } #new
 
 # ------------------------------------------------
-
-#
-# Dummy stub. Does nothing as this datastore
-# automatically commits transactions
-#
-sub commit_transaction {}
 
 #
 # Given a host object id and a container name,
@@ -108,11 +102,6 @@ sub count {
   }
   return 0;
 } #count
-
-#
-# Dummy stub. Does nothing.
-#
-sub disconnect {}
 
 #
 # Makes sure this datastore is set up and functioning.

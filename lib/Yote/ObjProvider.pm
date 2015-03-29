@@ -11,6 +11,8 @@ use Yote::Hash;
 use Yote::Obj;
 use Yote::ObjManager;
 use Yote::Root;
+use Yote::SimpleCache;
+use Yote::IO::YoteDB;
 
 use Crypt::Passwd::XS;
 use WeakRef;
@@ -37,35 +39,15 @@ sub new {
     return bless {}, $class;
 } #new
 
-#
-# Init args :
-#   engine : mongo, mysql or sqlite ( default )
-#   ..more args depencing on which IO driver is used see that io driver..
-#
 sub init {
     my $args = shift;
-    my $datapkg = 'Yote::IO::SQLite';
-    if( $args->{engine} eq 'mongo' ) {
-        $datapkg = 'Yote::IO::Mongo';
-    }
-    elsif( $args->{engine} eq 'mysql' ) {
-        $datapkg = 'Yote::IO::Mysql';
-    }
-    elsif( $args->{engine} eq 'yotedb' ) {
-        $datapkg = 'Yote::IO::YoteDB';
-    }
-    eval( "require $datapkg" );
-    $DATASTORE = $datapkg->new( $args );
+    $DATASTORE = new Yote::IO::YoteDB( $args );
     $DATASTORE->ensure_datastore();
 } #init
 
 # ------------------------------------------------------------------------------------------
 #      * PUBLIC CLASS METHODS *
 # ------------------------------------------------------------------------------------------
-
-sub commit_transaction {
-    return $DATASTORE->commit_transaction();
-}
 
 sub container_type {
     my( $host_id, $container_name ) = @_;
@@ -89,11 +71,6 @@ sub dirty {
     $Yote::ObjProvider::DIRTY->{$id} = $obj;
 } #dirty
 
-
-sub disconnect {
-    return $DATASTORE->disconnect();
-}
-
 sub fetch {
     my( $id ) = @_;
     return undef unless $id;
@@ -102,7 +79,7 @@ sub fetch {
     #
     my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
 
-    if( $ref ) {
+    if( defined $ref ) {
         return $ref;
     }
     my $obj_arry = $DATASTORE->fetch( $id );
@@ -283,11 +260,6 @@ sub paginate {
     return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
 } #paginate
 
-
-#
-# Finds objects not connected to the root and recycles them.
-# This interface would be broken with the MongDB implementation.
-#
 sub recycle_objects {
     return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
@@ -296,10 +268,6 @@ sub remove_from {
     my( $list_id, $item ) = @_;
     return $DATASTORE->list_delete( $list_id, xform_in( $item ) );
 } #remove_from
-
-sub start_transaction {
-    return $DATASTORE->start_transaction();
-}
 
 sub stow {
     my( $obj ) = @_;
@@ -477,10 +445,6 @@ It is the only module to directly interact with the datastore layer.
 
 =over 4
 
-=item commit_transaction( )
-
-Requests the data store used commit the transaction.
-
 =item container_type( host_id, container_name )
 
 Returns the class name of the given container from a host class.
@@ -594,10 +558,6 @@ Recycles all objects in the range given if they cannot trace back a path to root
 =item remove_from( list_id, item )
 
 Removes the items ( by value ) from the list with the given id.
-
-=item start_transaction( )
-
-Requests that the underlying data store start a transaction.
 
 =item stow( obj )
 

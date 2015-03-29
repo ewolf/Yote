@@ -11,7 +11,8 @@ sub new {
     my $class = ref( $pkg ) || $pkg;
 
     my $self = {
-	options => { on_errors => 'die', map { s/^smtp_//; $_ => $args->{"smtp_$_"} } grep { /^smtp_/ } keys %$args }
+	options => { on_errors => 'die', 
+                 map { s/^smtp_//; $_ => $args->{"smtp_$_"} } grep { /^smtp_/ } keys %$args }
     };
     return bless $self, $class;
 } #new

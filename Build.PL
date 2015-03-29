@@ -8,11 +8,11 @@ use warnings;
 
 # check to find the root directory for yote using a list of common candidates
 my( $yote_root_parent ) = grep { -e $_ && -r $_ && -w $_ } ( '/opt',
-							     '/var',
-							     '/usr/local',
-							     $ENV{HOME},
-							     '.'
-							   );
+                                                             '/var',
+                                                             '/usr/local',
+                                                             $ENV{HOME},
+                                                             '.'
+);
 
 die "Unable to write yote root directory" unless -w $yote_root_parent;
 my $yote_root = "$yote_root_parent/yote";
@@ -37,13 +37,13 @@ sub copy_dir {
     mkdir "$dest" unless -d "$dest";
     opendir( my $DIN, $dir );
     while( my $fn = readdir $DIN ) {
-	next if $fn =~ /^\.+$/;
-	if( -d "$dir/$fn" ) {
-	    copy_dir( "$dir/$fn", "$dest/$fn", $overwrite );
-	}
-	elsif( ! -e "$dest/$fn" || $overwrite ) {
-	    copy( "$dir/$fn", "$dest/$fn" );
-	}
+        next if $fn =~ /^\.+$/;
+        if( -d "$dir/$fn" ) {
+            copy_dir( "$dir/$fn", "$dest/$fn", $overwrite );
+        }
+        elsif( ! -e "$dest/$fn" || $overwrite ) {
+            copy( "$dir/$fn", "$dest/$fn" );
+        }
     }
 } #copy_dir
 copy_dir( 'yote_root', $yote_root );
@@ -54,7 +54,7 @@ my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Yote-*' ],
     build_requires => {
         'Test::More' => 0,
-	'Test::Pod'  => 0,
+        'Test::Pod'  => 0,
     },
     create_makefile_pl => 'traditional',
     dist_author        => q{Eric Wolf (coyocanid@gmail.com)},
@@ -63,40 +63,37 @@ my $builder = Module::Build->new(
     module_name        => 'Yote',
     release_status     => 'stable',
     script_files       => [ 'bin/yote_server' ],
-    test_files         => [ 't/sqlite.t', ],
+    test_files         => [ 't/yotedb.t', ],
     recommends         => {
-	'Authen::NTLM'     => 1,
-	'Digest::HMAC_MD5' => 1,
-	'DBD::mysql'       => 4.025,
-	'MongoDB'          => 0,
+        'Authen::NTLM'     => 1,
+        'Digest::HMAC_MD5' => 1,
     },
     requires => {
-	'perl'                  => 'v5.12',
-    'Aspect'                => 1.04,
-	'Crypt::Passwd::XS'     => 0.601,
-    'Daemon::Daemonize'     => 0.0052,
-	'DateTime'              => 0.77,
-	'DBD::SQLite'           => 1.35,
-	'DBI'                   => 1.625,
-	'Email::Valid'          => 0.190,
-	'File::Path'            => 2.09,
-	'File::Slurp'           => 9999.19,
-	'File::stat'            => 0.07,
-	'File::Temp'            => 0.23,
-	'File::Touch'            => 0.23,
-	'File::UStore'          => 0.14,
-    'IO::Handle'            => 1.34,
-    'IO::Handle'            => 1.34,
-	'JavaScript::Minifier'  => '1.11',
-	'JSON'                  => 2.53,
-	'Mail::Sender'          => 0,
-	'MIME::Base64'          => 0,
-    'POSIX'                 => 1.32,
-    'Devel::RefCount'       => 1.32,
-	'Test::More'            => 0,
-	'Test::Pod'             => 0,
-    'Time::HiRes'           => 1.9725,
-	'WeakRef'               => 0.01,
+        'perl'                  => 'v5.12',
+        'Aspect'                => 1.04,
+        'Crypt::Passwd::XS'     => 0.601,
+        'Daemon::Daemonize'     => 0.0052,
+        'DateTime'              => 0.77,
+        'DBI'                   => 1.625,
+        'Email::Valid'          => 0.190,
+        'File::Path'            => 2.09,
+        'File::Slurp'           => 9999.19,
+        'File::stat'            => 0.07,
+        'File::Temp'            => 0.23,
+        'File::Touch'            => 0.09,
+        'File::UStore'          => 0.14,
+        'IO::Handle'            => 1.34,
+        'IO::Handle'            => 1.34,
+        'JavaScript::Minifier'  => '1.11',
+        'JSON'                  => 2.53,
+        'Mail::Sender'          => 0,
+        'MIME::Base64'          => 0,
+        'POSIX'                 => 1.32,
+        'Devel::Refcount'       => 0.1,
+        'Test::More'            => 0,
+        'Test::Pod'             => 0,
+        'Time::HiRes'           => 1.9725,
+        'WeakRef'               => 0.01,
     },
     );
 

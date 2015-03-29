@@ -167,10 +167,8 @@ sub start {
         #
         # Save the state of the database completely.
         #
-        Yote::ObjProvider::start_transaction();
         Yote::ObjProvider::stow_all();
         Yote::ObjProvider::flush_all_volatile();
-        Yote::ObjProvider::commit_transaction();
 
     } # endless loop
 

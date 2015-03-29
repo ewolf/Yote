@@ -1,3 +1,32 @@
+The new home grown yotedb is working in at least the common case. Passes all tests.
+ Should pour though it to see if there are any tiny bits of time that can be shaved from it. Someday journaling? 
+ Maybe less destructive updates ( a bit to indicate wether or not to ditch that row? )
+
+Working on :
+
+ * get back to work on the new GRU
+
+ * new site pages
+ 
+ * more template things
+
+ * caching maybe? Just a simple one that holds the most popular of items. last out, longest staying
+
+ * redisgn of sorts? Maybe break things up into
+     Yote::ObjStore
+     Yote::WebServer
+
+
+Done :
+
+ * can it pass the tests on the javascript side? Yes, seems to pass in about 9 seconds, compared to 40 for sqlite.
+
+
+
+
+________________________________________________________________________________________________________________________
+vvvvv archive below vvvvvv
+
 The stack :
 
 - plop templates in the body. Why the hell not?
