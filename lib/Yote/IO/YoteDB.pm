@@ -411,7 +411,7 @@ sub _recycle_objects {
       # weak references, then it can be removed";
       if ( ! $rec ) {
         if( $wf ) {
-            push @weaks, [ $_, weaken($wf) ];
+            push @weaks, [ $_, $wf ];
         }
         else { #this case is something in the db that is not connected to the root and not loaded anywhere
           ++$count;
@@ -441,31 +441,26 @@ print STDERR Data::Dumper->Dump(["DELETER $_"]) if $_ == 104;
         }
     } #each weak
 
-#    print STDERR Data::Dumper->Dump([[map { "$_->[0] : " . refcount($_->[1])." d: $Yote::ObjProvider::DIRTY->{$_->[0]} w: $Yote::ObjProvider::WEAK_REFS->{$_->[0]} woc:$weak_only_check{$_->[0]}" } @weaks],\%weak_only_check,"WEAKS"]);
-
     # can delete things with only references to the WEAK and DIRTY caches.
     my( @to_delete );
     for my $weak ( @weaks ) {
         my( $id, $obj ) = @$weak;
-        weaken( $obj );
         unless( $obj ) {
             push @to_delete, $id;
             ++$count;
         } else {
-
-#delete from WEAK_REFS before doing anything. might have to put it back on
-#      if( $weak_only_check{$_} > (refcount(  - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
-#        print STDERR Data::Dumper->Dump(["Check $obj (found vs refcount) $id : $weak_only_check{$id} vs ".refcount($obj)]);
-
-            if( $id == 30 ) {        print STDERR Devel::FindRef::track \$obj; }
-            
-            if( $weak_only_check{$id} >= refcount($obj) ) {
+            my $extra_refs = 2;
+            # hash and array have an additional reference in the tie
+            if( ref( $obj ) =~ /^(ARRAY|HASH)$/ ) {
+                $extra_refs++;
+            }
+            if( ($extra_refs+$weak_only_check{$id}) >= refcount($obj) ) {
                 push @to_delete, $id;
                 ++$count;
             }
         }
     }
-    for( @to_delete ) {print STDERR Data::Dumper->Dump(["DELETE $_"]) if $_ == 104;
+    for( @to_delete ) {
         $self->{OBJ_INDEX}->delete( $_, 1 );
         delete $Yote::ObjProvider::WEAK_REFS->{$_};
     }
