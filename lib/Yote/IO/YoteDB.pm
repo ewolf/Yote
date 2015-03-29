@@ -399,10 +399,10 @@ sub _recycle_objects {
   if ( $is_first ) {
     # the purge begins here
     my $count = 0;
-    my $cands = $keep_store->entries;
+    my $cands = $self->{OBJ_INDEX}->entries;
 
     my( %weak_only_check, @weaks, %weaks );
-    for ( 1..$cands) {
+    for ( 1..$cands) { #iterate each id in the entire object store
       my( $rec ) = @{ $keep_store->get_record( $_ ) };
       my $wf = $Yote::ObjProvider::WEAK_REFS->{$_};
 
@@ -411,46 +411,47 @@ sub _recycle_objects {
       if ( ! $rec ) {
         if( $wf ) {
           push @weaks, [ $_, $wf ];
-          $weak_only_check{ $_ } = 1;
+          $weak_only_check{ $_ } = 2; # ref in WEAK_REFS, ref in @weaks
+          $weak_only_check{ $_ }++ if $Yote::ObjProvider::DIRTY->{$_};
         }
-        else {
+        else { #this case is something in the db that is not connected to the root and not loaded anywhere
           ++$count;
           $self->{OBJ_INDEX}->delete( $_, 1 );
         }
       }
     }
-    for my $wf (@weaks) {
+    # check things attached to the weak refs.
+    for my $wf (@weaks) { 
       my( $id, $obj ) = @$wf;
       if ( ref( $obj ) eq 'ARRAY' ) {
-        for ( grep { $weak_only_check{$_} }
-              map { Yote::ObjProvider::xform_in($_) } @$obj ) {
+        for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
           $weak_only_check{ $_ }++;
         }
       } elsif ( ref( $obj ) eq 'HASH' ) {
-        for ( grep { $weak_only_check{$_} } map { Yote::ObjProvider::xform_in($_) } values %$obj) {
+        for (  map { Yote::ObjProvider::xform_in($_) } values %$obj) {
           $weak_only_check{ $_ }++;
         }
       } else {
-        for ( grep { $weak_only_check{$_} } map { Yote::ObjProvider::xform_in($_) } values %{$obj->{DATA}} ) {
+        for ( values %{$obj->{DATA}} ) {
           $weak_only_check{ $_ }++;
         }
       }
     } #each weak
 
-    print STDERR Data::Dumper->Dump([[map { "$_->[0] : " . refcount($_->[1])." d: $Yote::ObjProvider::DIRTY->{$_->[0]} w: $Yote::ObjProvider::WEAK_REFS->{$_->[0]} woc:$weak_only_check{$_->[0]}" } @weaks],[map { $_->[1]}@weaks],$keep_store,\%weak_only_check,"WEAKS"]);
-    @weaks = ();
-
+    print STDERR Data::Dumper->Dump([[map { "$_->[0] : " . refcount($_->[1])." d: $Yote::ObjProvider::DIRTY->{$_->[0]} w: $Yote::ObjProvider::WEAK_REFS->{$_->[0]} woc:$weak_only_check{$_->[0]}" } @weaks],\%weak_only_check,"WEAKS"]);
 
     # can delete things with only references to the WEAK and DIRTY caches.
     my( @to_delete );
-    for(  reverse sort keys %weak_only_check ) {
-#      if( $weak_only_check{$_} > (refcount($Yote::ObjProvider::WEAK_REFS->{$_}) - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
-      if( $weak_only_check{$_} >= refcount($Yote::ObjProvider::WEAK_REFS->{$_}) ) {
-          push @to_delete, $_;
+    for( @weaks ) {
+        my $id = $_->[0];
+#      if( $weak_only_check{$_} > (refcount(  - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
+        print STDERR Data::Dumper->Dump(["Check $id : $weak_only_check{$id} vs ".refcount($Yote::ObjProvider::WEAK_REFS->{$id})]);
+      if( $weak_only_check{$id} >= refcount($Yote::ObjProvider::WEAK_REFS->{$id}) ) {
+          push @to_delete, $id;
           ++$count;
       }
     }
-    for( @to_delete ) {
+    for( @to_delete ) {#next if $_ == 104;
         $self->{OBJ_INDEX}->delete( $_, 1 );
         delete $Yote::ObjProvider::WEAK_REFS->{$_};
         delete $Yote::ObjProvider::DIRTY->{$_};

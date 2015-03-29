@@ -814,6 +814,7 @@ sub io_independent_tests {
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
     $el_list = $root->get_el_list();
+    print STDERR Data::Dumper->Dump(["$el_list, $o FOO"]);
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
     # hash insert and hash delete key
