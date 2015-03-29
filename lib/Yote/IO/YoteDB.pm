@@ -8,7 +8,6 @@ no warnings 'uninitialized';
 use Yote::IO::FixedStore;
 use Yote::IO::StoreManager;
 
-use Devel::FindRef;
 use WeakRef;
 use File::Path qw(make_path);
 use JSON;
