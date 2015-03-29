@@ -758,7 +758,7 @@ sub io_independent_tests {
     #
     # Make sure named list operations properly integrate with recycling/garbage collection.
     #
-    my $rc = Yote::ObjProvider::recycle_objects();exit;
+    my $rc = Yote::ObjProvider::recycle_objects();
     {
         my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
         my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );

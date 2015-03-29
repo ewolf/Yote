@@ -9,7 +9,7 @@ use Yote::IO::FixedStore;
 use Yote::IO::StoreManager;
 
 use Devel::FindRef;
-
+use WeakRef;
 use File::Path qw(make_path);
 use JSON;
 
@@ -374,7 +374,6 @@ sub _recycle_objects {
     $is_first = 1;
   }
   unless( $keep_store ) {
-    # todo ... pick randomized name as this is temporary
     $keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
       $keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
 
@@ -412,8 +411,7 @@ sub _recycle_objects {
       # weak references, then it can be removed";
       if ( ! $rec ) {
         if( $wf ) {
-          push @weaks, [ $_, $wf ];
-          $weak_only_check{ $_ } = 3; # ref in @weaks, plus iter ref
+            push @weaks, [ $_, weaken($wf) ];
         }
         else { #this case is something in the db that is not connected to the root and not loaded anywhere
           ++$count;
@@ -424,23 +422,23 @@ print STDERR Data::Dumper->Dump(["DELETER $_"]) if $_ == 104;
     }
     # check things attached to the weak refs.
     for my $wf (@weaks) { 
-      my( $id, $obj ) = @$wf;
-      if ( ref( $obj ) eq 'ARRAY' ) { 
-        for ( grep { $weak_only_check{$_} } map { Yote::ObjProvider::xform_in($_) } @$obj ) {
-            print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
-          $weak_only_check{ $_ }++;
+        my( $id, $obj ) = @$wf;
+        if ( ref( $obj ) eq 'ARRAY' ) { 
+            for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
+                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
+                $weak_only_check{ $_ }++;
+            }
+        } elsif ( ref( $obj ) eq 'HASH' ) {
+            for ( map { Yote::ObjProvider::xform_in($_) } values %$obj) {
+                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
+                $weak_only_check{ $_ }++;
+            }
+        } else {
+            for ( values %{ $obj->{DATA} } ) {
+                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
+                $weak_only_check{ $_ }++;
+            }
         }
-      } elsif ( ref( $obj ) eq 'HASH' ) {
-        for ( grep { $weak_only_check{$_} } map { Yote::ObjProvider::xform_in($_) } values %$obj) {
-            print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
-          $weak_only_check{ $_ }++;
-        }
-      } else {
-        for ( grep { $weak_only_check{$_} } values %{$obj->{DATA}} ) {
-            print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
-          $weak_only_check{ $_ }++;
-        }
-      }
     } #each weak
 
 #    print STDERR Data::Dumper->Dump([[map { "$_->[0] : " . refcount($_->[1])." d: $Yote::ObjProvider::DIRTY->{$_->[0]} w: $Yote::ObjProvider::WEAK_REFS->{$_->[0]} woc:$weak_only_check{$_->[0]}" } @weaks],\%weak_only_check,"WEAKS"]);
@@ -449,19 +447,22 @@ print STDERR Data::Dumper->Dump(["DELETER $_"]) if $_ == 104;
     my( @to_delete );
     for my $weak ( @weaks ) {
         my( $id, $obj ) = @$weak;
-        delete $Yote::ObjProvider::WEAK_REFS->{$id};
-#delete from WEAK_REFS before doing anything. might have to put it back on
-#      if( $weak_only_check{$_} > (refcount(  - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
-        print STDERR Data::Dumper->Dump(["Check $obj (found vs refcount) $id : $weak_only_check{$id} vs ".refcount($weak->[1])]);
-
-        print STDERR Devel::FindRef::track \$obj;
-
-        if( $weak_only_check{$id} >= refcount($weak->[1]) ) {
+        weaken( $obj );
+        unless( $obj ) {
             push @to_delete, $id;
             ++$count;
-        }
-        else {
-            $Yote::ObjProvider::WEAK_REFS->{$id} = $weak->[1];
+        } else {
+
+#delete from WEAK_REFS before doing anything. might have to put it back on
+#      if( $weak_only_check{$_} > (refcount(  - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
+#        print STDERR Data::Dumper->Dump(["Check $obj (found vs refcount) $id : $weak_only_check{$id} vs ".refcount($obj)]);
+
+            if( $id == 30 ) {        print STDERR Devel::FindRef::track \$obj; }
+            
+            if( $weak_only_check{$id} >= refcount($obj) ) {
+                push @to_delete, $id;
+                ++$count;
+            }
         }
     }
     for( @to_delete ) {print STDERR Data::Dumper->Dump(["DELETE $_"]) if $_ == 104;
