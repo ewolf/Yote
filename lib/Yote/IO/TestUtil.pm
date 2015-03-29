@@ -749,6 +749,7 @@ sub io_independent_tests {
 
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
     $o = new Yote::Obj( { anonymous => "guest" } );
+    print STDERR Data::Dumper->Dump([$o,"O GUEST"]);
     Yote::ObjProvider::stow_all();
 
     #set root back to root admin
@@ -757,7 +758,7 @@ sub io_independent_tests {
     #
     # Make sure named list operations properly integrate with recycling/garbage collection.
     #
-    my $rc = Yote::ObjProvider::recycle_objects();
+    my $rc = Yote::ObjProvider::recycle_objects();exit;
     {
         my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
         my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
@@ -809,12 +810,15 @@ sub io_independent_tests {
 
     $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] }, $root_acct );
 
+#miss the case where something is made, and is hanging out with a refrence somewhere out there
+#and in the WEAK_REFS hash but no where else
+
     my $el_list = $root->get_el_list();
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" }, $root_acct );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
     $el_list = $root->get_el_list();
-    print STDERR Data::Dumper->Dump(["$el_list, $o FOO"]);
+    print STDERR Data::Dumper->Dump(["$el_list, $o $el_list->[3] (".Yote::ObjProvider::get_id( $el_list->[3] ) ." ) FOO"]);
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
     # hash insert and hash delete key

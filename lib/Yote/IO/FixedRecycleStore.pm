@@ -14,6 +14,7 @@ sub new {
 
 sub delete {
     my( $self, $idx, $purge ) = @_;
+print STDERR Data::Dumper->Dump(["FIX REC DELETER $idx"]) if $idx == 104;
     $self->{RECYCLER}->push( $idx );
     if( $purge ) {
         $self->put_record( $idx, [] );

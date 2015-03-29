@@ -260,6 +260,7 @@ sub paginate {
 } #paginate
 
 sub recycle_objects {
+    Yote::ObjProvider::stow_all();
     return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
 
