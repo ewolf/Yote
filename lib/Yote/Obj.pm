@@ -65,7 +65,7 @@ sub new {
     }
 
     if( ref( $id_or_hash ) eq 'HASH' ) {
-        for my $key ( keys %$id_or_hash ) {
+        for my $key ( sort keys %$id_or_hash ) {
             $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
         }
         Yote::ObjProvider::dirty( $obj, $obj->{ID} );
@@ -111,7 +111,7 @@ sub _absorb {
     my $data = ref( $_[0] ) ? $_[0] : { @_ };
 
     my $updated_count = 0;
-    for my $fld (keys %$data) {
+    for my $fld (sort keys %$data) {
         my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
         Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
         $self->{DATA}{$fld} = $inval;
@@ -122,7 +122,7 @@ sub _absorb {
 
 # adds the items to the list attached to this object with the given name.
 sub _add_to {
-    my( $self, $listname, @data ) = @_;
+    my( $self, $listname, $data ) = @_;
     my $list_id = $self->{DATA}{$listname};
     if( $list_id ) {
         Yote::ObjManager::mark_dirty( $list_id );
@@ -132,12 +132,13 @@ sub _add_to {
         $self->$func( [] );
         $list_id = $self->{DATA}{$listname};
     }
-    for my $d (@data) {
+    for my $d (@$data) {
         Yote::ObjProvider::list_insert( $list_id, $d );
     }
-    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    # so here it is getting a list which may not have been written to the db
+    my $list = Yote::ObjProvider::fetch( $list_id );
     if( $list ) {
-        push @$list, @data;
+        push @$list, @$data;
     }
     return;
 } #_add_to
@@ -169,7 +170,7 @@ sub _insert_at {
     }
     $list_id ||= $self->{DATA}{$listname};
     Yote::ObjProvider::list_insert( $list_id, $item, $idx );
-    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    my $list = Yote::ObjProvider::fetch( $list_id );
     if( $list ) {
         if( @$list <= $idx ) {
             push @$list, $item;
@@ -236,7 +237,7 @@ sub _hash_delete {
     }
     my $ret = Yote::ObjProvider::hash_delete( $hash_id, $key );
 
-    my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
+    my $hash = Yote::ObjProvider::fetch( $hash_id );
     if( $hash ) {
         delete $hash->{ $key };
     }
@@ -252,7 +253,7 @@ sub _hash_insert {
         Yote::ObjManager::mark_dirty( $hash_id );
 
         Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
-        my $hash = $Yote::ObjProvider::DIRTY->{ $hash_id } || $Yote::ObjProvider::WEAK_REFS->{ $hash_id };
+        my $hash = Yote::ObjProvider::fetch( $hash_id );
         if( $hash ) {
             $hash->{ $key }= $val;
         }
@@ -278,7 +279,7 @@ sub _list_delete {
     return unless $list_id;
     Yote::ObjManager::mark_dirty( $list_id );
     Yote::ObjProvider::list_delete( $list_id, $idx );
-    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    my $list = Yote::ObjProvider::fetch( $list_id );
     if( $list ) {
         splice @$list, $idx, 1;
     }
@@ -308,7 +309,7 @@ sub _remove_from {
     for my $d (@data) {
         Yote::ObjProvider::remove_from( $list_id, $d );
     }
-    my $list = $Yote::ObjProvider::DIRTY->{ $list_id } || $Yote::ObjProvider::WEAK_REFS->{ $list_id };
+    my $list = Yote::ObjProvider::fetch( $list_id );
     if( $list ) {
         for( my $i=0; $i < @$list; $i++ ) {
             splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
@@ -346,7 +347,7 @@ sub _update {
     }
     else {
         # catch anything tossed in that does not start with underscore
-        for my $fld ( keys %$datahash ) {
+        for my $fld ( sort keys %$datahash ) {
             my $set = "set_$fld";
             my $get = "get_$fld";
             $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
@@ -367,7 +368,7 @@ sub add_to {
     my( $self, $args, $account ) = @_;
     die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
     my( $listname, $items ) = @$args{'name','items'};
-    return $self->_add_to( $listname, @$items );
+    return $self->_add_to( $listname, $items );
 } #add_to
 
 sub container_type {

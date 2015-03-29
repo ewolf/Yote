@@ -96,9 +96,11 @@ sub test_suite {
     my $somehash = {"preArray" => $newo};
 
     $newo->set_somehash( $somehash ); #testing for recursion
+
     $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START+5, "highest id in database $ROOT_START+5" );
     $root->get_cool_hash( { "llamapre" => ["prethis",$newo,$somehash] } );  # 2 (7 after stow all)
+    print STDERR Data::Dumper->Dump(["Newo $newo, somehash $somehash, llamapre ".$root->get_cool_hash()->{llamapre}.", cool_hash : " . $root->get_cool_hash()]);
     undef $newo;
     undef $somehash;
 

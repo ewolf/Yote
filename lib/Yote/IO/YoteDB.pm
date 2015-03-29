@@ -158,11 +158,10 @@ sub get_id {
 sub list_insert {
   my( $self, $list_id, $val, $idx ) = @_;
   my $obj = $self->fetch( $list_id ) || [ $list_id, 'ARRAY', [] ];
-
   if ( ref( $obj->[DATA] ) ne 'ARRAY' ) {
     $obj->[DATA]{ $idx } = $val;
   } else {
-    if ( defined $idx && $idx < @{$obj->[DATA]} ) {
+    if ( defined( $idx ) && $idx < @{$obj->[DATA]} ) {
       splice @{$obj->[DATA]}, $idx, 0, $val;
     } else {
       push @{$obj->[DATA]}, $val;
@@ -437,18 +436,24 @@ sub _recycle_objects {
         }
       }
     } #each weak
+
+    print STDERR Data::Dumper->Dump([[map { "$_->[0] : " . refcount($_->[1])." d: $Yote::ObjProvider::DIRTY->{$_->[0]} w: $Yote::ObjProvider::WEAK_REFS->{$_->[0]} woc:$weak_only_check{$_->[0]}" } @weaks],[map { $_->[1]}@weaks],$keep_store,\%weak_only_check,"WEAKS"]);
     @weaks = ();
+
 
     # can delete things with only references to the WEAK and DIRTY caches.
     my( @to_delete );
-    for( keys %weak_only_check ) {
-      if( $weak_only_check{$_} >= (refcount($Yote::ObjProvider::WEAK_REFS->{$_}) - ( $Yote::ObjProvider::DIRTY->{$_} ? 1 : 0 ) )) {
+    for(  reverse sort keys %weak_only_check ) {
+#      if( $weak_only_check{$_} > (refcount($Yote::ObjProvider::WEAK_REFS->{$_}) - ( ref($Yote::ObjProvider::DIRTY->{$_}) ? 1 : 0 ) )) {
+      if( $weak_only_check{$_} >= refcount($Yote::ObjProvider::WEAK_REFS->{$_}) ) {
           push @to_delete, $_;
           ++$count;
       }
     }
     for( @to_delete ) {
         $self->{OBJ_INDEX}->delete( $_, 1 );
+        delete $Yote::ObjProvider::WEAK_REFS->{$_};
+        delete $Yote::ObjProvider::DIRTY->{$_};
     }
 
     # remove recycle datastore

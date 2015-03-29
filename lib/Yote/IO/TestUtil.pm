@@ -761,8 +761,8 @@ sub io_independent_tests {
     {
         my $o2a = new Yote::Obj( { name => "Test for list add to w/ recycling" } );
         my $o2b = new Yote::Obj( { name => "An other Test for list add to w/ recycling" } );
-        $root->_add_to( 'o_list', $o2a );
-        $root->_add_to( 'o_list', $o2b );
+        $root->_add_to( 'o_list', [$o2a] );
+        $root->_add_to( 'o_list', [$o2b] );
         Yote::ObjProvider::stow_all();
         is( $root->_container_type( 'o_list' ), 'ARRAY', 'container type detect list' );
         my $objs = Yote::ObjProvider::recycle_objects();
@@ -776,6 +776,7 @@ sub io_independent_tests {
 
     $root->set_o_list( undef );
     Yote::ObjProvider::stow_all();	
+    print STDERR Data::Dumper->Dump([Yote::ObjProvider::fetch(52),Yote::ObjProvider::fetch(38),'o']);
     is( Yote::ObjProvider::recycle_objects(), 1, "one recycled list obj" );
     is( $root->_container_type( 'o_list' ), '', 'container type detect no class once list removed' );
 
@@ -812,9 +813,7 @@ sub io_independent_tests {
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" }, $root_acct );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
-
     $el_list = $root->get_el_list();
-
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
     # hash insert and hash delete key
@@ -915,7 +914,7 @@ sub io_independent_tests {
 
     my $mylist = $widget->set_mylist( [] );
     Yote::ObjManager::register_object( $widget->{DATA}{mylist}, $login->{ID} );
-    $widget->_add_to( 'mylist', "A", 2, "Gamma" );
+    $widget->_add_to( 'mylist', ["A", 2, "Gamma"] );
     
     compare_sets( Yote::ObjManager::fetch_dirty( $login ), [ $widget->{ID}, $widget->{DATA}{mylist} ], "_add_to makes dirty" );
     compare_sets( Yote::ObjManager::fetch_dirty( $login ), [  ], "dirty now cleaned" );
@@ -1278,7 +1277,7 @@ sub io_independent_tests {
     # one of the logins has no email : the master root
     is( $yote_root->_count( { name =>  '_emails' } ), 3, "starting emails count" );
     is( scalar keys %$root_emails, 3, "stsarting emails" );
-    if(1) {  #make this false to speed up tests
+    if(0) {  #make this false to speed up tests
         for( 1..1010 ) {
             $root_handles->{ "BAD_HANDLE_$_" } = "DELME";
             $root_emails->{ "BAD_HANDLE_$_" } = "DELME";

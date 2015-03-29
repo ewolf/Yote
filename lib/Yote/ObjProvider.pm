@@ -253,7 +253,7 @@ sub paginate {
     if( $args->{ return_hash } ) {
         return {} unless $obj_id;
         my $res = $DATASTORE->paginate( $obj_id, $args );
-        return { map { $_ => xform_out( $res->{$_} ) } keys %$res };
+        return { map { $_ => xform_out( $res->{$_} ) } sort keys %$res };
     }
     return [] unless $obj_id;
     return [ map { xform_out( $_ ) } @{ $DATASTORE->paginate( $obj_id, $args ) } ];
@@ -291,7 +291,7 @@ sub stow {
             __clean( $id );
         }
         for my $child (@$data) {
-            if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+            if( $child =~ /^[0-9]/ && $Yote::ObjProvider::DIRTY->{$child} ) {
                 stow( $Yote::ObjProvider::DIRTY->{$child} );
             }
         }
@@ -302,7 +302,7 @@ sub stow {
         }
         __clean( $id );
         for my $child (values %$data) {
-            if( $child > 0 && $Yote::ObjProvider::DIRTY->{$child} ) {
+            if( $child =~ /^[0-9]/ && $Yote::ObjProvider::DIRTY->{$child} ) {
                 stow( $Yote::ObjProvider::DIRTY->{$child} );
             }
         }
@@ -313,7 +313,7 @@ sub stow {
             __clean( $id );
         }
         for my $val (values %$data) {
-            if( $val > 0 && $Yote::ObjProvider::DIRTY->{$val} ) {
+            if( $val =~ /^[0-9]/ && $Yote::ObjProvider::DIRTY->{$val} ) {
                 stow( $Yote::ObjProvider::DIRTY->{$val} );
             }
         }
