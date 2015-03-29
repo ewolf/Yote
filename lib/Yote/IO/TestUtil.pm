@@ -14,6 +14,7 @@ use Yote::RootObj;
 use Yote::UserObj;
 
 use Aspect;
+use Devel::Refcount 'refcount';
 
 #
 # To make the tests go faster and avoid having to use sleep for timing
@@ -749,7 +750,7 @@ sub io_independent_tests {
 
     # test add_to, count, delete_key, hash, insert_at, list_fetch, remove_from
     $o = new Yote::Obj( { anonymous => "guest" } );
-    print STDERR Data::Dumper->Dump([$o,"O GUEST"]);
+
     Yote::ObjProvider::stow_all();
 
     #set root back to root admin
@@ -777,7 +778,7 @@ sub io_independent_tests {
 
     $root->set_o_list( undef );
     Yote::ObjProvider::stow_all();	
-    print STDERR Data::Dumper->Dump([Yote::ObjProvider::fetch(52),Yote::ObjProvider::fetch(38),'o']);
+
     is( Yote::ObjProvider::recycle_objects(), 1, "one recycled list obj" );
     is( $root->_container_type( 'o_list' ), '', 'container type detect no class once list removed' );
 
@@ -790,9 +791,15 @@ sub io_independent_tests {
         is( $root->_container_type( 'o_hash' ), 'HASH', 'container type detect hash' );
         my $objs = Yote::ObjProvider::recycle_objects();
         is( $objs, 0, 'hash(  not recycled' );
+
+        my $o_hash = $root->get_o_hash();
+
         $root->_hash_delete( 'o_hash', "KEYA" );
         $root->_hash_delete( 'o_hash', "KEYB" );
-        Yote::ObjProvider::stow_all();	
+
+        is( scalar( keys( %$o_hash ) ), 0, "nothing in o_hash after deletion" );
+        is( scalar( keys( %{$root->get_o_hash()} ) ), 0, "nothing in get_o_hash after deletion" );
+        undef $o2a; undef $o2b;
     }
     $objs = Yote::ObjProvider::recycle_objects();
     is( $objs, 2, 'hash delete is recycled' );
@@ -810,15 +817,34 @@ sub io_independent_tests {
 
     $root->add_to( { name => 'el_list', items => [ "A", "B", $o ] }, $root_acct );
 
-#miss the case where something is made, and is hanging out with a refrence somewhere out there
-#and in the WEAK_REFS hash but no where else
+    {
+        Yote::ObjProvider::recycle_objects();
+        my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling redux" } );
+        my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling redux" } );
+        $root->_add_to( 'o_list_addy', [$o2a] );
+        $root->_add_to( 'o_list_addy', [$o2b] );
+        Yote::ObjProvider::stow_all();
+        is( $root->_container_type( 'o_list_addy' ), 'ARRAY', 'container type detect list' );
+        my $objs = Yote::ObjProvider::recycle_objects();
+        is( $objs, 0, 'list(  not recycled' );
+
+        my $o_list = $root->get_o_list_addy();
+
+        $root->_list_delete( 'o_list_addy', 1 );
+        $root->_list_delete( 'o_list_addy', 0 );
+
+        is( scalar( @$o_list ), 0, "nothing in o_list_addy after deletions" );
+        is( scalar( @{$root->get_o_list_addy()} ), 0, "nothing in get_o_list_addy after deletion" );
+        undef $o2a; undef $o2b;
+    }
+    $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 2, 'o list addy is recycled' );
 
     my $el_list = $root->get_el_list();
     $root->insert_at( { name => 'el_list', index => 0, item => "MrZERO" }, $root_acct );
     $root->insert_at( { name => 'el_list', index => 110, item => "MrEND" }, $root_acct );
     $root->add_to( { name => 'el_list', items => [ 'EVEN FURTHER' ] }, $root_acct );
     $el_list = $root->get_el_list();
-    print STDERR Data::Dumper->Dump(["$el_list, $o $el_list->[3] (".Yote::ObjProvider::get_id( $el_list->[3] ) ." ) FOO"]);
     is_deeply( $el_list, [ "MrZERO", "A", "B", $o, "MrEND", "EVEN FURTHER" ], "Add to and Insert At working" );
 
     # hash insert and hash delete key

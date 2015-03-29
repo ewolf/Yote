@@ -383,6 +383,7 @@ sub _recycle_objects {
       $keep_store->put_record( $_, [ 1 ] );
     }
   }
+
   my( $has ) = @{ $keep_store->get_record( $keep_id ) };
   return if $has;
 
@@ -415,7 +416,6 @@ sub _recycle_objects {
         }
         else { #this case is something in the db that is not connected to the root and not loaded anywhere
           ++$count;
-print STDERR Data::Dumper->Dump(["DELETER $_"]) if $_ == 104;
           $self->{OBJ_INDEX}->delete( $_, 1 );
         }
       }
@@ -425,17 +425,14 @@ print STDERR Data::Dumper->Dump(["DELETER $_"]) if $_ == 104;
         my( $id, $obj ) = @$wf;
         if ( ref( $obj ) eq 'ARRAY' ) { 
             for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
-                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
                 $weak_only_check{ $_ }++;
             }
         } elsif ( ref( $obj ) eq 'HASH' ) {
             for ( map { Yote::ObjProvider::xform_in($_) } values %$obj) {
-                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
                 $weak_only_check{ $_ }++;
             }
         } else {
             for ( values %{ $obj->{DATA} } ) {
-                print STDERR Data::Dumper->Dump(["ref $obj --> $_"]);
                 $weak_only_check{ $_ }++;
             }
         }
