@@ -1,3 +1,8 @@
+2015-04-07 Eric Wolf  <wolf@Talisman>
+	* Version 0.307
+	* Yote now has its own backend for the object store. Pure perl solution. No longer supports mysql or mongo for simplicity.
+	* fixed bug in templates : the body was not being parsed correctly for templates. Still have to test this on browsers other than chrome and firefox
+	
 2014-03-06  Eric Wolf  <wolf@Talisman>
 
 	* Version 0.2

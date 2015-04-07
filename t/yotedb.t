@@ -14,7 +14,6 @@ use Yote::IO::TestUtil;
 
 use Data::Dumper;
 use Devel::Refcount qw(refcount);
-use Devel::FindRef;
 use File::Temp qw/ :mktemp tempdir /;
 use File::Spec::Functions qw( catdir updir );
 use Test::More;

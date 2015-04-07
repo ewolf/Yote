@@ -16,11 +16,11 @@ use Devel::Refcount 'refcount';
 
 use constant {
   ID => 0,
-    CLASS => 1,
-      DATA => 2,
-        RAW_DATA => 2,
-          MAX_LENGTH => 1025,
-        };
+  CLASS => 1,
+  DATA => 2,
+  RAW_DATA => 2,
+  MAX_LENGTH => 1025,
+};
 
 #
 # This the main index and stores in which table and position
@@ -29,7 +29,7 @@ use constant {
 sub new {
   my( $pkg, $args ) = @_;
   my $class = ref( $pkg ) || $pkg;
-  make_path( $args->{ store } ) unless -d $args->{ store };
+  make_path( $args->{ store } );
   my $filename = "$args->{ store }/OBJ_INDEX";
   # LII template is a long ( for object id, then the table id, then the index in that table
   return bless {

@@ -797,7 +797,9 @@ if(recurse<9&&template_txt.indexOf('<?')>-1){var parts=$.yote.templates._templat
 catch(err){console.log("Error compiling after render function in template '"+template_name+"' : '"+err+"' for funtion '"+parts[1]+"'");}
 return A;}
 if(typeof template_txt==='string')
-return[[7,template_txt]];return[];},init:function(){$('.yote_template_definition').each(function(){$.yote.templates.register_template($(this).attr('template_name'),$(this).text());});$.yote.templates.register_template('__BODY__',$('body').text());},refresh:function(){$('.yote_template').each(function(){var $el=$(this);var templ_name=$el.attr('template');if(!$.yote.templates._compiled_templates[templ_name]){console.log("Error : template '"+templ_name+"' not found");return;}
+return[[7,template_txt]];return[];},init:function(){$('.yote_template_definition').each(function(){$.yote.templates.register_template($(this).attr('template_name'),$(this).text());});var html=$('body').html();function dissemble(txt){var matches=txt.match(/([\s\S]*?)&lt;\$\$([\s\S]*?)\$\$&gt;([\s\S]*)/m);if(matches){return matches[1]+'<$$'+matches[2]+'$$>'+dissemble(matches[3]);}
+return txt;}
+$.yote.templates.register_template('__BODY__',dissemble($('body').html()));},refresh:function(){$('.yote_template').each(function(){var $el=$(this);var templ_name=$el.attr('template');if(!$.yote.templates._compiled_templates[templ_name]){console.log("Error : template '"+templ_name+"' not found");return;}
 try{$el.empty().append($.yote.templates.fill_template(templ_name));}catch(Err){console.log("Error filling template '"+templ_name+'" : '+Err);}});var $el=$('body');var templ_name='__BODY__';if(!$.yote.templates._compiled_templates[templ_name]){console.log("Error : template '"+templ_name+"' not found");return;}
 var initial=$el.html();try{var filled=$.yote.templates.fill_template(templ_name);$el.empty().append(filled);}catch(Err){$el.empty().append(initial);console.log("Error filling template '"+templ_name+'" : '+Err);}
 for(var i=0,len=$.yote.templates._after_render_functions.length;i<len;i++){$.yote.templates._after_render_functions[i]();}

@@ -11315,7 +11315,15 @@ $.yote.templates = {
 	    $( '.yote_template_definition' ).each( function() {
 	        $.yote.templates.register_template( $( this ).attr( 'template_name' ), $( this ).text() );
 	    } );
-	    $.yote.templates.register_template( '__BODY__', $( 'body' ).text() );
+        var html = $( 'body' ).html();
+        function dissemble( txt ) {
+            var matches = txt.match( /([\s\S]*?)&lt;\$\$([\s\S]*?)\$\$&gt;([\s\S]*)/m );
+            if( matches ) {
+                return matches[1] + '<$$' + matches[2] + '$$>' + dissemble( matches[3] );
+            }
+            return txt;
+        }
+	    $.yote.templates.register_template( '__BODY__', dissemble( $( 'body' ).html() ) );
     }, //init
 
     // rebuild the UI, refreshing all templates
