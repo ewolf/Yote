@@ -10,7 +10,14 @@
  .hide { display:none }
 </style>
 
-<script src="/yote/JS"></script>
+<script src="/yote/js/jquery-2.1.0.js"></script>
+<script src="/yote/js/jquery.base64.min.js"></script>
+<script src="/yote/js/jquery.cookie.js"></script>
+<script src="/yote/js/json2.js"></script>
+<script src="/yote/js/yote.js"></script>
+<script src="/yote/js/yote.templates.js"></script>
+<script src="/yote/js/yote.util.js"></script>
+
 
 <script>
     <!--
@@ -101,7 +108,7 @@ $().ready(function(){
     function do_tests() {
         // init yote
         $.yote.templates.debug = false;
-	    $.yote.init('Yote::Test::Template');
+	$.yote.init('Yote::Test::Template');
         $.yote.logout();
         $.yote.reinit();
 
@@ -262,13 +269,13 @@ $().ready(function(){
 
 <body>
   <h1>Yote Template Tests</h1>
-  <div  id="comments" class="yote_template hide" template="Comments"></div>
-  <div  id="after_render" class="yote_template hide" template="AfterRender"></div>
+  <div id="comments" class="hide"><$$ Comments $$></div>
+  <div id="after_render" class="hide"><$$ AfterRender $$></div>
 
-  <div  id="eddy" class="yote_template" template="Ed"></div>
+  <div id="eddy"><$$ Ed $$></div>
   <div id="tests"></div>
   <div id="results"></div>
 
-  <div  id="after_render" class="yote_template" template="SelTest"></div>
+  <div id="after_render"><$$ SelTest $$></div>
 </body>
 </html>

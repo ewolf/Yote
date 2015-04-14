@@ -568,6 +568,8 @@ sub _fetch {
   my( $self, $id ) = @_;
 
   my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+
+
   return undef unless $store_id;
 
   my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };

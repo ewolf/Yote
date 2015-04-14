@@ -35,214 +35,215 @@
     }
     </style>
 
-    <script src="./yote/js/jquery-2.1.0.js"></script>
-    <script src="./yote/js/yote.templates.js"></script>
-    <script src="./yote/js/yote.util.js"></script>
-    <script src="./yote/js/json2.js"></script>
+    <script src="/yote/js/jquery-2.1.0.js"></script>
+    <script src="/yote/js/yote.templates.js"></script>
+    <script src="/yote/js/yote.util.js"></script>
+    <script src="/yote/js/json2.js"></script>
 
 
     <script>
-       window.sample_sets = {
-           hello : [
-               { name : "hello", //first template must have same name as set
-                 body :
-                 'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' +
-	             '<br>\n' +
-	             '<$$$ go <button type="button"> $$$> click me </button>\n' +
-	             '<? \n' +
-                 '  $( ctx.controls.name ).val( ctx.scratch.name || "" ); //last set value\n' + 
-                 '  $( ctx.controls.go ).click( function() { \n' +
-                 '         ctx.scratch.name = $( ctx.controls.name ).val() || "unknown person";\n' + 
-	             '         alert( "Hello " + ctx.scratch.name );\n' +
-	             '      } );\n' +
-                 '?>'
-               }
-           ],
-           rolodex : [
-               { name  : "rolodex", //first template must have same name as set
-                 notes : 'master template',
-                 body  :
-                 '<#\n' +
-                 '    This is a simple rolodex that uses local storage for persistance.\n' +
-                 '    this means the data you enter will be available on the same browser on reload.\n' +
-                 '#>\n' +
-                 '<??? // run first in template created\n' +
-                 '    // fetch data from local storage or crete if none exists\n' +  
-                 '    var rolo_data_raw = localStorage.getItem( "rolodex" );\n' +  
-                 '    var rolodex;\n' +  
-                 '    if( rolo_data_raw ) {\n' +  
-                 '        rolodex = { data : JSON.parse( rolo_data_raw ) };\n' +  
-                 '    } else {\n' +  
-                 '        rolodex = { data : [] };\n' +  
-                 '    }\n' +  
-                 '    rolodex.save = function() {\n' +  
-                 '        localStorage.setItem( "rolodex", JSON.stringify( this.data ) );\n' +  
-                 '    }\n' +  
-                 '    rolodex.remove_entry = function( idx ) {\n' +  
-                 '        this.data.splice( idx, 1 );\n' +  
-                 '        this.init();\n' +  
-                 '        this.save();\n' +  
-                 '    }\n' +  
-                 '    rolodex.add_entry = function( entry ) {\n' +  
-                 '        // entry should have name, email, phone\n' +  
-                 '        entry.id = this.lastidx;\n' +  
-                 '        this.lastidx++;\n' +  
-                 '        if( ! entry.name ) entry.name = "";\n' +  
-                 '        if( ! entry.phone ) entry.phone = "";\n' +  
-                 '        if( ! entry.email ) entry.email = "";\n' +  
-                 '        this.data.push( entry );\n' +  
-                 '        this.names[ entry.name ]  = entry;\n' +  
-                 '        this.phones[ entry.phone ] = entry;\n' +  
-                 '        this.emails[ entry.email ] = entry;\n' +  
-                 '        this.save();\n' +  
-                 '    }\n' +  
-                 '    rolodex.init = function() {\n' +  
-                 '        var names  = {};\n' +  
-                 '        var phones = {};\n' +  
-                 '        var emails = {};\n' +  
-                 '        this.lastidx = this.data.length\n' +  
-                 '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
-                 '            var node = this.data[ i ];\n' +  
-                 '            node.id = i;\n' +  
-                 '            names[ node.name ] = node;\n' +  
-                 '            phones[ node.phone ] = node;\n' +  
-                 '            emails[ node.phone ] = node;\n' +  
-                 '        }\n' +  
-                 '        this.names  = names;\n' +  
-                 '        this.phones = phones;\n' +  
-                 '        this.emails = emails;\n' +  
-                 '    };\n' +  
-                 '    rolodex.search = function( str ) {\n' +  
-                 '        if( ! str || str.trim().length == 0 ) return this.data;\n' +  
-                 '        str = str.toLowerCase();\n' +  
-                 '        var res = []\n' +  
-                 '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
-                 '            var node = this.data[ i ];\n' +  
-                 '            if( node.name.toLowerCase().indexOf( str ) >= 0 || node.phone.toLowerCase().indexOf( str ) >= 0 || node.email.toLowerCase().indexOf( str ) >= 0 ) {\n' +  
-                 '                res.push( node );\n' +  
-                 '            }\n' +  
-                 '        }\n' +  
-                 '        return res;\n' +  
-                 '    }\n' +  
-                 '    window.rolodex = rolodex;\n' +  
-                 '\n' +  
-                 '    rolodex.init();\n' +  
-                 '    ctx.vars.rolodex = window.rolodex;\n' +
-                 '    ctx.vars.entry_count = rolodex.data.length;\n' +
-                 '???>\n' +
-                 '<div class="box">\n' +
-                 '  Check out this rolodex. It has <$ entry_count $> entries.\n' +
-                 '</div>\n' +
-                 '<??  //only show the table if there are entries\n' +
-                 '   return ctx.vars.entry_count > 0 ? "<br><$$ PaginateEntries $$><br><$$ LookupEntry $$>" : "";\n' +
-                 '??>\n' +
-                 '<br>\n' +
-                 '<$$ AddEntry $$>'
-               },
-               { name : "PaginateEntries",
-                 body :
-                 '<???\n' +
-                 '      ctx.vars.entries = rolodex.search( ctx.scratch.search );\n' +
-                 '???>\n' +
-                 '<div class="box">\n' +
-                 '  <?? return ctx.scratch.search ? "searching for <b>" + ctx.scratch.search + "</b><br>" : "" ??>\n' +
-                 '  <table>\n' +
-                 '   <tr> <th> Name </th>  <th> Email </th>  <th> Phone </th> <th> Delete </th> </tr>\n' +
-                 '   <$$ ListPaginate EntryRow entries@@ 4 $$>\n' +
-                 '  </table>\n' +
-                 '</div>\n' +
-                 '<br>\n' +
-                 '<$$ Paginator entries@@ $$>\n'
-               },
-               { name : "EntryRow",
-                 body :
-                 '<tr> <td> <$ _.name $> </td> <td> <$ _.email $> </td> <td> <$ _.phone $> </td> <td> <$$$ del <a href="#">$$$>delete</a> </td> </tr>\n' +
-                 '<?  //remove the entry after a confirm\n' +
-                 '   $( ctx.controls.del ).click( function() {\n' +
-                 '       if( confirm( "remove this entry?" ) ) {\n' +
-                 '          rolodex.remove_entry( ctx.vars._index_ );\n' +
-                 '          ctx.refresh();\n' +
-                 '       }\n' +
-                 '    } );\n' +
-                 '?>\n'
-               },
-               { name : 'LookupEntry',
-                 body :
-                 '<div class="box">\n' +
-                 '  <h3>Search</h3> for entries\n' +
-                 '  <??? return ' + "'" + '<$$$ search <input placeholder="search" type="text" value="' + "'" + ' + \n' +
-                 '        (ctx.scratch.search ? ctx.scratch.search : "" ) +  ' + "'" + '">$$$>' + "'" + '; ???>\n' +
-                 '     <$$$ go <button type="button">search</button> $$$>\n' +
-                 '</div> <br>\n' +
-                 '<?\n' +
-                 '    $.yote.util.button_actions( {\n' +
-                 '        button : ctx.controls.go,\n' +
-                 '        texts  : [ ctx.controls.search ],\n' +
-                 '        action : function() {\n' +
-                 '            ctx.scratch.search = $( ctx.controls.search ).val();\n' +
-                 '            ctx.refresh();\n' +
-                 '        }\n' +
-                 '    } );\n' +
-                 ' ?>\n'
-               },
-               { name : 'AddEntry',
-                 body :
-                 '<div class="box">\n' +
-                 '  <h3>New Entry</h3>\n' +
-                 '  Name <$$$ name <input type="text"> $$$> <BR>\n' +
-                 '  Phone <$$$ phone <input type="text"> $$$> <BR>\n' +
-                 '  Email <$$$ email <input type="text"> $$$> <BR>\n' +
-                 '  <$$$ add <button type="button"> $$$>Add</button>\n' +
-                 '</div>\n' +
-                 '<? // run after template is rendered\n' +
-                 '    $.yote.util.button_actions( {\n' +
-                 '        button : ctx.controls.add,\n' +
-                 '        texts  : [ ctx.controls.name, ctx.controls.phone, ctx.controls.email ],\n' +
-                 '        action : function() {\n' +
-                 '            rolodex.add_entry( {\n' +
-                 '                name : $( ctx.controls.name ).val(),\n' +
-                 '                phone : $( ctx.controls.phone ).val(),\n' +
-                 '                email : $( ctx.controls.email ).val()\n' +
-                 '            } );\n' +
-                 '            ctx.refresh();\n' +
-                 '        }\n' +
-                 '    } );\n' +
-                 '?>\n'
-               }
-           ],
-           blank : [ { name : 'start', body : '', notes : 'write your own here' } ]
-       };
-       $().ready(function(){
-           $.yote.templates.import_templates( "/templates/default_templates.html" );
+    window.sample_sets = {
+        hello : [
+            { name : "hello", //first template must have same name as set
+              body :
+              'To whom am I speaking ? <$$$ name <input type="text" placeholder="your name"> $$$>\n' +
+	      '<br>\n' +
+	      '<$$$ go <button type="button"> $$$> click me </button>\n' +
+	      '<? \n' +
+              '  $( ctx.controls.name ).val( ctx.scratch.name || "" ); //last set value\n' + 
+              '  $( ctx.controls.go ).click( function() { \n' +
+              '         ctx.scratch.name = $( ctx.controls.name ).val() || "unknown person";\n' + 
+	      '         alert( "Hello " + ctx.scratch.name );\n' +
+	      '      } );\n' +
+              '?>'
+            }
+        ],
+        rolodex : [
+            { name  : "rolodex", //first template must have same name as set
+              notes : 'master template',
+              body  :
+              '<#\n' +
+              '    This is a simple rolodex that uses local storage for persistance.\n' +
+              '    this means the data you enter will be available on the same browser on reload.\n' +
+              '#>\n' +
+              '<??? // run first in template created\n' +
+              '    // fetch data from local storage or crete if none exists\n' +  
+              '    var rolo_data_raw = localStorage.getItem( "rolodex" );\n' +  
+              '    var rolodex;\n' +  
+              '    if( rolo_data_raw ) {\n' +  
+              '        rolodex = { data : JSON.parse( rolo_data_raw ) };\n' +  
+              '    } else {\n' +  
+              '        rolodex = { data : [] };\n' +  
+              '    }\n' +  
+              '    rolodex.save = function() {\n' +  
+              '        localStorage.setItem( "rolodex", JSON.stringify( this.data ) );\n' +  
+              '    }\n' +  
+              '    rolodex.remove_entry = function( idx ) {\n' +  
+              '        this.data.splice( idx, 1 );\n' +  
+              '        this.init();\n' +  
+              '        this.save();\n' +  
+              '    }\n' +  
+              '    rolodex.add_entry = function( entry ) {\n' +  
+              '        // entry should have name, email, phone\n' +  
+              '        entry.id = this.lastidx;\n' +  
+              '        this.lastidx++;\n' +  
+              '        if( ! entry.name ) entry.name = "";\n' +  
+              '        if( ! entry.phone ) entry.phone = "";\n' +  
+              '        if( ! entry.email ) entry.email = "";\n' +  
+              '        this.data.push( entry );\n' +  
+              '        this.names[ entry.name ]  = entry;\n' +  
+              '        this.phones[ entry.phone ] = entry;\n' +  
+              '        this.emails[ entry.email ] = entry;\n' +  
+              '        this.save();\n' +  
+              '    }\n' +  
+              '    rolodex.init = function() {\n' +  
+              '        var names  = {};\n' +  
+              '        var phones = {};\n' +  
+              '        var emails = {};\n' +  
+              '        this.lastidx = this.data.length\n' +  
+              '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
+              '            var node = this.data[ i ];\n' +  
+              '            node.id = i;\n' +  
+              '            names[ node.name ] = node;\n' +  
+              '            phones[ node.phone ] = node;\n' +  
+              '            emails[ node.phone ] = node;\n' +  
+              '        }\n' +  
+              '        this.names  = names;\n' +  
+              '        this.phones = phones;\n' +  
+              '        this.emails = emails;\n' +  
+              '    };\n' +  
+              '    rolodex.search = function( str ) {\n' +  
+              '        if( ! str || str.trim().length == 0 ) return this.data;\n' +  
+              '        str = str.toLowerCase();\n' +  
+              '        var res = []\n' +  
+              '        for( var i=0, len = this.data.length; i < len ; i++ ) {\n' +  
+              '            var node = this.data[ i ];\n' +  
+              '            if( node.name.toLowerCase().indexOf( str ) >= 0 || node.phone.toLowerCase().indexOf( str ) >= 0 || node.email.toLowerCase().indexOf( str ) >= 0 ) {\n' +  
+              '                res.push( node );\n' +  
+              '            }\n' +  
+              '        }\n' +  
+              '        return res;\n' +  
+              '    }\n' +  
+              '    window.rolodex = rolodex;\n' +  
+              '\n' +  
+              '    rolodex.init();\n' +  
+              '    ctx.vars.rolodex = window.rolodex;\n' +
+              '    ctx.vars.entry_count = rolodex.data.length;\n' +
+              '???>\n' +
+              '<div class="box">\n' +
+              '  Check out this rolodex. It has <$ entry_count $> entries.\n' +
+              '</div>\n' +
+              '<??  //only show the table if there are entries\n' +
+              '   return ctx.vars.entry_count > 0 ? "<br><$$ PaginateEntries $$><br><$$ LookupEntry $$>" : "";\n' +
+              '??>\n' +
+              '<br>\n' +
+              '<$$ AddEntry $$>'
+            },
+            { name : "PaginateEntries",
+              body :
+              '<???\n' +
+              '      ctx.vars.entries = rolodex.search( ctx.scratch.search );\n' +
+              '???>\n' +
+              '<div class="box">\n' +
+              '  <?? return ctx.scratch.search ? "searching for <b>" + ctx.scratch.search + "</b><br>" : "" ??>\n' +
+              '  <table>\n' +
+              '   <tr> <th> Name </th>  <th> Email </th>  <th> Phone </th> <th> Delete </th> </tr>\n' +
+              '   <$$ ListPaginate EntryRow entries@@ 4 $$>\n' +
+              '  </table>\n' +
+              '</div>\n' +
+              '<br>\n' +
+              '<$$ Paginator entries@@ $$>\n'
+            },
+            { name : "EntryRow",
+              body :
+              '<tr> <td> <$ _.name $> </td> <td> <$ _.email $> </td> <td> <$ _.phone $> </td> <td> <$$$ del <a href="#">$$$>delete</a> </td> </tr>\n' +
+              '<?  //remove the entry after a confirm\n' +
+              '   $( ctx.controls.del ).click( function() {\n' +
+              '       if( confirm( "remove this entry?" ) ) {\n' +
+              '          rolodex.remove_entry( ctx.vars._index_ );\n' +
+              '          ctx.refresh();\n' +
+              '       }\n' +
+              '    } );\n' +
+              '?>\n'
+            },
+            { name : 'LookupEntry',
+              body :
+              '<div class="box">\n' +
+              '  <h3>Search</h3> for entries\n' +
+              '  <??? return ' + "'" + '<$$$ search <input placeholder="search" type="text" value="' + "'" + ' + \n' +
+              '        (ctx.scratch.search ? ctx.scratch.search : "" ) +  ' + "'" + '">$$$>' + "'" + '; ???>\n' +
+              '     <$$$ go <button type="button">search</button> $$$>\n' +
+              '</div> <br>\n' +
+              '<?\n' +
+              '    $.yote.util.button_actions( {\n' +
+              '        button : ctx.controls.go,\n' +
+              '        texts  : [ ctx.controls.search ],\n' +
+              '        action : function() {\n' +
+              '            ctx.scratch.search = $( ctx.controls.search ).val();\n' +
+              '            ctx.refresh();\n' +
+              '        }\n' +
+              '    } );\n' +
+              ' ?>\n'
+            },
+            { name : 'AddEntry',
+              body :
+              '<div class="box">\n' +
+              '  <h3>New Entry</h3>\n' +
+              '  Name <$$$ name <input type="text"> $$$> <BR>\n' +
+              '  Phone <$$$ phone <input type="text"> $$$> <BR>\n' +
+              '  Email <$$$ email <input type="text"> $$$> <BR>\n' +
+              '  <$$$ add <button type="button"> $$$>Add</button>\n' +
+              '</div>\n' +
+              '<? // run after template is rendered\n' +
+              '    $.yote.util.button_actions( {\n' +
+              '        button : ctx.controls.add,\n' +
+              '        texts  : [ ctx.controls.name, ctx.controls.phone, ctx.controls.email ],\n' +
+              '        action : function() {\n' +
+              '            rolodex.add_entry( {\n' +
+              '                name : $( ctx.controls.name ).val(),\n' +
+              '                phone : $( ctx.controls.phone ).val(),\n' +
+              '                email : $( ctx.controls.email ).val()\n' +
+              '            } );\n' +
+              '            ctx.refresh();\n' +
+              '        }\n' +
+              '    } );\n' +
+              '?>\n'
+            }
+        ],
+        blank : [ { name : 'start', body : '', notes : 'write your own here' } ]
+    };
 
-           window.sets = JSON.parse( localStorage.getItem( 'template_sets' ) || '""' ) || window.sample_sets;
-           var show_set = localStorage.getItem( 'cur_set' ) || 'hello';
-           var show_template = $( '#results_tmp' ).html() || window.sample_sets[ show_set ][ 0 ].name;
+$().ready(function(){
+    $.yote.templates.import_templates( "/templates/default_templates.html" );
 
-           function reg( tmpl ) { 
-               try {
-                   $.yote.templates.register_template( tmpl.name, tmpl.body );
-               } catch( err ) {
-                   console.log( err );
-                   tmpl.err = err.message;
-                   $.yote.templates.unregister_template( tmpl.name );
-                   localStorage.setItem( 'template_sets', JSON.stringify( sets ) );
-               }
-           }
-           for( sname in sets ) {
-               var set = sets[ sname ];
-               for( var i=0, len=set.length; i<len; i++  ) {
-                   reg( set[i] );
-               }
-           }
+    window.sets = JSON.parse( localStorage.getItem( 'template_sets' ) || '""' ) || window.sample_sets;
+    var show_set = localStorage.getItem( 'cur_set' ) || 'hello';
+    var show_template = $( '#results_tmp' ).html() || window.sample_sets[ show_set ][ 0 ].name;
 
-           
-           $( '#results' ).html( '<h3>The results of template "' + show_template + '"</h3><div class="box">' +
-                                 '<div id="comments" class="yote_template" template="' + show_template + '"></div>' );
+    function reg( tmpl ) { 
+        try {
+            $.yote.templates.register_template( tmpl.name, tmpl.body );
+        } catch( err ) {
+            console.log( err );
+            tmpl.err = err.message;
+            $.yote.templates.unregister_template( tmpl.name );
+            localStorage.setItem( 'template_sets', JSON.stringify( sets ) );
+        }
+    }
+    for( sname in sets ) {
+        var set = sets[ sname ];
+        for( var i=0, len=set.length; i<len; i++  ) {
+            reg( set[i] );
+        }
+    }
 
-           $.yote.templates.init();
-       	$.yote.templates.refresh();
-       } ); //ready
+    
+    $( '#results' ).html( '<h3>The results of template "' + show_template + '"</h3><div class="box">' +
+                          '<div id="comments"><$$ ' + show_template + ' $$></div>' );
+
+    $.yote.templates.init();
+    $.yote.templates.refresh();
+} ); //ready
     </script>
 
   </head>
@@ -316,7 +317,7 @@
              ctx.scratch.showing_template = set[ 0 ].name;
              localStorage.setItem( 'cur_set', ctx.scratch.current_set_name );
              $( '#results' ).empty().html( '<h3>The results of template "' + set[ 0 ].name + '"</h3><div class="box">' +
-                                           '<div id="comments" class="yote_template" template="' + set[ 0 ].name + '"></div>' );
+                                           '<div id="comments"><' + '$$ ' + set[ 0 ].name + ' $$' + '></div>' );
              ctx.refresh();
          } );
          ?>
@@ -327,8 +328,8 @@
          ctx.vars.sample_sets = window.sets;
          ctx.scratch.current_set_name = localStorage.getItem( 'cur_set' );
          if( ! ctx.scratch.current_set_name ) {
+             alert( 'no name' );
              ctx.scratch.current_set_name = 'hello';
-             ctx.scratch.showing_template = ctx.scratch.current_template.name;
          }
          if( ! ctx.scratch.showing_template ) {
              ctx.scratch.current_template = ctx.vars.sample_sets[ ctx.scratch.current_set_name ][ 0 ];
@@ -455,10 +456,10 @@
         <br>
         Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
       </dd>
-      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i>  &gt;</dt>
+      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i> $$&gt;</dt>
       <dd>
       </dd>
-      <dt>&lt;$ context-variable <i>"default value"</i>  &gt;</dt>
+      <dt>&lt;$ context-variable <i>"default value"</i> $&gt;</dt>
       <dd>
       </dd>
       <dt>&lt;? <i>javascript function body</i>   ?&gt;</dt>
