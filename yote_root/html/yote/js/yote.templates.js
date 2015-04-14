@@ -521,7 +521,6 @@ if( ! $.yote ) {
 	    id:_next_id(),
             refresh : $.yote.templates.refresh,
             parse : function( vari ) {
-if( vari == 'current_set@' ) { try { asdf(); } catch(e){} }
                 return _parse_val( vari, this, true )
             },
 	    clone : function() {

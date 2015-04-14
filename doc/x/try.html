@@ -269,6 +269,8 @@ $().ready(function(){
         <br>
         <$$$ errpanel <div></div>$$$>
         <?
+console.log( [ 'in try with ctx', ctx ] );
+if( ! ctx.vars['_'] ) return;
           if( ctx.vars._.notes ) {
               $( ctx.controls.notes ).append( ctx.vars._.notes );
               $( ctx.controls.notediv ).show();
@@ -328,7 +330,6 @@ $().ready(function(){
          ctx.vars.sample_sets = window.sets;
          ctx.scratch.current_set_name = localStorage.getItem( 'cur_set' );
          if( ! ctx.scratch.current_set_name ) {
-             alert( 'no name' );
              ctx.scratch.current_set_name = 'hello';
          }
          if( ! ctx.scratch.showing_template ) {
@@ -438,7 +439,7 @@ $().ready(function(){
         to all lower precedent tags. The return value can build lower precedence tags
         dynamically too.
         <br>
-        Example <span class="demo">&lt??? return use_a ? '&lt;$$ ATemplate $$&gt;' : '&lt;$$ BTemplate $$&gt;'; ???&gt;</span>
+        Example <span class="demo">&lt??? return use_a ? '&lt;' + '$$ ATemplate $$' + '&gt;' : '&lt;' + '$$ BTemplate $$' + '&gt;'; ???&gt;</span>
       </dd>
       <dt>&lt;$$$ control-name <i>html of opening tag of control</i>  $$$&gt;</dt>
       <dd>
@@ -456,7 +457,7 @@ $().ready(function(){
         <br>
         Example <span class="demo">&lt?? return '&lt;label for="' + ctx.control_ids.check  + '"&gt;';  ??&gt;&lt$$$ check &lt;input type="checkbox"&gt;n $$$&gt;</span>
       </dd>
-      <dt>&lt;$$ template-to-insert <i>space-separated-arguments</i> $$&gt;</dt>
+      <dt>&lt; $$ template-to-insert <i>space-separated-arguments</i> $$ &gt;</dt>
       <dd>
       </dd>
       <dt>&lt;$ context-variable <i>"default value"</i> $&gt;</dt>
