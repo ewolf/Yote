@@ -11,60 +11,41 @@ if( ! $.yote ) {
         fetch_default_app: function() { return undefined; },
         fetch_account: function() { return undefined; },
         reinit:function() {},
-        _wrap_list:function() {
-            throw new Exception( 'yote system not present: cannot wrap yote list' );
-        }, //wrap_list
-
-        _wrap_hash:function() {
-            throw new Exception( 'yote system not present: cannot wrap yote hash' );
-        }, //wrap_hash
+	_no_yote: true,
     };
 }
-$.yote.templates = {
 
+(function() { 
+    var _after_render_function = [];
+    var _compiled_templates = {};
+    var _ids = 0;
+    
+    var _next_id = function() { 
+        return '__ytidx_'+_ids++;
+    } 
 
-    _after_render_functions : [],
-    _compiled_templates : {},
+    var _pag_list_cache = {};
+    var _pag_hash_cache = {};
 
-    _ids : 0,
-    _next_id:function() {
-        return '__ytidx_'+this._ids++;
-    }, //_next_id
+    var scratch = {}; // all context objects have a reference to this called scratch, so ctx.scratch
 
-    // imports templates from a url and places them into the document.
-    import_templates:function( url ) {
-	    $.ajax( {
-	        async:false,
-	        cache: false,
-	        contentType: "text/html",
-	        dataFilter:function(a,b) {
-		        return a;
-	        },
-	        error:function(a,b,c) { console.log(a); },
-	        success:function( data ) {
-		        $( 'html' ).append( data );
-	        },
-	        type:'GET',
-	        url: url
-	    } );
-    }, //import_templates
+    var _wrap_list = function( array, key ) {
+        return _data_wrapper( array, key );
+    };
+    var _wrap_hash = function( hash, key ) {
+        return _data_wrapper( hash, key, true );
+    };
 
-    _pag_list_cache : {},
-    _pag_hash_cache : {},
-
-    _wrap_list:function( array, key ) {
-        return $.yote.templates._data_wrapper( array, key );
-    }, //_wrap_list
-
-    _wrap_hash:function( hash, key ) {
-        return $.yote.templates._data_wrapper( hash, key, true );
-    }, //_wrap_hash
+    if( $yote._no_yote ) { // if this is a stand alone block
+	_wrap_hash = function() { throw new Exception( 'yote system not present: cannot wrap yote hash' ); };
+	_wrap_list = function() { throw new Exception( 'yote system not present: cannot wrap yote list' ); };
+    }
 
     _data_wrapper:function( struct, key, is_hash ) {
         var arry = struct;
         var hash = struct;
 
-        var node = is_hash ? $.yote.templates._pag_hash_cache[ key ] : $.yote.templates._pag_list_cache[ key ];
+        var node = is_hash ? _pag_hash_cache[ key ] : _pag_list_cache[ key ];
 
         if( ! key || (! node && ( ! arry && ! hash ) ) ) {
             if( is_hash )
@@ -75,7 +56,7 @@ $.yote.templates = {
         if( ! node ) {
             var start = 0;
             node = {
-                id : $.yote.templates._next_id(),
+                id : _next_id(),
                 _start : start,
                 _page_size  : 0,
                 _filter_function     : undefined,
@@ -175,9 +156,9 @@ $.yote.templates = {
                 }
             };
             if( is_hash )
-                $.yote.templates._pag_hash_cache[ key ] = node;
+                _pag_hash_cache[ key ] = node;
             else
-                $.yote.templates._pag_list_cache[ key ] = node;
+                _pag_list_cache[ key ] = node;
         } //if needs a node
 
         if( arry ) {
@@ -191,16 +172,46 @@ $.yote.templates = {
         return node;
     }, //_data_wrapper
 
+
+$.yote.templates = {
+
+    _set_list_wrap : function( f ) {
+	
+    },
+
+    _set_hash_wrap : function( f ) {
+	
+    },
+
+    // imports templates from a url and places them into the document.
+    import_templates:function( url ) {
+	    $.ajax( {
+	        async:false,
+	        cache: false,
+	        contentType: "text/html",
+	        dataFilter:function(a,b) {
+		        return a;
+	        },
+	        error:function(a,b,c) { console.log(a); },
+	        success:function( data ) {
+		        $( 'html' ).append( data );
+	        },
+	        type:'GET',
+	        url: url
+	    } );
+    }, //import_templates
+
+
     register_template:function( key, value ) {
   	    $.yote.templates._compile_template( key, value );
     }, //register template
 
     is_registered:function( key ) {
-        return typeof $.yote.templates._compiled_templates[ key.trim() ] !== 'undefined';
+        return typeof _compiled_templates[ key.trim() ] !== 'undefined';
     }, //is_registered
 
     unregister_template:function( key ) {
-	    delete $.yote.templates._compiled_templates[ key.trim() ];
+	    delete _compiled_templates[ key.trim() ];
     }, //unregister_template
 
     _compile_template:function( key, value ) {
@@ -239,7 +250,7 @@ $.yote.templates = {
 		        }
 	        } )( fun_list[ idx ][ 1 ] ))
 	    }
-	    $.yote.templates._compiled_templates[ key ] = compiled;
+	    _compiled_templates[ key ] = compiled;
     }, // _compile_template
 
     _parse_args: function( arg_txt ) {
@@ -404,7 +415,7 @@ $.yote.templates = {
 	    $( '.yote_template' ).each( function() {
 	        var $el = $( this );
 	        var templ_name = $el.attr( 'template' );
-	        if( ! $.yote.templates._compiled_templates[ templ_name ] ) {
+	        if( ! _compiled_templates[ templ_name ] ) {
 		        console.log( "Error : template '" + templ_name + "' not found" );
 		        return;
 	        }
@@ -417,7 +428,7 @@ $.yote.templates = {
 
 	    var $el = $( 'body' );
 	    var templ_name = '__BODY__';
-	    if( ! $.yote.templates._compiled_templates[ templ_name ] ) {
+	    if( ! _compiled_templates[ templ_name ] ) {
 		    console.log( "Error : template '" + templ_name + "' not found" );
 		    return;
 	    }
@@ -432,15 +443,13 @@ $.yote.templates = {
 
 
 	    //  now that all templates have been rendered, run their after render functions
-	    for( var i=0, len=$.yote.templates._after_render_functions.length; i < len; i++ ) {
-	        $.yote.templates._after_render_functions[ i ]();
+	    for( var i=0, len=_after_render_functions.length; i < len; i++ ) {
+	        _after_render_functions[ i ]();
 	    }
 
 	    // reset so next refresh is clean
-	    $.yote.templates._after_render_functions = [];
+	_after_render_functions = [];
     }, //refresh
-
-    scratch : {}, // all context objects have a reference to this called scratch, so ctx.scratch
 
     new_context:function() {
 	    return {
@@ -451,7 +460,7 @@ $.yote.templates = {
             control : {},
 	        args : [], // args passed in to the template as it was built
             parent : undefined,
-	        scratch : $.yote.templates.scratch, // reference to common scratch area.
+	        scratch : scratch, // reference to common scratch area.
 	        _app_ : $.yote.fetch_default_app(),
 	        _acct_ : $.yote.fetch_account(),
 	        get: function( key ) { return typeof this.vars[ key ] === 'undefined' ?
@@ -459,7 +468,7 @@ $.yote.templates = {
                                      $.yote.fetch_account() :
                                      undefined )
                                    : this.vars[ key ]; },
-	        id:$.yote.templates._next_id(),
+	        id:_next_id(),
             refresh : $.yote.templates.refresh,
             parse : function( vari ) {
                 return $.yote.templates._parse_val( vari, this, true )
@@ -468,7 +477,7 @@ $.yote.templates = {
 		        var clone = {
 		            vars      : Object.clone( this.vars ),
 		            functions : Object.clone( this.functions ),
-		            id        : $.yote.templates._next_id(),
+		            id        : _next_id(),
 		            controls  : Object.clone( this.controls ),
                     control   : Object.clone( this.control ),
 		            control_ids  : Object.clone( this.control_ids ),
@@ -481,20 +490,20 @@ $.yote.templates = {
 		        clone.parent = this;
                 clone.parse = this.parse;
 		        clone.get = this.get;
-		        clone.scratch = $.yote.templates.scratch;
+		        clone.scratch = scratch;
 		        return clone;
 	        } //clone
 	    };
     }, //new_context
 
     fill_template:function( template_name, old_context, args ) {
-	    var compilation = $.yote.templates._compiled_templates[ template_name ];
+	    var compilation = _compiled_templates[ template_name ];
 	    if( ! compilation ) {
 	        console.log( "Error : Template '" + template_name + '" not found.' );
 	        return '';
 	    }
 	    var context = old_context ? old_context.clone() : $.yote.templates.new_context();
-	    context.template_id = $.yote.templates._next_id();
+	    context.template_id = _next_id();
 	    if( old_context ) {
 	        context.template_path = old_context.template_path + '/' + template_name;
 	    } else {
@@ -511,7 +520,7 @@ $.yote.templates = {
 		        res[ idx ] = tuple[ 1 ];
 		    } else if( tuple[ 3 ] ) { // is after render
 	            try {
-		            $.yote.templates._after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
+		            _after_render_functions.push( tuple[ 1 ]( context ) ); // builds function with context baked in
 		            res[ idx ] = '';
 	            } catch( err ) {
 	                console.log( "Runtime Error filling template '" + template_name + ":" + err + ' in function : ' + tuple[1] );
@@ -597,7 +606,7 @@ $.yote.templates = {
 	        var parts = $.yote.templates._template_parts( template, '?', template_name );
 	        try {
 		        var fun = $.yote.templates._to_function( parts[1] );
-		        $.yote.templates._after_render_functions.push(
+		        _after_render_functions.push(
 		            (function( f, ctx ) { return function() {
 			            try {
 			                alert( 'need context bottled up...need to  have a template registry path --> template' );
@@ -757,7 +766,7 @@ $.yote.templates = {
 		    ctrl_id = ctrl_parts[ 1 ];
 	    }
 	    else {
-		    ctrl_id = $.yote.templates._next_id();
+		    ctrl_id = _next_id();
             if( rest )
 		        rest = rest.replace( /^\s*(<\s*[^\s\>]+)([ \>])/, '$1 id="' + ctrl_id + '" $2' );
         }
@@ -776,7 +785,7 @@ $.yote.templates = {
 
 
 }//$.yote.templates
-
+} )();
 
 if( ! Object.size ) {
     Object.size = function(obj) {
