@@ -423,11 +423,11 @@ sub _recycle_objects {
     for my $wf (@weaks) { 
         my( $id, $obj ) = @$wf;
         if ( ref( $obj ) eq 'ARRAY' ) { 
-            for ( map { Yote::ObjProvider::get_id($_) } @$obj ) {
+            for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
                 $weak_only_check{ $_ }++;
             }
         } elsif ( ref( $obj ) eq 'HASH' ) {
-            for ( map { Yote::ObjProvider::get_id($_) } values %$obj) {
+            for ( map { Yote::ObjProvider::xform_in($_) } values %$obj) {
                 $weak_only_check{ $_ }++;
             }
         } else {
