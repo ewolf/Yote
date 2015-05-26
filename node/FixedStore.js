@@ -35,19 +35,19 @@ module.exports = {
                         buffer = null; 
                     }
                     if( ! buffer ) buffer = new Buffer( size );
-                    fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buffer ) {
-                        cb( err, buffer, "HA" );
+                    fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buf ) {
+                        if( buf ) {
+                            var len = buf.toString().indexOf( '\0' );
+                            buf.length = len >= 0 ? len : buf.length;
+                        }
+                        cb( err, buf );
                     } );
                 },
 
                 putRecord: function( index, buffer, cb ) {
-                    if( ! cb && typeof buffer === 'function' ) { 
-                        cb = buffer; 
-                        buffer = null; 
-                    }
-                    console.trace("put record");
-                    fs.write( fd, buffer, size*index, function( err, bytesWritten, buffer ) {
-                        cb( err, buffer, "BA" );
+                    buffer = typeof buffer === 'string' ? new Buffer( buffer + '\0' ) : Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1); 
+                    fs.write( fd, buffer, 0, buffer.length, size*index, function( err, bytesWritten, buff ) {
+                        cb( err, bytesWritten, buff );
                     } );
                 },
 
@@ -64,7 +64,6 @@ module.exports = {
                         var nextId;
                         try {
                             nextId = self.nextIdSync();
-console.info( "next id callback", nextId, cb + '' );
                             cb( null, nextId );
                         } catch( err ) {
                             cb( err );
@@ -105,10 +104,8 @@ console.info( "next id callback", nextId, cb + '' );
                 putRecordSync: function( index, buffer ) {
                     var maxSize = size - 1;
                     var fillSize = maxSize > buffer.length ? buffer.length : maxSize;
-                    var wrote = fs.writeSync( fd, buffer, 0, fillSize, size*(index-1) );
-                    var nb = Buffer( "\0" );
-                    fs.writeSync( fd, nb, 0, nb.length, size*(index-1) + wrote );
-                    return wrote + 1;
+                    var wrote = fs.writeSync( fd, Buffer.concat( [buffer, new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
+                    return wrote;
                 },
 
                 numberOfEntriesSync: function() {

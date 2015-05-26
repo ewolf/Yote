@@ -7,7 +7,7 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(28);
+    t.plan(30);
 
     stores.open( path, 50, function( err, store ) {
         t.equal( store.nextIdSync(), 1, "first id" );
@@ -25,13 +25,14 @@ test( 'new record file', function(t) {
         store.putRecordSync( 1, new Buffer("OFO") );
         [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""] ]
             .forEach(function(x){ 
-                t.equal( store.getRecordSync(x[0]).toString(), x[1] ); });
+                t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
         testExistingRecordFile( );
     } ); //12 tests so far
 
     function sz(size,msg) {
         var sz = fs.statSync(path).size;
         t.equal( sz, size );
+
     }
     
     function testExistingRecordFile() {
@@ -72,61 +73,57 @@ test( 'new record file', function(t) {
                       sz( 50 );
                   }
                 ],
-            ],
+            ], //22 tests
             [ "four more nextid group", 1,2,3,4 ].map( function(x) { return Number( x ) ?  [ getStore, function() { return asyncStore.nextId } ] : x; } ),
             [
                 "sixth async group",
                 [ getStore,
                   function() { return asyncStore.nextId },
                   function( err, id ) {
-console.info( [ "SIXTH", this, err, id ] ); //called twice, so buug
-console.trace();
                       t.equal( id, 6, "sixth async nextid call" );
                       sz( 300 );
                   }
                 ],
-            ],
+            ], //24 tests
             [ "Put Records Async", 2, 3, 5 ].map( function( n ) { 
-                return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function() {}, n, "Record " + n ] : n;
-            } ),
+                return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function(err,bytesWritten) { t.equal(bytesWritten,1+String("Record " + n).length,"record " + n + " wrote correct number of bytes")}, n, n == 3 ? "Record " + n : new Buffer( "Record " + n ) ] : n;
+            } ), //27 tests
             [ "Get Records Async", 2, 3, 5 ].map( function( n ) { 
                 return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
                     t.equal( buff.toString(), "Record " + n, "Record " + n );
                 }, n ] : n;
-            } ),//28 tests
+            } ),//30 tests
         ] );
     } //testAsync
         
     function testAsyncGroups( testgroups ) {
-console.info( 'the start', testgroups );
         _testAsyncGroups( testgroups );
         
         function _testAsyncGroups( groups ) {
             var group = groups.shift();
             var title = group.shift();
+            
 
             var countdown = group.length;
-console.info( "start of group", title, countdown, group );
 
-            console.log( '--- Starting : ' + title + ' ----');
+            console.log( "** Starting GROUP " + title + " with " + countdown + " things" );
 
             group.map( function( test ) {
                 // group = [  [ test-function, callback, params... ] ]
+                console.log( "** Starting TEST " + title );
                 var self     = test.shift()();
                 var testFun  = test.shift()();
                 var callback = test.shift() || function() {};
                 test.push( function() {
+                    console.log( "** Test " + title + ' : ' + countdown );
                     callback.apply( self, arguments );
-console.trace("in group");
-console.info( ["SUBTEST " + title +" DONE, countdown : " + countdown, arguments, callback+ '',  ] );
-                    if( --countdown < 1 && groups.length > 0 ) {
-                        console.log( '--- Done with : ' + title + ' ----');
+                    if( --countdown == 0 && groups.length > 0 ) {
+                        console.log( "** Done With " + title );
                         _testAsyncGroups( groups );
-                    }
-                } );
+                    } 
+               } );
                 testFun.apply( self, test );
             } );
-            console.log( '--- Queued : ' + title + ' ----');
         }
     } //testAsyncGroups
 });
