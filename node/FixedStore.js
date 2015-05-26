@@ -99,8 +99,10 @@ module.exports = {
                     (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( nextId, b );
                     return nextId;
                 },
-                popSync: function() {
+                popSync: function(buffer) {
                     //remove the last record and return it
+                    var ret;
+                    (ret = self.getRecordSync( this.numberOfEntriesSync(), buffer ) && fs.truncate( fd, 
                 },
                 pushSync: function(buffer) {
                     var nextId = self.nextIdSync();
