@@ -373,18 +373,15 @@ sub _recycle_objects {
     $is_first = 1;
   }
   unless( $keep_store ) {
-    $keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
+      $keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
       $keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
-
-    # the already deleted cannot be re-recycled
-    my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
-    for ( @$ri ) {
-      $keep_store->put_record( $_, [ 1 ] );
-    }
+      
+      # the already deleted cannot be re-recycled
+      my $ri = $self->get_recycled_ids;
+      for ( @$ri ) {
+          $keep_store->put_record( $_, [ 1 ] );
+      }
   }
-
-  my( $has ) = @{ $keep_store->get_record( $keep_id ) };
-  return if $has;
 
   $keep_store->put_record( $keep_id, [ 1 ] );
   my( @queue );
@@ -395,7 +392,8 @@ sub _recycle_objects {
     ( @queue ) = grep { /^[^v]/ } values %{$item->[DATA]};
   }
   for my $keeper ( @queue ) {
-    $self->_recycle_objects( $keeper, $keep_store );
+      next if @{ $keep_store->get_record( $keeper ) };
+      $self->_recycle_objects( $keeper, $keep_store );
   }
   if ( $is_first ) {
     # the purge begins here

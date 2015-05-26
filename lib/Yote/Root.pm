@@ -207,7 +207,7 @@ sub guest_token {
     my( $self, $ip ) = @_;
     my $token = 'gtok' . int( rand 9 x 10 );
     my $tok_store = $IP_TO_GUEST_TOKEN; #TODO - put this in init
-    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
+    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe? Even redis this?
     Yote::ObjManager::clear_login( undef, $token );
 
     return $token;

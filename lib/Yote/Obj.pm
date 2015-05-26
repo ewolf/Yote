@@ -6,10 +6,10 @@ no warnings 'uninitialized';
 
 use overload
     '""' => sub { shift->{ID} },
-    eq   => sub { shift->{ID} eq shift->{ID} },
-    ne   => sub { shift->{ID} ne shift->{ID} },
-    '==' => sub { shift->{ID} eq shift->{ID} },
-    '!=' => sub { shift->{ID} ne shift->{ID} },
+    eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+    ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
+    '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+    '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
 
 #

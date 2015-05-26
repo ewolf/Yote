@@ -13,7 +13,7 @@
 <script src="/yote/js/jquery.base64.min.js"></script>
 <script src="/yote/js/jquery.cookie.js"></script>
 <script src="/yote/js/json2.js"></script>
-<script src="/yote/js/yote2.js"></script>
+<script src="/yote/js/yote.js"></script>
 <script src="/yote/js/yote.util.js"></script>
 
 <script>
@@ -21,7 +21,7 @@
 var tests = 0;
 var failed = 0;
 var calls_made = 0;
-var total_js_time = 0, start_js_time;
+var total_js_time = 0, start_js_time, short_js_time;
 var t2;
 
 var old_message = $.yote._get_message_function();
@@ -80,6 +80,7 @@ function wrap_up() {
     $('#tests').append( "<br>tests completed in " + Math.round(window.performance.now() - t2)/1000 + " seconds" );
 
     $('#tests').append( "<br>javascript time : " + Math.round(total_js_time) + " ms" );
+    $('#tests').append( "<br>fast javascript time : " + Math.round(short_js_time) + " ms" );
 } //wrap_up
 var step_count = 0;
 function step( msg ) {
@@ -297,6 +298,7 @@ $().ready(function(){
  	        }
 
             total_js_time += (window.performance.now() - start_js_time);
+            short_js_time = total_js_time;
  	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
