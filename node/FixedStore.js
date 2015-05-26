@@ -6,12 +6,7 @@ var fs = require('fs');
 module.exports = {
     openSync: function( path, size, cb ) {
         //check if this file exists
-        try {
-            fs.statSync( path );
-        } catch( err ) {
-            fs.appendFileSync( path, '' );
-        }
-        var fd = fs.openSync( path, 'r+' );
+        var fd = fs.openSync( path, 'w+' );
         return create_store( fd, path, size );
     },
     open: function( path, size, cb ) {

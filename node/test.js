@@ -12,9 +12,9 @@ assert.equal( fs.statSync( '/tmp/foostore' ).size, 50, "first chunk written" );
 assert.equal( store.nextIdSync(), 2, "second id" );
 assert.equal( store.nextIdSync(), 3, "third id" );
 assert.equal( fs.statSync( '/tmp/foostore' ).size, 150, "second and third chunks written" );
-store.putRecordSync( 2, "DROOPY" );
-store.putRecordSync( 5, "NUUUUU" );
+store.putRecord( 2, "DROOPY", function() {console.log( "BURROO" )} );
 
+return;
 console.log( [ "T", store.getRecordSync( 1 ).toString(), store.getRecordSync( 2 ).toString() ] );
 assert.equal( store.getRecordSync( 2 ), "DROOPY", "wrote second record" );
 assert.equal( fs.statSync( '/tmp/foostore' ).size, 100, "second chunk written didnt change size" );
