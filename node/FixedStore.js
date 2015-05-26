@@ -31,7 +31,7 @@ module.exports = {
                 },
 
                 putRecord: function( index, buffer, cb ) {
-                    buffer = typeof buffer === 'string' ? new Buffer( buffer + '\0' ) : Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1); 
+                    buffer = Buffer.isBuffer( buffer ) ? Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1) : new Buffer( buffer + '\0' ); 
                     fs.write( fd, buffer, 0, buffer.length, size*(index-1), function( err, bytesWritten, buff ) {
                         cb( err, bytesWritten, buff );
                     } );
@@ -89,9 +89,10 @@ module.exports = {
                 },
 
                 putRecordSync: function( index, buffer ) {
+                    buffer = buffer ? String(buffer) : '';
                     var maxSize = size - 1;
                     var fillSize = maxSize > buffer.length ? buffer.length : maxSize;
-                    var wrote = fs.writeSync( fd, Buffer.concat( [typeof buffer === 'string' ? new Buffer(buffer) : buffer, new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
+                    var wrote = fs.writeSync( fd, Buffer.concat( [Buffer.isBuffer(buffer) ? buffer : new Buffer(buffer), new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
                     return wrote;
                 },
 

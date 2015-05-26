@@ -53,14 +53,14 @@ module.exports = {
                     var ids = [];
                     var entries = recycler.numberOfEntriesSync();
                     for( var i=1; i <= entries; i++ ) {
-                        ids.push( recycler.getRecordSync(i) );
+                        ids.push( Number(recycler.getRecordSync(i)) );
                     }
                     return ids;
                 };
                 var oldNextIdSyncFun = store.nextIdSync;
                 store.nextIdSync = function() {
                     var recycledId = recycler.popSync();
-                    return recycledId ? recycledId.toString() : oldNextIdSyncFun.apply(store,[]);
+                    return Buffer.isBuffer( recycledId ) ? recycledId.toString() : oldNextIdSyncFun.apply(store,[]);
                 }
                 callBack( null, store );
             } );

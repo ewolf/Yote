@@ -7,7 +7,7 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(51);
+    t.plan(58);
 
     stores.open( path, 50, function( err, store ) {
         t.equal( store.popSync(), undefined, "empty pop" );
@@ -30,6 +30,15 @@ test( 'new record file', function(t) {
             .forEach(function(x){ 
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
         sz( 250 );
+
+        store.deleteSync( 2 );
+        t.deepEqual( store.getRecycledIdsSync(), [ 2 ], "recycled ids" );
+        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""],[5,"PUSHED"] ]
+            .forEach(function(x){ 
+                t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
+        sz( 250 );
+
+        
 
         t.equal( store.popSync().toString(), "PUSHED" );
         sz( 200 );
@@ -144,6 +153,7 @@ test( 'new record file', function(t) {
                 7, null
               ],
             ], // 3 more so 48
+
         ] );
     } //testAsync
         
