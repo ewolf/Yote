@@ -7,7 +7,7 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(46);
+    t.plan(48);
 
     stores.open( path, 50, function( err, store ) {
         t.equal( store.nextIdSync(), 1, "first id" );
@@ -109,44 +109,28 @@ test( 'new record file', function(t) {
                     },
                     "Record 7"
                 ]
-            ], // 3 more so 37 tests
+            ], // 3 more so 38 tests
             [ "Put Records Async", 2, 3, 5 ].map( function( n ) { 
                 return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function(err,bytesWritten) { t.equal(bytesWritten,1+String("Record " + n).length,"record " + n + " wrote correct number of bytes")}, n, n == 3 ? "Record " + n : new Buffer( "Record " + n ) ] : n;
-            } ), // 3 more so 40 tests
+            } ), // 3 more so 41 tests
 
             [ "Get Records Async", 2, 3, 5, 7 ].map( function( n ) { 
                 return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
                     t.equal( buff.toString(), "Record " + n, "Read Record " + n );
                 }, n, null ] : n;
-            } ),// 4 more so 44 tests
+            } ),// 4 more so 45 tests
 
             [ 'final filesize check',
               [ getStore, 
                 function() { return asyncStore.getRecord },
                 function( err, buff ) { 
-                      t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync" );
+                    t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync" );
                     t.equal( buff.toString(), "Record 7", "Record 7 async" );
                     sz( 350 );
                 },
                 7, null
               ],
-              [ getStore, 
-                function() { return asyncStore.getRecord },
-                function( err, buff ) { 
-                    t.equal( buff.toString(), "Record 7" );
-                      t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync again" );
-                    sz( 350 );
-                },
-                7, null
-              ]
-            ], // 2 more so 46
-
-            [ "Get Records Async", 2, 3, 5, 7 ].map( function( n ) { 
-                return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
-                    t.equal( buff.toString(), "Record " + n, "Read Record " + n );
-                }, n, null ] : n;
-            } ),// 4 more so 44 tests
-
+            ], // 3 more so 48
         ] );
     } //testAsync
         
@@ -160,19 +144,19 @@ test( 'new record file', function(t) {
 
             var countdown = group.length;
 
-            console.log( "** Starting GROUP " + title + " with " + countdown + " things" );
+//            console.log( "** Starting GROUP " + title + " with " + countdown + " things" );
 
             group.map( function( test ) {
                 // group = [  [ test-function, callback, params... ] ]
-                console.log( "** Starting TEST " + title );
+//                console.log( "** Starting TEST " + title );
                 var self     = test.shift()();
                 var testFun  = test.shift()();
                 var callback = test.shift() || function() {};
                 test.push( function() {
-                    console.log( "** Test " + title + ' : ' + countdown );
+//                    console.log( "** Test " + title + ' : ' + countdown );
                     callback.apply( self, arguments );
                     if( --countdown == 0 && groups.length > 0 ) {
-                        console.log( "** Done With " + title );
+//                        console.log( "** Done With " + title );
                         _testAsyncGroups( groups );
                     } 
                } );

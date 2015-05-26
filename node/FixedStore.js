@@ -20,15 +20,11 @@ module.exports = {
                         cb = buffer; 
                         buffer = null; 
                     }
-                    if( ! buffer ) {
-                        buffer = new Buffer(size);
-                    }
-console.info( [ "TRY", fd, buffer, size, size* index ] );
-                    fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buf ) {
+                    if( ! buffer ) buffer = new Buffer( size );
+                    fs.read( fd, buffer, 0, size, size*(index-1), function( err,bytesRead, buf ) {
                         if( buf ) {
                             var len = buf.toString().indexOf( '\0' );
                             buf.length = len >= 0 ? len : buf.length;
-console.log( [ "RRRRR",index, bytesRead, buf.length ] );
                         }
                         cb( err, buf );
                     } );
@@ -36,7 +32,7 @@ console.log( [ "RRRRR",index, bytesRead, buf.length ] );
 
                 putRecord: function( index, buffer, cb ) {
                     buffer = typeof buffer === 'string' ? new Buffer( buffer + '\0' ) : Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1); 
-                    fs.write( fd, buffer, 0, buffer.length, size*index, function( err, bytesWritten, buff ) {
+                    fs.write( fd, buffer, 0, buffer.length, size*(index-1), function( err, bytesWritten, buff ) {
                         cb( err, bytesWritten, buff );
                     } );
                 },
