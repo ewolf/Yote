@@ -25,7 +25,7 @@ module.exports = {
                   empty:  function() {},
                   ensure_entry_count : function( coune ) {
                   },
-                  next_id: function() {
+                  nextId: function() {
                   
                   },
                 */
@@ -53,11 +53,24 @@ module.exports = {
 
                 nextId: function( cb ) {
                     process.nextTick( function() { 
-                        var next_id;
-                        (next_id = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( next_id, '' ) && cb( next_id );
-                        cb( next_id );
+                        var nextId;
+                        try {
+                            (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( nextId, '' );
+                            cb( null, nextId );
+                        } catch( err ) {
+                            cb( err );
+                        }
                     }  );
                 },
+
+                push: function( buffer, cb ) {
+                    var self = this;
+                    self.nextId( function(err, id) {
+                        self.putRecord( id, buffer, cb );
+                    } );
+                }
+
+// SYNC -------------------------------------
 
                 getRecordSync: function( index, buffer ) {
                     if( ! buffer ) buffer = new Buffer( size );
@@ -81,13 +94,18 @@ module.exports = {
                 },
 
                 nextIdSync: function() {
-                    var next_id;
+                    var nextId;
                     var b = new Buffer(size); b.write( "\0" );
-                    console.log( fs.statSync(path) );
-                    (next_id = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( next_id, b );
-                    return next_id;
+                    (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( nextId, b );
+                    return nextId;
                 },
-
+                popSync: function() {
+                    //remove the last record and return it
+                },
+                pushSync: function(buffer) {
+                    var nextId = self.nextIdSync();
+                    return self.putRecordSync( nextId, buffer );
+                },
             };
             cb( null, store );
         } ); //filesystem call/back
