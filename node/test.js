@@ -1,41 +1,46 @@
 var assert = require( 'assert' );
 
-var yote = require( './index.js' );
+var yote = require( './Yote.js' );
 var root = yote.getRoot();
 
 assert( root, "Has root" );
 
-root.set("F","B");
+root.F = 'B';
 
-assert.equal( root.get("F"), "B" );
+assert.equal( root.F, "B" );
 
-var o = yote.newObj();
-root.set( "O", o );
+root.O = {};
+var o = root.O;
+o.ORF = "FOO";
 
-o.set("ORF","FOO");
+assert.equal( root.O.ORF, "FOO" );
 
-assert.equal( root.get("O").get("ORF"),"FOO" );
-
-o.set("ARR", [ 4, 5, 6 ] );
-
+console.log( '--------------');
+o.ARR = [ 4, 5, 6 ];
+console.log( '--------------');
+console.log( ['one',root] );
+console.log( ['two',root.O] );
+console.log( ['two',root.O.ARR] );
 //filter filters out the _y hash attached to the array 
-assert.deepEqual( root.get("O").get("ARR").filter( function(item) { return true; } ), [ 4, 5, 6 ] );
+assert.deepEqual( root.O.ARR, [ 4, 5, 6 ] );
 
-var oo = yote.newObj();
-oo.set("DOODOO", "WHODO" );
 
-o.set("HAA", { 'objy' : oo, 'backref' : o } );
+assert( root.O.ARR._y, "array is yote obj" );
 
-var hash = root.get("O").get("HAA");
-var y = delete hash._y; //remove this for the comparison
+var oo = {};
+oo.DOODOO = "WHODO";
+
+o.HAA = { 'objy' : oo, 'backref' : o };
+
+var hash = root.O.HAA;
 
 assert.deepEqual( hash, { 'objy' : oo, 'backref' : o } );
+assert( hash._y, "hash is yote obj" );
 
-hash._y = y; //add this back so things work as normal
+assert.deepEqual( hash, root.O.HAA );
 
-assert.deepEqual( hash, root.get("O").get("HAA") );
-
-var arr = root.get("O").get("ARR");
+var arr = root.O.ARR;
 arr.push( hash );
 
-assert.deepEqual( arr.filter( function(item) { return true; } ), [ 4, 5, 6, hash ] );
+assert.deepEqual( arr, [ 4, 5, 6, hash ] );
+assert( arr._y, "array is yote obj" );
