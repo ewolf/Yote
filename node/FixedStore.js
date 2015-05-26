@@ -3,7 +3,6 @@ var fs = require('fs');
 
 module.exports = {
     open: function( path, size, cb ) {
-        
         try { 
             fs.statSync( path );
         } catch( err ) {
@@ -31,6 +30,7 @@ module.exports = {
                 */
 
                 getRecord: function( index, buffer, cb ) {
+
                     if( ! buffer ) buffer = new Buffer( size );
                     fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buffer ) {
                         cb( err, buffer );
@@ -38,8 +38,7 @@ module.exports = {
                 },
 
                 putRecord: function( index, buffer, cb ) {
-                    var fillSize = size > buffer.length ? buffer.length : size;
-                    fs.write( fd, buffer, 0, fillSize, size*index, function( err, bytesWritten, buffer ) {
+                    fs.write( fd, buffer, size*index, function( err, bytesWritten, buffer ) {
                         cb( err, buffer );
                     } );
                 },
@@ -52,23 +51,37 @@ module.exports = {
                 },
 
                 nextId: function( cb ) {
+                    var self = this;
                     process.nextTick( function() { 
                         var nextId;
                         try {
-                            (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( nextId, '' );
+                            nextId = self.nextIdSync();
                             cb( null, nextId );
                         } catch( err ) {
                             cb( err );
                         }
                     }  );
                 },
-
+                pop: function(buffer, cb) {
+                    //remove the last record and return it
+                    process.nextTick( function() {
+                        try {
+                            var res = self.popSync();
+                            return cb( null, res );
+                        } catch( err ) {
+                            cb( err );
+                        }
+                    } );
+                },
                 push: function( buffer, cb ) {
                     var self = this;
-                    self.nextId( function(err, id) {
-                        self.putRecord( id, buffer, cb );
+                    process.nextTick( function() {
+                        try {
+                            var ret = self.pushSync( buffer );
+                            return cb( null, ret );
+                        } catch( err ) { return cb( err ); }
                     } );
-                }
+                },
 
 // SYNC -------------------------------------
 
@@ -95,14 +108,16 @@ module.exports = {
 
                 nextIdSync: function() {
                     var nextId;
-                    var b = new Buffer(size); b.write( "\0" );
-                    (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( nextId, b );
+                    (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && fs.ftruncateSync( fd, nextId * size );
                     return nextId;
                 },
                 popSync: function(buffer) {
                     //remove the last record and return it
-                    var ret;
-                    (ret = self.getRecordSync( this.numberOfEntriesSync(), buffer ) && fs.truncate( fd, 
+                    var ret, ents;
+                    (ents = this.numberOfEntriesSync()) && 
+                        (ret = self.getRecordSync( ents, buffer )) && 
+                        fs.ftruncate( fd, size * ( ents - 1 ) );
+                    return ret;
                 },
                 pushSync: function(buffer) {
                     var nextId = self.nextIdSync();
