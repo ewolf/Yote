@@ -5,7 +5,10 @@ use warnings;
 no warnings 'uninitialized';
 
 use overload
-    '""' => sub { "YID:".shift->{ID} };
+    '""' => sub { "YID:".shift->{ID} },
+    eq   => sub { shift->{ID} == shift->{ID} },
+    '==' => sub { shift->{ID} == shift->{ID} },
+    fallback => 1;
 
 #
 # This is base class for all Yote objects.

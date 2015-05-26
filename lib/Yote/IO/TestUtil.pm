@@ -69,7 +69,9 @@ sub io_independent_tests {
     is( ref( $root->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash  (original root after save)' );
     is( ref( $root->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array (original root after save)' );
 
-
+    is( $root_clone, $root, "CLONE TO ROOT SAME?" );
+    ok( $root_clone == $root, "CLONE TO ROOT == SAME?" );
+    ok( $root_clone eq $root, "CLONE TO ROOT eq SAME?" );
     is_deeply( $root_clone, $root, "CLONE to ROOT");
     ok( $root_clone->{ID} eq Yote::ObjProvider::first_id(), "Reloaded Root has first id" );
     is( $root_clone->get_default(), "DEFAULT", "get scalar with default" );
@@ -419,7 +421,7 @@ sub io_independent_tests {
     is( ref( $inh ), 'HASH', 'inner hash' );
     is( $inh->{peanut}, 'Butter', "scalar in inner hash" );
     my $ino = $inh->{ego};
-    ok( $ino > 0, "Inner object" );
+    ok( $ino, "Inner object" );
     is( $aaa->[2], $ino, "3rd element outer array" );
 
 

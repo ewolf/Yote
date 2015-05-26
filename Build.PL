@@ -74,7 +74,6 @@ my $builder = Module::Build->new(
         'Crypt::Passwd::XS'     => 0.601,
         'Daemon::Daemonize'     => 0.0052,
         'DateTime'              => 0.77,
-        'DBI'                   => 1.625,
         'Email::Valid'          => 0.190,
         'File::Path'            => 2.09,
         'File::Slurp'           => 9999.19,
