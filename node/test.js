@@ -7,36 +7,43 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(51);
+    t.plan(52);
 
-    stores.open( path, 50, function( err, store ) {
+    var size = 50;
+
+    var longstr = (function() { var str = ''; for(var i=0;i<size; i++ ) { str += 'x' } return str; })();
+
+    var toolongstr = (function() { var str = ''; for(var i=0;i<=size; i++ ) { str += 'x' } return str; })();
+
+    stores.open( path, size, function( err, store ) {
         t.equal( store.popSync(), undefined, "empty pop" );
 
         t.equal( store.nextIdSync(), 1, "first id" );
-        sz( 50 );
+        sz( size );
         t.equal( store.nextIdSync(), 2, "second id" );
-        sz( 100 );
+        sz( 2*size );
         t.equal( store.nextIdSync(), 3, "third id" );
-        sz( 150 );
+        sz( 3*size );
         t.equal( store.nextIdSync(), 4, "fourth id" );
-        sz( 200 );
+        sz( 4*size );
+
 
         store.putRecordSync( 1, new Buffer("FOO") );
         store.putRecordSync( 3, "BAR" );
-        store.putRecordSync( 2, new Buffer("BONGLO") );
+        store.putRecordSync( 2, new Buffer(longstr) );
         store.putRecordSync( 1, new Buffer("OFO") );
         t.equal( store.pushSync( new Buffer("PUSHED") ), 5, "correct id for pushSync" );
-        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""],[5,"PUSHED"] ]
+        [ [1,"OFO"],[2,longstr],[3,"BAR"],[4,""],[5,"PUSHED"] ]
             .forEach(function(x){ 
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
-        sz( 250 );
+        sz( 5*size );
 
         t.equal( store.popSync().toString(), "PUSHED" );
-        sz( 200 );
+        sz( 4*size );
 
         t.equal( store.nextIdSync(), 5, "back to fifth id" );
 
-        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""],[5,""] ]
+        [ [1,"OFO"],[2,longstr],[3,"BAR"],[4,""],[5,""] ]
             .forEach(function(x){ 
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
 
@@ -53,16 +60,19 @@ test( 'new record file', function(t) {
         stores.open( path, 50, function( err, store ) {
             t.equal( store.nextIdSync(), 6, "6th id" );
             t.equal( store.nextIdSync(), 7, "7th id" );
-            sz( 350 );
+            sz( 7*size );
             store.putRecordSync( 4, new Buffer("onion") );
             store.putRecordSync( 6, new Buffer("pEte") );
-            [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,"onion"],[6,"pEte" ] ]
+            [ [1,"OFO"],[2,longstr],[3,"BAR"],[4,"onion"],[6,"pEte" ] ]
                 .forEach(function(x){ 
                     t.equal( store.getRecordSync(x[0]).toString(), x[1] ); });
+
+            t.throws( function() { store.pushSync( new Buffer( toolongstr ) ) } );
+
             fs.unlinkSync( path );
             t.comment( '---------- test async ------------' );
             testAsync();
-        } ); // 8 more, so 31 tests
+        } ); // 9 more, so 31 tests
     } //testExistingRecordFile
 
     var asyncStore;
@@ -75,7 +85,7 @@ test( 'new record file', function(t) {
                   function() { return stores.open },
                   function(err,store) {
                       asyncStore = store;
-                  }, path, 50 
+                  }, path, size 
                 ],
             ],
             [
@@ -95,7 +105,7 @@ test( 'new record file', function(t) {
                   function() { return asyncStore.nextId },
                   function( err, id ) {
                       t.equal( id, 1, "first async nextid call" );
-                      sz( 50 );
+                      sz( size );
                   }
                 ],
             ], // 2 more, so 33 tests
@@ -106,7 +116,7 @@ test( 'new record file', function(t) {
                   function() { return asyncStore.nextId },
                   function( err, id ) {
                       t.equal( id, 6, "sixth async nextid call" );
-                      sz( 300 );
+                      sz( 6*size );
                   }
                 ],
             ], // 2 more so 35 tests
@@ -118,13 +128,13 @@ test( 'new record file', function(t) {
                     function( err, id ) {
                         t.equal( id, 7, "seventh id from push" );
                         t.equal( asyncStore.getRecordSync(7).toString(), "Record 7" );
-                        sz( 350 );
+                        sz( 7*size );
                     },
                     "Record 7"
                 ]
             ], // 3 more so 38 tests
             [ "Put Records Async", 2, 3, 5 ].map( function( n ) { 
-                return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function(err,bytesWritten) { t.equal(bytesWritten,1+String("Record " + n).length,"record " + n + " wrote correct number of bytes")}, n, n == 3 ? "Record " + n : new Buffer( "Record " + n ) ] : n;
+                return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function(err,bytesWritten) { t.equal(bytesWritten,1+String("Record " + n).length,"record " + n + " wrote correct number of bytes")}, n, new Buffer( "Record " + n ) ] : n;
             } ), // 3 more so 41 tests
 
             [ "Get Records Async", 2, 3, 5, 7 ].map( function( n ) { 
@@ -139,7 +149,7 @@ test( 'new record file', function(t) {
                 function( err, buff ) { 
                     t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync" );
                     t.equal( buff.toString(), "Record 7", "Record 7 async" );
-                    sz( 350 );
+                    sz( 7*size );
                 },
                 7, null
               ],

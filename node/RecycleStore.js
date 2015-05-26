@@ -44,6 +44,9 @@ module.exports = {
 
 
                 store.deleteSync = function( idx, doPurge ) {
+                    if( recycler.hasRecordSync( idx ) ) {
+                        console.log( "BLSLSLSLS" );
+                    }
                     recycler.pushSync( idx );
                     if( doPurge ) {
                         store.putRecordSync( idx, '' );

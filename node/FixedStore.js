@@ -31,7 +31,7 @@ module.exports = {
                 },
 
                 putRecord: function( index, buffer, cb ) {
-                    buffer = Buffer.isBuffer( buffer ) ? Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1) : new Buffer( buffer + '\0' ); 
+                    buffer = Buffer.isBuffer( buffer ) ? Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1) : new Buffer( String(buffer) + '\0' ); 
                     fs.write( fd, buffer, 0, buffer.length, size*(index-1), function( err, bytesWritten, buff ) {
                         cb( err, bytesWritten, buff );
                     } );
@@ -89,10 +89,12 @@ module.exports = {
                 },
 
                 putRecordSync: function( index, buffer ) {
-                    buffer = buffer ? String(buffer) : '';
-                    var maxSize = size - 1;
-                    var fillSize = maxSize > buffer.length ? buffer.length : maxSize;
-                    var wrote = fs.writeSync( fd, Buffer.concat( [Buffer.isBuffer(buffer) ? buffer : new Buffer(buffer), new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
+                    if( buffer.length > size ) throw new Error( "Buffer too large for putRecordSync" );
+                    buffer = Buffer.isBuffer(buffer) ? buffer : new Buffer(String(buffer));
+                    if( buffer.length < size ) {
+                        buffer = Buffer.concat( [buffer, new Buffer("\0") ] );
+                    }
+                    var wrote = fs.writeSync( fd, buffer, 0, buffer.length, size*(index-1) );
                     return wrote;
                 },
 
@@ -105,6 +107,17 @@ module.exports = {
                     (nextId = parseInt( fs.statSync( path ).size / size ) + 1 ) && fs.ftruncateSync( fd, nextId * size );
                     return nextId;
                 },
+                hasRecordSync: function( queryBuff ) {
+console.log( "NARF" )
+                    //TODO - make efficient
+                    var rsize = fs.statSync( path ).size;console.log( "REEE " + rsize+ "," + path )
+                    if( rsize === 0 ) return false;
+                    var buffer = new Buffer( rsize );
+                    fs.readSync( fd, buffer, 0, rsize, rsize );
+var r = new RegExp( '(^|[\\0])' + String(queryBuff) + '([\\0]|$)' );
+console.info( [ "INF", rsize, String(buffer), buffer, r, String( buffer ).match( r ) ] );
+                    return String( buffer ).match( r );
+                },
                 popSync: function(buffer) {
                     //remove the last record and return it
                     var ret, ents;
@@ -115,7 +128,7 @@ module.exports = {
                 },
                 pushSync: function(buffer) {
                     var nextId;
-                    (nextId = this.nextIdSync() ) && this.putRecordSync( nextId, buffer );
+                    (nextId = this.nextIdSync() ) && (console.log(['NE',nextId,String(buffer)])||true) && this.putRecordSync( nextId, buffer );
                     return nextId;
                 },
             };

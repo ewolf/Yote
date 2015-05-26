@@ -38,7 +38,8 @@ test( 'new record file', function(t) {
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
         sz( 250 );
 
-        
+        store.deleteSync( 2 );
+        t.deepEqual( store.getRecycledIdsSync(), [ 2 ], "recycled ids" );
 
         t.equal( store.popSync().toString(), "PUSHED" );
         sz( 200 );
