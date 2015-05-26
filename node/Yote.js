@@ -31,7 +31,7 @@ function Yote( target, suppressWatch ) {
     if( ! suppressWatch ) {
         
     }
-    
+    var inget = false;
     var proxy = Proxy.create( {
 
         get : function( proxy, name ) {
@@ -39,16 +39,31 @@ function Yote( target, suppressWatch ) {
                 return _yote_info;
             } else if( name === 'push' ) {
                 return function( item ) { _yote_data[ _yote_data.length ] = item; };
+            } else if( name === 'nodeName' ) {
+                return _yote_data.nodeName;
+            } else if( name === 'inspect' ) {
+                return _yote_data.inspect;
+            } else if( name === 'length' ) {
+                return _yote_data.length;
+            } else if( name === 'prototype' ) {
+                return prot;
+            } else if( name === 'copy' ) {
+                return _yote_data.copy;
             }
+//            console.log( ['get',name,_yote_data,_yote_data[name],STORE[_yote_data[name]],_transOut( _yote_data[name] ), typeof _transOut( _yote_data[name] ) ] );
             return _transOut( _yote_data[ name ] );
         },
         set : function( proxy, name, value ) {
             _yote_data[ name ] = _transIn( value );
+//            console.log( ['set',name,_yote_data,STORE[_yote_data[name]] ] );
         },
+
         keys : function() {
+//            console.log( ['gKEYZ',Object.keys( _yote_data )] );
             return Object.keys( _yote_data );
         },
         ownKeys : function() {
+//            console.log( 'OWNKEYZ' );
             return Object.keys( _yote_data );
         },
         getOwnPropertyDescriptor : function( proxy, name ) {
@@ -60,26 +75,36 @@ function Yote( target, suppressWatch ) {
         getOwnPropertyNames : function() {
             return Object.keys( _yote_data );
         },
-        enumerate: function() {
+        enumerate : function() {
+            var res = [];
+            for( var name in _yote_data ) res.push(name);
+//console.log( [ "RET", res ] );
+            return res;
+/*
+            console.log( 'ENUM' );console.trace();
             var i = 0;
             return {
-                next : function() {
+                'next' : function() {
+                    console.log( "NEXT " + i );
                     return i < _yote_data.length ? 
                         { done : false, value : _transOut(_yote_data[i++]) } :
                         { done : true };
                     
                 }
-            }
+            };
+*/
         },
-        has : function( proxy, prop ) {
-            return prop in _yote_data;
+        has : function( name ) {
+            return name in _yote_data;
         },
-        hasOwn : function( proxy, prop ) {
-            return prop in _yote_data;
+        hasOwn : function( name ) {
+            return name in _yote_data;
         }
     }, prot );
-
+//console.info( [ "PROXY", target, typeof target, proxy, typeof proxy, Array.isArray(proxy.prototype), Array.isArray(proxy), proxy.length] ); 
     _yote_info = { id : (STORE.push(proxy)-1) };
+
+//    console.log( ["NEW", _yote_info, target, STORE[_yote_info.id], proxy, _yote_data, STORE ] )
 
     return proxy;
 } // Yote
@@ -89,6 +114,7 @@ function Yote( target, suppressWatch ) {
 var STORE = [null]; //so ids start with '1'
 
 var _register = function( thing ) {
+//console.info( 'reg', thing );
     return STORE.push( thing ) - 1;
 }
 

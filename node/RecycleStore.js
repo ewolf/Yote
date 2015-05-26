@@ -33,6 +33,7 @@ module.exports = {
                         }
                     } );
                 };
+
                 store.getRecycledIds = function( cb ) {
                     var ids = [];
                     var entries = recycler.numberOfEntries( function(err, entries) {
@@ -48,6 +49,7 @@ console.log( "Got " + entries + " ----------------- " )
                         }
                     } );
                 };
+
                 var oldNextIdFun = store.nextId;
                 store.nextId = function( cb ) {
                     recycler.pop( null, function( err, item ) {

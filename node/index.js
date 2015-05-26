@@ -5,7 +5,7 @@
                     function( root ) {
                        root.set('some-str', "foo");
                        root.set('some-obj', store.newObj() );
-  1                     root.set('some-hash', { ... } );
+                       root.set('some-hash', { ... } );
                        root.set('some-list', [ ... ] );
                        root.get( 'has-default?' ); // --> undefined
                        root.get( 'has-default?', 'yes I has' ); // --> 'yes I has'

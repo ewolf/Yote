@@ -7,7 +7,7 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(52);
+    t.plan(54);
 
     var size = 50;
 
@@ -181,11 +181,103 @@ test( 'new record file', function(t) {
                     if( --countdown == 0 && groups.length > 0 ) {
 //                        console.log( "** Done With " + title );
                         _testAsyncGroups( groups );
-                    } 
+                    } else if( countdown === 0 ) {
+                        _testYote();
+                    }
                } );
                 testFun.apply( self, test );
             } );
         }
     } //testAsyncGroups
-});
 
+    function _testYote() {
+        console.log( '--- yote store---' );
+
+        var yote = require( './Yote.js' );
+        var root = yote.getRoot();
+
+        t.ok( root, "Has root" );
+
+        root.F = 'B';
+
+        t.equal( root.F, "B" );
+
+        var o = root.O = yote.translate( {} );
+        o.ORF = "FOO";
+
+        t.equal( root.O.ORF, "FOO" );
+
+        o.ARR = [ 4, 5, 6 ];
+
+//        t.deepEqual( root.O.ARR, [ 4, 5, 6 ] );
+        t.deepEqual( root.O.ARR, { 0 : '4', 1 : '5', 2 : '6' } );
+
+
+        t.ok( root.O.ARR._y, "array is yote obj" );
+
+        var oo = {};
+        oo.DOODOO = "WHODO";
+
+        o.HAA = { 'objy' : oo, 'backref' : o };
+
+        var hash = root.O.HAA;
+
+        t.deepEqual( hash, { 'objy' : oo, 'backref' : o } );
+        t.ok( hash._y, "hash is yote obj" );
+
+        t.deepEqual( hash, root.O.HAA );
+
+        var arr = root.O.ARR;
+        arr.push( hash );
+
+//        t.deepEqual( arr, [ 4, 5, 6, hash ] );
+        t.deepEqual( arr, { 0 : '4', 1 : '5', 2 : '6', 3 : hash } );
+        t.ok( arr._y, "array is yote obj" );
+        console.log( '--- yote store---' );
+
+        var yote = require( './Yote.js' );
+        var root = yote.getRoot();
+
+        t.ok( root, "Has root" );
+
+        root.F = 'B';
+
+        t.equal( root.F, "B" );
+
+        var o = root.O = yote.translate( {} );
+        o.ORF = "FOO";
+
+        t.equal( root.O.ORF, "FOO" );
+
+        o.ARR = [ 4, 5, 6 ];
+
+//        t.deepEqual( root.O.ARR, [ 4, 5, 6 ] );
+        t.deepEqual( root.O.ARR, { 0 : '4', 1 : '5', 2 : '6' } );
+
+
+        t.ok( root.O.ARR._y, "array is yote obj" );
+
+        var oo = {};
+        oo.DOODOO = "WHODO";
+
+        o.HAA = { 'objy' : oo, 'backref' : o };
+
+        var hash = root.O.HAA;
+
+        t.deepEqual( hash, { 'objy' : oo, 'backref' : o } );
+        t.ok( hash._y, "hash is yote obj" );
+
+        t.deepEqual( hash, root.O.HAA );
+
+        var arr = root.O.ARR;
+        arr.push( hash );
+
+//        t.deepEqual( arr, [ 4, 5, 6, hash ] );
+        t.deepEqual( arr, { 0 : '4', 1 : '5', 2 : '6', 3 : hash } );
+
+        t.ok( arr._y, "array is yote obj" );
+        t.ok( false, "array is yote obj" );
+        console.log( "____OOO" );
+
+    } _testYote
+});
