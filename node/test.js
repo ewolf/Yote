@@ -7,9 +7,11 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(48);
+    t.plan(51);
 
     stores.open( path, 50, function( err, store ) {
+        t.equal( store.popSync(), undefined, "empty pop" );
+
         t.equal( store.nextIdSync(), 1, "first id" );
         sz( 50 );
         t.equal( store.nextIdSync(), 2, "second id" );
@@ -39,7 +41,7 @@ test( 'new record file', function(t) {
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
 
         testExistingRecordFile( );
-    } ); //23 tests so far
+    } ); //24 tests so far
 
     function sz(size,msg) {
         var sz = fs.statSync(path).size;
@@ -76,6 +78,17 @@ test( 'new record file', function(t) {
                   }, path, 50 
                 ],
             ],
+            [
+                "empty pop",
+                [ getStore,
+                  function() { return asyncStore.pop },
+                  function( err, val ) {
+                      t.equal( val, undefined, "undefined return from pop" );
+                      sz( 0 );
+                  },
+                  null //for buffer
+                ],
+            ], // 2 more, so 33 tests
             [
                 "first nextid group",
                 [ getStore,

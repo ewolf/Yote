@@ -57,6 +57,7 @@ module.exports = {
                     }  );
                 },
                 pop: function(buffer, cb) {
+                    var self = this;
                     //remove the last record and return it
                     process.nextTick( function() {
                         try {
@@ -95,7 +96,7 @@ module.exports = {
                 },
 
                 numberOfEntriesSync: function() {
-                    return Number.parseInt( fs.statSync( path ).size / size );
+                    return parseInt( fs.statSync( path ).size / size );
                 },
 
                 nextIdSync: function() {
@@ -107,7 +108,7 @@ module.exports = {
                     //remove the last record and return it
                     var ret, ents;
                     (ents = this.numberOfEntriesSync()) && 
-                        (ret = this.getRecordSync( ents, buffer )) && 
+                        ents > 0 && ( ret = this.getRecordSync( ents, buffer )) && 
                         fs.ftruncateSync( fd, size * ( ents - 1 ) );
                     return ret;
                 },

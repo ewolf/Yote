@@ -30,18 +30,16 @@ module.exports = {
                         }
                     } );
                 };
-                var oldNextIdFun = store.nextIdSync;
+                var oldNextIdFun = store.nextId;
                 store.nextId = function( cb ) {
-                    recycler.pop( function( err, item ) {
+                    recycler.pop( null, function( err, item ) {
                         if( err ) return cb( err );
-                        if( item ) { return cb( null, item ); }
-                        oldNextIdFun( function( err, item ) {
+                        if( item ) { return cb( null, String(item) ); }
+                        oldNextIdFun.apply( store, [function( err, id ) {
                             if( err ) return cb( err );
-                            cb( null, item );
-                        } );
+                            cb( null, id );
+                        } ] );
                     } );
-                    var recycledId = recycler.pop().toString();
-                    return recycleId ? recycleId : oldNextIdFun();
                 },
 
 
@@ -61,8 +59,8 @@ module.exports = {
                 };
                 var oldNextIdSyncFun = store.nextIdSync;
                 store.nextIdSync = function() {
-                    var recycledId = recycler.popSync().toString();
-                    return recycleId ? recycleId : oldNextIdSyncFun();
+                    var recycledId = recycler.popSync();
+                    return recycledId ? recycledId.toString() : oldNextIdSyncFun.apply(store,[]);
                 }
                 callBack( null, store );
             } );
