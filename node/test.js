@@ -9,19 +9,13 @@ root.F = 'B';
 
 assert.equal( root.F, "B" );
 
-root.O = {};
-var o = root.O;
+var o = root.O = yote.translate( {} );
 o.ORF = "FOO";
 
 assert.equal( root.O.ORF, "FOO" );
 
-console.log( '--------------');
 o.ARR = [ 4, 5, 6 ];
-console.log( '--------------');
-console.log( ['one',root] );
-console.log( ['two',root.O] );
-console.log( ['two',root.O.ARR] );
-//filter filters out the _y hash attached to the array 
+
 assert.deepEqual( root.O.ARR, [ 4, 5, 6 ] );
 
 
