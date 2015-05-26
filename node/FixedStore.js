@@ -15,30 +15,20 @@ module.exports = {
             }
             
             var store = {
-                /*
-                  unlink: function() {},
-                  size:   function() { return size; },
-                  push:   function(record) { //adds record to the end of the store
-                  
-                  },
-                  empty:  function() {},
-                  ensure_entry_count : function( coune ) {
-                  },
-                  nextId: function() {
-                  
-                  },
-                */
-
                 getRecord: function( index, buffer, cb ) {
                     if( ! cb && typeof buffer === 'function' ) { 
                         cb = buffer; 
                         buffer = null; 
                     }
-                    if( ! buffer ) buffer = new Buffer( size );
+                    if( ! buffer ) {
+                        buffer = new Buffer(size);
+                    }
+console.info( [ "TRY", fd, buffer, size, size* index ] );
                     fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buf ) {
                         if( buf ) {
                             var len = buf.toString().indexOf( '\0' );
                             buf.length = len >= 0 ? len : buf.length;
+console.log( [ "RRRRR",index, bytesRead, buf.length ] );
                         }
                         cb( err, buf );
                     } );
@@ -104,7 +94,7 @@ module.exports = {
                 putRecordSync: function( index, buffer ) {
                     var maxSize = size - 1;
                     var fillSize = maxSize > buffer.length ? buffer.length : maxSize;
-                    var wrote = fs.writeSync( fd, Buffer.concat( [buffer, new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
+                    var wrote = fs.writeSync( fd, Buffer.concat( [typeof buffer === 'string' ? new Buffer(buffer) : buffer, new Buffer("\0")], buffer.length + 1 ), 0, fillSize, size*(index-1) );
                     return wrote;
                 },
 
@@ -121,13 +111,14 @@ module.exports = {
                     //remove the last record and return it
                     var ret, ents;
                     (ents = this.numberOfEntriesSync()) && 
-                        (ret = self.getRecordSync( ents, buffer )) && 
-                        fs.ftruncate( fd, size * ( ents - 1 ) );
+                        (ret = this.getRecordSync( ents, buffer )) && 
+                        fs.ftruncateSync( fd, size * ( ents - 1 ) );
                     return ret;
                 },
                 pushSync: function(buffer) {
-                    var nextId = self.nextIdSync();
-                    return self.putRecordSync( nextId, buffer );
+                    var nextId;
+                    (nextId = this.nextIdSync() ) && this.putRecordSync( nextId, buffer );
+                    return nextId;
                 },
             };
             cb( null, store );

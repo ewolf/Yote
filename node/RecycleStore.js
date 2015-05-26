@@ -26,9 +26,9 @@ module.exports = {
                                 if( ids.length === entries ) {
                                     cb( null, ids );
                                 }
-                            }
+                            } );
                         }
-                    }
+                    } );
                 };
                 var oldNextIdFun = store.nextIdSync;
                 store.nextId = function( cb ) {
@@ -38,7 +38,7 @@ module.exports = {
                         oldNextIdFun( function( err, item ) {
                             if( err ) return cb( err );
                             cb( null, item );
-                        }
+                        } );
                     } );
                     var recycledId = recycler.pop().toString();
                     return recycleId ? recycleId : oldNextIdFun();
@@ -64,8 +64,8 @@ module.exports = {
                     var recycledId = recycler.popSync().toString();
                     return recycleId ? recycleId : oldNextIdSyncFun();
                 }
+                callBack( null, store );
             } );
         } );
-        callBack( null, store );
     } //open
 };

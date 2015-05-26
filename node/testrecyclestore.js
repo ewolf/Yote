@@ -1,13 +1,13 @@
 var test = require('tape');
 var fs = require('fs');
 
-var stores = require( './FixedStore' );
+var stores = require( './RecycleStore' );
 
 var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
-    t.plan(46);
+    t.plan(30);
 
     stores.open( path, 50, function( err, store ) {
         t.equal( store.nextIdSync(), 1, "first id" );
@@ -20,38 +20,41 @@ test( 'new record file', function(t) {
         sz( 200 );
 
         store.putRecordSync( 1, new Buffer("FOO") );
-        store.putRecordSync( 3, "BAR" );
+        store.putRecordSync( 3, new Buffer("BAR") );
         store.putRecordSync( 2, new Buffer("BONGLO") );
         store.putRecordSync( 1, new Buffer("OFO") );
-        t.equal( store.pushSync( new Buffer("PUSHED") ), 5, "correct id for pushSync" );
-        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""],[5,"PUSHED"] ]
+        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""] ]
             .forEach(function(x){ 
                 t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
-        sz( 250 );
 
-        t.equal( store.popSync().toString(), "PUSHED" );
-        sz( 200 );
 
-        t.equal( store.nextIdSync(), 5, "back to fifth id" );
-
-        [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,""],[5,""] ]
-            .forEach(function(x){ 
-                t.equal( store.getRecordSync(x[0]).toString(), x[1] );  });
+// test calling delete twice. it really shouldn't have 
+// the id more than once
+console.info( store );
+        store.deleteSync( 2 );
+        t.equal( store.getRecordSync( 2 ).toString(), "BONGLO", "recycled still has old value" );
+        var ids = store.getRecycledIdsSync();
+        t.equal( ids, [ 2 ], 'delete called once' );
+        store.deleteSync( 2 );
+        t.equal( ids, [ 2 ], 'delete called twice' );
+        store.deleteSync( 2, true );
+        t.equal( ids, [ 2 ] );
+        t.equal( store.getRecordSync( 2 ).toString(), "", "recycled is now empty" );
 
         testExistingRecordFile( );
-    } ); //23 tests so far
+    } ); //12 tests so far
 
     function sz(size,msg) {
         var sz = fs.statSync(path).size;
-        t.equal( sz, size, "Filesize is " + size );
+        t.equal( sz, size );
 
     }
     
     function testExistingRecordFile() {
         stores.open( path, 50, function( err, store ) {
+            t.equal( store.nextIdSync(), 5, "5th id" );
             t.equal( store.nextIdSync(), 6, "6th id" );
-            t.equal( store.nextIdSync(), 7, "7th id" );
-            sz( 350 );
+            sz( 300 );
             store.putRecordSync( 4, new Buffer("onion") );
             store.putRecordSync( 6, new Buffer("pEte") );
             [ [1,"OFO"],[2,"BONGLO"],[3,"BAR"],[4,"onion"],[6,"pEte" ] ]
@@ -60,7 +63,7 @@ test( 'new record file', function(t) {
             fs.unlinkSync( path );
             t.comment( '---------- test async ------------' );
             testAsync();
-        } ); // 8 more, so 31 tests
+        } ); //at 20 tests
     } //testExistingRecordFile
 
     var asyncStore;
@@ -85,7 +88,7 @@ test( 'new record file', function(t) {
                       sz( 50 );
                   }
                 ],
-            ], // 2 more, so 33 tests
+            ], //22 tests
             [ "four more nextid group", 1,2,3,4 ].map( function(x) { return Number( x ) ?  [ getStore, function() { return asyncStore.nextId } ] : x; } ),
             [
                 "sixth async group",
@@ -96,57 +99,15 @@ test( 'new record file', function(t) {
                       sz( 300 );
                   }
                 ],
-            ], // 2 more so 35 tests
-            [
-                "push and pop test",
-                [
-                    getStore,
-                    function() { return asyncStore.push },
-                    function( err, id ) {
-                        t.equal( id, 7, "seventh id from push" );
-                        t.equal( asyncStore.getRecordSync(7).toString(), "Record 7" );
-                        sz( 350 );
-                    },
-                    "Record 7"
-                ]
-            ], // 3 more so 37 tests
+            ], //24 tests
             [ "Put Records Async", 2, 3, 5 ].map( function( n ) { 
                 return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function(err,bytesWritten) { t.equal(bytesWritten,1+String("Record " + n).length,"record " + n + " wrote correct number of bytes")}, n, n == 3 ? "Record " + n : new Buffer( "Record " + n ) ] : n;
-            } ), // 3 more so 40 tests
-
-            [ "Get Records Async", 2, 3, 5, 7 ].map( function( n ) { 
+            } ), //27 tests
+            [ "Get Records Async", 2, 3, 5 ].map( function( n ) { 
                 return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
-                    t.equal( buff.toString(), "Record " + n, "Read Record " + n );
-                }, n, null ] : n;
-            } ),// 4 more so 44 tests
-
-            [ 'final filesize check',
-              [ getStore, 
-                function() { return asyncStore.getRecord },
-                function( err, buff ) { 
-                      t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync" );
-                    t.equal( buff.toString(), "Record 7", "Record 7 async" );
-                    sz( 350 );
-                },
-                7, null
-              ],
-              [ getStore, 
-                function() { return asyncStore.getRecord },
-                function( err, buff ) { 
-                    t.equal( buff.toString(), "Record 7" );
-                      t.equal( asyncStore.getRecordSync(7).toString(), "Record 7", "record 7 sync again" );
-                    sz( 350 );
-                },
-                7, null
-              ]
-            ], // 2 more so 46
-
-            [ "Get Records Async", 2, 3, 5, 7 ].map( function( n ) { 
-                return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
-                    t.equal( buff.toString(), "Record " + n, "Read Record " + n );
-                }, n, null ] : n;
-            } ),// 4 more so 44 tests
-
+                    t.equal( buff.toString(), "Record " + n, "Record " + n );
+                }, n ] : n;
+            } ),//30 tests
         ] );
     } //testAsync
         
@@ -181,4 +142,5 @@ test( 'new record file', function(t) {
         }
     } //testAsyncGroups
 });
+
 
