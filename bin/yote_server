@@ -230,7 +230,7 @@ sub start_engine {
 
     if( $reconnect_socket ) { 
         $internal_socket->close if $internal_socket;
-        until( $internal_socket = new IO::Socket::INT(
+        until( $internal_socket = new IO::Socket::INET(
                    Listen => 10, 
                    # TODO : make sure there is an internal_port
                    LocalPort => $config->{internal_port}
