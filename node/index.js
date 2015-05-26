@@ -78,3 +78,18 @@ YoteObj.prototype.set = function( key, val ) {
     this._d[ key ] = val;
     return val;
 };
+/*
+
+Proxies
+[1G[0J> [3Gvar _p = {}; var p = Proxy.create({ set: function(proxy,name,val) { _p[name] = val; }, get: function(proxy,name) { return _p[name].toUpperCase() } } );
+var _p = {}; var p = Proxy.create({ set: function(proxy,name,val) { _p[name] = val; }, get: function(proxy,name) { return _p[name].toUpperCase() } } );
+undefined
+[1G[0J> [3Gp.foo = 'bar';
+p.foo = 'bar';
+'bar'
+[1G[0J> [3Gp.foo
+p.foo
+'BAR'
+[1G[0J> [3G
+
+*/
