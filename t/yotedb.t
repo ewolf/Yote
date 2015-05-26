@@ -55,7 +55,7 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    my $ROOT_START = 24;
+    my $ROOT_START = 21;
 
     my $fetched_root = Yote::Root->fetch_root();
     my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );

@@ -7,6 +7,10 @@ use vars qw($VERSION);
 $VERSION = '0.02';
 
 no warnings 'uninitialized';
+
+our $DIRTY = {};
+our $DIRTY_CONTAINER = {};
+
 sub allows_access {
     my( $obj_id, $app, $login, $guest_token ) = @_;
 
@@ -19,7 +23,7 @@ sub allows_access {
     #
 
     unless( $obj_id ) {
-	return 1 if $app && $app->isa( 'Yote::AppRoot' );
+        return 1 if $app && $app->isa( 'Yote::AppRoot' );
     }
 
     return 1 if $obj_id eq Yote::ObjProvider::first_id() || ( $app && $obj_id eq $app->{ID} ) || ( $login && $obj_id eq $login->{ID} );
@@ -29,18 +33,18 @@ sub allows_access {
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
 
     my $root = Yote::Root::fetch_root();
-    my $ALLOWS = $root->get___ALLOWS();
+    my $ALLOWS = $Yote::Root::ALLOWS;
 
     if( $login ) {
-	my $ret = $ALLOWS->{ $obj_id }{ $login->{ID} };
-	unless( $ret ) { # transfer from guest to logged in token, if needed
-	    $ret = $ALLOWS->{ $obj_id }{ $guest_token };
-	    if( $ret ) {
-		$ALLOWS->{ $obj_id }{ $login->{ID} } = 1;
-		delete $ALLOWS->{ $obj_id }{ $guest_token };
-	    }
-	}
-	return $ret;
+        my $ret = $ALLOWS->{ $obj_id }{ $login->{ID} };
+        unless( $ret ) { # transfer from guest to logged in token, if needed
+            $ret = $ALLOWS->{ $obj_id }{ $guest_token };
+            if( $ret ) {
+                $ALLOWS->{ $obj_id }{ $login->{ID} } = 1;
+                delete $ALLOWS->{ $obj_id }{ $guest_token };
+            }
+        }
+        return $ret;
     }
     return $ALLOWS->{ $obj_id }{ $guest_token };
     
@@ -50,19 +54,17 @@ sub clear_login {
     my( $login, $guest_token ) = @_;
 
     my $root = Yote::Root::fetch_root();    
-    my $DIRTY = $root->get___DIRTY();
-    my $ALLOWS_REV = $root->get___ALLOWS_REV();
-    my $REGISTERED_CONTAINERS = $root->get___REGISTERED_CONTAINERS();
+    my $ALLOWS_REV = $Yote::Root::ALLOWS_REV;
 
     if( $login ) {
-	delete $DIRTY->{ $login->{ID} };
-	delete $ALLOWS_REV->{ $login->{ID} };
-	delete $REGISTERED_CONTAINERS->{ $login->{ID} };
+        delete $DIRTY->{ $login->{ID} };
+        delete $ALLOWS_REV->{ $login->{ID} };
+        delete $Yote::Root::REGISTERED_CONTAINERS->{ $login->{ID} };
     }
     delete $DIRTY->{ $guest_token };
     delete $ALLOWS_REV->{ $guest_token };
 
-    delete $REGISTERED_CONTAINERS->{ $guest_token };
+    delete $Yote::Root::REGISTERED_CONTAINERS->{ $guest_token };
 }
 
 # return a list of object ids whos data should be sent to the caller.
@@ -70,11 +72,9 @@ sub fetch_dirty {
     my( $login, $guest_token ) = @_;
     my $ids = [];
     my $root = Yote::Root::fetch_root();
-    my $DIRTY = $root->get___DIRTY();
-
     if( $login ) {
-	push @$ids, keys %{ $DIRTY->{ $login->{ID} } };
-	delete $DIRTY->{ $login->{ID} };
+        push @$ids, keys %{ $DIRTY->{ $login->{ID} } };
+        delete $DIRTY->{ $login->{ID} };
     }
 
     push @$ids, keys %{ $DIRTY->{ $guest_token } };
@@ -85,15 +85,14 @@ sub fetch_dirty {
 
 sub mark_dirty {
     if( $Yote::Root::ROOT_INIT ) {
-	return;
+        return;
     }
     my( $obj_id, $is_container ) = @_;
 
     my $root = Yote::Root::fetch_root();
 
     # mark this obj dirty for any client watching it
-    my $DIRTY = $root->get___DIRTY();
-    my $ALLOWS = $root->get___ALLOWS();
+    my $ALLOWS = $Yote::Root::ALLOWS;
     my $obj_hash = $ALLOWS->{ $obj_id };
 
     for my $recip_id ( keys %$obj_hash ) {
@@ -104,13 +103,12 @@ sub mark_dirty {
     # if this is a container not on a client but paginated by the client, note that
     # the pagination needs update
     if( $is_container ) {
-	my $DIRTY_CONTAINER = $root->get___DIRTY_CONTAINER();
-	my $REGISTERED_CONTAINERS = $root->get__REGISTERED_CONTAINERS();
-	for my $recip_id ( keys %{ $REGISTERED_CONTAINERS->{ $obj_id } || {} } ) {
-	    for my $attached_to_obj ( keys %{ $REGISTERED_CONTAINERS->{ $recip_id } } ) {
-		$DIRTY_CONTAINER->{ $recip_id }{ $attached_to_obj }{ $obj_id } ||= 1;
-	    }
-	}
+        my $REGISTERED_CONTAINERS = $Yote::Root::REGISTERED_CONTAINERS;
+        for my $recip_id ( keys %{ $REGISTERED_CONTAINERS->{ $obj_id } || {} } ) {
+            for my $attached_to_obj ( keys %{ $REGISTERED_CONTAINERS->{ $recip_id } } ) {
+                $DIRTY_CONTAINER->{ $recip_id }{ $attached_to_obj }{ $obj_id } ||= 1;
+            }
+        }
     }    
     
 } #mark_dirty
@@ -121,8 +119,8 @@ sub register_object {
     return unless $recipient_id;
 
     my $root = Yote::Root::fetch_root();
-    my $ALLOWS = $root->get___ALLOWS();
-    my $ALLOWS_REV = $root->get___ALLOWS_REV();
+    my $ALLOWS = $Yote::Root::ALLOWS;
+    my $ALLOWS_REV = $Yote::Root::ALLOWS_REV;
     $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;
     $ALLOWS_REV->{ $recipient_id }{ $obj_id } ||= 1;
 
