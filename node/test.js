@@ -55,6 +55,7 @@ test( 'new record file', function(t) {
     function testAsync() { 
         testAsyncGroups( [
             [
+                "open store group",
                 [ function() { stores },
                   function() { return stores.open },
                   function(err,store) {
@@ -63,6 +64,7 @@ test( 'new record file', function(t) {
                 ],
             ],
             [
+                "first nextid group",
                 [ getStore,
                   function() { return asyncStore.nextId },
                   function( err, id ) {
@@ -71,54 +73,60 @@ test( 'new record file', function(t) {
                   }
                 ],
             ],
-            [ 1,2,3,4 ].map( function() { return [ getStore, function() { return asyncStore.nextId } ]; } ),
+            [ "four more nextid group", 1,2,3,4 ].map( function(x) { return Number( x ) ?  [ getStore, function() { return asyncStore.nextId } ] : x; } ),
             [
+                "sixth async group",
                 [ getStore,
                   function() { return asyncStore.nextId },
                   function( err, id ) {
+console.info( [ "SIXTH", this, err, id ] ); //called twice, so buug
+console.trace();
                       t.equal( id, 6, "sixth async nextid call" );
                       sz( 300 );
                   }
                 ],
             ],
-            [ 2, 3, 5 ].map( function( n ) { 
-                return [ getStore, function() { console.log( "CREA" + n ); return asyncStore.putRecord }, function() { console.log( "BUILDN " + n ) }, n, "Record " + n ];
+            [ "Put Records Async", 2, 3, 5 ].map( function( n ) { 
+                return Number(n) ?  [ getStore, function() { return asyncStore.putRecord }, function() {}, n, "Record " + n ] : n;
             } ),
-            [ 2, 3, 5 ].map( function( n ) { 
-                var woo =  [ getStore,function() { console.log( "THE " + n + " FUN" ); return asyncStore.getRecord }, function( err, buff ) {
-                    console.log( "GOT " +  buff.toString() );
+            [ "Get Records Async", 2, 3, 5 ].map( function( n ) { 
+                return Number(n) ?  [ getStore,function() { return asyncStore.getRecord }, function( err, buff ) {
                     t.equal( buff.toString(), "Record " + n, "Record " + n );
-                }, n ]; //28 tests
-                console.log( [ "WOO", woo ] );
-                return woo;
-            } ),
+                }, n ] : n;
+            } ),//28 tests
         ] );
     } //testAsync
         
     function testAsyncGroups( testgroups ) {
-        var countdown = testgroups.length;
-
+console.info( 'the start', testgroups );
         _testAsyncGroups( testgroups );
         
         function _testAsyncGroups( groups ) {
             var group = groups.shift();
+            var title = group.shift();
 
-            console.info( [ group ] );
+            var countdown = group.length;
+console.info( "start of group", title, countdown, group );
+
+            console.log( '--- Starting : ' + title + ' ----');
 
             group.map( function( test ) {
-
                 // group = [  [ test-function, callback, params... ] ]
                 var self     = test.shift()();
                 var testFun  = test.shift()();
                 var callback = test.shift() || function() {};
                 test.push( function() {
                     callback.apply( self, arguments );
-                    if( --countdown > 0 && groups.length > 0 ) {
+console.trace("in group");
+console.info( ["SUBTEST " + title +" DONE, countdown : " + countdown, arguments, callback+ '',  ] );
+                    if( --countdown < 1 && groups.length > 0 ) {
+                        console.log( '--- Done with : ' + title + ' ----');
                         _testAsyncGroups( groups );
                     }
                 } );
                 testFun.apply( self, test );
             } );
+            console.log( '--- Queued : ' + title + ' ----');
         }
     } //testAsyncGroups
 });

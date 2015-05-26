@@ -30,16 +30,24 @@ module.exports = {
                 */
 
                 getRecord: function( index, buffer, cb ) {
-
+                    if( ! cb && typeof buffer === 'function' ) { 
+                        cb = buffer; 
+                        buffer = null; 
+                    }
                     if( ! buffer ) buffer = new Buffer( size );
                     fs.read( fd, buffer, 0, size, size*index, function( err,bytesRead, buffer ) {
-                        cb( err, buffer );
+                        cb( err, buffer, "HA" );
                     } );
                 },
 
                 putRecord: function( index, buffer, cb ) {
+                    if( ! cb && typeof buffer === 'function' ) { 
+                        cb = buffer; 
+                        buffer = null; 
+                    }
+                    console.trace("put record");
                     fs.write( fd, buffer, size*index, function( err, bytesWritten, buffer ) {
-                        cb( err, buffer );
+                        cb( err, buffer, "BA" );
                     } );
                 },
 
@@ -56,6 +64,7 @@ module.exports = {
                         var nextId;
                         try {
                             nextId = self.nextIdSync();
+console.info( "next id callback", nextId, cb + '' );
                             cb( null, nextId );
                         } catch( err ) {
                             cb( err );
