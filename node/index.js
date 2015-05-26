@@ -31,8 +31,9 @@ YoteStore.prototype.newObj = function() {
 
 function YoteObj () {
     var self = this;
-    if(!(this instanceof YoteObj)) return _transOut( _register(new YoteObj() ) );
+    if(!(this instanceof YoteObj)) return new YoteObj();
     self._d = {};
+    _transIn( self );
 }
 
 var STORE = [null];
@@ -46,7 +47,7 @@ var _fetch = function( id ) {
 }
 
 var _transOut = function( val ) {
-    if( Number.isNumber( val ) ) return val;
+    if( Number( val ) > 0 ) return STORE[val];
 
     return val.substring(1);
 }
@@ -56,21 +57,24 @@ var _transIn = function( thing ) {
         if( thing._y && thing._y.id ) return thing._y.id;
         var id = _register( thing );
         thing._y = { 'id' : id, 'dirty' : true };
+        return id;
     }
     return 'v' + thing;
 }
 
 YoteObj.prototype.get = function( key, defVal ) {
     var val = this._d[ key ];
-
     if( typeof val !== 'undefined' ) {
         return _transOut( val );
     }
 
     this._d[ key ] = _transIn(defVal);
+    this._y.dirty = true;
     return defVal;
 };
 YoteObj.prototype.set = function( key, val ) {
-    this._d[ key ] = _transIn(val);
+    var val = _transIn(val);
+    this._y.dirty = val === this._d[ key ];
+    this._d[ key ] = val;
     return val;
 };
