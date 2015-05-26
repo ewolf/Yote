@@ -238,6 +238,10 @@ sub io_independent_tests {
     $root->set_obj( $new_obj );
     $root->add_once_to_array( "MORE STUFF", "MORE STUFF", "MORE STUFF" );
 
+    ok( $root != $new_obj, " two that are not equal using != " );
+    ok( $root ne $new_obj, " two that are not equal using ne " );
+    isnt( $root, $new_obj, " not equal objs not passing as the same" );
+
     $root->add_once_to_obj_array( $new_obj, $new_obj );
     is( scalar(@{$root->get_obj_array()}), 1, "add once works for references" );
 

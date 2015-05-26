@@ -6,8 +6,10 @@ no warnings 'uninitialized';
 
 use overload
     '""' => sub { "YID:".shift->{ID} },
-    eq   => sub { shift->{ID} == shift->{ID} },
-    '==' => sub { shift->{ID} == shift->{ID} },
+    eq   => sub { shift->{ID} eq shift->{ID} },
+    ne   => sub { shift->{ID} ne shift->{ID} },
+    '==' => sub { shift->{ID} eq shift->{ID} },
+    '!=' => sub { shift->{ID} ne shift->{ID} },
     fallback => 1;
 
 #
