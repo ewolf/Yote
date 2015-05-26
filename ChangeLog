@@ -1,3 +1,7 @@
+2015-05-26 Eric Wolf  <wolf@Talisman>
+	* Version 0.309
+	* Override equality and inequality operations for Yote::Obj instances. They are equal if they have the same id
+	
 2015-04-07 Eric Wolf  <wolf@Talisman>
 	* Version 0.307
 	* Yote now has its own backend for the object store. Pure perl solution. No longer supports mysql or mongo for simplicity.

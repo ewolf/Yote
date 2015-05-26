@@ -5,7 +5,7 @@ use warnings;
 no warnings 'uninitialized';
 
 use overload
-    '""' => sub { "YID:".shift->{ID} },
+    '""' => sub { shift->{ID} },
     eq   => sub { shift->{ID} eq shift->{ID} },
     ne   => sub { shift->{ID} ne shift->{ID} },
     '==' => sub { shift->{ID} eq shift->{ID} },
@@ -81,6 +81,10 @@ sub new {
 
     return $obj;
 } #new
+
+sub fetch {
+    return Yote::ObjProvider::fetch( $_[$#_] );
+}
 
 sub new_with_same_permissions {
     my( $self, $args ) = @_;

@@ -827,6 +827,13 @@ sub io_independent_tests {
         Yote::ObjProvider::recycle_objects();
         my $o2a = new Yote::Obj( { name => "yet Test for list add to w/ recycling redux" } );
         my $o2b = new Yote::Obj( { name => "yet An other Test for list add to w/ recycling redux" } );
+
+        my $o2a_copy = $o2b->fetch( $o2a );
+        is( $o2a, $o2a_copy, "Yote::Obj->fetch call" );
+
+        my $o2b_copy = Yote::Obj::fetch( $o2b );
+        is( $o2b, $o2b_copy, "Yote::Obj::fetch call" );
+
         $root->_add_to( 'o_list_addy', [$o2a] );
         $root->_add_to( 'o_list_addy', [$o2b] );
         Yote::ObjProvider::stow_all();
