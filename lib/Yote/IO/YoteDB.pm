@@ -366,27 +366,25 @@ sub recycle_objects {
 } #recycle_objects
 
 sub _recycle_objects {
-  my( $self, $keep_id, $keep_store ) = @_;
+  my( $self, $keep_id, $mark_to_keep_store ) = @_;
+
   my $is_first = 0;
   unless( $keep_id ) {
-    $keep_id //= $self->first_id;
     $is_first = 1;
-  }
-  unless( $keep_store ) {
-    $keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
-      $keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+    $keep_id //= $self->first_id;
+    #todo, what if this already exists
+    $mark_to_keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' );
+    $mark_to_keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
 
     # the already deleted cannot be re-recycled
     my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
     for ( @$ri ) {
-      $keep_store->put_record( $_, [ 1 ] );
+      $mark_to_keep_store->put_record( $_, [ 1 ] );
     }
-  }
+    $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
+  } #if first
 
-  my( $has ) = @{ $keep_store->get_record( $keep_id ) };
-  return if $has;
-
-  $keep_store->put_record( $keep_id, [ 1 ] );
+  # get the object ids referenced by this keeper object
   my( @queue );
   my $item = $self->fetch( $keep_id );
   if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
@@ -394,28 +392,32 @@ sub _recycle_objects {
   } else {
     ( @queue ) = grep { /^[^v]/ } values %{$item->[DATA]};
   }
+
   for my $keeper ( @queue ) {
-    $self->_recycle_objects( $keeper, $keep_store );
+    next if $mark_to_keep_store->get_record( $keeper )->[0];
+    $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+    $self->_recycle_objects( $keeper, $mark_to_keep_store );
   }
+
   if ( $is_first ) {
     # the purge begins here
     my $count = 0;
     my $cands = $self->{OBJ_INDEX}->entries;
 
     my( %weak_only_check, @weaks, %weaks );
-    for ( 1..$cands) { #iterate each id in the entire object store
-      my( $rec ) = @{ $keep_store->get_record( $_ ) };
-      my $wf = $Yote::ObjProvider::WEAK_REFS->{$_};
+    for my $cand ( 1..$cands) { #iterate each id in the entire object store
+      my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+      my $wf = $Yote::ObjProvider::WEAK_REFS->{$cand};
 
       #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
       # weak references, then it can be removed";
-      if ( ! $rec ) {
+      if ( ! $keep ) {
         if( $wf ) {
-            push @weaks, [ $_, $wf ];
+            push @weaks, [ $cand, $wf ];
         }
         else { #this case is something in the db that is not connected to the root and not loaded anywhere
           ++$count;
-          $self->{OBJ_INDEX}->delete( $_, 1 );
+          $self->{OBJ_INDEX}->delete( $cand, 1 );
         }
       }
     }
@@ -462,7 +464,7 @@ sub _recycle_objects {
     }
 
     # remove recycle datastore
-    $keep_store->unlink_store;
+    $mark_to_keep_store->unlink_store;
 
     return $count;
   }
