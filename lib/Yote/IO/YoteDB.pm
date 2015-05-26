@@ -362,112 +362,109 @@ sub get_recycled_ids {
 }
 
 sub recycle_objects {
-  return shift->_recycle_objects;
-} #recycle_objects
+  my $self = shift;
 
-sub _recycle_objects {
-  my( $self, $keep_id, $mark_to_keep_store ) = @_;
+  my $mark_to_keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' );
+  $mark_to_keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+  
+  # the already deleted cannot be re-recycled
+  my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
+  for ( @$ri ) {
+    $mark_to_keep_store->put_record( $_, [ 1 ] );
+  }
 
-  my $is_first = 0;
-  unless( $keep_id ) {
-    $is_first = 1;
-    $keep_id //= $self->first_id;
-    #todo, what if this already exists
-    $mark_to_keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' );
-    $mark_to_keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+  my $keep_id = $self->first_id;
+  my( @queue ) = ( $keep_id );
 
-    # the already deleted cannot be re-recycled
-    my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
-    for ( @$ri ) {
-      $mark_to_keep_store->put_record( $_, [ 1 ] );
-    }
-    $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
-  } #if first
+  $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
 
   # get the object ids referenced by this keeper object
-  my( @queue );
-  my $item = $self->fetch( $keep_id );
-  if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-    ( @queue ) = grep { /^[^v]/ } @{$item->[DATA]};
-  } else {
-    ( @queue ) = grep { /^[^v]/ } values %{$item->[DATA]};
-  }
+  while( @queue ) {
+    $keep_id = shift @queue;
 
-  for my $keeper ( @queue ) {
-    next if $mark_to_keep_store->get_record( $keeper )->[0];
-    $mark_to_keep_store->put_record( $keeper, [ 1 ] );
-    $self->_recycle_objects( $keeper, $mark_to_keep_store );
-  }
+    my $item = $self->fetch( $keep_id );
+    my( @additions );
+    if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
+      ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
+    } else {
+      ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
+    }
 
-  if ( $is_first ) {
-    # the purge begins here
-    my $count = 0;
-    my $cands = $self->{OBJ_INDEX}->entries;
+    for my $keeper ( @additions ) {
+      next if $mark_to_keep_store->get_record( $keeper )->[0];
+      $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+      push @queue, $keeper;
+    }
+  } #while there is a queue
 
-    my( %weak_only_check, @weaks, %weaks );
-    for my $cand ( 1..$cands) { #iterate each id in the entire object store
-      my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
-      my $wf = $Yote::ObjProvider::WEAK_REFS->{$cand};
+  # the purge begins here
+  my $count = 0;
+  my $cands = $self->{OBJ_INDEX}->entries;
 
-      #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
-      # weak references, then it can be removed";
-      if ( ! $keep ) {
-        if( $wf ) {
-            push @weaks, [ $cand, $wf ];
-        }
-        else { #this case is something in the db that is not connected to the root and not loaded anywhere
-          ++$count;
-          $self->{OBJ_INDEX}->delete( $cand, 1 );
-        }
+  my( %weak_only_check, @weaks, %weaks );
+  for my $cand ( 1..$cands) { #iterate each id in the entire object store
+    my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+    my $wf = $Yote::ObjProvider::WEAK_REFS->{$cand};
+    
+    #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
+    # weak references, then it can be removed";
+    if ( ! $keep ) {
+      if( $wf ) {
+        push @weaks, [ $cand, $wf ];
+      }
+      else { #this case is something in the db that is not connected to the root and not loaded anywhere
+        ++$count;
+        $self->{OBJ_INDEX}->delete( $cand, 1 );
       }
     }
-    # check things attached to the weak refs.
-    for my $wf (@weaks) { 
-        my( $id, $obj ) = @$wf;
-        if ( ref( $obj ) eq 'ARRAY' ) { 
-            for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
-                $weak_only_check{ $_ }++;
-            }
-        } elsif ( ref( $obj ) eq 'HASH' ) {
-            for ( map { Yote::ObjProvider::xform_in($_) } values %$obj) {
-                $weak_only_check{ $_ }++;
-            }
-        } else {
-            for ( values %{ $obj->{DATA} } ) {
-                $weak_only_check{ $_ }++;
-            }
-        }
-    } #each weak
-
-    # can delete things with only references to the WEAK and DIRTY caches.
-    my( @to_delete );
-    for my $weak ( @weaks ) {
-        my( $id, $obj ) = @$weak;
-        unless( $obj ) {
-            push @to_delete, $id;
-            ++$count;
-        } else {
-            my $extra_refs = 2;
-            # hash and array have an additional reference in the tie
-            if( ref( $obj ) =~ /^(ARRAY|HASH)$/ ) {
-                $extra_refs++;
-            }
-            if( ($extra_refs+$weak_only_check{$id}) >= refcount($obj) ) {
-                push @to_delete, $id;
-                ++$count;
-            }
-        }
-    }
-    for( @to_delete ) {
-        $self->{OBJ_INDEX}->delete( $_, 1 );
-        delete $Yote::ObjProvider::WEAK_REFS->{$_};
-    }
-
-    # remove recycle datastore
-    $mark_to_keep_store->unlink_store;
-
-    return $count;
   }
+  # check things attached to the weak refs.
+  for my $wf (@weaks) { 
+    my( $id, $obj ) = @$wf;
+    if ( ref( $obj ) eq 'ARRAY' ) { 
+      for ( map { Yote::ObjProvider::xform_in($_) } @$obj ) {
+        $weak_only_check{ $_ }++;
+      }
+    } elsif ( ref( $obj ) eq 'HASH' ) {
+      for ( map { Yote::ObjProvider::xform_in($_) } values %$obj) {
+        $weak_only_check{ $_ }++;
+      }
+    } else {
+      for ( values %{ $obj->{DATA} } ) {
+        $weak_only_check{ $_ }++;
+      }
+    }
+  } #each weak
+  
+  # can delete things with only references to the WEAK and DIRTY caches.
+  my( @to_delete );
+  for my $weak ( @weaks ) {
+    my( $id, $obj ) = @$weak;
+    unless( $obj ) {
+      push @to_delete, $id;
+      ++$count;
+    } else {
+      my $extra_refs = 2;
+      # hash and array have an additional reference in the tie
+      if( ref( $obj ) =~ /^(ARRAY|HASH)$/ ) {
+        $extra_refs++;
+      }
+      if( ($extra_refs+$weak_only_check{$id}) >= refcount($obj) ) {
+        push @to_delete, $id;
+        ++$count;
+      }
+    }
+  }
+  for( @to_delete ) {
+    $self->{OBJ_INDEX}->delete( $_, 1 );
+    delete $Yote::ObjProvider::WEAK_REFS->{$_};
+  }
+  
+  # remove recycle datastore
+  $mark_to_keep_store->unlink_store;
+  
+  return $count;
+  
 } #recycle_objects
 
 #
