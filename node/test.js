@@ -12,7 +12,6 @@ function sz(msg) {
 }
 
 function testA() {
-    sz();
     stores.open( path, 50, function( err, store ) {
         sz('zero id');
         a.equal( store.nextIdSync(), 1, "first id" );

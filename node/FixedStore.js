@@ -4,6 +4,12 @@ var fs = require('fs');
 module.exports = {
     open: function( path, size, cb ) {
         
+        try { 
+            fs.statSync( path );
+        } catch( err ) {
+            fs.writeFileSync( path, "" );
+        }
+
         fs.open( path, 'r+', function( err, fd ) {
             if( err ) {
                 return cb( err );
@@ -57,7 +63,7 @@ module.exports = {
                     if( ! buffer ) buffer = new Buffer( size );
                     fs.readSync( fd, buffer, 0, size, size*(index-1) );
                     var len = buffer.toString().indexOf( '\0' );
-                    buffer.length = len > 0 ? len : buffer.length;
+                    buffer.length = len >= 0 ? len : buffer.length;
                     return buffer;
                 },
 
@@ -76,7 +82,7 @@ module.exports = {
 
                 nextIdSync: function() {
                     var next_id;
-                    var b = new Buffer(size); b.write( '' );
+                    var b = new Buffer(size); b.write( "\0" );
                     console.log( fs.statSync(path) );
                     (next_id = parseInt( fs.statSync( path ).size / size ) + 1 ) && this.putRecordSync( next_id, b );
                     return next_id;
