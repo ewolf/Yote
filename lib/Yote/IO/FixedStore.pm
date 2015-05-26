@@ -92,7 +92,7 @@ sub put_record {
         die "$to_write_length vs $self->{SIZE}" unless $to_write_length == $self->{SIZE};
     }
     my $swv = syswrite $fh, $to_write;
-    $swv > 0 or die "Could not write : $@ $!";
+    defined( $swv ) or die "Could not write : $@ $!";
     return 1;
 } #put_record
 
