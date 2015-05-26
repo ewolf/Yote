@@ -29,6 +29,15 @@ module.exports = {
                         cb( err, buf );
                     } );
                 },
+                hasRecord: function( queryBuff, cb ) {
+                    var self = this;
+                    process.nextTick( function() {
+                        try { 
+                            var val = self.hasRecordSync( queryBuff );
+                            cb( null, val );
+                        } catch( err ) { cb( err ); }
+                    });
+                },
 
                 putRecord: function( index, buffer, cb ) {
                     buffer = Buffer.isBuffer( buffer ) ? Buffer.concat( [buffer,new Buffer("\0")],buffer.length+1) : new Buffer( String(buffer) + '\0' ); 
@@ -108,14 +117,12 @@ module.exports = {
                     return nextId;
                 },
                 hasRecordSync: function( queryBuff ) {
-console.log( "NARF" )
                     //TODO - make efficient
-                    var rsize = fs.statSync( path ).size;console.log( "REEE " + rsize+ "," + path )
+                    var rsize = fs.statSync( path ).size;
                     if( rsize === 0 ) return false;
                     var buffer = new Buffer( rsize );
-                    fs.readSync( fd, buffer, 0, rsize, rsize );
-var r = new RegExp( '(^|[\\0])' + String(queryBuff) + '([\\0]|$)' );
-console.info( [ "INF", rsize, String(buffer), buffer, r, String( buffer ).match( r ) ] );
+                    fs.readSync( fd, buffer, 0, rsize, 0 );
+                    var r = new RegExp( '(^|[\\0])' + String(queryBuff) + '([\\0]|$)' );
                     return String( buffer ).match( r );
                 },
                 popSync: function(buffer) {
@@ -128,7 +135,7 @@ console.info( [ "INF", rsize, String(buffer), buffer, r, String( buffer ).match(
                 },
                 pushSync: function(buffer) {
                     var nextId;
-                    (nextId = this.nextIdSync() ) && (console.log(['NE',nextId,String(buffer)])||true) && this.putRecordSync( nextId, buffer );
+                    (nextId = this.nextIdSync() ) && this.putRecordSync( nextId, buffer );
                     return nextId;
                 },
             };
