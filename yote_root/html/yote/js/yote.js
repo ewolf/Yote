@@ -4,993 +4,586 @@
  * Copyright (C) 2012 Eric Wolf
  * This module is free software; it can be used under the terms of the artistic license
  *
- * Version 0.203
+ * Version 0.3
  */
 
 /*
-  Upon script load, find the port that the script came from, if any.
- */
+debug,token,objs,_dump_cache,_cache_size,_debug_[sg]et_message
 
-var scripts = document.getElementsByTagName('script');
-var index = scripts.length - 1;
-var myScriptUrl = scripts[index].src;
-var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
-var yote_src_url = ma && ma.length > 1 ? ma[ 1 ] : '';
+init
+logout
+reinint
+fetch_app
+fetch_root
+login
 
-// the whole yote object.
-if( typeof $.yote === 'object' ) {
-    var eh = $.yote;
+  $.yote.upload
+  $.yote.upload_message
+*/
+if( ! window.$ ) {
+    window.$ = {};
 }
 
-$.yote = {
-    url:yote_src_url,
-    has_updated :false,
-    guest_token:0,
-    token:0,
-    port:null,
-    err:null,
-    objs:{},
-    apps:{},
-    debug:false,
-    app:null,
-    root:null,
-    need_reinit:false,
+/*
+  Upon script load, see if a port was explicity given in the script
+  tag calling this file. If there is a port specified, use that
+  location as an absolute location when making the yote ajax calls. 
+  If the normal port is used, that means the script is called from the 
+  same place as the page and relative urls can be used for the ajax calls.
+*/
+var scripts = document.getElementsByTagName('script');
+var myScriptUrl = scripts[scripts.length - 1].src;
+var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 
-    _ids:0,
-    _next_id:function() {
-        return '__yidx_'+this._ids++;
-    }, //_next_id
-    _pag_list_cache : {},
-    _pag_hash_cache : {},
+var _url = ma && ma.length > 1 ? ma[ 1 ] : ''; // domain/port to use for message calls
+
+var _debug = true;
+ 
+var _yote_root, _default_app, _default_appname, _app_id;
+var _guest_token, _auth_token = $.cookie('yoken');
+var _login_obj, _acct_obj;
+
+/*
+  Yote API :
+    $.yote._get_message_function
+    $.yote._set_message_function
+
+    $.yote.init
+    $.yote.fetch_root - get the master root object from which account stuff can be done
+*/
+
+/*
+            ----------- CACHING --------
+ */
+var _object_cache = {};
 
 
-    init:function( appname, token ) {
-        token = token ? token : $.cookie('yoken');
-	$.yote.token = token || 0;
-        var ret;
-	this.message( {
-	    async:false,
-	    cmd:'fetch_initial',
-	    data:{ t:token,a:appname },
-	    passhandler:function( initial_data ) {	    
-		if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
-		    var yote_root = initial_data.get(  'root' ); 
-                    yote_root._app_id = yote_root.id;
-		    $.yote.yote_root = yote_root;
-		    $.yote.objs[ yote_root.id ] = yote_root;
+/*
+            ----------- DATA FUNCTIONS --------
+ */
 
-		    var app = initial_data.get( 'app' ) || yote_root;
-		    app._app_id = app.id;
-		    $.yote._app_id = app.id;
-		    $.yote.default_app = app;
-		    $.yote.default_appname = appname;
-		    $.yote.objs[ app.id ] = app;
+var _translate_data = function(data) {
+    // returns a base 64 encoded version of the data for io transfer
+    return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) );
+};
+var _untranslate_data = function(data) {
+    // returns the object or string the data represents
+    return data.substring(0,1) == 'v' ? data.substring(1) : _object_cache[ data ];
+};
+var _prepare_data = function(data) {
 
-		    $.yote.login_obj   = initial_data.get(  'login' );
-		    $.yote.acct_obj    = initial_data.get(  'account' );
-                    $.yote.acct_obj._app_id = app.id;
+    // takes a data structure and converts all non-null, non-objects to the yote 'v' + value format.
+    // translates all yote objects to their ids
+    // for non-yote lists and hashes, it prepares their data recursively
+    // TODO : check for recursive data structures
+    if( typeof data === 'undefined' ) {
+        return undefined;
+    }
+    if( typeof data !== 'object' ) {
+        // string value
+        return 'v' + data;
+    }
+    else if( data._id ) { 
+        // yote object
+        return data._id;
+    }
 
-		    $.yote.guest_token = initial_data.get(  'guest_token' );
+    // now the case that parameters are being sent through,
+    // list a hash or parameters or a list of things but that list does not get created
+    var ret = $.isArray( data ) ? [] : {};
+    for( var key in data ) {
+        ret[key] = _prepare_data( data[key] );
+    }
+    return ret;
+}; //_prepare_data
 
-		    ret = app;
-		}
-		else {
-		    console.log( "ERROR in init for app '" + appname + "' Load did not work" );
-		}
-	    },
-	    failhandler:function( err ) {
-		console.log( "ERROR in init for app '" + appname + "' : " + err );
-	    }
-	} );
-        return ret;
-    }, //init
 
-    reinit:function( token ) {
-	if( ! this.default_app || this.need_reinit ) {
-	    this.init( this.default_appname, token );
-	    this.need_reinit = false;
-	    return true;
-	}
-	return false;
-    }, //reinit
+/*
+            ----------- IO FUNCTIONS --------
+ */
+var _message = function( params ) {
+    // sends a post request to the yote server. 
+    // the data is a base64 encoded json blob
+    _handle_event( 'message_start', params );
 
-    fetch_default_app:function() {
-	return this.default_app || this.fetch_root();
-    },
+    var outgoing_data   = _translate_data( params.data );
 
-    fetch_account:function() {
-	if( this.default_app ) {
-	    if( ! this.acct_obj ) {
-		this.acct_obj = this.default_app.account();
-	    }
-	    return this.acct_obj;
-	}
-	return undefined;
-    },
+    var async  = params.async == true ? 1 : 0;
+    var url    = params.url;
+    var app_id = params.app_id || _app_id || 0;
+    var cmd    = params.cmd;
+    var obj_id = params.obj_id || 0; //id to act on
 
-    fetch_app:function(appname,passhandler,failhandler) {
-	var yote_root = this.fetch_default_app();
-	if( typeof yote_root === 'object' ) {
-	    var ret = yote_root.fetch_app_by_class( appname );
-	    ret._app_id = ret.id;
-	    return ret;
-	} else if( typeof failhanlder === 'function' ) {
-	    failhandler('lost connection to yote server');
-	} else {
-	    _error('lost connection to yote server');
-	}
-    }, //fetch_app
+    var url = _url + '/_/' + app_id + '/' + obj_id + '/' + cmd;
 
-    fetch_root:function() {
-	var r = $.yote.yote_root;
-	if( ! r ) {
-	    r = this.message( {
-		async:false,
-		cmd:'fetch_root'
-	    } );
-	    $.yote.yote_root = r;
-	}
-	return r;
-    }, //fetch_root
-
-    // return not only root but login if applicable
-    // returns root, app, login, account
-    fetch_initial:function( token, appname ) {
-	if( r && typeof r === 'object' && r.length() > 2 ) {
-	    return [ r.get(0), r.get(1), r.get(2), r.get(3) ];
-	}
-    }, //fetch_initial
-
-    get_by_id:function( id ) {
-	return $.yote.objs[id+''] || $.yote.fetch_default_app().fetch(id).get(0);
-    },
-
-    has_root_permissions:function() {
-	return this.is_logged_in() && 1*this.get_login().get_is_root();
-    },
-
-    get_login:function() {
-	return this.login_obj;
-    }, //get_login
-
-    is_logged_in:function() {
-	return typeof this.login_obj === 'object';
-    }, //is_logged_in
-
-    login:function( handle, password, passhandler, failhandler ) {
-	var root = this.fetch_root();
-	if( typeof root === 'object' ) {
-	    root.login( { h:handle, p:password },
-			function(res) {
-			    $.yote.token = res.get( 't' ) || 0;
-			    $.yote.login_obj = res.get( 'l' );
-			    $.cookie( 'yoken', $.yote.token, { path : '/' } );
-			    if( typeof passhandler === 'function' ) {
-				passhandler(res);
-			    }
-			},
-			failhandler );
-	    return $.yote.login_obj;
-	} else if( typeof failhanlder === 'function' ) {
-	    failhandler('lost connection to yote server');
-	} else {
-	    _error('lost connection to yote server');
-	}
-    }, //login
-
-    logout:function() {
-	$.yote.fetch_root().logout();
-	$.yote.login_obj = undefined;
-	$.yote.acct_obj = undefined;
-	$.yote.default_app = undefined;
-	$.yote.token = 0;
-	$.yote._dump_cache();
-	$.cookie( 'yoken', '', { path : '/' } );
-    }, //logout
-
-    /* general functions */
-    message:function( params ) {
-        var root   = this;
-        var data   = root._translate_data( params.data || {} );
-        var async  = params.async == true ? 1 : 0;
-        var url    = params.url;
-        var app_id = params.app_id || '';
-        var cmd    = params.cmd;
-        var obj_id = params.obj_id || ''; //id to act on
-
-	root.upload_count = 0;
-
-	if( ! app_id ) app_id = $.yote._app_id || 0;
-	if( ! obj_id ) obj_id = 0;
-
-        var url = $.yote.url + '/_/' + app_id + '/' + obj_id + '/' + cmd;
-
-	var uploads = root._functions_in( data );
-	if( uploads.length > 0 ) {
-	    return root.upload_message( params, uploads );
-	}
-        if( async == 0 ) {
-            root._disable();
-        }
-	var encoded_data = $.base64.encode( JSON.stringify( { d : data } ) );
-        var get_data = $.yote.token + "/" + $.yote.guest_token;
+    var get_data = _auth_token + "/" + _guest_token;
 	var resp;
 
-        if( $.yote.debug == true ) {
+    if( _debug ) {
+        // TODO : have this a debug event rather than just a console log
 	    console.log("\noutgoing : " + cmd + '  : ' + url + '/' + get_data + '-------------------------' );
-	    console.log( data );
+	    console.log( outgoing_data ); 
 	}
 
 	$.ajax( {
-	    async:async,
-	    cache: false,
-	    contentType: "application/json; charset=utf-8",
-	    data : encoded_data,
-	    dataFilter:function(a,b) {
-		if( $.yote.debug == true ) {
-                    console.log( 'raw incoming ' );
-                    var len = 160;
-                    for( var i=0; i<a.length; i+=len ) {
-                        console.log( a.substring( i, i+len ) );
-                    }
-                    // print out eadch substring on a line
+	    'async':async,
+	    'cache': false,
+	    'contentType': "application/json; charset=utf-8",
+	    'data' : outgoing_data,
+	    'dataFilter':function(a,b) {
+		    if( _debug ) {         // TODO : have this a debug event rather than just a console log
+                console.log( 'raw incoming ' );
+                var len = 160;
+                for( var i=0; i<a.length; i+=len ) {
+                    console.log( a.substring( i, i+len ) );
                 }
-		return a;
-	    },
-
-	    error:function(a,b,c) { 
-                root._error(a); 
-            },
-	    success:function( data ) {
-		if( $.yote.debug == true ) {
-                    console.log( ['incoming ', data ] );
-                }
-                if( typeof data !== 'undefined' ) {
-		    resp = ''; //for returning synchronous
-
-		    if( typeof data.err === 'undefined' ) {
-			//dirty objects that may need a refresh
-                        $.yote.has_updated = false;
-			if( typeof data.d === 'object' ) {
-                            $.yote.has_updated = true;                            
-			    for( var oid in data.d ) {
-				if( root._is_in_cache( oid ) ) {
-				    
-				    var cached = root.objs[ oid + '' ];
-				    for( fld in cached._d ) {
-					//take off old getters/setters
-					delete cached['get_'+fld];
-				    }
-				    cached._d = data.d[ oid ];
-
-				    for( fld in cached._d ) {
-					//add new getters/setters
-					cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-				    }
-				}
-			    } //each dirty
-			} //if dirty
-
-			if( typeof data.r === 'object' ) {
-			    resp = root._create_obj( data.r, app_id );
-		            if( typeof params.passhandler === 'function' ) {
-				params.passhandler( resp );
-			    }
-			} else if( typeof data.r === 'undefined' ) {
-		            if( typeof params.passhandler === 'function' ) {
-				params.passhandler();
-			    }
-			} else {
-			    resp = data.r.substring( 1 );
-		            if( typeof params.passhandler === 'function' ) {
-				params.passhandler( resp );
-			    }
-		        }
-		    } else if( typeof params.failhandler === 'function' ) {
-			console.log( data.err );
-		        params.failhandler(data.err);
-                    } //error case. no handler defined
-                } else {
-                    console.log( "Success reported but no response data received" );
-                }
-	    },
-	    type:'POST',
-	    url:url + '/' + get_data
-	} );
-        if( ! async ) {
-            root._reenable();
-            return resp;
-        }
-    }, //message
-
-    /* the upload function takes a selector returns a function that sets the name of the selector to a particular value,
-       which corresponds to the parameter name in the inputs.
-       For example some_yote_obj->do_something( { a : 'a data', file_up = upload( '#myfileuploader' ) } )
-    */
-    upload:function( selector_id ) {
-	var uctxt = 'u' + this.upload_count++;
-	$( selector_id ).attr( 'name', uctxt );
-	return (function(uct, sel_id) {
-	    return function( return_selector_id ) { //if given no arguments, just returns the name given to the file input control
-		if( return_selector_id ) return sel_id;
-		return uctxt;
-	    };
-	} )( uctxt, selector_id );
-    }, //upload
-
-    /* Should have a upload_multiple. This would pass the files as filename -> data pairs, and include a filenames list */
-
-    /*
-      This is called automatically by message if there is an upload involved. It is not meant to be invoked directly.
-    */
-    upload_message:function( params, uploads ) {
-
-
-	// for multiple, upload the files in order, then get the filehelper objs as callbacks and then make the call
-
-        var root   = this;
-        var data   = root._translate_data( params.data || {}, true );
-        var url    = params.url;
-        var app_id = params.app_id || '';
-        var cmd    = params.cmd;
-        var obj_id = params.obj_id || ''; //id to act on
-
-        var url = $.yote.url + '/_u/' + app_id + '/' + obj_id + '/' + cmd;
-
-	root.iframe_count++;
-	var iframe_name = 'yote_upload_' + root.iframe_count;
-	var form_id = 'yote_upload_form_' + root.iframe_count;
-	var iframe = $( '<iframe id="' + iframe_name + '" name="' + iframe_name + '" style="position;absolute;top:-9999px;display:none" /> ').appendTo( 'body' );
-	var form = '<form id="' + form_id + '" target="' + iframe_name + '" method="post" enctype="multipart/form-data" />';
-	var upload_selector_ids = uploads.map( function( x ) { return x(true) } );
-	var cb_list = [];
-	$( upload_selector_ids.join(',') ).each(
-	    function( idx, domEl ) {
-		$( this ).prop( 'disabled', false );
-		cb_list.push(  $( 'input:checkbox', this ) );
-	    }
-	);
-	if( $.yote.debug == true ) {
-	    console.log("\noutgoing " + url + '-------------------------' );
-	    console.log( data );
-	}
-
-	var form_sel = $( upload_selector_ids.join(',') ).wrapAll( form ).parent('form').attr('action',url);
-	$( '#' + form_id ).append( '<input type=hidden name=d value="' + $.base64.encode(JSON.stringify( {d:data} ) ) + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=t value="' + $.yote.token + '">');
-	$( '#' + form_id ).append( '<input type=hidden name=gt value="' + $.yote.guest_token + '">');
-
-	for( var i=0; i<cb_list.length; i++ ) {
-	    cb_list[ i ].removeAttr('checked');
-	    cb_list[ i ].attr('checked', true);
-	}
-	var resp;
-
-	var xx = form_sel.submit(function() {
-	    iframe.load(function() {
-		var contents = $(this).contents().get(0).body.innerHTML;
-		while( contents.match( /^\s*</ ) ) {
-		    contents = contents.replace( /^\s*<\/?[^\>]*>/, '' );
-		    contents = contents.replace( /<\/?[^\>]*>\s*$/, '' );
-		}
-		$( '#' + iframe_name ).remove();
-		try {
-		    resp = JSON.parse( contents );
-		    if( $.yote.debug == true ) {
-			console.log([ 'incoming ', resp ] );
-		    }
-
-                    if( typeof resp !== 'undefined' ) {
-			if( typeof resp.err === 'undefined' ) {
-			    //dirty objects that may need a refresh
-			    if( typeof resp.d === 'object' ) {
-				for( var oid in resp.d ) {
-				    if( root._is_in_cache( oid ) ) {
-					var cached = root.objs[ oid + '' ];
-					for( fld in cached._d ) {
-					    //take off old getters/setters
-					    delete cached['get_'+fld];
-					}
-					cached._d = resp.d[ oid ];
-					for( fld in cached._d ) {
-					    //add new getters/setters
-					    cached['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-					}
-				    }
-				}
-			    }
-		            if( typeof params.passhandler === 'function' ) {
-				if( typeof resp.r === 'object' ) {
-				    params.passhandler( root._create_obj( ret.r, this._app_id ) );
-				} else if( typeof resp.r === 'undefined' ) {
-				    params.passhandler();
-				} else {
-				    params.passhandler( resp.r.substring( 1 ) );
-				}
-		            }
-			} else if( typeof params.failhandler === 'function' ) {
-		            params.failhandler(resp.err);
-			} //error case. no handler defined
-                    } else {
-			console.log( "Success reported but no response data received" );
-                    }
-		} catch(err) {
-		    root._error(err);
-		}
-	    } )
-	} ).submit();
-    }, //upload_message
-
-
-    _cache_size:function() { //used for unit tests
-        var i = 0;
-        for( v in this.objs ) {
-            ++i;
-        }
-        return i;
-    },
-
-    _wrap_list:function( obj, field, key ) {
-        return $.yote._data_wrapper( obj, field, key );
-    }, //wrap_list
-
-    _wrap_hash:function( obj, field, key ) {
-        return $.yote._data_wrapper( obj, field, key, true );
-    }, //wrap_hash
-
-    _data_wrapper:function( obj, field, key, is_hash ) {
-        var node = is_hash ? $.yote._pag_hash_cache[ key ] : $.yote._pag_list_cache[ key ];
-        if( ! key || (! node && ( (! obj && ! field ) ) ) ) {
-            if( is_hash ) 
-                throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
-            else
-                throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
-        }
-
-        if( ! node ) {
-            var full_size = obj.count( { name : field } );
-            var server_paginate = field.match( /^_/ ) || full_size > 300;
-
-            var start = 0;
-            node = {
-                _server_paginate : server_paginate,
-                _start : start,
-                _data_size : full_size,
-                _page_size  : 0,
-                _filter_function     : undefined,
-                _sort_function       : undefined,
-                _transform_function  : undefined,
-                set_filter : function( filter_fun ) {
-                    this._filter_function = filter_fun;
-                },
-                set_sort : function( sort_fun ) {
-                    this._sort_function = sort_fun;
-                },
-                set_transform : function( trans_fun ) {
-                    this._transform_function = trans_fun;
-                },
-                back:function(){
-                    this._start -= this._page_size;
-                    if( this._start < 0 ) {
-                        this._start = 0;                    
-                    }
-                },
-                can_rewind:function(){
-                    return this._start > 0;
-                },
-                can_fast_forward:function(){
-                    return (this._start + this._page_size) < this._data_size;
-                },
-                forwards:function(){
-                    this._start += this._page_size;
-                    if( this._start >= this._data_size ) {
-                        this._start = this._data_size - 1;
-                    }
-                },
-                first:function(){
-                    this._start = 0;
-                },
-                last:function(){
-                    this._start = this._data_size - this._page_size;
-                    if( this._start < 0 ) {
-                        this._start = 0;
-                    }
-                },
-                set_size : function( newsize ) {
-                    this._page_size = Number(newsize);
-                },
-                to_list : function() {
-                    var ret;
-                    if( this._server_paginate ) {
-                        ret = this._obj.paginate( { name : this._field } ).to_list();
-                        //TODO : make this paginate for the filters rather than grabbing all
-                    } else {
-                        var o = this._obj.get( this._field );
-                        ret = o ? o.to_list() : [];
-                    }
-                    if( typeof this._filter_function !== 'undefined' ) {
-                        ret = this._arry.map( this._filter_function );
-                    }
-                    if( typeof this._sort_function !== 'undefined' ) {
-                        ret = ret.sort( this._sort_function );
-                    }
-                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
-                            ret = ret.slice( this._start, this._start + this._page_size );
-                        else
-                            ret = ret.slice( this._start );
-                    }
-                    return ret;
-                },
-                keys : function() {
-                    var _hash;
-                    if( this._server_paginate ) {
-                        _hash = this._obj.paginate( { name : this._field, return_hash : 1 } ).to_hash();
-                    } else {
-                        var o = this._obj.get( this._field )
-                        _hash = o ? o.to_hash() : {};
-                    }
-                    var ret = Object.keys( _hash );
-                    if( typeof this._filter_function !== 'undefined' ) {
-                        var new_ret = [];
-                        for( var i=0; i<ret.length; i++ ) {
-                            var k = ret[ i ];
-                            if( this._filter_function( k, _hash[ k ] ) )
-                                new_ret.push( k );
-                        }
-                        ret = new_ret;
-                    } 
-                    ret = ret.sort( this._sort_function );
-                    if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
-                            ret = ret.slice( this._start, this._start + this._page_size );
-                        else
-                            ret = ret.slice( this._start );
-                    }
-                    return ret;
-                },
-                to_hash : function() {
-                    var h;
-                    if( this._server_paginate ) {
-                        h = this._obj.paginate( { name : this._field, return_hash : 1 } ).to_hash();
-                    } else {
-                        var o = this._obj.get( this._field );
-                        h = o ? o.to_hash() : {};
-                    }
-                    var r = {};
-                    var k = this.keys();
-                    for( var i=0; i<k.length; i++ ) {
-                        r[ k[i] ] = h[ k[i] ];
-                    }
-                    return r;
-                }
-            };
-            if( is_hash ) {
-                $.yote._pag_hash_cache[ key ] = node;
-            } else {
-                $.yote._pag_list_cache[ key ] = node;
+                // print out eadch substring on a line
             }
-        } else if( node.server_paginate ) {
-            node._data_size = obj.count( { name : field } );
+		    return a;
+	    },
+	    'error':function(a,b,c) { 
+            _handle_event( 'error', a );
+            if( async ) {
+                _handle_event( 'message_fail', params );
+                _handle_event( 'message_complete', params );
+            }
+        },
+	    'success':function( incoming_data ) {
+		    if( _debug ) {        // TODO : have this a debug event rather than just a console log
+                console.log( ['incoming ', incoming_data ] );
+            }
+            if( typeof incoming_data !== 'undefined' ) {
+		        resp = ''; //for returning synchronous messages
+		        if( typeof incoming_data.err === 'undefined' ) {
+			        if( typeof incoming_data.d === 'object' ) {
+                        // incoming_data.d is a list of object ids that need to be refreshed if they have been cached.
+			            for( var oid in incoming_data.d ) {
+				            var cached = _object_cache[ oid ];
+                            if( cached ) {
+                                cached._reset( incoming_data.d[ oid ] );
+				            }
+			            } //each dirty
+			        } //if dirty
+
+                    resp = typeof incoming_data.r === 'object' ? _create_object( incoming_data.r, app_id ) : 
+                        incoming_data.r ? incoming_data.r.substring( 1 ) : undefined;
+
+		            typeof params.passhandler === 'function' && params.passhandler( resp );
+
+		        } //no error 
+                else if( typeof params.failhandler === 'function' ) {
+                    _handle_event( 'error', incoming_data.err );
+		            params.failhandler(incoming_data.err);
+                } //error case. no handler defined
+            } else {
+                // TODO : have this a debug event rather than just a console log
+                console.log( "Success reported but no response data received. Some server side goofiness" );
+            }
+            if( async ) {
+                _handle_event( 'message_success', params );
+                _handle_event( 'message_complete', params );
+            }
+
+	    },
+	    'type':'POST',
+	    'url':url + '/' + get_data
+	} );
+    
+    if( ! async ) {
+        _handle_event( 'message_success', params );
+        _handle_event( 'message_complete', params );
+        return resp;
+    }
+}; //_message
+
+var _is_in_cache = function( id ) {
+    return _object_cache[id] != null;
+}
+
+
+//data.id
+//data.c  -class
+//data.m  -methods
+//data.d  -property hash
+
+/*
+  methods on the object :
+   * length
+   * equals
+   * keys
+   * values
+   * sort
+   * to_hash/to_list/all method names defined from data
+   * get
+   * is
+   * set
+   * data defined getters and setters
+   * _reset
+   * _is_dirty
+   * _send_update
+*/
+var _create_object = function( data, app_id ) {
+    
+    var _obj_class   = data.c;
+    var _id          = data.id;
+    var _app_id      = app_id;
+
+    var _imported_methods = data.m || [];
+    var _imported_data = data.d || {};
+
+    var _stored_data = {};
+    var _staged_data = {};
+
+    var _length = function() {
+        return Object.keys( _stored_data ).length;
+    };
+
+    var _send_update = function( data, on_fail, on_pass ) {
+        var send_data = data || _staged_data || {};
+        var staged_keys = Object.keys( send_data );
+        if( staged_keys.length == 0 ) {
+            return;
+        }
+        var to_send;
+        if( data ) {
+            if( _obj_class === 'Array') {
+                to_send = data;
+            } else {
+                to_send = {};
+                staged_keys.map( function( key ) { to_send[key] = data[ key]; } );
+            }
         } else {
-            node._data_size = is_hash ? Object.count( node._obj.get( node._field ).to_hash() ) : node._obj.get( node._field ).to_list().length;
+            if( _obj_class === 'Array') {
+                to_send = staged_keys.map( function( key ) { return _untranslate_data( send_data[ key ] ); } );
+            } else {
+                to_send = {};
+                staged_keys.map( function( key ) { to_send[key] = _untranslate_data( send_data[ key ] ); } );
+            }
         }
-        if( obj && field ) {
-            node._obj = obj;
-            node._field = field;
+
+        var to_send;
+        _message( {
+            'app_id' : _app_id,
+            'async'  : false,
+            'data'   : to_send,
+            'cmd'    : 'update',
+            'failhandler' : function() {
+                if( on_fail ) {
+                    on_fail();
+                }
+            },
+            'obj_id' : _id,
+            'passhandler' : function() {
+                if( on_pass ) {
+                    on_pass();
+                }
+            }
+        });
+    }; //send_update
+
+    var _set = function( key, val, fail_handler, pass_handler ) {
+        _staged_data[ key ] = val;
+        _send_update( undefined, fail_handler, pass_handler );
+        delete _staged_data[ key ];
+        if( ! obj[ 'set_' + key ] ) {
+            obj[ 'set_' + key ] = function( newval, on_fail, on_pass ) {
+                return _set( key, newval, on_fail || fail_handler, on_pass || pass_handler );
+            }
         }
-        return node;
-    }, //data_wrapper
+    }; //_set
     
 
-    // TODO : use prototype for the _create_obj
-    _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
-	var root = this;
-	if( data.id != null && typeof data.id !== 'undefined' && root._is_in_cache( data.id ) ) {
-	    return root.objs[ data.id + '' ];
-	}
-	var retty = (function(x,ai) {
-	    var o = {
-		_app_id:ai,
-                _dirty:false,
-		_d:{},
-		id:x.id+'',
-		class:x.c,
-                _staged:{},
-		length:function() {
-		    var cnt = 0;
-		    for( key in this._d ) {
-			++cnt;
-		    }
-		    return cnt;
-		},
-		equals:function(oth) {
-		    return typeof oth === 'object' && oth.id && oth.id == this.id;
-		},
-		keys:function() {
-		    return Object.keys( this._d );
-		},
-		values:function() {
-		    var thing = this;
-		    return this.keys().map(function(a) { return thing.get(a); } );
-		},
-		sort:function(sortfun) {
-		    var res = this.values().sort( sortfun );
-		    return res;
-		}
-	    };
-	    if( o.class == 'HASH' ) {
-		o.to_hash = function() {
-		    var hash = {};
-		    for( var key in this._d ) {
-			hash[ key ] = this.get( key );
-		    }
-		    return hash;
-		};
-	    }
-	    else if( o.class == 'ARRAY' ) {
-		o.to_list = function() {
-		    var list = [];
-		    for( var i=0; i < this.length(); i++ ) {
-			list[i] = this.get(i);
-		    }
-		    return list;
-		};
-	    }
-	    else {
-		if( typeof x.m === 'object' && x.m !== null ) { // set methods
-		    for( m in x.m ) {
-			o[x.m[m]] = (function(key,thobj) {
-			    return function( params, passhandler, failhandler, use_async ) {
-				return root.message( {
-				    async: use_async ? true : false,
-				    app_id:this._app_id,
-				    cmd:key,
-				    data:params,
-				    failhandler:failhandler,
-                                    obj_id:this.id,
-				    passhandler:passhandler
-				} ); //sending message
-			    } } )(x.m[m],x);
-		    } //each method
-		} // if methods were included in the return value of the call
-	    } // if object
-
-	    o.get = function( key ) {
-		var val = this._staged[key] || this._d[key];
-		if( typeof val === 'undefined' ) return undefined;
-		if( typeof val === 'object' ) return val;
-		if( typeof val === 'function' ) return val;
-
+    var _get = function( key ) {
+        var val = typeof _staged_data[ key ] != 'undefined'  ? _staged_data[ key ] : _stored_data[ key ];
+        var val_type = typeof val;
+        if( val_type === 'undefined' || val_type === 'object' || val_type === 'function' ) {
+            return val;
+        }
 		if( val.substring(0,1) != 'v' ) {
-		    var obj = root.objs[val+''];
+		    var obj = _object_cache[ val ];
 		    if( ! obj ) {
-			var ret = $.yote.fetch_default_app().fetch(val);
-			if( ! ret ) return undefined; //this can happen if an authorized user logs out
-			obj = ret.get(0);
+			    var ret = _default_app ? _default_app.fetch(val) : undefined;
+			    if( ! ret ) return undefined; //this can happen if an authorized user logs out
+			    obj = ret._get(0);
 		    }
-		    obj._app_id = this._app_id;
-                    return obj;
+		    obj._set_app_id( _app_id );
+            return obj;
 		}
+
+        // 'scalar' value
 		var ret = val.substring(1);
-                return typeof ret * 1 !== 'NaN' ? ret : ret * 1;
-	    };
-	    
-	    o.is = function( othero ) {
-		var k = this.id;
-		var ok = othero ? othero.id : undefined;
-		return k !== 'undefined' && k == ok;
-	    }
+        // if the return value could be a number, return it as such
+        return Number.isNaN( Number( ret ) ) ? ret : Number( ret );
+    }; //_get
 
-	    o._get_id = function( key ) {
-		// returns the id ( if any of the item specified by the key )
-		var val = this._d[key];
-		return val && val.substring(0,1) != 'v' ? val : undefined;
-	    },
-
-	    o.set = function( key, val, failh, passh ) {
-		this._stage( key, val );
-		this._send_update( undefined, failh, passh );
-		delete this._staged[ key ];
-                if( ! this[ 'set_' + key ] ) 
-                    this[ 'set_' + key ] = (function(k) { return function(val,fh,ph) { return this.set(k,val,fh,ph) } } )(key);
-		return val;
-	    };
-
-	    // get fields
-	    if( typeof x.d === 'object' && x.d !== null ) {
-		for( fld in x.d ) {
-		    var val = x.d[fld];
-		    if( typeof val === 'object' && val != null ) {
-			o._d[fld] = (function(xx) { return root._create_obj( xx, app_id ); })(val);
-		    }
-		    else {
-			o._d[fld] = (function(xx) { return xx; })(val);
-		    }
-		    o['get_'+fld] = (function(fl) { return function() { return this.get(fl) } } )(fld);
-		    o['set_'+fld] = (function(fl) { return function(val,fh,ph) { return this.set(fl,val,fh,ph) } } )(fld);
-		}
-	    }
-
-            // stages functions for updates
-            o._stage = function( key, val ) {
-                if( this._staged[key] !== root._translate_data( val ) ) {
-                    this._staged[key] = root._translate_data( val );
-                    this._dirty = true;
+    var obj = {
+        '_id'      : _id,
+        '_app_id'  : _app_id,
+        '_get'     : _get,
+        '_set_app_id' : function( app_id ) { _app_id = app_id; },
+        '_send_update' : _send_update,
+        '_stored_data' : _stored_data,
+        '_obj_class' : _obj_class,
+        'length'  : _length,
+        'equals'  : function(oth) {
+            return typeof oth === 'object' && oth._id == _id;
+        },
+        'is'      : function(oth) {
+            return _id && typeof oth === 'object' && oth._id == _id;
+        },
+        '_reset'  : function( field )  {
+            if( typeof field === 'object' ) {
+                for( fld in _stored_data ) {
+                    delete _stored_data[ fld ];
+                    delete _staged_data[ fld ];
+                    delete this[ 'get_' + fld ];
+                }
+                for( fld in field ) {
+                    _stored_data[ fld ] = field[fld];
+                    this[ 'get_' + fld ] = (function(f) { return function() { return _get( f ); } })(fld);
                 }
             }
-
-            // resets staged info
-            o._reset = function( field ) {
-		if( field ) {
-		    delete this._staged[ field ];
-		} else {
-                    this._staged = {};
-		}
+            else if( typeof field === 'string' ) {
+                delete _staged_data[ field ];
+            } else {
+                _staged_data = {};
             }
-
-            o._is_dirty = function(field) {
-                return typeof field === 'undefined' ? this._dirty : this._staged[field] !== this._d[field] ;
+        },
+        '_stage' : function( key, val ) {
+            var tr = _prepare_data( val );
+            if( _staged_data[ key ] !== tr ) {
+                _staged_data[ key ] = tr;
+                _dirty = true;
             }
-
-            // sends data structure as an update, or uses staged values if no data
-            o._send_update = function(data,failhandler,passhandler) {
-                var to_send = {};
-                if( this.c === 'Array' ) {
-                    to_send = Array();
-                }
-                if( typeof data === 'undefined' ) { //sending from staged
-                    for( var key in this._staged ) {
-                        if( this.c === 'Array' ) {
-                            to_send.push( root._untranslate_data(this._staged[key]) );
-                        } else {
-                            to_send[key] = root._untranslate_data(this._staged[key]);
-                        }
-                    }
-                } else {
-                    for( var key in data ) {
-                        if( this.c === 'Array' ) {
-                            to_send.push( data[key] );
-                        } else {
-                            to_send[key] = data[key];
-                        }
-                    }
-                }
-                var needs = 0;
-                for( var key in to_send ) {
-                    needs = 1;
-                }
-                if( needs == 0 ) { return; }
-                root.message( { //for send update
-                    app_id:$.yote._app_id,
-                    async:false,
-                    data:to_send,
-                    cmd:'update',
-                    failhandler:function() {
-                        if( typeof failhandler === 'function' ) {
-                            failhandler();
-                        }
-                    },
-                    obj_id:this.id,
-                    passhandler:(function(td) {
-                        return function() {
-                            o._staged = {};
-                            if( typeof passhandler === 'function' ) {
-                                passhandler();
-                            }
-                        }
-                    } )(to_send),
+        },
+        'keys'   : function() {
+            return Object.keys( _stored_data );
+        },
+        'values' : function() {
+            var that = this;
+            return Object.keys( _stored_data ).map(function(key) { return _get( key ); } );
+        },
+        'sort'   : function(sortfun) {
+            return this.values().sort( sortfun );
+        }
+    };
+    if( _id ) {
+        _object_cache[ _id ] = obj;
+console.log( [ "SETTING CACHE FOR " + _id, _object_cache ] );
+    }
+    if( _obj_class === 'HASH' ) {
+        obj.to_hash = function() {
+            return Object.keys( _stored_data ).map(function(key) { return _get( key ); } );
+        };
+    } 
+    else if( _obj_class === 'ARRAY' ) {
+        obj.to_list = function() {
+            var list = [];
+            for( var i=0, len = _length(); i < len; i++ ) {
+                list[ i ] = _get( key );
+            }
+            return list;
+        };
+    } 
+    else { // yote objects with yote object methods and get/set methods
+        _imported_methods.map( function( method_name ) {
+            obj[ method_name ] = function( params, passhandler, failhandler, use_async ) {
+                return _message( {
+				    'async'   : use_async ? true : false,
+				    'app_id'  : _app_id,
+				    'cmd'     : method_name + '', //closurify
+				    'data'    : params,
+				    'failhandler' : failhandler,
+                    'obj_id'  : obj._id,
+				    'passhandler' : passhandler
                 } );
-            }; //_send_update
-
-	    if( o.id && o.id.substring(0,1) != 'v' ) {
-		root.objs[o.id+''] = o;
-	    }
-	    return o;
-        } )(data,app_id);
-	return retty;
-    }, //_create_obj
-
-    _disable:function() {
-	if( $( 'body' ).css("cursor") !== "wait" ) {
-            $("*").css("cursor", "wait");
-            this.enabled = $(':enabled');
-	    $.each( this.enabled, function(idx,val) { val.disabled = true; } );
-	}
-    }, //_disable
-
-    _dump_cache:function() {
-        this.objs = {};
-	this.apps = {};
-	this.yote_root   = undefined;
-	this.default_app = undefined;
-        this._app_id = undefined;
-    },
-
-    // generic server type error
-    _error:function(msg) {
-        console.log( "a server side error has occurred" );
-        console.log( msg );
-    },
-
-    _functions_in:function( thing ) {
-	var to_ret, res;
-	if( typeof thing === 'function' ) return [thing];
-	if( typeof thing === 'object' || typeof thing === 'array' ) {
-	    to_ret = [];
-	    for( x in thing ) {
-		res = this._functions_in( thing[ x ] );
-		for( y in res ) {
-		    to_ret.push( res[ y ] );
-		}
-	    }
-	    return to_ret;
-	}
-	return [];
-    }, //_functions_in
-
-    _is_in_cache:function(id) {
-        return typeof this.objs[id+''] === 'object' && this.objs[id+''] != null;
-    },
-
-    _reenable:function() {
-        $("*").css("cursor", "auto");
-        $.each( this.enabled, function(idx,val) { val.disabled = false } );
-    }, //_reenable
-
-    _translate_data:function(data,run_functions) {
-        if( typeof data === 'undefined' || data == null ) {
-            return undefined;
+            };
+        } );
+    } // yote obj
+    Object.keys( _imported_data ).map( function( field ) {
+        obj[ 'get_' + field ] = (function(fld) { return function() { 
+            return _get( fld ); 
+        }; } )( field );
+        obj[ 'set_' + field ] = (function(fld) { return function(value,fh,ph) { 
+            return _get( fld ); 
+        }; } )( field );
+        var val = _imported_data[ field ];
+        if( typeof val === 'object' && val != null ) {
+            _stored_data[ field ] = (function(v) { return _create_object( v, app_id ); })(val);
         }
-        if( typeof data === 'object' ) {
-            if( data.id  && typeof data._d !== 'undefined' && data.id.substring(0,1) != 'v' ) {
-                return data.id;
-            }
-            // this case is for paramers being sent thru message
-            // that will not get ids.
-            var ret;
-	    if (data instanceof Array) {
-		ret = [];
-	    } else {
-		ret = Object();
-	    }
-            for( var key in data ) {
-                ret[key] = this._translate_data( data[key], run_functions );
-            }
-            return ret;
+        else {
+            _stored_data[ field ] = (function(v) { return v; } )( val );
         }
-	if( typeof data === 'function' ) {
-	    if( run_functions )
-		return data();
-	    return data;
-	}
-        return 'v' + data;
-    }, //_translate_data
+        
+    } );
 
-    _untranslate_data:function(data) {
-	if( typeof data === 'function' ) {
-	    return data;
-	}
-        if( data.substring(0,1) == 'v' ) {
-            return data.substring(1);
+
+    return obj;
+}; //_create_object
+
+/*
+     ------------------------ AUTHENTICATION ------------------
+*/
+var _authenticate = function() {
+    
+}; //_authenticate
+
+
+/*
+            ----------- EVENT HANDLERS --------
+ */
+var _event_handlers = {
+    'error' : [ 
+        function( event ) {
+            console.log( ["a server side error has occurred", event ] );
+        } ],
+    'debug' : [
+        function( event ) {
+            console.log( event );
         }
-        if( this._is_in_cache(data) ) {
-            return this.objs[data+''];
-        }
-        console.log( "Don't know how to translate " + data);
-    }, //_untranslate_data
-
-    upload_count: 0,
-    iframe_count: 0
-
-}; //$.yote
-
-if( eh ) {
-    for( var key in eh ) {
-        $.yote[ key ] = eh[ key ];
+    ]
+}; //_event_handlers
+var _handle_event = function( event_type, event ) {
+    var handlers = _event_handlers[ event_type ];
+    if( handlers ) {
+        handlers.forEach( function( handler ) { handler( event ); } );
     }
-}
+}; //_handle_event
 
-// Production steps of ECMA-262, Edition 5, 15.4.4.19
-// Reference: http://es5.github.com/#x15.4.4.19
-if (!Array.prototype.map) {
-    Array.prototype.map = function(callback, thisArg) {
+window.$.yote = {
 
-	    var T, A, k;
+    '_get_message_function' : function() { return _message; },
+    '_set_message_function' : function(newf) { _message = newf; return this; },
+    '_get_token' : function() { return _auth_token; },
+    '_object_cache' : function() { return _object_cache; },
+    '_cache_size' : function() { return Object.keys(_object_cache).length; },
+    '_login_obj' : function() { return _login_obj; },
 
-	    if (this == null) {
-	        throw new TypeError(" this is null or not defined");
-	    }
+    'init' : function(appname) {
+        var ret;
+        _message( {
+	        async:false,
+	        cmd:'fetch_initial',
+	        data:{ t:_auth_token || _guest_token,
+                   a:appname },
+	        passhandler:function( initial_data ) {	    
+		        if( typeof initial_data === 'object' && initial_data._get( 'root' ) && initial_data._get( 'app' ) ) {
+		            _yote_root = initial_data._get( 'root' ); 
+                    _yote_root._app_id = _yote_root.id;
 
-	    // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-	    var O = Object(this);
+		            _object_cache[ _yote_root._id ] = _yote_root;
 
-	    // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-	    // 3. Let len be ToUint32(lenValue).
-	    var len = O.length >>> 0;
+		            var app = initial_data._get( 'app' ) || _yote_root;
+		            app._app_id = app.id;
+		            _app_id = app.id;
+		            _default_app = app;
+console.log( '------------------------SET default app ' + app + '---------------------------' );
+		            _default_appname = appname;
+		            _object_cache[ app._id ] = app;
+                    _login_obj   = initial_data._get(  'login' );
+		            _acct_obj    = initial_data._get(  'account' );
+                    _acct_obj._app_id = app.id;
 
-	    // 4. If IsCallable(callback) is false, throw a TypeError exception.
-	    // See: http://es5.github.com/#x9.11
-	    if ({}.toString.call(callback) != "[object Function]") {
-	        throw new TypeError(callback + " is not a function");
-	    }
+		            _guest_token = initial_data._get(  'guest_token' );
 
-	    // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-	    if (thisArg) {
-	        T = thisArg;
-	    }
-
-	    // 6. Let A be a new array created as if by the expression new Array(len) where Array is
-	    // the standard built-in constructor with that name and len is the value of len.
-	    A = new Array(len);
-
-	    // 7. Let k be 0
-	    k = 0;
-
-	    // 8. Repeat, while k < len
-	    while(k < len) {
-
-	        var kValue, mappedValue;
-
-	        // a. Let Pk be ToString(k).
-	        //   This is implicit for LHS operands of the in operator
-	        // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-	        //   This step can be combined with c
-	        // c. If kPresent is true, then
-	        if (k in O) {
-
-		        // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-		        kValue = O[ k ];
-
-		        // ii. Let mappedValue be the result of calling the Call internal method of callback
-		        // with T as the this value and argument list containing kValue, k, and O.
-		        mappedValue = callback.call(T, kValue, k, O);
-
-		        // iii. Call the DefineOwnProperty internal method of A with arguments
-		        // Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
-		        // and false.
-
-		        // In browsers that support Object.defineProperty, use the following:
-		        // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
-
-		        // For best browser support, use the following:
-		        A[ k ] = mappedValue;
+		            ret = app;
+		        }
+		        else {
+		            console.log( "ERROR in init for app '" + appname + "' Load did not work" );
+		        }
+	        },
+	        failhandler:function( err ) {
+		        console.log( "ERROR in init for app '" + appname + "' : " + err );
 	        }
-	        // d. Increase k by 1.
-	        k++;
-	    }
+	    } );
+        return ret;
+    }, //init
 
-	    // 9. return A
-	    return A;
-    };
-} //map definition
+    'reinit' : function( token ) {
+	    if( ! _default_app ) {
+	        this.init( _default_appname, token );
+	        return true;
+	    }
+	    return false;
+    }, //reinit
 
-if( ! Object.size ) {
-    Object.size = function(obj) {
-	    var size = 0, key;
-	    for (key in obj) {
-            if (obj.hasOwnProperty(key)) size++;
-	    }
-	    return size;
-    };
-}
-if( ! Object.keys ) {
-    Object.keys = function( t ) {
-    	var k = []
-	    for( var key in t ) {
-	        k.push( key );
-	    }
-	    return k;
-    }
-}
-if( ! Object.clone ) {
-    // shallow clone
-    Object.clone = function( h ) {
-        var clone = {};
-        for( var key in h ) {
-	        clone[ key ] = h[ key ];
+    'fetch_app' : function( appname,passhandler,failhandler ) {
+        this.fetch_root( passhandler, failhandler );
+        var ret = _yote_root.fetch_app_by_class( appname, passhandler, failhandler );
+        ret._app_id = ret.id;
+        
+        return ret;
+    }, //fetch_app
+
+    'fetch_root' : function(passhandler,failhandler) {
+        if( ! _yote_root ) {
+            _yote_root = _message( {
+	            async:false,
+	            cmd:'fetch_root',
+                passhandler : passhandler,
+                failhandler : failhandler
+	        } );
+            if( ! _default_app ) {
+                _default_app = _yote_root;
+            }
         }
-        return clone;
-    }
-}
+        return _yote_root;
+    },
+    
+    'login' : function( handle, password, passhandler, failhandler ) {
+	    var root = this.fetch_root();
+	    if( typeof root === 'object' ) {
+	        root.login( { h:handle, p:password },
+			            function(res) {
+			                _auth_token = res._get( 't' ) || 0;
+			                _login_obj = res._get( 'l' );
+			                $.cookie( 'yoken', _auth_token, { path : '/' } );
+			                if( typeof passhandler === 'function' ) {
+				                passhandler(res);
+			                }
+			            },
+			            failhandler );
+	        return _login_obj;
+	    } else if( typeof failhanlder === 'function' ) {
+	        failhandler('lost connection to yote server');
+	    } else {
+	        _error('lost connection to yote server');
+	    }
+    }, //login
+
+    'logout' : function() {
+	    $.yote.fetch_root().logout();
+	    _login_obj = undefined;
+	    _acct_obj = undefined;
+	    _default_app = undefined;
+console.log( '------------------------unset default app (logout )---------------------------' );
+	    _auth_token = 0;
+	    $.yote._dump_cache();
+	    $.cookie( 'yoken', '', { path : '/' } );
+    },
+
+    _dump_cache : function() {
+        _object_cache = {};
+        _default_app  = undefined;
+        _yote_root    = undefined;
+        console.log( '----------- DUMP------------' );
+    },
+
+/*
+    // event handler. just has errors at first
+    // TODO : how to remove these handlers
+    'on' : function( event, handler ) { 
+        if( !_event_handlers[ event ] ) { 
+            _event_handlers[ event ] = []; 
+        }
+        _event_handlers[ event ].push( handler ); 
+        return this; 
+    }, //on
+*/
+    '_set_debug' : function( d ) { _debug = d; return this; },
+    '_debug_cache_size' : function() { },
+    '_debug_dump_cache' : function() { },
+};
+
+
 

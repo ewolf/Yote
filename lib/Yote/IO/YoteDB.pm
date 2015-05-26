@@ -462,7 +462,7 @@ sub _recycle_objects {
     }
 
     # remove recycle datastore
-    $keep_store->unlink;
+    $keep_store->unlink_store;
 
     return $count;
   }
