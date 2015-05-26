@@ -37,7 +37,7 @@ var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 
 var _url = ma && ma.length > 1 ? ma[ 1 ] : ''; // domain/port to use for message calls
 
-var _debug = true;
+var _debug = false;
  
 var _yote_root, _default_app, _default_appname, _app_id;
 var _guest_token, _auth_token = $.cookie('yoken');
@@ -62,7 +62,7 @@ var _object_cache = {};
             ----------- DATA FUNCTIONS --------
  */
 
-var _translate_data = function(data) {
+var _encode_data = function(data) {
     // returns a base 64 encoded version of the data for io transfer
     return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) );
 };
@@ -106,7 +106,7 @@ var _message = function( params ) {
     // the data is a base64 encoded json blob
     _handle_event( 'message_start', params );
 
-    var outgoing_data   = _translate_data( params.data );
+    var outgoing_data   = _encode_data( params.data );
 
     var async  = params.async == true ? 1 : 0;
     var url    = params.url;
@@ -241,6 +241,7 @@ var _create_object = function( data, app_id ) {
     var _send_update = function( data, on_fail, on_pass ) {
         var send_data = data || _staged_data || {};
         var staged_keys = Object.keys( send_data );
+
         if( staged_keys.length == 0 ) {
             return;
         }
@@ -279,10 +280,10 @@ var _create_object = function( data, app_id ) {
                 }
             }
         });
-    }; //send_update
+    }; //_send_update
 
     var _set = function( key, val, fail_handler, pass_handler ) {
-        _staged_data[ key ] = val;
+        this._stage( key, val );
         _send_update( undefined, fail_handler, pass_handler );
         delete _staged_data[ key ];
         if( ! obj[ 'set_' + key ] ) {
@@ -331,6 +332,8 @@ var _create_object = function( data, app_id ) {
         'is'      : function(oth) {
             return _id && typeof oth === 'object' && oth._id == _id;
         },
+        'get' : _get,
+        'set' : _set,
         '_reset'  : function( field )  {
             if( typeof field === 'object' ) {
                 for( fld in _stored_data ) {
@@ -369,7 +372,6 @@ var _create_object = function( data, app_id ) {
     };
     if( _id ) {
         _object_cache[ _id ] = obj;
-console.log( [ "SETTING CACHE FOR " + _id, _object_cache ] );
     }
     if( _obj_class === 'HASH' ) {
         obj.to_hash = function() {
@@ -477,7 +479,6 @@ window.$.yote = {
 		            app._app_id = app.id;
 		            _app_id = app.id;
 		            _default_app = app;
-console.log( '------------------------SET default app ' + app + '---------------------------' );
 		            _default_appname = appname;
 		            _object_cache[ app._id ] = app;
                     _login_obj   = initial_data._get(  'login' );
@@ -514,6 +515,10 @@ console.log( '------------------------SET default app ' + app + '---------------
         
         return ret;
     }, //fetch_app
+    
+    'fetch_default_app' : function() {
+        return _default_app;
+    }, // fetch_default_app
 
     'fetch_root' : function(passhandler,failhandler) {
         if( ! _yote_root ) {
@@ -551,12 +556,13 @@ console.log( '------------------------SET default app ' + app + '---------------
 	    }
     }, //login
 
+    'fetch_account' : function() { return _acct_obj; },
+
     'logout' : function() {
 	    $.yote.fetch_root().logout();
 	    _login_obj = undefined;
 	    _acct_obj = undefined;
 	    _default_app = undefined;
-console.log( '------------------------unset default app (logout )---------------------------' );
 	    _auth_token = 0;
 	    $.yote._dump_cache();
 	    $.cookie( 'yoken', '', { path : '/' } );
@@ -566,7 +572,6 @@ console.log( '------------------------unset default app (logout )---------------
         _object_cache = {};
         _default_app  = undefined;
         _yote_root    = undefined;
-        console.log( '----------- DUMP------------' );
     },
 
 /*

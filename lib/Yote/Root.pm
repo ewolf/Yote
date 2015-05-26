@@ -112,6 +112,7 @@ sub enable_login {
 #
 sub fetch_app_by_class {
     my( $self, $data ) = @_;
+
     my $app = $self->get__apps({})->{ $data };
     unless( $app ) {
         eval ("use $data");

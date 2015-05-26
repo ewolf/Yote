@@ -110,7 +110,7 @@ $().ready(function(){
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
             var nologin_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-            nologin_app._reset();
+            nologin_app.reset();
             step('scalar called on testappnologin');
             var scalar = nologin_app.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
             is( scalar, "BEEP", "value of login scalar" );
@@ -120,7 +120,7 @@ $().ready(function(){
 
             var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
  	        login_app.purge_app();
-            login_app._reset();
+            login_app.reset();
             step('scalar called on testappneedslogin');
             var scalar = login_app.scalar( {},
                                            fail("required login returned scalar without login"),

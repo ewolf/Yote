@@ -1,7 +1,7 @@
 
 module.exports = {
     getRoot : function() {
-        return  STORE[1] || Yote();
+        return STORE.fetchRoot();
     },
     translate : function( obj ) {
         return Yote( obj );
@@ -50,20 +50,16 @@ function Yote( target, suppressWatch ) {
             } else if( name === 'copy' ) {
                 return _yote_data.copy;
             }
-//            console.log( ['get',name,_yote_data,_yote_data[name],STORE[_yote_data[name]],_transOut( _yote_data[name] ), typeof _transOut( _yote_data[name] ) ] );
             return _transOut( _yote_data[ name ] );
         },
         set : function( proxy, name, value ) {
             _yote_data[ name ] = _transIn( value );
-//            console.log( ['set',name,_yote_data,STORE[_yote_data[name]] ] );
         },
 
         keys : function() {
-//            console.log( ['gKEYZ',Object.keys( _yote_data )] );
             return Object.keys( _yote_data );
         },
         ownKeys : function() {
-//            console.log( 'OWNKEYZ' );
             return Object.keys( _yote_data );
         },
         getOwnPropertyDescriptor : function( proxy, name ) {
@@ -78,7 +74,6 @@ function Yote( target, suppressWatch ) {
         enumerate : function() {
             var res = [];
             for( var name in _yote_data ) res.push(name);
-//console.log( [ "RET", res ] );
             return res;
 /*
             console.log( 'ENUM' );console.trace();
@@ -101,26 +96,28 @@ function Yote( target, suppressWatch ) {
             return name in _yote_data;
         }
     }, prot );
-//console.info( [ "PROXY", target, typeof target, proxy, typeof proxy, Array.isArray(proxy.prototype), Array.isArray(proxy), proxy.length] ); 
-    _yote_info = { id : (STORE.push(proxy)-1) };
 
-//    console.log( ["NEW", _yote_info, target, STORE[_yote_info.id], proxy, _yote_data, STORE ] )
+    _yote_info = { id : STORE.getId(proxy) };
 
     return proxy;
 } // Yote
 
-
-
-var STORE = [null]; //so ids start with '1'
-
-var _register = function( thing ) {
-//console.info( 'reg', thing );
-    return STORE.push( thing ) - 1;
-}
+var _store = [null]; //first entry starts with index 1
+var STORE = {
+    fetchRoot: function() {
+        return _store[ 1 ] || Yote();
+    },
+    fetch: function( id ) {
+        return _store[ id ];
+    },
+    getId: function( thing ) {
+        return _store.push( thing ) - 1;
+    }
+};
 
 var _transOut = function( val ) {
     if( typeof val !== 'string' && typeof val !== 'number' ) return val;
-    if( Number( val ) > 0 )       return STORE[val];
+    if( Number( val ) > 0 )       return STORE.fetch(val);
     if( typeof val === 'string' ) return val.substring(1);
 }
 

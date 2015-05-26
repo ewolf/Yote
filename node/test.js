@@ -7,6 +7,9 @@ var path = '/tmp/foo';
 try { fs.unlinkSync( path ); } catch(e){}
 
 test( 'new record file', function(t) {
+
+ // test store
+
     t.plan(54);
 
     var size = 50;
@@ -206,11 +209,17 @@ test( 'new record file', function(t) {
         o.ORF = "FOO";
 
         t.equal( root.O.ORF, "FOO" );
+        var arry = [ 4, 5, 6 ];
+        o.ARR = arry;
 
-        o.ARR = [ 4, 5, 6 ];
 
 //        t.deepEqual( root.O.ARR, [ 4, 5, 6 ] );
-        t.deepEqual( root.O.ARR, { 0 : '4', 1 : '5', 2 : '6' } );
+        t.deepEqual( root.O.ARR, arry );
+        console.info( root.O.ARR );
+//        t.deepEqual( root.O.ARR, { '0' : '4', '1' : '5', '2' : '6' }, "retreive value" );
+        t.ok( Array.isArray( root.O.ORF ), "is array" );
+        t.equal( root.O.ARR[1], '5', "From index" );
+        t.equal( root.O.ARR.length, 3, "index length" );
 
 
         t.ok( root.O.ARR._y, "array is yote obj" );
