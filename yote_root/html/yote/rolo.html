@@ -152,10 +152,10 @@ v    }
        <?? return ctx.scratch.search ? 'searching for <b>' + ctx.scratch.search + '</b><br>' : '' ??>
        <table>
          <tr> <th> Name </th>  <th> Email </th>  <th> Phone </th> <th> Delete </th> </tr>
-         <$$ ListPaginate EntryRow entries@@ 4 $$> 
+         <$$ ListPaginate EntryRow entries@ 4 $$> 
        </table>
       </div>
-      <$$ Paginator entries@@ $$>
+      <$$ Paginator entries@ $$>
     </script>
 
     <script type="text/template" class="yote_template_definition" template_name="EntryRow">

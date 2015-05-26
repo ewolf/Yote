@@ -4,6 +4,9 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use overload
+    '""' => sub { "YID:".shift->{ID} };
+
 #
 # This is base class for all Yote objects.
 #
