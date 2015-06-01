@@ -6,7 +6,7 @@ my $ydb = new Yote::IO::YoteDB( { store => "/tmp/YSTORE" } );
 
 for my $n ( qw( aaaaa bbuh celiiii dala  efflo fooooo  goo )) {
     my $id = $ydb->get_id;
-    $ydb->stow( $id, "", $n );
+    $ydb->stow( [$id, "", $n] );
 }
 
 for my $id (1..7) {
