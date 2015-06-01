@@ -15,15 +15,43 @@ if( ! window.$ ) {
     window.$ = {};
 }
 
-var _debug = false;
-var _app_id, _url;
+/*
+  Upon script load, see if a port was explicity given in the script
+  tag calling this file. If there is a port specified, use that
+  location as an absolute location when making the yote ajax calls. 
+  If the normal port is used, that means the script is called from the 
+  same place as the page and relative urls can be used for the ajax calls.
+*/
+var scripts = document.getElementsByTagName('script');
+var index = scripts.length - 1;
+var myScriptUrl = scripts[index].src;
+var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
+var _url = ma && ma.length > 1 ? ma[ 1 ] : '';
 
+
+var _debug = false;
+var _app_id;
+
+var _yote_root;
 var _auth_token = $.cookie('yoken');
 var _guest_token;
 
+/*
+  Yote API :
+    $.yote._get_message_function
+    $.yote._set_message_function
+
+    $.yote.init
+    $.yote.fetch_root - get the master root object from which account stuff can be done
+*/
+
+
 window.$.yote = {
 
-    'ready' :function( fun ) {
+    '_get_message_function' : function() { return _message; },
+    '_set_message_function' : function(newf) { _message = newf; return this; },
+
+    'init' : function( fun ) {
         _message( {
 	        async:true,
 	        cmd:'fetch_initial',
@@ -60,8 +88,14 @@ window.$.yote = {
 	    } );
         return ret;
     }, //init
-    
 
+    'fetch_root' : function() {
+        if( ! _yote_root ) {
+        }
+        return _yote_root;
+    },
+    
+/*
     // event handler. just has errors at first
     // TODO : how to remove these handlers
     'on' : function( event, handler ) { 
@@ -71,13 +105,10 @@ window.$.yote = {
         _event_handlers[ event ].push( handler ); 
         return this; 
     }, //on
-
+*/
     '_set_debug' : function( d ) { _debug = d; return this; },
     '_debug_cache_size' : function() { },
     '_debug_dump_cache' : function() { },
-    '_debug_get_message' : function() { return _message; },
-    '_debug_set_message' : function( m ) { _message = m; 
-                                           return this; }
 };
 
 /*
@@ -121,7 +152,7 @@ var _object_cache = {};
 
 var _translate_data = function(data) {
     // returns a base 64 encoded version of the data for io transfer
-    return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) )
+    return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) );
 }
 var _prepare_data = function(data) {
     // takes a data structure and converts all non-null, non-objects to the yote 'v' + value format.
