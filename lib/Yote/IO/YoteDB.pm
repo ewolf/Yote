@@ -46,11 +46,12 @@ sub new {
 # Given a host object id and a container name,
 # this returns the reference type of what
 # is in that container.
-# for example :
+# Like the following : 
 #   my $obj = new Yote::Obj;
 #   $obj->set_foo( [ 'My', "List", "Of", "Stuff" ] );
 #   $obj->container_type( 'foo' ); <--- returns 'ARRAY'
-#
+#   $yotedb->container_type( $obj->{ID}, 'foo' ); <--- also returns 'ARRAY'
+#   
 #
 sub container_type {
   my( $self, $host_id, $container_name ) = @_;
@@ -368,6 +369,11 @@ sub recycle_objects {
 } #recycle_objects
 
 sub _recycle_objects {
+  # this looks at every id in the object index and checks if it is
+  # referenced anywhere. If it is not, it calls the object index delete for it.
+  # It stores the first object id and anything traceable to the first object
+  # in a keep store temporary database.
+  # Anything in this hash should not be removed. Anything not in it should.
   my( $self, $keep_id, $keep_store ) = @_;
   my $is_first = 0;
   unless( $keep_id ) {
@@ -378,7 +384,9 @@ sub _recycle_objects {
     $keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' ),
       $keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
 
-    # the already deleted cannot be re-recycled
+    # the already deleted cannot be re-recycled. Find ids that are due for recycling
+    # and put them in the keep store - not to keep, just so they are not marked a second time
+    # for recycle
     my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
     for ( @$ri ) {
       $keep_store->put_record( $_, [ 1 ] );
@@ -388,7 +396,22 @@ sub _recycle_objects {
   my( $has ) = @{ $keep_store->get_record( $keep_id ) };
   return if $has;
 
+  #
+  # Put the current record to be kept in the store. This starts
+  # with the first object.
+  #
   $keep_store->put_record( $keep_id, [ 1 ] );
+
+  #
+  # Here is the meaty part. Look at all the references that the
+  # current item being looked at ( the first object always does this
+  # before any others ) has and call recycle for that reference as the 
+  # new keeper.
+  #
+  # TODO: this is potentially a lot of stack recursions, so may want
+  #       to unwrap this if possible. The common case will not have that
+  #       many recursions at once.
+  #
   my( @queue );
   my $item = $self->fetch( $keep_id );
   if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
@@ -399,6 +422,9 @@ sub _recycle_objects {
   for my $keeper ( @queue ) {
     $self->_recycle_objects( $keeper, $keep_store );
   }
+
+
+
   if ( $is_first ) {
     # the purge begins here
     my $count = 0;
@@ -468,7 +494,7 @@ sub _recycle_objects {
 
     return $count;
   }
-} #recycle_objects
+} #_recycle_objects
 
 #
 # Saves the object data for object $id to the data store.
