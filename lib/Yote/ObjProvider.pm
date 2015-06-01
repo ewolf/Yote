@@ -104,7 +104,7 @@ sub fetch {
             eval("require $class");
             return undef if $@;
 
-            my $obj = $class->new( $id );
+            my $obj = $class->_new_for_load( $id );
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();
@@ -279,16 +279,16 @@ sub stow {
 
     my $data = __raw_data( $obj );
     if( $class eq 'ARRAY' ) {
-        $DATASTORE->stow( $id,'ARRAY', $data );
+        $DATASTORE->stow( [ $id, 'ARRAY', $data] );
         __clean( $id );
     }
     elsif( $class eq 'HASH' ) {
-        $DATASTORE->stow( $id,'HASH',$data );
+        $DATASTORE->stow( [$id,'HASH',$data] );
         __clean( $id );
     }
     elsif( $class eq 'Yote::Array' ) {
         if( __is_dirty( $id ) ) {
-            $DATASTORE->stow( $id,'ARRAY',$data );
+            $DATASTORE->stow( [$id,'ARRAY',$data] );
             __clean( $id );
         }
         for my $child (@$data) {
@@ -299,7 +299,7 @@ sub stow {
     }
     elsif( $class eq 'Yote::Hash' ) {
         if( __is_dirty( $id ) ) {
-            $DATASTORE->stow( $id, 'HASH', $data );
+            $DATASTORE->stow( [$id, 'HASH', $data ] );
         }
         __clean( $id );
         for my $child (values %$data) {
@@ -310,7 +310,7 @@ sub stow {
     }
     else {
         if( __is_dirty( $id ) ) {
-            $DATASTORE->stow( $id, $class, $data );
+            $DATASTORE->stow( [$id, $class, $data] );
             __clean( $id );
         }
         for my $val (values %$data) {

@@ -8,19 +8,17 @@
  */
 
 /*
-  Upon script load, find the port that the script came from, if any.
+  Upon script load, see if a port was explicity given in the script
+  tag calling this file. If there is a port specified, use that
+  location as an absolute location when making the yote ajax calls. 
+  If the normal port is used, that means the script is called from the 
+  same place as the page and relative urls can be used for the ajax calls.
 */
-
 var scripts = document.getElementsByTagName('script');
 var index = scripts.length - 1;
 var myScriptUrl = scripts[index].src;
 var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
 var yote_src_url = ma && ma.length > 1 ? ma[ 1 ] : '';
-
-// the whole yote object.
-if( typeof $.yote === 'object' ) {
-    var eh = $.yote;
-}
 
 $.yote = {
     url:yote_src_url,
@@ -885,11 +883,9 @@ $.yote = {
 
 }; //$.yote
 
-if( eh ) {
-    for( var key in eh ) {
-        $.yote[ key ] = eh[ key ];
-    }
-}
+
+# ----------------- END OF YOTE SPECIFIC CODE -------------------------
+
 
 // Production steps of ECMA-262, Edition 5, 15.4.4.19
 // Reference: http://es5.github.com/#x15.4.4.19

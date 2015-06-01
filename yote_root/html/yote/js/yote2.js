@@ -23,10 +23,9 @@ if( ! window.$ ) {
   same place as the page and relative urls can be used for the ajax calls.
 */
 var scripts = document.getElementsByTagName('script');
-var index = scripts.length - 1;
-var myScriptUrl = scripts[index].src;
+var myScriptUrl = scripts[scripts.length - 1].src;
 var ma = myScriptUrl.match( /^((https?:\/\/)?[^\/]+(:(\d+))?)\// );
-var _url = ma && ma.length > 1 ? ma[ 1 ] : '';
+var _url = ma && ma.length > 1 ? ma[ 1 ] : ''; // domain/port to use for message calls
 
 
 var _debug = false;
@@ -45,101 +44,6 @@ var _guest_token;
     $.yote.fetch_root - get the master root object from which account stuff can be done
 */
 
-
-window.$.yote = {
-
-    '_get_message_function' : function() { return _message; },
-    '_set_message_function' : function(newf) { _message = newf; return this; },
-
-    'init' : function( fun ) {
-        _message( {
-	        async:true,
-	        cmd:'fetch_initial',
-	        data:{ t:_auth_token || _guest_token,a:appname },
-	        passhandler:function( initial_data ) {	    
-		        if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
-		            var yote_root = initial_data.get(  'root' ); 
-                    yote_root._app_id = yote_root.id;
-		            $.yote.yote_root = yote_root;
-		            $.yote.objs[ yote_root.id ] = yote_root;
-
-		            var app = initial_data.get( 'app' ) || yote_root;
-		            app._app_id = app.id;
-		            $.yote._app_id = app.id;
-		            $.yote.default_app = app;
-		            $.yote.default_appname = appname;
-		            $.yote.objs[ app.id ] = app;
-
-		            $.yote.login_obj   = initial_data.get(  'login' );
-		            $.yote.acct_obj    = initial_data.get(  'account' );
-                    $.yote.acct_obj._app_id = app.id;
-
-		            $.yote.guest_token = initial_data.get(  'guest_token' );
-
-		            ret = app;
-		        }
-		        else {
-		            console.log( "ERROR in init for app '" + appname + "' Load did not work" );
-		        }
-	        },
-	        failhandler:function( err ) {
-		        console.log( "ERROR in init for app '" + appname + "' : " + err );
-	        }
-	    } );
-        return ret;
-    }, //init
-
-    'fetch_root' : function() {
-        if( ! _yote_root ) {
-        }
-        return _yote_root;
-    },
-    
-/*
-    // event handler. just has errors at first
-    // TODO : how to remove these handlers
-    'on' : function( event, handler ) { 
-        if( !_event_handlers[ event ] ) { 
-            _event_handlers[ event ] = []; 
-        }
-        _event_handlers[ event ].push( handler ); 
-        return this; 
-    }, //on
-*/
-    '_set_debug' : function( d ) { _debug = d; return this; },
-    '_debug_cache_size' : function() { },
-    '_debug_dump_cache' : function() { },
-};
-
-/*
-     ------------------------ AUTHENTICATION ------------------
-*/
-var _authenticate = function() {
-    
-}; //_authenticate
-
-
-/*
-            ----------- EVENT HANDLERS --------
- */
-var _event_handlers = {
-    'error' : [ 
-        function( event ) {
-            console.log( ["a server side error has occurred", event ] );
-        } ],
-    'debug' : [
-        function( event ) {
-            console.log( event );
-        }
-    ]
-}; //_event_handlers
-var _handle_event = function( event_type, event ) {
-    var handlers = _event_handlers[ event_type ];
-    if( hanlders ) {
-        _handlers.forEach( function( handler ) { handler( event ); } );
-    }
-}; //_handle_event
-
 /*
             ----------- CACHING --------
  */
@@ -153,7 +57,7 @@ var _object_cache = {};
 var _translate_data = function(data) {
     // returns a base 64 encoded version of the data for io transfer
     return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) );
-}
+};
 var _prepare_data = function(data) {
     // takes a data structure and converts all non-null, non-objects to the yote 'v' + value format.
     // translates all yote objects to their ids
@@ -178,7 +82,7 @@ var _prepare_data = function(data) {
         ret[key] = _prepare_data( data[key] );
     }
     return ret;
-}, //_prepare_data
+}; //_prepare_data
 
 
 /*
@@ -291,3 +195,114 @@ var _message = function( params ) {
         return resp;
     }
 }; //_message
+
+var _is_in_cache = function( id ) {
+    return _object_cache[id] != null;
+}
+
+
+//data.id
+//data.c  -class
+//data.m  -methods
+//data.d  -property hash
+var _create_obj = function( data, app_id ) {
+    
+    
+};
+
+/*
+     ------------------------ AUTHENTICATION ------------------
+*/
+var _authenticate = function() {
+    
+}; //_authenticate
+
+
+/*
+            ----------- EVENT HANDLERS --------
+ */
+var _event_handlers = {
+    'error' : [ 
+        function( event ) {
+            console.log( ["a server side error has occurred", event ] );
+        } ],
+    'debug' : [
+        function( event ) {
+            console.log( event );
+        }
+    ]
+}; //_event_handlers
+var _handle_event = function( event_type, event ) {
+    var handlers = _event_handlers[ event_type ];
+    if( hanlders ) {
+        _handlers.forEach( function( handler ) { handler( event ); } );
+    }
+}; //_handle_event
+
+window.$.yote = {
+
+    '_get_message_function' : function() { return _message; },
+    '_set_message_function' : function(newf) { _message = newf; return this; },
+
+    'init' : function( fun ) {
+        _message( {
+	        async:true,
+	        cmd:'fetch_initial',
+	        data:{ t:_auth_token || _guest_token,a:appname },
+	        passhandler:function( initial_data ) {	    
+		        if( typeof initial_data === 'object' && initial_data.get( 'root' ) && initial_data.get( 'app' ) ) {
+		            var yote_root = initial_data.get( 'root' ); 
+                    yote_root._app_id = yote_root.id;
+		            $.yote.yote_root = yote_root;
+		            $.yote.objs[ yote_root.id ] = yote_root;
+
+		            var app = initial_data.get( 'app' ) || yote_root;
+		            app._app_id = app.id;
+		            $.yote._app_id = app.id;
+		            $.yote.default_app = app;
+		            $.yote.default_appname = appname;
+		            $.yote.objs[ app.id ] = app;
+
+		            $.yote.login_obj   = initial_data.get(  'login' );
+		            $.yote.acct_obj    = initial_data.get(  'account' );
+                    $.yote.acct_obj._app_id = app.id;
+
+		            $.yote.guest_token = initial_data.get(  'guest_token' );
+
+		            ret = app;
+		        }
+		        else {
+		            console.log( "ERROR in init for app '" + appname + "' Load did not work" );
+		        }
+	        },
+	        failhandler:function( err ) {
+		        console.log( "ERROR in init for app '" + appname + "' : " + err );
+	        }
+	    } );
+        return ret;
+    }, //init
+
+    'fetch_root' : function() {
+        if( ! _yote_root ) {
+        }
+        return _yote_root;
+    },
+    
+/*
+    // event handler. just has errors at first
+    // TODO : how to remove these handlers
+    'on' : function( event, handler ) { 
+        if( !_event_handlers[ event ] ) { 
+            _event_handlers[ event ] = []; 
+        }
+        _event_handlers[ event ].push( handler ); 
+        return this; 
+    }, //on
+*/
+    '_set_debug' : function( d ) { _debug = d; return this; },
+    '_debug_cache_size' : function() { },
+    '_debug_dump_cache' : function() { },
+};
+
+
+

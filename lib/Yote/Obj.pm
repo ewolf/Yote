@@ -6,10 +6,11 @@ no warnings 'uninitialized';
 
 use overload
     '""' => sub { shift->{ID} },
-    eq   => sub { shift->{ID} eq shift->{ID} },
-    ne   => sub { shift->{ID} ne shift->{ID} },
-    '==' => sub { shift->{ID} eq shift->{ID} },
-    '!=' => sub { shift->{ID} ne shift->{ID} },
+    eq   => sub { my( $a, $b ) = @_; ref($b) && $b->isa( 'Yote::Obj' ) && $a->{ID} eq $b->{ID} },
+    ne   => sub { my( $a, $b ) = @_; ! ref($b) || ! $b->isa( 'Yote::Obj' ) || $a->{ID} ne $b->{ID} },
+    '==' => sub { my( $a, $b ) = @_; ref($b) && $b->isa( 'Yote::Obj') && $a->{ID} eq $b->{ID} },
+    '!=' => sub { my( $a, $b ) = @_; ! ref($b) || ! $b->isa( 'Yote::Obj' ) || $a->{ID} ne $b->{ID} },
+
     fallback => 1;
 
 #
@@ -49,38 +50,35 @@ $VERSION = '0.074';
 # ------------------------------------------------------------------------------------------
 
 sub new {
-    my( $pkg, $id_or_hash ) = @_;
+    my $pkg = shift;
     my $class = ref($pkg) || $pkg;
 
-    my $obj;
-    if( ref( $id_or_hash ) eq 'HASH' ) {
-        $obj = bless {
-            ID       => undef,
-            DATA     => {},
-        }, $class;
-    }
-    else {
-        $obj = bless {
-            ID       => $id_or_hash,
-            DATA     => {},
-        }, $class;
-    }
+    my $hash = ref( $_[0] ) ? $_[0]  : { @_ };
 
-    if( ! defined( $obj->{ID} ) ) {
-        $obj->{ID} = Yote::ObjProvider::get_id( $obj );
-        $obj->_init();
-        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
-    }
 
-    if( ref( $id_or_hash ) eq 'HASH' ) {
-        for my $key ( sort keys %$id_or_hash ) {
-            $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
-        }
-        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
-    }
+    my $obj = bless {
+        ID       => undef,
+        DATA     => { map { $_ => Yote::ObjProvider::xform_in( $hash->{$_} ) } keys %$hash },
+    }, $class;
 
+    $obj->{ID} = Yote::ObjProvider::get_id( $obj );
+    $obj->_init();
+    Yote::ObjProvider::dirty( $obj, $obj->{ID} );
+ 
     return $obj;
 } #new
+
+
+sub _new_for_load {
+    my( $pkg, $id ) = @_;
+    my $class = ref($pkg) || $pkg;
+
+    bless {
+        ID       => $id,
+        DATA     => {},
+    }, $class;
+} #_new_for_load
+
 
 sub fetch {
     return Yote::ObjProvider::fetch( $_[$#_] );

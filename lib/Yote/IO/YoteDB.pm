@@ -168,7 +168,7 @@ sub list_insert {
       push @{$obj->[DATA]}, $val;
     }
   }
-  $self->stow( @$obj );
+  $self->stow( $obj );
   return;
 } #list_insert
 
@@ -472,7 +472,7 @@ sub _recycle_objects {
 # Saves the object data for object $id to the data store.
 #
 sub stow {
-  my( $self, $id, $class, $data ) = @_;
+  my( $self, $id, $class, $data ) = ($_[0], @{$_[1]});
   my $save_data = "$class " . to_json($data);
   my $save_size = do { use bytes; length( $save_data ); };
   my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
@@ -507,7 +507,7 @@ sub stow_all {
   my( $self, $objs ) = @_;
   my $count = 0;
   for my $o ( @$objs ) {
-    $count += $self->stow( @$o );
+    $count += $self->stow( $o );
   }
   return $count;
 } #stow_all
@@ -587,7 +587,7 @@ sub hash_delete {
   my $obj = $self->fetch( $hash_id );
   die "hash_delete called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
   delete $obj->[DATA]{ $key };
-  return $self->stow( @$obj );
+  return $self->stow( $obj );
 } #hash_delete
 
 
@@ -597,7 +597,7 @@ sub hash_insert {
 
   die "hash_insert called for array" if ref( $obj->[DATA] ) eq 'ARRAY';
   $obj->[DATA]{ $key } = $val;
-  return $self->stow( @$obj );
+  return $self->stow( $obj );
 } #hash_insert
 
 #
@@ -613,7 +613,7 @@ sub list_delete {
     ( $actual_index ) = grep { $list->[$_] eq $val  } (0..$#$list);
   }
   splice( @$list, $actual_index, 1 ) if $#$list >= $actual_index;
-  return $self->stow( @$obj );
+  return $self->stow( $obj );
 } #list_delete
 
 sub list_fetch {

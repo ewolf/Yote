@@ -1,3 +1,7 @@
+change new Yote::Obj to take refs or non ref hashes, so split off the id version.
+
+________________
+
 The new home grown yotedb is working in at least the common case. Passes all tests.
  Should pour though it to see if there are any tiny bits of time that can be shaved from it. Someday journaling? 
  Maybe less destructive updates ( a bit to indicate wether or not to ditch that row? )

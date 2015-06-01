@@ -23,19 +23,20 @@ var failed = 0;
 var calls_made = 0;
 var total_js_time = 0, start_js_time;
 var t2;
-$.yote.old_message = $.yote.message;
-$.yote.message = function( params ) {
+
+var old_message = $.yote._get_message_function();
+$.yote._set_message_function( function( params ) {
     calls_made++;
 
     total_js_time += (window.performance.now() - start_js_time);
 
-    var ret =  $.yote.old_message( params );
+    var ret =  old_message( params );
 
     // excludes io from js performance
     start_js_time = window.performance.now();
 
     return ret;
-}
+} );
 
 
 function fail( test ) {
