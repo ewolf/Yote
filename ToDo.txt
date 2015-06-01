@@ -1,4 +1,6 @@
-change new Yote::Obj to take refs or non ref hashes, so split off the id version.
+* create a demo of yote being used
+
+* change new Yote::Obj to take refs or non ref hashes, so split off the id version.
 
 ________________
 

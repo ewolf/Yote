@@ -507,6 +507,7 @@ sub stow_all {
   my( $self, $objs ) = @_;
   my $count = 0;
   for my $o ( @$objs ) {
+      print STDERR Data::Dumper->Dump([$o]) unless ref( $o ) eq 'ARRAY';
     $count += $self->stow( $o );
   }
   return $count;

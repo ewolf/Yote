@@ -10,8 +10,8 @@
 /*
   Upon script load, see if a port was explicity given in the script
   tag calling this file. If there is a port specified, use that
-  location as an absolute location when making the yote ajax calls. 
-  If the normal port is used, that means the script is called from the 
+  location as an absolute location when making the yote ajax calls.
+  If the normal port is used, that means the script is called from the
   same place as the page and relative urls can be used for the ajax calls.
 */
 var scripts = document.getElementsByTagName('script');
@@ -50,9 +50,9 @@ $.yote = {
 	        async:false,
 	        cmd:'fetch_initial',
 	        data:{ t:token,a:appname },
-	        passhandler:function( initial_data ) {	    
+	        passhandler:function( initial_data ) {
 		        if( typeof initial_data === 'object' && initial_data.get(  'root' ) && initial_data.get(  'app' ) ) {
-		            var yote_root = initial_data.get(  'root' ); 
+		            var yote_root = initial_data.get(  'root' );
                     yote_root._app_id = yote_root.id;
 		            $.yote.yote_root = yote_root;
 		            $.yote.objs[ yote_root.id ] = yote_root;
@@ -236,8 +236,8 @@ $.yote = {
 		        return a;
 	        },
 
-	        error:function(a,b,c) { 
-                root._error(a); 
+	        error:function(a,b,c) {
+                root._error(a);
             },
 	        success:function( data ) {
 		        if( $.yote.debug == true ) {
@@ -250,10 +250,10 @@ $.yote = {
 			            //dirty objects that may need a refresh
                         $.yote.has_updated = false;
 			            if( typeof data.d === 'object' ) {
-                            $.yote.has_updated = true;                            
+                            $.yote.has_updated = true;
 			                for( var oid in data.d ) {
 				                if( root._is_in_cache( oid ) ) {
-				                    
+
 				                    var cached = root.objs[ oid + '' ];
 				                    for( fld in cached._d ) {
 					                    //take off old getters/setters
@@ -439,7 +439,7 @@ $.yote = {
     _data_wrapper:function( obj, field, key, is_hash ) {
         var node = is_hash ? $.yote._pag_hash_cache[ key ] : $.yote._pag_list_cache[ key ];
         if( ! key || (! node && ( (! obj && ! field ) ) ) ) {
-            if( is_hash ) 
+            if( is_hash )
                 throw new Exception( 'wrap hash called without ' + ( key ? 'hash' : 'key' ) );
             else
                 throw new Exception( 'wrap list called without ' + ( key ? 'list' : 'key' ) );
@@ -470,7 +470,7 @@ $.yote = {
                 back:function(){
                     this._start -= this._page_size;
                     if( this._start < 0 ) {
-                        this._start = 0;                    
+                        this._start = 0;
                     }
                 },
                 can_rewind:function(){
@@ -513,7 +513,7 @@ $.yote = {
                         ret = ret.sort( this._sort_function );
                     }
                     if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
+                        if( typeof this._page_size !== 'undefined' )
                             ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
@@ -537,10 +537,10 @@ $.yote = {
                                 new_ret.push( k );
                         }
                         ret = new_ret;
-                    } 
+                    }
                     ret = ret.sort( this._sort_function );
                     if( typeof this._start !== 'undefined' || typeof this._page_size !== 'undefined' ) {
-                        if( typeof this._page_size !== 'undefined' ) 
+                        if( typeof this._page_size !== 'undefined' )
                             ret = ret.slice( this._start, this._start + this._page_size );
                         else
                             ret = ret.slice( this._start );
@@ -579,7 +579,7 @@ $.yote = {
         }
         return node;
     }, //data_wrapper
-    
+
 
     // TODO : use prototype for the _create_obj
     _create_obj:function(data,app_id) { //creates the javascript proxy object for the perl object.
@@ -673,7 +673,7 @@ $.yote = {
 		        var ret = val.substring(1);
                 return typeof ret * 1 !== 'NaN' ? ret : ret * 1;
 	        };
-	        
+
 	        o.is = function( othero ) {
 		        var k = this.id;
 		        var ok = othero ? othero.id : undefined;
@@ -690,7 +690,7 @@ $.yote = {
 		        this._stage( key, val );
 		        this._send_update( undefined, failh, passh );
 		        delete this._staged[ key ];
-                if( ! this[ 'set_' + key ] ) 
+                if( ! this[ 'set_' + key ] )
                     this[ 'set_' + key ] = (function(k) { return function(val,fh,ph) { return this.set(k,val,fh,ph) } } )(key);
 		        return val;
 	        };
@@ -989,4 +989,3 @@ if( ! Object.clone ) {
         return clone;
     }
 }
-

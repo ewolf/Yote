@@ -1,4 +1,13 @@
 /*
+ * LICENSE AND COPYRIGHT
+ *
+ * Copyright (C) 2012 Eric Wolf
+ * This module is free software; it can be used under the terms of the artistic license
+ *
+ * Version 0.3
+ */
+
+/*
 debug,token,objs,_dump_cache,_cache_size,_debug_[sg]et_message
 
 init
@@ -57,6 +66,10 @@ var _object_cache = {};
 var _translate_data = function(data) {
     // returns a base 64 encoded version of the data for io transfer
     return $.base64.encode( JSON.stringify( { d : _prepare_data(data) } ) );
+};
+var _untranslate_data = function(data) {
+    // returns the object or string the data represents
+    return data.substring(0,1) == 'v' ? data.substring(1) : _object_cache[ data ];
 };
 var _prepare_data = function(data) {
     // takes a data structure and converts all non-null, non-objects to the yote 'v' + value format.
@@ -205,10 +218,166 @@ var _is_in_cache = function( id ) {
 //data.c  -class
 //data.m  -methods
 //data.d  -property hash
+
+/*
+  methods on the object :
+   * length
+   * equals
+   * keys
+   * values
+   * sort
+   * to_hash/to_list/all method names defined from data
+   * get
+   * is
+   * set
+   * data defined getters and setters
+   * _reset
+   * _is_dirty
+   * _send_update
+*/
 var _create_obj = function( data, app_id ) {
     
+    var _obj_class   = data.c;
+    var _id          = data.id;
+    var _app_id      = app_id;
+
+    var _imported_methods = data.m || [];
+    var _imported_data = data.d || {};
+
+    var _stored_data = {};
+    var _staged_data = {};
+
+    var _length = function() {
+        return Object.keys( _stored_data ).length;
+    };
+
+    var _send_update = function( on_fail, on_pass ) {
+        var staged_keys = Object.keys( _staged_data );
+        if( staged_keys.length == 0 ) {
+            return;
+        }
+        var to_send;
+        if( _obj_class === 'Array') {
+            to_send = staged_keys.map( function( key ) { return _untranslate_data( _staged_data[ key ] ); } );
+        } else {
+            to_send = {};
+            to_send = staged_keys.map( function( key ) { to_send[key] = _untranslate_data( _staged_data[ key ] ); } );
+        }
+        _message( {
+            'app_id' : _app_id,
+            'async'  : false,
+            'data'   : to_send,
+            'cmd'    : 'update',
+            'failhandler' : function() {
+                if( on_fail ) {
+                    on_fail();
+                }
+            },
+            'obj_id' : _id,
+            'passhandler' : function() {
+                if( on_pass ) {
+                    on_pass();
+                }
+            }
+        });
+    }; //send_update
+
+    var _set = function( key, val, fail_handler, pass_handler ) {
+        _staged_data[ key ] = val;
+        _send_update( fail_handler, pass_handler );
+        delete _staged_data[ key ];
+        if( ! obj[ 'set_' + key ] ) {
+            obj[ 'set_' + key ] = function( newval, on_fail, on_pass ) {
+                return _set( key, newval, on_fail || fail_handler, on_pass || pass_handler );
+            }
+        }
+    }; //_set
     
-};
+
+    var _get = function( key ) {
+        var val = defined _staged_data[ key ]  ? _staged_data[ key ] : _stored_data[ key ];
+        var val_type = typeof val;
+        if( val_type === 'undefined' || val_type === 'object' || val_type === 'function' ) {
+            return val;
+        }
+		if( val.substring(0,1) != 'v' ) {
+		    var obj = _object_cache[ val ];
+		    if( ! obj ) {
+			    var ret = $.yote.fetch_default_app().fetch(val);
+			    if( ! ret ) return undefined; //this can happen if an authorized user logs out
+			    obj = ret.get(0);
+		    }
+		    obj._set_app_id( _app_id );
+            return obj;
+		}
+
+        // 'scalar' value
+		var ret = val.substring(1);
+        // if the return value could be a number, return it as such
+        return Number.isNaN( Number( ret ) ) ? ret : Number( ret );
+    }; //_get
+
+    var obj = {
+        '_id'      : _id,
+        '_app_id'  : _app_id,
+        '_set_app_id' : function( app_id ) { _app_id = app_id; },
+        'length'  : _length,
+        'equals'  : function(oth) {
+            return typeof oth === 'object' && oth._id == _id;
+        },
+        'is'      : function(oth) {
+            return _id && typeof oth === 'object' && oth._id == _id;
+        }
+/*
+        'keys'   : function() {
+            return Object.keys( _stored_data );
+        },
+        'values' : function() {
+            var that = this;
+            return Object.keys( _stored_data ).map(function(key) { return _get( key ); } );
+        },
+        'sort'   : 
+*/
+    };
+    if( _id ) {
+        _object_cache[ _id ] = obj;
+    }
+    if( _obj_class === 'HASH' ) {
+        obj.to_hash = function() {
+            return Object.keys( _stored_data ).map(function(key) { return _get( key ); } );
+        };
+    } 
+    else if( _obj_class === 'ARRAY' ) {
+        obj.to_list = function() {
+            var list = [];
+            for( var i=0, len = _length(); i < len; i++ ) {
+                list[ i ] = _get( key );
+            }
+            return list;
+        };
+    } 
+    else { // yote objects with yote object methods and get/set methods
+        _imported_methods.map( function( method_name ) {
+            o[ _imported_methods[method_name] ] = function( params, passhandler, failhandler, use_async ) {
+                return _message( {
+				    'async'   : use_async ? true : false,
+				    'app_id'  : _app_id,
+				    'cmd'     : method_name + '', //closurify
+				    'data'    : params,
+				    'failhandler' : failhandler,
+                    'obj_id'  : id,
+				    'passhandler' : passhandler
+                } );
+            };
+        } );
+
+        Object.keys( _imported_data ).map( function( field ) {
+            obj[ 'get_' + field ] = function() { return _get( field ); };
+        } );
+    } // yote obj
+
+    return obj;
+}; //_create_obj
 
 /*
      ------------------------ AUTHENTICATION ------------------
