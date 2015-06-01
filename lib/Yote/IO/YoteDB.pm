@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
+no warnings 'numeric';
 
 use Yote::IO::FixedStore;
 use Yote::IO::StoreManager;
@@ -124,6 +125,7 @@ sub ensure_datastore {
 #
 sub fetch {
   my( $self, $id ) = @_;
+  die "Error: tried to fetch with an invalid id" unless $id > 0;
   my $ret = $self->_fetch( $id );
   return undef unless $ret;
   $ret->[DATA] = from_json( $ret->[DATA] );
