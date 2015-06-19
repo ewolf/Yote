@@ -7,6 +7,7 @@ no warnings 'uninitialized';
 no warnings 'recursion';
 
 use Yote::Array;
+use Yote::Cache;
 use Yote::Hash;
 use Yote::Obj;
 use Yote::ObjManager;
@@ -19,10 +20,10 @@ use WeakRef;
 $Yote::ObjProvider::DIRTY          = {};
 $Yote::ObjProvider::PKG_TO_METHODS = {};
 $Yote::ObjProvider::WEAK_REFS      = {};
-$Yote::ObjProvider::LAST_LOAD_TIME = {};
 
 our $DATASTORE;
 our $FIRST_ID;
+our $CACHE;
 
 use vars qw($VERSION);
 
@@ -42,6 +43,7 @@ sub init {
     my $args = shift;
     $DATASTORE = new Yote::IO::YoteDB( $args );
     $DATASTORE->ensure_datastore();
+    $CACHE = new Yote::Cache( $args );
 } #init
 
 # ------------------------------------------------------------------------------------------
@@ -76,13 +78,12 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id};
+    my $ref = $Yote::ObjProvider::DIRTY->{$id} || $Yote::ObjProvider::WEAK_REFS->{$id} || $CACHE->fetch($id);
 
     if( defined $ref ) {
         return $ref;
     }
     my $obj_arry = $DATASTORE->fetch( $id );
-    $Yote::ObjProvider::LAST_LOAD_TIME->{$id} = time();
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -90,6 +91,7 @@ sub fetch {
             my( @arry );
             tie @arry, 'Yote::Array', $id, @$data;
             my $tied = tied @arry; $tied->[2] = \@arry;
+            $CACHE->stow( $id, \@arry );
             __store_weak( $id, \@arry );
             return \@arry;
         }
@@ -97,6 +99,7 @@ sub fetch {
             my( %hash );
             tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
             my $tied = tied %hash; $tied->[2] = \%hash;
+            $CACHE->stow( $id, \%hash );
             __store_weak( $id, \%hash );
             return \%hash;
         }
@@ -108,6 +111,7 @@ sub fetch {
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();
+            $CACHE->stow( $id, $obj );
             __store_weak( $id, $obj );
             return $obj;
         }
@@ -260,6 +264,7 @@ sub paginate {
 } #paginate
 
 sub recycle_objects {
+    $CACHE->purge();
     Yote::ObjProvider::stow_all();
     return $DATASTORE->recycle_objects( @_ );
 } #recycle_objects
