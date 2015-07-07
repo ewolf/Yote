@@ -127,7 +127,7 @@ sub start_yote {
     $SIG{ __DIE__ } = sub {
         # quick shutdown
         kill 'SIGINT', grep { $_ } ($cron_proc,$eng_proc,$serv_proc);
-    }
+    };
 
     $SIG{ INT } = $SIG{ TERM } = sub {
         print STDERR "Got term or int signal\n";
