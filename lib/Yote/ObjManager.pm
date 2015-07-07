@@ -97,8 +97,8 @@ sub mark_dirty {
     my $obj_hash = $ALLOWS->{ $obj_id };
 
     for my $recip_id ( keys %$obj_hash ) {
-	#must be or, so that DIRTY doesn't become dirty and start an infinite loop
-	$DIRTY->{ $recip_id }{ $obj_id } ||= 1;  
+        #must be or, so that DIRTY doesn't become dirty and start an infinite loop
+        $DIRTY->{ $recip_id }{ $obj_id } //= 1;  
     }
 
     # if this is a container not on a client but paginated by the client, note that
