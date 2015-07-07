@@ -123,6 +123,12 @@ sub start_yote {
     daemonize( close => 0 );
     write_pidfile( $pidfile );
     print STDERR Data::Dumper->Dump(["WROTE PIDFILE $pidfile $$"]);
+    
+    $SIG{ __DIE__ } = sub {
+        # quick shutdown
+        kill 'SIGINT', grep { $_ } ($cron_proc,$eng_proc,$serv_proc);
+    }
+
     $SIG{ INT } = $SIG{ TERM } = sub {
         print STDERR "Got term or int signal\n";
         $in_shutdown = 1;
