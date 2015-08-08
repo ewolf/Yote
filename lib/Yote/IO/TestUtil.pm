@@ -1387,6 +1387,22 @@ sub io_independent_tests {
         fail( "nonroot, nocreator account able to insert into into user obj private container" );
     };
     like( $@, qr/^Access Error/,"nonroot nonowner account unable to insert data into  user obj public container" );
+
+    $objs = Yote::ObjProvider::recycle_objects();
+
+    # deep recursion checks
+    $root->add_to_newness( new Yote::Obj( {
+        deeproot => $root,
+        zork => new Yote::Obj( {
+            moreroot => $root,
+                               } ),
+                                          } ) );
+    Yote::ObjProvider::stow_all();
+    $root->get_newness()->[0]->set_zork( undef );
+    $objs = Yote::ObjProvider::recycle_objects();
+    is( $objs, 1, "one recycled in deep recusion test" );
+    Yote::ObjProvider::stow_all();
+
 } #io_independent_tests
 
 1;

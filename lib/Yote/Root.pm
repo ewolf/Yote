@@ -24,6 +24,12 @@ use parent 'Yote::AppRoot';
 # for the case where the Root is instantiated for the first time.
 #
 $Yote::Root::ROOT_INIT = 0;
+our $ALLOWS_REV = {};
+our $ALLOWS = {};
+our $DIRTY = {};
+our $REGISTERED_CONTAINERS = {};
+our $IP_TO_GUEST_TOKEN = {};
+
 
 # ------------------------------------------------------------------------------------------
 #      * INIT METHODS *
@@ -36,9 +42,6 @@ sub _init {
     $self->set__crond( new Yote::Cron() );
     $self->set__application_lib_directories( [] );
     $self->set__validations( {} );
-    $self->set___ALLOWS( {} );
-    $self->set___ALLOWS_REV( {} );
-    $self->set___DIRTY( {} );
     $self->SUPER::_init();
 } #_init
 
@@ -109,6 +112,7 @@ sub enable_login {
 #
 sub fetch_app_by_class {
     my( $self, $data ) = @_;
+
     my $app = $self->get__apps({})->{ $data };
     unless( $app ) {
         eval ("use $data");
@@ -163,11 +167,8 @@ sub clear_old_tokens {
 
 sub _clear_old_tokens {
     my( $self ) = @_;
-    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({});
-    my $dirty_containers = $self->get___DIRTY_CONTAINERS();
-    my $registered_containers = $self->get__REGISTERED_CONTAINERS();
-    my $recip2obj = $self->get___ALLOWS_REV();
-    my $obj2recip = $self->get___ALLOWS();
+    my $tok_store = $IP_TO_GUEST_TOKEN;
+    my $registered_containers = $REGISTERED_CONTAINERS;
     my $time = time - 3600;
     my $count;
     for my $ip (keys %$tok_store) {
@@ -179,18 +180,17 @@ sub _clear_old_tokens {
                 if( $hash->{ $tok } < $time ) {
                     ++$count;
                     delete $hash->{ $tok };
-                    delete $dirty_containers->{ $tok };
                     delete $registered_containers->{ $tok };
-                    my $todel = $recip2obj->{ $tok };
+                    my $todel = $ALLOWS_REV->{ $tok };
                     if( $todel ) {
-                        for my $obj_id (grep { $obj2recip->{ $_ } } keys %$todel) {
-                            delete $obj2recip->{ $obj_id }{ $tok };
-                            if( scalar( keys %{ $obj2recip->{ $obj_id } } ) == 0 ) {
-                                delete $obj2recip->{ $obj_id };
+                        for my $obj_id (grep { $ALLOWS->{ $_ } } keys %$todel) {
+                            delete $ALLOWS->{ $obj_id }{ $tok };
+                            if( scalar( keys %{ $ALLOWS->{ $obj_id } } ) == 0 ) {
+                                delete $ALLOWS->{ $obj_id };
                             }
                         }
                     }
-                    delete $recip2obj->{ $tok };
+                    delete $ALLOWS_REV->{ $tok };
                 }
             }
             if( scalar( keys %$hash ) == 0 ) {
@@ -207,8 +207,8 @@ sub _clear_old_tokens {
 sub guest_token {
     my( $self, $ip ) = @_;
     my $token = 'gtok' . int( rand 9 x 10 );
-    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
-    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe?
+    my $tok_store = $IP_TO_GUEST_TOKEN; #TODO - put this in init
+    $tok_store->{$ip}{$token} = time(); # @TODO - make sure this and the LOGIN_OBJECTS cache is purged regularly. cron maybe? Even redis this?
     Yote::ObjManager::clear_login( undef, $token );
 
     return $token;
@@ -216,16 +216,15 @@ sub guest_token {
 
 sub reset_connections {
     my $self = shift;
-    $self->set___ALLOWS({});
-    $self->set___ALLOWS_REV({});
-    $self->set___DIRTY({});
-    $self->set___REGISTERED_CONTAINERS({});
-    $self->set___IP_TO_GUEST_TOKEN({});
+    $ALLOWS = {};
+    $ALLOWS_REV = {};
+    $REGISTERED_CONTAINERS = {};
+    $IP_TO_GUEST_TOKEN = {};
 }
 
 sub check_guest_token {
     my( $self, $ip, $token ) = @_;
-    my $tok_store = $self->get___IP_TO_GUEST_TOKEN({}); #TODO - put this in init
+    my $tok_store = $IP_TO_GUEST_TOKEN; #TODO - put this in init
     return $token if $tok_store->{$ip}{$token};
 } #check_guest_token
 

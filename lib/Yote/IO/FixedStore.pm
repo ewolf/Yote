@@ -26,8 +26,7 @@ sub filehandle {
     return $self->{FILEHANDLE};
 }
 
-
-sub unlink {
+sub unlink_store {
     # TODO : more checks
     my $self = shift;
     close $self->filehandle;

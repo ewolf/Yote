@@ -17,25 +17,26 @@
 <script src="/yote/js/yote.util.js"></script>
 
 <script>
-    var tests = 0;
+
+var tests = 0;
 var failed = 0;
 var calls_made = 0;
-var total_js_time = 0, start_js_time;
+var total_js_time = 0, start_js_time, short_js_time;
 var t2;
-$.yote.old_message = $.yote.message;
-$.yote.message = function( params ) {
+
+var old_message = $.yote._get_message_function();
+$.yote._set_message_function( function( params ) {
     calls_made++;
 
     total_js_time += (window.performance.now() - start_js_time);
 
-    var ret =  $.yote.old_message( params );
+    var ret =  old_message( params );
 
     // excludes io from js performance
     start_js_time = window.performance.now();
 
     return ret;
-}
-
+} );
 
 function fail( test ) {
     return function(d) {
@@ -73,12 +74,13 @@ function wrap_up() {
     } else {
         $('#results').append( "Passed all " + tests + " tests" );
     }
-    $.yote.fetch_root().remove_login( { l:$.yote.login_obj, p: 'ut' },
+    $.yote.fetch_root().remove_login( { l:$.yote._login_obj(), p: 'ut' },
  				                      pass( "remove login" ), fail( "remove login" ) );
     $.yote.logout();
     $('#tests').append( "<br>tests completed in " + Math.round(window.performance.now() - t2)/1000 + " seconds" );
 
     $('#tests').append( "<br>javascript time : " + Math.round(total_js_time) + " ms" );
+    $('#tests').append( "<br>fast javascript time : " + Math.round(short_js_time) + " ms" );
 } //wrap_up
 var step_count = 0;
 function step( msg ) {
@@ -108,7 +110,7 @@ $().ready(function(){
             //fetch app that doesn't require login and get scalar
             step('get app testappnologin');
             var nologin_app = $.yote.fetch_app( 'Yote::Test::TestAppNoLogin' );
-            nologin_app._reset();
+            nologin_app.reset();
             step('scalar called on testappnologin');
             var scalar = nologin_app.scalar( {}, pass("returned login scalar" ), fail("no login scalar returned") );
             is( scalar, "BEEP", "value of login scalar" );
@@ -118,7 +120,7 @@ $().ready(function(){
 
             var login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
  	        login_app.purge_app();
-            login_app._reset();
+            login_app.reset();
             step('scalar called on testappneedslogin');
             var scalar = login_app.scalar( {},
                                            fail("required login returned scalar without login"),
@@ -126,6 +128,8 @@ $().ready(function(){
 
             step('create account');
             // account creation.
+
+            // both ways are pass in case the first account was already created for this
             $.yote.fetch_root().create_login( { h: 'unit_test_account0', p: 'ut',e: 'nobodyelse@fenowyn.com' },
  					                          pass("create first account"), pass("create first account already existed") );
 
@@ -149,12 +153,12 @@ $().ready(function(){
  			              fail( "unable to log in" ) );
 
             step('login has token');
- 	        ok( $.yote.token != '', 'login has token', 'token missing from login' );
+ 	        ok( $.yote._get_token() !== '', 'login has token', 'token missing from login' );
  	        ok( $.cookie('yoken') != '', 'cookie was set', 'cookie was not set' );
 
             login_app.reset();
 
- 	        var token_login = $.yote.fetch_root().token_login( $.yote.token );
+ 	        var token_login = $.yote.fetch_root().token_login( $.yote._get_token() );
  	        ok( typeof token_login === 'object', 'has a login with token', 'cannot login with token' );
 
 	        login_app = $.yote.fetch_app( 'Yote::Test::TestAppNeedsLogin' );
@@ -176,6 +180,7 @@ $().ready(function(){
             // try passing in a javascript proxy object as a data parameter
             var o1 = login_app.make_obj( {Text:'foo'}, pass( "created object 1" ), fail( "create object 1" ) );
             var o2 = login_app.make_obj( {Text:'bar'}, pass( "created object 2" ), fail( "create object 2" ) );
+
             login_app.give_obj( o1, pass( "gave object 1" ), fail( "gave object 1" ) );
             is( o1.get_Text(), 'foo', 'correct object 1 text directly a' );
             is( o2.get_Text(), 'bar', 'correct object 2 text directly a' );
@@ -209,12 +214,13 @@ $().ready(function(){
  	        is( o3[ 'set_zap' ], undefined, "zap is not there" );
 
             login_app._send_update({Text:'baf',bext:'Again',zip:'zap'});
+// <----- err ? ------>
  	        is( login_app.get_Text(), 'baf', "TANL changed text" );
  	        is( login_app.get_zap(), 'zappy', "TANL unchnaged zap" );
 
             is( o3.get_Text(), 'baz', 'correct object 2 text directly did not change' );
             is( o3.get_bext(), 'Something else', 'correct object 2 text directly' );
-            is( o3.get('zip'), undefined, 'correct object 2 text directly' );
+            is( o3._get('zip'), undefined, 'correct object 2 text directly' );
 
             pass( "no login returns yote obj" )();
             step('name get called on testappneedslogin to succeed');
@@ -225,14 +231,14 @@ $().ready(function(){
             step('array called on testappneedslogin to succeed');
             var arry = login_app.array();
             is( arry.length(), 4, 'length of array returned' );
-            is( arry.get(0), 'A', 'element 0 correct' );
+            is( arry._get(0), 'A', 'element 0 correct' );
 
  	        // test sorting functions
  	        step( 'testing sorting function' );
- 	        var tosortarry = arry.get( 3 );
+ 	        var tosortarry = arry._get( 3 );
  	        is( tosortarry.length(), 6, 'length of sorting array' );
- 	        is( tosortarry.get(0), 'b', 'first el' );
- 	        is( tosortarry.get(5), 'c', 'last el' );
+ 	        is( tosortarry._get(0), 'b', 'first el' );
+ 	        is( tosortarry._get(5), 'c', 'last el' );
  	        var sortedarry = tosortarry.sort();
  	        is( sortedarry.length, 6, 'sorted array length' );
  	        is( sortedarry[0], 'a', 'first el sorted array' );
@@ -243,32 +249,32 @@ $().ready(function(){
 
 
             //check if el 2 is object
-            var inobj = arry.get(2);
+            var inobj = arry._get(2);
 
             step('name get called on testappneedslogin to succeed');
             is( inobj.get_name(), 'INITY', "yote object inited on server side" );
 
             // have yote hash returned
             step('get hash in array');
-            var h = arry.get(1);
+            var h = arry._get(1);
             step('get size of hash');
             is( h.length(), 1, 'hash has correct numbers' );
             step('get inner array of hash');
-            var inarry = h.get('inner');
+            var inarry = h._get('inner');
             step('inner array correct length');
             is( inarry.length(), 2, 'inner array has correct length' );
             step('first element in inner array');
-            is( inarry.get(0), 'Juan', '1st el inner array' );
+            is( inarry._get(0), 'Juan', '1st el inner array' );
             step('second element hash in inner array');
-            var inh = inarry.get(1);
+            var inh = inarry._get(1);
             step('2nd hash length');
             is( inh.length(), 2, 'inner hash length' );
             step('2nd hash peanut value');
-            is( inh.get('peanut'), 'Butter', 'first value inner hash' );
+            is( inh._get('peanut'), 'Butter', 'first value inner hash' );
             step('2nd hash ego object with id');
-            is( inh.get('ego').id, $.yote.objs[inh.get('ego').id].id, 'object stored in root object cache' );
+            is( inh._get('ego')._id, $.yote._object_cache()[inh._get('ego')._id]._id, 'object stored in root object cache' );
             step('2nd hash ego object with name');
-            is( inh.get('ego').get_name(), 'INITY', 'object stored in inner hash' );
+            is( inh._get('ego').get_name(), 'INITY', 'object stored in inner hash' );
 
             //test javascript object caching and multi loading of objects.
             $.yote._dump_cache();
@@ -278,7 +284,7 @@ $().ready(function(){
 
  	        var hello_app = $.yote.fetch_app( 'Yote::Test::Hello' );
  	        hello_app.hello();
- 	        is( hello_app.get_my_hash().get( 'store' ).get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
+ 	        is( hello_app.get_my_hash()._get( 'store' )._get( 'AnObject' ).get_flavor(), 'blueberry', "chained objects passed correctly" );
 
  	        // testing pagination
  	        //timing tests
@@ -292,6 +298,7 @@ $().ready(function(){
  	        }
 
             total_js_time += (window.performance.now() - start_js_time);
+            short_js_time = total_js_time;
  	        login_app.long_time( '', function( pass_resp ) { pass( "Passed long time test" )(); meets() }, function( fail_resp ) { fail( "Failed long time test" )(); meets();  }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed short time test" )(); meets() }, function( fail_resp ) { fail( "Failed short time test" )(); meets(); }, true );
  	        login_app.short_time( '', function( pass_resp ) { pass( "Passed second short time test" )(); meets() }, function( fail_resp ) { fail( "Failed second short time test" )(); meets(); }, true );
