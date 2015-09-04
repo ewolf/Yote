@@ -382,7 +382,7 @@ var _create_object = function( data, app_id ) {
         obj.to_list = function() {
             var list = [];
             for( var i=0, len = _length(); i < len; i++ ) {
-                list[ i ] = _get( key );
+                list[ i ] = _get( i );
             }
             return list;
         };
@@ -452,8 +452,10 @@ var _handle_event = function( event_type, event ) {
     }
 }; //_handle_event
 
-window.$.yote = {
+var util = ( window.$ && window.$.yote ? window.$.yote.util : {} ) || {};
 
+window.$.yote = {
+    'util' : util,
     '_get_message_function' : function() { return _message; },
     '_set_message_function' : function(newf) { _message = newf; return this; },
     '_get_token' : function() { return _auth_token; },
