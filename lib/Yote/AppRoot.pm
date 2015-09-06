@@ -17,7 +17,7 @@ use Yote::Account;
 use Yote::Obj;
 use Yote::RootObj;
 use Yote::SimpleTemplate;
-use Yote::Root;
+use Yote::WebRoot;
 
 use parent 'Yote::RootObj';
 
@@ -83,7 +83,7 @@ sub create_login {
         die "Must specify valid email";
     }
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     my $login = $root->_create_login( $handle, $email, $password, $env );
 
     if( $self->get_requires_validation() ) {
@@ -237,7 +237,7 @@ sub new_user_obj {
 sub recover_password {
     my( $self, $email ) = @_;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     my $login = $root->_hash_fetch( '_emails', $email );
     if( $login ) {
         my $now = time();
@@ -293,7 +293,7 @@ sub recover_password {
 sub recovery_reset_password {
     my( $self, $args ) = @_;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     my $newpass        = $args->{p};
     my $rand_token     = $args->{t};
     my $recovery_hash  = $root->get__recovery_logins({});
@@ -347,7 +347,7 @@ sub token_login {
 
 sub validate {
     my( $self, $token ) = @_;
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     return $root->_validate( $token );
 } #validate
 

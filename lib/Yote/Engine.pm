@@ -10,7 +10,7 @@ use JSON;
 use Yote::ObjManager;
 use Yote::ObjProvider;
 use Yote::IO::Mailer;
-use Yote::Root;
+use Yote::WebRoot;
 
 use vars qw($VERSION);
 $VERSION = '0.002';
@@ -31,7 +31,7 @@ sub start {
     Yote::IO::Mailer::init( $cfg );
 
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     $root->_update_master_root( $cfg->{ root_account },
                                 $cfg->{ root_password } );
     my $cron = $root->_cron;

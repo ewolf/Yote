@@ -64,7 +64,7 @@ done_testing();
 exit( 0 );
 
 sub test_suite {
-    my $root = Yote::Root->fetch();
+    my $root = Yote::WebRoot->fetch_webroot();
     my $app = new Yote::AppRoot( {
 	requires_validation => 1,
 	login_email_from    => 'yote@localhost',

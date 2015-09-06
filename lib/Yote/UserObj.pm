@@ -33,7 +33,7 @@ Yote::UserObj
 =head1 DESCRIPTION
 
 This is a subclass of Yote::Obj that allows root or its creator to access and write to public and private fields.
-Public fields may be read by others but not written. The Yote::Root instance method new_root_obj
+Public fields may be read by others but not written. The Yote::WebRoot instance method new_root_obj
 returns a new object of this type.
 
 =head2 METHODS

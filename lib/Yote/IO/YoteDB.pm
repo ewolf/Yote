@@ -137,17 +137,21 @@ sub fetch {
 sub first_id {
   my $OI = shift->{OBJ_INDEX};
   if ( $OI->entries < 1 ) {
-    return $OI->next_id;
+      $OI->next_id;
   }
   return 1;
 } #first_id
 
 #
-# Create a new object id and return it.
+# Create a new object id and return it. Will never return the
+# value of first_id
 #
 sub get_id {
   my $self = shift;
   my $x = $self->{OBJ_INDEX}->next_id;
+  if( $x == $self->first_id() ) {
+      return $self->get_id;
+  }
   return $x;
 } #get_id
 

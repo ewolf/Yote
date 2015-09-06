@@ -124,7 +124,7 @@ sub _init {
     my $second_cron = new Yote::RootObj( {
         name   => 'Token Janitor',
         enabled => 1,
-        script => 'use Data::Dumper; my $dumped = Yote::Root::fetch_root()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
+        script => 'use Data::Dumper; my $dumped = Yote::WebRoot::fetch_webroot()->_clear_old_tokens(); print STDERR Data::Dumper->Dump(["Dumped $dumped old Tokens"]);',
         repeats => [
             new Yote::Obj( { repeat_interval => 30, repeat_infinite => 1, repeat_times => 0 } ),
             ],

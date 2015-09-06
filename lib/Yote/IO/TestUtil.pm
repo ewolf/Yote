@@ -10,6 +10,8 @@ $VERSION = '0.001';
 use Test::More;
 use Yote;
 use Yote::Obj;
+use Yote::Root;
+use Yote::WebRoot;
 use Yote::RootObj;
 use Yote::UserObj;
 
@@ -58,7 +60,7 @@ sub compare_sets {
 sub io_independent_tests {
     my( $root ) = @_;
 
-    my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    my $root_clone = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() )->get_webroot();
     is( ref( $root_clone->get_cool_hash()->{llama} ), 'ARRAY', '2nd level array object' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[2]->{Array} ), 'Yote::Obj', 'deep level yote object in hash' );
     is( ref( $root_clone->get_cool_hash()->{llama}->[1] ), 'Yote::Obj', 'deep level yote object in array' );
@@ -73,7 +75,8 @@ sub io_independent_tests {
     ok( $root_clone == $root, "CLONE TO ROOT == SAME?" );
     ok( $root_clone eq $root, "CLONE TO ROOT eq SAME?" );
     is_deeply( $root_clone, $root, "CLONE to ROOT");
-    ok( $root_clone->{ID} eq Yote::ObjProvider::first_id(), "Reloaded Root has first id" );
+    my $realroot = Yote::Root::fetch_root();
+    ok( $realroot->{ID} eq Yote::ObjProvider::first_id(), "Reloaded Root has first id" );
     is( $root_clone->get_default(), "DEFAULT", "get scalar with default" );
     is( $root_clone->get_first(), "FRIST", "simple scalar" );
     is( length($root_clone->get_reallybig()), length("BIG" x 1.000), "Big String" );
@@ -214,7 +217,7 @@ sub io_independent_tests {
     Yote::ObjProvider::stow_all();
 
 
-    my $root_2 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    my $root_2 = Yote::WebRoot::fetch_webroot();
     ( %simple_hash ) = %{$root_2->get_hash()};
     delete $simple_hash{__ID__};
     is_deeply( \%simple_hash, {"KEY"=>"VALUE","FOO" => "bar", BZAZ => [ "woof", "bOOf" ]}, "Simple hash after reload" );
@@ -254,7 +257,7 @@ sub io_independent_tests {
     Yote::ObjProvider::stow_all();
 
     $simple_array = $root->get_array();
-    my $root_3 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    my $root_3 = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() )->get_webroot();
     is_deeply( $root_3, $root, "recursive data structure" );
 
     is_deeply( $root_3->get_obj(), $new_obj, "setting object" );
@@ -341,7 +344,7 @@ sub io_independent_tests {
 # ------------- app serv tests ------------#
 #
 #                                          #
-    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    $root = Yote::WebRoot::fetch_webroot;
 
     Yote::ObjProvider::stow_all();
     eval {
@@ -1307,8 +1310,8 @@ sub io_independent_tests {
     # zoot,  toot, realroot, NEWROOT ( master )
 
     # the following block is copied from above
-    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
-    my $yote_root = Yote::Root::fetch_root();
+    $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() )->get_webroot();
+    my $yote_root = Yote::WebRoot::fetch_webroot();
 
     my $root_handles = $yote_root->get__handles();
     my $root_emails = $yote_root->get__emails();

@@ -526,7 +526,7 @@ window.$.yote = {
         if( ! _yote_root ) {
             _yote_root = _message( {
 	            async:false,
-	            cmd:'fetch_root',
+	            cmd:'fetch_webroot',
                 passhandler : passhandler,
                 failhandler : failhandler
 	        } );

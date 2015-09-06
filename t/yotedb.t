@@ -5,6 +5,7 @@ use warnings;
 
 use Yote::AppRoot;
 use Yote::Root;
+use Yote::WebRoot;
 use Yote::Test::TestAppNoLogin;
 use Yote::Test::TestAppNeedsLogin;
 use Yote::Test::TestDeepCloner;
@@ -55,18 +56,20 @@ sub test_suite {
 #                                      #
 # ----------- simple object tests -----#
 #                                      #
-    my $ROOT_START = 21;
+    my $ROOT_START = 22;
 
-    my $fetched_root = Yote::Root->fetch_root();
-    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() );
+    my $real_root = Yote::Root::fetch_root();
+    ok( $real_root->{ID} == 1, "Root has id of 1" );
+
+    my $fetched_root = Yote::WebRoot->fetch_webroot();
+    my $root = Yote::ObjProvider::fetch( Yote::ObjProvider::first_id() )->get_webroot();
 
     Yote::ObjProvider::stow_all();
 
     my $recycled = Yote::ObjProvider::recycle_objects();
 
-    is( ref( $root ), 'Yote::Root', 'correct root class type' );
-    ok( $root->{ID} == 1, "Root has id of 1" );
-    is( $fetched_root, $root, "fetch_root works same as objprovider fetch" );
+    is( ref( $root ), 'Yote::WebRoot', 'correct root class type' );
+    is( $fetched_root, $root, "fetch_webroot works same as objprovider fetch" );
 
     my $max_id = $Yote::ObjProvider::DATASTORE->max_id();
     is( $max_id, $ROOT_START, "highest id in database is 1" );

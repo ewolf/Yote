@@ -6,6 +6,8 @@ use warnings;
 use vars qw($VERSION);
 $VERSION = '0.02';
 
+use Yote::WebRoot;
+
 no warnings 'uninitialized';
 
 our $DIRTY = {};
@@ -32,8 +34,8 @@ sub allows_access {
     return 1 unless $obj;
     return 1 if ref( $obj ) !~/^(HASH|ARRAY)$/ && $obj->isa( 'Yote::AppRoot' );
 
-    my $root = Yote::Root::fetch_root();
-    my $ALLOWS = $Yote::Root::ALLOWS;
+    my $root = Yote::WebRoot::fetch_webroot();
+    my $ALLOWS = $Yote::WebRoot::ALLOWS;
 
     if( $login ) {
         my $ret = $ALLOWS->{ $obj_id }{ $login->{ID} };
@@ -53,25 +55,25 @@ sub allows_access {
 sub clear_login {
     my( $login, $guest_token ) = @_;
 
-    my $root = Yote::Root::fetch_root();    
-    my $ALLOWS_REV = $Yote::Root::ALLOWS_REV;
+    my $root = Yote::WebRoot::fetch_webroot();    
+    my $ALLOWS_REV = $Yote::WebRoot::ALLOWS_REV;
 
     if( $login ) {
         delete $DIRTY->{ $login->{ID} };
         delete $ALLOWS_REV->{ $login->{ID} };
-        delete $Yote::Root::REGISTERED_CONTAINERS->{ $login->{ID} };
+        delete $Yote::WebRoot::REGISTERED_CONTAINERS->{ $login->{ID} };
     }
     delete $DIRTY->{ $guest_token };
     delete $ALLOWS_REV->{ $guest_token };
 
-    delete $Yote::Root::REGISTERED_CONTAINERS->{ $guest_token };
+    delete $Yote::WebRoot::REGISTERED_CONTAINERS->{ $guest_token };
 }
 
 # return a list of object ids whos data should be sent to the caller.
 sub fetch_dirty {
     my( $login, $guest_token ) = @_;
     my $ids = [];
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
     if( $login ) {
         push @$ids, keys %{ $DIRTY->{ $login->{ID} } };
         delete $DIRTY->{ $login->{ID} };
@@ -84,15 +86,15 @@ sub fetch_dirty {
 
 
 sub mark_dirty {
-    if( $Yote::Root::ROOT_INIT ) {
+    if( $Yote::WebRoot::ROOT_INIT ) {
         return;
     }
     my( $obj_id, $is_container ) = @_;
 
-    my $root = Yote::Root::fetch_root();
+    my $root = Yote::WebRoot::fetch_webroot();
 
     # mark this obj dirty for any client watching it
-    my $ALLOWS = $Yote::Root::ALLOWS;
+    my $ALLOWS = $Yote::WebRoot::ALLOWS;
     my $obj_hash = $ALLOWS->{ $obj_id };
 
     for my $recip_id ( keys %$obj_hash ) {
@@ -103,7 +105,7 @@ sub mark_dirty {
     # if this is a container not on a client but paginated by the client, note that
     # the pagination needs update
     if( $is_container ) {
-        my $REGISTERED_CONTAINERS = $Yote::Root::REGISTERED_CONTAINERS;
+        my $REGISTERED_CONTAINERS = $Yote::WebRoot::REGISTERED_CONTAINERS;
         for my $recip_id ( keys %{ $REGISTERED_CONTAINERS->{ $obj_id } || {} } ) {
             for my $attached_to_obj ( keys %{ $REGISTERED_CONTAINERS->{ $recip_id } } ) {
                 $DIRTY_CONTAINER->{ $recip_id }{ $attached_to_obj }{ $obj_id } ||= 1;
@@ -118,9 +120,9 @@ sub register_object {
     die unless $obj_id;
     return unless $recipient_id;
 
-    my $root = Yote::Root::fetch_root();
-    my $ALLOWS = $Yote::Root::ALLOWS;
-    my $ALLOWS_REV = $Yote::Root::ALLOWS_REV;
+    my $root = Yote::WebRoot::fetch_webroot();
+    my $ALLOWS = $Yote::WebRoot::ALLOWS;
+    my $ALLOWS_REV = $Yote::WebRoot::ALLOWS_REV;
     $ALLOWS->{ $obj_id }{ $recipient_id } ||= 1;
     $ALLOWS_REV->{ $recipient_id }{ $obj_id } ||= 1;
 
