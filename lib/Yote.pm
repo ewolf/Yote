@@ -240,16 +240,14 @@ sub _load {}
 
 
 sub _new { #new Yote::Obj
-    my( $pkg, $obj_store, $data ) = @_;
+    my( $pkg, $obj_store, $data, $_id ) = @_;
 
     my $class = ref($pkg) || $pkg;
-
     my $obj = bless {
-        ID       => undef,
         DATA     => {},
         STORE    => $obj_store,
     }, $class;
-    $obj->{ID} = $obj_store->_get_id( $obj );
+    $obj->{ID} = $_id || $obj_store->_get_id( $obj );
     $obj->_init(); #called the first time the object is created.
     $obj_store->_dirty( $obj, $obj->{ID} );
 
@@ -313,7 +311,7 @@ sub fetch_root {
     die "fetch_root must be called on Yote store object" unless ref( $self );
     my $root = $self->fetch( $self->_first_id );
     unless( $root ) {
-        $root = Yote::Obj->_new( $self );
+        $root = $self->_newroot;
         $root->{ID} = $self->_first_id;
         $self->_stow( $root );
     }
@@ -335,7 +333,14 @@ sub newobj {
     $class->_new( $self, $data );
 }
 
+sub _newroot { 
+    my $self = shift;
+    Yote::Obj->_new( $self, {}, $self->_first_id );
+}
+
+
 =head2 fetch
+
 
 
 
@@ -377,7 +382,7 @@ sub fetch {
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();
-            $self->_store_weak( $id, $obj );
+            $self->_store_weak( $id, \$obj );
             return $obj;
         }
     }
@@ -387,7 +392,7 @@ sub fetch {
 
 sub run_recycler {
     my $self = shift;
-    $self->_stow_all();
+    $self->stow_all();
     $self->{_DATASTORE}->_recycle_objects();
 } #run_recycler
 
@@ -414,7 +419,7 @@ sub stow_all {
 # ------------------------------------------------------------------------------------------
 #      * PRIVATE METHODS *
 # ------------------------------------------------------------------------------------------
-sub _new {
+sub _new { #Yote::ObjStore
     my( $pkg, $args ) = @_;
     my $self = bless {
         _DIRTY     => {},
@@ -450,7 +455,7 @@ sub _get_id {
         my $tied = tied @$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
-            $self->_store_weak( $tied->[0], $ref );
+            $self->_store_weak( $tied->[0], \$ref );
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -459,7 +464,7 @@ sub _get_id {
         $tied = tied @$ref; $tied->[3] = $ref;
         push( @$ref, @data );
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, $ref );
+        $self->_store_weak( $id, \$ref );
         return $id;
     }
     elsif( $class eq 'Yote::Hash' ) {
@@ -470,10 +475,11 @@ sub _get_id {
         my $tied = tied %$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "HASH" );
-            $self->_store_weak( $tied->[0], $ref );
+            $self->_store_weak( $tied->[0], \$ref );
             return $tied->[0];
         }
         my $id = $self->{_DATASTORE}->_get_id( $class );
+
         my( %vals ) = %$ref;
         tie %$ref, 'Yote::Hash', $self, $id;
         $tied = tied %$ref; $tied->[3] = $ref;
@@ -481,16 +487,18 @@ sub _get_id {
             $ref->{$key} = $vals{$key};
         }
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, $ref );
+        $self->_store_weak( $id, \$ref );
         return $id;
     }
     else {
+        return $ref->{ID} if $ref->{ID};
         if( $class eq 'Yote::Root' ) {
             $ref->{ID} = $self->{_DATASTORE}->_first_id( $class );
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
         }
-        $self->_store_weak( $ref->{ID}, $ref );
+        $self->_store_weak( $ref->{ID}, \$ref );
+
         return $ref->{ID};
     }
 
@@ -615,6 +623,7 @@ sub _raw_data {
 
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
+    die unless $ref;
     $self->{_WEAK_REFS}{$id} = $ref;
     weaken( $self->{_WEAK_REFS}{$id} );
 } #_store_weak
@@ -870,11 +879,11 @@ sub _first_id {
 #
 sub _get_id {
   my $self = shift;
-  my $x = $self->{OBJ_INDEX}->next_id;
-  if( $x == $self->_first_id() ) {
-      return $self->_get_id;
+  my $OI = $self->{OBJ_INDEX};
+  if( $OI->entries < 1 ) {
+      return $self->_first_id;
   }
-  return $x;
+  $self->{OBJ_INDEX}->next_id;
 } #_get_id
 
 
@@ -931,7 +940,7 @@ sub _recycle_objects {
   my( %weak_only_check, @weaks, %weaks );
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
-    my $wf = $$self->{OBJ_STORE}{_WEAK_REFS}{$cand};
+    my $wf = $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
     
     #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
     # weak references, then it can be removed";
@@ -984,7 +993,7 @@ sub _recycle_objects {
   }
   for( @to_delete ) {
     $self->{OBJ_INDEX}->delete( $_, 1 );
-    delete $$self->{OBJ_STORE}{_WEAK_REFS}{$_};
+    delete $self->{OBJ_STORE}{_WEAK_REFS}{$_};
   }
   
   # remove recycle datastore
