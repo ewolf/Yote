@@ -4,10 +4,43 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use 
-vars qw($VERSION);
+use vars qw($VERSION);
 
 $VERSION = '0.1';
+
+=head1 NAME
+
+Yote::Obj - Persistant Perl container objects in a directed graph.
+
+=head1 SYNOPSIS
+
+ Yote::Obj::init( { store => '/path/to/data-directory' } );
+
+ my $root = Yote::Obj::fetch_root();
+
+ $root->set_obj( new Yote::Obj( { field    => "VAL",
+                                  otherObj => new Yote::Obj() } );
+
+ my $val   = $root->get_value( "default" ); # is 'default'
+ my $again = $root->get_value;              # is still 'default'
+ my $field = $root->get_obj->get_field;     # is 'VAL'
+
+ $root->add_to_mylist( "ONE" );
+ $root->add_to_mylist( "TWO" );
+ $root->add_to_mylist( $newObj );
+
+ my $delMe = new Yote::Obj( {
+                               note => "This will be recycled away",
+                            } );
+ $root->add_to_mylist( $delMe );
+
+ $root->remove_from_mylist( "ONE", $delMe );
+
+ Yote::Obj::stow_all();
+
+ Yote::Obj::run_recycler();
+
+=cut
 
 #
 # Programming Style Notes :
@@ -19,35 +52,45 @@ $VERSION = '0.1';
 #
 
 #---------------------
-
+#
 #   Public Methods (TODO - BAUG HERE)
-
+#
 #---------------------
 
-use overload
-    '""' => sub { shift->{ID} }, # for hash keys
-    eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
-    ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
-    '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
-    '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
-    fallback => 1;
+#
+# The string version of the yote object is simply its id. This allows
+# objet ids to easily be stored as hash keys.
+#
+# use overload
+#     '""' => sub { shift->{ID} }, # for hash keys
+#     eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+#     ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
+#     '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+#     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
+#     fallback => 1;
 
-=head2 init
+=head2 init( { store => '/path/to/directory' } )
 
 Starts up a persistance engine with the arguments passed in.
-This must be called before 
+This must be called before any use of t
    
 =cut
 sub init {
     $Yote::Obj::__OBJ_PROVIDER = new Yote::ObjProvider( shift );
-    Yote::Root::fetch_root();
 } #init
 
-=head2
+=head2 new( { ... data .... } )
+
+ Creates a new data object initialized with the incoming hash ref data.
+ Once created, the object will be saved in the data store when 
+ Yote::Obj::stow_all has been called.  If the object is not attached 
+ to the root or an object that can be reached by the root, it will be 
+ recycled when Yote::Obj::recycle_objects is called.
 
 =cut
 sub new {
     my( $pkg, $data ) = @_;
+    unless( $Yote::Obj::__OBJ_PROVIDER ) { die "Yote::Obj::init must be called before new is called"; }
     my $class = ref($pkg) || $pkg;
 
     my $obj = bless {
@@ -68,19 +111,43 @@ sub new {
     return $obj;
 } #new
 
+=head2 fetch_by_id( db-id )
+
+ Returns the yote object with the given db id, if it exists.
+
+=cut
 sub fetch_by_id {
+    unless( $Yote::Obj::__OBJ_PROVIDER ) { die "Yote::Obj::init must be called before fetch_id is called"; }
     return $Yote::Obj::__OBJ_PROVIDER->fetch( $_[$#_] );
 }
 
+=head2 fetch_root()
+
+ Returns the Yote root object that is the entry point to the
+ directed graph.
+
+=cut
 sub fetch_root {
     Yote::Root::fetch_root();
 }
 
+=head2 fun_recycler()
+
+ Removes all objects that cannot be traced back to the Yote root object.
+
+=cut
 sub run_recycler {
+    unless( $Yote::Obj::__OBJ_PROVIDER ) { die "Yote::Obj::init must be called before run_recycler is called"; }
     $Yote::Obj::__OBJ_PROVIDER->recycle_objects;
 }
 
+=head2 stow_all()
+
+ Saves all the objects in the directory provided in the init.
+
+=cut
 sub stow_all {
+    unless( $Yote::Obj::__OBJ_PROVIDER ) { die "Yote::Obj::init must be called before stow_all is called"; }
     $Yote::Obj::__OBJ_PROVIDER->stow_all;
 }
 
@@ -283,7 +350,7 @@ sub fetch {
         return $ref;
     }
     my $obj_arry = $self->{__DATASTORE}->fetch( $id );
-    print STDERR Data::Dumper->Dump([$obj_arry,"OP"]);exit;
+
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
         if( $class eq 'ARRAY' ) {
@@ -301,10 +368,10 @@ sub fetch {
             return \%hash;
         }
         else {
-            eval("require $class");
+            $class =~ /^Yote::(Root|Obj)/ || eval("require $class");
             return undef if $@;
 
-            my $obj = $class->new( $id );
+            my $obj = $class->_instantiate( $id );
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();
@@ -694,6 +761,9 @@ package Yote::Root;
 @Yote::Root::ISA = ( 'Yote::Obj' );
 
 sub fetch_root {
+    unless( $Yote::Obj::__OBJ_PROVIDER ) {
+        die "Yote::Obj::init must be called before fetch_root is called";
+    }
     my $root = $Yote::Obj::__OBJ_PROVIDER->fetch( $Yote::Obj::__OBJ_PROVIDER->first_id() );
     unless( $root ) {
         $root = new Yote::Root();
@@ -765,7 +835,7 @@ sub fetch {
   my $ret = $self->_fetch( $id );
   return undef unless $ret;
   $ret->[DATA] = from_json( $ret->[DATA] );
-  return $ret;
+  $ret;
 } #fetch
 
 #
@@ -963,7 +1033,6 @@ sub _fetch {
   my( $self, $id ) = @_;
 
   my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-
   return undef unless $store_id;
 
   my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
@@ -971,7 +1040,6 @@ sub _fetch {
   die "Malformed record '$data'" if $pos == -1;
   my $class = substr $data, 0, $pos;
   my $val   = substr $data, $pos + 1;
-
   return [$id,$class,$val];
 } #_fetch
 
