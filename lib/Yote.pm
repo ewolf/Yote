@@ -51,20 +51,29 @@ Yote::Obj - Persistant Perl container objects in a directed graph.
 
 =cut
 
-#
-# Programming Style Notes :
-#
-#  For method and field names :
-#    no underscore     : fully public
-#    single underscore : overridable
-#    double underscore : private no touchie
-#
 
-#---------------------
-#
-#   Public Methods (TODO - BAUG HERE)
-#
-#---------------------
+=head2 open_store( '/path/to/directory' )
+
+Starts up a persistance engine with the arguments passed in.
+This must be called before any use of t
+   
+=cut
+our $Yote::STORES = {};
+sub open_store {
+    my $path = pop;
+    $Yote::STORES->{$path} ||= new Yote::ObjProvider( $path );
+    $Yote::STORES->{$path};
+}
+
+package Yote::Obj;
+
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use vars qw($VERSION);
+
+$VERSION = '0.1';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -77,26 +86,6 @@ Yote::Obj - Persistant Perl container objects in a directed graph.
 #     '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
 #     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
 #     fallback => 1;
-
-=head2 open_store( '/path/to/directory' )
-
-Starts up a persistance engine with the arguments passed in.
-This must be called before any use of t
-   
-=cut
-sub open_store {
-    new Yote::ObjProvider( pop );
-}
-
-package Yote::Obj;
-
-use strict;
-use warnings;
-no warnings 'uninitialized';
-
-use vars qw($VERSION);
-
-$VERSION = '0.1';
 
 =head2 new( { ... data .... } )
 
