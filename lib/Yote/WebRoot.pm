@@ -11,10 +11,7 @@ no warnings 'uninitialized';
 use Yote;
 use Yote::Cron;
 use Yote::Login;
-use Yote::RootObj;
-use Yote::SimpleTemplate;
-use Yote::UserObj;
-use Yote::ObjProvider;
+use Yote::Obj;
 
 use Email::Valid;
 
@@ -661,10 +658,6 @@ Returns a new yote object, initialized with the optional has reference.
 =item new_root_obj( optional_data_hash )
 
 Returns a new root yote object, initialized with the optional has reference.
-
-=item new_template()
-
-Returns a new Yote::SimpleTemplate object and marks its creator.
 
 =item new_user_obj( optional_data_hash )
 

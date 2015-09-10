@@ -6,6 +6,7 @@ use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Touch;
 use Data::Dumper;
 
+# SIZE --> RECORD_SIZE
 sub new {
     my( $pkg, $template, $filename, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
@@ -19,6 +20,7 @@ sub new {
     }, $class;
 } #new
 
+# privatize
 sub filehandle {
     my $self = shift;
     close $self->{FILEHANDLE};

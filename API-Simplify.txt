@@ -1,0 +1,59 @@
+Object API :
+  
+   Yote::Obj::init
+
+   Yote::Obj::new( data => { field,value pairs}, 
+                             options => {
+                                fix_fields => [], # ( fix get/set fields so only those in the list may be used )
+                             } )
+
+   Yote::Obj::fetch_by_id #return object by id
+
+   Yote::Obj::run_recycler
+
+   Yote::Obj::stow_all
+
+   ->set_/->get_   - public data fields
+
+   ->set__/->get__ - private data fields
+
+____________________________________________________________________
+
+Fixed Store
+   :new( {  template => "", directory => "", record_size => start_count => } )  ( maybe record size always calculated )
+   >next_id #rename, as this creates a space for the record
+   >number_of_entries ( number of entries )
+   >pop  (privatize? its just used in the subclass)
+   >push (privatize? its just used in the subclass)
+   >put_record
+   >record_size
+   >unlink_store
+   ( no empty )
+   ( ensure_entry_count ...no method, just as a 'new' option
+
+FixedRecyclingStore ( same as FixedStore, plus )
+   >delete  (maybe rename to recycle )
+   >get_recycled_ids                   
+
+StoreManager
+   :new
+   >ensure_datastore ( in new? )
+   >get_store
+   >best_store_for_size
+   >get_record
+____________________________________________________________________
+
+yote_server 
+
+   yote_server stop
+   yote_server start
+   yote_server restart
+
+____________________________________________________________________
+
+javascript
+
+
+____________________________________________________________________
+
+templating language

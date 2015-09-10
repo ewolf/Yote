@@ -4,92 +4,91 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use 
+vars qw($VERSION);
+
+$VERSION = '0.1';
+
+#
+# Programming Style Notes :
+#
+#  For method and field names :
+#    no underscore     : fully public
+#    single underscore : overridable
+#    double underscore : private no touchie
+#
+
+#---------------------
+
+#   Public Methods (TODO - BAUG HERE)
+
+#---------------------
+
 use overload
-    '""' => sub { shift->{ID} },
+    '""' => sub { shift->{ID} }, # for hash keys
     eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
     ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
 
-#
-# This is base class for all Yote objects.
-#
-# It is a container class with fields and methods.
-#
-# On the server side :
-#
-#   The fields can be accessed with get_, like 'get_foo();' or 'get_foo( $initializer )'
-#      A getter takes an optional initialization object
-#      that is only used if the field has not yet been defined
-#
-#   The fields can be set with set_ like 'set_foo( "value" )'.
-#
-#   Lists can be added by by add_to_, like 'add_to_mylist( 'a', 2, $obj );'
-#
-#   Items can be removed from lists with remove_from_,  like 'remove_from_list( 2 );'
-#
-# On the client side :
-#
-#   methods may be invoked if they do not start with an underscore.
-#
-#   data may be accessed if it does not start with an underscore
-#
-#   data may be written to if it starts with a capitol letter
-#
+=head2 init
 
-use Yote::ObjProvider;
+Starts up a persistance engine with the arguments passed in.
+This must be called before 
+   
+=cut
+sub init {
+    $Yote::Obj::__OBJ_PROVIDER = new Yote::ObjProvider( shift );
+    Yote::Root::fetch_root();
+} #init
 
-use vars qw($VERSION);
+=head2
 
-$VERSION = '0.074';
-
-# ------------------------------------------------------------------------------------------
-#      * INITIALIZATION *
-# ------------------------------------------------------------------------------------------
-
+=cut
 sub new {
-    my( $pkg, $id_or_hash ) = @_;
+    my( $pkg, $data ) = @_;
     my $class = ref($pkg) || $pkg;
 
-    my $obj;
-    if( ref( $id_or_hash ) eq 'HASH' ) {
-        $obj = bless {
-            ID       => undef,
-            DATA     => {},
-        }, $class;
-    }
-    else {
-        $obj = bless {
-            ID       => $id_or_hash,
-            DATA     => {},
-        }, $class;
-    }
-
-    if( ! defined( $obj->{ID} ) ) {
-        $obj->{ID} = Yote::ObjProvider::get_id( $obj );
-        $obj->_init();
-        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
-    }
-
-    if( ref( $id_or_hash ) eq 'HASH' ) {
-        for my $key ( sort keys %$id_or_hash ) {
-            $obj->{DATA}{$key} = Yote::ObjProvider::xform_in( $id_or_hash->{ $key } );
+    my $obj = bless {
+        ID       => undef,
+        DATA     => {},
+    }, $class;
+    $obj->{ID} = $Yote::Obj::__OBJ_PROVIDER->get_id( $obj );
+    $obj->_init(); #called the first time the object is created.
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $obj, $obj->{ID} );
+    if( ref( $data ) eq 'HASH' ) {
+        for my $key ( sort keys %$data ) {
+            $obj->{DATA}{$key} = $Yote::Obj::__OBJ_PROVIDER->xform_in( $data->{ $key } );
         }
-        Yote::ObjProvider::dirty( $obj, $obj->{ID} );
+        $Yote::Obj::__OBJ_PROVIDER->dirty( $obj, $obj->{ID} );
+    } elsif( $data ) {
+        die "Yote::Obj::new must be called with hash or undef. Was called with '". ref( $data ) . "'";
     }
-
     return $obj;
 } #new
 
-sub fetch {
-    return Yote::ObjProvider::fetch( $_[$#_] );
+sub fetch_by_id {
+    return $Yote::Obj::__OBJ_PROVIDER->fetch( $_[$#_] );
 }
 
-sub new_with_same_permissions {
-    my( $self, $args ) = @_;
-    return $self->new($args);
-} #new_with_same_permissions
+sub fetch_root {
+    Yote::Root::fetch_root();
+}
+
+sub run_recycler {
+    $Yote::Obj::__OBJ_PROVIDER->recycle_objects;
+}
+
+sub stow_all {
+    $Yote::Obj::__OBJ_PROVIDER->stow_all;
+}
+
+# -----------------------
+#
+#     Overridable Methods
+#
+# -----------------------
 
 #
 # Called the very first time this object is created. It is not called
@@ -102,379 +101,20 @@ sub _init {}
 #
 sub _load {}
 
-#
-# May be called for the client to get lots of data at once
-# rather than asking piecemeal
-#
-sub precache {
-    my( $self, $data, $account ) = @_;
-    return undef;
-} #precache
 
-# ------------------------------------------------------------------------------------------
-#      * UTILITY METHODS *
-# ------------------------------------------------------------------------------------------
-
+# -----------------------
+#
+#     Private Methods
+#
+# -----------------------
 
 #
-# Takes the entire key/value pairs of data as field/value pairs attached to this.
+# Called by the object provider; returns a Yote::Obj the object
+# provider will stuff data into. Takes the class and id as arguments.
 #
-sub _absorb {
-    my $self = shift;
-    my $data = ref( $_[0] ) ? $_[0] : { @_ };
-
-    my $updated_count = 0;
-    for my $fld (sort keys %$data) {
-        my $inval = Yote::ObjProvider::xform_in( $data->{$fld} );
-        Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-        $self->{DATA}{$fld} = $inval;
-        ++$updated_count;
-    } #each field
-    return $updated_count;
-} #_absorb
-
-# adds the items to the list attached to this object with the given name.
-sub _add_to {
-    my( $self, $listname, $data ) = @_;
-    my $list_id = $self->{DATA}{$listname};
-    if( $list_id ) {
-        Yote::ObjManager::mark_dirty( $list_id );
-    }
-    else {
-        my $func = "set_$listname";
-        $self->$func( [] );
-        $list_id = $self->{DATA}{$listname};
-    }
-    for my $d (@$data) {
-        Yote::ObjProvider::list_insert( $list_id, $d );
-    }
-    # so here it is getting a list which may not have been written to the db
-    my $list = Yote::ObjProvider::fetch( $list_id );
-    if( $list ) {
-        push @$list, @$data;
-    }
-    return;
-} #_add_to
-
-sub _get {
-    my( $self, $fld, $init_val ) = @_;
-
-    if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
-        if( ref( $init_val ) ) {
-            Yote::ObjProvider::dirty( $init_val, Yote::ObjProvider::get_id( $init_val ) );
-        }
-        Yote::ObjProvider::dirty( $self, $self->{ID} );
-        $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );
-    }
-    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
-} #_get
-
-
-
-sub _insert_at {
-    my( $self, $listname, $item, $idx ) = @_;
-    my $list_id = $self->{DATA}{$listname};
-    if( $list_id ) {
-        Yote::ObjManager::mark_dirty( $list_id );
-    }
-    else {
-        my $func = "set_$listname";
-        $self->$func( [] );
-    }
-    $list_id ||= $self->{DATA}{$listname};
-    Yote::ObjProvider::list_insert( $list_id, $item, $idx );
-    my $list = Yote::ObjProvider::fetch( $list_id );
-    if( $list ) {
-        if( @$list <= $idx ) {
-            push @$list, $item;
-        }
-        else {
-            splice @$list, $idx, 0, $item;
-        }
-    }
-    return;
-} #_insert_at
-
-# returns true if the object passsed in is the same as this one.
-sub _is {
-    my( $self, $obj ) = @_;
-    return ref( $obj ) && ref( $obj ) eq ref( $self ) &&
-        Yote::ObjProvider::get_id( $obj ) eq Yote::ObjProvider::get_id( $self );
-}
-
-# fetches from ObjProvider
-sub _fetch {
-    my( $self, $obj_id ) = @_;
-    return Yote::ObjProvider::fetch( $obj_id );
-} #_fetch
-
-# just asks the object provider to return the id for the given item
-sub _get_id {
-    my( $self, $obj ) = @_;
-    return Yote::ObjProvider::get_id( $obj );
-} #_get_id
-
-# anyone may read and edit public ( not starting with _ ) fields.
-# only root may chnage the data field type ( like from scalar to containre )
-sub _check_access {
-    my( $self, $account, $write_access, $name ) = @_;
-
-    return index( $name, '_' ) || ( $account && $account->get_login()->is_root() );
-
-} #_check_access
-
-# anyone may read and write public ( not starting with _ ) fields.
-sub _check_access_update {
-    my( $self, $account, $write_access, $data ) = @_;
-    for my $key ( keys %$data ) {
-        return 0 unless $self->_check_access( $account, $write_access, $key );
-    }
-    return 1;
-} #_check_access
-
-sub _container_type {
-    my( $self, $args ) = @_;
-    return Yote::ObjProvider::container_type( $self->{ID}, $args );
-} #_container_type
-
-sub _count {
-    my( $self, $args ) = @_;
-    return Yote::ObjProvider::count( $self->{DATA}{$args->{name}}, $args );
-} #_count
-
-sub _hash_delete {
-    my( $self, $hashname, $key ) = @_;
-    my $hash_id = $self->{DATA}{$hashname};
-    if( $hash_id ) {
-        Yote::ObjManager::mark_dirty( $hash_id );
-    }
-    my $ret = Yote::ObjProvider::hash_delete( $hash_id, $key );
-
-    my $hash = Yote::ObjProvider::fetch( $hash_id );
-    if( $hash ) {
-        delete $hash->{ $key };
-    }
-
-    return $ret;
-} #_hash_delete
-
-sub _hash_insert {
-    my( $self, $hashname, $key, $val ) = @_;
-    my $hash_id = $self->{DATA}{$hashname};
-    if( $hash_id ) {
-        # mark dirty here in case there are outstanding instances of that hash?
-        Yote::ObjManager::mark_dirty( $hash_id );
-
-        Yote::ObjProvider::hash_insert( $hash_id, $key, $val );
-        my $hash = Yote::ObjProvider::fetch( $hash_id );
-        if( $hash ) {
-            $hash->{ $key }= $val;
-        }
-        return $val;
-    }
-    my $fun = "set_$hashname";
-    my $hash = $self->$fun({});
-    $hash->{$key} = $val;
-    return $val;
-} #_hash_insert
-
-sub _hash_fetch {
-    my( $self, $hashname, $key ) = @_;
-    my $hash_id = $self->{DATA}{$hashname};
-    return unless $hash_id;
-    return Yote::ObjProvider::hash_fetch( $hash_id, $key );
-}
-
-sub _list_delete {
-    my( $self, $listname, $idx ) = @_;
-    my $list_id = $self->{DATA}{$listname};
-    return unless $list_id;
-    Yote::ObjManager::mark_dirty( $list_id );
-    Yote::ObjProvider::list_delete( $list_id, $idx );
-    my $list = Yote::ObjProvider::fetch( $list_id );
-    if( $list ) {
-        splice @$list, $idx, 1;
-    }
-    return;
-} #_list_delete
-
-sub _list_fetch {
-    my( $self, $listname, $key ) = @_;
-    return Yote::ObjProvider::list_fetch( $self->{DATA}{$listname}, $key );
-}
-
-sub _hash_has_key {
-    my( $self, $hashname, $key ) = @_;
-    return Yote::ObjProvider::hash_has_key( $self->{DATA}{$hashname}, $key );
-}
-
-sub _paginate {
-    my( $self, $args ) = @_;
-    return Yote::ObjProvider::paginate( $self->{DATA}{$args->{name}}, $args );
-} #_paginate
-
-sub _remove_from {
-    my( $self, $listname, @data ) = @_;
-    my $list_id = $self->{DATA}{$listname};
-    return unless $list_id;
-    
-    for my $d (@data) {
-        Yote::ObjProvider::remove_from( $list_id, $d );
-    }
-    my $list = Yote::ObjProvider::fetch( $list_id );
-    if( $list ) {
-        for( my $i=0; $i < @$list; $i++ ) {
-            splice @$list, $i, 1 if grep { $list->[$i] eq $_ } @data;
-        }
-    }    
-    Yote::ObjManager::mark_dirty( $list_id );
-} #_remove_from
-
-sub _set {
-    my( $self, $fld, $val ) = @_;
-    my $inval = Yote::ObjProvider::xform_in( $val );
-    Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-    $self->{DATA}{$fld} = $inval;
-    
-    return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
-}
-
-#
-# Private method to update the hash give. Returns if things were made dirty.
-# Takes a list of fields to try to extract from the hash.
-#
-sub _update {
-    my( $self, $datahash, @fieldlist ) = @_;
-
-    my $dirty;
-    if( @fieldlist ) {
-        for my $fld ( @fieldlist ) {
-            my $set = "set_$fld";
-            my $get = "get_$fld";
-            if( defined( $datahash->{ $fld } ) ) {
-                $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-                $self->$set( $datahash->{ $fld });
-            }
-        }
-    }
-    else {
-        # catch anything tossed in that does not start with underscore
-        for my $fld ( sort keys %$datahash ) {
-            my $set = "set_$fld";
-            my $get = "get_$fld";
-            $dirty = $dirty || $self->$get() eq $datahash->{ $fld };
-            $self->$set( $datahash->{ $fld } );
-        }
-    }
-    Yote::ObjProvider::dirty( $self, $self->{ID} ) if $dirty;
-
-    return $dirty;
-} #_update
-
-# ------------------------------------------------------------------------------------------
-#      * PUBLIC METHODS *
-# ------------------------------------------------------------------------------------------
-
-
-sub add_to {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $listname, $items ) = @$args{'name','items'};
-    return $self->_add_to( $listname, $items );
-} #add_to
-
-sub container_type {
-    my( $self, $data, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, ref( $data ) ? $data->{ name } : $data );
-    return $self->_container_type( $data );
-} #container_type
-
-sub count {
-    my( $self, $data, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $data->{ name } );
-    return $self->_count( $data );
-} #count
-
-sub delete_key {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $listname, $key ) = @$args{'name','key'};
-    return $self->_hash_delete( $args->{name}, $key );
-} #delete_key
-
-sub hash {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $name, $key, $val ) = @$args{'name','key','value'};
-
-    return $self->_hash_insert( $name, $key, $val );
-} #hash
-
-sub hash_fetch {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    my( $name, $key ) = @$args{'name','key'};
-
-    return $self->_hash_fetch( $name, $key );
-} #hash_fetch
-
-
-sub hash_has_key {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    my( $name, $key ) = @$args{'name','key'};
-
-    return $self->_hash_has_key( $name, $key );
-} #hash_has_key
-
-sub insert_at {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $listname, $idx, $item ) = @$args{'name','index','item'};
-    return $self->_insert_at( $listname, $item, $idx );
-} #insert_at
-
-sub list_delete {
-    my( $self, $args, $account ) = @_;
-
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    return $self->_list_delete( $args->{name}, $args->{index} );
-} #list_delete
-
-sub list_fetch {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    return $self->_list_fetch( $args->{name}, $args->{index} );
-} #list_fetch
-
-sub paginate {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 0, $args->{ name } );
-    return $self->_paginate( $args );
-} #paginate
-
-sub remove_from {
-    my( $self, $args, $account ) = @_;
-    die "Access Error" unless $self->_check_access( $account, 1, $args->{ name } );
-    my( $listname, $items ) = @$args{'name','items'};
-    return $self->_remove_from( $listname, @{$items||[]} );
-} #remove_from
-
-#
-# This is actually a no-op, but has the effect of giving the client any objects that have changed since the clients last call.
-#
-sub sync_all {}
-sub sync_changed {}
-
-#
-# Stub method to apply update to an object. Throws an error by default. Override and call _update with input data and a list of allowed fields to update.
-#
-sub update {
-    my( $self, $data, $acct ) = @_;
-    die "Access Error" unless $self->_check_access_update( $acct, 1, $data );
-    return $self->_update( $data );
-} #update
-
+sub _instantiate {
+    bless { ID => $_[1], DATA => {} }, $_[0];
+} #_instantiate
 
 #
 # Defines get_foo, set_foo, add_to_list, remove_from_list
@@ -558,11 +198,11 @@ sub AUTOLOAD {
         no strict 'refs';
         *$AUTOLOAD = sub {
             my( $self, $val ) = @_;
-            my $inval = Yote::ObjProvider::xform_in( $val );
-            Yote::ObjProvider::dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+            my $inval = $Yote::Obj::__OBJ_PROVIDER->xform_in( $val );
+            $Yote::Obj::__OBJ_PROVIDER->dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
             $self->{DATA}{$fld} = $inval;
 
-            return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
+            return $Yote::Obj::__OBJ_PROVIDER->xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;
     }
@@ -573,12 +213,12 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
-                    Yote::ObjProvider::dirty( $init_val, Yote::ObjProvider::get_id( $init_val ) );
+                    $Yote::Obj::__OBJ_PROVIDER->dirty( $init_val, $Yote::Obj::__OBJ_PROVIDER->get_id( $init_val ) );
                 }
-                Yote::ObjProvider::dirty( $self, $self->{ID} );
-                $self->{DATA}{$fld} = Yote::ObjProvider::xform_in( $init_val );
+                $Yote::Obj::__OBJ_PROVIDER->dirty( $self, $self->{ID} );
+                $self->{DATA}{$fld} = $Yote::Obj::__OBJ_PROVIDER->xform_in( $init_val );
             }
-            return Yote::ObjProvider::xform_out( $self->{DATA}{$fld} );
+            return $Yote::Obj::__OBJ_PROVIDER->xform_out( $self->{DATA}{$fld} );
         };
         use strict 'refs';
         goto &$AUTOLOAD;
@@ -589,280 +229,750 @@ sub AUTOLOAD {
 
 } #AUTOLOAD
 
+package Yote::ObjProvider;
+
+use strict;
+use warnings;
+no warnings 'numeric';
+no warnings 'uninitialized';
+no warnings 'recursion';
+
+use Crypt::Passwd::XS;
+use WeakRef;
+
+
+use vars qw($VERSION);
+
+$VERSION = '0.073';
+
+
+# ------------------------------------------------------------------------------------------
+#      * INIT METHODS *
+# ------------------------------------------------------------------------------------------
+sub new {
+    my( $pkg, $args ) = @_;
+    my $self = bless {
+        __DIRTY     => {},
+        __WEAK_REFS => {},
+    }, $_[0];
+    $self->{__DATASTORE} = new Yote::YoteDB( $self, $_[1] );
+    $self;
+} #init
+
+# ------------------------------------------------------------------------------------------
+#      * PUBLIC CLASS METHODS *
+# ------------------------------------------------------------------------------------------
+
+#
+# Markes given object as dirty.
+#
+sub dirty {
+    # ( $self, $ref, $id
+    $_[0]->{__DIRTY}->{$_[2]} = $_[1];
+} #dirty
+
+sub fetch {
+    my( $self, $id ) = @_;
+    return undef unless $id;
+    #
+    # Return the object if we have a reference to its dirty state.
+    #
+    my $ref = $self->{__DIRTY}->{$id} || $self->{__WEAK_REFS}->{$id};
+
+    if( defined $ref ) {
+        return $ref;
+    }
+    my $obj_arry = $self->{__DATASTORE}->fetch( $id );
+    print STDERR Data::Dumper->Dump([$obj_arry,"OP"]);exit;
+    if( $obj_arry ) {
+        my( $id, $class, $data ) = @$obj_arry;
+        if( $class eq 'ARRAY' ) {
+            my( @arry );
+            tie @arry, 'Yote::Array', $id, @$data;
+            my $tied = tied @arry; $tied->[2] = \@arry;
+            $self->__store_weak( $id, \@arry );
+            return \@arry;
+        }
+        elsif( $class eq 'HASH' ) {
+            my( %hash );
+            tie %hash, 'Yote::Hash', $id, map { $_ => $data->{$_} } keys %$data;
+            my $tied = tied %hash; $tied->[2] = \%hash;
+            $self->__store_weak( $id, \%hash );
+            return \%hash;
+        }
+        else {
+            eval("require $class");
+            return undef if $@;
+
+            my $obj = $class->new( $id );
+            $obj->{DATA} = $data;
+            $obj->{ID} = $id;
+            $obj->_load();
+            $self->__store_weak( $id, $obj );
+            return $obj;
+        }
+    }
+
+    return undef;
+} #fetch
+
+
+#
+# Returns the first ID that is associated with the root Root object
+#
+sub first_id {
+    shift->{__DATASTORE}->first_id();
+}
+
+sub get_id {
+    my( $self, $ref ) = @_;
+    my $class = ref( $ref );
+    if( $class eq 'Yote::Array') {
+        return $ref->[0];
+    }
+    elsif( $class eq 'ARRAY' ) {
+        my $tied = tied @$ref;
+        if( $tied ) {
+            $tied->[0] ||= $self->{__DATASTORE}->get_id( "ARRAY" );
+            $self->__store_weak( $tied->[0], $ref );
+            return $tied->[0];
+        }
+        my( @data ) = @$ref;
+        my $id = $self->{__DATASTORE}->get_id( $class );
+        tie @$ref, 'Yote::Array', $id;
+        $tied = tied @$ref; $tied->[2] = $ref;
+        push( @$ref, @data );
+        $self->dirty( $ref, $id );
+        $self->__store_weak( $id, $ref );
+        return $id;
+    }
+    elsif( $class eq 'Yote::Hash' ) {
+        my $wref = $ref;
+        return $ref->[0];
+    }
+    elsif( $class eq 'HASH' ) {
+        my $tied = tied %$ref;
+        if( $tied ) {
+            $tied->[0] ||= $self->{__DATASTORE}->get_id( "HASH" );
+            $self->__store_weak( $tied->[0], $ref );
+            return $tied->[0];
+        }
+        my $id = $self->{__DATASTORE}->get_id( $class );
+        my( %vals ) = %$ref;
+        tie %$ref, 'Yote::Hash', $id;
+        $tied = tied %$ref; $tied->[2] = $ref;
+        for my $key (keys %vals) {
+            $ref->{$key} = $vals{$key};
+        }
+        $self->dirty( $ref, $id );
+        $self->__store_weak( $id, $ref );
+        return $id;
+    }
+    else {
+        if( $class eq 'Yote::Root' ) {
+            $ref->{ID} = $self->{__DATASTORE}->first_id( $class );
+        } else {
+            $ref->{ID} ||= $self->{__DATASTORE}->get_id( $class );
+        }
+        $self->__store_weak( $ref->{ID}, $ref );
+        return $ref->{ID};
+    }
+
+} #get_id
+
+sub recycle_objects {
+    my $self = shift;
+    $self->stow_all();
+    $self->{__DATASTORE}->recycle_objects();
+} #recycle_objects
+
+sub stow {
+    my( $self, $obj ) = @_;
+
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = $self->get_id( $obj );
+    die unless $id;
+
+    my $data = $self->__raw_data( $obj );
+    if( $class eq 'ARRAY' ) {
+        $self->{__DATASTORE}->stow( $id,'ARRAY', $data );
+        $self->__clean( $id );
+    }
+    elsif( $class eq 'HASH' ) {
+        $self->{__DATASTORE}->stow( $id,'HASH',$data );
+        $self->__clean( $id );
+    }
+    elsif( $class eq 'Yote::Array' ) {
+        if( $self->__is_dirty( $id ) ) {
+            $self->{__DATASTORE}->stow( $id,'ARRAY',$data );
+            $self->__clean( $id );
+        }
+        for my $child (@$data) {
+            if( $child =~ /^[0-9]/ && $self->{__DIRTY}->{$child} ) {
+                $self->stow( $self->{__DIRTY}->{$child} );
+            }
+        }
+    }
+    elsif( $class eq 'Yote::Hash' ) {
+        if( $self->__is_dirty( $id ) ) {
+            $self->{__DATASTORE}->stow( $id, 'HASH', $data );
+        }
+        $self->__clean( $id );
+        for my $child (values %$data) {
+            if( $child =~ /^[0-9]/ && $self->{__DIRTY}->{$child} ) {
+                $self->stow( $self->{__DIRTY}->{$child} );
+            }
+        }
+    }
+    else {
+        if( $self->__is_dirty( $id ) ) {
+            $self->{__DATASTORE}->stow( $id, $class, $data );
+            $self->__clean( $id );
+        }
+        for my $val (values %$data) {
+            if( $val =~ /^[0-9]/ && $self->{__DIRTY}->{$val} ) {
+                $self->stow( $self->{__DIRTY}->{$val} );
+            }
+        }
+    }
+} #stow
+
+sub stow_all {
+    my $self = $_[0];
+    my @odata;
+    for my $obj (values %{$self->{__DIRTY}} ) {
+        my $cls;
+        my $ref = ref( $obj );
+        if( $ref eq 'ARRAY' || $ref eq 'Yote::Array' ) {
+            $cls = 'ARRAY';
+        } elsif( $ref eq 'HASH' || $ref eq 'Yote::Hash' ) {
+            $cls = 'HASH';
+        } else {
+            $cls = $ref;
+        }
+        push( @odata, [ $self->get_id( $obj ), $cls, $self->__raw_data( $obj ) ] );
+    }
+    $self->{__DATASTORE}->stow_all( \@odata );
+    $self->{__DIRTY} = {};
+} #stow_all
+
+sub xform_in {
+    my( $self, $val ) = @_;
+    if( ref( $val ) ) {
+        return $self->get_id( $val );
+    }
+    return "v$val";
+}
+
+sub xform_out {
+    my( $self, $val ) = @_;
+    return undef unless defined( $val );
+    if( index($val,'v') == 0 ) {
+        return substr( $val, 1 );
+    }
+    return $self->fetch( $val );
+}
+
+
+
+# ------------------------------------------------------------------------------------------
+#      * PRIVATE METHODS *
+# ------------------------------------------------------------------------------------------
+
+sub __clean {
+    my( $self, $id ) = @_;
+    delete $self->{__DIRTY}{$id};
+} #__clean
+
+sub __is_dirty {
+    my( $self, $obj ) = @_;
+    my $id = ref($obj) ? get_id($obj) : $obj;
+    return $self->{__DIRTY}{$id};
+} #__is_dirty
+
+#
+# Returns data structure representing object. References are integers. Values start with 'v'.
+#
+sub __raw_data {
+    my( $self, $obj ) = @_;
+    my $class = ref( $obj );
+    return unless $class;
+    my $id = $self->get_id( $obj );
+    die unless $id;
+    if( $class eq 'ARRAY' ) {
+        my $tied = tied @$obj;
+        if( $tied ) {
+            return $tied->[1];
+        } else {
+            die;
+        }
+    }
+    elsif( $class eq 'HASH' ) {
+        my $tied = tied %$obj;
+        if( $tied ) {
+            return $tied->[1];
+        } else {
+            die;
+        }
+    }
+    elsif( $class eq 'Yote::Array' ) {
+        return $obj->[1];
+    }
+    elsif( $class eq 'Yote::Hash' ) {
+        return $obj->[1];
+    }
+    else {
+        return $obj->{DATA};
+    }
+    
+} #__raw_data
+
+sub __store_weak {
+    my( $self, $id, $ref ) = @_;
+    $self->{__WEAK_REFS}{$id} = $ref;
+    weaken( $self->{__WEAK_REFS}{$id} );
+} #__store_weak
+
+package Yote::Array;
+
+############################################################################################################
+# This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
+# be called explicitly or modified.									   #
+############################################################################################################
+
+use strict;
+use warnings;
+
+no warnings 'uninitialized';
+use Tie::Array;
+
+use vars qw($VERSION);
+
+$VERSION = '0.02';
+
+sub TIEARRAY {
+    my( $class, $id, @list ) = @_;
+    my $storage = [];
+    my $obj = bless [$id,$storage], $class;
+    for my $item (@list) {
+        push( @$storage, $item );
+    }
+    return $obj;
+}
+
+sub FETCH {
+    my( $self, $idx ) = @_;
+    return $Yote::Obj::__OBJ_PROVIDER->xform_out ( $self->[1][$idx] );
+}
+
+sub FETCHSIZE {
+    my $self = shift;
+    return scalar(@{$self->[1]});
+}
+
+sub STORE {
+    my( $self, $idx, $val ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    $self->[1][$idx] = $Yote::Obj::__OBJ_PROVIDER->xform_in( $val );
+}
+sub STORESIZE {}  #stub for array
+
+sub EXISTS {
+    my( $self, $idx ) = @_;
+    return defined( $self->[1][$idx] );
+}
+sub DELETE {
+    my( $self, $idx ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    delete $self->[1][$idx];
+}
+
+sub CLEAR {
+    my $self = shift;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    @{$self->[1]} = ();
+}
+sub PUSH {
+    my( $self, @vals ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    push( @{$self->[1]}, map { $Yote::Obj::__OBJ_PROVIDER->xform_in($_) } @vals );
+}
+sub POP {
+    my $self = shift;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    return $Yote::Obj::__OBJ_PROVIDER->xform_out( pop @{$self->[1]} );
+}
+sub SHIFT {
+    my( $self ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    my $val = splice @{$self->[1]}, 0, 1;
+    return $Yote::Obj::__OBJ_PROVIDER->xform_out( $val );
+}
+sub UNSHIFT {
+    my( $self, @vals ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    unshift @{$self->[1]}, map {$Yote::Obj::__OBJ_PROVIDER->xform_in($_)} @vals;
+}
+sub SPLICE {
+    my( $self, $offset, $length, @vals ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    return map { $Yote::Obj::__OBJ_PROVIDER->xform_out($_) } splice @{$self->[1]}, $offset, $length, map {$Yote::Obj::__OBJ_PROVIDER->xform_in($_)} @vals;
+}
+sub EXTEND {}
+
 sub DESTROY {}
 
+package Yote::Hash;
+
+############################################################################################################
+# This module is used transparently by Yote to link hashes into its graph structure. This is not meant to  #
+# be called explicitly or modified.									   #
+############################################################################################################
+
+use strict;
+use warnings;
+
+no warnings 'uninitialized';
+
+use Tie::Hash;
+
+use vars qw($VERSION);
+
+$VERSION = '0.02';
+
+sub TIEHASH {
+    my( $class, $id, %hash ) = @_;
+    my $storage = {};
+    my $obj = bless [ $id, $storage ], $class;
+    for my $key (keys %hash) {
+        $storage->{$key} = $hash{$key};
+    }
+    return $obj;
+}
+
+sub STORE {
+    my( $self, $key, $val ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    $self->[1]{$key} = $Yote::Obj::__OBJ_PROVIDER->xform_in( $val );
+}
+
+sub FIRSTKEY { 
+    my $self = shift;
+    my $a = scalar keys %{$self->[1]};
+    my( $k, $val ) = each %{$self->[1]};
+    return wantarray ? ( $k => $val ) : $k;
+}
+sub NEXTKEY  { 
+    my $self = shift;
+    my( $k, $val ) = each %{$self->[1]};
+    return wantarray ? ( $k => $val ) : $k;
+}
+
+sub FETCH {
+    my( $self, $key ) = @_;
+    return $Yote::Obj::__OBJ_PROVIDER->xform_out( $self->[1]{$key} );
+}
+
+sub EXISTS {
+    my( $self, $key ) = @_;
+    return defined( $self->[1]{$key} );
+}
+sub DELETE {
+    my( $self, $key ) = @_;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0]);
+    return delete $self->[1]{$key};
+}
+sub CLEAR {
+    my $self = shift;
+    $Yote::Obj::__OBJ_PROVIDER->dirty( $self->[2], $self->[0] );
+    %{$self->[1]} = ();
+}
+
+package Yote::Root;
+
+@Yote::Root::ISA = ( 'Yote::Obj' );
+
+sub fetch_root {
+    my $root = $Yote::Obj::__OBJ_PROVIDER->fetch( $Yote::Obj::__OBJ_PROVIDER->first_id() );
+    unless( $root ) {
+        $root = new Yote::Root();
+        $Yote::Obj::__OBJ_PROVIDER->stow( $root );
+    }
+    return $root;
+}
+
+package Yote::YoteDB;
+
+use strict;
+use warnings;
+
+no warnings 'uninitialized';
+
+use Yote::IO::FixedStore;
+use Yote::IO::StoreManager;
+
+use WeakRef;
+use File::Path qw(make_path);
+use JSON;
+
+use Devel::Refcount 'refcount';
+
+use constant {
+  ID => 0,
+  CLASS => 1,
+  DATA => 2,
+  RAW_DATA => 2,
+  MAX_LENGTH => 1025,
+};
+
+#
+# This the main index and stores in which table and position
+# in that table that this object lives.
+#
+sub new {
+  my( $pkg, $obj_provider, $args ) = @_;
+  my $class = ref( $pkg ) || $pkg;
+  make_path( $args->{ store } );
+  my $filename = "$args->{ store }/OBJ_INDEX";
+  # LII template is a long ( for object id, then the table id, then the index in that table
+  return bless {
+                args          => $args,
+                OBJ_INDEX     => new Yote::IO::FixedRecycleStore( "LII", $filename ),
+                STORE_MANAGER => new Yote::IO::StoreManager( $args ),
+                OBJ_PROVIDER  => $obj_provider,
+               }, $class;
+} #new
+
+
+#
+# Makes sure this datastore is set up and functioning.
+#
+sub ensure_datastore {
+  my $self = shift;
+  $self->{STORE_MANAGER}->ensure_datastore();
+  $self->first_id;
+} #ensure_datastore
+
+
+#
+# Return a list reference containing [ id, class, data ] that
+# corresponds to the $id argument. This is used by Yote::ObjProvider
+# to build the yote object.
+#
+sub fetch {
+  my( $self, $id ) = @_;
+  my $ret = $self->_fetch( $id );
+  return undef unless $ret;
+  $ret->[DATA] = from_json( $ret->[DATA] );
+  return $ret;
+} #fetch
+
+#
+# The first object in a yote data store can trace a reference to
+# all active objects.
+#
+sub first_id {
+  my $OI = shift->{OBJ_INDEX};
+  if ( $OI->entries < 1 ) {
+      $OI->next_id;
+  }
+  return 1;
+} #first_id
+
+#
+# Create a new object id and return it. Will never return the
+# value of first_id
+#
+sub get_id {
+  my $self = shift;
+  my $x = $self->{OBJ_INDEX}->next_id;
+  if( $x == $self->first_id() ) {
+      return $self->get_id;
+  }
+  return $x;
+} #get_id
+
+
+sub max_id {
+  return shift->{OBJ_INDEX}->entries;
+}
+
+
+sub get_recycled_ids {
+  return shift->{OBJ_INDEX}->get_recycled_ids;
+}
+
+sub recycle_objects {
+  my $self = shift;
+
+  my $mark_to_keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' );
+  $mark_to_keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+  
+  # the already deleted cannot be re-recycled
+  my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
+  for ( @$ri ) {
+    $mark_to_keep_store->put_record( $_, [ 1 ] );
+  }
+
+  my $keep_id = $self->first_id;
+  my( @queue ) = ( $keep_id );
+
+  $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
+
+  # get the object ids referenced by this keeper object
+  while( @queue ) {
+    $keep_id = shift @queue;
+
+    my $item = $self->fetch( $keep_id );
+    my( @additions );
+    if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
+      ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
+    } else {
+      ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
+    }
+
+    for my $keeper ( @additions ) {
+      next if $mark_to_keep_store->get_record( $keeper )->[0];
+      $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+      push @queue, $keeper;
+    }
+  } #while there is a queue
+
+  # the purge begins here
+  my $count = 0;
+  my $cands = $self->{OBJ_INDEX}->entries;
+
+  my( %weak_only_check, @weaks, %weaks );
+  for my $cand ( 1..$cands) { #iterate each id in the entire object store
+    my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+    my $wf = $$self->{OBJ_PROVIDER}{__WEAK_REFS}{$cand};
+    
+    #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
+    # weak references, then it can be removed";
+    if ( ! $keep ) {
+      if( $wf ) {
+        push @weaks, [ $cand, $wf ];
+      }
+      else { #this case is something in the db that is not connected to the root and not loaded anywhere
+        ++$count;
+        $self->{OBJ_INDEX}->delete( $cand, 1 );
+      }
+    }
+  }
+  # check things attached to the weak refs.
+  for my $wf (@weaks) { 
+    my( $id, $obj ) = @$wf;
+    if ( ref( $obj ) eq 'ARRAY' ) { 
+      for ( map { $self->{OBJ_PROVIDER}->xform_in($_) } @$obj ) {
+        $weak_only_check{ $_ }++;
+      }
+    } elsif ( ref( $obj ) eq 'HASH' ) {
+      for ( map { $self->{OBJ_PROVIDER}->xform_in($_) } values %$obj) {
+        $weak_only_check{ $_ }++;
+      }
+    } else {
+      for ( values %{ $obj->{DATA} } ) {
+        $weak_only_check{ $_ }++;
+      }
+    }
+  } #each weak
+  
+  # can delete things with only references to the WEAK and DIRTY caches.
+  my( @to_delete );
+  for my $weak ( @weaks ) {
+    my( $id, $obj ) = @$weak;
+    unless( $obj ) {
+      push @to_delete, $id;
+      ++$count;
+    } else {
+      my $extra_refs = 2;
+      # hash and array have an additional reference in the tie
+      if( ref( $obj ) =~ /^(ARRAY|HASH)$/ ) {
+        $extra_refs++;
+      }
+      if( ($extra_refs+$weak_only_check{$id}) >= refcount($obj) ) {
+        push @to_delete, $id;
+        ++$count;
+      }
+    }
+  }
+  for( @to_delete ) {
+    $self->{OBJ_INDEX}->delete( $_, 1 );
+    delete $$self->{OBJ_PROVIDER}{__WEAK_REFS}{$_};
+  }
+  
+  # remove recycle datastore
+  $mark_to_keep_store->unlink_store;
+  
+  return $count;
+  
+} #recycle_objects
+
+#
+# Saves the object data for object $id to the data store.
+#
+sub stow {
+  my( $self, $id, $class, $data ) = @_;
+  my $save_data = "$class " . to_json($data);
+  my $save_size = do { use bytes; length( $save_data ); };
+  my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+  # check to see if this is already in a store and record that store.
+  if ( $current_store_id ) {
+    my $old_store = $self->{STORE_MANAGER}->get_store( $current_store_id );
+    if ( $old_store->{SIZE} >= $save_size ) {
+      $old_store->put_record( $current_store_idx, [$save_data] );
+      return;
+    }
+    $old_store->delete( $current_store_idx, 1 );
+  }
+
+  # find a store large enough and store it there.
+  my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
+  my $store_idx = $store->next_id;
+
+  # okey, looks like the providing the next index is not working well with the recycling. is providing the same one?
+
+  $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
+
+  my $ret = $store->put_record( $store_idx, [$save_data] );
+
+  return $ret;
+} #stow
+
+#
+# Takes a list of object data references and stows them all in the datastore.
+# returns how many are stowed.
+#
+sub stow_all {
+  my( $self, $objs ) = @_;
+  my $count = 0;
+  for my $o ( @$objs ) {
+    $count += $self->stow( @$o );
+  }
+  return $count;
+} #stow_all
+
+# -------------------- private
+
+#
+# Returns [ id, class, raw data ] of the record associated with that object id.
+# The raw data is a JSON string, not an object reference.
+#
+sub _fetch {
+  my( $self, $id ) = @_;
+
+  my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+
+  return undef unless $store_id;
+
+  my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
+  my $pos = index( $data, ' ' );
+  die "Malformed record '$data'" if $pos == -1;
+  my $class = substr $data, 0, $pos;
+  my $val   = substr $data, $pos + 1;
+
+  return [$id,$class,$val];
+} #_fetch
+
 1;
-__END__
-
-=head1 NAME
-
-Yote::Obj - Base class for all persistant Yote objects.
-
-=head1 DESCRIPTION
-
-Yote::Obj is the base class for all stateful Yote objects that have an API presence
-and will be stored in persistant.
-
-This is a container class and all objects of this class have automatic getter and
-setter methods for scalar and list entries. Invoking '$yote_obj->set_foo( "bar" );'
-will cause a variable named 'foo' to be attached to this object and assigned the value
-of "bar". The values that can be assigend are any number, string, hash, list or Yote::Obj
-object. Calling 'my $val = $yote_obj->get_baz( "fred" )' will return the value of the
-variable 'baz', and if none is defined, assigns the value "fred" to 'baz' and returns it.
-
-Additionally, '$yote_obj->add_to_foo( "a", "b", "c", "c" )' will add the values 'a', 'b', 'c' and 'c'
-to the list with the variable name 'foo' that is attached to this object. If no such variable
-exists, a list will be created and assigned to it. If there already is a 'foo' that is not a list,
-and error will not result. There are a counterpart methods '$yote_obj->remove_from_foo( "c" )' which
-removes the first instance of c from the foo list, and '$yote_obj->remove_all_from_foo( "b" )' which
-will remove all the "b" values from the 'foo' list.
-
-All Yote objects have public api methods. These are methods that connect to javascript objects
-and are invoked by clients. All the public api methods have the same signature :
-
-All Yote objects except Root are attached to an application or descent of the Yote::AppRoot
-class.
-
-=over 2
-
-=item public_api_method( $data, $account )
-
-Where $data is either a scalar value, a list, hash or yote object. $account is the account assigned
-to the user for the app that this yote object belongs to. $account may be undefined if the method
-may be called by someone not logging in.
-
-=back
-
-=head2 A NOTE ON METHODS
-
-There are different method types for yote :
-
-=over 2
-
-=item Public API methods
-
-These methods are called automatically by the yote system and are not meant to be called by other subs.
-The yote system automatically passes data given to the API and passes in the account of the logged in
-user (if any), so the signature for these methods is always the same.
-
-
-=item Automatic container methods
-
-These are the methods that are automatic to any yote object. The 'foo', is of course, a stand in for
-any data name.
-
-* set_foo
-
-* get_foo
-
-* add_to_foo
-
-* remove_from_foo
-
-=item Utility methods
-
-=item Initialization methods
-
-These methods begin with an underscore. The underscore signals to yote to not broadcast this method to the
-javascript proxy objects. The yote convention is a single underscore for a utility method that is called
-by other methods in all packages, and a double underscore for 'private' methods.
-
-=back
-
-=head2 A NOTE ON DATA
-
-Yote has 3 behaviors for data fields of Yote objects
-
-=over 2
-
-=item read only through api
-
-If a field begins with a lowercase letter, the yote server will be transmitted it the javascript proxy
-object, and will ignore any requests from the client to update its value.
-
-=item read/write through api
-
-If a field begins with a capital letter, it will be transmitted to the javascript proxy object, which
-may send updates of its value back to the yote server.
-
-=item private data field
-
-If a field starts with an underscore, the yote server will not transmit it to the javascript proxy, and
-will ignore any requests from the client to update its value.
-
-=back
-
-=head2 UTILITY METHODS
-
-=over 4
-
-=item _absorb
-
-This takes a hash reference as an argument and uses the key/value entries in this hash to set
-values for the fields corresponding to the hash keys.
-
-=item _is
-
-Returns true if the single object argument passed in is equivalent to this one.
-
-=back
-
-=head2 INITIALIZATION METHODS
-
-=over 4
-
-=item new
-
-New takes an optional hash as an argument. If given a hash, it populates the object with the key value
-pairs in the hash, as long as those are text/numbers,lists,hashes or yote objects. Note that while this
-does not start with an underscore, it is still not exposed to the javascript yote objects.
-
-=item _init
-
-This is called once : only the very first time a Yote object is created. It is used to set up initial data.
-
-=item _load
-
-This method is called each time an object is loaded from the data store.
-
-=back
-
-=head2 PUBLIC API METHODS
-
-=over 4
-
-=item add_to( { name => container_name, items => [] } )
-
-Adds the items to the list attached to this object specified by name.
-
-=item container_type( container_name )
-
-Returns the class name of the given container from this host object.
-For example, if Yote::Obj $o has an array attached to its myarray field,
-The syntax is $o->container_type( 'myarray' ) <--- returns 'ARRAY';
-
-
-=item count( field_name )
-
-Returns the number of items for the field of this object provided it is an array or hash.
-
-=item delete_key( { name => container_name, key => '' } )
-
-Removes the key from the hash attached to this object specified by name.
-
-=item hash( { name => container_name, key => '', value => item } )
-
-Hashes the item to the key to the hash attached to this object specified by name.
-
-=item hash_fetch( { name => container_name, key => '' } )
-
-Returns the item from the named hash by key.
-
-=item hash_has_key( { name => container_name, key => keytotest } );
-
-=item insert_at( { name => container_name, index => '', item => item } )
-
-Insert the item at the index to the list attached to this object specified by name.
-
-=item list_delete( { name => container_name, index => '' } )
-
-Removes the item at the index postion from the list attached to this object specified by name.
-
-=item list_fetch( { name => container_name, index => '' } )
-
-Returns item at the index postion from the list attached to this object specified by name.
-
-=item new_with_same_permissions()
-
-Returns a new yote object with the same permissions as this.
-
-=item paginate( args )
-
-Returns a paginated list or hash. Arguments are
-
-=over 4
-
-=item limit
-
-=item name ( of container )
-
-=item return_hash
-
-=item reverse
-
-=item reversed_orders list of sort fields that should be reversed
-
-=item skip
-
-=item search_fields
-
-=item search_terms
-
-=item sort
-
-=item sort_fields list of fields to sort objects by. Only works on collection of Yote::Obj objects.
-
-=back
-
-=item precache
-
-Overridable. Should return items you want cached on the client side.
-
-=item remove_from( { name => container_name, items => [] } )
-
-Removes the items ( by value ) from the list attached to this object specified by name.
-
-=over 4
-
-=item name - name of data structure attached to this object.
-
-=item search_fields - a list of fields to search for in collections of yote objects
-
-=item search_terms - a list of terms to search for
-
-=item sort_fields - a list of fields to sort by for collections of yote objects
-
-=item reversed_orders - a list of true or false values corresponding to the sort_fields list. A true value means that field is sorted in reverse
-
-=item limit - maximum number of entries to return
-
-=item skip - skip this many entries before returning the list
-
-=item return_hash - return the result as a hashtable rather than as a list
-
-=item reverse - return the result in reverse order
-
-=back
-
-=item sync_all
-
-This method is actually a no-op, but has the effect of syncing the state of client and server.
-
-=item sync_changed
-
-This method is actually a no-op, but has the effect of syncing the state of client and server.
-
-=item update
-
-This method is called automatically by a client javascript objet when its _send_update method is called.
-It takes a hash ref filled with field name value pairs and updates the values that are read/write
-( first character is a capital letter ).
-
-=back
-
-=head1 AUTHOR
-
-Eric Wolf
-coyocanid@gmail.com
-http://madyote.com
-
-=head1 LICENSE AND COPYRIGHT
-
-Copyright (C) 2011 Eric Wolf
-
-
-
-This module is free software; it can be used under the same terms as perl
-itself.
-
-=cut
