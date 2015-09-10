@@ -16,7 +16,6 @@ use Yote;
 use Yote::Account;
 use Yote::Obj;
 use Yote::RootObj;
-use Yote::SimpleTemplate;
 use Yote::WebRoot;
 
 use parent 'Yote::RootObj';
@@ -33,14 +32,7 @@ sub _init {
     $self->set_host_name( $hn );
     $self->set_host_url( "http://$hn" );
     $self->set_validation_email_from( 'yote@' . $hn );
-    $self->set_validation_link_template(new Yote::SimpleTemplate( { text=>'${hosturl}/val.html?t=${t}&app=${app}' } ) );
-    $self->set_validation_message_template(new Yote::SimpleTemplate({text=>'Welcome to ${app}, ${handle}. Click on this link to validate your email : ${link}'}));
-    $self->set_validation_subject_template(new Yote::SimpleTemplate( { text => 'Validate Your Account' } ) );
-
     $self->set_recovery_email_from( 'yote@' . $hn );
-    $self->set_recovery_subject_template(new Yote::SimpleTemplate( { text => 'Recover Your Account' } ) );
-    $self->set_recovery_link_template(new Yote::SimpleTemplate( { text => '${hosturl}/recover.html?t=${t}&app=${app}' } ) );
-    $self->set_recovery_message_template(new Yote::SimpleTemplate({text=>'Click on <a href="${link}">${link}</a> to recover your account' } ) );
 
     $self->set__attached_objects( {} ); # field -> obj parings, set aside here as a duplicate data structure to track items that may be editable on the admin page
 
@@ -214,14 +206,6 @@ sub new_root_obj {
     $ret->set___creator( $acct );
     return $ret;
 } #new_root_obj
-
-sub new_template {
-    my( $self, $data, $acct ) = @_;
-    return "Access Error" unless $acct && $acct->get_login() && $acct->get_login()->is_root();
-    my $ret = new Yote::SimpleTemplate();
-    $ret->set___creator( $acct );
-    return $ret;
-} #new_template
 
 sub new_user_obj {
     my( $self, $data, $acct ) = @_;
@@ -438,8 +422,6 @@ This is invoked by the javascript call $.yote.create_login( handle, password, em
 =item new_obj
 
 =item new_root_obj
-
-=item new_template
 
 =item new_user_obj
 
