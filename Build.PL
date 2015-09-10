@@ -21,15 +21,8 @@ mkdir $yote_root unless -d $yote_root;
 
 die "Unable to create root directory" unless -w $yote_root;
 
-mkdir "$yote_root/holding";
-mkdir "$yote_root/html";
-mkdir "$yote_root/html/templates";
-mkdir "$yote_root/html/uploads";
-mkdir "$yote_root/html/DEFAULT";
 mkdir "$yote_root/data";
 mkdir "$yote_root/lib";
-mkdir "$yote_root/log";
-mkdir "$yote_root/daemon";
 
 # fill the root directory
 sub copy_dir {
@@ -47,7 +40,6 @@ sub copy_dir {
     }
 } #copy_dir
 copy_dir( 'yote_root', $yote_root );
-copy_dir( 'yote_root/html/yote', "$yote_root/html/yote", 1 );
 
 
 my $builder = Module::Build->new(
@@ -64,34 +56,10 @@ my $builder = Module::Build->new(
     release_status     => 'stable',
     script_files       => [ 'bin/yote_server' ],
     test_files         => [ 't/yotedb.t', ],
-    recommends         => {
-        'Authen::NTLM'     => 1,
-        'Digest::HMAC_MD5' => 1,
-    },
     requires => {
         'perl'                  => 'v5.12',
-        'Aspect'                => 1.04,
-        'Crypt::Passwd::XS'     => 0.601,
-        'Daemon::Daemonize'     => 0.0052,
-        'DateTime'              => 0.77,
-        'Email::Valid'          => 0.190,
-        'File::Path'            => 2.09,
-        'File::Slurp'           => 9999.19,
-        'File::stat'            => 0.07,
-        'File::Temp'            => 0.23,
-        'File::Touch'            => 0.09,
-        'File::UStore'          => 0.14,
-        'IO::Handle'            => 1.34,
-        'IO::Handle'            => 1.34,
-        'JavaScript::Minifier'  => '1.11',
-        'JSON'                  => 2.53,
-        'Mail::Sender'          => 0,
-        'MIME::Base64'          => 0,
-        'POSIX'                 => 1.32,
         'Devel::Refcount'       => 0.1,
         'Test::More'            => 0,
-        'Test::Pod'             => 0,
-        'Time::HiRes'           => 1.9725,
         'WeakRef'               => 0.01,
     },
     );
