@@ -71,17 +71,27 @@ sub test_suite {
     # recycle test. This should eliminate the following :
     # the old myList, the objy, the someobj of objy, so 3 items
 
-    my $will_be_gone_but_not_yet = $root_node->get_myList();
+    my $list_to_remove = $root_node->get_myList();
+    my $hash_in_list = $list_to_remove->[0];
+
     $root_node->set_myList( [ ] );
     $store->stow_all;
 
-    is( $store->run_recycler, 0, "none 4 deleted things recyled because one non-weak reference to one of them is kept." );
+    is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
+    undef $hash_in_list;
 
+    is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
-    $will_be_gone_but_not_yet = undef;
+    $hash_in_list = $list_to_remove->[0];
 
-    is( $store->run_recycler, 4, "all four deleted things recycled because all non-weak references are gone.." );
+    undef $list_to_remove;
+
+    is( $store->run_recycler, 1, "just list is removed. it is not referenced by other removed items that still have references." );
+
+    undef $hash_in_list;
+
+    is( $store->run_recycler, 3, "all 3 remaining things that can't trace to the root are removed" );
 
 } #test suite
 

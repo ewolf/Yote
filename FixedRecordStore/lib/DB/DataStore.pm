@@ -106,6 +106,7 @@ sub recycle {
     
     my $store = $self->_get_store( $store_id, $clear );
     $store->recycle( $id_in_store );
+    $self->{OBJ_INDEX}->recycle( $id_in_store );
 
 } #recycle
 
@@ -293,7 +294,7 @@ sub push {
     my( $self, $data ) = @_;
     my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
-    $self->put_record( $next_id, [$data] );
+    $self->put_record( $next_id, $data );
     return $next_id;
 } #push
 
@@ -341,6 +342,9 @@ sub _filehandle {
 
 
 # ----------- end package DB::DataStore::FixedStore
+
+
+
 =head1 NAME
 
 DB::DataStore::FixedRecycleStore
@@ -366,7 +370,8 @@ sub open {
 
 sub recycle {
     my( $self, $idx, $purge ) = @_;
-    $self->{RECYCLER}->push( $idx );
+    $self->{RECYCLER}->push( [$idx] );
+
     if( $purge  ) {
         $self->put_record( $idx, [] );
     }
