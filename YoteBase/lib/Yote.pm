@@ -92,7 +92,6 @@ no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
 
-use Crypt::Passwd::XS;
 use WeakRef;
 
 

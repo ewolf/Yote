@@ -15,9 +15,10 @@ my $builder = Module::Build->new(
     test_files         => [ 't/yotedb.t', ],
     requires => {
         'perl'                  => 'v5.12',
-        'Devel::Refcount'       => 0.1,
         'WeakRef'               => 0.01,
+        'JSON'                  => 0,
         'DB::DataStore'         => 1.0,
+        'Devel::Refcount'       => 0.1,
     },
     );
 

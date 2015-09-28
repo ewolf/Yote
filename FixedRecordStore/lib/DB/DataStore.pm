@@ -48,7 +48,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.01';
 
 =head1 METHODS
 
@@ -298,7 +298,6 @@ $store->unlink_store;
 package DB::DataStore::FixedStore;
 
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
-use File::Touch;
 
 =head2 open( template, filename, size )
 
@@ -314,7 +313,11 @@ sub open {
     my $FH;
     my $useSize = $size || do { use bytes; length( pack( $template ) ) };
     die "Cannot open a zero record sized fixed store" unless $useSize;
-    touch $filename;
+    unless( -e $filename ) {
+        open $FH, ">$filename";
+        print $FH "";
+        close $FH;
+    }
     open $FH, "+<$filename" or die "$@ $!";
     bless { TMPL => $template, 
             RECORD_SIZE => $useSize,
