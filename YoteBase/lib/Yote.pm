@@ -12,8 +12,13 @@ use DB::DataStore;
 
 =head1 NAME
 
-Yote - Persistant Perl container objects in a directed graph
-       of lazilly loaded nodes.
+Yote - Persistant Perl container objects in a directed graph of lazilly loaded nodes.
+
+=head1 DESCRIPTION
+
+This is for anyone who wants to store arbitrary structured state data and doesn't have 
+the time or inclination to write a schema or configure some framework. This can be used
+orthagonally to any other storage system.
 
 =head1 SYNOPSIS
  
@@ -67,8 +72,7 @@ Yote - Persistant Perl container objects in a directed graph
 
 =head2 open_store( '/path/to/directory' )
 
-Starts up a persistance engine with the arguments passed in.
-This must be called before any use of t
+Starts up a persistance engine and returns it.
    
 =cut
 $Yote::STORES = {};
@@ -77,202 +81,6 @@ sub open_store {
     $Yote::STORES->{$path} ||= Yote::ObjStore->_new( { store => $path } );
     $Yote::STORES->{$path};
 }
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-
-package Yote::Obj;
-
-use strict;
-use warnings;
-no warnings 'uninitialized';
-
-#
-# The string version of the yote object is simply its id. This allows
-# objet ids to easily be stored as hash keys.
-#
-use overload
-    '""' => sub { shift->{ID} }, # for hash keys
-    eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
-    ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
-    '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
-    '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
-    fallback => 1;
-
-# -----------------------
-#
-#     Public Methods
-# -----------------------
-#
-# Defines get_foo, set_foo, add_to_list, remove_from_list
-#
-sub AUTOLOAD {
-    my( $s, $arg ) = @_;
-    my $func = our $AUTOLOAD;
-
-    if( $func =~/:add_to_(.*)/ ) {
-        my( $fld ) = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, @vals ) = @_;
-            my $get = "get_$fld";
-            my $arry = $self->$get([]); # init array if need be
-            push( @$arry, @vals );
-        };
-        use strict 'refs';
-        goto &$AUTOLOAD;
-    } #add_to
-    elsif( $func =~/:add_once_to_(.*)/ ) {
-        my( $fld ) = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, @vals ) = @_;
-            my $get = "get_$fld";
-            my $arry = $self->$get([]); # init array if need be
-            for my $val ( @vals ) {
-                unless( grep { $val eq $_ } @$arry ) {
-                    push @$arry, $val;
-                }
-            }
-        };
-        use strict 'refs';
-        goto &$AUTOLOAD;
-    } #add_once_to
-    elsif( $func =~ /:remove_from_(.*)/ ) { #removes the first instance of the target thing from the list
-        my $fld = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, @vals ) = @_;
-            my $get = "get_$fld";
-            my $arry = $self->$get([]); # init array if need be
-            for my $val (@vals ) {
-                for my $i (0..$#$arry) {
-                    if( $arry->[$i] eq $val ) {
-                        splice @$arry, $i, 1;
-                        last;
-                    }
-                }
-            }
-        };
-        use strict 'refs';
-        goto &$AUTOLOAD;
-    }
-    elsif( $func =~ /:remove_all_from_(.*)/ ) { #removes the first instance of the target thing from the list
-        my $fld = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, @vals ) = @_;
-            my $get = "get_$fld";
-            my $arry = $self->$get([]); # init array if need be
-            for my $val (@vals) {
-                my $count = grep { $_ eq $val } @$arry;
-                while( $count ) {
-                    for my $i (0..$#$arry) {
-                        if( $arry->[$i] eq $val ) {
-                            --$count;
-                            splice @$arry, $i, 1;
-                            last unless $count;
-                        }
-                    }
-                }
-            }
-        };
-        use strict 'refs';
-        goto &$AUTOLOAD;
-    }
-    elsif ( $func =~ /:set_(.*)/ ) {
-        my $fld = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, $val ) = @_;
-            my $inval = $self->{STORE}->_xform_in( $val );
-            $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-            $self->{DATA}{$fld} = $inval;
-
-            return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-        };
-        goto &$AUTOLOAD;
-    }
-    elsif( $func =~ /:get_(.*)/ ) {
-        my $fld = $1;
-        no strict 'refs';
-        *$AUTOLOAD = sub {
-            my( $self, $init_val ) = @_;
-            if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
-                if( ref( $init_val ) ) {
-                    $self->{STORE}->_dirty( $init_val, $self->{STORE}->_get_id( $init_val ) );
-                }
-                $self->{STORE}->_dirty( $self, $self->{ID} );
-                $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $init_val );
-            }
-            return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-        };
-        use strict 'refs';
-        goto &$AUTOLOAD;
-    }
-    else {
-        die "Unknown Yote::Obj function '$func'";
-    }
-
-} #AUTOLOAD
-
-# -----------------------
-#
-#     Overridable Methods
-# -----------------------
-
-#
-# Called the very first time this object is created. It is not called
-# when object is loaded from storage.
-#
-sub _init {}
-
-#
-# Called each time the object is loaded from the data store.
-#
-sub _load {}
-
-
-
-# -----------------------
-#
-#     Private Methods
-#
-# -----------------------
-
-
-sub _new { #new Yote::Obj
-    my( $pkg, $obj_store, $data, $_id ) = @_;
-
-    my $class = ref($pkg) || $pkg;
-    my $obj = bless {
-        DATA     => {},
-        STORE    => $obj_store,
-    }, $class;
-    $obj->{ID} = $_id || $obj_store->_get_id( $obj );
-    $obj->_init(); #called the first time the object is created.
-    $obj_store->_dirty( $obj, $obj->{ID} );
-
-    if( ref( $data ) eq 'HASH' ) {
-        for my $key ( sort keys %$data ) {
-            $obj->{DATA}{$key} = $obj_store->_xform_in( $data->{ $key } );
-        }
-        $obj_store->_dirty( $obj, $obj->{ID} );
-    } elsif( $data ) {
-        die "Yote::Obj::new must be called with hash or undef. Was called with '". ref( $data ) . "'";
-    }
-    return $obj;
-} #_new
-
-
-#
-# Called by the object provider; returns a Yote::Obj the object
-# provider will stuff data into. Takes the class and id as arguments.
-#
-sub _instantiate {
-    bless { ID => $_[1], DATA => {}, STORE => $_[2] }, $_[0];
-} #_instantiate
-
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -290,14 +98,21 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '0.073';
+$VERSION = '1.0';
 
 =head1 NAME
 
-Yote::ObjStore
+ Yote::ObjStore - manages Yote::Obj objects in a graph.
 
-=head1 SYNOPSIS
+=head1 DESCRIPTION
 
+The Yote::ObjStore does the following things :
+
+ * fetches the root object
+ * creates new objects
+ * fetches existing objects by id
+ * saves all new or changed objects
+ * finds objects that cannot connect to the root node and recycles them
 
 =cut
 
@@ -306,6 +121,10 @@ Yote::ObjStore
 # ------------------------------------------------------------------------------------------
 
 =head2 fetch_root
+    
+ Returns the root node of the graph. All things that can be 
+trace a reference path back to the root node are considered active
+and are not recycled when the recyler run.
 
 =cut
 sub fetch_root {
@@ -320,11 +139,14 @@ sub fetch_root {
     $root;
 } #fetch_root
 
-=head2 newobj( { ... data .... } )
+=head2 newobj( { ... data .... }, optionalClass )
 
- Creates a new data object initialized with the incoming hash ref data.
+ Creates a container object initialized with the 
+ incoming hash ref data. The class of the object must be either
+ Yote::Obj or a subclass of it. Yote::Obj is the default.
+
  Once created, the object will be saved in the data store when 
- Yote::Obj::stow_all has been called.  If the object is not attached 
+ $store->stow_all has been called.  If the object is not attached 
  to the root or an object that can be reached by the root, it will be 
  recycled when Yote::Obj::recycle_objects is called.
 
@@ -341,10 +163,9 @@ sub _newroot {
 }
 
 
-=head2 fetch
+=head2 fetch( $id )
 
-
-
+ Returns the object with the given id.
 
 =cut
 sub fetch {
@@ -390,12 +211,24 @@ sub fetch {
     return undef;
 } #fetch
 
+=head2 run_recycler
+
+Does a mark and sweep and recycles all objects that
+do not currently have an active reference or can 
+trace a reference path back to the root object.
+
+=cut
 sub run_recycler {
     my $self = shift;
     $self->stow_all();
     $self->{_DATASTORE}->_recycle_objects();
 } #run_recycler
 
+=head2 stow_all
+
+ Saves all newly created or dirty objects.
+
+=cut
 sub stow_all {
     my $self = $_[0];
     my @odata;
@@ -416,9 +249,9 @@ sub stow_all {
 } #stow_all
 
 
-# ------------------------------------------------------------------------------------------
+# -------------------------------
 #      * PRIVATE METHODS *
-# ------------------------------------------------------------------------------------------
+# -------------------------------
 sub _new { #Yote::ObjStore
     my( $pkg, $args ) = @_;
     my $self = bless {
@@ -637,6 +470,230 @@ sub _store_weak {
 
 # ---------------------------------------------------------------------------------------------------------------------
 
+=head1 NAME
+
+ Yote::Obj - Generic container object for graph.
+
+=head1 DESCRIPTION
+
+A Yote::Obj is a container class that as a specific idiom for getters
+and setters. This idiom is set up to avoid confusion and collision
+with any method names.
+
+ # sets the 'foo' field to the given value.
+ $obj->set_foo( { value => $store->newobj } );
+
+ # returns the value for bar, and if none, sets it to 'default'
+ my $bar = $obj->get_bar( "default" );
+
+ $obj->add_to_somelist( "Freddish" );
+ my $list = $obj->get_somelist;
+ $list->[ 0 ] == "Freddish";
+
+
+ $obj->remove_from_somelist( "Freddish" );
+
+=cut
+package Yote::Obj;
+
+use strict;
+use warnings;
+no  warnings 'uninitialized';
+
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+
+#
+# The string version of the yote object is simply its id. This allows
+# objet ids to easily be stored as hash keys.
+#
+use overload
+    '""' => sub { shift->{ID} }, # for hash keys
+    eq   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+    ne   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
+    '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
+    '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
+    fallback => 1;
+
+# -----------------------
+#
+#     Public Methods
+# -----------------------
+#
+# Defines get_foo, set_foo, add_to_list, remove_from_list
+#
+sub AUTOLOAD {
+    my( $s, $arg ) = @_;
+    my $func = our $AUTOLOAD;
+
+    if( $func =~/:add_to_(.*)/ ) {
+        my( $fld ) = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, @vals ) = @_;
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
+            push( @$arry, @vals );
+        };
+        use strict 'refs';
+        goto &$AUTOLOAD;
+    } #add_to
+    elsif( $func =~/:add_once_to_(.*)/ ) {
+        my( $fld ) = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, @vals ) = @_;
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
+            for my $val ( @vals ) {
+                unless( grep { $val eq $_ } @$arry ) {
+                    push @$arry, $val;
+                }
+            }
+        };
+        use strict 'refs';
+        goto &$AUTOLOAD;
+    } #add_once_to
+    elsif( $func =~ /:remove_from_(.*)/ ) { #removes the first instance of the target thing from the list
+        my $fld = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, @vals ) = @_;
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
+            for my $val (@vals ) {
+                for my $i (0..$#$arry) {
+                    if( $arry->[$i] eq $val ) {
+                        splice @$arry, $i, 1;
+                        last;
+                    }
+                }
+            }
+        };
+        use strict 'refs';
+        goto &$AUTOLOAD;
+    }
+    elsif( $func =~ /:remove_all_from_(.*)/ ) { #removes the first instance of the target thing from the list
+        my $fld = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, @vals ) = @_;
+            my $get = "get_$fld";
+            my $arry = $self->$get([]); # init array if need be
+            for my $val (@vals) {
+                my $count = grep { $_ eq $val } @$arry;
+                while( $count ) {
+                    for my $i (0..$#$arry) {
+                        if( $arry->[$i] eq $val ) {
+                            --$count;
+                            splice @$arry, $i, 1;
+                            last unless $count;
+                        }
+                    }
+                }
+            }
+        };
+        use strict 'refs';
+        goto &$AUTOLOAD;
+    }
+    elsif ( $func =~ /:set_(.*)/ ) {
+        my $fld = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, $val ) = @_;
+            my $inval = $self->{STORE}->_xform_in( $val );
+            $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+            $self->{DATA}{$fld} = $inval;
+
+            return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+        };
+        goto &$AUTOLOAD;
+    }
+    elsif( $func =~ /:get_(.*)/ ) {
+        my $fld = $1;
+        no strict 'refs';
+        *$AUTOLOAD = sub {
+            my( $self, $init_val ) = @_;
+            if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
+                if( ref( $init_val ) ) {
+                    $self->{STORE}->_dirty( $init_val, $self->{STORE}->_get_id( $init_val ) );
+                }
+                $self->{STORE}->_dirty( $self, $self->{ID} );
+                $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $init_val );
+            }
+            return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+        };
+        use strict 'refs';
+        goto &$AUTOLOAD;
+    }
+    else {
+        die "Unknown Yote::Obj function '$func'";
+    }
+
+} #AUTOLOAD
+
+# -----------------------
+#
+#     Overridable Methods
+# -----------------------
+
+#
+# Called the very first time this object is created. It is not called
+# when object is loaded from storage.
+#
+sub _init {}
+
+#
+# Called each time the object is loaded from the data store.
+#
+sub _load {}
+
+
+
+# -----------------------
+#
+#     Private Methods
+#
+# -----------------------
+
+
+sub _new { #new Yote::Obj
+    my( $pkg, $obj_store, $data, $_id ) = @_;
+
+    my $class = ref($pkg) || $pkg;
+    my $obj = bless {
+        DATA     => {},
+        STORE    => $obj_store,
+    }, $class;
+    $obj->{ID} = $_id || $obj_store->_get_id( $obj );
+    $obj->_init(); #called the first time the object is created.
+    $obj_store->_dirty( $obj, $obj->{ID} );
+
+    if( ref( $data ) eq 'HASH' ) {
+        for my $key ( sort keys %$data ) {
+            $obj->{DATA}{$key} = $obj_store->_xform_in( $data->{ $key } );
+        }
+        $obj_store->_dirty( $obj, $obj->{ID} );
+    } elsif( $data ) {
+        die "Yote::Obj::new must be called with hash or undef. Was called with '". ref( $data ) . "'";
+    }
+    return $obj;
+} #_new
+
+
+#
+# Called by the object provider; returns a Yote::Obj the object
+# provider will stuff data into. Takes the class and id as arguments.
+#
+sub _instantiate {
+    bless { ID => $_[1], DATA => {}, STORE => $_[2] }, $_[0];
+} #_instantiate
+
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+
 package Yote::Array;
 
 ############################################################################################################
@@ -652,7 +709,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '1.0';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -747,7 +804,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '1.0';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -813,12 +870,12 @@ use JSON;
 use Devel::Refcount 'refcount';
 
 use constant {
-  ID => 0,
-  CLASS => 1,
   DATA => 2,
-  RAW_DATA => 2,
-  MAX_LENGTH => 1025,
 };
+
+use vars qw($VERSION);
+
+$VERSION = '1.0';
 
 #
 # This the main index and stores in which table and position
@@ -990,3 +1047,16 @@ sub _stow_all {
 } #_stow_all
 
 1;
+
+__END__
+
+=head1 AUTHOR
+       Eric Wolf        coyocanid@gmail.com
+
+       Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       under the same terms as Perl itself.
+
+=head1 VERSION
+       Version 1.0  (October 10, 2015))
+
+=cut

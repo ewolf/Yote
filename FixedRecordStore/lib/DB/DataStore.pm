@@ -2,7 +2,7 @@ package DB::DataStore;
 
 =head1 NAME
 
-DB::DataStore
+DB::DataStore - Simple and fast record based data store
 
 =head1 SYNPOSIS
 
