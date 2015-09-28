@@ -24,6 +24,24 @@ die "Unable to create root directory" unless -w $yote_root;
 mkdir "$yote_root/data";
 mkdir "$yote_root/lib";
 
+# fill the root directory
+sub copy_dir {
+    my( $dir, $dest, $overwrite ) = @_;
+    mkdir "$dest" unless -d "$dest";
+    opendir( my $DIN, $dir );
+    while( my $fn = readdir $DIN ) {
+        next if $fn =~ /^\.+$/;
+        if( -d "$dir/$fn" ) {
+            copy_dir( "$dir/$fn", "$dest/$fn", $overwrite );
+        }
+        elsif( ! -e "$dest/$fn" || $overwrite ) {
+            copy( "$dir/$fn", "$dest/$fn" );
+        }
+    }
+} #copy_dir
+copy_dir( 'yote_root', $yote_root );
+
+
 my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Yote-*' ],
     build_requires => {
