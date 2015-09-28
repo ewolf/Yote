@@ -826,8 +826,7 @@ sub new {
   make_path( $args->{ store } );
   my $filename = "$args->{ store }/OBJ_INDEX";
 
-  my $store_manager = new Yote::IO::StoreManager( $args );
-  $store_manager->ensure_datastore();
+  my $store_manager = new Yote::IO::StoreManager( $args->{store} );
 
   # LII template is a long ( for object id, then the table id, then the index in that table
   my $self = bless {

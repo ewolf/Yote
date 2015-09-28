@@ -1,25 +1,89 @@
-package DB::FixedRecordStore;
+package DB::DataStore;
 
+=head1 NAME
 
+DB::DataStore
 
+=head1 SYNPOSIS
 
-package DB::FixedStore;
+use DB::DataStore;
+
+my $store = DB::DataStore::open( $directory );
+my $id = $store->stow( $data, $optionalID );
+my $val = $store->fetch( $id );
+
+=cut
 
 use strict;
-
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
+use File::Path qw(make_path);
 use File::Touch;
 use Data::Dumper;
 
-# SIZE --> RECORD_SIZE
-sub new {
+sub open {
+    my( $pkg, $directory ) = @_;
+    
+    bless {
+        DIRECTORY => $directory,
+        OBJ_INDEX => new DB::DataStore::FixedRecycleStore( "LII", "directory/OBJ_INDEX" ),
+        MANAGER   => new DB::DataStore::Manager( $directory ),
+    }, ref( $pkg ) || $pkg;
+    
+} #open
+
+sub stow {
+    my( $self, $data, $id ) = @_;
+    $id //= $self->{OBJ_INDEX}->next_id;
+    
+    my $save_size = do { use bytes; length( $data ); };
+
+    my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+
+    #
+    # Check if this record had been saved before, and that the
+    # store is was in has a large enough record size.
+    #
+    if( $current_store_id ) {
+        my $old_store = $self->{MANAGER}->get_store( $current_store_id );
+        if( $old_store->{RECORD_SIZE} >= $save_size ) {
+            $old_store->put_record( $current_idx_in_store, [$save_data] );
+            return;
+        }
+        
+        # the old store was not big enough, so remove its record from 
+        # there.
+        $old_store->delete( $current_idx_in_store, 1 );
+    }
+
+    my( $store_id, $store ) = $self->{MANAGER}->best_store_for_size( $save_size );
+    my $index_in_store = $store->next_id;
+
+    $self->{OBJ_INDEX}->put_record( $id, [ $index_in_store, $store_id ] );
+    $store->put_record( $store_id, [ $data ] );
+    
+} #stow
+
+sub fetch {
+    my( $self, $id ) = @_;
+    
+    my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    return undef unless defined $store_id;
+    
+    
+
+} #fetch
+
+package DB::DataStore::FixedStore;
+
+
+sub open {
     my( $pkg, $template, $filename, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
     my $FH;
     touch $filename;
     open $FH, "+<$filename" or die "$@ $!";
     return bless { TMPL => $template, 
-                   SIZE => $size || do { use bytes; length( pack( $template ) ) },
+                   RECORD_SIZE => $size || do { use bytes; length( pack( $template ) ) },
                    FILENAME => $filename,
                    FILEHANDLE => $FH,
     }, $class;
@@ -41,7 +105,7 @@ sub unlink_store {
 }
 
 sub size {
-    return shift->{SIZE};
+    return shift->{RECORD_SIZE};
 }
 
 #
@@ -73,7 +137,7 @@ sub pop {
     my $entries = $self->entries;
     return undef unless $entries;
     my $ret = $self->get_record( $entries );
-    truncate $self->filehandle, ($entries-1) * $self->{SIZE};
+    truncate $self->filehandle, ($entries-1) * $self->{RECORD_SIZE};
     
 #    flock $fh, LOCK_UN;
 
@@ -87,15 +151,15 @@ sub pop {
 sub put_record {
     my( $self, $idx, $data ) = @_;
     my $fh = $self->filehandle;
-    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET or die "Could not seek : $@ $!";
+    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek : $@ $!";
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
 
     my $to_write_length = do { use bytes; length( $to_write ); };
-    if( $to_write_length < $self->{SIZE} ) {
-        my $del = $self->{SIZE} - $to_write_length;
+    if( $to_write_length < $self->{RECORD_SIZE} ) {
+        my $del = $self->{RECORD_SIZE} - $to_write_length;
         $to_write .= "\0" x $del;
         my $to_write_length = do { use bytes; length( $to_write ); };
-        die "$to_write_length vs $self->{SIZE}" unless $to_write_length == $self->{SIZE};
+        die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
     }
     my $swv = syswrite $fh, $to_write;
     defined( $swv ) or die "Could not write : $@ $!";
@@ -106,8 +170,8 @@ sub get_record {
     my( $self, $idx ) = @_;
     my $fh = $self->filehandle;
 #    flock $fh, LOCK_EX;
-    sysseek $fh, $self->{SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{SIZE} * ($idx-1)) : $@ $!";
-    my $srv = sysread $fh, my $data, $self->{SIZE};
+    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+    my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
 #    flock $fh, LOCK_UN;
     return [unpack( $self->{TMPL}, $data )];
@@ -120,7 +184,7 @@ sub entries {
 #    flock $fh, LOCK_EX;
     my $filesize = -s $self->{FILENAME};
 #    flock $fh, LOCK_UN;
-    return int( $filesize / $self->{SIZE} );
+    return int( $filesize / $self->{RECORD_SIZE} );
 }
 
 #
@@ -164,11 +228,9 @@ sub next_id {
     return $next_id;
 } #next_id
 
-package DB::FixedRecycleStore;
+package DB::DataStore::FixedRecycleStore;
 
-use strict;
-
-use parent 'DB::FixedStore';
+use parent 'DB::DataStore::FixedStore';
 
 sub new {
     my( $pkg, $template, $filename, $size ) = @_;
@@ -202,28 +264,46 @@ sub next_id {
     return $recycled_id ? $recycled_id->[0] : $self->SUPER::next_id;
 } #next_id
 
-package DB::StoreManager;
+package DB::DataStore::Manager;
 
-use strict;
+=head1 NAME
 
-use File::Path qw(make_path);
+DB::StoreManager
 
+=head1 DESCRIPTION
+
+DB::DataStore::Manager is a federation of RecycleStores that act as a single
+RecycleStore. The Superstore chooses which managed store to store data
+based on the size of the data.
+
+=head1 SYNOPOSIS
+
+my $store_manager = DB::FixedRecordStore::open_store( $directory );
+
+$store_manager->
+
+
+=cut
 sub new {
-    my( $pkg, $args ) = @_;
+    my( $pkg, $directory ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    my $filename = "$args->{ store }/STORE_INDEX";
+
+    make_path( "$directory/stores", { error => \my $err } );
+
+    if( @$err ) {
+        my( $err ) = values %{ $err->[0] };
+        die $err;
+    }
+
+    my $filename = "$directory/STORE_INDEX";
+
     # the store index simply stores the size of the record for that store
     return bless {
-        args => $args,
+        directory => $directory,
         STORE_IDX => new DB::FixedStore( "I", $filename ),
         STORES    => [],
     }, $class;
 } #new
-
-sub ensure_datastore {
-    my $self = shift;
-    make_path( "$self->{args}{store}/stores" );
-} #ensure_datastore
 
 sub get_store {
     my( $self, $store_index, $store_size ) = @_;
@@ -234,7 +314,7 @@ sub get_store {
     unless( $store_size ) {
         ( $store_size ) = @{ $self->{ STORE_IDX }->get_record( $store_index ) };
     }
-    my $store = new DB::FixedRecycleStore( "A*", "$self->{args}{store}/${store_index}_OBJSTORE", $store_size );
+    my $store = new DB::FixedRecycleStore( "A*", "$directory/${store_index}_OBJSTORE", $store_size );
     $self->{STORES}[ $store_index ] = $store;
     return  $store;
 } #get_store
@@ -271,9 +351,12 @@ sub best_store_for_size {
 } #best_store_for_size
 
 sub get_record {
-    my( $self, $store_id, $store_idx ) = @_;
+    my( $self, $store_id, $idx_in_store ) = @_;
     my $store = $self->get_store( $store_id );
-    return $store->get_record( $store_idx );
+
+    return undef unless $store;
+
+    return $store->get_record( $idx_in_store );
 } #get_record
 
 

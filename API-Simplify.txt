@@ -19,6 +19,12 @@ Object API :
 
 ____________________________________________________________________
 
+FixedRecordStore : the main package. The file contains the others.
+
+open_store( filename, template )
+open_recycling_store( filename, template )
+open_manager( directory )
+
 Fixed Store
    :new( {  template => "", directory => "", record_size => start_count => } )  ( maybe record size always calculated )
    >next_id #rename, as this creates a space for the record
