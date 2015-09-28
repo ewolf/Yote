@@ -354,7 +354,6 @@ sub fetch {
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $self->{_DIRTY}->{$id} || $self->{_WEAK_REFS}->{$id};
-
     if( defined $ref ) {
         return $ref;
     }
@@ -388,7 +387,6 @@ sub fetch {
             return $obj;
         }
     }
-
     return undef;
 } #fetch
 
@@ -426,7 +424,7 @@ sub _new { #Yote::ObjStore
     my $self = bless {
         _DIRTY     => {},
         _WEAK_REFS => {},
-    }, $_[0];
+    }, $pkg;
     $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
     $self->fetch_root;
     $self->stow_all;
@@ -888,13 +886,6 @@ sub _get_recycled_ids {
 sub _recycle_objects {
   my $self = shift;
 
-  print STDERR Data::Dumper->Dump(["WEAKY"]);
-  for my $cand ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
-my $x =  Data::Dumper->Dump([" $cand : references : " . refcount( $self->{OBJ_STORE}->fetch($cand) ) . ' '. ( $self->{OBJ_STORE}->_is_dirty($cand) ? "DIRTY" : "CLEAN" ), $self->{OBJ_STORE}->fetch($cand)]);
-    $x =~ s/STORE(.*?)Yote::ObjStore//gs;
-    print STDERR $x;
-  }print STDERR Data::Dumper->Dump(['xxxxxxxxxxxxxxxxxx']);
-
   my $mark_to_keep_store = DB::DataStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
   $mark_to_keep_store->empty();
   $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
@@ -910,7 +901,6 @@ my $x =  Data::Dumper->Dump([" $cand : references : " . refcount( $self->{OBJ_ST
       my( @queue ) = ( $keep_id );
 
       $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
-
 
       # get the object ids referenced by this keeper object
       while( @queue ) {
@@ -940,7 +930,20 @@ my $x =  Data::Dumper->Dump([" $cand : references : " . refcount( $self->{OBJ_ST
   # is not worth the complexity.
   #
   for my $referenced_id ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
-      &$trace_to_root( $referenced_id, $mark_to_keep_store );
+      # make sure that these are actually referenced. They may be 
+      # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
+      # have an extra reference due to the tie.
+
+      my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
+      my $min_ref_count = 1;
+      if( $self->{OBJ_STORE}->_is_dirty( $referenced_id ) ) {
+          $min_ref_count++;
+      }
+      $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
+
+      if( refcount($obj) > $min_ref_count ) {
+          &$trace_to_root( $referenced_id, $mark_to_keep_store );
+      }
   }
 
   # the purge begins here
@@ -948,11 +951,6 @@ my $x =  Data::Dumper->Dump([" $cand : references : " . refcount( $self->{OBJ_ST
   my $count = 0;
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
-
-my $x =  Data::Dumper->Dump([" $cand : " . ( $keep ? " KEEP " : " RECYCLE " ) . " references : " . refcount( $self->{OBJ_STORE}->fetch($cand) ) . ' '. ( $self->{OBJ_STORE}->_is_dirty($cand) ? "DIRTY" : "CLEAN" ), $self->{OBJ_STORE}->fetch($cand)]);
-    $x =~ s/STORE(.*?)Yote::ObjStore//gs;
-    print STDERR $x;
-
 
     die "Tried to recycle root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {

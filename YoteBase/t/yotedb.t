@@ -29,7 +29,6 @@ sub test_suite {
 
     my $store = Yote::open_store( $dir );
     my $yote_db = $store->{_DATASTORE};
-
     my $root_node = $store->fetch_root;
 
     $root_node->add_to_myList( { objy => 
@@ -40,7 +39,7 @@ sub test_suite {
                                       } ),
                         } ),
                                } );
-    print STDERR "------------------------------\n";
+
     $store->stow_all;
 
     # objects created : root, myList, a hash in myslist, a newobj
@@ -81,9 +80,6 @@ sub test_suite {
 
 
     $will_be_gone_but_not_yet = undef;
-
-    print STDERR "----------====---------------------\n";
-
 
     is( $store->run_recycler, 4, "all four deleted things recycled because all non-weak references are gone.." );
 
