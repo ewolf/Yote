@@ -117,7 +117,6 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
-            print STDERR Data::Dumper->Dump([$self,$s,"WOOWOO"]);
             push( @$arry, @vals );
         };
         use strict 'refs';
@@ -313,9 +312,7 @@ sub fetch_root {
     my $self = shift;
     die "fetch_root must be called on Yote store object" unless ref( $self );
     my $root = $self->fetch( $self->_first_id );
-    print STDERR "Yote::ObjProvider::fetch_root called and root found\n" unless $root;
     unless( $root ) {
-    print STDERR "Yote::ObjProvider::fetch_root called. creating root\n";
         $root = $self->_newroot;
         $root->{ID} = $self->_first_id;
         $self->_stow( $root );
@@ -416,7 +413,6 @@ sub stow_all {
         }
         push( @odata, [ $self->_get_id( $obj ), $cls, $self->_raw_data( $obj ) ] );
     }
-    print STDERR Data::Dumper->Dump([\@odata,"LOOK"]);
     $self->{_DATASTORE}->_stow_all( \@odata );
     $self->{_DIRTY} = {};
 } #stow_all
@@ -454,11 +450,13 @@ sub _first_id {
 } #_first_id
 
 sub _get_id {
+    shift->__get_id( shift );
+}
+
+sub __get_id {
     my( $self, $ref ) = @_;
-    print STDERR Data::Dumper->Dump(["GET ID FOR $ref","$ref" !~ /ARRAY/ ? $ref:"ARAY"]);
     my $class = ref( $ref );
     if( $class eq 'Yote::Array') {
-        print STDERR Data::Dumper->Dump(["$class is Yote::ARRAY"]);
         return $ref->[0];
     }
     elsif( $class eq 'ARRAY' ) {
@@ -520,7 +518,6 @@ sub _stow {
     my $class = ref( $obj );
     return unless $class;
     my $id = $self->_get_id( $obj );
-    print STDERR "Yote::ObjProvider::_stow called for id $id\n";
     die unless $id;
 
     my $data = $self->_raw_data( $obj );
@@ -539,7 +536,7 @@ sub _stow {
         }
         for my $child (@$data) {
             if( $child =~ /^[0-9]/ && $self->{_DIRTY}->{$child} ) {
-                $self->_stow( $self->{_DIRTY}->{$child} );
+                $self->_stow( $child, $self->{_DIRTY}->{$child} );
             }
         }
     }
@@ -550,7 +547,7 @@ sub _stow {
         $self->_clean( $id );
         for my $child (values %$data) {
             if( $child =~ /^[0-9]/ && $self->{_DIRTY}->{$child} ) {
-                $self->_stow( $self->{_DIRTY}->{$child} );
+                $self->_stow( $child, $self->{_DIRTY}->{$child} );
             }
         }
     }
@@ -561,7 +558,7 @@ sub _stow {
         }
         for my $val (values %$data) {
             if( $val =~ /^[0-9]/ && $self->{_DIRTY}->{$val} ) {
-                $self->_stow( $self->{_DIRTY}->{$val} );
+                $self->_stow( $val, $self->{_DIRTY}->{$val} );
             }
         }
     }
@@ -873,9 +870,7 @@ sub _first_id {
 #
 sub _get_id {
   my $self = shift;
-  my $id = $self->{DATA_STORE}->next_id;
-  print "Yote::YoteDB get id $id\n";
-  $id;
+  $self->{DATA_STORE}->next_id;
 } #_get_id
 
 

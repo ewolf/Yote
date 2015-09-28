@@ -23,8 +23,6 @@ use Data::Dumper;
 sub open {
     my( $pkg, $directory ) = @_;
 
-    print STDERR "DB::DataStore::open directory '$directory'\n";
-    
     make_path( "$directory/stores", { error => \my $err } );
 
     if( @$err ) {
@@ -35,7 +33,7 @@ sub open {
 
     bless {
         DIRECTORY => $directory,
-        OBJ_INDEX => DB::DataStore::FixedRecycleStore->open( "LII", "$directory/OBJ_INDEX" ),
+        OBJ_INDEX => DB::DataStore::FixedRecycleStore->open( "IL", "$directory/OBJ_INDEX" ),
         STORE_IDX => DB::DataStore::FixedStore->open( "I", $filename ),
         STORES    => [],
     }, ref( $pkg ) || $pkg;
@@ -43,30 +41,21 @@ sub open {
 } #open
 
 sub entry_count {
-    my $self = shift;
-    my $ans = $self->{OBJ_INDEX}->entry_count;
-    print STDERR "DB::DataStore::entry_count '$self->{DIRECTORY}' contains $ans entries.\n";
-    $ans;
+    shift->{OBJ_INDEX}->entry_count;
 }
 
 sub ensure_entry_count {
-    my( $self, $count ) = @_;
-    print STDERR "DB::DataStore::ensure_entry_count '$self->{DIRECTORY}' ensuring entry count of $count.\n";
-    $self->{OBJ_INDEX}->ensure_entry_count( $count );
+    shift->{OBJ_INDEX}->ensure_entry_count( shift );
 }
 
 sub next_id {
     my $self = shift;
-    my $nid = $self->{OBJ_INDEX}->next_id;
-    print STDERR "DB::DataStore::next_id '$self->{DIRECTORY}' fetching next id of $nid\n";
-    $nid;
+    $self->{OBJ_INDEX}->next_id;
 }
 
 sub stow {
     my( $self, $data, $id ) = @_;
 
-    print STDERR "DB::DataStore::stow '$self->{DIRECTORY}' stowing id $id :  '$data'\n";
-    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) if $id==1;
     $id //= $self->{OBJ_INDEX}->next_id;
     
     my $save_size = do { use bytes; length( $data ); };
@@ -83,12 +72,10 @@ sub stow {
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
         if( $old_store->{RECORD_SIZE} >= $save_size ) {
-            print STDERR "DB::DataStore::stow '$self->{DIRECTORY}' stowing id $id to $save_size bytes to id $id :  '$data'\n";
             $old_store->put_record( $current_idx_in_store, [$data] );
             return;
         }
         
-        print STDERR "DB::DataStore::stow '$self->{DIRECTORY}' id $id was in store <$current_store_id> but that store does not have a large enough record size\n";
         # the old store was not big enough (or missing), so remove its record from 
         # there.
         $old_store->recycle( $current_idx_in_store, 1 ) if $old_store;
@@ -97,30 +84,23 @@ sub stow {
     my( $store_id, $store ) = $self->_best_store_for_size( $save_size );
     my $index_in_store = $store->next_id;
 
-    print STDERR "DB::DataStore::stow '$self->{DIRECTORY}' to save id '$id' to store <$store_id> with index $index_in_store\n";
-
-    $self->{OBJ_INDEX}->put_record( $id, [ $index_in_store, $store_id ] );
-    $store->put_record( $store_id, [ $data ] );
+    $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
+    $store->put_record( $index_in_store, [ $data ] );
     
 } #stow
 
 sub fetch {
     my( $self, $id ) = @_;
-    print STDERR "DB::DataStore::fetch '$self->{DIRECTORY}' id '$id'\n";
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-    print STDERR "DB::DataStore::fetch '$self->{DIRECTORY}' id '$id' not found.\n" unless $store_id;
     return undef unless $store_id;
-    print STDERR "DB::DataStore::fetch '$self->{DIRECTORY}' id '$id' found in store '$store_id'\n";
 
     my $store = $self->_get_store( $store_id );
-    my( $data ) = @{ $store->get_record( $store_id, $id_in_store ) };
-    print STDERR "DB::DataStore::fetch '$self->{DIRECTORY}' id '$id' has data '$data'\n";
+    my( $data ) = @{ $store->get_record( $id_in_store ) };
     $data;
 } #fetch
 
 sub recycle {
     my( $self, $id, $clear ) = @_;
-    print STDERR "DB::DataStore::recycle '$self->{DIRECTORY}' recycling id $id\n";
 
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     return undef unless defined $store_id;
@@ -132,7 +112,6 @@ sub recycle {
 
 sub _best_store_for_size {
     my( $self, $record_size ) = @_;
-    print STDERR "DB::DataStore::_best_store_for_size '$self->{DIRECTORY}' for $record_size bytes\n";
     my( $best_idx, $best_size, $best_store ); #without going over.
 
     # using the written record rather than the array of stores to 
@@ -150,7 +129,6 @@ sub _best_store_for_size {
     } #each store
     
     if( $best_store ) {
-        print STDERR "DB::DataStore::_best_store_for_size '$self->{DIRECTORY}' found best store of <$best_idx> for $record_size bytes\n";
         return $best_idx, $best_store;
     } 
 
@@ -158,7 +136,6 @@ sub _best_store_for_size {
     # Make one that is thrice the size of the record
     my $store_size = 3 * $record_size;
     my $store_id = $self->{STORE_IDX}->next_id;
-    print STDERR "DB::DataStore::_best_store_for_size '$self->{DIRECTORY}' creating new store <$store_id> with record size $store_size bytes\n";
 
     # first, make an entry in the store index, giving it that size, then
     # fetch it?
@@ -171,20 +148,17 @@ sub _best_store_for_size {
 } #_best_store_for_size
 
 sub _get_recycled_ids {
-    shift->{STORE_IDX}->get_recycled_ids;
+    shift->{OBJ_INDEX}->get_recycled_ids;
 }
 
 sub _get_store {
     my( $self, $store_index ) = @_;
 
-    print STDERR "DB::DataStore::_get_store '$self->{DIRECTORY}' for store <$store_index>\n";
     if( $self->{STORES}[ $store_index ] ) {
-        print STDERR "DB::DataStore::_get_store '$self->{DIRECTORY}' found store <$store_index> in STORES index.\n";
         return $self->{STORES}[ $store_index ];
     }
 
     my( $store_size ) = @{ $self->{ STORE_IDX }->get_record( $store_index ) };
-    print STDERR "DB::DataStore::_get_store '$self->{DIRECTORY}' did not find store <$store_index>. Creating with record size of $store_size bytes.\n";
 
     # since we are not using a pack template with a definite size, the size comes from the record
 
