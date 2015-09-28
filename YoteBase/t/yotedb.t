@@ -75,9 +75,16 @@ sub test_suite {
     my $will_be_gone_but_not_yet = $root_node->get_myList();
     $root_node->set_myList( [ ] );
     $store->stow_all;
+
     is( $store->run_recycler, 0, "none 4 deleted things recyled because one non-weak reference to one of them is kept." );
 
-    undef $will_be_gone_but_not_yet;
+
+
+    $will_be_gone_but_not_yet = undef;
+
+    print STDERR "----------====---------------------\n";
+
+
     is( $store->run_recycler, 4, "all four deleted things recycled because all non-weak references are gone.." );
 
 } #test suite

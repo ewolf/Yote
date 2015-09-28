@@ -589,7 +589,8 @@ sub _clean {
 sub _is_dirty {
     my( $self, $obj ) = @_;
     my $id = ref($obj) ? _get_id($obj) : $obj;
-    return $self->{_DIRTY}{$id};
+    my $ans = $self->{_DIRTY}{$id};
+    $ans;
 } #_is_dirty
 
 #
@@ -887,6 +888,13 @@ sub _get_recycled_ids {
 sub _recycle_objects {
   my $self = shift;
 
+  print STDERR Data::Dumper->Dump(["WEAKY"]);
+  for my $cand ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+my $x =  Data::Dumper->Dump([" $cand : references : " . refcount( $self->{OBJ_STORE}->fetch($cand) ) . ' '. ( $self->{OBJ_STORE}->_is_dirty($cand) ? "DIRTY" : "CLEAN" ), $self->{OBJ_STORE}->fetch($cand)]);
+    $x =~ s/STORE(.*?)Yote::ObjStore//gs;
+    print STDERR $x;
+  }print STDERR Data::Dumper->Dump(['xxxxxxxxxxxxxxxxxx']);
+
   my $mark_to_keep_store = DB::DataStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
   $mark_to_keep_store->empty();
   $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
@@ -940,6 +948,12 @@ sub _recycle_objects {
   my $count = 0;
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+
+my $x =  Data::Dumper->Dump([" $cand : " . ( $keep ? " KEEP " : " RECYCLE " ) . " references : " . refcount( $self->{OBJ_STORE}->fetch($cand) ) . ' '. ( $self->{OBJ_STORE}->_is_dirty($cand) ? "DIRTY" : "CLEAN" ), $self->{OBJ_STORE}->fetch($cand)]);
+    $x =~ s/STORE(.*?)Yote::ObjStore//gs;
+    print STDERR $x;
+
+
     die "Tried to recycle root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {
         $self->{DATA_STORE}->recycle( $cand );
