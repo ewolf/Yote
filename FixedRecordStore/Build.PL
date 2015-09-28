@@ -6,7 +6,8 @@ use Module::Build;
 my $builder = Module::Build->new(
     add_to_cleanup      => [ 'DB-DataStore-*' ],
     build_requires => {
-        'Test::More' => 0,
+        'Test::More'            => 0,
+        'Module::Build'         => 0,
     },
     create_makefile_pl => 'traditional',
     license            => 'perl',
@@ -14,9 +15,7 @@ my $builder = Module::Build->new(
     release_status     => 'stable',
     test_files         => [ 't/datastore.t', ],
     requires => {
-        'perl'                  => 'v5.12',
-        'Test::More'            => 0,
-        'Module::Build'         => 0,
+        'perl'                  => 'v5.9.4',
     },
     );
 
