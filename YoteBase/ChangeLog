@@ -1,13 +1,19 @@
-2015-05-26 Eric Wolf  <wolf@Talisman>
+2015-09-30 Eric Wolf  <coyocanid@gmail.com>
+	* Version 1.0
+	* Reduces complexity of Yote, bringing the core into a simple file.
+	* Keeps Yote::IO as a sub-package. The core depends on it.
+
+	
+2015-05-26 Eric Wolf  <coyocanid@gmail.com>
 	* Version 0.309
 	* Override equality and inequality operations for Yote::Obj instances. They are equal if they have the same id
 	
-2015-04-07 Eric Wolf  <wolf@Talisman>
+2015-04-07 Eric Wolf  <coyocanid@gmail.com>
 	* Version 0.307
 	* Yote now has its own backend for the object store. Pure perl solution. No longer supports mysql or mongo for simplicity.
 	* fixed bug in templates : the body was not being parsed correctly for templates. Still have to test this on browsers other than chrome and firefox
 	
-2014-03-06  Eric Wolf  <wolf@Talisman>
+2014-03-06  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.2
 	* Finally a dot release increment.
@@ -16,7 +22,7 @@
 	* Fixed bug in sqlite where queries were too big
 	* updated hash template to include a before and after list part.
 
-2014-02-26  Eric Wolf  <wolf@Talisman>
+2014-02-26  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1023
 	* fixed bug in mongo db list_insert
@@ -24,7 +30,7 @@
 	* added sort example to templte testy.html page
 	* implemented reverse is wrapped list sort
 
-2014-02-17  Eric Wolf  <wolf@Talisman>
+2014-02-17  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1022
 	* added wrap_list method to javascript yote object. This returns an object that paginates a wholly loaded list.
@@ -34,12 +40,12 @@
 	* fixed bug where request sockets were not being handled properly.
 	* added search and sort to template pagination via a list wrapper object (from yote obj)
 
-2014-02-07  Eric Wolf  <wolf@Talisman>
+2014-02-07  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1021
 	* fixed bug in edit field
 
-2014-01-14  Eric Wolf  <wolf@Talisman>
+2014-01-14  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1020
 	* reset password link activation also validates email
@@ -49,7 +55,7 @@
 	* $$ item..the item in question
 	* new client server side templating
 
-2014-01-06  Eric Wolf  <wolf@Talisman>
+2014-01-06  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1019
 	* Mongo db tries 3 reconnects if it errors out connecting to mongo
@@ -58,7 +64,7 @@
 	* added _account_handles in Yote::AppRoot
 	* fixed bug in Yote::UserObj permissions.
 
-2014-01-02  Eric Wolf  <wolf@Talisman>
+2014-01-02  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1018
 	* fixed bug in yote_panel refresh
@@ -67,17 +73,17 @@
 	* added Yote::Account::new_user_obj
 	* added new_object_type and new_requires to yote.util.js control_table method for controlling access to creating new objecs and specifying which object types those are.
 
-2013-12-27  Eric Wolf  <wolf@Talisman>
+2013-12-27  Eric Wolf  <coyocanid@gmail.com>
 	* Version 0.1016
 	* count and paginate will return appropriate things by ObjProvider if they are operating on an empty field
 	* fixed a bug in mongo where the paginate was incorrect for hashed things
 
-2013-12-26  Eric Wolf  <wolf@Talisman>
+2013-12-26  Eric Wolf  <coyocanid@gmail.com>
 
 	* Version 0.1015
 	* updated tests
 
-2013-12-13  Eric Wolf  <wolf@Talisman>
+2013-12-13  Eric Wolf  <coyocanid@gmail.com>
 
 	* updated _check_root to just change the handle and password of the existing master account rather than created a new one
 	* javascript create_login changed to be called on the app, and also removed defunct register_login method (called from javascript).

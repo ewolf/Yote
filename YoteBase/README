@@ -10,16 +10,12 @@ Requirements
 Install Yote
 	$ export INSTALL_BASE=/usr/local/yote #optional. default is /usr/local/yote
 
-	$ cpan Yote
+    $ cpan Yote
 
-	$ #  OR ---
+	$ # ---  OR ---
 		
-        $ perl Build.PL 
-        $ ./Build
-        $ ./Build test
-        $ ./Build install
-
-
-Using Yote
-
+    $ perl Build.PL 
+    $ ./Build
+    $ ./Build test
+    $ ./Build install
       
