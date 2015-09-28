@@ -40,7 +40,7 @@ sub test_suite {
                                       } ),
                         } ),
                                } );
-
+    print STDERR "------------------------------\n";
     $store->stow_all;
 
     # objects created : root, myList, a hash in myslist, a newobj
@@ -51,6 +51,7 @@ sub test_suite {
     is( $max_id, 5, "Number of things created" );
 
     my $dup_store = Yote::open_store( $dir );
+
     my $dup_db = $dup_store->{_DATASTORE};
 
     $max_id = $dup_db->_max_id();
@@ -61,9 +62,11 @@ sub test_suite {
     $max_id = $dup_db->_max_id();
     is( $max_id, 5, "Number of things created in newly opened store" );
 
+    print STDERR Data::Dumper->Dump([$root_node,$dup_root,"WOO"]);
     is( $dup_root->{ID}, $root_node->{ID} );
     is_deeply( $dup_root->{DATA}, $root_node->{DATA} );
-
+    print STDERR Data::Dumper->Dump([$dup_root->{DATA},'oo']);
+    print STDERR Data::Dumper->Dump([$dup_root->get_myList,'ozo']);
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_innerval, 
         "This is an inner val" );
     

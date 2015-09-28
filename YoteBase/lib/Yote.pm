@@ -2,11 +2,13 @@ package Yote;
 
 use strict;
 use warnings;
-no warnings 'uninitialized';
+no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
 $VERSION = '1.0';
+
+use DB::DataStore;
 
 =head1 NAME
 
@@ -115,6 +117,7 @@ sub AUTOLOAD {
             my( $self, @vals ) = @_;
             my $get = "get_$fld";
             my $arry = $self->$get([]); # init array if need be
+            print STDERR Data::Dumper->Dump([$self,$s,"WOOWOO"]);
             push( @$arry, @vals );
         };
         use strict 'refs';
@@ -310,7 +313,9 @@ sub fetch_root {
     my $self = shift;
     die "fetch_root must be called on Yote store object" unless ref( $self );
     my $root = $self->fetch( $self->_first_id );
+    print STDERR "Yote::ObjProvider::fetch_root called and root found\n" unless $root;
     unless( $root ) {
+    print STDERR "Yote::ObjProvider::fetch_root called. creating root\n";
         $root = $self->_newroot;
         $root->{ID} = $self->_first_id;
         $self->_stow( $root );
@@ -411,6 +416,7 @@ sub stow_all {
         }
         push( @odata, [ $self->_get_id( $obj ), $cls, $self->_raw_data( $obj ) ] );
     }
+    print STDERR Data::Dumper->Dump([\@odata,"LOOK"]);
     $self->{_DATASTORE}->_stow_all( \@odata );
     $self->{_DIRTY} = {};
 } #stow_all
@@ -425,7 +431,9 @@ sub _new { #Yote::ObjStore
         _DIRTY     => {},
         _WEAK_REFS => {},
     }, $_[0];
-    $self->{_DATASTORE} = new Yote::YoteDB( $self, $_[1] );
+    $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
+    $self->fetch_root;
+    $self->stow_all;
     $self;
 } #_new
 
@@ -447,8 +455,10 @@ sub _first_id {
 
 sub _get_id {
     my( $self, $ref ) = @_;
+    print STDERR Data::Dumper->Dump(["GET ID FOR $ref","$ref" !~ /ARRAY/ ? $ref:"ARAY"]);
     my $class = ref( $ref );
     if( $class eq 'Yote::Array') {
+        print STDERR Data::Dumper->Dump(["$class is Yote::ARRAY"]);
         return $ref->[0];
     }
     elsif( $class eq 'ARRAY' ) {
@@ -510,6 +520,7 @@ sub _stow {
     my $class = ref( $obj );
     return unless $class;
     my $id = $self->_get_id( $obj );
+    print STDERR "Yote::ObjProvider::_stow called for id $id\n";
     die unless $id;
 
     my $data = $self->_raw_data( $obj );
@@ -799,9 +810,6 @@ use warnings;
 
 no warnings 'uninitialized';
 
-use Yote::IO::FixedStore;
-use Yote::IO::StoreManager;
-
 use WeakRef;
 use File::Path qw(make_path);
 use JSON;
@@ -820,24 +828,18 @@ use constant {
 # This the main index and stores in which table and position
 # in that table that this object lives.
 #
-sub new {
+sub open {
   my( $pkg, $obj_store, $args ) = @_;
   my $class = ref( $pkg ) || $pkg;
-  make_path( $args->{ store } );
-  my $filename = "$args->{ store }/OBJ_INDEX";
 
-  my $store_manager = new Yote::IO::StoreManager( $args->{store} );
-
-  # LII template is a long ( for object id, then the table id, then the index in that table
   my $self = bless {
       args          => $args,
-      OBJ_INDEX     => new Yote::IO::FixedRecycleStore( "LII", $filename ),
-      STORE_MANAGER => $store_manager,
       OBJ_STORE  => $obj_store,
+      DATA_STORE => DB::DataStore->open( $args->{ store } ),
   }, $class;
-  $self->_first_id;
+  $self->{DATA_STORE}->ensure_entry_count( 1 );
   $self;
-} #new
+} #open
 
 #
 # Return a list reference containing [ id, class, data ] that
@@ -846,12 +848,10 @@ sub new {
 #
 sub _fetch {
   my( $self, $id ) = @_;
+  my $data = $self->{DATA_STORE}->fetch( $id );
+  return undef unless $data;
 
-  my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-  return undef unless $store_id;
-
-  my( $data ) = @{ $self->{STORE_MANAGER}->get_record( $store_id, $store_idx ) };
-  my $pos = index( $data, ' ' );
+  my $pos = index( $data, ' ' ); #there is a always a space after the class.
   die "Malformed record '$data'" if $pos == -1;
   my $class = substr $data, 0, $pos;
   my $val   = substr $data, $pos + 1;
@@ -865,45 +865,38 @@ sub _fetch {
 # all active objects.
 #
 sub _first_id {
-  my $OI = shift->{OBJ_INDEX};
-  if ( $OI->entries < 1 ) {
-      $OI->next_id;
-  }
   return 1;
 } #_first_id
 
 #
-# Create a new object id and return it. Will never return the
-# value of first_id
+# Create a new object id and return it. 
 #
 sub _get_id {
   my $self = shift;
-  my $OI = $self->{OBJ_INDEX};
-  if( $OI->entries < 1 ) {
-      return $self->_first_id;
-  }
-  $self->{OBJ_INDEX}->next_id;
+  my $id = $self->{DATA_STORE}->next_id;
+  print "Yote::YoteDB get id $id\n";
+  $id;
 } #_get_id
 
 
 # used for debugging and testing
 sub _max_id {
-  return shift->{OBJ_INDEX}->entries;
+  shift->{DATA_STORE}->entry_count;
 }
 
 # used for debugging and testing
 sub _get_recycled_ids {
-  return shift->{OBJ_INDEX}->get_recycled_ids;
+  shift->{DATA_STORE}->_get_recycled_ids;
 }
 
 sub _recycle_objects {
   my $self = shift;
 
-  my $mark_to_keep_store = new Yote::IO::FixedStore( "I", $self->{args}{store} . '/RECYCLE' );
-  $mark_to_keep_store->ensure_entry_count( $self->{OBJ_INDEX}->entries );
+  my $mark_to_keep_store = DB::DataStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
+  $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
   
   # the already deleted cannot be re-recycled
-  my $ri = $self->{OBJ_INDEX}->get_recycled_ids;
+  my $ri = $self->{DATA_STORE}->_get_recycled_ids;
   for ( @$ri ) {
     $mark_to_keep_store->put_record( $_, [ 1 ] );
   }
@@ -934,7 +927,7 @@ sub _recycle_objects {
 
   # the purge begins here
   my $count = 0;
-  my $cands = $self->{OBJ_INDEX}->entries;
+  my $cands = $self->{DATA_STORE}->entry_count;
 
   my( %weak_only_check, @weaks, %weaks );
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
@@ -949,7 +942,7 @@ sub _recycle_objects {
       }
       else { #this case is something in the db that is not connected to the root and not loaded anywhere
         ++$count;
-        $self->{OBJ_INDEX}->delete( $cand, 1 );
+        $self->{DATA_STORE}->recycle( $cand, 'clear' );
       }
     }
   }
@@ -991,7 +984,7 @@ sub _recycle_objects {
     }
   }
   for( @to_delete ) {
-    $self->{OBJ_INDEX}->delete( $_, 1 );
+    $self->{DATA_STORE}->recycle( $_, 1 );
     delete $self->{OBJ_STORE}{_WEAK_REFS}{$_};
   }
   
@@ -1008,29 +1001,7 @@ sub _recycle_objects {
 sub _stow {
   my( $self, $id, $class, $data ) = @_;
   my $save_data = "$class " . to_json($data);
-  my $save_size = do { use bytes; length( $save_data ); };
-  my( $current_store_id, $current_store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-  # check to see if this is already in a store and record that store.
-  if ( $current_store_id ) {
-    my $old_store = $self->{STORE_MANAGER}->get_store( $current_store_id );
-    if ( $old_store->{SIZE} >= $save_size ) {
-      $old_store->put_record( $current_store_idx, [$save_data] );
-      return;
-    }
-    $old_store->delete( $current_store_idx, 1 );
-  }
-
-  # find a store large enough and store it there.
-  my( $store_id, $store ) = $self->{STORE_MANAGER}->best_store_for_size( $save_size );
-  my $store_idx = $store->next_id;
-
-  # okey, looks like the providing the next index is not working well with the recycling. is providing the same one?
-
-  $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $store_idx ] );
-
-  my $ret = $store->put_record( $store_idx, [$save_data] );
-
-  return $ret;
+  $self->{DATA_STORE}->stow( $save_data, $id );
 } #_stow
 
 #
