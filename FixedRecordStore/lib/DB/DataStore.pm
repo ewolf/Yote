@@ -43,12 +43,14 @@ can occur when multiple DB::DataStore objects open the same directory.
 =cut
 
 use strict;
+use warnings;
+
 use File::Path qw(make_path);
 use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 =head1 METHODS
 
@@ -247,7 +249,7 @@ sub _get_store {
     $store;
 } #_get_store
 
-# ----------- end package DB::DataStore
+# ----------- end DB::DataStore
 =head1 HELPER PACKAGES
 
 DB::DataStore relies on two helper packages that are useful in 
@@ -296,6 +298,9 @@ $store->unlink_store;
 
 =cut
 package DB::DataStore::FixedStore;
+
+use strict;
+use warnings;
 
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 
@@ -444,7 +449,6 @@ assigned to this store.
 sub put_record {
     my( $self, $idx, $data ) = @_;
     my $fh = $self->_filehandle;
-    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek : $@ $!";
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
 
     my $to_write_length = do { use bytes; length( $to_write ); };
@@ -454,7 +458,7 @@ sub put_record {
         my $to_write_length = do { use bytes; length( $to_write ); };
         die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
     }
-    my $swv = syswrite $fh, $to_write;
+    sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     defined( $swv ) or die "Could not write : $@ $!";
     1;
 } #put_record
@@ -474,12 +478,12 @@ sub unlink_store {
 sub _filehandle {
     my $self = shift;
     close $self->{FILEHANDLE};
-    open $self->{FILEHANDLE}, "+<$self->{FILENAME}";
+    CORE::open( $self->{FILEHANDLE}, "+<$self->{FILENAME}" );
     $self->{FILEHANDLE};
 }
 
 
-# ----------- end package DB::DataStore::FixedStore
+# ----------- end DB::DataStore::FixedStore
 
 
 
@@ -511,7 +515,11 @@ $id3 == $id;
 =cut
 package DB::DataStore::FixedRecycleStore;
 
+use strict;
+use warnings;
+
 our @ISA='DB::DataStore::FixedStore';
+
 sub open {
     my( $pkg, $template, $filename, $size ) = @_;
     my $self = DB::DataStore::FixedStore->open( $template, $filename, $size );
