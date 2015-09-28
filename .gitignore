@@ -12,6 +12,7 @@ blib
 pm_to_blib
 yote.pid
 Yote*gz
+DB-*gz
 *.bak
 yote_root/html/js/local.js
 lib/Yote/ConfigData.pm
