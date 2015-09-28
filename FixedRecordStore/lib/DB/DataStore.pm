@@ -24,7 +24,6 @@ sub open {
     my( $pkg, $directory ) = @_;
 
     make_path( "$directory/stores", { error => \my $err } );
-
     if( @$err ) {
         my( $err ) = values %{ $err->[0] };
         die $err;
@@ -55,9 +54,8 @@ sub next_id {
 
 sub stow {
     my( $self, $data, $id ) = @_;
-
     $id //= $self->{OBJ_INDEX}->next_id;
-    
+
     my $save_size = do { use bytes; length( $data ); };
 
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
@@ -73,7 +71,7 @@ sub stow {
 
         if( $old_store->{RECORD_SIZE} >= $save_size ) {
             $old_store->put_record( $current_idx_in_store, [$data] );
-            return;
+            return $id;
         }
         
         # the old store was not big enough (or missing), so remove its record from 
@@ -86,7 +84,8 @@ sub stow {
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
     $store->put_record( $index_in_store, [ $data ] );
-    
+
+    $id;
 } #stow
 
 sub fetch {
@@ -254,6 +253,7 @@ sub entry_count {
 
 sub get_record {
     my( $self, $idx ) = @_;
+
     my $fh = $self->_filehandle;
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
@@ -265,11 +265,10 @@ sub get_record {
 # adds an empty record and returns its id, starting with 1
 sub next_id {
     my( $self ) = @_;
-
     my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
     $self->put_record( $next_id, [] );
-    return $next_id;
+    $next_id;
 } #next_id
 
 
@@ -283,7 +282,6 @@ sub pop {
     return undef unless $entries;
     my $ret = $self->get_record( $entries );
     truncate $self->_filehandle, ($entries-1) * $self->{RECORD_SIZE};
-
     $ret;
 } #pop
 
@@ -390,8 +388,9 @@ sub get_recycled_ids {
 
 sub next_id {
     my $self = shift;
-    my $recycled_id = @{ $self->{RECYCLER}->pop || []};
-    return $recycled_id ? $recycled_id->[0] : $self->SUPER::next_id;
+
+    my( $recycled_id ) = @{ $self->{RECYCLER}->pop || []};
+    $recycled_id = $recycled_id ? $recycled_id : $self->SUPER::next_id;
 } #next_id
 
 # ----------- end package DB::DataStore::FixedRecycleStore;
