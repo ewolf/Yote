@@ -78,7 +78,7 @@ sub test_suite {
     is( $store->run_recycler, 3, "3 of the 4 deleted things recyled. The last one is not recycled because there is still a reference to it even if there is no path to root." );
 
     undef $will_be_gone_but_not_yet;
-    is( $store->run_recycler, 1, "the reference of the above test is removed, so its object should be reyelced." );
+    is( $store->run_recycler, 1, "the reference of the above test is removed, so its object should be recycled." );
 
 } #test suite
 
