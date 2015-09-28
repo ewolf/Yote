@@ -888,117 +888,67 @@ sub _recycle_objects {
   my $self = shift;
 
   my $mark_to_keep_store = DB::DataStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
+  $mark_to_keep_store->empty();
   $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
   
   # the already deleted cannot be re-recycled
   my $ri = $self->{DATA_STORE}->_get_recycled_ids;
-  print STDERR Data::Dumper->Dump([$ri,"RECYCLED IDS"]);
   for ( @$ri ) {
     $mark_to_keep_store->put_record( $_, [ 1 ] );
   }
 
-  my $keep_id = $self->_first_id;
-  my( @queue ) = ( $keep_id );
+  my $trace_to_root = sub {
+      my( $keep_id, $mark_to_keep_store ) = @_;
+      my( @queue ) = ( $keep_id );
 
-      print STDERR Data::Dumper->Dump(["MARKING $keep_id"]);
-  $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
+      $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
 
-  # get the object ids referenced by this keeper object
-  while( @queue ) {
-    $keep_id = shift @queue;
 
-    my $item = $self->_fetch( $keep_id );
-    my( @additions );
-    if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-      ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
-    } else {
-      ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
-    }
+      # get the object ids referenced by this keeper object
+      while( @queue ) {
+          $keep_id = shift @queue;
 
-    for my $keeper ( @additions ) {
-      next if $mark_to_keep_store->get_record( $keeper )->[0];
-      $mark_to_keep_store->put_record( $keeper, [ 1 ] );
-      print STDERR Data::Dumper->Dump(["MARKING $keeper"]);
-      push @queue, $keeper;
-    }
-  } #while there is a queue
+          my $item = $self->_fetch( $keep_id );
+          my( @additions );
+          if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
+              ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
+          } else {
+              ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
+          }
+
+          for my $keeper ( @additions ) {
+              next if $mark_to_keep_store->get_record( $keeper )->[0];
+              $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+              push @queue, $keeper;
+          }
+      } #while there is a queue
+  };
+
+  &$trace_to_root( $self->_first_id, $mark_to_keep_store );
+
+  #
+  # If there are any entries in the weak references, do not recycle these.
+  # This ignores the possibility of circular references, but that uncommon case
+  # is not worth the complexity.
+  #
+  for my $referenced_id ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+      &$trace_to_root( $referenced_id, $mark_to_keep_store );
+  }
 
   # the purge begins here
   my $cands = $self->{DATA_STORE}->entry_count;
-
-  my( %to_recycle, %weak_ref_check );
+  my $count = 0;
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
-    my $wf = $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
-
+    die "Tried to recycle root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {
-      if( $wf ) {
-          $weak_ref_check{ $cand } = $wf;
-      }
-      else {
-          $to_recycle{ $cand } = 1;
-      }
+        $self->{DATA_STORE}->recycle( $cand );
+        delete $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
+        $count++;
     }
   }
 
-  # weak references will not be deleted
-  # unless they only are referenced by other weak references
-  # returns 1 if it should not recycle
-  my $recursive_weak_check = sub {
-      my( $weak_id, $seen ) = @_;
-      return 0 if $seen->{$weak_id}++;
-
-      my $obj = $self->{OBJ_STORE}->_xform_in($weak_id);
-      if ( ref( $obj ) eq 'ARRAY' ) { 
-          for ( grep { $_ !~ /^v/ } map { $self->{OBJ_STORE}->_xform_in($_) } @$obj ) {
-              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
-          }
-      } elsif ( ref( $obj ) eq 'HASH' ) {
-          for ( grep { $_ !~ /^v/ } map { $self->{OBJ_STORE}->_xform_in($_) } values %$obj) {
-              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
-          }
-      } else {
-          for ( grep { $_ !~ /^v/ } values %{ $obj->{DATA} } ) {
-              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
-          }
-      }
-      return 0;
-  }; #recursive weak check
-
-  # check things attached to the weak refs.
-  # checking for circular weak references
-  for my $wf_id (keys %weak_ref_check) { 
-      unless( $recursive_weak_check( $wf_id, $weak_ref_check{$wf_id}, {} ) ) {
-          $to_recycle->{$wf_id} = 1;
-      }
-  }
-
-bla
-  # can delete things with only references to the WEAK and DIRTY caches.
-  my( @to_delete );
-  for my $weak ( @weaks ) {
-    my( $id, $obj ) = @$weak;
-    unless( $obj ) {
-      push @to_delete, $id;
-      ++$count;
-    } else {
-      my $extra_refs = 2;
-      # hash and array have an additional reference in the tie
-      if( ref( $obj ) =~ /^(ARRAY|HASH)$/ ) {
-        $extra_refs++;
-      }
-      if( ($extra_refs+$weak_only_check{$id}) >= refcount($obj) ) {
-        push @to_delete, $id;
-        ++$count;
-      }
-    }
-  }
-  for( @to_delete ) {
-    $self->{DATA_STORE}->recycle( $_, 1 );
-    delete $self->{OBJ_STORE}{_WEAK_REFS}{$_};
-  }
-  
-  # remove recycle datastore
+  # remove temporary recycle datastore
   $mark_to_keep_store->unlink_store;
   
   return $count;
