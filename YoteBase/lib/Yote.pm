@@ -892,6 +892,7 @@ sub _recycle_objects {
   
   # the already deleted cannot be re-recycled
   my $ri = $self->{DATA_STORE}->_get_recycled_ids;
+  print STDERR Data::Dumper->Dump([$ri,"RECYCLED IDS"]);
   for ( @$ri ) {
     $mark_to_keep_store->put_record( $_, [ 1 ] );
   }
@@ -899,6 +900,7 @@ sub _recycle_objects {
   my $keep_id = $self->_first_id;
   my( @queue ) = ( $keep_id );
 
+      print STDERR Data::Dumper->Dump(["MARKING $keep_id"]);
   $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
 
   # get the object ids referenced by this keeper object
@@ -916,49 +918,62 @@ sub _recycle_objects {
     for my $keeper ( @additions ) {
       next if $mark_to_keep_store->get_record( $keeper )->[0];
       $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+      print STDERR Data::Dumper->Dump(["MARKING $keeper"]);
       push @queue, $keeper;
     }
   } #while there is a queue
 
   # the purge begins here
-  my $count = 0;
   my $cands = $self->{DATA_STORE}->entry_count;
 
-  my( %weak_only_check, @weaks, %weaks );
+  my( %to_recycle, %weak_ref_check );
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
     my $wf = $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
-    
-    #OKEY, we have to fight cicular references. if an object in weak reference only references other things in
-    # weak references, then it can be removed";
+
     if ( ! $keep ) {
       if( $wf ) {
-        push @weaks, [ $cand, $wf ];
+          $weak_ref_check{ $cand } = $wf;
       }
-      else { #this case is something in the db that is not connected to the root and not loaded anywhere
-        ++$count;
-        $self->{DATA_STORE}->recycle( $cand, 'clear' );
+      else {
+          $to_recycle{ $cand } = 1;
       }
     }
   }
+
+  # weak references will not be deleted
+  # unless they only are referenced by other weak references
+  # returns 1 if it should not recycle
+  my $recursive_weak_check = sub {
+      my( $weak_id, $seen ) = @_;
+      return 0 if $seen->{$weak_id}++;
+
+      my $obj = $self->{OBJ_STORE}->_xform_in($weak_id);
+      if ( ref( $obj ) eq 'ARRAY' ) { 
+          for ( grep { $_ !~ /^v/ } map { $self->{OBJ_STORE}->_xform_in($_) } @$obj ) {
+              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
+          }
+      } elsif ( ref( $obj ) eq 'HASH' ) {
+          for ( grep { $_ !~ /^v/ } map { $self->{OBJ_STORE}->_xform_in($_) } values %$obj) {
+              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
+          }
+      } else {
+          for ( grep { $_ !~ /^v/ } values %{ $obj->{DATA} } ) {
+              return 1 if ! $to_recycle{ $_ } or $recursive_weak_check( $_ );
+          }
+      }
+      return 0;
+  }; #recursive weak check
+
   # check things attached to the weak refs.
-  for my $wf (@weaks) { 
-    my( $id, $obj ) = @$wf;
-    if ( ref( $obj ) eq 'ARRAY' ) { 
-      for ( map { $self->{OBJ_STORE}->_xform_in($_) } @$obj ) {
-        $weak_only_check{ $_ }++;
+  # checking for circular weak references
+  for my $wf_id (keys %weak_ref_check) { 
+      unless( $recursive_weak_check( $wf_id, $weak_ref_check{$wf_id}, {} ) ) {
+          $to_recycle->{$wf_id} = 1;
       }
-    } elsif ( ref( $obj ) eq 'HASH' ) {
-      for ( map { $self->{OBJ_STORE}->_xform_in($_) } values %$obj) {
-        $weak_only_check{ $_ }++;
-      }
-    } else {
-      for ( values %{ $obj->{DATA} } ) {
-        $weak_only_check{ $_ }++;
-      }
-    }
-  } #each weak
-  
+  }
+
+bla
   # can delete things with only references to the WEAK and DIRTY caches.
   my( @to_delete );
   for my $weak ( @weaks ) {

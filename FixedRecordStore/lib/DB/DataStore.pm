@@ -101,7 +101,6 @@ sub fetch {
 
 sub recycle {
     my( $self, $id, $clear ) = @_;
-
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     return undef unless defined $store_id;
     
@@ -292,11 +291,9 @@ sub pop {
 #
 sub push {
     my( $self, $data ) = @_;
-
     my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
-    $self->put_record( $next_id, $data );
-
+    $self->put_record( $next_id, [$data] );
     return $next_id;
 } #push
 
@@ -370,7 +367,7 @@ sub open {
 sub recycle {
     my( $self, $idx, $purge ) = @_;
     $self->{RECYCLER}->push( $idx );
-    if( $purge ) {
+    if( $purge  ) {
         $self->put_record( $idx, [] );
     }
 } #recycle
@@ -388,7 +385,7 @@ sub get_recycled_ids {
 
 sub next_id {
     my $self = shift;
-    my $recycled_id = $self->{RECYCLER}->pop;
+    my $recycled_id = @{ $self->{RECYCLER}->pop || []};
     return $recycled_id ? $recycled_id->[0] : $self->SUPER::next_id;
 } #next_id
 
