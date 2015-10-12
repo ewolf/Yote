@@ -68,7 +68,7 @@ $server->stop;
 
 done_testing;
 
-Devel::SimpleProfiler::analyze('calls');
+print Devel::SimpleProfiler::analyze('calls');
 
 exit( 0 );
 
