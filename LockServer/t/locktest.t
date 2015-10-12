@@ -144,15 +144,4 @@ sub test_suite {
     
 } #test suite
 
-sub msg {
-    my( $msg ) = @_;
-    my $sock = new IO::Socket::INET( "127.0.0.1:8004" );
-    $sock->autoflush;
-    $sock->print( "$msg\n" );
-    my $answer = <$sock>;
-    $sock->close;
-    chomp $answer;
-    return $answer;
-}
-
 __END__

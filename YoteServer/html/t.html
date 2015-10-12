@@ -6,7 +6,7 @@
 <h1>foo</h1>
 
 <form method="POST" action="http://localhost:8881/_/test">
-  <input type="text" name="P">
+  <input type="text" id="P" name="P">
   <input type="hidden" name="P" value="vO +OO">
   <input type="hidden" name="P" value="vba
 r">
@@ -24,7 +24,8 @@ r">
 var myWorker = new Worker("/__/wtest.js");
 var subr = document.getElementById( 'js' );
 subr.addEventListener("click",function(e) {
-    myWorker.postMessage(["A","B","C"]);
+    var p = document.getElementById( 'P' );
+    myWorker.postMessage( e.data );
     console.log('Message posted to worker');
     
     myWorker.onmessage = function(e) {
@@ -46,7 +47,8 @@ function reqListener( x ) {
       var oReq = new XMLHttpRequest();
 //      oReq.addEventListener("load", reqListener);
       oReq.open("POST", "http://localhost:8881/_/test",false);
-      oReq.send("x=vFOO&y=vBar");
+ 
+      oReq.send("x=vFOO&y=vBar&z=" + );
     var x = JSON.parse( this.responseText );
 console.log( x );
   } );

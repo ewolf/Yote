@@ -17,8 +17,12 @@ sub new {
     my $class = ref( $pkg ) || $pkg;
     bless {
         args                 => $args,
-        host                 => $args->{host} || '127.0.0.1',
-        port                 => $args->{port} || 8881,
+        yote_host            => $args->{yote_host} || '127.0.0.1',
+        yote_port            => $args->{yote_port} || 8881,
+        lock_host            => $args->{lock_host} || '127.0.0.1',
+        lock_port            => $args->{lock_port},
+        lock_timeout         => $args->{lock_timeout},
+        lock_attempt_timeout => $args->{lock_attempt_timeout},
         pids                 => [],
     }, $class;
 } #new
@@ -59,15 +63,20 @@ sub run {
 
     my $listener_socket = new IO::Socket::INET(
         Listen    => 10,
-        LocalAddr => "$self->{host}:$self->{port}",
+        LocalAddr => "$self->{yote_host}:$self->{yote_port}",
         );
     unless( $listener_socket ) {
-        $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
+        $self->{error} = "Unable to open socket on port '$self->{yote_port}' : $! $@\n";
         _log( "unable to start lock server : $@ $!." );
         return 0;
     }
 
-    my $locker = new Lock::Server;
+    my $locker = new Lock::Server( {
+        port                 => $self->{lock_port},
+        host                 => $self->{lock_host},
+        lock_attempt_timeout => $self->{lock_attempt_timeout},
+        lock_timeout         => $self->{lock_timeout},
+                                    } );
     $locker->start;
 
     # if this is cancelled, make sure all child procs are killed too
