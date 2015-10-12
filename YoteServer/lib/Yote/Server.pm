@@ -117,58 +117,52 @@ sub _log {
 sub _process_request {
     my( $self, $sock ) = @_;
 
-    if( my $pid = fork ) {
+    if ( my $pid = fork ) {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
-    use Profiler;Profiler::start;
-#        use Profiler; Profiler::init(qr/Yote|Lock|DB/,"PROCESS REQUEST");
-        $self->__process_request( $sock );
-    }
-} # _process_request
-sub __process_request {
-    my( $self, $sock ) = @_;
-    #child
-    $0 = "YoteServer processing request";
-    $SIG{INT} = sub {
-        _log( "Yote server process $$ : got INT signal. Shutting down." );
-        $sock->close;
-        exit;
-    };
+        use Profiler;Profiler::start;
+        #child
+        $0 = "YoteServer processing request";
+        $SIG{INT} = sub {
+            _log( "Yote server process $$ : got INT signal. Shutting down." );
+            $sock->close;
+            exit;
+        };
     
     
-    my $req = <$sock>;
-    $ENV{REMOTE_HOST} = $sock->peerhost;
-    my %headers;
-    while( my $hdr = <$sock> ) {
-        $hdr =~ s/\s*$//s;
-        last if $hdr !~ /[a-zA-Z]/;
-        my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
-        $headers{$key} = $val;
-    }
+        my $req = <$sock>;
+        $ENV{REMOTE_HOST} = $sock->peerhost;
+        my %headers;
+        while ( my $hdr = <$sock> ) {
+            $hdr =~ s/\s*$//s;
+            last if $hdr !~ /[a-zA-Z]/;
+            my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
+            $headers{$key} = $val;
+        }
     
-    my $store = $self->{STORE};
+        my $store = $self->{STORE};
     
-    _log( "\n--> : $req" );
+        _log( "\n--> : $req" );
 
-    # 
-    # read certain length from socket ( as many bytes as content length )
-    #
-    my $content_length = $headers{'Content-Length'};
-    my $data;
-    if( $content_length > 0 && ! eof $sock) {
-        read $sock, $data, $content_length;
-    }
-    my( $verb, $path ) = split( /\s+/, $req );
+        # 
+        # read certain length from socket ( as many bytes as content length )
+        #
+        my $content_length = $headers{'Content-Length'};
+        my $data;
+        if ( $content_length > 0 && ! eof $sock) {
+            read $sock, $data, $content_length;
+        }
+        my( $verb, $path ) = split( /\s+/, $req );
     
     
-    # escape for serving up web pages
-    # the thought is that this should be able to be a stand alone webserver
+        # escape for serving up web pages
+        # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
-        if( $path =~ m!/__/! ) {
+        if ( $path =~ m!/__/! ) {
             # TODO - make sure install script makes the directories properly
             my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
-            if( -e $filename ) {
+            if ( -e $filename ) {
                 _log( "'$filename' exists" );
                 my @stat = stat $filename;
 
@@ -176,7 +170,7 @@ sub __process_request {
                     'Content-Type: text/html; charset=utf-8',
                     'Server: Yote',
                     "Content-Length: $stat[7]",
-                    );
+                );
 
 
                 open( IN, "<$filename" );
@@ -184,7 +178,7 @@ sub __process_request {
 
                 $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n" );
 
-                while( $data = <IN> ) {
+                while ( $data = <IN> ) {
                     $sock->print( $data );
                 }
                 close IN;
@@ -203,18 +197,18 @@ sub __process_request {
 
         # root is /_/
         my( $obj_id, $token, $action, $params );
-        if( $verb eq 'GET' ) {
+        if ( $verb eq 'GET' ) {
             ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } @params ];
             
-        } elsif( $verb eq 'POST' ) {
+        } elsif ( $verb eq 'POST' ) {
             ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } 
-                        map { s/^[^=]+=//; s/\+/ /gs; $_; } 
-                        split ( '&', $data ) ];
+                            map { s/^[^=]+=//; s/\+/ /gs; $_; } 
+                            split ( '&', $data ) ];
         }
 
-        if( substr( $action, 0, 1 ) eq '_' ) {
+        if ( substr( $action, 0, 1 ) eq '_' ) {
             _log( "Bad action (underscore) : '$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -227,10 +221,10 @@ sub __process_request {
         my $server_root_id = $server_root->{ID};
 
         unless( $obj_id eq '_' || 
-                $obj_id eq $server_root_id || 
-                ( $obj_id > 0 && 
-                  $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && 
-                  $server_root->_getMay( $obj_id, $token ) ) ) {
+                    $obj_id eq $server_root_id || 
+                    ( $obj_id > 0 && 
+                      $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && 
+                      $server_root->_getMay( $obj_id, $token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Path : '$path'" );
@@ -239,7 +233,7 @@ sub __process_request {
             exit;
         }
 
-        if( $params && ref( $params ) ne 'ARRAY' ) {
+        if ( $params && ref( $params ) ne 'ARRAY' ) {
             _log( "Bad Req Param Not Array : $params" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -267,20 +261,19 @@ sub __process_request {
             exit;
         }
 
-        
         my( @res );
         eval {
-            if( $action eq 'fetch' && $obj == $server_root ) {
+            if ( $action eq 'fetch' && $obj == $server_root ) {
                 # fetch is a special action that can return any 
                 # object in the system. It must check the token
                 # to see if that particular object is allowed/available
                 # to the caller
-                push( @in_params, $token );
+                unshift( @in_params, $token );
             }
             (@res) = ($obj->$action( @in_params ));
         };
 
-        if( $@ ) {
+        if ( $@ ) {
             _log( "INTERNAL SERVER ERROR '$@'" );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
@@ -296,11 +289,11 @@ sub __process_request {
             push @out_res, $val;
         }
         my $ids_to_update;
-        if( $action eq 'fetch_root' && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        if ( $action eq 'fetch_root' && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
             # if there is a token, make it known that the token 
             # has received server root data
             $ids_to_update = [ $server_root_id ];
-            if( $token > 1  ) {
+            if ( $token > 1  ) {
                 unless( $store->_last_updated( $server_root_id ) ) {
                     $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ time ] );
                 }
@@ -320,18 +313,18 @@ sub __process_request {
             my $ref = ref( $obj );
 
             my( $data, $meths );
-            if( $ref eq 'ARRAY' ) {
+            if ( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
                           $server_root->_setMay( $d, $token );
                           $d } 
                         @$obj ];
-            } elsif( $ref eq 'HASH' ) {
+            } elsif ( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
                           $server_root->_setMay( $d, $token );
                           $_ => $d }
-                    keys %$obj };
+                        keys %$obj };
             } else {
                 my $obj_data = $obj->{DATA};
 
@@ -339,8 +332,8 @@ sub __process_request {
                     map { my $d = $obj_data->{$_};
                           $server_root->_setMay( $d, $token );
                           $_ => $d }
-                    grep { $_ !~ /^_/ }
-                    keys %$obj_data };
+                        grep { $_ !~ /^_/ }
+                        keys %$obj_data };
                 $methods{$ref} ||= $obj->_callable_methods;
             }
             $server_root->_setHas( $obj_id, $token );
@@ -350,19 +343,19 @@ sub __process_request {
                 data  => $data,
             };
             push @updates, $update;
-        } #each obj_id to update
+        }                       #each obj_id to update
         
         my $out_res = to_json( { result  => \@out_res,
                                  updates => \@updates,
                                  methods => \%methods,
-                               } );
+                             } );
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
             'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . length( $out_res ),
-            );
+        );
         _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_res )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
 
@@ -370,6 +363,7 @@ sub __process_request {
         $self->{STORE}->stow_all;
         exit;
     } #child
+} #_process_request
 
 # ------- END Yote::Server
 
@@ -575,9 +569,7 @@ sub _valid_token {
         if( $slots->[$i]{$token} eq $ip ) {
             if( $i < $#$slots ) {
                 # refresh its time
-                $self->{STORE}->lock( 'token_mutex' );
                 $slots->[0]{ $token } = $ip;
-                $self->{STORE}->unlock( 'token_mutex' );
             }
             return 1;
         }
@@ -655,7 +647,7 @@ sub _updates_needed {
             push @updates, $obj_id;
         }
     }
-    $self->{STORE}->unlock( "_hasToken2objs" );
+    $self->{STORE}->unlock( "_doesHave_Token2objs" );
     \@updates;
 } #_updates_needed
 
@@ -757,12 +749,13 @@ sub fetch_root {
 }
 
 sub fetch {
-    my( $self, $id, $token ) = @_;
-    if( $self->_getMay( $id, $token ) && ! ref( $id ) ) {
-        return $self->{STORE}->fetch( $id );
-    }
-    die "Invalid id '$id'";
-}
+    my( $self, $token, @ids ) = @_;
+    my $may = $self->get__mayHave_Token2objs;
+    my $s = $self->{STORE};
+    map { $s->fetch( $_ ) }
+        grep { ! ref($_) && $may->{$_} }
+        @ids;
+} #fetch
 
 # ------- END Yote::ServerRoot
 

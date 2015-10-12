@@ -60,7 +60,8 @@ sub _analyze {
     print "\n performance stats ( all times are in ms)\n\n";
     print sprintf( "%*s  | ", $longsub, "sub" ). join( " | ", map { sprintf( "%*s", $minwidth, $_ ) } @titles[1..$#titles] ) ."\n";
     print '-' x $longsub . '--+-' . join( "-+-", map { '-' x $minwidth } @titles[1..$#titles] )."\n";
-    for my $subr (sort { $stats{$b}{total} <=> $stats{$a}{total} } keys %stats) {
+#    for my $subr (sort { $stats{$b}{total} <=> $stats{$a}{total} } keys %stats) {
+    for my $subr (sort { $stats{$b}{avg} <=> $stats{$a}{avg} } keys %stats) {
         print join( " | ", sprintf( "%*s ", $longsub, $subr ),
                     map { sprintf( "%*d", $minwidth, $stats{$subr}{$_} ) }
                     qw( calls total mean avg max min ) )."\n";
