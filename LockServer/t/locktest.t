@@ -67,31 +67,53 @@ sub test_suite {
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
+        # my $locker3 = $locks->client( "LOCKER3" );
+        # cmp_ok( $locker3->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER3" );
+        # is( $locker3->isLocked( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
+        # is( $locker3->lockedByMe( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
+        # sleep 2;
+        # is( $locker3->unlock( "KEY1" ), '1', "unlock KEY1 LOCKER3" );
+        # exit;
+
+
         my $locker3 = $locks->client( "LOCKER3" );
-        cmp_ok( $locker3->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER3" );
-        is( $locker3->isLocked( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
-        is( $locker3->lockedByMe( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
+        my $res = $locker3->lock( "KEY1" ) > 1;
+        $res = $res && $locker3->isLocked( "KEY1" ) == 1;
+        $res = $res && $locker3->lockedByMe( "KEY1" ) == 1;
         sleep 2;
-        is( $locker3->unlock( "KEY1" ), '1', "unlock KEY1 LOCKER3" );
-        exit;
+        $res = $res && $locker3->unlock( "KEY1" ) == 1;
+        exit ! $res;
     }
     sleep .01;
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
+        # my $locker4 = $locks->client( "LOCKER4" );
+        # is( $locker4->isLocked( "KEY1" ), '1', "LOCKER4 is aready locking KEY1" );
+        # # KEY1 is locked by locker3, so this doesn't return until it
+        # # is unlocked, a time of 2 seconds
+        # cmp_ok( $locker4->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER4" );
+        # is( $locker4->unlock( "KEY1" ), '1', "unlock KEY1 LOCKER4" );
+        # exit;
+
+
         my $locker4 = $locks->client( "LOCKER4" );
-        is( $locker4->isLocked( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
+        my $res = $locker4->isLocked( "KEY1" ) == 1;
         # KEY1 is locked by locker3, so this doesn't return until it
         # is unlocked, a time of 2 seconds
-        cmp_ok( $locker4->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER4" );
-        is( $locker4->unlock( "KEY1" ), '1', "unlock KEY1 LOCKER4" );
-        exit;
+        $res = $res && $locker4->lock( "KEY1" ) > 1;
+        $res = $res && $locker4->unlock( "KEY1" ) == 1;
+        exit ! $res;
     }
 
     my $t1 = time;
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
+
+        # XXX
+        fail("LOCKER4") if $?;
+
     }
     is( int(time -$t1),2, "second lock waited on the first" );
 
@@ -106,32 +128,56 @@ sub test_suite {
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
+        # my $locker4 = $locks->client( "LOCKER4" );
+        # cmp_ok( $locker4->lock( "KEYA" ), '>', '1', "lock KEYA LOCKER4" ); #A locked
+        # sleep 5;
+        # is( $locker4->isLocked( "KEYB" ), '0', "LOCKER5 released KEYB" );
+        # cmp_ok( $locker4->lock( "KEYB" ), '>', '1', "LOCK KEYB LOCKER4" ); #B lock released when second thread failed
+        # is( $locker4->unlock( "KEYB" ), '1', "unlock KEYB LOCKER4" );
+        # exit;
+
+
         my $locker4 = $locks->client( "LOCKER4" );
-        cmp_ok( $locker4->lock( "KEYA" ), '>', '1', "lock KEYA LOCKER4" ); #A locked
+        my $res = $locker4->lock( "KEYA" ) > 1;
         sleep 5;
-        is( $locker4->isLocked( "KEYB" ), '0', "LOCKER5 released KEYB" );
-        cmp_ok( $locker4->lock( "KEYB" ), '>', '1', "LOCK KEYB LOCKER4" ); #B lock released when second thread failed
-        is( $locker4->unlock( "KEYB" ), '1', "unlock KEYB LOCKER4" );
-        exit;
+        $res = $res && $locker4->isLocked( "KEYB" ) == 0;
+        $res = $res && $locker4->lock( "KEYB" ) > 1;
+        $res = $res && $locker4->unlock( "KEYB" ) == 1;
+        exit ! $res;
+
     }
     sleep .01;
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
+        # my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
+        # cmp_ok( $locker5->lock( "KEYB" ), '>', '1', "lock KEYB LOCKER5" ); #B locked
+        # is( $locker5->lockedByMe( "KEYB" ), '1', "KEYB LOCKER5 lock not yet expired" );
+        # my $t = time;
+        # is( $locker5->lockedByMe( "KEYA" ), '0', "KEYA LOCKER5 lock expired" );
+        # is( $locker5->lock( "KEYA" ), '0', "KEYA LOCKER5 deadlocked out" );
+        # is( $locker5->lockedByMe( "KEYB" ), '0', "KEYB LOCKER5 lock expired" );
+        # is( time-$t, 5, "deadlock timed out " );
+        # exit;
+
+
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
-        cmp_ok( $locker5->lock( "KEYB" ), '>', '1', "lock KEYB LOCKER5" ); #B locked
-        is( $locker5->lockedByMe( "KEYB" ), '1', "KEYB LOCKER5 lock not yet expired" );
+        my $res = $locker5->lock( "KEYB" ) > 1;
+        $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;
         my $t = time;
-        is( $locker5->lockedByMe( "KEYA" ), '0', "KEYA LOCKER5 lock expired" );
-        is( $locker5->lock( "KEYA" ), '0', "KEYA LOCKER5 deadlocked out" );
-        is( $locker5->lockedByMe( "KEYB" ), '0', "KEYB LOCKER5 lock expired" );
-        is( time-$t, 5, "deadlock timed out " );
-        exit;
+        $res = $res && $locker5->lockedByMe( "KEYA" ) == 0;
+        $res = $res && $locker5->lock( "KEYA" ) == 0;
+        $res = $res && $locker5->lockedByMe( "KEYB" ) == 0;
+        $res = $res && ( time-$t ) == 5;
+        exit ! $res;
     }
 
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
+
+        # XXX
+        fail("LOCKER4/LOCKER5") if $?;
     }
     
 } #test suite
