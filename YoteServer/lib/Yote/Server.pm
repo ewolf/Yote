@@ -10,6 +10,7 @@ use Lock::Server;
 use Yote;
 
 use JSON;
+use URI::Escape;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -116,19 +117,15 @@ sub _process_request {
 #        push @{$self->{pids}},$pid;
     } else {
         #child
-
         my $req = <$sock>;
-        print STDERR "$req";
         my $IP = $sock->peerhost;
         my %headers;
         while( my $hdr = <$sock> ) {
-            print STDERR "$hdr";
             $hdr =~ s/\s*$//s;
-            last unless $hdr =~ /\S/;
+            last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
         }
-
         # validate token if any. Make sure token and ip work
         my $store = $self->{STORE};
 
@@ -138,17 +135,16 @@ sub _process_request {
         # 
         # read certain length from socket ( as many bytes as content length )
         #
-        my $content_length;
+        my $content_length = $headers{'Content-Length'};
         my $data;
-        if( $content_length && ! eof $sock) {
+        if( $content_length > 0 && ! eof $sock) {
             my $read = read $sock, $data, $content_length;
         }
-        
         my( $verb, $path ) = split( /\s+/, $req );
 
         # data has the input parmas in JSON format.
         # GET /obj/action/params
-        # PUT /obj/action  (params in PUT data)
+        # POST /obj/action  (params in POST data)
 
         # root is /_/
 
@@ -156,10 +152,10 @@ sub _process_request {
         my( $obj_id, $action );
         if( $verb eq 'GET' ) {
             ( $obj_id, $action, my @params ) = split( '/', substr( $path, 1 ) );
-            $params = \@params;
-        } elsif( $verb eq 'PUT' ) {
-            ( $obj_id, $action ) = split( '/', $path );
-            $params = from_json( $data );
+            $params = [ map { URI::Escape::uri_unescape($_) } @params ];
+        } elsif( $verb eq 'POST' ) {
+            ( $obj_id, $action ) = split( '/', substr( $path, 1 ) );
+            $params = [ map { URI::Escape::uri_unescape($_) } map { s/^[^=]+=//; s/\+/ /gs; $_; } split ( '&', $data ) ];
         }
         
         my $server_root = $self->{SERVER_ROOT};
@@ -170,23 +166,26 @@ sub _process_request {
 
         unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
+            _log( "Bad Req : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
-            return;
+            exit;
         }
 
         if( $params && ref( $params ) ne 'ARRAY' ) {
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
+            _log( "Bad Req : params:'$params'" );
             $sock->close;
-            return;
+            exit;
         }
 
         my( @in_params );
         for my $param (@$params) {
             unless( index( $param, 'v' ) == 0 || $server_root->_canhas( $param, $token ) ) {
+                _log( "Bad Req : param:'$param'" );
                 $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
                 $sock->close;
-                return;
+                exit;
             }
             push @in_params, $store->_xform_out( $param );
         }
@@ -202,6 +201,7 @@ sub _process_request {
         };
 
         if( $@ ) {
+            _log( "INTERNAL SERVER ERROR" );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
             return;
@@ -261,14 +261,15 @@ sub _process_request {
                                  updates => \@updates,
                                  methods => \%methods,
                                } );
-
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
-            'Access-Control-Allow-Headers: accept, content-type, cookie, oriogin, connection, cache-control',
+            'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
+            'Access-Control-Allow-Origin: *',
             );
 
-        $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res" );
+        _log( "200 OK ( $out_res )" );
+        $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
 
         $sock->close;
 
@@ -378,9 +379,9 @@ sub __discover_methods {
     }
 
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
-    my( %base ) = map { $_ => 1 } @$base_meths;
+    my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
 
-    $meths = [ grep { $_ !~ /^_/ && ! $base{$_} } @m ];
+    $meths = [ grep { $_ !~ /^(_|[gs]et_)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -444,10 +445,10 @@ use base 'Yote::ServerObj';
 
 sub _init {
     my $self = shift;
-    $self->set_hasToken2objs({});
-    $self->set_canToken2objs({});
-    $self->set_apps({});
-    $self->set_appOnOff({});
+    $self->set__hasToken2objs({});
+    $self->set__canToken2objs({});
+    $self->set__apps({});
+    $self->set__appOnOff({});
 }
 
 sub _valid_token {
@@ -456,7 +457,7 @@ sub _valid_token {
 
 sub _token2objs {
     my( $self, $tok, $flav ) = @_;
-    my $token2objs = $self->get( "${flav}Token2objs" );
+    my $token2objs = $self->get( "_${flav}Token2objs" );
     $self->lock( $token2objs );
     my $objs = $token2objs->{$tok};
     unless( $objs ) {
@@ -478,7 +479,7 @@ sub _has {
 sub _resethas {
     my( $self, $token ) = @_;
     for ( qw( has can ) ) {
-        my $token2objs = $self->get( "${_}Toekn2objs" );
+        my $token2objs = $self->get( "_${_}Toekn2objs" );
         $self->lock( $token2objs );
         delete $token2objs->{ $token };
         $self->unlock( $token2objs );
@@ -530,7 +531,7 @@ sub _updates_needed {
 sub fetch_app {
     my( $self, $app_name, @args ) = @_;
 
-    my $apps = $self->get_apps;
+    my $apps = $self->get__apps;
     my $app  = $apps->{$app_name};
     unless( $app ) {
         eval("require $app_name");
@@ -544,7 +545,7 @@ sub fetch_app {
         $app = $app_name->new;
         $apps->{$app_name} = $app;
     }
-    my $appIsOn = $self->get_appOnOff->{$app_name};
+    my $appIsOn = $self->get__appOnOff->{$app_name};
     unless( $appIsOn ) {
         $self->{STORE}->_log( "App '$app_name' not found" );
         return undef;
@@ -552,9 +553,13 @@ sub fetch_app {
     $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 
+sub fetch_root {
+    return shift;
+}
+
 sub test {
     my( $self, @args ) = @_;
-    return ( "FOOBIE", "BLECH", [ "VAROOM" ] );
+    return ( "FOOBIE", "BLECH", @args );
 }
 
 # ------- END Yote::ServerRoot
