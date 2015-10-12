@@ -35,7 +35,8 @@ package Lock::Server;
     }
 
     my $lockClient_A = $lockServer->client( "CLIENT_A" );
-    my $lockClient_B = new Lock::Server::Client( "CLIENT_B", 'localhost', 888 );
+    my $lockClient_B = 
+        new Lock::Server::Client( "CLIENT_B", 'localhost', 888 );
 
     if( $lockClient_A->lock( "KEYA" ) ) {
        print "Lock Successfull for locker A and KEYA\n";
@@ -163,27 +164,30 @@ sub start {
             my $req = <$connection>; 
             chomp $req;
             _log( "lock server : got request <$req>\n" );
-            my( $cmd, $key, $locker_id ) = ( $req =~ /^(\S+) (\S+) (\S+)/ );
-            if( $cmd eq 'LOCK' ) {
-                $self->_lock( $connection, $locker_id, $key );
-            } elsif( $cmd eq 'UNLOCK' ) {
-                $self->_unlock( $connection, $locker_id, $key );
-            } elsif( $cmd eq 'CHECK' ) {
-                $self->_check( $connection, $locker_id, $key );
-            } elsif( $cmd eq 'VERIFY' ) {
-                $self->_verify( $connection, $locker_id, $key );
+
+            if( $req =~ /^CHECK (\S+)/ ) {
+                $self->_check( $connection, $1 );
             } else {
-                _log( "lock server : did not understand request\n" );
-                $connection->close;
+                my( $cmd, $key, $locker_id ) = ( $req =~ /^(\S+) (\S+) (\S+)/ );
+                if( $cmd eq 'LOCK' ) {
+                    $self->_lock( $connection, $locker_id, $key );
+                } elsif( $cmd eq 'UNLOCK' ) {
+                    $self->_unlock( $connection, $locker_id, $key );
+                } elsif( $cmd eq 'VERIFY' ) {
+                    $self->_verify( $connection, $locker_id, $key );
+                } else {
+                    _log( "lock server : did not understand request\n" );
+                    $connection->close;
+                }
             }
         }
     } 
 } #start
 
 sub _check {
-    my( $self, $connection, $locker_id, $key_to_check ) = @_;
+    my( $self, $connection, $key_to_check ) = @_;
 
-    _log( "locker server check for key '$key_to_check' for locker '$locker_id'\n" );
+    _log( "locker server check for key '$key_to_check'\n" );
 
     $self->{_locks}{$key_to_check} ||= [];
     my $lockers = $self->{_locks}{$key_to_check};
@@ -351,6 +355,8 @@ sub _verify {
 
     Sends request to a Lock::Server to lock, unlock and check locks.
 
+=head2 METHODS
+
 =cut
 package Lock::Server::Client;
 
@@ -360,6 +366,11 @@ no warnings 'uninitialized';
 
 use IO::Socket::INET;
 
+=head3 new( lockername, host, port )
+
+    Creates a client object with the given name for the host and port.
+    
+=cut
 sub new {
     my( $pkg, $lockerName, $host, $port ) = @_;
     die "Must supply locker name" unless $lockerName;
@@ -375,17 +386,28 @@ sub new {
     }, $class;
 } #new 
 
+=head3 isLocked( key )
+
+    Returns true if the key is locked by anyone.
+
+=cut
 sub isLocked {
     my( $self, $key ) = @_;
     my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
 
-    $sock->print( "CHECK $key $self->{name}\n" );
+    $sock->print( "CHECK $key\n" );
     my $resp = <$sock>;
     $sock->close;
     chomp $resp;
     $resp;
 }
 
+=head3 lockedByMe( key )
+
+    Returns true if the key is locked by this client or 
+    anyone with the name of this client. The name was given in the constructor.
+
+=cut
 sub lockedByMe {
     my( $self, $key ) = @_;
     my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
@@ -397,6 +419,12 @@ sub lockedByMe {
     $resp;
 }
 
+=head3 lock( key )
+
+    Attempt to get the lock for the given key. Returns true if the lock
+    was obtained.
+
+=cut
 sub lock {
     my( $self, $key ) = @_;
     my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
@@ -408,6 +436,12 @@ sub lock {
     $resp;
 }
 
+=head3 unlock( key )
+
+    Attempt to get unlock the given key. Returns true if the
+    key was locked to this client ( or someting with the same name ).
+
+=cut
 sub unlock {
     my( $self, $key ) = @_;
     my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
@@ -422,6 +456,22 @@ sub unlock {
 
 
 __END__
+
+=head1 PROTOCOL
+
+=over4    
+
+=head2 CHECK key
+
+    Returns 1 If the key is currently locked
+
+=head2 LOCK key lockername
+
+=head2 UNLOCK key lockername
+
+=head2 VERIFY key lockername
+
+=back
 
 =head1 AUTHOR
 
