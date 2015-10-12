@@ -1,5 +1,10 @@
 
-add token creation/verification
+have this be its own backup html server as well. @wheee
+   add __ for web
+create yote_server script
 
 create useful objects like accounts or logins
 
+serve the js file from yote itself
+
+--done -- add token creation/verification

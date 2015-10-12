@@ -84,10 +84,10 @@ sub run {
 
 
     eval('use Yote::ConfigData');
-    my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+    $self->{yote_root_dir} = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
     undef $@;
 
-    my $store = Yote::ServerStore->_new( { root => $yote_root_dir } );
+    my $store = Yote::ServerStore->_new( { root => $self->{yote_root_dir} } );
     $store->{_locker} = $locker;
 
     $self->{STORE} = $store;
@@ -145,6 +145,44 @@ sub _process_request {
         }
         my( $verb, $path ) = split( /\s+/, $req );
 
+
+        # escape for serving up web pages
+        # the thought is that this should be able to be a stand alone webserver
+        # for testing and to provide the javascript
+        print STDERR Data::Dumper->Dump([$path,"CHEK"]);
+        if( $path =~ m!/__/! ) {
+            # TODO - make sure install script makes the directories properly
+            my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
+            _log( "Request for '$filename'" );
+            if( -e $filename ) {
+                _log( "'$filename' exists" );
+                my @stat = stat $filename;
+
+                my @headers = (
+                    'Content-Type: text/html; charset=utf-8',
+                    'Server: Yote',
+                    "Content-Length: $stat[7]",
+                    );
+
+
+                open( IN, "<$filename" );
+                my $data;
+
+                $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n" );
+
+                while( $data = <IN> ) {
+                    $sock->print( $data );
+                }
+                close IN;
+            } else {
+                _log( "404 file '$filename' not found" );
+                $sock->print( "HTTP/1.1 404 FILE NOT FOUND\n\n" );
+            }
+            $sock->close;
+            return;
+        }
+        
+
         # data has the input parmas in JSON format.
         # GET /obj/action/params
         # POST /obj/action  (params in POST data)
@@ -163,6 +201,9 @@ sub _process_request {
             ( $obj_id, $token, $action, $token ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } map { s/^[^=]+=//; s/\+/ /gs; $_; } split ( '&', $data ) ];
         }
+
+        # check to see if it is just simple webserving
+        
         
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
