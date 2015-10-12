@@ -1,6 +1,7 @@
 <html>
   <head>
 <title>oof</title>
+    <script src="/__/js/yote.js"></script>
 </head>
 <body>
   <h1>oof</h1>
@@ -9,27 +10,14 @@
   <button id="login" type="button">Log In</button>
 
     <script>
-    var workers = {};
-    function yotecall( workerUrl, args, callback ) {
-        var worker = workers[ workerUrl ];
-        if( ! worker ) {
-            worker = new Worker( "/__/" + workerURL );
-            workers[ workerUrl ] = worker;
-        }
-        worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?
-            var data = e.data;
-            var dataTranslated = data;
-            callback( dataTranslated );
-        }
-        worker.postMessage( args );
-    }
+    yote.init();
 
     function onLogin( res ) {
-        
+        echo "LoggedIn " + res;
     }
     
     document.getElementByID( 'login' ).addEventListener('click',function(){
-        yotecall( 'login.js', [ document.getElementByID( 'name' ), document.getElementByID( 'pw' ) ], onLogin );
+        yote.call( 'login.js', [ document.getElementByID( 'name' ), document.getElementByID( 'pw' ) ], onLogin );
     } );
   </script>
 </body>

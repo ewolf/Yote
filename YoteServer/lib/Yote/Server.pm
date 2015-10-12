@@ -12,7 +12,7 @@ use Yote;
 use JSON;
 use URI::Escape;
 
-my $DEBUG = 0;
+my $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;

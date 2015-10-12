@@ -6,7 +6,6 @@ var app  = yote.fetch_app( 'myapp' );
 onmessage = function(e) {
     var data = e.data;
     var name = data[0], pw = data[1];
-    var res = app.login( name, pw );
-    var resTranslated = res;
-    postMessage( resTranslated );
-}
+    var rawResp = app.login( [ name, pw ], { rawResponse : true } );
+    postMessage( rawResp );
+} //onMessage

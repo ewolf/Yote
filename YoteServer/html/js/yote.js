@@ -18,25 +18,30 @@ yote.init = function( yoteServerURL ) {
     
     // creates a proxy method that contacts the server and
     // returns data
-    var makeMethod = function( mName ) {
+    var makeMethod = function( mName, args ) {
         var nm = '' + mName;
-        return function( data, isAsync, sucHandler, failHandler ) {
+        return function( data, methodargs ) ) {
+            if( args.async && ! ( methodargs && methodargs.sucHandler ) ) {
+                console.warn( "yote warning. method '" + nm + "' called without a success handler" );
+            }
             var id = this.id;
-            return contact( id, nm, data, isAsync, sucHandler, failHandler );
+            var res = contact( id, nm, args, methodargs );
+            if( args.async ) { 
+                return this; 
+            }
+            return res;
         };
     };
 
-    // method for making async method calls as well?
-
-
     // method for translating and storing the objects
-    function makeObj = function( datastructure ) {
+    function makeObj = function( datastructure, args ) {
         /* method that returns the value of the given field on the yote obj */
         var obj = id2obj[ datastructure.id ];
         if( ! obj ) {
             obj = {};
             id2obj[ datastructure.id ] = obj;
         }
+        obj.data = datastructure.data;
         obj.get = function( key ) {
             var val = this.data[key];
             if( val.startsWith( 'v' ) ) {
@@ -44,49 +49,75 @@ yote.init = function( yoteServerURL ) {
             } 
             return fetch( val );
         };
+        obj.toData = function() {
+            { id  : this.id,
+              cls : this.cls,
+              data : this.data,
+            }
+        }; //ugh, case of a list returned?
         
         var mnames = class2meths[ datastructure.cls ] || [];
         mnames.forEach( function( mname ) {
-            obj[ mname ] = makeMethod( mname );
+            obj[ mname ] = makeMethod( mname, args );
         } );
     } //makeObj
     
+    var processRaw = function(rawResponse,args) {
+        if( ! rawResponse ) {
+            return;
+        }
+        var res = JSON.parse( rawResponse );
+        
+        // ** 3 parts : methods, updates and result
+        
+        // methods
+        for( var cls in res.methods ) {
+            class2meths[cls] = res.methods[ cls ];
+        }
+        
+        // updates
+        res.updates.forEach( function( upd ) {
+            makeObj( upd, args );
+        } ); //updates section
+        
+        // results
+        var returns = [];
+        res.result.forEach( function( ret ) {
+            if( ret.startsWith( 'v' ) ) {
+                returns.push( ret.substring(1) );
+            } else {
+                returns.push( fetch( ret ) );
+            }
+        } );
+        return returns.length > 1 ? returns : returns[0];
+    }; //processRaw
+
+    yote.processRaw = processRaw;
+
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
-
     var returnVal = '';
-    var reqListener = function(sucHandfler,failHandler) {
+    var reqListener = function(createArgs,methodArgs) {
         return function() {
-            var res = JSON.parse( this.responseText || '[]' );
-        
-            // 3 parts : methods, updates and result
-            
-            // methods
-            for( var cls in res.methods ) {
-                class2meths[cls] = res.methods[ cls ];
-            }
-            
-            // updates
-            res.updates.forEach( function( upd ) {
-                makeObj( upd );
-            } ); //updates section
-            
-            // results
-            var returns = [];
-            res.result.forEach( function( ret ) {
-                if( ret.startsWith( 'v' ) ) {
-                    returns.push( ret.substring(1) );
-                } else {
-                    returns.push( fetch( ret ) );
+            if( createArgs.returnRaw ) {
+                returnVal = this.responseText;
+                var proccessed = processRaw( returnVal ); // to create objects, etc
+                if( methodArgs && methodArgs.sucHandler ) {
+                    methodArgs.sucHandler( processed );
                 }
-            } );
-            returnVal = returns.length > 1 ? returns : returns[0];
+                return;
+            }
+            returnVal = processRaw( this.responseText );
+            if( methodArgs && methodArgs.sucHandler ) {
+                methodArgs.sucHandler( returnVal );
+            }
         }
     }; //reqListener
-    
-    var contact = function(id,action,data,async,sucHandler,failHandler) {
+
+    var contact = function(id,action,data,contactArgs,methodArgs) { // args has async,sucHandler,failHandler,returnRaw
+        if( ! contactArgs ) { contactArgs = {} };
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener(sucHandler,failHandler);
+        oReq.addEventListener("load", reqListener(contactArgs,methodArgs);
 
         console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
@@ -96,28 +127,36 @@ yote.init = function( yoteServerURL ) {
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
-                  '/' + action, async );
+                  '/' + action, contactArgs.async );
         oReq.send(data ? 'p=' + data.map(function(p) {
             return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
         return returnVal;
-    };
+    }; // contact
         
-    self.contact = contact;
-
     yote.fetch_root = function() {
         this.root = contact('_', 'fetch_root');
         token = this.root.create_token();
-console.log( ["TTTT " + token,this.root ] );
         return this.root;
-    };
+    }; //yote.fetch_root
 
-    yote.translateFromObj = function( objects ) {
+    var workers = {};
 
-    };
+    yote.call( workerUrl, args, callback ) {
+        var worker = workers[ workerUrl ];
+        if( ! worker ) {
+            worker = new Worker( "/__/" + workerURL );
+            workers[ workerUrl ] = worker;
+        }
+        worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?
+            // at processing the raw, this process will have access to all the yote data'
+            var resp = yote.processRaw( e.data, { async : true  } );
+            if( callback ) {
+                callback( resp );
+            }
+        }
+        worker.postMessage( args );
+    }; //yote.call
 
-    yote.translateToObj = function( data ) {
-
-    };
 
 }; //yote.init
