@@ -31,7 +31,7 @@ done_testing;
 
 exit( 0 );
 
-sub msg {
+sub msg {  #returns resp code, headers, response pased from json 
     my( $obj_id, $action, $token, @params ) = @_;
     
     my $socket = new IO::Socket::INET(
@@ -39,78 +39,39 @@ sub msg {
         LocalAddr => "127.0.0.1:8881",
         );
     $socket->print( "GET " . join( '/',  $obj_id, $token, $action, @params ) . " HTTP/1.1" );
+
+    my $resp = <$socket>;
     
+    my( $code ) = ( $resp =~ /^HTT[^ ]+ (\d+) / ) ;
+    
+    # headers
+    my %hdr;
+    while( $resp = <$socket> ) {
+        chomp $resp;
+        last unless $resp =~ /\S/s;
+        my( $k, $v ) = ( $resp =~ /(.*)\s*:\s*(.*)/ );
+        $hdr{$k} = $v;
+    }
+    my $ret;
+    if( $hdr->{'Content-Length'} ) {
+        my $rtxt = '';
+        while( $resp = <$socket> ) {
+            $rtxt .= $resp;
+        }
+        $ret = from_json( $rtxt );
+    }
+    return ( $code, \%hdr, $ret );
 }
 
 sub test_suite {
     
     my( @pids );
 
-    my $locker1 = $locks->client( "LOCKER1" );
+    # try no token, and with token
+    my( $retcode, $hdrs, $ret ) = msg( '_', '_', '
 
-    # see if one process waits on the other
+    # make sure no prive _ method is called.
 
-    if( my $pid = fork ) {
-        push @pids, $pid;
-    } else {
-        my $locker3 = $locks->client( "LOCKER3" );
-        $res = $res && $locker3->unlock( "KEY1" ) == 1;
-        exit ! $res;
-    }
-    if( my $pid = fork ) {
-        push @pids, $pid;
-    } else {
-        print STDERR "starting first client\n";
-        my $locker4 = $locks->client( "LOCKER4" );
-        my $res = $locker4->isLocked( "KEY1" ) == 1;
-        exit ! $res;
-    }
-
-    my $t1 = time;
-    while( @pids ) { 
-        my $pid = shift @pids;
-        waitpid $pid, 0;
-
-        # XXX
-        fail("LOCKER4") if $?;
-
-    }
-    is( int(time -$t1),2, "second lock waited on the first" );
-
-    # deadlock timeouts
-
-    # 4 locks A
-    # 5 locks B
-    # 5 tries to lock A
-    # 2 seconds happen
-    
-
-    if( my $pid = fork ) {
-        push @pids, $pid;
-    } else {
-        my $locker4 = $locks->client( "LOCKER4" );
-        my $res = $locker4->lock( "KEYA" ) > 1;
-        sleep 5;
-        $res = $res && $locker4->isLocked( "KEYB" ) == 0;
-        $res = $res && $locker4->lock( "KEYB" ) > 1;
-        $res = $res && $locker4->unlock( "KEYB" ) == 1;
-        exit ! $res;
-
-    }
-    if( my $pid = fork ) {
-        push @pids, $pid;
-    } else {
-        print STDERR "starting second client\n";
-        my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
-        my $res = $locker5->lock( "KEYB" ) > 1;
-        $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;
-        my $t = time;
-        $res = $res && $locker5->lockedByMe( "KEYA" ) == 0;
-        $res = $res && $locker5->lock( "KEYA" ) == 0;
-        $res = $res && $locker5->lockedByMe( "KEYB" ) == 0;
-        $res = $res && ( time-$t ) == 5;
-        exit ! $res;
-    }
 
     while( @pids ) { 
         my $pid = shift @pids;

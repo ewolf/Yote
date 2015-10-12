@@ -25,7 +25,7 @@ var myWorker = new Worker("/__/wtest.js");
 var subr = document.getElementById( 'js' );
 subr.addEventListener("click",function(e) {
     var p = document.getElementById( 'P' );
-    myWorker.postMessage( e.data );
+    myWorker.postMessage( [ p.value, "HAHA" ] );
     console.log('Message posted to worker');
     
     myWorker.onmessage = function(e) {

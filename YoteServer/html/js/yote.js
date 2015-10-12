@@ -5,11 +5,19 @@ var yote = {
 };
     
 yote.init = function( yoteServerURL ) {
+    // cache storing objects and their meta-data
     var class2meths = {};
     var id2obj = {};
 
+    // returns an object, either the cache or server
+    var fetch = function( id ) {
+        return id2obj[ id ] || this.root.fetch( id );
+    }
+
     var token;
     
+    // creates a proxy method that contacts the server and
+    // returns data
     var makeMethod = function( mName ) {
         var nm = '' + mName;
         return function( data ) {
@@ -18,12 +26,10 @@ yote.init = function( yoteServerURL ) {
         };
     };
     
-    var fetch = function( id ) {
-        return id2obj[ id ] || this.root.fetch( id );
-    }
     
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
+
     var returnVal = '';
     var reqListener = function() {
         var res = JSON.parse( this.responseText || '[]' );
@@ -73,6 +79,10 @@ yote.init = function( yoteServerURL ) {
         var oReq = new XMLHttpRequest();
         var async = false;
         oReq.addEventListener("load", reqListener);
+console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
+                  '/' + id +
+                  '/' + ( token ? token : '_' ) + 
+                  '/' + action )
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 

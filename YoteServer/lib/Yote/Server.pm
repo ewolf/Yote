@@ -321,6 +321,7 @@ sub _process_request {
             'Server: Yote',
             'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
+            'Content-Length: ' . length( $out_res ),
             );
 
         _log( "200 OK ( " . join( ",", @headers ) . " ) ( $out_res )" );
