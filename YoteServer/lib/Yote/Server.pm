@@ -48,7 +48,8 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
-    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+#    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+    print STDERR Data::Dumper->Dump(["PROCCING"]);
     $0 = "YoteServer process";
     # child process
     $self->run;
@@ -73,7 +74,6 @@ sub stop {
 =cut
 sub run {
     my $self = shift;
-
     my $listener_socket = new IO::Socket::INET(
         Listen    => 10,
         LocalAddr => "$self->{yote_host}:$self->{yote_port}",
@@ -103,6 +103,8 @@ sub run {
         exit;
     };
 
+    $SIG{CHLD} = 'IGNORE';
+
     while( my $connection = $listener_socket->accept ) {
         $self->_process_request( $connection );
     }
@@ -117,11 +119,12 @@ sub _log {
 sub _process_request {
     my( $self, $sock ) = @_;
 
+
     if ( my $pid = fork ) {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
-      use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+#      use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
         my( $self, $sock ) = @_;
         #child
         $0 = "YoteServer processing request";
@@ -186,7 +189,7 @@ sub _process_request {
                 $sock->print( "HTTP/1.1 404 FILE NOT FOUND\n\n" );
             }
             $sock->close;
-            return;
+            exit;
         }
         
 

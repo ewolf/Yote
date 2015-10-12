@@ -97,7 +97,7 @@ console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) +
     yote.fetch_root = function() {
         this.root = contact('_', 'fetch_root');
         token = this.root.create_token();
-console.log( "TTTT " + token );
+console.log( ["TTTT " + token,this.root ] );
         return this.root;
     };
 
