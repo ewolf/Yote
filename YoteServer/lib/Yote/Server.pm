@@ -468,7 +468,7 @@ sub _has {
 
 sub _resethas {
     my( $self, $token ) = @_;
-    for my ( qw( has can ) ) {
+    for ( qw( has can ) ) {
         my $token2objs = $self->get( "${_}Toekn2objs" );
         $self->lock( $token2objs );
         delete $token2objs->{ $token };
@@ -477,9 +477,9 @@ sub _resethas {
 }
 
 sub _canhas {
-    my( $self, $id, $token, 'can' ) = @_;
+    my( $self, $id, $token ) = @_;
     return 1 if $id < 1;
-    my $obj_data = _token2objs( $token );
+    my $obj_data = _token2objs( $token, 'can' );
     $self->lock( $obj_data );
     my $has = $obj_data->{$id};
     $self->unlock( $obj_data );
@@ -487,9 +487,9 @@ sub _canhas {
 }
 
 sub _willhas {
-    my( $self, $id, $token, 'can' ) = @_;
+    my( $self, $id, $token ) = @_;
     return if $id < 1;
-    my $obj_data = _token2objs( $token );
+    my $obj_data = _token2objs( $token, 'can' );
     $obj_data->{$id} = time - 1;
     $self->unlock( $obj_data );
 }
