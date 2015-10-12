@@ -303,6 +303,7 @@ use strict;
 use warnings;
 
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
+use File::Copy;
 
 =head2 open( template, filename, size )
 
@@ -327,7 +328,6 @@ sub open {
     bless { TMPL => $template, 
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
-            FILEHANDLE => $FH,
     }, $class;
 } #open
 
@@ -377,6 +377,72 @@ sub entry_count {
     int( $filesize / $self->{RECORD_SIZE} );
 }
 
+
+
+=head2 get_records( startIDX, number )
+
+
+=cut
+
+sub get_records {
+    my( $self, $startIDX, $number ) = @_;
+
+    my $fh = $self->_filehandle;
+    my $size = $self->{RECORD_SIZE};
+    my $tmpl = $self->{TMPL};
+    sysseek $fh, $size * ($startIDX-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($startIDX-1)) : $@ $!";
+    my $srv = sysread $fh, my $data, $number * $size;
+    # TODO : check $srv response
+    my( @res );
+    for( 0..($number-1) ) {
+        my $part = substr( $data, $_ * $size, ($_ + 1 ) * ($size) );
+        push @res, [ unpack( $tmpl, $part )];
+    }
+    \@res;
+} #get_records
+
+sub splice_records {
+    my( $self, $start, $numberToRemove, @listToAdd ) = @_;
+
+    # TODO - check for maximum chunk size
+    CORE::open( my $fh, "+<$self->{FILENAME}.splicer" );
+    my $size = $self->{RECORD_SIZE};
+
+    my $orig_fh = $self->_filehandle;
+
+    my $splice_action = sub {
+        # put the first part of this file to the new file
+        if( $start > 1 ) {
+            sysread $orig_fh, my $data, $start * $size;
+            syswrite( $fh, $data );
+        }
+
+        # add the list of things
+        my $to_write = '';
+        for my $adder (@listToAdd) {
+            my $part = pack( $self->{TMPL}, @$adder );
+            my $part_length = do { use bytes; length( $part ); };
+            if( $part_length < $size ) {
+                my $delt = $size - $part_length;
+                $part .= "\0" x $delt;
+            }
+            $to_write .= $part;
+        }
+
+        my $to_write_length = do { use bytes; length( $to_write ); };
+        sysseek( $fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+        # then add the last part
+        my $endRecords = $self->entry_count - ( $start + $numberToRemove );
+        if( $endRecords > 0 ) {
+            sysseek( $orig_fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET );
+            my $srv = sysread $orig_fh, my $data, $size * $endRecords;
+        }
+        1;
+    }; #splice_action
+    &$splice_action() && move( $self->{FILENAME}, "$self->{FILENAME}.bak" ) && move( "$self->{FILENAME}.splicer", $self->{FILENAME} );
+    
+} #splice_records
+
 =head2 get_record( idx )
 
 Returns an arrayref representing the record with the given id.
@@ -394,7 +460,7 @@ sub get_record {
         print STDERR Data::Dumper->Dump(["HI"]);
         use Carp 'longmess'; 
         print STDERR Data::Dumper->Dump([longmess]); }
-    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+   sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];
@@ -469,8 +535,6 @@ sub put_record {
 # how about an ensure_entry_count right here?
 
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-    unless( $swv ) { use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]); }
-    defined( $swv ) or die "[is closed by an other thread? somewhere else here? trace where the closes happen]Could not write ($idx) : $@ $!";
     1;
 } #put_record
 
@@ -488,9 +552,8 @@ sub unlink_store {
 
 sub _filehandle {
     my $self = shift;
-    close $self->{FILEHANDLE};
-    CORE::open( $self->{FILEHANDLE}, "+<$self->{FILENAME}" );
-    $self->{FILEHANDLE};
+    CORE::open( my $fh, "+<$self->{FILENAME}" );
+    $fh;
 }
 
 
@@ -520,7 +583,6 @@ $store->recycle( $id );
 my $avail_ids = $store->get_recycled_ids; # [ 1 ]
 
 my $id3 = $store->next_id;
-
 $id3 == $id;
 
 =cut
