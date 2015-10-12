@@ -378,70 +378,74 @@ sub entry_count {
 }
 
 
+#
+# _ _ The subs below are commented out pending a need _ _
+#  v                                                   v
+#
+# Why wait for a need? Because the need might not be quite
+# what you were expecting; once you have a need, you are much
+# more familiar with it.
 
-=head2 get_records( startIDX, number )
+# =head2 get_records( startIDX, number )
+# =cut
+# sub get_records {
+#     my( $self, $startIDX, $number ) = @_;
 
+#     my $fh = $self->_filehandle;
+#     my $size = $self->{RECORD_SIZE};
+#     my $tmpl = $self->{TMPL};
+#     sysseek $fh, $size * ($startIDX-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($startIDX-1)) : $@ $!";
+#     my $srv = sysread $fh, my $data, $number * $size;
+#     # TODO : check $srv response
+#     my( @res );
+#     for( 0..($number-1) ) {
+#         my $part = substr( $data, $_ * $size, ($_ + 1 ) * ($size) );
+#         push @res, [ unpack( $tmpl, $part )];
+#     }
+#     \@res;
+# } #get_records
 
-=cut
+# sub splice_records {
+#     my( $self, $start, $numberToRemove, @listToAdd ) = @_;
 
-sub get_records {
-    my( $self, $startIDX, $number ) = @_;
+#     # TODO - check for maximum chunk size
+#     CORE::open( my $fh, "+<$self->{FILENAME}.splicer" );
+#     my $size = $self->{RECORD_SIZE};
 
-    my $fh = $self->_filehandle;
-    my $size = $self->{RECORD_SIZE};
-    my $tmpl = $self->{TMPL};
-    sysseek $fh, $size * ($startIDX-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($startIDX-1)) : $@ $!";
-    my $srv = sysread $fh, my $data, $number * $size;
-    # TODO : check $srv response
-    my( @res );
-    for( 0..($number-1) ) {
-        my $part = substr( $data, $_ * $size, ($_ + 1 ) * ($size) );
-        push @res, [ unpack( $tmpl, $part )];
-    }
-    \@res;
-} #get_records
+#     my $orig_fh = $self->_filehandle;
 
-sub splice_records {
-    my( $self, $start, $numberToRemove, @listToAdd ) = @_;
+#     my $splice_action = sub {
+#         # put the first part of this file to the new file
+#         if( $start > 1 ) {
+#             sysread $orig_fh, my $data, $start * $size;
+#             syswrite( $fh, $data );
+#         }
 
-    # TODO - check for maximum chunk size
-    CORE::open( my $fh, "+<$self->{FILENAME}.splicer" );
-    my $size = $self->{RECORD_SIZE};
+#         # add the list of things
+#         my $to_write = '';
+#         for my $adder (@listToAdd) {
+#             my $part = pack( $self->{TMPL}, @$adder );
+#             my $part_length = do { use bytes; length( $part ); };
+#             if( $part_length < $size ) {
+#                 my $delt = $size - $part_length;
+#                 $part .= "\0" x $delt;
+#             }
+#             $to_write .= $part;
+#         }
 
-    my $orig_fh = $self->_filehandle;
-
-    my $splice_action = sub {
-        # put the first part of this file to the new file
-        if( $start > 1 ) {
-            sysread $orig_fh, my $data, $start * $size;
-            syswrite( $fh, $data );
-        }
-
-        # add the list of things
-        my $to_write = '';
-        for my $adder (@listToAdd) {
-            my $part = pack( $self->{TMPL}, @$adder );
-            my $part_length = do { use bytes; length( $part ); };
-            if( $part_length < $size ) {
-                my $delt = $size - $part_length;
-                $part .= "\0" x $delt;
-            }
-            $to_write .= $part;
-        }
-
-        my $to_write_length = do { use bytes; length( $to_write ); };
-        sysseek( $fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-        # then add the last part
-        my $endRecords = $self->entry_count - ( $start + $numberToRemove );
-        if( $endRecords > 0 ) {
-            sysseek( $orig_fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET );
-            my $srv = sysread $orig_fh, my $data, $size * $endRecords;
-        }
-        1;
-    }; #splice_action
-    &$splice_action() && move( $self->{FILENAME}, "$self->{FILENAME}.bak" ) && move( "$self->{FILENAME}.splicer", $self->{FILENAME} );
+#         my $to_write_length = do { use bytes; length( $to_write ); };
+#         sysseek( $fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+#         # then add the last part
+#         my $endRecords = $self->entry_count - ( $start + $numberToRemove );
+#         if( $endRecords > 0 ) {
+#             sysseek( $orig_fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET );
+#             my $srv = sysread $orig_fh, my $data, $size * $endRecords;
+#         }
+#         1;
+#     }; #splice_action
+#     &$splice_action() && move( $self->{FILENAME}, "$self->{FILENAME}.bak" ) && move( "$self->{FILENAME}.splicer", $self->{FILENAME} );
     
-} #splice_records
+# } #splice_records
 
 =head2 get_record( idx )
 
