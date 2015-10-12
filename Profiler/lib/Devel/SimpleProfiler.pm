@@ -106,7 +106,7 @@ sub analyze {
             $funcalled{$fun}{$call}++
         }
     }
-    print _analyze( \%funtimes, \%funcalled, \%funcalls, $sort );
+    _analyze( \%funtimes, \%funcalled, \%funcalls, $sort );
 } #analyze
 
 sub _analyze {

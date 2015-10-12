@@ -324,10 +324,6 @@ sub _lock {
     }
 } #_lock
 
-sub _grab_lock {
-    my( $self, $connection, $timeout_time ) = @_;
-}
-
 sub _unlock {
     my( $self, $connection, $key_to_unlock, $locker_id ) = @_;
     _log( "unlock request : key '$key_to_unlock' for locker '$locker_id'" );
