@@ -90,7 +90,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         } );
     } //makeObj
     
-    var processRaw = function(rawResponse) {
+    var processRaw = function(rawResponse,expectList) {
         if( ! rawResponse ) {
             return;
         }
@@ -117,7 +117,7 @@ yote._init = function( yoteServerURL, isWorker ) {
                 returns.push( fetch( ret ) );
             }
         } );
-        return returns.length > 1 ? returns : returns[0];
+        return (returns.length > 1 || expectList) ? returns : returns[0];
     }; //processRaw
 
     yote.processRaw = processRaw;
@@ -167,7 +167,7 @@ console.log( '<<' + yoteServerURL + '>>' );
 
     var workers = {};
 
-    yote.call = function( workerUrl, args, callback ) {
+    yote.call = function( workerUrl, args, callback, expectList ) {
         var worker = workers[ workerUrl ];
         if( ! worker ) {
             worker = new Worker( "/__/" + workerUrl );
@@ -175,7 +175,7 @@ console.log( '<<' + yoteServerURL + '>>' );
         }
         worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?
             // at processing the raw, this process will have access to all the yote data'
-            var resp = yote.processRaw( e.data );
+            var resp = yote.processRaw( e.data, expectList );
             if( callback ) {
                 callback( resp );
             }
