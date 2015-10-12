@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 no warnings 'uninitialized';
+no warnings 'numeric';
 
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
@@ -26,12 +27,15 @@ BEGIN {
 my $dir = tempdir( CLEANUP => 1 );
 my $server = new Yote::Server( { yote_root_dir => $dir } );
 my $store = $server->{STORE};
-
+my $otherO = $store->newobj;
 my $root = $store->fetch_server_root;
-$root->set_foo( $store->newobj( { innerfoo => [ 'innerbar', 'innercar' ] } ) );
-my $foo      = $root->get_foo;
-my $innerfoo = $foo->get_innerfoo;
-
+$root->set_fooObj( $store->newobj( { innerfoo => [ 'innerbar', 'vinnercar', $otherO ] } ) );
+my $fooHash = $root->set_fooHash( {  innerFooHash => $otherO, someTxt => "vtxtyTxt"} );
+my $fooArr = $root->set_fooArr( [ $otherO, 'vinner', 'winnyo'] );
+$root->set_txt( "SOMETEXT" );
+my $fooObj   = $root->get_fooObj;
+my $innerfoo = $fooObj->get_innerfoo;
+$store->stow_all;
 
 my $pid = $server->start;
 unless( $pid ) {
@@ -65,7 +69,7 @@ sub msg {  #returns resp code, headers, response pased from json
     $socket->print( "GET /" . join( '/',  $obj_id, 
                                     $token, 
                                     $action, 
-                                    map {  int($_) > 1 ? $_ : "v$_" } @params ) . 
+                                    map { $_ > 1 ? $_ : "v$_" } @params ) . 
                     " HTTP/1.1\n\n" );
     my $resp = <$socket>;
     
@@ -117,12 +121,12 @@ sub test_suite {
     ok( ! $ret, "nothing returned for error case noMethod" );
 
 
-    ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'test' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'test' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
     is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with non fetch_root call (called test)' );
     is_deeply( $ret->{updates}, [], "no updates without token" );
 
-    ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'fetch_root' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'fetch_root' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
@@ -134,23 +138,27 @@ sub test_suite {
                          fetch_root
                          create_token
                   ) ), 'correct methods for fetched server root' );
-    is_deeply( $ret->{updates}, [], "no updates without token" );
+    is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
+                                  id   => $root->{ID}, 
+                                  data => { 
+                                      fooObj  => $store->_get_id( $fooObj ),
+                                      fooHash => $store->_get_id( $fooHash ),
+                                      fooArr  => $store->_get_id( $fooArr ),
+                                  } } ], "updates for fetch_root by id, no token" );
 
     # now try with a token
-    ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'create_token' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'create_token' );
     is( $retcode, 200, "token was returned" );
     my( $token ) = map { substr( $_, 1 ) }  @{ $ret->{result} };
     cmp_ok( $token, '>', 0, "Got token" );
-    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
-    is_deeply( [keys %{$ret->{updates}[0]{data}}], [ 'foo' ], "data has foo" );
-    is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with nont fetch_root call' );
+    is_deeply( $ret->{updates}, [], "no updates when calling create token" );
+    is_deeply( $ret->{methods}, {}, 'no methods returned for creat token ' );
 
-
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch_root' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_root' );
     is( $retcode, 200, "able to return with token" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
-
+    is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
                l2a( qw( fetch_app
                          fetch
@@ -161,32 +169,33 @@ sub test_suite {
 
 
 
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch_root' );
-    is( $retcode, 200, "no access without token when calling by id for server root only" );
-
-    is_deeply( $ret->{updates}, [], "no updates needed known" );
-    is_deeply( $ret->{methods}, {}, "methods already known" );
-
     # make sure no prive _ method is called.
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, '_updates_needed' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, '_updates_needed' );
     is( $retcode, 400, "cannot call underscore method" );
 
     # make sure no nonexistant method is called.
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'slurpyfoo' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'slurpyfoo' );
     is( $retcode, 400, "cannot call nonexistant method" );
 
-    # directly fetch the innerfoo. should work as the innerfoo id had
-    # not been returned to the client
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch', $store->_get_id( $innerfoo ) );
+    # directly fetch the innerfoo. should not
+    # work as the innerfoo id had not been returned to the client
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v'.$store->_get_id( $innerfoo ) );
+    is( $retcode, 400, "cannot call underscore method" );
 
-    ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch', $foo->{ID} );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v'.$fooObj->{ID} );
+    is( $retcode, 200, "able to fetch allowed object" );
+    is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
+    is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
+               l2a( qw( someMethod get set  ) ), 'correct methods for server object' );
+    
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
 
+    $root->set_extra( "WOOF" );
+    print STDERR "WOOF\n";
+    sleep 2;
+    $store->stow_all;
     # get the 'foo' object off of the root
-    ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'get', 'foo' );
-
-
-    # get the 'foo' object off of the root
-    ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'get', 'foo' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
     
 
 
