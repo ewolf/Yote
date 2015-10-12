@@ -49,7 +49,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
-
+    $0 = "YoteServer process";
     # child process
     $self->run;
 
@@ -57,6 +57,7 @@ sub start {
 
 sub stop {
     my $self = shift;
+    print STDERR Data::Dumper->Dump([$self,"STOP"]);
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
         kill 'INT', $pid;
@@ -120,7 +121,7 @@ sub _process_request {
         push @{$self->{_pids}},$pid;
     } else {
         #child
-        
+        $0 = "YoteServer processing request";
         $SIG{INT} = sub {
             _log( "Yote server process $$ : got INT signal. Shutting down." );
             $sock->close;
@@ -209,7 +210,9 @@ sub _process_request {
             
         } elsif( $verb eq 'POST' ) {
             ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
-            $params = [ map { URI::Escape::uri_unescape($_) } map { s/^[^=]+=//; s/\+/ /gs; $_; } split ( '&', $data ) ];
+            $params = [ map { URI::Escape::uri_unescape($_) } 
+                        map { s/^[^=]+=//; s/\+/ /gs; $_; } 
+                        split ( '&', $data ) ];
         }
 
         if( substr( $action, 0, 1 ) eq '_' ) {
@@ -223,7 +226,11 @@ sub _process_request {
         
         my $server_root = $self->{SERVER_ROOT};
 
-        unless( $obj_id eq '_' || $obj_id eq $server_root->{ID} || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
+        unless( $obj_id eq '_' || 
+                $obj_id eq $server_root->{ID} || 
+                ( $obj_id > 0 && 
+                  $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && 
+                  $server_root->_getMay( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Req : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -240,7 +247,7 @@ sub _process_request {
 
         my( @in_params );
         for my $param (@$params) {
-            unless( index( $param, 'v' ) == 0 || $server_root->_canhas( $param, $token ) ) {
+            unless( $server_root->_getMay( $param, $token ) ) {
                 _log( "Bad Req : param:'$param'" );
                 $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
                 $sock->close;
@@ -279,11 +286,14 @@ sub _process_request {
         for my $res (@res) {
             my $val = $store->_xform_in( $res );
             # mark that it may and does have the token
-            $server_root->_willhas( $val, $token ) if index( $val, 'v' ) != 0;
-            $server_root->_has( $val, $token ) if index( $val, 'v' ) != 0;
+            $server_root->_setMay( $val, $token );
             push @out_res, $val;
         }
-        my $ids_to_update = $server_root->_updates_needed( $token );
+        my $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
+
+        for my $res (@out_res) {
+            $server_root->_setHas( $res, $token );
+        }
         
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
@@ -294,13 +304,13 @@ sub _process_request {
             if( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
-                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0;
+                          $store->_setMay( $d, $token );
                           $d } 
                     @$obj ];
             } elsif( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
-                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0;
+                          $store->_setMay( $d, $token );
                           $_ => $d } 
                     keys %$obj };
                 
@@ -309,20 +319,21 @@ sub _process_request {
                 
                 $data = {
                     map { my $d = $store->_xform_in( $obj_data->{$_} );
-                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0; 
+                          $store->_setMay( $d, $token );
                           $_ => $d } 
                     grep { $_ !~ /^_/ }
                     keys %$obj_data };
 
                 $methods{$ref} ||= $obj->_callable_methods;
             }
+            $store->_setHas( $obj_id, $token );
             my $update = {
                 id    => $obj_id,
                 cls   => $ref,
                 data  => $data,
             };
             push @updates, $update;
-        }
+        } #each obj_id to update
         
 
         my $out_res = to_json( { result  => \@out_res,
@@ -565,18 +576,9 @@ sub _token2objs {
         $objs = {};
         $token2objs->{$tok} = $objs;
     }
-    print STDERR Data::Dumper->Dump([$objs,"LOAD $flav T2O"]);
+#    print STDERR Data::Dumper->Dump([$objs,"LOAD $flav T2O"]);
 
     $objs;
-}
-
-sub _setHas {
-    my( $self, $id, $token ) = @_;
-    return if $id < 1;
-    my $obj_data = $self->_token2objs( $token, 'doesHave' );
-    print STDERR "ADDING '$id' to HAS","CHK ($$)\n";
-    $obj_data->{$id} = time - 1;
-    $self->{STORE}->unlock( "_hasToken2objs" );
 }
 
 sub _resetHasAndMay {
@@ -592,43 +594,49 @@ sub _resetHasAndMay {
     }
 }
 
-sub _askMayThisHave {
+sub _setHas {
     my( $self, $id, $token ) = @_;
-    return 1 if $id < 1;
+    return 1 if index( $id, 'v' ) == 0;
+    my $obj_data = $self->_token2objs( $token, 'doesHave' );
+    print STDERR "ADDING '$id' to HAS\n";
+    $obj_data->{$id} = time - 1;
+    $self->{STORE}->unlock( "_hasToken2objs" );
+}
+
+sub _getMay {
+    my( $self, $id, $token ) = @_;
+    return 1 if index( $id, 'v' ) == 0;
     my $obj_data = $self->_token2objs( $token, 'can' );
-    print STDERR Data::Dumper->Dump([$obj_data,"CHECK CANHAS $id"]);
     $self->{STORE}->lock( $obj_data );
     my $has = $obj_data->{$id};
-    print STDERR "CHECK CAN '$id' " . ( $has ? " DOES HAVE " : " NOT HAS" ). "\n";
+    print STDERR "$id " . ( $has ? " MAY " : " MAY NOT" ). "\n";
     $self->{STORE}->unlock( "_canToken2objs" );
     $has;
 }
 
-sub _nowMayHave {
+sub _setMay {
     my( $self, $id, $token ) = @_;
-    return if $id < 1;
+    return 1 if index( $id, 'v' ) == 0;
     my $obj_data = $self->_token2objs( $token, 'can');
-    print STDERR Data::Dumper->Dump([$obj_data,"ADDING TO HAS $id"]);
     $obj_data->{$id} = time - 1;
-    print STDERR "ADDING '$id' to CAN\n";
+    print STDERR "ADDING '$id' to MAY\n";
     $self->{STORE}->unlock( "_canToken2objs" );
 }
 
 
 sub _updates_needed {
-    my( $self, $token ) = @_;
+    my( $self, $token, $outRes ) = @_;
     my $obj_data = $self->_token2objs( $token, 'has' );
     my $store = $self->{STORE};
     my( @updates );
-    for my $obj_id (keys %$obj_data ) {
+    for my $obj_id (@$outRes, keys %$obj_data ) {
         my $last_update_sent = $obj_data->{$obj_id};
         my $last_updated = $store->_last_updated( $obj_id );
+        print STDERR "$obj_id $last_updated\n";
         if( $last_update_sent < $last_updated || $last_updated == 0 ) {
             push @updates, $obj_id;
         }
     }
-    print STDERR "CHECKING HAS for _updates_needed : " . join(",",@updates)."\n";
-
     $self->{STORE}->unlock( "_hasToken2objs" );
     \@updates;
 } #_updates_needed
@@ -733,7 +741,7 @@ sub fetch_root {
 
 sub fetch {
     my( $self, $id ) = @_;
-    if( $self->_canhas( $id ) ) {
+    if( $self->_getMay( $id ) ) {
         return $self->{STORE}->fetch( $id );
     }
     die "Invalid id '$id'";

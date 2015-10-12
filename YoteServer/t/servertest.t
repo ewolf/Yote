@@ -51,6 +51,7 @@ sleep 1;
 
 test_suite();
 
+print STDERR Data::Dumper->Dump(["STOPPING"]);
 $server->stop;
 
 done_testing;
@@ -187,7 +188,7 @@ sub test_suite {
     print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'fi']);
 
     ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch', $foo->{ID} );
-    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'fo']);exit;
+    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'fo']);return;
 
     # get the 'foo' object off of the root
     ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'get', 'foo' );

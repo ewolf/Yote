@@ -165,7 +165,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
-    
+    $0 = "LockServer";
     # child process
     $self->run;
 
@@ -305,8 +305,9 @@ sub _lock {
             _log( "lock request : parent process associating '$locker_id' with pid '$pid' ".scalar(@$lockers)." lockers" );
             # parent
         } else {
+            $0 = "LockServer processing request";
             # child
-            $SIG{HUP} = sub {
+            $SIG{HUP} = $SIG{INT} = sub {
                 _log( "lock request : child $$ got HUP, so is now locked." );
                 $connection->print( "$timeout_time\n" );
                 $connection->close;
