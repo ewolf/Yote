@@ -7,6 +7,8 @@ var yote = {
 yote.init = function( yoteServerURL ) {
     var class2meths = {};
     var id2obj = {};
+
+    var token;
     
     var makeMethod = function( mName ) {
         var nm = '' + mName;
@@ -71,6 +73,9 @@ yote.init = function( yoteServerURL ) {
         var async = false;
         oReq.addEventListener("load", reqListener);
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + path, async );
+        if( token ) {
+            oReq.setRequestHeader( 'Yote-Token', token );
+        }
         oReq.send(data ? 
                   'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
@@ -81,6 +86,7 @@ yote.init = function( yoteServerURL ) {
 
     yote.fetch_root = function() {
         this.root = contact("/_/fetch_root");
+        token = this.root.create_token();
         return this.root;
     };
 

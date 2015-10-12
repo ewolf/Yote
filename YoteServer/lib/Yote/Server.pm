@@ -128,7 +128,7 @@ sub _process_request {
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
         }
-        # validate token if any. Make sure token and ip work
+
         my $store = $self->{STORE};
 
         $store->{_lockerClient} = $store->{_locker}->client( $$ );
@@ -165,11 +165,9 @@ sub _process_request {
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        my $token = $headers{TOKEN};
+        my $token = $headers{'Yote-Token'};
 
-        $token ||= 'test'; #remove
-
-        unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
+        unless( $obj_id eq '_' || $obj_id eq $server_root->{ID} || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Req : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -222,7 +220,7 @@ sub _process_request {
         }
         my $ids_to_update = $server_root->_updates_needed( $token );
         
-            print STDERR Data::Dumper->Dump([$ids_to_update,"UPDATE THESE"]);
+        print STDERR Data::Dumper->Dump([$ids_to_update,"UPDATE THESE"]);
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
             my $obj = $store->fetch( $obj_id );
@@ -270,11 +268,11 @@ sub _process_request {
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
-            'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
+            'Access-Control-Allow-Headers: Yote-Token, accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *',
             );
 
-        _log( "200 OK ( $out_res )" );
+        _log( "200 OK ( " . join( ",", @headers ) . " ) ( $out_res )" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
 
         $sock->close;
@@ -429,15 +427,19 @@ sub set {
 }
 
 sub lock {
-    my( $self, $obj ) = @_;
-    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
-    $self->{STORE}{_lockerClient}->lock( $obj_id );
+    my( $self, $obj_or_key ) = @_;
+    my $key = $obj_or_key && ! ref( $obj_or_key ) 
+        ? $obj_or_key 
+        : $self->{STORE}->_get_id( $obj_or_key || $self );
+    $self->{STORE}{_lockerClient}->lock( $key );
 }
 
 sub unlock {
-    my( $self, $obj ) = @_;
-    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
-    $self->{STORE}{_lockerClient}->unlock( $obj_id );
+    my( $self, $obj_or_key ) = @_;
+    my $key = $obj_or_key && ! ref( $obj_or_key ) 
+        ? $obj_or_key 
+        : $self->{STORE}->_get_id( $obj_or_key || $self );
+    $self->{STORE}{_lockerClient}->unlock( $key );
 }
 
 # ------- END Yote::ServerObj
@@ -453,30 +455,43 @@ use base 'Yote::ServerObj';
 sub _init {
     my $self = shift;
     $self->set__token2ip({});
-    $self->set__token_sets([]);      # sets of time blocked tokens
-    $self->set__token_set_times([]); # list of expire times of the sets. tokens expire after 10 minutes in quantized 10 minute chunks
     $self->set__hasToken2objs({});
     $self->set__canToken2objs({});
     $self->set__apps({});
     $self->set__appOnOff({});
-    $self->set_token_timeslots([]);
-    $self->set_token_timeslots_metadata([]);
+    $self->set__token_timeslots([]);
+    $self->set__token_timeslots_metadata([]);
+    $self->set__token_mutex([]);
 }
 
 sub _valid_token {
-    1;
+    my( $self, $token, $ip ) = @_;
+    my $slots = $self->get__token_timeslots();
+    print STDERR Data::Dumper->Dump([$slots,"VT"]);
+    for( my $i=0; $i<@$slots; $i++ ) {
+        if( $slots->[$i]{$token} eq $ip ) {
+            if( $i < $#$slots ) {
+                # refresh its time
+                $self->lock( 'token_mutex' );
+                $slots->[0]{ $token } = $ip;
+                $self->unlock( 'token_mutex' );
+            }
+            return 1;
+        }
+    }
+    0;
 }
 
 sub _token2objs {
     my( $self, $tok, $flav ) = @_;
-    my $token2objs = $self->get( "_${flav}Token2objs" );
-    $self->lock( $token2objs );
+    my $item = "_${flav}Token2objs";
+    $self->lock( $item );
+    my $token2objs = $self->get( $item );
     my $objs = $token2objs->{$tok};
     unless( $objs ) {
         $objs = {};
         $token2objs->{$tok} = $objs;
     }
-    $self->unlock( $token2objs );
     $objs;
 }
 
@@ -485,16 +500,19 @@ sub _has {
     return if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'has' );
     $obj_data->{$id} = time - 1;
-    $self->unlock( $obj_data );
+    $self->unlock( "_hasToken2objs" );
 }
 
 sub _resethas {
     my( $self, $token ) = @_;
+    $self->lock( "_canToken2objs" );
+
     for ( qw( has can ) ) {
-        my $token2objs = $self->get( "_${_}Toekn2objs" );
-        $self->lock( $token2objs );
+        my $item = "_${_}Token2objs";
+        $self->lock( $item );
+        my $token2objs = $self->get( $item );
         delete $token2objs->{ $token };
-        $self->unlock( $token2objs );
+        $self->unlock( $item );
     }
 }
 
@@ -504,7 +522,7 @@ sub _canhas {
     my $obj_data = $self->_token2objs( $token, 'can' );
     $self->lock( $obj_data );
     my $has = $obj_data->{$id};
-    $self->unlock( $obj_data );
+    $self->unlock( "_canToken2objs" );
     $has;
 }
 
@@ -513,7 +531,7 @@ sub _willhas {
     return if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'can' );
     $obj_data->{$id} = time - 1;
-    $self->unlock( $obj_data );
+    $self->unlock( "_canToken2objs" );
 }
 
 
@@ -529,7 +547,7 @@ sub _updates_needed {
             push @updates, $obj_id;
         }
     }
-    $self->unlock( $obj_data );
+    $self->unlock( "_hasToken2objs" );
     \@updates;
 } #_updates_needed
 
@@ -537,23 +555,28 @@ sub _updates_needed {
 sub create_token {
     my $self = shift;
 
-    my $rand_part = rand( 1_000_000_000 ); #TODO - find max this can be for long int
-    my $ip = $ENV{REMOTE_HOST} || 'tok';
+    my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
+    my $ip = $ENV{REMOTE_HOST};
     
     # make the token boat. tokens last at least 10 mins, so quantize
     # 10 minutes via time 10 min = 600 seconds = 600
     # or easy, so that 1000 seconds ( ~ 16 mins )
     # todo - make some sort of quantize function here
-    my $timeslot  = 7 + int( time / 100 );
-    my $slots     = $self->get_token_timeslots();
-    my $slot_data = $self->get_token_timeslots_metadata();
+    my $timechunk = int( time / 100 );
+    my $timeslot  = 7 + $timechunk;
 
-    my $now = time;
+    $self->lock( 'token_mutex' );
 
+    my $slots     = $self->get__token_timeslots();
+    my $slot_data = $self->get__token_timeslots_metadata();
+
+    #
+    # check if the token is already used ( very unlikely ) and remove expired slots
+    #
     my $to_remove = 0;
     for( my $i=0; $i<@$slot_data; $i++ ) {
         # remove slots that are too old
-        if( $slot_data->[ $i ] < $now ) {
+        if( $slot_data->[ $i ] < $timechunk ) {
             $to_remove++;
         } elsif( $slots->[ $i ]{ $randpart } ) {
             # if this produces the same rand number lots of times in a row
@@ -563,8 +586,32 @@ sub create_token {
             return $self->create_token;
         }
     }
+    for( my $i=0; $i<$to_remove; $i++ ) {
+        shift @$slots;
+        shift @$slot_data;
+    }
 
-    return $rand_part;
+    #
+    # Find out which boat this should be on. Create a new boat if necessary.
+    #
+    my $found = 0;
+    for( my $i=0; $i<@$slot_data; $i++ ) {
+        if( $slot_data->[ $i ] == $timeslot ) {
+            $slots->[ $i ]{ $randpart } = $ip;
+            $found = 1;
+            last;
+        }
+    }
+    unless( $found ) {
+        push @$slot_data, $timeslot;
+        push @$slots, { $randpart => $ip };
+    }
+
+    $self->unlock( 'token_mutex' );
+
+
+    print STDERR Data::Dumper->Dump([$slot_data,$slots,"CREATET"]);
+    return $randpart;
 
 } #create_token
 
