@@ -414,7 +414,7 @@ use IO::Socket::INET;
 =head3 new( lockername, host, port )
 
     Creates a client object with the given name for the host and port.
-    
+
 =cut
 sub new {
     my( $pkg, $lockerName, $host, $port ) = @_;

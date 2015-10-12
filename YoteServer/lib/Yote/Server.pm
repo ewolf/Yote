@@ -84,7 +84,7 @@ sub run {
         _log( "lock server : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
         for my $pid (keys %{ $self->{_pids} } ) {
-            kill 'HUP', $pid;
+            kill 'INT', $pid;
         }
         $locker->stop;
         exit;
@@ -103,14 +103,6 @@ sub run {
 
     $self->{SERVER_ROOT} = $store->fetch_server_root;
 
-    $SIG{HUP} = sub {
-        # wait for all processes to complete, then 
-        # update the root object
-        while( wait() ) { }
-        $self->{STORE}->stow_all;
-        exit;
-    };
-
     while( my $connection = $listener_socket->accept ) {
         $self->_process_request( $connection );
     }
@@ -125,7 +117,7 @@ sub _process_request {
     my( $self, $sock ) = @_;
     if( my $pid = fork ) {
         # parent
-#        push @{$self->{pids}},$pid;
+        push @{$self->{_pids}},$pid;
     } else {
         #child
         my $req = <$sock>;
@@ -150,7 +142,7 @@ sub _process_request {
         my $content_length = $headers{'Content-Length'};
         my $data;
         if( $content_length > 0 && ! eof $sock) {
-            my $read = read $sock, $data, $content_length;
+            read $sock, $data, $content_length;
         }
         my( $verb, $path ) = split( /\s+/, $req );
 

@@ -319,11 +319,11 @@ sub open {
     my $useSize = $size || do { use bytes; length( pack( $template ) ) };
     die "Cannot open a zero record sized fixed store" unless $useSize;
     unless( -e $filename ) {
-        open $FH, ">$filename";
+        CORE::open $FH, ">$filename";
         print $FH "";
         close $FH;
     }
-    open $FH, "+<$filename" or die "$@ $!";
+    CORE::open $FH, "+<$filename" or die "$@ $!";
     bless { TMPL => $template, 
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
