@@ -75,11 +75,10 @@ sub test_suite {
         $res = $res && $locker3->unlock( "KEY1" ) == 1;
         exit ! $res;
     }
-    sleep .01;
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
-
+        print STDERR "starting second client\n";
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->isLocked( "KEY1" ) == 1;
         # KEY1 is locked by locker3, so this doesn't return until it
@@ -120,10 +119,10 @@ sub test_suite {
         exit ! $res;
 
     }
-    sleep .01;
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
+        print STDERR "starting second client\n";
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
         my $res = $locker5->lock( "KEYB" ) > 1;
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;

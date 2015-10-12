@@ -1,4 +1,5 @@
 1.1 - Make the server restful. Added run method which doesn't fork and return.
+      Make sure the socket communications are utf-8.
 
 
 1.0 - API laid out
