@@ -1,8 +1,11 @@
-# ------------- Sept 28, 2015
-#
-# ----- Version 1.0
-#
+Nov 2, 2015
+# --------Version 1.1
+
+
 # ----------------------------------------------------------
+
+Sept 28, 2015
+# ----- Version 1.0
 
 This version breaks from earlier versions in that it splits
 off the app server into a separate project, and greatly 

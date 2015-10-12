@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 =head1 NAME
 
@@ -95,7 +95,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 =head1 NAME
 
@@ -195,10 +195,12 @@ sub fetch {
             return \%hash;
         }
         else {
-            $class =~ /^Yote::/ || eval("require $class");
+            my $obj;
+            eval {
+                $class =~ /^Yote::/ || eval("require $class");
+                $obj = $class->_instantiate( $id, $self );
+            };
             return undef if $@;
-
-            my $obj = $class->_instantiate( $id, $self );
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();
@@ -506,7 +508,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -715,7 +717,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -810,7 +812,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -883,7 +885,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 #
 # This the main index and stores in which table and position
@@ -1067,6 +1069,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.0  (October 10, 2015))
+       Version 1.1  (November 2, 2015))
 
 =cut
