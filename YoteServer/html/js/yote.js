@@ -140,8 +140,8 @@ yote.init = function( yoteServerURL ) {
     }; // contact
         
     yote.fetch_root = function() {
+        token = contact('_', 'create_token');
         this.root = contact('_', 'fetch_root');
-        token = this.root.create_token();
         return this.root;
     }; //yote.fetch_root
 

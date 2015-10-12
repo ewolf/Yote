@@ -130,6 +130,8 @@ sub stow {
 
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
 
+    print STDERR Data::Dumper->Dump(["STOW FIXED",$data,$id]);
+
     #
     # Check if this record had been saved before, and that the
     # store is was in has a large enough record size.

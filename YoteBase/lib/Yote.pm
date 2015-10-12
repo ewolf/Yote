@@ -167,18 +167,16 @@ sub _newroot {
 =cut
 sub fetch {
     my( $self, $id ) = @_;
-
+    print STDERR Data::Dumper->Dump(["FETCH '$id'"]);
     return undef unless $id;
     #
     # Return the object if we have a reference to its dirty state.
     #
     my $ref = $self->{_DIRTY}{$id} || $self->{_WEAK_REFS}{$id};
     if( defined $ref ) {
-        print STDERR Data::Dumper->Dump([[keys %{$self->{_DIRTY}}],[keys %{$self->{_WEAK_REFS}}],ref $ref,"RETURNING $id"]);
         return $ref;
     }
     my $obj_arry = $self->{_DATASTORE}->_fetch( $id );
-    print STDERR Data::Dumper->Dump([$obj_arry,"LOADING $id"]);
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -235,7 +233,6 @@ sub stow_all {
     my $self = $_[0];
     my @odata;
     for my $obj (values %{$self->{_DIRTY}} ) {
-        print STDERR Data::Dumper->Dump([$obj,"STOW : " . $self->_get_id( $obj )]);
         my $cls;
         my $ref = ref( $obj );
         if( $ref eq 'ARRAY' || $ref eq 'Yote::Array' ) {

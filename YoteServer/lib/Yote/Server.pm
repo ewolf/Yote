@@ -49,7 +49,6 @@ sub start {
         return $pid;
     }
 #    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
-    print STDERR Data::Dumper->Dump(["PROCCING"]);
     $0 = "YoteServer process";
     # child process
     $self->run;
@@ -126,8 +125,8 @@ sub run {
 } #run
 
 sub _log {
+    if( $_[0] =~ /HASH/ ) {    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]); }
     print STDERR 'Yote::Server : ' . shift . "\n" if $DEBUG;
-    
 }
 
 sub _process_request {
@@ -249,7 +248,6 @@ sub _process_request {
                       $server_root->_getMay( $obj_id, $token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
-            print STDERR Data::Dumper->Dump([$obj_id,$token,$ENV{REMOTE_HOST},$server_root->_valid_token( $token, $ENV{REMOTE_HOST} ), $server_root->_getMay($obj_id,$token)]);
             _log( "Bad Path : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -276,7 +274,6 @@ sub _process_request {
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
-        print STDERR Data::Dumper->Dump([$obj_id,$server_root,$obj,"BOOP"]);
         unless( $obj->can( $action ) ) {
             _log( "Bad Req : invalid method :'$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -475,7 +472,6 @@ sub fetch_server_root {
 
 sub lock {
     my( $self, $key ) = @_;
-    print STDERR Data::Dumper->Dump([\@_,"SELFA"]);
     $self->{_lockerClient} ||= $self->{_locker}->client( $$ );
     $self->{_lockerClient}->lock( $key );
 }
@@ -491,6 +487,10 @@ sub unlock {
 package Yote::ServerObj;
 
 use base 'Yote::Obj';
+
+sub _log {
+    Yote::Server::_log(shift);
+}
 
 $Yote::ServerObj::PKG2METHS = {};
 sub __discover_methods {
@@ -588,6 +588,10 @@ sub _init {
     $self->set__token_mutex([]);
 }
 
+sub _log {
+    Yote::Server::_log(shift);
+}
+
 sub _valid_token {
     my( $self, $token, $ip ) = @_;
     my $slots = $self->get__token_timeslots();
@@ -630,7 +634,6 @@ sub _getMay {
     return 1 if index( $id, 'v' ) == 0;
     return 0 if $token eq '_';
     my $obj_data = $self->get__mayHave_Token2objs;
-    print STDERR Data::Dumper->Dump([$obj_data,'GETMAY ' . $self->{STORE}->_get_id( $obj_data )]);
     $obj_data->{$token} && $obj_data->{$token}{$id};
 }
 
@@ -735,29 +738,25 @@ sub create_token {
 
 sub fetch_app {
     my( $self, $app_name, @args ) = @_;
-    print STDERR Data::Dumper->Dump([\@_,"PEEK"]);
     my $apps = $self->get__apps;
     my $app  = $apps->{$app_name};
     unless( $app ) {
         eval("require $app_name");
         if( $@ ) {
-            print STDERR Data::Dumper->Dump([$@,"BAD FETCH APP $app_name"]);
             # TODO - have/use a good logging system with clarity and stuff
             # warnings, errors, etc
-            $self->{STORE}->_log( "App '$app_name' not found" );
+            _log( "App '$app_name' not found" );
             return undef;
         }
-        $self->{STORE}->_log( "Loading app '$app_name'" );
+        _log( "Loading app '$app_name'" );
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
     my $appIsOn = $self->get__appOnOff->{$app_name};
     if( $appIsOn eq 'off' ) {
-        print STDERR Data::Dumper->Dump(["APP NOTTA FOUND"]);
-        $self->{STORE}->_log( "App '$app_name' not found" );
+        _log( "App '$app_name' not found" );
         return undef;
     }
-    print STDERR Data::Dumper->Dump([$app,"AP THIS POINT"]);
     $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 
@@ -766,6 +765,7 @@ sub fetch_root {
 }
 
 sub fetch {
+    print STDERR Data::Dumper->Dump(["FETCH"]);
     my( $self, $token, @ids ) = @_;
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};
