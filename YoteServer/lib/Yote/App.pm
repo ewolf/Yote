@@ -10,8 +10,10 @@ use base 'Yote::ServerApp';
 
 sub login {
     my( $self, $un, $pw ) = @_;
-    print STDERR Data::Dumper->Dump(["LOGIN CALLED WITH $un,$pw"]);
-    return "Tried to log in with '$un' and '$pw'";
+#    return "Tried to log in with '$un' and '$pw'";
+    return $self->{STORE}->newobj( {
+        user => $un,
+        pwww => $pw,                                   } );
 
 } #login
 

@@ -13,7 +13,8 @@
     yote.initMain();
 
     function onLogin( res ) {
-        alert( "LoggedIn " + res );
+        alert( res );
+        console.log( [ 'woof', res ] );
     }
     
     document.getElementById( 'login' ).addEventListener('click',function(){
