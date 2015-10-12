@@ -25,7 +25,7 @@ BEGIN {
 }
 
 my $dir = tempdir( CLEANUP => 1 );
-my $server = new Yote::Server( { yote_root_dir => $dir } );
+my $server = new Yote::Server( { yote_root_dir => $dir, yote_port => 8881 } );
 my $store = $server->{STORE};
 my $otherO = $store->newobj;
 my $root = $store->fetch_server_root;
@@ -197,7 +197,7 @@ sub test_suite {
     is( $retcode, 200, "able to fetch allowed object" );
     is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
-               l2a( qw( someMethod get set  ) ), 'correct methods for server object' );
+               l2a( qw( someMethod  ) ), 'correct methods for server object' );
     
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
 

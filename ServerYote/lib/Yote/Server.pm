@@ -12,6 +12,10 @@ use Yote;
 use JSON;
 use URI::Escape;
 
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+
 my $DEBUG = 0;
 
 sub new {
@@ -497,7 +501,7 @@ sub __discover_methods {
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et_|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
+        return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
     }
     
     for my $class ( @{"${pkg}\::ISA" } ) {

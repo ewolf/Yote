@@ -21,8 +21,7 @@ mkdir $yote_root unless -d $yote_root;
 
 die "Unable to create root directory" unless -w $yote_root;
 
-mkdir "$yote_root/data";
-mkdir "$yote_root/lib";
+mkdir "$yote_root/html";
 
 # fill the root directory
 sub copy_dir {
@@ -50,16 +49,15 @@ my $builder = Module::Build->new(
     },
     create_makefile_pl => 'traditional',
     dist_author        => q{Eric Wolf (coyocanid@gmail.com)},
-    dist_version_from  => 'lib/Yote.pm',
+    dist_version_from  => 'lib/Yote/Server.pm',
     license            => 'perl',
     module_name        => 'Yote',
     release_status     => 'stable',
-    test_files         => [ 't/yotedb.t', ],
+    test_files         => [ 't/servertest.t', ],
     requires => {
         'perl'                  => 'v5.12',
-        'Devel::Refcount'       => 0.1,
+        'Yote'                  => 1.2,
         'Test::More'            => 0,
-        'WeakRef'               => 0.01,
     },
     );
 

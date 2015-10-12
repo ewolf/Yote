@@ -35,7 +35,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     // returns data
     var makeMethod = function( mName ) {
         var nm = '' + mName;
-        return function( data, args, rawOrHandler ) {
+        return function( data, rawOrHandler ) {
             if( typeof rawOrHandler === 'boolean') {
                 var useRaw = rawOrHandler;
             } else {
@@ -43,14 +43,14 @@ yote._init = function( yoteServerURL, isWorker ) {
             }
 
             if( ! isWorker && sucHandler ) {
-                console.warn( "yote warning. method '" + nm + "' called without a success handler" );
+                console.warn( "yote warning. method '" + nm + "' called with a success handler but is not worker" );
                 // big warnings anyway, using this as not a worker
                 // since if there is a worker, its object cache may become out of date :/
                 // TODO: yote worker methods rather than onmessage? 
                 // maybe even grab window.onmessage
             }
             var id = this.id;
-            var res = contact( id, nm, data, args, useRaw );
+            var res = contact( id, nm, data, useRaw );
             if( isWorker ) { 
                 return res; 
             }
@@ -135,7 +135,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         };
     };
 
-    var contact = function(id,action,data,returnRaw) { // args has async,sucHandler,failHandler,returnRaw
+    var contact = function(id,action,data,returnRaw) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener( returnRaw ) );
 
