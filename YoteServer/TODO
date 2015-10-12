@@ -1,7 +1,9 @@
 
-write tests
+write POD
 
-confiure options beyond root ( port, timeouts, etc )
+write tests ( similar to Lock::Server )
+
+confiure options beyond root ( port for yote, port for lock server, timeout, etc )
 
 create yote_server script
 
