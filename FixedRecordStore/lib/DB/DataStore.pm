@@ -387,6 +387,10 @@ sub get_record {
     my( $self, $idx ) = @_;
 
     my $fh = $self->_filehandle;
+
+# how about an ensure_entry_count right here?
+# also a has_record
+
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
@@ -458,6 +462,9 @@ sub put_record {
         my $to_write_length = do { use bytes; length( $to_write ); };
         die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
     }
+
+# how about an ensure_entry_count right here?
+
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     defined( $swv ) or die "Could not write : $@ $!";
     1;

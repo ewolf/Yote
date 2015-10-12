@@ -5,6 +5,9 @@ use warnings;
 
 no warnings 'uninitialized';
 
+use Lock::Server;
+use Yote;
+
 use JSON;
 
 sub new {
@@ -62,6 +65,9 @@ sub run {
         return 0;
     }
 
+    my $locker = new Lock::Server;
+    $locker->start;
+
     # if this is cancelled, make sure all child procs are killed too
     $SIG{INT} = sub {
         _log( "lock server : got INT signal. Shutting down." );
@@ -69,13 +75,18 @@ sub run {
         for my $pid (keys %{ $self->{_pids} } ) {
             kill 'HUP', $pid;
         }
+        $locker->stop;
         exit;
     };
+
+
 
     eval('use Yote::ConfigData');
     my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
 
-    my $store = Yote::ServerStore->_new( { store => "$yote_root_dir/DATA_STORE" } );
+    my $store = Yote::ServerStore->_new( { root => "$yote_root_dir" } );
+    $store->{_locker} = $locker;
+
     $self->{STORE} = $store;
     $self->{SERVER_ROOT} = $store->fetch_server_root;
 
@@ -85,7 +96,7 @@ sub run {
         while( wait() ) { }
         $self->{STORE}->stow_all;
         exit;
-    }
+    };
 
     while( my $connection = $listener_socket->accept ) {
         $self->_process_request( $connection );
@@ -114,9 +125,13 @@ sub _process_request {
         # validate token if any. Make sure token and ip work
         my $store = $self->{STORE};
 
+        $store->{_lockerClient} = $store->{_locker}->client( $$ );
+
+
         # 
         # read certain length from socket ( as many bytes as content length )
         #
+        my $content_length;
         my $data;
         if( $content_length && ! eof $sock) {
             my $read = read $sock, $data, $content_length;
@@ -131,16 +146,19 @@ sub _process_request {
         # root is /_/
 
         my $params;
+        my( $obj_id, $action );
         if( $verb eq 'GET' ) {
-            my( $obj_id, $action, @params ) = split( '/', $path );
+            ( $obj_id, $action, my @params ) = split( '/', $path );
             $params = \@params;
         } elsif( $verb eq 'PUT' ) {
-            my( $obj_id, $action ) = split( '/', $path );
+            ( $obj_id, $action ) = split( '/', $path );
             $params = from_json( $data );
         }
         
+        my $server_root = $self->{SERVER_ROOT};
+
         my $token = $headers{TOKEN};
-        unless( $obj_id eq '_' || ( $self->_valid_token( $token, $IP ) && $self->_canhas( $obj_id, $token ) ) ) {
+        unless( $obj_id eq '_' || ( $self->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -155,7 +173,7 @@ sub _process_request {
 
         my( @in_params );
         for my $param (@$params) {
-            unless( $self->_canhas( $obj_id, $token ) ) {
+            unless( $server_root->_canhas( $obj_id, $token ) ) {
                 $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
                 $sock->close;
                 return;
@@ -164,20 +182,75 @@ sub _process_request {
         }
 
 
-        my $server_root = $self->{SERVER_ROOT};
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
         
-        my $res = $obj->$action( @in_params );
+        my $res;
+        eval {
+            $res = $obj->$action( @in_params );
+        };
+
+        if( $@ ) {
+            print STDERR Data::Dumper->Dump(["ERROR '$@'",$obj,$action,\@in_params]);
+            $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
+            $sock->close;
+            return;
+        }
 
         my( @out_res );
         if( $res ) {
             my $val = $store->_xform_in( $res );
-            $self->_willhas( $val, $token ) ;
+            $server_root->_willhas( $val, $token ) ;
+            $server_root->_has( $val, $token ) ;
             push @out_res, $val;
         }
-        my $out_res = to_json( \@out_res );
+        my $ids_to_update = $store->_updates_needed( $token );
+        
+        my( @updates, %methods );
+        for my $obj_id (@$ids_to_update) {
+            my $obj = $store->fetch( $obj_id );
+            my $ref = ref( $obj );
+
+            my( $data, $meths );
+            if( $ref eq 'ARRAY' ) {
+                $data = [ 
+                    map { my $d = $store->_xform_in( $_ );
+                          $store->_willhas( $d, $token ); 
+                          $d } 
+                    @$obj ];
+            } elsif( $ref eq 'HASH' ) {
+                $data = {
+                    map { my $d = $store->_xform_in( $obj->{$_} );
+                          $store->_willhas( $d, $token ); 
+                          $_ => $d } 
+                    keys %$obj };
+                
+            } else {
+                my $obj_data = $obj->{DATA};
+                
+                $data = {
+                    map { my $d = $store->_xform_in( $obj_data->{$_} );
+                          $store->_willhas( $d, $token ); 
+                          $_ => $d } 
+                    grep { $_ !~ /^_/ }
+                    keys %$obj_data };
+
+                $methods{$ref} ||= $obj->_callable_methods;
+            }
+            my $update = {
+                id    => $obj_id,
+                class => $ref,
+                data  => $data,
+            };
+            push @updates, $update;
+        }
+        
+
+        my $out_res = to_json( { result  => \@out_res,
+                                 updates => \@updates,
+                                 methods => \%methods,
+                               } );
 
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
@@ -201,10 +274,39 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use DB::DataStore;
+
 use Yote;
 use Yote::ObjStore;
-
 use parent 'Yote::ObjStore';
+
+sub _new {
+    my( $pkg, $args ) = @_;
+    $args->{store} = "$args->{root}/DATA_STORE";
+    my $self = $pkg->SUPER::_new( $args );
+    
+    # keeps track of when any object had been last updated.
+    # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
+    # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
+    
+    $self->{OBJ_UPDATE_DB} = DB::DataStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
+    $self;
+}
+
+sub _stow {
+    my( $self, $obj ) = @_;
+    $self->SUPER::_stow( $obj );
+
+    my $obj_id = $self->_get_id( $obj );
+    $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
+}
+
+sub _last_updated {
+    my( $self, $obj_id ) = @_;
+    my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
+    $time;
+}
+
 
 sub newobj {
     my( $self, $data, $class ) = @_;
@@ -243,9 +345,82 @@ use warnings;
 no warnings 'uninitialized';
 
 use Yote;
-use Yote::Obj;
 
-use parent 'Yote::Obj';
+use parent 'Yote::ServerObj';
+
+sub _init {
+    my $self = shift;
+    $self->set_hasToken2objs({});
+    $self->set_canToken2objs({});
+    $self->set_apps({});
+}
+
+sub _token2objs {
+    my( $self, $tok, $flav ) = @_;
+    my $token2objs = $self->get( "${flav}Token2objs" );
+    $self->lock( $token2objs );
+    my $objs = $token2objs->{$tok};
+    unless( $objs ) {
+        $objs = {};
+        $token2objs->{$tok} = $objs;
+    }
+    $self->unlock( $token2objs );
+    $objs;
+}
+
+sub _has {
+    my( $self, $id, $token ) = @_;
+    return if $id < 1;
+    my $obj_data = _token2objs( $token, 'has' );
+    $obj_data->{$id} = time - 1;
+    $self->unlock( $obj_data );
+}
+
+sub _resethas {
+    my( $self, $token ) = @_;
+    for my ( qw( has can ) ) {
+        my $token2objs = $self->get( "${_}Toekn2objs" );
+        $self->lock( $token2objs );
+        delete $token2objs->{ $token };
+        $self->unlock( $token2objs );
+    }
+}
+
+sub _canhas {
+    my( $self, $id, $token, 'can' ) = @_;
+    return 1 if $id < 1;
+    my $obj_data = _token2objs( $token );
+    $self->lock( $obj_data );
+    my $has = $obj_data->{$id};
+    $self->unlock( $obj_data );
+    $has;
+}
+
+sub _willhas {
+    my( $self, $id, $token, 'can' ) = @_;
+    return if $id < 1;
+    my $obj_data = _token2objs( $token );
+    $obj_data->{$id} = time - 1;
+    $self->unlock( $obj_data );
+}
+
+
+sub _updates_needed {
+    my( $self, $token ) = @_;
+    my $obj_data = _token2objs( $token, 'has' );
+    my $store = $self->{STORE};
+
+    my( @updates );
+    for my $obj_id (keys %$obj_data ) {
+        my $last_update_sent = $obj_data->{$obj_id};
+        my $last_updated = $store->_last_updated( $obj_id );
+        if( $last_update_sent < $last_updated ) {
+            push @updates, $obj_id;
+        }
+    }
+    $self->unlock( $obj_data );
+    \@updates;
+} #_updates_needed
 
 #
 # what things will the server root provide?
@@ -257,8 +432,8 @@ use parent 'Yote::Obj';
 sub fetch_app {
     my( $self, $app_name, @args ) = @_;
 
-    my $apps = $self->get_apps( {} );
-    my $app = $apps->{$app_name};
+    my $apps = $self->get_apps;
+    my $app  = $apps->{$app_name};
     unless( $app ) {
         eval("require $app_name");
         return undef if $@;
@@ -281,13 +456,9 @@ use warnings;
 no warnings 'uninitialized';
 
 use Yote;
-use Yote::Obj;
 
-use parent 'Yote::Obj';
+use parent 'Yote::ServerObj';
 
-sub can_access {
-    1; # override to allow control of app access. Args will be passed in
-}
 
 package Yote::ServerObj;
 
@@ -320,7 +491,7 @@ sub __discover_methods {
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } @$base_meths;
 
-    $meths = [ grep { ! $base{$_} } @m ];
+    $meths = [ grep { $_ !~ /^_/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -338,6 +509,39 @@ sub _callable_methods {
     }
     $meth
 } # _callable_methods
+
+sub get {
+    my( $self, $fld, $default ) = @_;
+    if( ! defined( $self->{DATA}{$fld} ) && defined($default) ) {
+        if( ref( $default ) ) {
+            $self->{STORE}->_dirty( $default, $self->{STORE}->_get_id( $default ) );
+        }
+        $self->{STORE}->_dirty( $self, $self->{ID} );
+        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
+    }
+    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+
+sub set {
+    my( $self, $fld, $val ) = @_;
+    my $inval = $self->{STORE}->_xform_in( $val );
+    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+    $self->{DATA}{$fld} = $inval;
+    
+    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+
+sub lock {
+    my( $self, $obj ) = @_;
+    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
+    $self->{STORE}{_lockerClient}->lock( $obj_id );
+}
+
+sub unlock {
+    my( $self, $obj ) = @_;
+    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
+    $self->{STORE}{_lockerClient}->unlock( $obj_id );
+}
 
 1;
 

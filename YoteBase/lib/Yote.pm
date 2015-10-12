@@ -392,6 +392,7 @@ sub _stow {
             }
         }
     }
+    $id;
 } #_stow
 
 sub _xform_in {
@@ -514,6 +515,8 @@ use overload
     '=='   => sub { ref($_[1]) && $_[1]->{ID} == $_[0]->{ID} },
     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
+
+# add a get()/set() here?
 
 # -----------------------
 #
@@ -861,6 +864,8 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
+
+use DB::DataStore;
 
 use WeakRef;
 use File::Path qw(make_path);
