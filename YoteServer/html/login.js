@@ -10,7 +10,7 @@ onmessage = function(e) {
     var data = e.data;
     console.log( [ "login.js GOT MESSAGE", data ] );
     var name = data[0], pw = data[1];
-    var rawResp = app.login( [ name, pw ] );
+    var rawResp = app.login( [ name, pw ], true );
     console.log( [ "login.js GOT MESSAGE RESPONSE", rawResp ] );
     postMessage( rawResp );
 } //onMessage

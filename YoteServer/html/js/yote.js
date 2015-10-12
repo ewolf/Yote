@@ -1,3 +1,4 @@
+//# 106.613.4786
 var yote = {
     fetch_root : function() {
         throw new Error("init must be called before fetch_root");
@@ -12,9 +13,13 @@ yote.initWorker = function( yoteServerURL ) {
     yote._init( yoteServerURL, true );
 }; //initWorker
     
-yote._init = function( yoteServerURL, initArgs, isWorker ) {
+yote._init = function( yoteServerURL, isWorker ) {
 
-    if( ! initArgs ) { initArgs = {} }
+    isWorker = isWorker ? true : false; // can't be undefined or things like that
+
+    if( ! yoteServerURL ) { 
+        yoteServerURL = '';
+    }
 
     // cache storing objects and their meta-data
     var class2meths = {};
@@ -31,13 +36,28 @@ yote._init = function( yoteServerURL, initArgs, isWorker ) {
     // returns data
     var makeMethod = function( mName ) {
         var nm = '' + mName;
-        return function( data, args, sucHandler ) {
+        return function( data, args, rawOrHandler ) {
+            if( typeof rawOrHandler === 'boolean') {
+                var useRaw = rawOrHandler;
+            } else {
+                var sucHandler = rawOrHandler;
+            }
+
             if( ! isWorker && sucHandler ) {
                 console.warn( "yote warning. method '" + nm + "' called without a success handler" );
+                // big warnings anyway, using this as not a worker
+                // since if there is a worker, its object cache may become out of date :/
+                // TODO: yote worker methods rather than onmessage? 
+                // maybe even grab window.onmessage
             }
             var id = this.id;
-            var res = contact( id, nm, data, args );
-            return isWorker ? res : this;
+            var res = contact( id, nm, data, args, useRaw );
+            if( isWorker ) { 
+                return res; 
+            }
+            if( sucHandler ) {
+                sucHandler();
+            }
         };
     };
 
@@ -106,27 +126,19 @@ yote._init = function( yoteServerURL, initArgs, isWorker ) {
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
     var returnVal = '';
-    var reqListener = function(createArgs) {
+    var reqListener = function( returnRaw ) { 
         return function() {
-            if( createArgs.returnRaw ) {
-                returnVal = this.responseText;
+            if( isWorker && !returnRaw ) {
+                returnVal = processRaw( this.responseText ); 
+            } else {
+                returnVal = this.responseText; 
+            };
+        };
+    };
 
-                var proccessed = processRaw( returnVal ); // to create objects, etc
-                if( methodArgs && methodArgs.sucHandler ) {
-                    methodArgs.sucHandler( processed );
-                }
-                return;
-            }
-            returnVal = processRaw( this.responseText );
-            if( methodArgs && methodArgs.sucHandler ) {
-                Methodargs.sucHandler( returnVal );
-            }
-        }
-    }; //reqListener
-
-    var contact = function(id,action,data,methodArgs) { // args has async,sucHandler,failHandler,returnRaw
+    var contact = function(id,action,data,returnRaw) { // args has async,sucHandler,failHandler,returnRaw
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener(methodArgs));
+        oReq.addEventListener("load", reqListener( returnRaw ) );
 
 console.log( '<<' + yoteServerURL + '>>' );
         console.log( 'url : ' + ( yoteServerURL || "" ) + 
@@ -137,7 +149,8 @@ console.log( '<<' + yoteServerURL + '>>' );
         oReq.open("POST", ( yoteServerURL || "" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
-                  '/' + action, isWorker ? false : true );
+                  '/' + action, 
+                  ! isWorker );
         if( data && typeof data !== 'object' ) {
             data = [ data ];
         }
