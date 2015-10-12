@@ -8,8 +8,6 @@ use vars qw($VERSION);
 
 $VERSION = '1.0';
 
-use DB::DataStore;
-
 =head1 NAME
 
 Yote - Persistant Perl container objects in a directed graph of lazilly loaded nodes.

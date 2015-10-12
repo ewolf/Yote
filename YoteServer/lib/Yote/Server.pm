@@ -276,9 +276,7 @@ no warnings 'uninitialized';
 
 use DB::DataStore;
 
-use Yote;
-use Yote::ObjStore;
-use parent 'Yote::ObjStore';
+use base 'Yote::ObjStore';
 
 sub _new {
     my( $pkg, $args ) = @_;
@@ -338,7 +336,90 @@ sub fetch_server_root {
     
 } #fetch_server_root
 
-package Yote::ServerRoot;
+
+
+package Yote::ServerObj;
+
+use base 'Yote::Obj';
+
+$Yote::ServerObj::PKG2METHS = {};
+sub __discover_methods {
+    my $pkg = shift;
+    my $meths = $Yote::ServerObj::PKG2METHS->{$pkg};
+    if( $meths ) {
+        return $meths;
+    }
+
+    no strict 'refs';
+    my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
+
+    if( $pkg eq 'Yote::ServerObj' ) {
+        return \@m;
+    }
+    
+    for my $class ( @{"${pkg}\::ISA" } ) {
+        next if $class eq 'Yote::ServerObj' || $class eq 'Yote::Obj';
+        my $pm = __discover_methods( $class );
+        push @m, @$pm;
+    }
+
+    my $base_meths = __discover_methods( 'Yote::ServerObj' );
+    my( %base ) = map { $_ => 1 } @$base_meths;
+
+    $meths = [ grep { $_ !~ /^_/ && ! $base{$_} } @m ];
+    $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
+    
+    $meths;
+} #__discover_methods
+
+# when sending objects across, the format is like
+# id : { data : { }, methods : [] }
+# the methods exclude all the methods of Yote::Obj
+sub _callable_methods {
+    my $self = shift;
+    my $meth = $self->{_methods};
+    unless( $meth ) {
+        my $pkg = ref( $self );
+        $meth = __discover_methods( $pkg );
+    }
+    $meth
+} # _callable_methods
+
+sub get {
+    my( $self, $fld, $default ) = @_;
+    if( ! defined( $self->{DATA}{$fld} ) && defined($default) ) {
+        if( ref( $default ) ) {
+            $self->{STORE}->_dirty( $default, $self->{STORE}->_get_id( $default ) );
+        }
+        $self->{STORE}->_dirty( $self, $self->{ID} );
+        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
+    }
+    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+
+sub set {
+    my( $self, $fld, $val ) = @_;
+    my $inval = $self->{STORE}->_xform_in( $val );
+    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+    $self->{DATA}{$fld} = $inval;
+    
+    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+
+sub lock {
+    my( $self, $obj ) = @_;
+    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
+    $self->{STORE}{_lockerClient}->lock( $obj_id );
+}
+
+sub unlock {
+    my( $self, $obj ) = @_;
+    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
+    $self->{STORE}{_lockerClient}->unlock( $obj_id );
+}
+
+package Yote::ServerApp;
+
 
 use strict;
 use warnings;
@@ -346,7 +427,16 @@ no warnings 'uninitialized';
 
 use Yote;
 
-use parent 'Yote::ServerObj';
+use base 'Yote::ServerObj';
+
+
+package Yote::ServerRoot;
+
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use base 'Yote::ServerObj';
 
 sub _init {
     my $self = shift;
@@ -448,100 +538,6 @@ sub fetch_app {
     undef;
 } #fetch_app
 
-package Yote::ServerApp;
-
-
-use strict;
-use warnings;
-no warnings 'uninitialized';
-
-use Yote;
-
-use parent 'Yote::ServerObj';
-
-
-package Yote::ServerObj;
-
-use Yote;
-use Yote::Obj;
-
-use parent 'Yote::Obj';
-
-my $Yote::ServerObj::PKG2METHS = {};
-sub __discover_methods {
-    my $pkg = shift;
-    my $meths = $Yote::ServerObj::PKG2METHS->{$pkg};
-    if( $meths ) {
-        return $meths;
-    }
-
-    no strict 'refs';
-    my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
-
-    if( $pkg eq 'Yote::ServerObj' ) {
-        return \@m;
-    }
-    
-    for my $class ( @{"${pkg}\::ISA" } ) {
-        next if $class eq 'Yote::ServerObj' || $class eq 'Yote::Obj';
-        my $pm = __discover_methods( $class );
-        push @m, @$pm;
-    }
-
-    my $base_meths = __discover_methods( 'Yote::ServerObj' );
-    my( %base ) = map { $_ => 1 } @$base_meths;
-
-    $meths = [ grep { $_ !~ /^_/ && ! $base{$_} } @m ];
-    $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
-    
-    $meths;
-} #__discover_methods
-
-# when sending objects across, the format is like
-# id : { data : { }, methods : [] }
-# the methods exclude all the methods of Yote::Obj
-sub _callable_methods {
-    my $self = shift;
-    my $meth = $self->{_methods};
-    unless( $meth ) {
-        my $pkg = ref( $self );
-        $meth = __discover_methods( $pkg );
-    }
-    $meth
-} # _callable_methods
-
-sub get {
-    my( $self, $fld, $default ) = @_;
-    if( ! defined( $self->{DATA}{$fld} ) && defined($default) ) {
-        if( ref( $default ) ) {
-            $self->{STORE}->_dirty( $default, $self->{STORE}->_get_id( $default ) );
-        }
-        $self->{STORE}->_dirty( $self, $self->{ID} );
-        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
-    }
-    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
-
-sub set {
-    my( $self, $fld, $val ) = @_;
-    my $inval = $self->{STORE}->_xform_in( $val );
-    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-    $self->{DATA}{$fld} = $inval;
-    
-    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
-
-sub lock {
-    my( $self, $obj ) = @_;
-    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
-    $self->{STORE}{_lockerClient}->lock( $obj_id );
-}
-
-sub unlock {
-    my( $self, $obj ) = @_;
-    my $obj_id = $self->{STORE}->_get_id( $obj || $self );
-    $self->{STORE}{_lockerClient}->unlock( $obj_id );
-}
 
 1;
 
