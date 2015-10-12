@@ -1,3 +1,5 @@
+1.04 - added license, version and changelog files to manifest
+
 1.03 - added use warnings, the license file and the changelog file.
 	
 1.02 - updated the min perl version needed
