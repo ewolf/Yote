@@ -1,6 +1,10 @@
-var yote = {};
-
-(function() {
+var yote = {
+    fetch_root : function() {
+        throw new Error("init must be called before fetch_root");
+    }
+};
+    
+yote.init = function( yoteServerURL ) {
     var class2meths = {};
     var id2obj = {};
     
@@ -66,7 +70,7 @@ var yote = {};
         var oReq = new XMLHttpRequest();
         var async = false;
         oReq.addEventListener("load", reqListener);
-        oReq.open("POST", "http://127.0.0.1:8881" + path, async );
+        oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + path, async );
         oReq.send(data ? 
                   'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
@@ -80,4 +84,4 @@ var yote = {};
         return this.root;
     };
 
-} )();
+}; //yote.init
