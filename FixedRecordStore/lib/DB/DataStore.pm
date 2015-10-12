@@ -8,17 +8,17 @@ DB::DataStore - Simple and fast record based data store
 
 use DB::DataStore;
 
-my $data = "TEXT DATA OR BYTES";
 
 my $store = DB::DataStore->open( $directory );
 
+my $data = "TEXT DATA OR BYTES";
 my $id    = $store->stow( $data, $optionalID );
 
 my $val   = $store->fetch( $id );
 
 $store->recycle( $id );
 
-my $new_id = $store->next_id;
+my $new_id = $store->next_id; # $new_id == $id
 
 $store->stow( "MORE DATA", $new_id );
 
@@ -286,7 +286,7 @@ my $entries = $store->entry_count;
 
 if( $entries < $min ) {
 
-    $store->ensure_empty_count( $min );
+    $store->ensure_entry_count( $min );
 
 }
 
@@ -572,6 +572,8 @@ __END__
 
 =head1 AUTHOR
        Eric Wolf        coyocanid@gmail.com
+
+=head1 COPYRIGHT AND LICENSE
 
        Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
