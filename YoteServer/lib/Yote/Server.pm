@@ -459,6 +459,8 @@ sub _init {
     $self->set__canToken2objs({});
     $self->set__apps({});
     $self->set__appOnOff({});
+    $self->set_token_timeslots([]);
+    $self->set_token_timeslots_metadata([]);
 }
 
 sub _valid_token {
@@ -534,9 +536,37 @@ sub _updates_needed {
 
 sub create_token {
     my $self = shift;
+
+    my $rand_part = rand( 1_000_000_000 ); #TODO - find max this can be for long int
     my $ip = $ENV{REMOTE_HOST} || 'tok';
     
-}
+    # make the token boat. tokens last at least 10 mins, so quantize
+    # 10 minutes via time 10 min = 600 seconds = 600
+    # or easy, so that 1000 seconds ( ~ 16 mins )
+    # todo - make some sort of quantize function here
+    my $timeslot  = 7 + int( time / 100 );
+    my $slots     = $self->get_token_timeslots();
+    my $slot_data = $self->get_token_timeslots_metadata();
+
+    my $now = time;
+
+    my $to_remove = 0;
+    for( my $i=0; $i<@$slot_data; $i++ ) {
+        # remove slots that are too old
+        if( $slot_data->[ $i ] < $now ) {
+            $to_remove++;
+        } elsif( $slots->[ $i ]{ $randpart } ) {
+            # if this produces the same rand number lots of times in a row
+            # something serious is wrong, so a stack overflow error is the least
+            # of worries
+            print STDERR Data::Dumper->Dump(["BLA"]);die "REMOVEME";
+            return $self->create_token;
+        }
+    }
+
+    return $rand_part;
+
+} #create_token
 
 #
 # what things will the server root provide?
