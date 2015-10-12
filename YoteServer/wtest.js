@@ -5,4 +5,5 @@ var root = yote.fetch_root(); // <--- got to here, but init is not fully complet
 onmessage = function(e) {
     console.log( "Worker got messsage from main page", e );
     var res = root.test( [ "WOO", 'AH' ] );
+    console.log( [ 'test results', res ] );
 }
