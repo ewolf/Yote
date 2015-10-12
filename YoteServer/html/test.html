@@ -3,7 +3,35 @@
 <title>oof</title>
 </head>
 <body>
-<h1>oof</h1>
+  <h1>oof</h1>
+  <input type="text" placeholder="name" id="name"> <BR>
+  <input type="password" placeholder="password" id="pw"> <BR>
+  <button id="login" type="button">Log In</button>
+
+    <script>
+    var workers = {};
+    function yotecall( workerUrl, args, callback ) {
+        var worker = workers[ workerUrl ];
+        if( ! worker ) {
+            worker = new Worker( "/__/" + workerURL );
+            workers[ workerUrl ] = worker;
+        }
+        worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?
+            var data = e.data;
+            var dataTranslated = data;
+            callback( dataTranslated );
+        }
+        worker.postMessage( args );
+    }
+
+    function onLogin( res ) {
+        
+    }
+    
+    document.getElementByID( 'login' ).addEventListener('click',function(){
+        yotecall( 'login.js', [ document.getElementByID( 'name' ), document.getElementByID( 'pw' ) ], onLogin );
+    } );
+  </script>
 </body>
 </html>
 

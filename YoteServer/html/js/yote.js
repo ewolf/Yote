@@ -20,74 +20,85 @@ yote.init = function( yoteServerURL ) {
     // returns data
     var makeMethod = function( mName ) {
         var nm = '' + mName;
-        return function( data ) {
+        return function( data, isAsync, sucHandler, failHandler ) {
             var id = this.id;
-            return contact( id, nm, data );
+            return contact( id, nm, data, isAsync, sucHandler, failHandler );
         };
     };
-    
+
+    // method for making async method calls as well?
+
+
+    // method for translating and storing the objects
+    function makeObj = function( datastructure ) {
+        /* method that returns the value of the given field on the yote obj */
+        var obj = id2obj[ datastructure.id ];
+        if( ! obj ) {
+            obj = {};
+            id2obj[ datastructure.id ] = obj;
+        }
+        obj.get = function( key ) {
+            var val = this.data[key];
+            if( val.startsWith( 'v' ) ) {
+                return val.substring( 1 );
+            } 
+            return fetch( val );
+        };
+        
+        var mnames = class2meths[ datastructure.cls ] || [];
+        mnames.forEach( function( mname ) {
+            obj[ mname ] = makeMethod( mname );
+        } );
+    } //makeObj
     
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
 
     var returnVal = '';
-    var reqListener = function() {
-        var res = JSON.parse( this.responseText || '[]' );
+    var reqListener = function(sucHandfler,failHandler) {
+        return function() {
+            var res = JSON.parse( this.responseText || '[]' );
         
-        // 3 parts : methods, updates and result
-        
-        // methods
-        for( var cls in res.methods ) {
-            class2meths[cls] = res.methods[ cls ];
-        }
-        
-        // updates
-        res.updates.forEach( function( upd ) {
-            /* method that returns the value of the given field on the yote obj */
-            upd.get = function( key ) {
-                var val = this.data[key];
-                if( val.startsWith( 'v' ) ) {
-                    return val.substring( 1 );
-                } 
-                return fetch( val );
-            };
+            // 3 parts : methods, updates and result
             
-            var mnames = class2meths[ upd.cls ] || [];
-            mnames.forEach( function( mname ) {
-                upd[ mname ] = makeMethod( mname );
-            } );
-            
-            id2obj[ upd.id ] = upd;
-            
-            return upd;
-        } ); //updates section
-        
-        // results
-        var returns = [];
-        res.result.forEach( function( ret ) {
-            if( ret.startsWith( 'v' ) ) {
-                returns.push( ret.substring(1) );
-            } else {
-                returns.push( fetch( ret ) );
+            // methods
+            for( var cls in res.methods ) {
+                class2meths[cls] = res.methods[ cls ];
             }
-        } );
-        returnVal = returns.length > 1 ? returns : returns[0];
+            
+            // updates
+            res.updates.forEach( function( upd ) {
+                makeObj( upd );
+            } ); //updates section
+            
+            // results
+            var returns = [];
+            res.result.forEach( function( ret ) {
+                if( ret.startsWith( 'v' ) ) {
+                    returns.push( ret.substring(1) );
+                } else {
+                    returns.push( fetch( ret ) );
+                }
+            } );
+            returnVal = returns.length > 1 ? returns : returns[0];
+        }
     }; //reqListener
     
-//    var contact = function(path,data) {
-    var contact = function(id,action,data) {
+    var contact = function(id,action,data,async,sucHandler,failHandler) {
         var oReq = new XMLHttpRequest();
-        var async = false;
-        oReq.addEventListener("load", reqListener);
-console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
+        oReq.addEventListener("load", reqListener(sucHandler,failHandler);
+
+        console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
-                  '/' + action )
+                     '/' + action )
+        
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
                   '/' + action, async );
-        oReq.send(data ? 'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
+        oReq.send(data ? 'p=' + data.map(function(p) {
+            return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
         return returnVal;
     };
@@ -99,6 +110,14 @@ console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) +
         token = this.root.create_token();
 console.log( ["TTTT " + token,this.root ] );
         return this.root;
+    };
+
+    yote.translateFromObj = function( objects ) {
+
+    };
+
+    yote.translateToObj = function( data ) {
+
     };
 
 }; //yote.init
