@@ -10,6 +10,8 @@ use Test::More;
 
 use Carp;
 
+use lib '.';
+
 BEGIN {
     use_ok( "Yote::Server" ) || BAIL_OUT( "Unable to load Yote::Server" );
     no strict 'refs';
@@ -37,9 +39,9 @@ my $fooObj   = $root->get_fooObj;
 my $innerfoo = $fooObj->get_innerfoo;
 $store->stow_all;
 
-#use Devel::SimpleProfiler;
-#Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
-#Devel::SimpleProfiler::start;
+use Devel::SimpleProfiler;
+Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
+Devel::SimpleProfiler::start;
 
 my( $pid, $count );
 until( $pid ) {
@@ -68,7 +70,7 @@ $server->stop;
 
 done_testing;
 
-#print Devel::SimpleProfiler::analyze('calls');
+print Devel::SimpleProfiler::analyze('calls');
 
 exit( 0 );
 
@@ -94,6 +96,7 @@ sub msg {  #returns resp code, headers, response pased from json
         $hdr{$k} = $v;
     }
     my $ret;
+    print STDERR Data::Dumper->Dump([\%hdr,"HHH"]);
     if( $hdr{'Content-Length'} ) {
         my $rtxt = '';
         while( $resp = <$socket> ) {
@@ -114,6 +117,45 @@ sub test_suite {
     
     my( @pids );
 
+    # try to call invalid method
+    my( $retcode, $hdrs, $ret ) = msg( '_', '_', 'noMethod' );
+    is( $retcode, 400, "root node has no noMethod call" );
+    ok( ! $ret, "nothing returned for error case noMethod" );
+    
+    # call the fetch root, see if a token was returned
+    ( $retcode, $hdrs, $ret ) = msg( '_', '_', 'fetch_root' );
+    is( $retcode, 200, "no access without token when calling by id is for server root only" );
+    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
+
+    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
+               l2a( qw( fetch_app
+                         fetch
+                         fetch_root
+                         create_token
+                  ) ), 'correct methods for fetched server root' );
+
+    ( $retcode, $hdrs, $ret ) = msg( '_', '_', 'create_token' );
+    is( $retcode, 200, "able to create token" );
+    my $token = substr( $ret->{result}[0], 1 );
+    cmp_ok( $token, '>', 0, "Got token" );
+
+    # now get the test app
+    ( $retcode, $hdrs, $ret ) = msg( '_', $token, 'create_token' );
+
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'fetch_root' );
+    is( $retcode, 200, "no access without token when calling by id is for server root only" );
+    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
+
+    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
+               l2a( qw( fetch_app
+                         fetch
+                         fetch_root
+                         create_token
+                  ) ), 'correct methods for fetched server root' );
+
+    print STDERR "--------------------\n";
+    
+
     # try no token, and with token
     my( $retcode, $hdrs, $ret ) = msg( '_', '_', 'test' );
     is( $retcode, 200, "root node can call test" );
@@ -126,9 +168,6 @@ sub test_suite {
         }, 'correct headers returned' );
 
 
-    ( $retcode, $hdrs, $ret ) = msg( '_', '_', 'noMethod' );
-    is( $retcode, 400, "root node has no noMethod call" );
-    ok( ! $ret, "nothing returned for error case noMethod" );
 
 
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'test' );
@@ -136,18 +175,7 @@ sub test_suite {
     is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with non fetch_root call (called test)' );
     is_deeply( $ret->{updates}, [], "no updates without token" );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'fetch_root' );
-    is( $retcode, 200, "no access without token when calling by id for server root only" );
 
-    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
-
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
-               l2a( qw( fetch_app
-                         fetch
-                         test
-                         fetch_root
-                         create_token
-                  ) ), 'correct methods for fetched server root' );
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
                                   data => {
@@ -202,12 +230,9 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
 
     $root->set_extra( "WOOF" );
-#
+
     sleep 2;
     $store->stow_all;
-
-# ok, server root wasn't reloaded because it doesn't do that. Maybe that is bad. set an other extra?
-
     # get the 'foo' object off of the root
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
     is( $retcode, 200, "able to fetch allowed object" );
@@ -223,7 +248,7 @@ sub test_suite {
                                   } } ], "updates for fetch_root by id token after change and save" );
 
 
-#    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'get']);
+    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'get']);
 
     # try to call a method without a token
     
