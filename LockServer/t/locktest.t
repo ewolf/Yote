@@ -38,13 +38,22 @@ exit( 0 );
 sub test_suite {
     
     my $locker1 = $locks->client( "LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked before any locking" );
     is( $locker1->unlock( "KEY1" ), '0', "can't unlock what is not locked KEY1 LOCKER1" );
     cmp_ok( $locker1->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '1', "KEY1 LOCKER1 reported as locked after locking" );
     cmp_ok( $locker1->lock( "KEY2" ), '>', '1', "lock KEY2 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY2" ), '1', "KEY2 LOCKER1 reported as locked after locking" );
     is( $locker1->lock( "KEY1" ), '0', "cannot relock KEY1 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '1', "KEY1 LOCKER1 reported as locked after locking" );
     is( $locker1->unlock( "KEY1" ), '1', "first unlock KEY1 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked after unlocking" );
+    is( $locker1->lockedByMe( "KEY2" ), '1', "KEY2 LOCKER1 reported as locked after locking" );
     is( $locker1->unlock( "KEY1" ), '0', "cant repeat unlock KEY1 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked after unlocking twice" );
     is( $locker1->unlock( "KEY2" ), '1', "second lock unlocked KEY2 LOCKER1" );
+    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked after unlocking" );
+    is( $locker1->lockedByMe( "KEY2" ), '0', "KEY2 LOCKER1 reported as not locked after unlocking" );
 
     my( @pids );
 
@@ -102,8 +111,10 @@ sub test_suite {
     } else {
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
         cmp_ok( $locker5->lock( "KEYB" ), '>', '1', "lock KEYB LOCKER5" ); #B locked
+        is( $locker5->lockedByMe( "KEYB" ), '1', "KEYB LOCKER5 lock not yet expired" );
         my $t = time;
-        is( $locker5->lock( "KEYA" ), '0', "KEY1 LOCKER5 deadlocked out" );
+        is( $locker5->lock( "KEYA" ), '0', "KEYA LOCKER5 deadlocked out" );
+        is( $locker5->lockedByMe( "KEYB" ), '0', "KEYB LOCKER5 lock expired" );
         is( time-$t, 5, "deadlock timed out " );
         exit;
     }

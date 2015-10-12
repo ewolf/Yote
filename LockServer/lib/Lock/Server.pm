@@ -2,7 +2,7 @@ package Lock::Server;
 
 =head1 NAME
 
-    Lock::Server - Socket based resource locking manager.
+    Lock::Server - Light-weight socket based resource locking manager.
 
 =head1 DESCRIPTION
 
@@ -15,7 +15,8 @@ package Lock::Server;
     prevent the system from getting in a hopelessly tangled state.
     Care should be taken, as with any resource locking system, with
     the use of Lock::Server. Adjust the timeouts for what makes sense
-    with the system you are designing.
+    with the system you are designing. The lock requests return with the
+    time that the lock will expire.
 
 =head1 SYNPOSIS
 
@@ -36,40 +37,25 @@ package Lock::Server;
     my $lockClient_A = $lockServer->client( "CLIENT_A" );
     my $lockClient_B = new Lock::Server::Client( "CLIENT_B", 'localhost', 888 );
 
-    ......
-
-    my $sock = new IO::Socket::INET( "127.0.0.1:888" );
-
-    $sock->print( "LOCK KEYA LockerI\n" );
-    my $resp = <$sock>; chomp $resp;
-    if( $resp == 1 ) {
-       print "Lock Successfull for locker I and KEYA\n";
+    if( $lockClient_A->lock( "KEYA" ) ) {
+       print "Lock Successfull for locker A and KEYA\n";
     } else {
        print "Could not obtain lock in 12 seconds.\n";
     }
 
-    # this waits until KEYA for LockerI times out.
-    $sock->print( "LOCK KEYA LockerII\n" );
-    
     # KEYA for LockerI times out after 10 seconds.
-    # LockerII now obtains the lock
-
-    my $resp = <$sock>; chomp $resp;
-    if( $resp == 1 ) {
-       print "Lock Successfull\n";
+    # Lock Client B waits until it can obtain the lock
+    if( $lockClient_B->lock( "KEYA" ) ) {
+       print "Lock Successfull for Client B lock 'KEYA'\n";
     } else {
        print "Could not obtain lock in 12 seconds.\n";
     }
 
     # KEYA for LockerII is now freed. The next locker
     # attempting to lock KEYA will then obtain the lock.
-    $sock->print( "UNLOCK KEYA LockerII\n" );
-    my $resp = <$sock>; chomp $resp;
-    if( $resp == 1 ) {
+    if( $lockClientB->unlock( "KEYA" ) ) {
        print "Unlock Successfull\n";
     }
-
-    ......
 
     if( $lockServer->stop ) {
         print "Lock server shut down.\n";
@@ -177,14 +163,17 @@ sub start {
             my $req = <$connection>; 
             chomp $req;
             _log( "lock server : got request <$req>\n" );
-            if( $req =~ /^((?:UN)?LOCK) (\S+) (\S+)(.*)/i ) {
-                my( $cmd, $key, $locker_id, %args ) = ( $1, $2, $3, map { $_ => 1 } split( /s+/, $4) );
+            if( $req =~ /^((?:UN)?LOCK) (\S+) (\S+)/i ) {
+                my( $cmd, $key, $locker_id ) = ( $1, $2, $3 );
                 if( lc($cmd) eq 'unlock' ) {
-                    $self->_unlock( $connection, $locker_id, $key, %args );
+                    $self->_unlock( $connection, $locker_id, $key );
                 }
                 elsif( lc($cmd) eq 'lock' ) {
-                    $self->_lock( $connection, $locker_id, $key, %args );
+                    $self->_lock( $connection, $locker_id, $key );
                 }
+            } elsif( $req =~ /^CHECK (\S+) (\S+)/i ) {
+                my( $key, $locker_id ) = ( $1, $2 );
+                $self->_check( $connection, $locker_id, $key );
             } else {
                 _log( "lock server : did not understand request\n" );
                 $connection->close;
@@ -193,15 +182,31 @@ sub start {
     } 
 } #start
 
+sub _check {
+    my( $self, $connection, $locker_id, $key_to_check ) = @_;
+
+    _log( "locker server check for key '$key_to_check' for locker '$locker_id'\n" );
+
+    $self->{_locks}{$key_to_check} ||= [];
+    my $lockers = $self->{_locks}{$key_to_check};
+
+    if( $lockers->[0] eq $locker_id ) {
+        print $connection "1\n";
+    } else {
+        print $connection "0\n";
+    }
+    $connection->close;
+}
+
 sub _log {
     my $msg = shift;
     print STDERR "\t\t$msg\n" if $Lock::Server::DEBUG;
 }
 
 sub _lock {
-    my( $self, $connection, $locker_id, $key_to_lock, %args ) = @_;
+    my( $self, $connection, $locker_id, $key_to_lock ) = @_;
 
-    _log( "lock request for '$locker_id' and key '$key_to_lock'\n" );
+    _log( "lock server : lock request for '$locker_id' and key '$key_to_lock'\n" );
 
     $self->{_locks}{$key_to_lock} ||= [];
     my $lockers = $self->{_locks}{$key_to_lock};
@@ -246,10 +251,8 @@ sub _lock {
             };
             _log( "lock request : child $$ ready to wait\n" );
             sleep $self->{lock_attempt_timeout};
-            if( $connection ) {
-                print $connection "0\n";
-                $connection->close;
-            }
+            print $connection "0\n";
+            $connection->close;
             exit;
         }
     } else {
@@ -260,8 +263,8 @@ sub _lock {
 } #_lock
 
 sub _unlock {
-    my( $self, $connection, $locker_id, $key_to_unlock, %args ) = @_;
-    _log( "unlock server ($Lock::Server::DEBUG) for key '$key_to_unlock' for locker '$locker_id'\n" );
+    my( $self, $connection, $locker_id, $key_to_unlock ) = @_;
+    _log( "lock server unlock for key '$key_to_unlock' for locker '$locker_id'\n" );
 
     $self->{_locks}{$key_to_unlock} ||= [];
     my $lockers = $self->{_locks}{$key_to_unlock};
@@ -317,6 +320,17 @@ sub new {
         name => $lockerName,
     }, $class;
 } #new 
+
+sub lockedByMe {
+    my( $self, $key ) = @_;
+    my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+
+    $sock->print( "CHECK $key $self->{name}\n" );
+    my $resp = <$sock>;
+    $sock->close;
+    chomp $resp;
+    $resp;
+}
 
 sub lock {
     my( $self, $key ) = @_;
