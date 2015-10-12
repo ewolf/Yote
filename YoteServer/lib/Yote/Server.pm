@@ -222,7 +222,7 @@ sub _process_request {
                             map { s/^[^=]+=//; s/\+/ /gs; $_; } 
                             split ( '&', $data ) ];
         }
-
+        print STDERR Data::Dumper->Dump([$params,"PPP"]);
         _log( "\n   (params)--> : ".join(',',@$params) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {

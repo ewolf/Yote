@@ -5,6 +5,7 @@ var yote = {
 };
     
 yote.init = function( yoteServerURL ) {
+    console.log( 'inity witty ' + yoteServerURL );
     // cache storing objects and their meta-data
     var class2meths = {};
     var id2obj = {};
@@ -111,7 +112,7 @@ yote.init = function( yoteServerURL ) {
             }
             returnVal = processRaw( this.responseText );
             if( methodArgs && methodArgs.sucHandler ) {
-                methodArgs.sucHandler( returnVal );
+                Methodargs.sucHandler( returnVal );
             }
         }
     }; //reqListener
@@ -121,6 +122,7 @@ yote.init = function( yoteServerURL ) {
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener(contactArgs,methodArgs));
 
+console.log( '<<' + yoteServerURL + '>>' );
         console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
