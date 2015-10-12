@@ -1,4 +1,3 @@
-//# 106.613.4786
 var yote = {
     fetch_root : function() {
         throw new Error("init must be called before fetch_root");
