@@ -96,7 +96,7 @@ use vars qw($VERSION);
 $VERSION = '1.3';
 
 
-$Lock::Server::DEBUG = 1;
+$Lock::Server::DEBUG = 0;
 
 =head2 Lock::Server::new( $args )
 
@@ -260,13 +260,13 @@ sub _check {
 
 sub _log {
     my $msg = shift;
-    print STDERR "$msg\n" if $Lock::Server::DEBUG;
+    print STDERR "Lock::Server : $msg\n" if $Lock::Server::DEBUG;
 }
 
 sub _lock {
     my( $self, $connection, $key_to_lock, $locker_id ) = @_;
 
-    _log( "lock server : lock request for '$locker_id' and key '$key_to_lock'" );
+    _log( "lock request :  for '$locker_id' and key '$key_to_lock'" );
 
     $self->{_locks}{$key_to_lock} ||= [];
     my $lockers = $self->{_locks}{$key_to_lock};
@@ -330,7 +330,7 @@ sub _grab_lock {
 
 sub _unlock {
     my( $self, $connection, $key_to_unlock, $locker_id ) = @_;
-    _log( "lock server unlock for key '$key_to_unlock' for locker '$locker_id'" );
+    _log( "unlock request : key '$key_to_unlock' for locker '$locker_id'" );
 
     $self->{_locks}{$key_to_unlock} ||= [];
     my $lockers = $self->{_locks}{$key_to_unlock};
@@ -366,7 +366,7 @@ sub _unlock {
 sub _verify {
     my( $self, $connection, $key_to_check, $locker_id ) = @_;
 
-    _log( "locker server check for key '$key_to_check' for locker '$locker_id'" );
+    _log( "verify : locker server check for key '$key_to_check' for locker '$locker_id'" );
 
     $self->{_locks}{$key_to_check} ||= [];
     my $lockers = $self->{_locks}{$key_to_check};
@@ -374,7 +374,7 @@ sub _verify {
     #check for timed out lockers
     my $t = time;
     while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_check} ) {
-        _log( "lock '$key_to_check' timed out for locker '$lockers->[0]'" );
+        _log( "verify:  '$key_to_check' timed out for locker '$lockers->[0]'" );
         if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
             delete $self->{_locker_counts}{$lockers->[0]};
         } else {

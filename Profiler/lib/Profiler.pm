@@ -12,6 +12,41 @@ use File::Temp qw/ tempfile /;
 our( @stack, %calltimes, %callers, %calls, $tmpFile, $re );
 
 #my( $fh, $tmpFile ) = tempfile( "profilerFooXXXXXX", DIR => '/tmp' );
+=head1 NAME
+
+   Profiler - quick and dirty perl code profiler
+
+=head1 SYNPOSIS
+
+ use Profiler;
+ Profiler::init( "/tmp/tmpfile",
+                 qr/RegexToMatchSubNames/ );
+ Profiler::start;
+
+ ....
+
+ if( ! fork ) {
+     # must restart for child process
+     Profiler::start;
+ }
+
+ ....
+
+ Profiler::analyze;
+ exit;
+
+ # ---- PRINTS OUT -----
+ performance stats ( all times are in ms)
+
+             sub  | # calls | total t | mean t | avg t | max t | min t
+ -----------------+---------+---------+--------+-------+-------+------
+ main::test_suite |       1 |    2922 |   2922 |  2922 |  2922 |  2922
+     SomeObj::new |       3 |      26 |      8 |     8 |     8 |     8
+  OtherThing::fun |      27 |     152 |      1 |     5 |    63 |     0
+
+ .... 
+
+=cut
 
 sub init {
     ( $tmpFile, $re ) = @_;
@@ -55,12 +90,13 @@ sub _analyze {
             min   => $times[0],
         };
     }
-    my( @titles ) = ( 'sub', 'calls', 'total time', 'mean time', 'avg time', 'max time', 'min time' );
-    my $minwidth = 10;
+    my( @titles ) = ( 'sub', '# calls', 'total t', 'mean t', 'avg t', 'max t', 'min t' );
+    my $minwidth = 6;
     print "\n performance stats ( all times are in ms)\n\n";
     print sprintf( "%*s  | ", $longsub, "sub" ). join( " | ", map { sprintf( "%*s", $minwidth, $_ ) } @titles[1..$#titles] ) ."\n";
     print '-' x $longsub . '--+-' . join( "-+-", map { '-' x $minwidth } @titles[1..$#titles] )."\n";
-    for my $subr (sort { $stats{$b}{total} <=> $stats{$a}{total} } keys %stats) {
+#    for my $subr (sort { $stats{$b}{total} <=> $stats{$a}{total} } keys %stats) {
+    for my $subr (sort { $stats{$b}{avg} <=> $stats{$a}{avg} } keys %stats) {
         print join( " | ", sprintf( "%*s ", $longsub, $subr ),
                     map { sprintf( "%*d", $minwidth, $stats{$subr}{$_} ) }
                     qw( calls total mean avg max min ) )."\n";

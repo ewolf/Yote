@@ -41,11 +41,16 @@ use Profiler;
 Profiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
 Profiler::start;
 
-my $pid = $server->start;
-unless( $pid ) {
-    my $err = $server->{error};
-    $server->stop;
-    BAIL_OUT( "Unable to start server '$err'" );
+my( $pid, $count );
+until( $pid ) {
+    $pid = $server->start;
+    last if $pid;
+    sleep 5;
+    if( ++$count > 10 ) {
+        my $err = $server->{error};
+        $server->stop;
+        BAIL_OUT( "Unable to start server '$err'" );
+    }
 } 
 
 $SIG{ INT } = $SIG{ __DIE__ } =
@@ -197,12 +202,22 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
 
     $root->set_extra( "WOOF" );
-    print STDERR "WOOF\n";
+
     sleep 2;
     $store->stow_all;
     # get the 'foo' object off of the root
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
-    
+    is( $retcode, 200, "able to fetch allowed object" );
+    is_deeply( $ret->{result}, [ $store->_get_id( $fooObj ) ], "returned fooObj after change and save" );
+    is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
+                                  id   => $root->{ID}, 
+                                  data => {
+                                      extra   => 'WOOF',
+                                      txt     => 'vSOMETEXT',
+                                      fooObj  => $store->_get_id( $fooObj ),
+                                      fooHash => $store->_get_id( $fooHash ),
+                                      fooArr  => $store->_get_id( $fooArr ),
+                                  } } ], "updates for fetch_root by id token after change and save" );
 
 
     print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'get']);
