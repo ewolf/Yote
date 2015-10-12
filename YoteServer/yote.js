@@ -74,10 +74,10 @@ yote.init = function( yoteServerURL ) {
         oReq.addEventListener("load", reqListener);
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + path, async );
         if( token ) {
-            oReq.setRequestHeader( 'Yote-Token', token );
+            oReq.setRequestHeader( 'yote-token', token );
         }
         oReq.send(data ? 
-                  'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
+                  'yote-token: ' + token + '\n\np=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
         return returnVal;
     };
@@ -87,6 +87,7 @@ yote.init = function( yoteServerURL ) {
     yote.fetch_root = function() {
         this.root = contact("/_/fetch_root");
         token = this.root.create_token();
+console.log( "TTTT " + token );
         return this.root;
     };
 

@@ -124,6 +124,7 @@ sub _process_request {
         my %headers;
         while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
+            print STDERR Data::Dumper->Dump([$hdr,"H"]);
             last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
@@ -165,8 +166,8 @@ sub _process_request {
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        my $token = $headers{'Yote-Token'};
-
+        my $token = $headers{'yote-token'};
+        print STDERR Data::Dumper->Dump([$obj_id,$server_root->{ID}, "CHK"]);
         unless( $obj_id eq '_' || $obj_id eq $server_root->{ID} || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Req : '$path'" );
@@ -268,7 +269,7 @@ sub _process_request {
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
-            'Access-Control-Allow-Headers: Yote-Token, accept, content-type, cookie, origin, connection, cache-control',
+            'Access-Control-Allow-Headers: yote-token, accept, content-type, cookie, origin, connection, cache-control, x-test',
             'Access-Control-Allow-Origin: *',
             );
 
