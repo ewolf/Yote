@@ -5,3 +5,4 @@ would update what it is, or a temp file with that data that is appended to
 
 So lockserver may be flaky. The whole thing may be flaky, but is salvagable
 
+The interfaces must be clean and well defined.

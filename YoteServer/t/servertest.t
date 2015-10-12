@@ -52,13 +52,17 @@ $SIG{ INT } = $SIG{ __DIE__ } =
 
 sleep 1;
 
-#use Profiler;Profiler::init( qr/Yote|Lock|DB|test_suite/ );
+use Profiler;
+Profiler::init( '/tmp/foobar', qr/Yote|Lock|DB|test_suite/ );
+Profiler::start;
 test_suite();
 
 print STDERR Data::Dumper->Dump(["STOPPING"]);
 $server->stop;
 
 done_testing;
+
+Profiler::analyze;
 
 exit( 0 );
 

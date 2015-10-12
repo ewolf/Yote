@@ -165,6 +165,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
+    use Profiler;Profiler::start;
     $0 = "LockServer";
     # child process
     $self->run;
@@ -305,6 +306,7 @@ sub _lock {
             _log( "lock request : parent process associating '$locker_id' with pid '$pid' ".scalar(@$lockers)." lockers" );
             # parent
         } else {
+            use Profiler;Profiler::start;
             $0 = "LockServer processing request";
             # child
             $SIG{HUP} = $SIG{INT} = sub {

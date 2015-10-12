@@ -48,6 +48,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
+    use Profiler;Profiler::start;
     $0 = "YoteServer process";
     # child process
     $self->run;
@@ -120,6 +121,7 @@ sub _process_request {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
+    use Profiler;Profiler::start;
 #        use Profiler; Profiler::init(qr/Yote|Lock|DB/,"PROCESS REQUEST");
         $self->__process_request( $sock );
     }
