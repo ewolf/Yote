@@ -73,11 +73,11 @@ orthagonally to any other storage system.
 Starts up a persistance engine and returns it.
    
 =cut
-$Yote::STORES = {}; #TODO <--- REMOVE THIS. UNNEEDED
 sub open_store {
     my $path = pop;
-    $Yote::STORES->{$path} ||= Yote::ObjStore->_new( { store => $path } );
-    $Yote::STORES->{$path};
+    my $store = Yote::ObjStore->_new( { store => $path } );
+    $store->_init;
+    $store;
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -256,10 +256,15 @@ sub _new { #Yote::ObjStore
         _WEAK_REFS => {},
     }, $pkg;
     $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
+    $self;
+} #_new
+
+sub _init {
+    my $self = shift;
     $self->fetch_root;
     $self->stow_all;
     $self;
-} #_new
+}
 
 
 #

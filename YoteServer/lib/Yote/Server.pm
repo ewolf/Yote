@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
+no warnings 'numeric';
 
 use Lock::Server;
 use Yote;
@@ -103,6 +104,11 @@ sub run {
     }
 } #run
 
+sub _log {
+    print STDERR shift . "\n";
+    
+}
+
 sub _process_request {
     my( $self, $sock ) = @_;
     if( my $pid = fork ) {
@@ -148,7 +154,7 @@ sub _process_request {
         my $params;
         my( $obj_id, $action );
         if( $verb eq 'GET' ) {
-            ( $obj_id, $action, my @params ) = split( '/', $path );
+            ( $obj_id, $action, my @params ) = split( '/', substr( $path, 1 ) );
             $params = \@params;
         } elsif( $verb eq 'PUT' ) {
             ( $obj_id, $action ) = split( '/', $path );
@@ -158,7 +164,10 @@ sub _process_request {
         my $server_root = $self->{SERVER_ROOT};
 
         my $token = $headers{TOKEN};
-        unless( $obj_id eq '_' || ( $self->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
+
+        print STDERR Data::Dumper->Dump([$obj_id,$action,$params]);
+
+        unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -173,7 +182,7 @@ sub _process_request {
 
         my( @in_params );
         for my $param (@$params) {
-            unless( $server_root->_canhas( $obj_id, $token ) ) {
+            unless( index( $param, 'v' ) == 0 || $server_root->_canhas( $param, $token ) ) {
                 $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
                 $sock->close;
                 return;
@@ -186,9 +195,9 @@ sub _process_request {
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
         
-        my $res;
+        my( @res );
         eval {
-            $res = $obj->$action( @in_params );
+            (@res) = ($obj->$action( @in_params ));
         };
 
         if( $@ ) {
@@ -199,13 +208,14 @@ sub _process_request {
         }
 
         my( @out_res );
-        if( $res ) {
+
+        for my $res (@res) {
             my $val = $store->_xform_in( $res );
-            $server_root->_willhas( $val, $token ) ;
-            $server_root->_has( $val, $token ) ;
+            $server_root->_willhas( $val, $token ) if index( $val, 'v' ) != 0;
+            $server_root->_has( $val, $token ) if index( $val, 'v' ) != 0;
             push @out_res, $val;
         }
-        my $ids_to_update = $store->_updates_needed( $token );
+        my $ids_to_update = $server_root->_updates_needed( $token );
         
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
@@ -216,13 +226,13 @@ sub _process_request {
             if( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
-                          $store->_willhas( $d, $token ); 
+                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0;
                           $d } 
                     @$obj ];
             } elsif( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
-                          $store->_willhas( $d, $token ); 
+                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0;
                           $_ => $d } 
                     keys %$obj };
                 
@@ -231,7 +241,7 @@ sub _process_request {
                 
                 $data = {
                     map { my $d = $store->_xform_in( $obj_data->{$_} );
-                          $store->_willhas( $d, $token ); 
+                          $store->_willhas( $d, $token ) if index( $d, 'v' ) != 0; 
                           $_ => $d } 
                     grep { $_ !~ /^_/ }
                     keys %$obj_data };
@@ -268,6 +278,8 @@ sub _process_request {
     } #child
 } # _process_request
 
+# ------- END Yote::Server
+
 package Yote::ServerStore;
 
 use strict;
@@ -286,10 +298,9 @@ sub _new {
     # keeps track of when any object had been last updated.
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
-    
     $self->{OBJ_UPDATE_DB} = DB::DataStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
     $self;
-}
+} #_new
 
 sub _stow {
     my( $self, $obj ) = @_;
@@ -319,7 +330,7 @@ sub fetch_server_root {
     
     my $server_root = $system_root->get_server_root;
     unless( $server_root ) {
-        $server_root = new Yote::ServerRoot;
+        $server_root = Yote::ServerRoot->_new( $self );
         $system_root->set_server_root( $server_root );
     }
 
@@ -336,7 +347,7 @@ sub fetch_server_root {
     
 } #fetch_server_root
 
-
+# ------- END Yote::ServerStore
 
 package Yote::ServerObj;
 
@@ -418,15 +429,7 @@ sub unlock {
     $self->{STORE}{_lockerClient}->unlock( $obj_id );
 }
 
-package Yote::ServerApp;
-
-
-use strict;
-use warnings;
-no warnings 'uninitialized';
-
-use base 'Yote::ServerObj';
-
+# ------- END Yote::ServerObj
 
 package Yote::ServerRoot;
 
@@ -441,6 +444,10 @@ sub _init {
     $self->set_hasToken2objs({});
     $self->set_canToken2objs({});
     $self->set_apps({});
+}
+
+sub _valid_token {
+    1;
 }
 
 sub _token2objs {
@@ -459,7 +466,7 @@ sub _token2objs {
 sub _has {
     my( $self, $id, $token ) = @_;
     return if $id < 1;
-    my $obj_data = _token2objs( $token, 'has' );
+    my $obj_data = $self->_token2objs( $token, 'has' );
     $obj_data->{$id} = time - 1;
     $self->unlock( $obj_data );
 }
@@ -486,8 +493,9 @@ sub _canhas {
 
 sub _willhas {
     my( $self, $id, $token ) = @_;
+    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
     return if $id < 1;
-    my $obj_data = _token2objs( $token, 'can' );
+    my $obj_data = $self->_token2objs( $token, 'can' );
     $obj_data->{$id} = time - 1;
     $self->unlock( $obj_data );
 }
@@ -495,7 +503,7 @@ sub _willhas {
 
 sub _updates_needed {
     my( $self, $token ) = @_;
-    my $obj_data = _token2objs( $token, 'has' );
+    my $obj_data = $self->_token2objs( $token, 'has' );
     my $store = $self->{STORE};
 
     my( @updates );
@@ -529,13 +537,31 @@ sub fetch_app {
         $app = $app_name->new;
         $apps->{$app_name} = $app;
     }
-
-    if( $app->can_access( @args ) ) {
-        return $app;
-    }
-    undef;
+    $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 
+sub test {
+    my( $self, @args ) = @_;
+    print STDERR Data::Dumper->Dump(["I HEEAR YA",\@args]);
+    return { "FOOBIE" => "BLECH" };
+}
+
+# ------- END Yote::ServerRoot
+
+package Yote::ServerApp;
+
+
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use base 'Yote::ServerObj';
+
+sub can_access {
+    1;
+}
+
+# ------- END Yote::ServerApp
 
 1;
 
