@@ -2,11 +2,11 @@ package Lock::Server;
 
 =head1 NAME
 
-    Lock::Server - Light-weight socket based resource locking manager.
+    Lock::Server - Light-weight RESTful socket based resource locking manager.
 
 =head1 DESCRIPTION
 
-    This creates a child process socket server that takes lock and 
+    This creates a socket server that handles lock and 
     unlock requests. The lock requests only return once a lock is
     obtained or a timeout has occurred. A lock may only be locked
     for a specific amount of time before the lock is timed out.
@@ -50,9 +50,10 @@ package Lock::Server;
         print "Lock server started in child thread $childPid\n";
     }
 
-    my $lockClient_A = $lockServer->client( "CLIENT_A" );
+    my $optional_args = { reconnect_attempts => 3, time_between_attempts => 1 };
+    my $lockClient_A = $lockServer->client( "CLIENT_A", $optional_args );
     my $lockClient_B = 
-        new Lock::Server::Client( "CLIENT_B", 'localhost', 888 );
+        new Lock::Server::Client( "CLIENT_B", 'localhost', 888, $optional_args );
 
     if( $lockClient_A->lock( "KEYA" ) ) {
        print "Lock Successfull for locker A and KEYA\n";
@@ -92,7 +93,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 
 $Lock::Server::DEBUG = 0;
@@ -130,8 +131,8 @@ sub new {
 
 =cut
 sub client {
-    my( $self, $name ) = @_;
-    Lock::Server::Client->new( $name, $self->{host}, $self->{port} );
+    my( $self, $name, $args ) = @_;
+    Lock::Server::Client->new( $name, $self->{host}, $self->{port}, $args );
 }
 
 =head2 stop
@@ -417,7 +418,7 @@ use IO::Socket::INET;
 
 =cut
 sub new {
-    my( $pkg, $lockerName, $host, $port ) = @_;
+    my( $pkg, $lockerName, $host, $port, $args ) = @_;
     die "Must supply locker name" unless $lockerName;
 
     $host ||= '127.0.0.1';
@@ -428,12 +429,21 @@ sub new {
         host => $host,
         port => $port,
         name => $lockerName,
+        attempts => $args->{reconnect_attemps} || 3,
+        time_between_attempts => $args->{time_between_attempts} || 1,
     }, $class;
 } #new 
 
 sub _get_sock {
     my $self = shift;
-    my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+    
+    # try a few times, then give up
+    my( $sock, $count );
+    until( $sock || $count++ > $self->{attempts} ) {
+        $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+        sleep $self->{time_between_attempts} unless $sock;
+    }
+    die "Could not connect : $@" unless $sock;
     binmode $sock, ':utf8';
     $sock;
 }

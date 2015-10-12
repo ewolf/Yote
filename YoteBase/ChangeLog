@@ -1,6 +1,8 @@
 2015-11-02 Eric Wolf  <coyocanid@gmail.com>
-	* Version 1.1
-	* Yote::ObjStore::fetch fixed bug where it would barf for isntantiating subpackages of a file
+	* Version 1.01
+	* Yote::ObjStore::fetch fixed bug where it would barf for instantiating subpackages of a file
+	* args are preserved in the Yote::ObjStore
+	
 2015-09-30 Eric Wolf  <coyocanid@gmail.com>
 	* Version 1.0
 	* Reduces complexity of Yote, bringing the core into a simple file.

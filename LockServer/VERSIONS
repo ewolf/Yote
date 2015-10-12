@@ -1,3 +1,5 @@
+1.3 - added configurable retry ability for lock clients
+
 1.2 - Update for tests
 
 1.1 - Make the server restful. Added run method which doesn't fork and return.

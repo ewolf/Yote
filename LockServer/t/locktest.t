@@ -6,13 +6,11 @@ use Lock::Server;
 
 use Data::Dumper;
 use Test::More;
-Test::More->builder->no_ending(1);
 
-use Carp;
-$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+$SIG{ __DIE__ } = sub { Carp::confess( @_ ); exit; };
 
 BEGIN {
-    use_ok( "Lock::Server" ) || BAIL_OUT( "Unable to load Lock::Server" );
+    use_ok( "Lock::Server" ) or BAIL_OUT( "Unable to load Lock::Server" ) && exit;
 }
 $Lock::Server::DEBUG = 0;
 
@@ -24,6 +22,7 @@ unless( $locks->start ) {
     my $err = $locks->{error};
     $locks->stop;
     BAIL_OUT( "Unable to start server '$err'" );
+    exit;
 } 
 
 
@@ -78,7 +77,6 @@ sub test_suite {
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
-        print STDERR "starting first client\n";
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->isLocked( "KEY1" ) == 1;
         # KEY1 is locked by locker3, so this doesn't return until it
@@ -97,7 +95,7 @@ sub test_suite {
         fail("LOCKER4") if $?;
 
     }
-    is( int(time -$t1),2, "second lock waited on the first" );
+    cmp_ok( int(time -$t1),'>=',2, "second lock waited on the first" );
 
     # deadlock timeouts
 
@@ -122,7 +120,6 @@ sub test_suite {
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
-        print STDERR "starting second client\n";
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
         my $res = $locker5->lock( "KEYB" ) > 1;
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;
@@ -130,7 +127,7 @@ sub test_suite {
         $res = $res && $locker5->lockedByMe( "KEYA" ) == 0;
         $res = $res && $locker5->lock( "KEYA" ) == 0;
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 0;
-        $res = $res && ( time-$t ) == 5;
+        $res = $res && ( time-$t ) >= 5;
         exit ! $res;
     }
 

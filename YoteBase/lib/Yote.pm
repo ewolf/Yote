@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 =head1 NAME
 
@@ -95,7 +95,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 =head1 NAME
 
@@ -257,6 +257,7 @@ sub _new { #Yote::ObjStore
     my $self = bless {
         _DIRTY     => {},
         _WEAK_REFS => {},
+        $args      => $args,
     }, $pkg;
     $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
     $self;
@@ -508,7 +509,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -717,7 +718,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -812,7 +813,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -885,7 +886,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.01';
 
 #
 # This the main index and stores in which table and position
@@ -896,7 +897,7 @@ sub open {
   my $class = ref( $pkg ) || $pkg;
 
   my $self = bless {
-      args          => $args,
+      args       => $args,
       OBJ_STORE  => $obj_store,
       DATA_STORE => DB::DataStore->open( $args->{ store } ),
   }, $class;
@@ -1069,6 +1070,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.1  (November 2, 2015))
+       Version 1.01  (November 2, 2015))
 
 =cut

@@ -390,7 +390,8 @@ sub get_record {
 
 # how about an ensure_entry_count right here?
 # also a has_record
-    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+ use Carp 'longmess'; 
+    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or print STDERR Data::Dumper->Dump([longmess]) && die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];

@@ -12,29 +12,44 @@ use Yote;
 use JSON;
 use URI::Escape;
 
+my $DEBUG = 0;
+
 sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     bless {
-        args                 => $args,
+        args                 => $args || {},
+
+        # the following are the args currently used
+        yote_root_dir        => $args->{yote_root_dir},
         yote_host            => $args->{yote_host} || '127.0.0.1',
         yote_port            => $args->{yote_port} || 8881,
-        lock_host            => $args->{lock_host} || '127.0.0.1',
-        lock_port            => $args->{lock_port},
-        lock_timeout         => $args->{lock_timeout},
-        lock_attempt_timeout => $args->{lock_attempt_timeout},
         pids                 => [],
+        _locker              => new Lock::Server( {
+            port                 => $args->{lock_port},
+            host                 => $args->{lock_host} || '127.0.0.1',
+            lock_attempt_timeout => $args->{lock_attempt_timeout},
+            lock_timeout         => $args->{lock_timeout},
+                                                  } ),
+        STORE                => Yote::ServerStore->_new( { root => $args->{yote_root_dir} } ),
     }, $class;
 } #new
 
 sub start {
     my $self = shift;
+
+    $self->{STORE}->{_locker} = $self->{_locker};
+    $self->{_locker}->start;
+
+    $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
+
+
     if( my $pid = fork ) {
         # parent
         $self->{server_pid} = $pid;
         return $pid;
     }
-    
+
     # child process
     $self->run;
 
@@ -51,7 +66,6 @@ sub stop {
     return 0;
 }
 
-
 =head2 run
 
     Runs the lock server.
@@ -59,7 +73,6 @@ sub stop {
 =cut
 sub run {
     my $self = shift;
-
 
     my $listener_socket = new IO::Socket::INET(
         Listen    => 10,
@@ -71,45 +84,32 @@ sub run {
         return 0;
     }
 
-    my $locker = new Lock::Server( {
-        port                 => $self->{lock_port},
-        host                 => $self->{lock_host},
-        lock_attempt_timeout => $self->{lock_attempt_timeout},
-        lock_timeout         => $self->{lock_timeout},
-                                    } );
-    $locker->start;
+
+    unless( $self->{yote_root_dir} ) {
+        eval('use Yote::ConfigData');
+        $self->{yote_root_dir} = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+        undef $@;
+    }
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{INT} = sub {
-        _log( "lock server : got INT signal. Shutting down." );
+        _log( "Yote server : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
-        for my $pid (keys %{ $self->{_pids} } ) {
-            kill 'INT', $pid;
+        for my $pid ( @{ $self->{_pids} } ) {
+            kill 'HUP', $pid;
         }
-        $locker->stop;
+        $self->{_locker}->stop;
         exit;
     };
-
-
-
-    eval('use Yote::ConfigData');
-    $self->{yote_root_dir} = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
-    undef $@;
-
-    my $store = Yote::ServerStore->_new( { root => $self->{yote_root_dir} } );
-    $store->{_locker} = $locker;
-
-    $self->{STORE} = $store;
-
-    $self->{SERVER_ROOT} = $store->fetch_server_root;
 
     while( my $connection = $listener_socket->accept ) {
         $self->_process_request( $connection );
     }
+
 } #run
 
 sub _log {
-    print STDERR shift . "\n";
+    print STDERR shift . "\n" if $DEBUG;
     
 }
 
@@ -120,12 +120,20 @@ sub _process_request {
         push @{$self->{_pids}},$pid;
     } else {
         #child
+        
+        $SIG{INT} = sub {
+            _log( "Yote server process $$ : got INT signal. Shutting down." );
+            $sock->close;
+            exit;
+        };
+
+
         my $req = <$sock>;
         $ENV{REMOTE_HOST} = $sock->peerhost;
         my %headers;
         while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
-            print STDERR Data::Dumper->Dump([$hdr,"H"]);
+#            print STDERR Data::Dumper->Dump([$hdr,"H"]);
             last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
@@ -135,7 +143,9 @@ sub _process_request {
 
         $store->{_lockerClient} = $store->{_locker}->client( $$ );
 
-        print STDERR Data::Dumper->Dump([$req,\%headers,"HHH"]);
+        print STDERR "\n\n----\nREQ : $req\n";
+
+#        print STDERR Data::Dumper->Dump([$req,\%headers,"HHH"]);
         # 
         # read certain length from socket ( as many bytes as content length )
         #
@@ -150,7 +160,7 @@ sub _process_request {
         # escape for serving up web pages
         # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
-        print STDERR Data::Dumper->Dump([$path,"CHEK"]);
+#        print STDERR Data::Dumper->Dump([$path,"CHEK $verb"]);
         if( $path =~ m!/__/! ) {
             # TODO - make sure install script makes the directories properly
             my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
@@ -190,26 +200,29 @@ sub _process_request {
 
         # root is /_/
 
-        print STDERR Data::Dumper->Dump([$data,"DDD"]);
+#        print STDERR Data::Dumper->Dump([$data,"DDD"]);
 
         my( $obj_id, $token, $action, $params );
         if( $verb eq 'GET' ) {
             ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } @params ];
-            $token = pop @$params;
             
         } elsif( $verb eq 'POST' ) {
-            ( $obj_id, $token, $action, $token ) = split( '/', substr( $path, 1 ) );
+            ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } map { s/^[^=]+=//; s/\+/ /gs; $_; } split ( '&', $data ) ];
+        }
+
+        if( substr( $action, 0, 1 ) eq '_' ) {
+            _log( "Bad Action : '$action'" );
+            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
+            $sock->close;
+            exit;
         }
 
         # check to see if it is just simple webserving
         
-        
         my $server_root = $self->{SERVER_ROOT};
-        my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        print STDERR Data::Dumper->Dump([$obj_id,$server_root->{ID}, "CHK"]);
         unless( $obj_id eq '_' || $obj_id eq $server_root->{ID} || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Req : '$path'" );
@@ -235,11 +248,19 @@ sub _process_request {
             }
             push @in_params, $store->_xform_out( $param );
         }
-
+#        print STDERR Data::Dumper->Dump([\@in_params,$action," in params"]);
 
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
+
+        unless( $obj->can( $action ) ) {
+            _log( "Bad Req : invalid method :'$action'" );
+            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
+            $sock->close;
+            exit;
+        }
+
         
         my( @res );
         eval {
@@ -257,13 +278,13 @@ sub _process_request {
 
         for my $res (@res) {
             my $val = $store->_xform_in( $res );
+            # mark that it may and does have the token
             $server_root->_willhas( $val, $token ) if index( $val, 'v' ) != 0;
             $server_root->_has( $val, $token ) if index( $val, 'v' ) != 0;
             push @out_res, $val;
         }
         my $ids_to_update = $server_root->_updates_needed( $token );
         
-        print STDERR Data::Dumper->Dump([$ids_to_update,"UPDATE THESE"]);
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
             my $obj = $store->fetch( $obj_id );
@@ -315,7 +336,7 @@ sub _process_request {
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . length( $out_res ),
             );
-
+        print STDERR "RET : 200 OK ( " . join( ",", @headers ) . " ) ( $out_res )\n";
         _log( "200 OK ( " . join( ",", @headers ) . " ) ( $out_res )" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
 
@@ -339,7 +360,7 @@ use DB::DataStore;
 
 use base 'Yote::ObjStore';
 
-sub _new {
+sub _new { #Yote::ServerStore
     my( $pkg, $args ) = @_;
     $args->{store} = "$args->{root}/DATA_STORE";
     my $self = $pkg->SUPER::_new( $args );
@@ -441,7 +462,7 @@ sub __discover_methods {
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
 
-    $meths = [ grep { $_ !~ /^(_|[gs]et_)/ && ! $base{$_} } @m ];
+    $meths = [ grep { $_ !~ /^(_|[gs]et_|can$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -462,6 +483,15 @@ sub _callable_methods {
 
 sub get {
     my( $self, $fld, $default ) = @_;
+    if( index( $fld, '_' ) == 0 ) {
+        die "Cannot get private field $fld";
+    }
+    $self->_get( $fld, $default );
+} #get
+
+
+sub _get {
+    my( $self, $fld, $default ) = @_;
     if( ! defined( $self->{DATA}{$fld} ) && defined($default) ) {
         if( ref( $default ) ) {
             $self->{STORE}->_dirty( $default, $self->{STORE}->_get_id( $default ) );
@@ -470,16 +500,20 @@ sub get {
         $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
     }
     $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
+} #_get
+
 
 sub set {
     my( $self, $fld, $val ) = @_;
+    if( index( $fld, '_' ) == 0 ) {
+        die "Cannot set private field";
+    }
     my $inval = $self->{STORE}->_xform_in( $val );
     $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
     $self->{DATA}{$fld} = $inval;
     
     $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
+} #set
 
 
 # ------- END Yote::ServerObj
@@ -495,8 +529,8 @@ use base 'Yote::ServerObj';
 sub _init {
     my $self = shift;
     $self->set__token2ip({});
-    $self->set__hasToken2objs({});
-    $self->set__canToken2objs({});
+    $self->set__doesHave_Token2objs({});
+    $self->set__mayHave_Token2objs({});
     $self->set__apps({});
     $self->set__appOnOff({});
     $self->set__token_timeslots([]);
@@ -507,7 +541,6 @@ sub _init {
 sub _valid_token {
     my( $self, $token, $ip ) = @_;
     my $slots = $self->get__token_timeslots();
-    print STDERR Data::Dumper->Dump([$slots,"VT"]);
     for( my $i=0; $i<@$slots; $i++ ) {
         if( $slots->[$i]{$token} eq $ip ) {
             if( $i < $#$slots ) {
@@ -524,53 +557,60 @@ sub _valid_token {
 
 sub _token2objs {
     my( $self, $tok, $flav ) = @_;
-    my $item = "_${flav}Token2objs";
+    my $item = "_${flav}_Token2objs";
     $self->{STORE}->lock( $item );
-    my $token2objs = $self->get( $item );
+    my $token2objs = $self->_get( $item );
     my $objs = $token2objs->{$tok};
     unless( $objs ) {
         $objs = {};
         $token2objs->{$tok} = $objs;
     }
+    print STDERR Data::Dumper->Dump([$objs,"LOAD $flav T2O"]);
+
     $objs;
 }
 
-sub _has {
+sub _setHas {
     my( $self, $id, $token ) = @_;
     return if $id < 1;
-    my $obj_data = $self->_token2objs( $token, 'has' );
+    my $obj_data = $self->_token2objs( $token, 'doesHave' );
+    print STDERR "ADDING '$id' to HAS","CHK ($$)\n";
     $obj_data->{$id} = time - 1;
     $self->{STORE}->unlock( "_hasToken2objs" );
 }
 
-sub _resethas {
+sub _resetHasAndMay {
     my( $self, $token ) = @_;
     $self->{STORE}->lock( "_canToken2objs" );
-
-    for ( qw( has can ) ) {
+    print STDERR "RESET HAS and CAN\n";
+    for ( qw( doesHave mayHave ) ) {
         my $item = "_${_}Token2objs";
         $self->{STORE}->lock( $item );
-        my $token2objs = $self->get( $item );
+        my $token2objs = $self->_get( $item );
         delete $token2objs->{ $token };
         $self->{STORE}->unlock( $item );
     }
 }
 
-sub _canhas {
+sub _askMayThisHave {
     my( $self, $id, $token ) = @_;
     return 1 if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'can' );
+    print STDERR Data::Dumper->Dump([$obj_data,"CHECK CANHAS $id"]);
     $self->{STORE}->lock( $obj_data );
     my $has = $obj_data->{$id};
+    print STDERR "CHECK CAN '$id' " . ( $has ? " DOES HAVE " : " NOT HAS" ). "\n";
     $self->{STORE}->unlock( "_canToken2objs" );
     $has;
 }
 
-sub _willhas {
+sub _nowMayHave {
     my( $self, $id, $token ) = @_;
     return if $id < 1;
-    my $obj_data = $self->_token2objs( $token, 'can' );
+    my $obj_data = $self->_token2objs( $token, 'can');
+    print STDERR Data::Dumper->Dump([$obj_data,"ADDING TO HAS $id"]);
     $obj_data->{$id} = time - 1;
+    print STDERR "ADDING '$id' to CAN\n";
     $self->{STORE}->unlock( "_canToken2objs" );
 }
 
@@ -587,6 +627,8 @@ sub _updates_needed {
             push @updates, $obj_id;
         }
     }
+    print STDERR "CHECKING HAS for _updates_needed : " . join(",",@updates)."\n";
+
     $self->{STORE}->unlock( "_hasToken2objs" );
     \@updates;
 } #_updates_needed
@@ -649,8 +691,6 @@ sub create_token {
 
     $self->{STORE}->unlock( 'token_mutex' );
 
-
-    print STDERR Data::Dumper->Dump([$slot_data,$slots,"CREATET"]);
     return $randpart;
 
 } #create_token
@@ -697,11 +737,6 @@ sub fetch {
         return $self->{STORE}->fetch( $id );
     }
     die "Invalid id '$id'";
-}
-
-sub test {
-    my( $self, @args ) = @_;
-    return ( "FOOBIE", "BLECH", @args );
 }
 
 # ------- END Yote::ServerRoot
