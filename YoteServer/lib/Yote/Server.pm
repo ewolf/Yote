@@ -118,10 +118,11 @@ sub _process_request {
         #child
 
         my $req = <$sock>;
-
+        print STDERR "$req";
         my $IP = $sock->peerhost;
         my %headers;
         while( my $hdr = <$sock> ) {
+            print STDERR "$hdr";
             $hdr =~ s/\s*$//s;
             last unless $hdr =~ /\S/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
@@ -165,7 +166,7 @@ sub _process_request {
 
         my $token = $headers{TOKEN};
 
-        print STDERR Data::Dumper->Dump([$obj_id,$action,$params]);
+        $token ||= 'test'; #remove
 
         unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
@@ -201,7 +202,6 @@ sub _process_request {
         };
 
         if( $@ ) {
-            print STDERR Data::Dumper->Dump(["ERROR '$@'",$obj,$action,\@in_params]);
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
             return;
@@ -316,6 +316,9 @@ sub _last_updated {
     $time;
 }
 
+sub _log {
+    Yote::Server::_log(shift);
+}
 
 sub newobj {
     my( $self, $data, $class ) = @_;
@@ -444,6 +447,7 @@ sub _init {
     $self->set_hasToken2objs({});
     $self->set_canToken2objs({});
     $self->set_apps({});
+    $self->set_appOnOff({});
 }
 
 sub _valid_token {
@@ -493,7 +497,6 @@ sub _canhas {
 
 sub _willhas {
     my( $self, $id, $token ) = @_;
-    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
     return if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'can' );
     $obj_data->{$id} = time - 1;
@@ -505,12 +508,11 @@ sub _updates_needed {
     my( $self, $token ) = @_;
     my $obj_data = $self->_token2objs( $token, 'has' );
     my $store = $self->{STORE};
-
     my( @updates );
     for my $obj_id (keys %$obj_data ) {
         my $last_update_sent = $obj_data->{$obj_id};
         my $last_updated = $store->_last_updated( $obj_id );
-        if( $last_update_sent < $last_updated ) {
+        if( $last_update_sent < $last_updated || $last_updated == 0 ) {
             push @updates, $obj_id;
         }
     }
@@ -532,18 +534,27 @@ sub fetch_app {
     my $app  = $apps->{$app_name};
     unless( $app ) {
         eval("require $app_name");
-        return undef if $@;
-
+        if( $@ ) {
+            # TODO - have/use a good logging system with clarity and stuff
+            # warnings, errors, etc
+            $self->{STORE}->_log( "App '$app_name' not found" );
+            return undef;
+        }
+        $self->{STORE}->_log( "Loading app '$app_name'" );
         $app = $app_name->new;
         $apps->{$app_name} = $app;
+    }
+    my $appIsOn = $self->get_appOnOff->{$app_name};
+    unless( $appIsOn ) {
+        $self->{STORE}->_log( "App '$app_name' not found" );
+        return undef;
     }
     $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 
 sub test {
     my( $self, @args ) = @_;
-    print STDERR Data::Dumper->Dump(["I HEEAR YA",\@args]);
-    return { "FOOBIE" => "BLECH" };
+    return ( "FOOBIE", "BLECH", [ "VAROOM" ] );
 }
 
 # ------- END Yote::ServerRoot
