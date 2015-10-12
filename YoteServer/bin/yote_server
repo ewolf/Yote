@@ -137,6 +137,7 @@ sub start_yote {
     daemonize( close => 0, run => sub {
         write_pidfile( $pidfile );
         my $serv = new Yote::Server( \%options );
+        print STDERR Data::Dumper->Dump([$serv,"SSSSSV"]);
         $serv->run;
                } );
 

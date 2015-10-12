@@ -257,7 +257,7 @@ sub _new { #Yote::ObjStore
     my $self = bless {
         _DIRTY     => {},
         _WEAK_REFS => {},
-        $args      => $args,
+        args       => $args,
     }, $pkg;
     $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
     $self;

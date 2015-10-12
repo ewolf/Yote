@@ -2,7 +2,7 @@ importScripts( '/__/js/yote.js' );
 yote.init();
 console.log( "login.js : LOADED WORKER LOGIN" );
 var root = yote.fetch_root();
-var app  = yote.fetch_app( 'Yote::App' );
+var app  = root.fetch_app( 'Yote::App' );
 console.log( ["login.js : LOADED APP",app ] );
 onmessage = function(e) {    
     var data = e.data;

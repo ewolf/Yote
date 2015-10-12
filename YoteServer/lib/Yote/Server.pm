@@ -74,6 +74,12 @@ sub stop {
 =cut
 sub run {
     my $self = shift;
+
+    unless( $self->{STORE}{_locker} ) {
+        $self->{STORE}{_locker} = $self->{_locker};
+        $self->{_locker}->start;
+    }
+
     my $listener_socket;
     my $count = 0;
     while( ! $listener_socket && ++$count < 10 ) { 
@@ -84,9 +90,7 @@ sub run {
         last if $listener_socket;
         
         print STDERR "Unable to open the socket. Retry $count of 10\n";
-        if( $count > 9 ) {
-            print STDERR "$@\n";
-        }
+        sleep 10;
     }
     unless( $listener_socket ) {
         $self->{error} = "Unable to open socket on port '$self->{yote_port}' : $! $@\n";
@@ -94,7 +98,7 @@ sub run {
         _log( "unable to start lock server : $@ $!." );
         return 0;
     }
-
+    print STDERR "Starting yote server\n";
 
     unless( $self->{yote_root_dir} ) {
         eval('use Yote::ConfigData');
@@ -219,6 +223,8 @@ sub _process_request {
                             map { s/^[^=]+=//; s/\+/ /gs; $_; } 
                             split ( '&', $data ) ];
         }
+
+        _log( "\n   (params)--> : ".join(',',@$params) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {
             _log( "Bad action (underscore) : '$action'" );
@@ -468,6 +474,7 @@ sub fetch_server_root {
 
 sub lock {
     my( $self, $key ) = @_;
+    print STDERR Data::Dumper->Dump([\@_,"SELFA"]);
     $self->{_lockerClient} ||= $self->{_locker}->client( $$ );
     $self->{_lockerClient}->lock( $key );
 }
@@ -726,26 +733,29 @@ sub create_token {
 
 sub fetch_app {
     my( $self, $app_name, @args ) = @_;
-
+    print STDERR Data::Dumper->Dump([\@_,"PEEK"]);
     my $apps = $self->get__apps;
     my $app  = $apps->{$app_name};
     unless( $app ) {
         eval("require $app_name");
         if( $@ ) {
+            print STDERR Data::Dumper->Dump([$@,"BAD FETCH APP $app_name"]);
             # TODO - have/use a good logging system with clarity and stuff
             # warnings, errors, etc
             $self->{STORE}->_log( "App '$app_name' not found" );
             return undef;
         }
         $self->{STORE}->_log( "Loading app '$app_name'" );
-        $app = $app_name->new;
+        $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
     my $appIsOn = $self->get__appOnOff->{$app_name};
-    unless( $appIsOn ) {
+    if( $appIsOn eq 'off' ) {
+        print STDERR Data::Dumper->Dump(["APP NOTTA FOUND"]);
         $self->{STORE}->_log( "App '$app_name' not found" );
         return undef;
     }
+    print STDERR Data::Dumper->Dump([$app,"AP THIS POINT"]);
     $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 

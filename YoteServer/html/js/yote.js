@@ -19,14 +19,15 @@ yote.init = function( yoteServerURL ) {
     // creates a proxy method that contacts the server and
     // returns data
     var makeMethod = function( mName, args ) {
+        var makeArgs = args;
         var nm = '' + mName;
         return function( data, methodargs ) {
-            if( args.async && ! ( methodargs && methodargs.sucHandler ) ) {
+            if( makeArgs && makeArgs.async && ! ( methodargs && methodargs.sucHandler ) ) {
                 console.warn( "yote warning. method '" + nm + "' called without a success handler" );
             }
             var id = this.id;
-            var res = contact( id, nm, args, methodargs );
-            if( args.async ) { 
+            var res = contact( id, nm, data, makeArgs, methodargs );
+            if( makeArgs && makeArgs.async ) { 
                 return this; 
             }
             return res;
@@ -39,6 +40,7 @@ yote.init = function( yoteServerURL ) {
         var obj = id2obj[ datastructure.id ];
         if( ! obj ) {
             obj = {};
+            obj.id = datastructure.id;
             id2obj[ datastructure.id ] = obj;
         }
         obj.data = datastructure.data;
@@ -128,6 +130,9 @@ yote.init = function( yoteServerURL ) {
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
                   '/' + action, contactArgs.async ? true : false );
+        if( data && typeof data !== 'object' ) {
+            data = [ data ];
+        }
         oReq.send(data ? 'p=' + data.map(function(p) {
             return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
