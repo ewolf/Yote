@@ -249,6 +249,7 @@ sub _process_request {
                       $server_root->_getMay( $obj_id, $token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
+            print STDERR Data::Dumper->Dump([$obj_id,$token,$ENV{REMOTE_HOST},$server_root->_valid_token( $token, $ENV{REMOTE_HOST} ), $server_root->_getMay($obj_id,$token)]);
             _log( "Bad Path : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -275,7 +276,7 @@ sub _process_request {
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
-        print STDERR Data::Dumper->Dump([$obj_id,$server_root,"BOOP"]);
+        print STDERR Data::Dumper->Dump([$obj_id,$server_root,$obj,"BOOP"]);
         unless( $obj->can( $action ) ) {
             _log( "Bad Req : invalid method :'$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -629,7 +630,8 @@ sub _getMay {
     return 1 if index( $id, 'v' ) == 0;
     return 0 if $token eq '_';
     my $obj_data = $self->get__mayHave_Token2objs;
-    $obj_data->{$id};
+    print STDERR Data::Dumper->Dump([$obj_data,'GETMAY ' . $self->{STORE}->_get_id( $obj_data )]);
+    $obj_data->{$token} && $obj_data->{$token}{$id};
 }
 
 sub _setMay {
@@ -647,7 +649,7 @@ sub _updates_needed {
     return [] if $token eq '_';
 
 
-    my $obj_data = $self->get__doesHave_Token2objs;
+    my $obj_data = $self->get__doesHave_Token2objs()->{$token};
     my $store = $self->{STORE};
     my( @updates );
     for my $obj_id (@$outRes, keys %$obj_data ) {
