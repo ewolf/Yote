@@ -1,0 +1,7 @@
+okey, performance is not good. even with aspect is hard to measure because fork.
+    
+Might set up a seperate yote server to receive performance data from the first that
+would update what it is, or a temp file with that data that is appended to
+
+So lockserver may be flaky. The whole thing may be flaky, but is salvagable
+

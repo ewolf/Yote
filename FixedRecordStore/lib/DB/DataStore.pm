@@ -469,7 +469,8 @@ sub put_record {
 # how about an ensure_entry_count right here?
 
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-    defined( $swv ) or die "Could not write : $@ $!";
+    unless( $swv ) { use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]); }
+    defined( $swv ) or die "[is closed by an other thread? somewhere else here? trace where the closes happen]Could not write ($idx) : $@ $!";
     1;
 } #put_record
 

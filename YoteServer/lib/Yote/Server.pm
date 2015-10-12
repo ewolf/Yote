@@ -38,11 +38,10 @@ sub new {
 sub start {
     my $self = shift;
 
-    $self->{STORE}->{_locker} = $self->{_locker};
+    $self->{STORE}{_locker} = $self->{_locker};
     $self->{_locker}->start;
 
     $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
-
 
     if( my $pid = fork ) {
         # parent
@@ -116,10 +115,17 @@ sub _log {
 
 sub _process_request {
     my( $self, $sock ) = @_;
+
     if( my $pid = fork ) {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
+#        use Profiler; Profiler::init(qr/Yote|Lock|DB/,"PROCESS REQUEST");
+        $self->__process_request( $sock );
+    }
+} # _process_request
+sub __process_request {
+    my( $self, $sock ) = @_;
         #child
         $0 = "YoteServer processing request";
         $SIG{INT} = sub {
@@ -134,7 +140,6 @@ sub _process_request {
         my %headers;
         while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
-#            print STDERR Data::Dumper->Dump([$hdr,"H"]);
             last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
@@ -142,11 +147,8 @@ sub _process_request {
 
         my $store = $self->{STORE};
 
-        $store->{_lockerClient} = $store->{_locker}->client( $$ );
-
         print STDERR "\n\n----\nREQ : $req\n";
 
-#        print STDERR Data::Dumper->Dump([$req,\%headers,"HHH"]);
         # 
         # read certain length from socket ( as many bytes as content length )
         #
@@ -161,7 +163,6 @@ sub _process_request {
         # escape for serving up web pages
         # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
-#        print STDERR Data::Dumper->Dump([$path,"CHEK $verb"]);
         if( $path =~ m!/__/! ) {
             # TODO - make sure install script makes the directories properly
             my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
@@ -200,9 +201,6 @@ sub _process_request {
         # POST /obj/action  (params in POST data)
 
         # root is /_/
-
-#        print STDERR Data::Dumper->Dump([$data,"DDD"]);
-
         my( $obj_id, $token, $action, $params );
         if( $verb eq 'GET' ) {
             ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
@@ -261,8 +259,6 @@ sub _process_request {
             }
             push @in_params, $store->_xform_out( $param );
         }
-#        print STDERR Data::Dumper->Dump([\@in_params,$action," in params"]);
-
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
@@ -334,21 +330,20 @@ sub _process_request {
                     map { my $d = $store->_xform_in( $_ );
                           $server_root->_setMay( $d, $token );
                           $d } 
-                    @$obj ];
+                        @$obj ];
             } elsif( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
                           $server_root->_setMay( $d, $token );
-                          $_ => $d } 
+                          $_ => $d }
                     keys %$obj };
-                
             } else {
                 my $obj_data = $obj->{DATA};
 
                 $data = {
-                    map { my $d = $store->_xform_in( $obj_data->{$_} );
+                    map { my $d = $obj_data->{$_};
                           $server_root->_setMay( $d, $token );
-                          $_ => $d } 
+                          $_ => $d }
                     grep { $_ !~ /^_/ }
                     keys %$obj_data };
                 $methods{$ref} ||= $obj->_callable_methods;
@@ -381,7 +376,6 @@ sub _process_request {
         $self->{STORE}->stow_all;
         exit;
     } #child
-} # _process_request
 
 # ------- END Yote::Server
 
@@ -411,10 +405,9 @@ sub stow_all {
     my $self = $_[0];
     for my $obj (values %{$self->{_DIRTY}} ) {
         my $obj_id = $self->_get_id( $obj );
-        print STDERR "Noting obj update '$obj_id' at ".time."\n";
         $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     }
-    $self->SUPER::stow_all;       
+    $self->SUPER::stow_all;
 } #stow_all
 
 sub _stow {
@@ -422,7 +415,6 @@ sub _stow {
     $self->SUPER::_stow( $obj );
 
     my $obj_id = $self->_get_id( $obj );
-    print STDERR "Noting obj update '$obj_id' at ".time."\n";
     $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
 }
 
@@ -446,7 +438,8 @@ sub fetch_server_root {
     my $self = shift;
 
     my $system_root = $self->fetch_root;
-    my $server_root = $system_root->get_server_root;
+    my $server_root = $self->{SERVER_ROOT} || $system_root->get_server_root;
+    $self->{SERVER_ROOT} ||= $server_root;
     unless( $server_root ) {
         $server_root = Yote::ServerRoot->_new( $self );
         $system_root->set_server_root( $server_root );
@@ -469,6 +462,7 @@ sub fetch_server_root {
 
 sub lock {
     my( $self, $key ) = @_;
+    $self->{_lockerClient} ||= $self->{_locker}->client( $$ );
     $self->{_lockerClient}->lock( $key );
 }
 
@@ -607,8 +601,6 @@ sub _token2objs {
         $objs = {};
         $token2objs->{$tok} = $objs;
     }
-#    print STDERR Data::Dumper->Dump([$objs,"LOAD $flav T2O"]);
-
     $objs;
 }
 
@@ -628,7 +620,6 @@ sub _setHas {
     my( $self, $id, $token ) = @_;
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'doesHave' );
-    print STDERR "ADDING '$id' to HAS\n";
     $obj_data->{$id} = time;
     $self->{STORE}->unlock( "_hasToken2objs" );
 }
@@ -640,7 +631,6 @@ sub _getMay {
     my $obj_data = $self->_token2objs( $token, 'mayHave' );
     $self->{STORE}->lock( $obj_data );
     my $has = $obj_data->{$id};
-    print STDERR "$id " . ( $has ? " MAY " : " MAY NOT" ). "\n";
     $self->{STORE}->unlock( "_canToken2objs" );
     $has;
 }
@@ -650,7 +640,6 @@ sub _setMay {
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'mayHave');
     $obj_data->{$id} = time - 1;
-    print STDERR "ADDING '$id' to MAY\n";
     $self->{STORE}->unlock( "_canToken2objs" );
 }
 
@@ -694,7 +683,6 @@ sub create_token {
 
     my $slots     = $self->get__token_timeslots();
     my $slot_data = $self->get__token_timeslots_metadata();
-
     #
     # check if the token is already used ( very unlikely ) and remove expired slots
     #

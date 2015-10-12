@@ -30,7 +30,7 @@ my $store = $server->{STORE};
 my $otherO = $store->newobj;
 my $root = $store->fetch_server_root;
 $root->set_fooObj( $store->newobj( { innerfoo => [ 'innerbar', 'vinnercar', $otherO ] } ) );
-my $fooHash = $root->set_fooHash( {  innerFooHash => $otherO, someTxt => "vtxtyTxt"} );
+my $fooHash = $root->set_fooHash( {  innerFooHash => $otherO, someTxt => "vvtxtyTxt"} );
 my $fooArr = $root->set_fooArr( [ $otherO, 'vinner', 'winnyo'] );
 $root->set_txt( "SOMETEXT" );
 my $fooObj   = $root->get_fooObj;
@@ -52,7 +52,7 @@ $SIG{ INT } = $SIG{ __DIE__ } =
 
 sleep 1;
 
-
+#use Profiler;Profiler::init( qr/Yote|Lock|DB|test_suite/ );
 test_suite();
 
 print STDERR Data::Dumper->Dump(["STOPPING"]);
@@ -69,7 +69,7 @@ sub msg {  #returns resp code, headers, response pased from json
     $socket->print( "GET /" . join( '/',  $obj_id, 
                                     $token, 
                                     $action, 
-                                    map { $_ > 1 ? $_ : "v$_" } @params ) . 
+                                    map { $_ > 1 || substr($_,0,1) eq 'v' ? $_ : "v$_" } @params ) .
                     " HTTP/1.1\n\n" );
     my $resp = <$socket>;
     
@@ -140,7 +140,8 @@ sub test_suite {
                   ) ), 'correct methods for fetched server root' );
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
-                                  data => { 
+                                  data => {
+                                      txt     => 'vSOMETEXT',
                                       fooObj  => $store->_get_id( $fooObj ),
                                       fooHash => $store->_get_id( $fooHash ),
                                       fooArr  => $store->_get_id( $fooArr ),
@@ -179,10 +180,10 @@ sub test_suite {
 
     # directly fetch the innerfoo. should not
     # work as the innerfoo id had not been returned to the client
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v'.$store->_get_id( $innerfoo ) );
-    is( $retcode, 400, "cannot call underscore method" );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $store->_get_id( $innerfoo ) );
+    is( $retcode, 500, "cannot fetch id not explicitly given to client" );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v'.$fooObj->{ID} );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $fooObj->{ID} );
     is( $retcode, 200, "able to fetch allowed object" );
     is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
