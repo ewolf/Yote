@@ -85,11 +85,13 @@ sub run {
 
     eval('use Yote::ConfigData');
     my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+    undef $@;
 
-    my $store = Yote::ServerStore->_new( { root => "$yote_root_dir" } );
+    my $store = Yote::ServerStore->_new( { root => $yote_root_dir } );
     $store->{_locker} = $locker;
 
     $self->{STORE} = $store;
+
     $self->{SERVER_ROOT} = $store->fetch_server_root;
 
     $SIG{HUP} = sub {
@@ -131,7 +133,7 @@ sub _process_request {
 
         $store->{_lockerClient} = $store->{_locker}->client( $$ );
 
-
+        print STDERR Data::Dumper->Dump([$req,\%headers,"HHH"]);
         # 
         # read certain length from socket ( as many bytes as content length )
         #
@@ -148,6 +150,8 @@ sub _process_request {
 
         # root is /_/
 
+        print STDERR Data::Dumper->Dump([$data,"DDD"]);
+
         my $params;
         my( $obj_id, $action );
         if( $verb eq 'GET' ) {
@@ -159,6 +163,7 @@ sub _process_request {
         }
         
         my $server_root = $self->{SERVER_ROOT};
+        my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
         my $token = $headers{TOKEN};
 
@@ -201,7 +206,7 @@ sub _process_request {
         };
 
         if( $@ ) {
-            _log( "INTERNAL SERVER ERROR" );
+            _log( "INTERNAL SERVER ERROR '$@'" );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
             return;
@@ -217,6 +222,7 @@ sub _process_request {
         }
         my $ids_to_update = $server_root->_updates_needed( $token );
         
+            print STDERR Data::Dumper->Dump([$ids_to_update,"UPDATE THESE"]);
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
             my $obj = $store->fetch( $obj_id );
@@ -250,7 +256,7 @@ sub _process_request {
             }
             my $update = {
                 id    => $obj_id,
-                class => $ref,
+                cls   => $ref,
                 data  => $data,
             };
             push @updates, $update;
@@ -295,7 +301,7 @@ sub _new {
     my( $pkg, $args ) = @_;
     $args->{store} = "$args->{root}/DATA_STORE";
     my $self = $pkg->SUPER::_new( $args );
-    
+
     # keeps track of when any object had been last updated.
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
@@ -331,11 +337,11 @@ sub fetch_server_root {
     my $self = shift;
 
     my $system_root = $self->fetch_root;
-    
     my $server_root = $system_root->get_server_root;
     unless( $server_root ) {
         $server_root = Yote::ServerRoot->_new( $self );
         $system_root->set_server_root( $server_root );
+        $self->stow_all;
     }
 
     # some setup here? accounts/webapps/etc?
@@ -346,6 +352,7 @@ sub fetch_server_root {
     
     # then verify if the command can run on the app object with those args
     # or even : $myapp->run( 'command', @args );
+
 
     $server_root;
     

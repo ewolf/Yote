@@ -167,6 +167,7 @@ sub _newroot {
 =cut
 sub fetch {
     my( $self, $id ) = @_;
+
     return undef unless $id;
     #
     # Return the object if we have a reference to its dirty state.
@@ -194,7 +195,7 @@ sub fetch {
             return \%hash;
         }
         else {
-            $class =~ /^Yote::(Root|Obj)/ || eval("require $class");
+            $class =~ /^Yote::/ || eval("require $class");
             return undef if $@;
 
             my $obj = $class->_instantiate( $id, $self );
