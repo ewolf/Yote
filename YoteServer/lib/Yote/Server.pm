@@ -57,7 +57,6 @@ sub start {
 
 sub stop {
     my $self = shift;
-    print STDERR Data::Dumper->Dump([$self,"STOP"]);
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
         kill 'INT', $pid;
@@ -289,7 +288,13 @@ sub _process_request {
             $server_root->_setMay( $val, $token );
             push @out_res, $val;
         }
-        my $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
+        my $ids_to_update;
+        print STDERR Data::Dumper->Dump([$action,$obj_id,"CHECKUPS"]);
+        if( $action eq 'fetch_root' && ( $obj_id eq '_' || $obj_id eq $server_root->{ID} ) ) {
+            $ids_to_update = $server_root->_updates_needed( $token, [$server_root] );
+        } else {
+            $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
+        }
 
         for my $res (@out_res) {
             $server_root->_setHas( $res, $token );
@@ -304,13 +309,13 @@ sub _process_request {
             if( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
-                          $store->_setMay( $d, $token );
+                          $server_root->_setMay( $d, $token );
                           $d } 
                     @$obj ];
             } elsif( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
-                          $store->_setMay( $d, $token );
+                          $server_root->_setMay( $d, $token );
                           $_ => $d } 
                     keys %$obj };
                 
@@ -319,14 +324,13 @@ sub _process_request {
                 
                 $data = {
                     map { my $d = $store->_xform_in( $obj_data->{$_} );
-                          $store->_setMay( $d, $token );
+                          $server_root->_setMay( $d, $token );
                           $_ => $d } 
                     grep { $_ !~ /^_/ }
                     keys %$obj_data };
-
                 $methods{$ref} ||= $obj->_callable_methods;
             }
-            $store->_setHas( $obj_id, $token );
+            $server_root->_setHas( $obj_id, $token );
             my $update = {
                 id    => $obj_id,
                 cls   => $ref,
@@ -596,7 +600,7 @@ sub _resetHasAndMay {
 
 sub _setHas {
     my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0;
+    return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'doesHave' );
     print STDERR "ADDING '$id' to HAS\n";
     $obj_data->{$id} = time - 1;
@@ -605,7 +609,7 @@ sub _setHas {
 
 sub _getMay {
     my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0;
+    return 0 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'can' );
     $self->{STORE}->lock( $obj_data );
     my $has = $obj_data->{$id};
@@ -616,7 +620,7 @@ sub _getMay {
 
 sub _setMay {
     my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0;
+    return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'can');
     $obj_data->{$id} = time - 1;
     print STDERR "ADDING '$id' to MAY\n";
@@ -626,10 +630,12 @@ sub _setMay {
 
 sub _updates_needed {
     my( $self, $token, $outRes ) = @_;
+    return [] if $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'has' );
     my $store = $self->{STORE};
     my( @updates );
     for my $obj_id (@$outRes, keys %$obj_data ) {
+        next if index( $obj_id, 'v' ) == 0;
         my $last_update_sent = $obj_data->{$obj_id};
         my $last_updated = $store->_last_updated( $obj_id );
         print STDERR "$obj_id $last_updated\n";

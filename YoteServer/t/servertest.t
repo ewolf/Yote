@@ -180,15 +180,9 @@ sub test_suite {
 
     # directly fetch the innerfoo. should work as the innerfoo id had
     # not been returned to the client
-    print STDERR "\n\n-------------------------------------------------\n\n";
-
-    print STDERR Data::Dumper->Dump([$store->_get_id( $innerfoo ), "ID" ]);
-
     ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch', $store->_get_id( $innerfoo ) );
-    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'fi']);
 
     ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch', $foo->{ID} );
-    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'fo']);return;
 
     # get the 'foo' object off of the root
     ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'get', 'foo' );
