@@ -1,5 +1,5 @@
 importScripts( '/__/js/yote.js' );
-yote.init('//127.0.0.1:8882');
+yote.init();
 console.log( "login.js : LOADED WORKER LOGIN" );
 var root = yote.fetch_root();
 var app  = root.fetch_app( 'Yote::App' );

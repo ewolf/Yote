@@ -123,12 +123,12 @@ yote.init = function( yoteServerURL ) {
         oReq.addEventListener("load", reqListener(contactArgs,methodArgs));
 
 console.log( '<<' + yoteServerURL + '>>' );
-        console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
+        console.log( 'url : ' + ( yoteServerURL || "" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
                      '/' + action )
         
-        oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
+        oReq.open("POST", ( yoteServerURL || "" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
                   '/' + action, contactArgs.async ? true : false );
