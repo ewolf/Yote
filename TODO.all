@@ -1,3 +1,4 @@
  for all projects :
 
 *) split up into separate git repos
+*) verify their values on cpan

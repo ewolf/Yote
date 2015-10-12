@@ -16,7 +16,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.0';
 
-my $DEBUG = 0;
+my $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;

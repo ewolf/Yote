@@ -59,7 +59,7 @@ if( -f $confile && -r $confile ) {
     while( <IN> ) {
         s/\#.*//;
         if( /^\s*([^=]+)\s*=\s*(.*)\s*$/ ) {
-            $options{$1} = $2;
+            $options{$1} = $2 if defined $options{$1};
         }
     }
     close IN;
