@@ -21,7 +21,7 @@ r">
 <script>
 
 
-var myWorker = new Worker("http://127.0.0.1/wtest.js");
+var myWorker = new Worker("/__/wtest.js");
 var subr = document.getElementById( 'js' );
 subr.addEventListener("click",function(e) {
     myWorker.postMessage(["A","B","C"]);

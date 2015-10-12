@@ -1,4 +1,4 @@
-importScripts( 'yote.js' );
+importScripts( '/__/js/yote.js' );
 yote.init();
 var root = yote.fetch_root(); // <--- got to here, but init is not fully complete
 
