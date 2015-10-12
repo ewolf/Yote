@@ -22,7 +22,7 @@ exit( 0 );
 
 sub test_suite {
     
-    my $locks = new Lock::Server;
+    my $locks = new Lock::Server( { lock_timeout => 3 } );
     unless( $locks->start ) {
 	my $err = $locks->{error};
         $locks->stop;
@@ -39,22 +39,60 @@ sub test_suite {
 
     my( @pids );
 
-    if( my $pid = fork ) {
-	push @pids, $pid;
-	is( msg( "LOCK KEY1 LOCKER3" ), '1', "first lock success key1" );
-    }
+    # see if one process waits on the other
 
     if( my $pid = fork ) {
-	push @pids, $pid;
-	is( msg( "LOCK KEY1 LOCKER4" ), '1', "first lock success key1" );
+        push @pids, $pid;
+    } else {
+        is( msg( "LOCK KEY1 LOCKER3" ), '1', "first lock success key1" );
+        sleep 2;
+        is( msg( "UNLOCK KEY1 LOCKER3" ), '1', "first unlock success key1" );
+        exit;
+    }
+    sleep .01;
+    if( my $pid = fork ) {
+        push @pids, $pid;
+    } else {
+        # KEY1 is locked by locker3, so this doesn't return until it
+        # is unlocked, a time of 2 seconds
+        is( msg( "LOCK KEY1 LOCKER4" ), '1', "second lock success key1" );
+        is( msg( "UNLOCK KEY1 LOCKER4" ), '1', "second unlock success key1" );
+        exit;
+    }
+
+    my $t1 = time;
+    while( @pids ) { 
+        my $pid = shift @pids;
+        waitpid $pid, 0;
+    }
+    is( int(time -$t1),2, "second lock waited on the first" );
+
+    # deadlock detection
+    if( my $pid = fork ) {
+        push @pids, $pid;
+    } else {
+        is( msg( "LOCK KEYA LOCKER4" ), '1', "first lock success keya" );
+        sleep 2;
+        is( msg( "LOCK KEYB LOCKER4" ), '1', "first lock success keyb" );
+        exit;
+    }
+    sleep .01;
+    if( my $pid = fork ) {
+        push @pids, $pid;
+    } else {
+        is( msg( "LOCK KEYB LOCKER5" ), '1', "second lock success keya" );
+        my $t = time;
+        is( msg( "LOCK KEYA LOCKER5" ), '0', "second lock success keyb" );
+        is( time-$t, 3, "deadlock timed out " );
+        exit;
     }
 
     while( @pids ) { 
-	my $pid = shift @pids;
-	waitpid $pid, 0;
+        my $pid = shift @pids;
+        waitpid $pid, 0;
     }
-
-#    $locks->stop;
+    
+    $locks->stop;
 
 } #test suite
 
