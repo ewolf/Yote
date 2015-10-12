@@ -11,7 +11,7 @@ my $builder = Module::Build->new(
     },
     create_makefile_pl => 'traditional',
     license            => 'perl',
-    module_name        => 'DB::DataStore',
+    module_name        => 'Lock::Server',
     release_status     => 'stable',
     test_files         => [ 't/locktest.t', ],
     requires => {
