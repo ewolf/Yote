@@ -167,7 +167,6 @@ sub _newroot {
 =cut
 sub fetch {
     my( $self, $id ) = @_;
-    print STDERR Data::Dumper->Dump(["FETCH '$id'"]);
     return undef unless $id;
     #
     # Return the object if we have a reference to its dirty state.
@@ -197,10 +196,12 @@ sub fetch {
         else {
             my $obj;
             eval {
-                $class =~ /^Yote::/ || eval("require $class");
+                my $path = $class;
+                $path =~ s!::!/!g;
+                $INC{"${path}.pm"} || eval("require $class");
                 $obj = $class->_instantiate( $id, $self );
             };
-            return undef if $@;
+            die $@ if $@;
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
             $obj->_load();

@@ -101,10 +101,14 @@ yote.init = function( yoteServerURL ) {
     // etc can be done here, the get & stuff
     var returnVal = '';
     var reqListener = function(createArgs,methodArgs) {
+console.log( [ "ZOUNDS", createArgs ] );
         return function() {
+console.log( [ "WOOPIE", createArgs ] );
             if( createArgs.returnRaw ) {
                 returnVal = this.responseText;
+
                 var proccessed = processRaw( returnVal, methodArgs ); // to create objects, etc
+console.log( [ "REQL, returnRaw", returnVal, processed ] );
                 if( methodArgs && methodArgs.sucHandler ) {
                     methodArgs.sucHandler( processed );
                 }
