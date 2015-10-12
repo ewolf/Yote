@@ -159,26 +159,14 @@ sub stop {
 =cut
 sub start {
     my $self = shift;
-    my $listener_socket = new IO::Socket::INET(
-        Listen    => 10,
-        LocalAddr => "$self->{host}:$self->{port}",
-        );
-    unless( $listener_socket ) {
-        $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
-        _log( "unable to start lock server : $@ $!." );
-        return 0;
-    }
-    binmode( $listener_socket, ':utf8' );
-    $listener_socket->autoflush;
     if( my $pid = fork ) {
         # parent
         $self->{server_pid} = $pid;
         return $pid;
     }
     
-
     # child process
-    $self->run( $listener_socket );
+    $self->run;
 
 } #start
 
@@ -188,28 +176,24 @@ sub start {
 
 =cut
 sub run {
-    my( $self, $listener_socket ) = @_;
+    my $self = shift;
 
 
-    unless( $listener_socket ) { 
-        $listener_socket = new IO::Socket::INET(
-            Listen    => 10,
-            LocalAddr => "$self->{host}:$self->{port}",
-            );
-        unless( $listener_socket ) {
-            $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
-            _log( "unable to start lock server : $@ $!." );
-            return 0;
-        }
+    my $listener_socket = new IO::Socket::INET(
+        Listen    => 10,
+        LocalAddr => "$self->{host}:$self->{port}",
+        );
+    unless( $listener_socket ) {
+        $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
+        _log( "unable to start lock server : $@ $!." );
+        return 0;
     }
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{INT} = sub {
         _log( "lock server : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
-        for my $pid (keys %{ $self->{_pids} } ) {
-            kill 'HUP', $pid;
-        }
+        kill 'HUP', keys %{ $self->{_pids} };
         exit;
     };
 
@@ -323,8 +307,7 @@ sub _lock {
             # child
             $SIG{HUP} = sub {
                 _log( "lock request : child $$ got HUP, so is now locked." );
-#                print $connection "$timeout_time\n";
- $connection->print( "$timeout_time\n" );
+                $connection->print( "$timeout_time\n" );
                 $connection->close;
                 undef $connection;
                 exit;

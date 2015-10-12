@@ -75,7 +75,7 @@ orthagonally to any other storage system.
 Starts up a persistance engine and returns it.
    
 =cut
-$Yote::STORES = {};
+$Yote::STORES = {}; #TODO <--- REMOVE THIS. UNNEEDED
 sub open_store {
     my $path = pop;
     $Yote::STORES->{$path} ||= Yote::ObjStore->_new( { store => $path } );
