@@ -163,17 +163,15 @@ sub start {
             my $req = <$connection>; 
             chomp $req;
             _log( "lock server : got request <$req>\n" );
-            if( $req =~ /^((?:UN)?LOCK) (\S+) (\S+)/i ) {
-                my( $cmd, $key, $locker_id ) = ( $1, $2, $3 );
-                if( lc($cmd) eq 'unlock' ) {
-                    $self->_unlock( $connection, $locker_id, $key );
-                }
-                elsif( lc($cmd) eq 'lock' ) {
-                    $self->_lock( $connection, $locker_id, $key );
-                }
-            } elsif( $req =~ /^CHECK (\S+) (\S+)/i ) {
-                my( $key, $locker_id ) = ( $1, $2 );
+            my( $cmd, $key, $locker_id ) = ( $req =~ /^(\S+) (\S+) (\S+)/ );
+            if( $cmd eq 'LOCK' ) {
+                $self->_lock( $connection, $locker_id, $key );
+            } elsif( $cmd eq 'UNLOCK' ) {
+                $self->_unlock( $connection, $locker_id, $key );
+            } elsif( $cmd eq 'CHECK' ) {
                 $self->_check( $connection, $locker_id, $key );
+            } elsif( $cmd eq 'VERIFY' ) {
+                $self->_verify( $connection, $locker_id, $key );
             } else {
                 _log( "lock server : did not understand request\n" );
                 $connection->close;
@@ -190,7 +188,21 @@ sub _check {
     $self->{_locks}{$key_to_check} ||= [];
     my $lockers = $self->{_locks}{$key_to_check};
 
-    if( $lockers->[0] eq $locker_id ) {
+    
+    #check for timed out lockers
+    my $t = time;
+    while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_check} ) {
+        _log( "lock server _check : '$key_to_check' timed out for locker '$lockers->[0]'\n" );
+        if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
+            delete $self->{_locker_counts}{$lockers->[0]};
+        } else {
+            delete $self->{_locker_counts}{$lockers->[0]}{$key_to_check};
+        }
+        shift @$lockers;
+    }
+
+
+    if( @$lockers ) {
         print $connection "1\n";
     } else {
         print $connection "0\n";
@@ -210,11 +222,6 @@ sub _lock {
 
     $self->{_locks}{$key_to_lock} ||= [];
     my $lockers = $self->{_locks}{$key_to_lock};
-    if( 0 < (grep { $_ eq $locker_id } @$lockers) ) {
-        _log( "lock request error. '$locker_id' already in the lock queue\n" );
-        print $connection "0\n";
-        return;
-    }
 
     #check for timed out lockers
     my $t = time;
@@ -226,6 +233,13 @@ sub _lock {
             delete $self->{_locker_counts}{$lockers->[0]}{$key_to_lock};
         }
         shift @$lockers;
+    }
+
+
+    if( 0 < (grep { $_ eq $locker_id } @$lockers) ) {
+        _log( "lock request error. '$locker_id' already in the lock queue\n" );
+        print $connection "0\n";
+        return;
     }
 
     # store when this times out 
@@ -297,7 +311,47 @@ sub _unlock {
     }
 } #_unlock
 
+sub _verify {
+    my( $self, $connection, $locker_id, $key_to_check ) = @_;
 
+    _log( "locker server check for key '$key_to_check' for locker '$locker_id'\n" );
+
+    $self->{_locks}{$key_to_check} ||= [];
+    my $lockers = $self->{_locks}{$key_to_check};
+
+    #check for timed out lockers
+    my $t = time;
+    while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_check} ) {
+        _log( "lock '$key_to_check' timed out for locker '$lockers->[0]'\n" );
+        if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
+            delete $self->{_locker_counts}{$lockers->[0]};
+        } else {
+            delete $self->{_locker_counts}{$lockers->[0]}{$key_to_check};
+        }
+        shift @$lockers;
+    }
+
+    if( $lockers->[0] eq $locker_id ) {
+        print $connection "1\n";
+    } else {
+        print $connection "0\n";
+    }
+    $connection->close;
+}
+
+
+
+=head1 Helper package
+
+=head2 NAME
+
+    Lock::Server::Client - client for locking server.
+
+=head2 DESCRIPTION
+
+    Sends request to a Lock::Server to lock, unlock and check locks.
+
+=cut
 package Lock::Server::Client;
 
 use strict;
@@ -321,11 +375,22 @@ sub new {
     }, $class;
 } #new 
 
-sub lockedByMe {
+sub isLocked {
     my( $self, $key ) = @_;
     my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
 
     $sock->print( "CHECK $key $self->{name}\n" );
+    my $resp = <$sock>;
+    $sock->close;
+    chomp $resp;
+    $resp;
+}
+
+sub lockedByMe {
+    my( $self, $key ) = @_;
+    my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+
+    $sock->print( "VERIFY $key $self->{name}\n" );
     my $resp = <$sock>;
     $sock->close;
     chomp $resp;

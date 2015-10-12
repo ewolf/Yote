@@ -6,6 +6,7 @@ use Lock::Server;
 
 use Data::Dumper;
 use Test::More;
+Test::More->builder->no_ending(1);
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
@@ -38,11 +39,14 @@ exit( 0 );
 sub test_suite {
     
     my $locker1 = $locks->client( "LOCKER1" );
+    is( $locker1->isLocked( "KEY1" ), '0', "KEY1 LOCKER1 not locked by anyone" );
     is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked before any locking" );
     is( $locker1->unlock( "KEY1" ), '0', "can't unlock what is not locked KEY1 LOCKER1" );
     cmp_ok( $locker1->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER1" );
+    is( $locker1->isLocked( "KEY1" ), '1', "KEY1 LOCKER1 reported as locked" );
     is( $locker1->lockedByMe( "KEY1" ), '1', "KEY1 LOCKER1 reported as locked after locking" );
     cmp_ok( $locker1->lock( "KEY2" ), '>', '1', "lock KEY2 LOCKER1" );
+    is( $locker1->isLocked( "KEY2" ), '1', "KEY2 LOCKER1 reported as locked" );
     is( $locker1->lockedByMe( "KEY2" ), '1', "KEY2 LOCKER1 reported as locked after locking" );
     is( $locker1->lock( "KEY1" ), '0', "cannot relock KEY1 LOCKER1" );
     is( $locker1->lockedByMe( "KEY1" ), '1', "KEY1 LOCKER1 reported as locked after locking" );
@@ -52,8 +56,9 @@ sub test_suite {
     is( $locker1->unlock( "KEY1" ), '0', "cant repeat unlock KEY1 LOCKER1" );
     is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked after unlocking twice" );
     is( $locker1->unlock( "KEY2" ), '1', "second lock unlocked KEY2 LOCKER1" );
-    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked after unlocking" );
-    is( $locker1->lockedByMe( "KEY2" ), '0', "KEY2 LOCKER1 reported as not locked after unlocking" );
+    is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked by me after unlocking" );
+    is( $locker1->lockedByMe( "KEY2" ), '0', "KEY2 LOCKER1 reported as not locked by me after unlocking" );
+    is( $locker1->isLocked( "KEY2" ), '0', "KEY2 LOCKER1 reported as not locked" );
 
     my( @pids );
 
@@ -64,6 +69,8 @@ sub test_suite {
     } else {
         my $locker3 = $locks->client( "LOCKER3" );
         cmp_ok( $locker3->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER3" );
+        is( $locker3->isLocked( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
+        is( $locker3->lockedByMe( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
         sleep 2;
         is( $locker3->unlock( "KEY1" ), '1', "unlock KEY1 LOCKER3" );
         exit;
@@ -73,6 +80,7 @@ sub test_suite {
         push @pids, $pid;
     } else {
         my $locker4 = $locks->client( "LOCKER4" );
+        is( $locker4->isLocked( "KEY1" ), '1', "LOCKER3 is aready locking KEY1" );
         # KEY1 is locked by locker3, so this doesn't return until it
         # is unlocked, a time of 2 seconds
         cmp_ok( $locker4->lock( "KEY1" ), '>', '1', "lock KEY1 LOCKER4" );
@@ -101,6 +109,7 @@ sub test_suite {
         my $locker4 = $locks->client( "LOCKER4" );
         cmp_ok( $locker4->lock( "KEYA" ), '>', '1', "lock KEYA LOCKER4" ); #A locked
         sleep 5;
+        is( $locker4->isLocked( "KEYB" ), '0', "LOCKER5 released KEYB" );
         cmp_ok( $locker4->lock( "KEYB" ), '>', '1', "LOCK KEYB LOCKER4" ); #B lock released when second thread failed
         is( $locker4->unlock( "KEYB" ), '1', "unlock KEYB LOCKER4" );
         exit;
@@ -113,6 +122,7 @@ sub test_suite {
         cmp_ok( $locker5->lock( "KEYB" ), '>', '1', "lock KEYB LOCKER5" ); #B locked
         is( $locker5->lockedByMe( "KEYB" ), '1', "KEYB LOCKER5 lock not yet expired" );
         my $t = time;
+        is( $locker5->lockedByMe( "KEYA" ), '0', "KEYA LOCKER5 lock expired" );
         is( $locker5->lock( "KEYA" ), '0', "KEYA LOCKER5 deadlocked out" );
         is( $locker5->lockedByMe( "KEYB" ), '0', "KEYB LOCKER5 lock expired" );
         is( time-$t, 5, "deadlock timed out " );
