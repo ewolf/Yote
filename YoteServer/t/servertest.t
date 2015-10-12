@@ -114,11 +114,13 @@ sub test_suite {
 
     ( $retcode, $hdrs, $ret ) = msg( '_', '_', 'noMethod' );
     is( $retcode, 400, "root node has no noMethod call" );
-
+    ok( ! $ret, "nothing returned for error case noMethod" );
 
 
     ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'test' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
+    is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with non fetch_root call (called test)' );
+    is_deeply( $ret->{updates}, [], "no updates without token" );
 
     ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'fetch_root' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
@@ -131,7 +133,8 @@ sub test_suite {
                          test
                          fetch_root
                          create_token
-                    ) ), 'correct methods for server root' );
+                  ) ), 'correct methods for fetched server root' );
+    is_deeply( $ret->{updates}, [], "no updates without token" );
 
     # now try with a token
     ( $retcode, $hdrs, $ret ) = msg( '2', '_', 'create_token' );
@@ -140,13 +143,7 @@ sub test_suite {
     cmp_ok( $token, '>', 0, "Got token" );
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
     is_deeply( [keys %{$ret->{updates}[0]{data}}], [ 'foo' ], "data has foo" );
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
-               l2a( qw( fetch_app
-                         fetch
-                         test
-                         fetch_root
-                         create_token
-                    ) ), 'correct methods for server root' );
+    is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with nont fetch_root call' );
 
 
     ( $retcode, $hdrs, $ret ) = msg( '2', $token, 'fetch_root' );
@@ -168,7 +165,7 @@ sub test_suite {
     is( $retcode, 200, "no access without token when calling by id for server root only" );
 
     is_deeply( $ret->{updates}, [], "no updates needed known" );
-    is_deeply( $ret->{methods}, [], "methods already known" );
+    is_deeply( $ret->{methods}, {}, "methods already known" );
 
     # make sure no prive _ method is called.
     ( $retcode, $hdrs, $ret ) = msg( '2', $token, '_updates_needed' );
