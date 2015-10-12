@@ -1,0 +1,71 @@
+{
+   "abstract" : "Persistant Perl container objects in a directed graph of lazilly loaded nodes.",
+   "author" : [
+      "Eric Wolf        coyocanid@gmail.com"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4003, CPAN::Meta::Converter version 2.141520",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Yote",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Module::Build" : "0.4",
+            "Test::More" : "0"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0.40"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "DB::DataStore" : "1",
+            "Devel::Refcount" : "0.1",
+            "JSON" : "0",
+            "WeakRef" : "0.01",
+            "perl" : "v5.12.0"
+         }
+      }
+   },
+   "provides" : {
+      "Yote" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      },
+      "Yote::Array" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      },
+      "Yote::Hash" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      },
+      "Yote::Obj" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      },
+      "Yote::ObjStore" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      },
+      "Yote::YoteDB" : {
+         "file" : "lib/Yote.pm",
+         "version" : "1.0"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "1.0"
+}
