@@ -12,6 +12,7 @@ sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     bless {
+	pids		=> {},
         id2pid        => {},
         locks         => {},
         lock_timeout  => $args->{lock_timeout} || 60,
@@ -27,10 +28,10 @@ sub lock {
 
     $self->{locks}{$key_to_lock} ||= [];
     my $lockers = $self->{locks}{$key_to_lock};
-use Data::Dumper;    print STDERR Data::Dumper->Dump([$lockers]);
     if( 0 < (grep { $_ eq $locker_id } @$lockers) ) {
         print STDERR "lock request error. '$locker_id' already in the lock queue\n" if $Lock::Server::DEBUG;
         print $connection "0\n";
+	return;
     }
 
     push @$lockers, $locker_id;
@@ -41,6 +42,7 @@ use Data::Dumper;    print STDERR Data::Dumper->Dump([$lockers]);
         if( (my $pid=fork)) {
             $self->{id2pid}{$locker_id} = $pid;
             $self->{locker_counts}{$locker_id}++;
+	    $self->{pids}{$pid} = 1;
             print STDERR "lock request : parent process associating '$locker_id' with pid '$pid' ".scalar(@$lockers)." lockers\n" if $Lock::Server::DEBUG;
             # parent
         } else {
@@ -50,6 +52,7 @@ use Data::Dumper;    print STDERR Data::Dumper->Dump([$lockers]);
                 print $connection "1\n";
                 $connection->close;
                 undef $connection;
+		exit;
             };
             print STDERR "lock request : child $$ ready to wait\n" if $Lock::Server::DEBUG;
             sleep $self->{lock_timeout};
@@ -57,6 +60,7 @@ use Data::Dumper;    print STDERR Data::Dumper->Dump([$lockers]);
                 print $connection "0\n";
                 $connection->close;
             }
+		exit;
         }
     } else {
         print STDERR "lock request : no need to invoke more processes. locking\n" if $Lock::Server::DEBUG;
@@ -97,6 +101,9 @@ sub start {
         $SIG{INT} = sub {
             print STDERR "lock server : got INT signal. Shutting down.\n" if $Lock::Server::DEBUG;
             $listener_socket && $listener_socket->close;
+	    for my $pid (keys %{ $self->{pids} } ) {
+		kill 'HUP', $pid;
+	    }
             exit;
         };
 
@@ -131,8 +138,8 @@ sub unlock {
         shift @$lockers;
         if( 0 == --$self->{locker_counts}{$locker_id} ) {
             print STDERR "unlock : remove information about '$locker_id'\n" if $Lock::Server::DEBUG;
-#            delete $self->{id2pid}{$locker_id};
-#            delete $self->{locker_counts}{$locker_id};
+            delete $self->{id2pid}{$locker_id};
+            delete $self->{locker_counts}{$locker_id};
         }
         print STDERR "unlocking '$locker_id'\n" if $Lock::Server::DEBUG;
         if( @$lockers ) {
