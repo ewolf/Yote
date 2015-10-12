@@ -14,7 +14,7 @@ yote.init = function( yoteServerURL ) {
         var nm = '' + mName;
         return function( data ) {
             var id = this.id;
-            return contact( "/" + id + "/" + nm, data );
+            return contact( id, nm, data );
         };
     };
     
@@ -68,16 +68,16 @@ yote.init = function( yoteServerURL ) {
         returnVal = returns.length > 1 ? returns : returns[0];
     }; //reqListener
     
-    var contact = function(path,data) {
+//    var contact = function(path,data) {
+    var contact = function(id,action,data) {
         var oReq = new XMLHttpRequest();
         var async = false;
         oReq.addEventListener("load", reqListener);
-        oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + path, async );
-        if( token ) {
-            oReq.setRequestHeader( 'yote-token', token );
-        }
-        oReq.send(data ? 
-                  'yote-token: ' + token + '\n\np=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
+        oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
+                  '/' + id +
+                  '/' + ( token ? token : '_' ) + 
+                  '/' + action, async );
+        oReq.send(data ? 'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
         return returnVal;
     };
@@ -85,7 +85,7 @@ yote.init = function( yoteServerURL ) {
     self.contact = contact;
 
     yote.fetch_root = function() {
-        this.root = contact("/_/fetch_root");
+        this.root = contact('_', 'fetch_root');
         token = this.root.create_token();
 console.log( "TTTT " + token );
         return this.root;

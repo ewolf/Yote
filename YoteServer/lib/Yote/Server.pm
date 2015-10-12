@@ -153,20 +153,20 @@ sub _process_request {
 
         print STDERR Data::Dumper->Dump([$data,"DDD"]);
 
-        my $params;
-        my( $obj_id, $action );
+        my( $obj_id, $token, $action, $params );
         if( $verb eq 'GET' ) {
-            ( $obj_id, $action, my @params ) = split( '/', substr( $path, 1 ) );
+            ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } @params ];
+            $token = pop @$params;
+            
         } elsif( $verb eq 'POST' ) {
-            ( $obj_id, $action ) = split( '/', substr( $path, 1 ) );
+            ( $obj_id, $token, $action, $token ) = split( '/', substr( $path, 1 ) );
             $params = [ map { URI::Escape::uri_unescape($_) } map { s/^[^=]+=//; s/\+/ /gs; $_; } split ( '&', $data ) ];
         }
         
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        my $token = $headers{'yote-token'};
         print STDERR Data::Dumper->Dump([$obj_id,$server_root->{ID}, "CHK"]);
         unless( $obj_id eq '_' || $obj_id eq $server_root->{ID} || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
@@ -269,8 +269,8 @@ sub _process_request {
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
-            'Access-Control-Allow-Headers: yote-token, accept, content-type, cookie, origin, connection, cache-control, x-test',
-            'Access-Control-Allow-Origin: *',
+            'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
+            'Access-Control-Allow-Origin: *', #TODO - have this configurable
             );
 
         _log( "200 OK ( " . join( ",", @headers ) . " ) ( $out_res )" );
