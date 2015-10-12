@@ -1052,6 +1052,8 @@ __END__
 =head1 AUTHOR
        Eric Wolf        coyocanid@gmail.com
 
+=head1 COPYRIGHT AND LICENSE
+
        Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 

@@ -50,7 +50,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.03';
+$VERSION = '1.04';
 
 =head1 METHODS
 
@@ -579,6 +579,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.0  (October 10, 2015))
+       Version 1.04  (October 12, 2015))
 
 =cut

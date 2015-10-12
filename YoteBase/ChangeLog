@@ -2,6 +2,7 @@
 	* Version 1.0
 	* Reduces complexity of Yote, bringing the core into a simple file.
 	* Keeps Yote::IO as a sub-package. The core depends on it.
+	* Removes the webserver part of it. That will be its own project.
 
 	
 2015-05-26 Eric Wolf  <coyocanid@gmail.com>
