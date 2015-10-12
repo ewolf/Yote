@@ -1,5 +1,84 @@
 package Lock::Server;
 
+=head1 NAME
+
+    Lock::Server - Socket based resource locking manager.
+
+=head1 DESCRIPTION
+
+    This creates a child process socket server that takes lock and 
+    unlock requests. The lock requests only return once a lock is
+    obtained or a timeout has occurred. A lock may only be locked
+    for a specific amount of time before the lock is timed out.
+
+    This does not do deadlock detection, relying on the timeouts to 
+    prevent the system from getting in a hopelessly tangled state.
+    Care should be taken, as with any resource locking system, with
+    the use of Lock::Server. Adjust the timeouts for what makes sense
+    with the system you are designing.
+
+=head1 SYNPOSIS
+
+    use Lock::Server;
+    use Lock::Server::Client;
+
+    my $lockServer = new Lock::Server( {
+       lock_timeout         => 10, #seconds. default is 3
+       lock_attempt_timeout => 12, #seconds. default is 4
+       port                 => 888, #default is 8004
+       host                 => 'localhost', #default 127.0.0.1
+    } );
+
+    if( my $childPid = $lockServer->start ) {
+        print "Lock server started in child thread $childPid\n";
+    }
+
+    my $lockClient_A = $lockServer->client( "CLIENT_A" );
+    my $lockClient_B = new Lock::Server::Client( "CLIENT_B", 'localhost', 888 );
+
+    ......
+
+    my $sock = new IO::Socket::INET( "127.0.0.1:888" );
+
+    $sock->print( "LOCK KEYA LockerI\n" );
+    my $resp = <$sock>; chomp $resp;
+    if( $resp == 1 ) {
+       print "Lock Successfull for locker I and KEYA\n";
+    } else {
+       print "Could not obtain lock in 12 seconds.\n";
+    }
+
+    # this waits until KEYA for LockerI times out.
+    $sock->print( "LOCK KEYA LockerII\n" );
+    
+    # KEYA for LockerI times out after 10 seconds.
+    # LockerII now obtains the lock
+
+    my $resp = <$sock>; chomp $resp;
+    if( $resp == 1 ) {
+       print "Lock Successfull\n";
+    } else {
+       print "Could not obtain lock in 12 seconds.\n";
+    }
+
+    # KEYA for LockerII is now freed. The next locker
+    # attempting to lock KEYA will then obtain the lock.
+    $sock->print( "UNLOCK KEYA LockerII\n" );
+    my $resp = <$sock>; chomp $resp;
+    if( $resp == 1 ) {
+       print "Unlock Successfull\n";
+    }
+
+    ......
+
+    if( $lockServer->stop ) {
+        print "Lock server shut down.\n";
+    }
+
+=head1 METHODS
+    
+=cut
+
 use strict;
 use warnings;
 no warnings 'uninitialized';
@@ -8,85 +87,48 @@ use IO::Socket::INET;
 
 $Lock::Server::DEBUG = 0;
 
+=head2 Lock::Server::new( $args )
+
+ Creates a new lock server for the given optional arguments.
+ 
+ Arguments are :
+   * port - port to serve on. Defaults to 8004
+   * lock_timeout - low long should a lock last in seconds
+   * lock_attempt_timeout - how long should a requester
+                            wait for a lock in seconds
+
+=cut
 sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     bless {
-        pids                 => {},
-        id2pid               => {},
-        locks                => {},
-        lock_timeout         => $args->{lock_timeout} || 60,
-        lock_attempt_timeout => $args->{lock_attempt_timeout} || 60,
+        lock_timeout         => $args->{lock_timeout} || 3,
+        lock_attempt_timeout => $args->{lock_attempt_timeout} || 4,
+        host                 => $args->{host} || '127.0.0.1',
         port                 => $args->{port} || 8004,
-        locker_counts        => {},
+        _pids                => {},
+        _id2pid              => {},
+        _locks               => {},
+        _locker_counts       => {},
     }, $class;
 } #new
 
-sub _log {
-    my $msg = shift;
-    print STDERR "\t\t$msg\n" if $Lock::Server::DEBUG;
+
+=head2 client( lockername )
+
+    Returns a client with the given name that can send lock and unlock requests for keys.
+
+=cut
+sub client {
+    my( $self, $name ) = @_;
+    Lock::Server::Client->new( $name, $self->{host}, $self->{port} );
 }
 
-sub lock {
-    my( $self, $connection, $locker_id, $key_to_lock, %args ) = @_;
+=head2 stop
 
-    _log( "lock request for '$locker_id' and key '$key_to_lock'\n" );
+    Kills the lock server, breaking off any connections that are waiting for a lock.
 
-    $self->{locks}{$key_to_lock} ||= [];
-    my $lockers = $self->{locks}{$key_to_lock};
-    if( 0 < (grep { $_ eq $locker_id } @$lockers) ) {
-        _log( "lock request error. '$locker_id' already in the lock queue\n" );
-        print $connection "0\n";
-        return;
-    }
-
-    #check for timed out lockers
-    my $t = time;
-    while( @$lockers && ( $t - $self->{locker_counts}{$lockers->[0]}{$key_to_lock} ) > $self->{lock_timeout} ) {
-        _log( "lock '$key_to_lock' timed out for locker '$lockers->[0]'\n" );
-        if( 1 == keys %{ $self->{locker_counts}{$lockers->[0]} } ) {
-            delete $self->{locker_counts}{$lockers->[0]};
-        } else {
-            delete $self->{locker_counts}{$lockers->[0]}{$key_to_lock};
-        }
-        shift @$lockers;
-    }
-
-    $self->{locker_counts}{$locker_id}{$key_to_lock} = time;
-    push @$lockers, $locker_id;
-
-    _log( "lock request : there are now ".scalar(@$lockers)." lockers\n" );
-
-    if( @$lockers > 1 ) {
-        if( (my $pid=fork)) {
-            $self->{id2pid}{$locker_id} = $pid;
-            $self->{pids}{$pid} = 1;
-            _log( "lock request : parent process associating '$locker_id' with pid '$pid' ".scalar(@$lockers)." lockers\n" );
-            # parent
-        } else {
-            # child
-            $SIG{HUP} = sub {
-                _log( "lock request : child $$ got HUP, so is now locked.\n" );
-                print $connection "1\n";
-                $connection->close;
-                undef $connection;
-                exit;
-            };
-            _log( "lock request : child $$ ready to wait\n" );
-            sleep $self->{lock_attempt_timeout};
-            if( $connection ) {
-                print $connection "0\n";
-                $connection->close;
-            }
-		exit;
-        }
-    } else {
-        _log( "lock request : no need to invoke more processes. locking\n" );
-        print $connection "1\n";
-        $connection->close;
-    }
-} #lock
-
+=cut
 sub stop {
     my $self = shift;
     if( my $pid = $self->{server_pid} ) {
@@ -98,11 +140,16 @@ sub stop {
     return 0;
 }
 
+=head2 start
+
+    Starts the lock server in a child process, opening up a tcpip socket.
+
+=cut
 sub start {
     my $self = shift;
     my $listener_socket = new IO::Socket::INET(
         Listen    => 10,
-        LocalPort => $self->{port},
+        LocalAddr => "$self->{host}:$self->{port}",
         );
     unless( $listener_socket ) {
         $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
@@ -113,29 +160,30 @@ sub start {
     if( my $pid = fork ) {
         # parent
         $self->{server_pid} = $pid;
-        return 1;
+        return $pid;
     } else {
         # child
         $SIG{INT} = sub {
             _log( "lock server : got INT signal. Shutting down.\n" );
             $listener_socket && $listener_socket->close;
-	    for my $pid (keys %{ $self->{pids} } ) {
-		kill 'HUP', $pid;
-	    }
+            for my $pid (keys %{ $self->{_pids} } ) {
+                kill 'HUP', $pid;
+            }
             exit;
         };
 
         while( my $connection = $listener_socket->accept ) {
             _log( "lock server : incoming request\n" );
-            my $req = <$connection>;
-            _log( "lock server : got request '$req'\n" );
+            my $req = <$connection>; 
+            chomp $req;
+            _log( "lock server : got request <$req>\n" );
             if( $req =~ /^((?:UN)?LOCK) (\S+) (\S+)(.*)/i ) {
                 my( $cmd, $key, $locker_id, %args ) = ( $1, $2, $3, map { $_ => 1 } split( /s+/, $4) );
                 if( lc($cmd) eq 'unlock' ) {
-                    $self->unlock( $connection, $locker_id, $key, %args );
+                    $self->_unlock( $connection, $locker_id, $key, %args );
                 }
                 elsif( lc($cmd) eq 'lock' ) {
-                    $self->lock( $connection, $locker_id, $key, %args );
+                    $self->_lock( $connection, $locker_id, $key, %args );
                 }
             } else {
                 _log( "lock server : did not understand request\n" );
@@ -145,25 +193,91 @@ sub start {
     } 
 } #start
 
-sub unlock {
+sub _log {
+    my $msg = shift;
+    print STDERR "\t\t$msg\n" if $Lock::Server::DEBUG;
+}
+
+sub _lock {
+    my( $self, $connection, $locker_id, $key_to_lock, %args ) = @_;
+
+    _log( "lock request for '$locker_id' and key '$key_to_lock'\n" );
+
+    $self->{_locks}{$key_to_lock} ||= [];
+    my $lockers = $self->{_locks}{$key_to_lock};
+    if( 0 < (grep { $_ eq $locker_id } @$lockers) ) {
+        _log( "lock request error. '$locker_id' already in the lock queue\n" );
+        print $connection "0\n";
+        return;
+    }
+
+    #check for timed out lockers
+    my $t = time;
+    while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_lock} ) {
+        _log( "lock '$key_to_lock' timed out for locker '$lockers->[0]'\n" );
+        if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
+            delete $self->{_locker_counts}{$lockers->[0]};
+        } else {
+            delete $self->{_locker_counts}{$lockers->[0]}{$key_to_lock};
+        }
+        shift @$lockers;
+    }
+
+    # store when this times out 
+    my $timeout_time = time + $self->{lock_timeout};
+    $self->{_locker_counts}{$locker_id}{$key_to_lock} = $timeout_time;
+    push @$lockers, $locker_id;
+
+    _log( "lock request : there are now ".scalar(@$lockers)." lockers\n" );
+    if( @$lockers > 1 ) {
+        if( (my $pid=fork)) {
+            $self->{_id2pid}{$locker_id} = $pid;
+            $self->{_pids}{$pid} = 1;
+            _log( "lock request : parent process associating '$locker_id' with pid '$pid' ".scalar(@$lockers)." lockers\n" );
+            # parent
+        } else {
+            # child
+            $SIG{HUP} = sub {
+                _log( "lock request : child $$ got HUP, so is now locked.\n" );
+                print $connection "$timeout_time\n";
+                $connection->close;
+                undef $connection;
+                exit;
+            };
+            _log( "lock request : child $$ ready to wait\n" );
+            sleep $self->{lock_attempt_timeout};
+            if( $connection ) {
+                print $connection "0\n";
+                $connection->close;
+            }
+            exit;
+        }
+    } else {
+        _log( "lock request : no need to invoke more processes. locking\n" );
+        print $connection "$timeout_time\n";
+        $connection->close;
+    }
+} #_lock
+
+sub _unlock {
     my( $self, $connection, $locker_id, $key_to_unlock, %args ) = @_;
     _log( "unlock server ($Lock::Server::DEBUG) for key '$key_to_unlock' for locker '$locker_id'\n" );
 
-    $self->{locks}{$key_to_unlock} ||= [];
-    my $lockers = $self->{locks}{$key_to_unlock};
+    $self->{_locks}{$key_to_unlock} ||= [];
+    my $lockers = $self->{_locks}{$key_to_unlock};
 
     if( $lockers->[0] eq $locker_id ) {
         shift @$lockers;
-        delete $self->{locker_counts}{$locker_id}{$key_to_unlock};
-        if( 0 == scalar(keys %{$self->{locker_counts}{$locker_id}}) ) {
+        delete $self->{_locker_counts}{$locker_id}{$key_to_unlock};
+        if( 0 == scalar(keys %{$self->{_locker_counts}{$locker_id}}) ) {
             _log( "unlock : remove information about '$locker_id'\n" );
-            delete $self->{id2pid}{$locker_id};
-            delete $self->{locker_counts}{$locker_id};
+            delete $self->{_id2pid}{$locker_id};
+            delete $self->{_locker_counts}{$locker_id};
         }
         _log( "unlocking '$locker_id'\n" );
         if( @$lockers ) {
             my $next_locker_id = $lockers->[0];
-            my $pid = $self->{id2pid}{$next_locker_id};
+            my $pid = $self->{_id2pid}{$next_locker_id};
             _log( "unlock : next locker in queue is '$next_locker_id'. Sending kill signal to its pid '$pid'\n" );
             kill 'HUP', $pid;
         } else {
@@ -173,14 +287,74 @@ sub unlock {
         print $connection "1\n";
         $connection->close;
     } else {
-        _log( "unlock error : Wrong locker_id to unlock. The locker_id must be the one at the front of the queue\n" );
+        _log( "unlock error : Wrong locker_id to unlock for unlock for locker '$locker_id' and key '$key_to_unlock'. The locker_id must be the one at the front of the queue\n" );
         # "Wrong locker_id to unlock. The locker_id must be the one at the front of the queue";
         print $connection "0\n";
         $connection->close;
     }
-} #unlock
+} #_unlock
 
+
+package Lock::Server::Client;
+
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use IO::Socket::INET;
+
+sub new {
+    my( $pkg, $lockerName, $host, $port ) = @_;
+    die "Must supply locker name" unless $lockerName;
+
+    $host ||= '127.0.0.1';
+    $port ||= '8004';
+
+    my $class = ref( $pkg ) || $pkg;
+    bless {
+        host => $host,
+        port => $port,
+        name => $lockerName,
+    }, $class;
+} #new 
+
+sub lock {
+    my( $self, $key ) = @_;
+    my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+
+    $sock->print( "LOCK $key $self->{name}\n" );
+    my $resp = <$sock>;
+    $sock->close;
+    chomp $resp;
+    $resp;
+}
+
+sub unlock {
+    my( $self, $key ) = @_;
+    my $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
+    $sock->print( "UNLOCK $key $self->{name}\n" );
+    my $resp = <$sock>;
+    $sock->close;
+    chomp $resp;
+    $resp;
+}
 
 1;
 
+
 __END__
+
+=head1 AUTHOR
+
+       Eric Wolf        coyocanid@gmail.com
+
+=head1 COPYRIGHT AND LICENSE
+
+       Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       under the same terms as Perl itself.
+
+=head1 VERSION
+
+       Version 1.04  (October 12, 2015))
+
+=cut
