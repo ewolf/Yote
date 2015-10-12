@@ -425,8 +425,6 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use Yote;
-
 use base 'Yote::ServerObj';
 
 
