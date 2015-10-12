@@ -6,3 +6,4 @@ MANIFEST			This list of files
 META.json
 META.yml
 NOTES
+t/simpleprof.t
