@@ -70,7 +70,13 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+
 use IO::Socket::INET;
+
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+
 
 $Lock::Server::DEBUG = 0;
 
@@ -459,8 +465,6 @@ __END__
 
 =head1 PROTOCOL
 
-=over4    
-
 =head2 CHECK key
 
     Returns 1 if the key is currently locked by anyone. 
@@ -482,7 +486,6 @@ __END__
     Returns 1 if the the locker still has the lock on the given key (and has not lost it due to timeouts )
     Returns 0 otherwise
 
-=back
 
 =head1 AUTHOR
 
@@ -495,6 +498,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.04  (October 12, 2015))
+       Version 1.0  (October 12, 2015))
 
 =cut
