@@ -9,6 +9,7 @@ my $builder = Module::Build->new(
         'Test::More'            => 0,
         'Module::Build'         => 0,
     },
+    dist_abstract      => 'Light-weight socket based resource locking manager.',
     create_makefile_pl => 'traditional',
     license            => 'perl',
     module_name        => 'Lock::Server',

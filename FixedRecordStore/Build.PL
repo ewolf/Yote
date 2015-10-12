@@ -9,6 +9,7 @@ my $builder = Module::Build->new(
         'Test::More'            => 0,
         'Module::Build'         => 0,
     },
+    dist_abstract      => 'Simple and fast record based data store',
     create_makefile_pl => 'traditional',
     license            => 'perl',
     module_name        => 'DB::DataStore',

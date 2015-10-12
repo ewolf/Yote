@@ -78,7 +78,7 @@ sub test_suite {
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
-        print STDERR "starting second client\n";
+        print STDERR "starting first client\n";
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->isLocked( "KEY1" ) == 1;
         # KEY1 is locked by locker3, so this doesn't return until it
