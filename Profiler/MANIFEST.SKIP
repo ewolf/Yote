@@ -70,7 +70,4 @@
 ^MANIFEST\.SKIP
 
 # Avoid archives of this distribution
-\bYote-[\d\.\_]+
-
-# Avoid the downloadable file
-yote_root/html/Yote-current.tar.gz
+\bDevel-[\d\.\_]+
