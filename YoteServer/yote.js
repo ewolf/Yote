@@ -8,7 +8,6 @@ var id2obj = {};
 var makeMethod = function( mName ) {
     var nm = '' + mName;
     return function( data ) {
-        console.log( [ 'DDDDDDDDDDDDDDDDDDD', data ] );
         var id = this.id;
         return contact( "/" + id + "/" + nm, data );
     };
@@ -22,7 +21,6 @@ var fetch = function( id ) {
 // etc can be done here, the get & stuff
 var reqListener = function() {
     res = JSON.parse( this.responseText || '[]' );
-console.log( [ this.responseText, res, "QQQ" ] );
     // 200 OK ( {"result":["771"],"updates":[{"class":"Yote::ServerRoot","id":"771","data":{}}],"methods":{"Yote::ServerRoot":["fetch_root","fetch_app","test"]}} )
     
     // 3 parts : methods, updates and result
@@ -44,9 +42,7 @@ console.log( [ this.responseText, res, "QQQ" ] );
         };
         
         var mnames = class2meths[ upd.cls ] || [];
-console.log( [ 'mmmmmm', mnames ] );
         mnames.forEach( function( mname ) {
-console.log( [ 'naaaa', mname ] );
             upd[ mname ] = makeMethod( mname );
         } );
 
@@ -58,15 +54,12 @@ console.log( [ 'naaaa', mname ] );
     // result
     var returns = [];
     res.result.forEach( function( ret ) {
-console.log(  'lookup : ' + ret );
         if( ret.startsWith( 'v' ) ) {
             returns.push( ret );
         } else {
-console.log( [ 'rrrrrr', ret, id2obj, id2obj[ ret ] ] );
             returns.push( id2obj[ ret ] );
         }
     } );
-    console.log( [ 'Retty', returns ] );
     returnVal = returns;
 }; //reqListener
 
@@ -75,7 +68,10 @@ var contact = function(path,data) {
     var async = false;
     oReq.addEventListener("load", reqListener) ;
     oReq.open("POST", "http://127.0.0.1:8881" + path, async );
-    oReq.send(data);
+    oReq.send(data ? 
+              'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
+              : undefined );
+    console.log( [ 'Retty', returnVal ] );
     return returnVal;
 };
 
@@ -88,7 +84,6 @@ self.contact = contact;
 yote = {
     fetch_root : function() {
         // fetches the base
-        console.log( "BBBBBASE" );
         this.base = contactOne("/_/fetch_root");
         console.log( [ "GOT BASE",  this.base ] );
         return this.base;

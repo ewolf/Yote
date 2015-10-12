@@ -165,7 +165,7 @@ sub _process_request {
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        my $token = $headers{TOKEN};
+        my $token = $headers{TOKEN} || 'tok';
 
         $token ||= 'test'; #remove
 
@@ -496,7 +496,7 @@ sub _resethas {
 sub _canhas {
     my( $self, $id, $token ) = @_;
     return 1 if $id < 1;
-    my $obj_data = _token2objs( $token, 'can' );
+    my $obj_data = $self->_token2objs( $token, 'can' );
     $self->lock( $obj_data );
     my $has = $obj_data->{$id};
     $self->unlock( $obj_data );
