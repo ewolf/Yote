@@ -13,7 +13,7 @@ var yote = {};
     };
     
     var fetch = function( id ) {
-        return id2obj[ id ];
+        return id2obj[ id ] || this.root.fetch( id );
     }
     
     // yote objects can be stored here, and interpreting
@@ -31,13 +31,13 @@ var yote = {};
         
         // updates
         res.updates.forEach( function( upd ) {
+            /* method that returns the value of the given field on the yote obj */
             upd.get = function( key ) {
                 var val = this.data[key];
                 if( val.startsWith( 'v' ) ) {
                     return val.substring( 1 );
-                } else {
-                    return fetch( val );
-                }
+                } 
+                return fetch( val );
             };
             
             var mnames = class2meths[ upd.cls ] || [];
@@ -54,35 +54,30 @@ var yote = {};
         var returns = [];
         res.result.forEach( function( ret ) {
             if( ret.startsWith( 'v' ) ) {
-                returns.push( ret );
+                returns.push( ret.substring(1) );
             } else {
-                returns.push( id2obj[ ret ] );
+                returns.push( fetch( ret ) );
             }
         } );
-        returnVal = returns;
+        returnVal = returns.length > 1 ? returns : returns[0];
     }; //reqListener
     
     var contact = function(path,data) {
         var oReq = new XMLHttpRequest();
         var async = false;
-        oReq.addEventListener("load", reqListener) ;
+        oReq.addEventListener("load", reqListener);
         oReq.open("POST", "http://127.0.0.1:8881" + path, async );
         oReq.send(data ? 
                   'p=' + data.map(function(p) { return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
         return returnVal;
     };
-    
-    var contactOne = function(path,data) {
-        return contact(path,data)[0];
-    };
-    
+        
     self.contact = contact;
 
     yote.fetch_root = function() {
-        // fetches the base
-        this.base = contactOne("/_/fetch_root");
-        return this.base;
-    }
-} )();
+        this.root = contact("/_/fetch_root");
+        return this.root;
+    };
 
+} )();

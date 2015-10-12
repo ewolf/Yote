@@ -564,6 +564,14 @@ sub fetch_root {
     return shift;
 }
 
+sub fetch {
+    my( $self, $id ) = @_;
+    if( $self->_canhas( $id ) ) {
+        return $self->{STORE}->fetch( $id );
+    }
+    die "Invalid id '$id'";
+}
+
 sub test {
     my( $self, @args ) = @_;
     return ( "FOOBIE", "BLECH", @args );
