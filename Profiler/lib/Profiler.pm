@@ -9,14 +9,14 @@ use Data::Dumper;
 
 use File::Temp qw/ tempfile /;
 
-our( @stack, %calltimes, %callers, %calls );
+our( @stack, %calltimes, %callers, %calls, $tmpFile, $re );
 
 #my( $fh, $tmpFile ) = tempfile( "profilerFooXXXXXX", DIR => '/tmp' );
-my $tmpFile = '/tmp/foo';
-my $re = qr/^main::.*/;
 
 sub init {
     ( $tmpFile, $re ) = @_;
+    $tmpFile ||= '/tmp/foo';
+    $re      ||= qr/^main:/;
     print STDERR Data::Dumper->Dump(["UNLINK '$tmpFile'"]);
     unlink $tmpFile;
 }
@@ -61,7 +61,7 @@ sub _analyze {
     print "\n performance stats ( all times are in ms)\n\n";
     print sprintf( "%*s  | ", $longsub, "sub" ). join( " | ", map { sprintf( "%*s", $minwidth, $_ ) } @titles[1..$#titles] ) ."\n";
     print '-' x $longsub . '--+-' . join( "-+-", map { '-' x $minwidth } @titles[1..$#titles] )."\n";
-    for my $subr (sort { $stats{$b}{calls} <=> $stats{$a}{calls} } keys %stats) {
+    for my $subr (sort { $stats{$b}{total} <=> $stats{$a}{total} } keys %stats) {
         print join( " | ", sprintf( "%*s ", $longsub, $subr ),
                     map { sprintf( "%*d", $minwidth, $stats{$subr}{$_} ) }
                     qw( calls total mean avg max min ) )."\n";
@@ -100,7 +100,6 @@ sub start {
 
         my $line = "$subname|" . (1_000 * Time::HiRes::tv_interval( $start ) ) . "|" . join(",", @stack );
         ++$count;
-        print STDERR " ($$) $count\n";
         open( OUT, ">>$tmpFile" );
         print OUT "$line\n";
         close OUT;

@@ -37,6 +37,10 @@ my $fooObj   = $root->get_fooObj;
 my $innerfoo = $fooObj->get_innerfoo;
 $store->stow_all;
 
+use Profiler;
+Profiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
+Profiler::start;
+
 my $pid = $server->start;
 unless( $pid ) {
     my $err = $server->{error};
@@ -52,9 +56,6 @@ $SIG{ INT } = $SIG{ __DIE__ } =
 
 sleep 1;
 
-use Profiler;
-Profiler::init( '/tmp/foobar', qr/Yote|Lock|DB|test_suite/ );
-Profiler::start;
 test_suite();
 
 print STDERR Data::Dumper->Dump(["STOPPING"]);

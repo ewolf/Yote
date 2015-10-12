@@ -308,19 +308,20 @@ sub _lock {
         } else {
             use Profiler;Profiler::start;
             $0 = "LockServer processing request";
-            # child
-            $SIG{HUP} = $SIG{INT} = sub {
-                _log( "lock request : child $$ got HUP, so is now locked." );
-                $connection->print( "$timeout_time\n" );
-                $connection->close;
-                undef $connection;
-                exit;
-            };
-            _log( "lock request : child $$ ready to wait" );
-            sleep $self->{lock_attempt_timeout};
-            print $connection "0\n";
-            $connection->close;
-            exit;
+            $self->_grab_lock( $connection, $timeout_time );
+            # # child
+            # $SIG{HUP} = $SIG{INT} = sub {
+            #     _log( "lock request : child $$ got HUP, so is now locked." );
+            #     $connection->print( "$timeout_time\n" );
+            #     $connection->close;
+            #     undef $connection;
+            #     exit;
+            # };
+            # _log( "lock request : child $$ ready to wait" );
+            # sleep $self->{lock_attempt_timeout};
+            # print $connection "0\n";
+            # $connection->close;
+            # exit;
         }
     } else {
         _log( "lock request : no need to invoke more processes. locking" );
@@ -329,12 +330,31 @@ sub _lock {
     }
 } #_lock
 
+sub _grab_lock {
+    my( $self, $connection, $timeout_time ) = @_;
+    $SIG{HUP} = $SIG{INT} = sub {
+        print STDERR " GRAB YUP\n";
+        _log( "lock request : child $$ got HUP, so is now locked." );
+        $connection->print( "$timeout_time\n" );
+        $connection->close;
+        exit;
+    };
+    _log( "lock request : child $$ ready to wait" );
+    sleep $self->{lock_attempt_timeout};
+    print STDERR " GRAB NOPE\n";
+    print $connection "0\n";
+    $connection->close;
+    exit;
+}
+
 sub _unlock {
     my( $self, $connection, $key_to_unlock, $locker_id ) = @_;
     _log( "lock server unlock for key '$key_to_unlock' for locker '$locker_id'" );
 
     $self->{_locks}{$key_to_unlock} ||= [];
     my $lockers = $self->{_locks}{$key_to_unlock};
+
+    print STDERR Data::Dumper->Dump([$self->{_locks},"UNLOCK <$locker_id><$key_to_unlock>"]);
 
     if( $lockers->[0] eq $locker_id ) {
         shift @$lockers;
