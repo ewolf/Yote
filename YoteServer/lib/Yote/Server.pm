@@ -289,9 +289,9 @@ sub _process_request {
             push @out_res, $val;
         }
         my $ids_to_update;
-        print STDERR Data::Dumper->Dump([$action,$obj_id,"CHECKUPS"]);
         if( $action eq 'fetch_root' && ( $obj_id eq '_' || $obj_id eq $server_root->{ID} ) ) {
-            $ids_to_update = $server_root->_updates_needed( $token, [$server_root] );
+            print STDERR Data::Dumper->Dump([$action,$obj_id,"CHECKUPS"]);
+            $ids_to_update = [ $server_root->{ID} ];
         } else {
             $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
         }
