@@ -11,7 +11,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    use_ok( "Yote" ) || BAIL_OUT( "Unable to load Yote::Obj" );
+    use_ok( "Yote" ) || BAIL_OUT( "Unable to load 'Yote'" );
 }
 
 # -----------------------------------------------------
