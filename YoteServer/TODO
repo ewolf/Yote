@@ -1,10 +1,14 @@
 
-have this be its own backup html server as well. @wheee
-   add __ for web
+write tests
+
+confiure options beyond root ( port, timeouts, etc )
+
 create yote_server script
 
 create useful objects like accounts or logins
 
-serve the js file from yote itself
-
---done -- add token creation/verification
+--done -- 
+   serve the js file from yote itself
+   add __ for web
+   have this be its own backup html server as well. @wheee
+   add token creation/verification

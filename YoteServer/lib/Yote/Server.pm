@@ -398,6 +398,17 @@ sub fetch_server_root {
     
 } #fetch_server_root
 
+sub lock {
+    my( $self, $key ) = @_;
+    $self->{_lockerClient}->lock( $key );
+}
+
+sub unlock {
+    my( $self, $key ) = @_;
+    $self->{_lockerClient}->unlock( $key );
+}
+
+
 # ------- END Yote::ServerStore
 
 package Yote::ServerObj;
@@ -468,21 +479,6 @@ sub set {
     $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
 }
 
-sub lock {
-    my( $self, $obj_or_key ) = @_;
-    my $key = $obj_or_key && ! ref( $obj_or_key ) 
-        ? $obj_or_key 
-        : $self->{STORE}->_get_id( $obj_or_key || $self );
-    $self->{STORE}{_lockerClient}->lock( $key );
-}
-
-sub unlock {
-    my( $self, $obj_or_key ) = @_;
-    my $key = $obj_or_key && ! ref( $obj_or_key ) 
-        ? $obj_or_key 
-        : $self->{STORE}->_get_id( $obj_or_key || $self );
-    $self->{STORE}{_lockerClient}->unlock( $key );
-}
 
 # ------- END Yote::ServerObj
 
@@ -514,9 +510,9 @@ sub _valid_token {
         if( $slots->[$i]{$token} eq $ip ) {
             if( $i < $#$slots ) {
                 # refresh its time
-                $self->lock( 'token_mutex' );
+                $self->{STORE}->lock( 'token_mutex' );
                 $slots->[0]{ $token } = $ip;
-                $self->unlock( 'token_mutex' );
+                $self->{STORE}->unlock( 'token_mutex' );
             }
             return 1;
         }
@@ -527,7 +523,7 @@ sub _valid_token {
 sub _token2objs {
     my( $self, $tok, $flav ) = @_;
     my $item = "_${flav}Token2objs";
-    $self->lock( $item );
+    $self->{STORE}->lock( $item );
     my $token2objs = $self->get( $item );
     my $objs = $token2objs->{$tok};
     unless( $objs ) {
@@ -542,19 +538,19 @@ sub _has {
     return if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'has' );
     $obj_data->{$id} = time - 1;
-    $self->unlock( "_hasToken2objs" );
+    $self->{STORE}->unlock( "_hasToken2objs" );
 }
 
 sub _resethas {
     my( $self, $token ) = @_;
-    $self->lock( "_canToken2objs" );
+    $self->{STORE}->lock( "_canToken2objs" );
 
     for ( qw( has can ) ) {
         my $item = "_${_}Token2objs";
-        $self->lock( $item );
+        $self->{STORE}->lock( $item );
         my $token2objs = $self->get( $item );
         delete $token2objs->{ $token };
-        $self->unlock( $item );
+        $self->{STORE}->unlock( $item );
     }
 }
 
@@ -562,9 +558,9 @@ sub _canhas {
     my( $self, $id, $token ) = @_;
     return 1 if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'can' );
-    $self->lock( $obj_data );
+    $self->{STORE}->lock( $obj_data );
     my $has = $obj_data->{$id};
-    $self->unlock( "_canToken2objs" );
+    $self->{STORE}->unlock( "_canToken2objs" );
     $has;
 }
 
@@ -573,7 +569,7 @@ sub _willhas {
     return if $id < 1;
     my $obj_data = $self->_token2objs( $token, 'can' );
     $obj_data->{$id} = time - 1;
-    $self->unlock( "_canToken2objs" );
+    $self->{STORE}->unlock( "_canToken2objs" );
 }
 
 
@@ -589,7 +585,7 @@ sub _updates_needed {
             push @updates, $obj_id;
         }
     }
-    $self->unlock( "_hasToken2objs" );
+    $self->{STORE}->unlock( "_hasToken2objs" );
     \@updates;
 } #_updates_needed
 
@@ -607,7 +603,7 @@ sub create_token {
     my $timechunk = int( time / 100 );
     my $timeslot  = 7 + $timechunk;
 
-    $self->lock( 'token_mutex' );
+    $self->{STORE}->lock( 'token_mutex' );
 
     my $slots     = $self->get__token_timeslots();
     my $slot_data = $self->get__token_timeslots_metadata();
@@ -649,7 +645,7 @@ sub create_token {
         push @$slots, { $randpart => $ip };
     }
 
-    $self->unlock( 'token_mutex' );
+    $self->{STORE}->unlock( 'token_mutex' );
 
 
     print STDERR Data::Dumper->Dump([$slot_data,$slots,"CREATET"]);
