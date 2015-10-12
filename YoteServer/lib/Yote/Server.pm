@@ -120,7 +120,7 @@ sub _process_request {
     } else {
         #child
         my $req = <$sock>;
-        my $IP = $sock->peerhost;
+        $ENV{REMOTE_HOST} = $sock->peerhost;
         my %headers;
         while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
@@ -165,11 +165,11 @@ sub _process_request {
         my $server_root = $self->{SERVER_ROOT};
         my $x =  Data::Dumper->Dump([$server_root,"SERVER_ROOT"]);$x =~ s/STORE' =>.*Yote::ServerStore//gs; print STDERR $x;
 
-        my $token = $headers{TOKEN} || 'tok';
+        my $token = $headers{TOKEN};
 
         $token ||= 'test'; #remove
 
-        unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $IP ) && $server_root->_canhas( $obj_id, $token ) ) ) {
+        unless( $obj_id eq '_' || ( $obj_id > 0 && $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && $server_root->_canhas( $obj_id, $token ) ) ) {
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Req : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -452,6 +452,9 @@ use base 'Yote::ServerObj';
 
 sub _init {
     my $self = shift;
+    $self->set__token2ip({});
+    $self->set__token_sets([]);      # sets of time blocked tokens
+    $self->set__token_set_times([]); # list of expire times of the sets. tokens expire after 10 minutes in quantized 10 minute chunks
     $self->set__hasToken2objs({});
     $self->set__canToken2objs({});
     $self->set__apps({});
@@ -527,6 +530,13 @@ sub _updates_needed {
     $self->unlock( $obj_data );
     \@updates;
 } #_updates_needed
+
+
+sub create_token {
+    my $self = shift;
+    my $ip = $ENV{REMOTE_HOST} || 'tok';
+    
+}
 
 #
 # what things will the server root provide?
