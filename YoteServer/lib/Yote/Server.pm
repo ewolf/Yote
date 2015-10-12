@@ -12,7 +12,7 @@ use Yote;
 use JSON;
 use URI::Escape;
 
-my $DEBUG = 0;
+my $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -128,47 +128,46 @@ sub _process_request {
 } # _process_request
 sub __process_request {
     my( $self, $sock ) = @_;
-        #child
-        $0 = "YoteServer processing request";
-        $SIG{INT} = sub {
-            _log( "Yote server process $$ : got INT signal. Shutting down." );
-            $sock->close;
-            exit;
-        };
+    #child
+    $0 = "YoteServer processing request";
+    $SIG{INT} = sub {
+        _log( "Yote server process $$ : got INT signal. Shutting down." );
+        $sock->close;
+        exit;
+    };
+    
+    
+    my $req = <$sock>;
+    $ENV{REMOTE_HOST} = $sock->peerhost;
+    my %headers;
+    while( my $hdr = <$sock> ) {
+        $hdr =~ s/\s*$//s;
+        last if $hdr !~ /[a-zA-Z]/;
+        my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
+        $headers{$key} = $val;
+    }
+    
+    my $store = $self->{STORE};
+    
+    _log( "\n--> : $req" );
 
-
-        my $req = <$sock>;
-        $ENV{REMOTE_HOST} = $sock->peerhost;
-        my %headers;
-        while( my $hdr = <$sock> ) {
-            $hdr =~ s/\s*$//s;
-            last if $hdr !~ /[a-zA-Z]/;
-            my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
-            $headers{$key} = $val;
-        }
-
-        my $store = $self->{STORE};
-
-        print STDERR "\n\n----\nREQ : $req\n";
-
-        # 
-        # read certain length from socket ( as many bytes as content length )
-        #
-        my $content_length = $headers{'Content-Length'};
-        my $data;
-        if( $content_length > 0 && ! eof $sock) {
-            read $sock, $data, $content_length;
-        }
-        my( $verb, $path ) = split( /\s+/, $req );
-
-
-        # escape for serving up web pages
-        # the thought is that this should be able to be a stand alone webserver
+    # 
+    # read certain length from socket ( as many bytes as content length )
+    #
+    my $content_length = $headers{'Content-Length'};
+    my $data;
+    if( $content_length > 0 && ! eof $sock) {
+        read $sock, $data, $content_length;
+    }
+    my( $verb, $path ) = split( /\s+/, $req );
+    
+    
+    # escape for serving up web pages
+    # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
         if( $path =~ m!/__/! ) {
             # TODO - make sure install script makes the directories properly
             my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
-            _log( "Request for '$filename'" );
             if( -e $filename ) {
                 _log( "'$filename' exists" );
                 my @stat = stat $filename;
@@ -216,8 +215,7 @@ sub __process_request {
         }
 
         if( substr( $action, 0, 1 ) eq '_' ) {
-            print STDERR "Bad action (underscore) : $action\n";
-            _log( "Bad Action : '$action'" );
+            _log( "Bad action (underscore) : '$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
             exit;
@@ -235,17 +233,15 @@ sub __process_request {
                   $server_root->_getMay( $obj_id, $token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
-            print STDERR "Bad Path : $path\n";
-            _log( "Bad Req : '$path'" );
+            _log( "Bad Path : '$path'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
             exit;
         }
 
         if( $params && ref( $params ) ne 'ARRAY' ) {
-            print STDERR "Bad Req Param Not Array : $params\n";
+            _log( "Bad Req Param Not Array : $params" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            _log( "Bad Req : params:'$params'" );
             $sock->close;
             exit;
         }
@@ -253,8 +249,7 @@ sub __process_request {
         my( @in_params );
         for my $param (@$params) {
             unless( $server_root->_getMay( $param, $token ) ) {
-                print STDERR "Bad Req Param, server says no : $param\n";
-                _log( "Bad Req : param:'$param'" );
+                _log( "Bad Req Param, server says no : $param" );
                 $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
                 $sock->close;
                 exit;
@@ -266,7 +261,6 @@ sub __process_request {
             $store->fetch( $obj_id );
 
         unless( $obj->can( $action ) ) {
-            print STDERR "Bad Req Action : $action\n";
             _log( "Bad Req : invalid method :'$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -287,7 +281,6 @@ sub __process_request {
         };
 
         if( $@ ) {
-            print STDERR "Internal error $@\n";
             _log( "INTERNAL SERVER ERROR '$@'" );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
@@ -370,8 +363,7 @@ sub __process_request {
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . length( $out_res ),
             );
-        print STDERR "RET : 200 OK ( " . join( ",", @headers ) . " ) ( $out_res )\n";
-        _log( "200 OK ( " . join( ",", @headers ) . " ) ( $out_res )" );
+        _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_res )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
 
         $sock->close;
@@ -608,22 +600,22 @@ sub _token2objs {
 
 sub _resetHasAndMay {
     my( $self, $token ) = @_;
-    $self->{STORE}->lock( "_canToken2objs" );
+
     for ( qw( doesHave mayHave ) ) {
-        my $item = "_${_}Token2objs";
+        my $item = "_${_}_Token2objs";
         $self->{STORE}->lock( $item );
         my $token2objs = $self->_get( $item );
         delete $token2objs->{ $token };
         $self->{STORE}->unlock( $item );
     }
-}
+} #_resetHasAndMay
 
 sub _setHas {
     my( $self, $id, $token ) = @_;
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'doesHave' );
     $obj_data->{$id} = time;
-    $self->{STORE}->unlock( "_hasToken2objs" );
+    $self->{STORE}->unlock( "_doesHave_Token2objs" );
 }
 
 sub _getMay {
@@ -631,9 +623,9 @@ sub _getMay {
     return 1 if index( $id, 'v' ) == 0;
     return 0 if $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'mayHave' );
-    $self->{STORE}->lock( $obj_data );
+    $self->{STORE}->lock( "_mayHave_Token2objs" );
     my $has = $obj_data->{$id};
-    $self->{STORE}->unlock( "_canToken2objs" );
+    $self->{STORE}->unlock( "_mayHave_Token2objs" );
     $has;
 }
 
@@ -642,7 +634,7 @@ sub _setMay {
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     my $obj_data = $self->_token2objs( $token, 'mayHave');
     $obj_data->{$id} = time - 1;
-    $self->{STORE}->unlock( "_canToken2objs" );
+    $self->{STORE}->unlock( "_mayHave_Token2objs" );
 }
 
 

@@ -17,7 +17,6 @@ sub init {
     ( $tmpFile, $re ) = @_;
     $tmpFile ||= '/tmp/foo';
     $re      ||= qr/^main:/;
-    print STDERR Data::Dumper->Dump(["UNLINK '$tmpFile'"]);
     unlink $tmpFile;
 }
 
@@ -72,7 +71,7 @@ sub _analyze {
         for my $subr (sort { $stats{$a}->{total} <=> $stats{$b}->{total} } keys %stats) {
             my $calls = [sort { $calls->{$subr}{$b} <=> $calls->{$subr}{$a} } keys %{$calls->{$subr}||{}}];
             my $called_by = [sort { $callers->{$subr}{$b} <=> $callers->{$subr}{$a} } keys %{$callers->{$subr}||{}}];
-            print STDERR " $subr\n" .
+            print " $subr\n" .
                 "   Called by :" . ( @$called_by ? "\n\t" . join( "\n\t", map { "$_ $callers->{$subr}{$_}" } @$called_by ) : '<not called>' ) . "\n" .
                 "   Calls :" . ( @$calls ? "\n\t" . join( "\n\t", map { "$_ $calls->{$subr}{$_}" }  @$calls ) : '<does not make calls>' ) . "\n";
         }
@@ -82,7 +81,6 @@ sub _analyze {
 
 
 sub start {
-    print STDERR Data::Dumper->Dump(["Start ($$), $tmpFile $re"]);
     my $count = 0;
     around {
         my $subname = $_->{sub_name};

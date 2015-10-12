@@ -80,7 +80,7 @@ package Lock::Server;
     }
 
 =head1 METHODS
-    
+
 =cut
 
 use strict;
@@ -96,7 +96,7 @@ use vars qw($VERSION);
 $VERSION = '1.3';
 
 
-$Lock::Server::DEBUG = 0;
+$Lock::Server::DEBUG = 1;
 
 =head2 Lock::Server::new( $args )
 
@@ -201,9 +201,9 @@ sub run {
 
 
     while( my $connection = $listener_socket->accept ) {
-        _log( "lock server : incoming request" );
         my $req = <$connection>; 
         chomp $req;
+        _log( "lock server : incoming request : '$req'" );
 
         # could have headers, but ignore those. Find \n\n
         while( my $data = <$connection> ) {
@@ -211,8 +211,6 @@ sub run {
             last unless $data =~ /\S/;
         }
 
-        _log( "lock server : got request '$req'" );
-        print STDERR Data::Dumper->Dump(["REQ '$req'"]);
         my( $cmd, $key, $locker_id ) = ( $req =~ m!^GET /([^/]+)/([^/]+)/?([^/]+)?! );
 
         if( $cmd eq 'CHECK' ) {
@@ -233,7 +231,6 @@ sub run {
 
 sub _check {
     my( $self, $connection, $key_to_check ) = @_;
-    print STDERR Data::Dumper->Dump([\@_,"CHECK"]);
     _log( "locker server check for key '$key_to_check'" );
 
     $self->{_locks}{$key_to_check} ||= [];
@@ -273,12 +270,9 @@ sub _lock {
 
     $self->{_locks}{$key_to_lock} ||= [];
     my $lockers = $self->{_locks}{$key_to_lock};
-    if( "$key_to_lock" =~/HASH/ ) {
-        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess,"ARRGH"]);
-    }
     #check for timed out lockers
     my $t = time;
-    print STDERR Data::Dumper->Dump([$self->{_locks},"TOADD LOCK REQ in pid $$ : $key_to_lock/$locker_id"]);
+
     while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_lock} ) {
         _log( "lock '$key_to_lock' timed out for locker '$lockers->[0]'" );
         if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
@@ -300,8 +294,6 @@ sub _lock {
     $self->{_locker_counts}{$locker_id}{$key_to_lock} = $timeout_time;
     push @$lockers, $locker_id;
 
-    print STDERR Data::Dumper->Dump([$self->{_locks},"ADDED LOCK REQ in pid $$ : $key_to_lock/$locker_id"]);
-
     _log( "lock request : there are now ".scalar(@$lockers)." lockers" );
     if( @$lockers > 1 ) {
         if( (my $pid=fork)) {
@@ -311,25 +303,21 @@ sub _lock {
             # parent
         } else {
             use Profiler;Profiler::start;
-            print STDERR Data::Dumper->Dump([$self->{_locks},"LOCK WAIT in pid $$ : $key_to_lock/$locker_id"]);
             $0 = "LockServer processing request";
-            $self->_grab_lock( $connection, $timeout_time );
-            # # child
-            # $SIG{HUP} = $SIG{INT} = sub {
-            #     _log( "lock request : child $$ got HUP, so is now locked." );
-            #     $connection->print( "$timeout_time\n" );
-            #     $connection->close;
-            #     undef $connection;
-            #     exit;
-            # };
-            # _log( "lock request : child $$ ready to wait" );
-            # sleep $self->{lock_attempt_timeout};
-            # print $connection "0\n";
-            # $connection->close;
-            # exit;
+            $SIG{HUP} = $SIG{INT} = sub {
+                _log( "lock request : child $$ got HUP, so is now locked." );
+                $connection->print( "$timeout_time\n" );
+                $connection->close;
+                exit;
+            };
+            _log( "lock request : child $$ ready to wait" );
+            sleep $self->{lock_attempt_timeout};
+            _log( "lock request failed : child $$ timed out" );
+            print $connection "0\n";
+            $connection->close;
+            exit;
         }
     } else {
-        print STDERR Data::Dumper->Dump([$self->{_locks},"LOCK SINGLE in pid $$ : $key_to_lock/$locker_id"]);
         _log( "lock request : no need to invoke more processes. locking" );
         print $connection "$timeout_time\n";
         $connection->close;
@@ -338,20 +326,6 @@ sub _lock {
 
 sub _grab_lock {
     my( $self, $connection, $timeout_time ) = @_;
-    $SIG{HUP} = $SIG{INT} = sub {
-        print STDERR " GRAB YUP $$\n";
-        _log( "lock request : child $$ got HUP, so is now locked." );
-        print STDERR "INTERUPT TO LOCK $$\n";
-        $connection->print( "$timeout_time\n" );
-        $connection->close;
-        exit;
-    };
-    _log( "lock request : child $$ ready to wait" );
-    sleep $self->{lock_attempt_timeout};
-    print STDERR " GRAB NOPE $$\n";
-    print $connection "0\n";
-    $connection->close;
-    exit;
 }
 
 sub _unlock {
@@ -361,26 +335,21 @@ sub _unlock {
     $self->{_locks}{$key_to_unlock} ||= [];
     my $lockers = $self->{_locks}{$key_to_unlock};
 
-    print STDERR Data::Dumper->Dump([$self->{_locks},"UNLOCK $$ $key_to_unlock/$locker_id"]);
-
     if( $lockers->[0] eq $locker_id ) {
         shift @$lockers;
         delete $self->{_locker_counts}{$locker_id}{$key_to_unlock};
         if( 0 == scalar(keys %{$self->{_locker_counts}{$locker_id}}) ) {
-            print STDERR Data::Dumper->Dump([$self->{_locks},$self->{_locker_counts},"UNLOCK BLANKING '$locker_id"]);
             _log( "unlock : remove information about '$locker_id'" );
-#            delete $self->{_id2pid}{$locker_id};
-#            delete $self->{_locker_counts}{$locker_id};
+            delete $self->{_id2pid}{$locker_id};
+            delete $self->{_locker_counts}{$locker_id};
         }
         _log( "unlocking '$locker_id'" );
         if( @$lockers ) {
             my $next_locker_id = $lockers->[0];
-            print STDERR Data::Dumper->Dump([$self->{_locks},"UNLOCK $$ sending kill to '$next_locker_id'"]);
             my $pid = $self->{_id2pid}{$next_locker_id};
             _log( "unlock : next locker in queue is '$next_locker_id'. Sending kill signal to its pid '$pid'" );
             kill 'HUP', $pid;
         } else {
-            print STDERR Data::Dumper->Dump([$self->{_locks},"UNLOCK $$ QUEUE NOW FREE"]);
             _log( "unlock : now no one waiting on a lock for key '$key_to_unlock'" );
         }
         _log( "unlock : done, informing connection" );
