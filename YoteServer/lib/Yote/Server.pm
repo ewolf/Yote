@@ -71,16 +71,10 @@ sub run {
     };
 
     eval('use Yote::ConfigData');
-    $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+    my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
 
-    my $store = Yote::open_store( "$yote_root_dir/DATA_STORE" );
-    my $root = $store->fetch_root;
-    my $server_root = $root->get_server_root;
-    unless( $server_root ) {
-        
-    }
-
-    $self->{SERVER_ROOT} = 
+    my $store = Yote::ServerStore->_new( { store => "$yote_root_dir/DATA_STORE" } );
+    $self->{SERVER_ROOT} = $store->fetch_server_root;
 
     $SIG{HUP} = sub {
         # wait for all processes to complete, then 
@@ -162,7 +156,7 @@ sub newobj {
 sub fetch_server_root {
     my $self = shift;
 
-	my $system_root = $self->fetch_root;
+    my $system_root = $self->fetch_root;
     
     my $server_root = $system_root->get_server_root;
     unless( $server_root ) {
@@ -170,11 +164,28 @@ sub fetch_server_root {
         $system_root->set_server_root( $server_root );
     }
 
-    # some setup here?
+    # some setup here? accounts/webapps/etc?
+    # or make it simple. if the webapp has an account, then pass that account
+    # with the rest of the arguments
+
+    # verify the token - ip match in the server root object
+    
+    # then verify if the command can run on the app object with those args
+    # or even : $myapp->run( 'command', @args );
 
     $server_root;
     
 } #fetch_server_root
+
+package Yote::ServerRoot;
+
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use Yote;
+use Yote::ObjStore;
+
 
 1;
 
