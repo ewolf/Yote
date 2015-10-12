@@ -1,0 +1,29 @@
+---
+abstract: 'Simple and fast record based data store'
+author:
+  - 'Eric Wolf        coyocanid@gmail.com'
+build_requires:
+  Module::Build: '0'
+  Test::More: '0'
+configure_requires:
+  Module::Build: '0.40'
+dynamic_config: 1
+generated_by: 'Module::Build version 0.4003, CPAN::Meta::Converter version 2.141520'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: '1.4'
+name: DB-DataStore
+provides:
+  DB::DataStore:
+    file: lib/DB/DataStore.pm
+    version: '1.04'
+  DB::DataStore::FixedRecycleStore:
+    file: lib/DB/DataStore.pm
+  DB::DataStore::FixedStore:
+    file: lib/DB/DataStore.pm
+requires:
+  perl: v5.9.4
+resources:
+  license: http://dev.perl.org/licenses/
+version: '1.04'

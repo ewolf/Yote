@@ -12,7 +12,7 @@ use Yote;
 use JSON;
 use URI::Escape;
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -48,7 +48,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
-    use Profiler;Profiler::start;
+    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
     $0 = "YoteServer process";
     # child process
     $self->run;
@@ -94,7 +94,7 @@ sub run {
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{INT} = sub {
-        _log( "Yote server : got INT signal. Shutting down." );
+        _log( "got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
         for my $pid ( @{ $self->{_pids} } ) {
             kill 'HUP', $pid;
@@ -110,7 +110,7 @@ sub run {
 } #run
 
 sub _log {
-    print STDERR shift . "\n" if $DEBUG;
+    print STDERR 'Yote::Server : ' . shift . "\n" if $DEBUG;
     
 }
 
@@ -121,28 +121,28 @@ sub _process_request {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
-        use Profiler;Profiler::start;
+      use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+        my( $self, $sock ) = @_;
         #child
         $0 = "YoteServer processing request";
         $SIG{INT} = sub {
-            _log( "Yote server process $$ : got INT signal. Shutting down." );
+            _log( " process $$ got INT signal. Shutting down." );
             $sock->close;
             exit;
         };
-    
-    
+        
+        
         my $req = <$sock>;
         $ENV{REMOTE_HOST} = $sock->peerhost;
         my %headers;
-        while ( my $hdr = <$sock> ) {
+        while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
             last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
         }
-    
         my $store = $self->{STORE};
-    
+
         _log( "\n--> : $req" );
 
         # 
@@ -154,8 +154,7 @@ sub _process_request {
             read $sock, $data, $content_length;
         }
         my( $verb, $path ) = split( /\s+/, $req );
-    
-    
+
         # escape for serving up web pages
         # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
@@ -577,18 +576,6 @@ sub _valid_token {
     0;
 }
 
-sub _token2objs {
-    my( $self, $tok, $flav ) = @_;
-    my $item = "_${flav}_Token2objs";
-    $self->{STORE}->lock( $item );
-    my $token2objs = $self->_get( $item );
-    my $objs = $token2objs->{$tok};
-    unless( $objs ) {
-        $objs = {};
-        $token2objs->{$tok} = $objs;
-    }
-    $objs;
-}
 
 sub _resetHasAndMay {
     my( $self, $token ) = @_;
@@ -605,7 +592,8 @@ sub _resetHasAndMay {
 sub _setHas {
     my( $self, $id, $token ) = @_;
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
-    my $obj_data = $self->_token2objs( $token, 'doesHave' );
+    $self->{STORE}->lock( "_doesHave_Token2objs" );
+    my $obj_data = $self->get__doesHave_Token2objs;
     $obj_data->{$id} = time;
     $self->{STORE}->unlock( "_doesHave_Token2objs" );
 }
@@ -614,18 +602,16 @@ sub _getMay {
     my( $self, $id, $token ) = @_;
     return 1 if index( $id, 'v' ) == 0;
     return 0 if $token eq '_';
-    my $obj_data = $self->_token2objs( $token, 'mayHave' );
-    $self->{STORE}->lock( "_mayHave_Token2objs" );
-    my $has = $obj_data->{$id};
-    $self->{STORE}->unlock( "_mayHave_Token2objs" );
-    $has;
+    my $obj_data = $self->get__mayHave_Token2objs;
+    $obj_data->{$id};
 }
 
 sub _setMay {
     my( $self, $id, $token ) = @_;
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
-    my $obj_data = $self->_token2objs( $token, 'mayHave');
-    $obj_data->{$id} = time - 1;
+    $self->{STORE}->lock( "_mayHave_Token2objs" );
+    my $obj_data = $self->get__mayHave_Token2objs;
+    $obj_data->{$token}{$id} = time - 1;
     $self->{STORE}->unlock( "_mayHave_Token2objs" );
 }
 
@@ -633,7 +619,9 @@ sub _setMay {
 sub _updates_needed {
     my( $self, $token, $outRes ) = @_;
     return [] if $token eq '_';
-    my $obj_data = $self->_token2objs( $token, 'doesHave' );
+
+
+    my $obj_data = $self->get__doesHave_Token2objs;
     my $store = $self->{STORE};
     my( @updates );
     for my $obj_id (@$outRes, keys %$obj_data ) {
@@ -647,7 +635,6 @@ sub _updates_needed {
             push @updates, $obj_id;
         }
     }
-    $self->{STORE}->unlock( "_doesHave_Token2objs" );
     \@updates;
 } #_updates_needed
 
@@ -681,7 +668,6 @@ sub create_token {
             # if this produces the same rand number lots of times in a row
             # something serious is wrong, so a stack overflow error is the least
             # of worries
-            print STDERR Data::Dumper->Dump(["BLA"]);die "REMOVEME";
             return $self->create_token;
         }
     }
@@ -750,11 +736,15 @@ sub fetch_root {
 
 sub fetch {
     my( $self, $token, @ids ) = @_;
-    my $may = $self->get__mayHave_Token2objs;
-    my $s = $self->{STORE};
-    map { $s->fetch( $_ ) }
-        grep { ! ref($_) && $may->{$_} }
+    my $mays = $self->get__mayHave_Token2objs;
+    my $may = $self->get__mayHave_Token2objs()->{$token};
+    my $store = $self->{STORE};
+
+    my @ret = map { $store->fetch($_) }
+      grep { ! ref($_) && $may->{$_}  }
         @ids;
+    die "Invalid id(s)" unless @ret == @ids;
+    @ret;
 } #fetch
 
 # ------- END Yote::ServerRoot
