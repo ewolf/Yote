@@ -463,13 +463,24 @@ __END__
 
 =head2 CHECK key
 
-    Returns 1 If the key is currently locked
+    Returns 1 if the key is currently locked by anyone. 
+    Returns 0 otherwise
 
 =head2 LOCK key lockername
 
+    Returns 1 if the key can be locked by this locker and no pending lock attempt
+              or lock by this locker already exists.
+    Returns 0 otherwise
+
 =head2 UNLOCK key lockername
 
+    Returns 1 if the the locker had lock and can unlock the key.
+    Returns 0 otherwise
+
 =head2 VERIFY key lockername
+
+    Returns 1 if the the locker still has the lock on the given key (and has not lost it due to timeouts )
+    Returns 0 otherwise
 
 =back
 
