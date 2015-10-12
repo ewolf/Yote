@@ -13,11 +13,11 @@
     yote.init();
 
     function onLogin( res ) {
-        echo "LoggedIn " + res;
+        alert( "LoggedIn " + res );
     }
     
-    document.getElementByID( 'login' ).addEventListener('click',function(){
-        yote.call( 'login.js', [ document.getElementByID( 'name' ), document.getElementByID( 'pw' ) ], onLogin );
+    document.getElementById( 'login' ).addEventListener('click',function(){
+        yote.call( 'login.js', [ document.getElementById( 'name' ).value, document.getElementById( 'pw' ).value ], onLogin );
     } );
   </script>
 </body>

@@ -74,10 +74,20 @@ sub stop {
 =cut
 sub run {
     my $self = shift;
-    my $listener_socket = new IO::Socket::INET(
-        Listen    => 10,
-        LocalAddr => "$self->{yote_host}:$self->{yote_port}",
-        );
+    my $listener_socket;
+    my $count = 0;
+    while( ! $listener_socket && ++$count < 10 ) { 
+        $listener_socket = new IO::Socket::INET(
+            Listen    => 10,
+            LocalAddr => "$self->{yote_host}:$self->{yote_port}",
+            );
+        last if $listener_socket;
+        
+        print STDERR "Unable to open the socket. Retry $count of 10\n";
+        if( $count > 9 ) {
+            print STDERR "$@\n";
+        }
+    }
     unless( $listener_socket ) {
         $self->{error} = "Unable to open socket on port '$self->{yote_port}' : $! $@\n";
         $self->{_locker}->stop;
@@ -220,6 +230,10 @@ sub _process_request {
         # check to see if it is just simple webserving
         
         my $server_root = $self->{SERVER_ROOT};
+        unless( $server_root ) {
+            $server_root = $self->{STORE}->fetch_server_root;
+            $self->{SERVER_ROOT} = $server_root;
+        }
         my $server_root_id = $server_root->{ID};
 
         unless( $obj_id eq '_' || 
@@ -255,7 +269,7 @@ sub _process_request {
 
         my $obj = $obj_id eq '_' ? $server_root :
             $store->fetch( $obj_id );
-
+        print STDERR Data::Dumper->Dump([$obj_id,$server_root,"BOOP"]);
         unless( $obj->can( $action ) ) {
             _log( "Bad Req : invalid method :'$action'" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
@@ -427,8 +441,10 @@ sub newobj {
 sub fetch_server_root {
     my $self = shift;
 
+    return $self->{SERVER_ROOT} if $self->{SERVER_ROOT};
+
     my $system_root = $self->fetch_root;
-    my $server_root = $self->{SERVER_ROOT} || $system_root->get_server_root;
+    my $server_root = $system_root->get_server_root;
     $self->{SERVER_ROOT} ||= $server_root;
     unless( $server_root ) {
         $server_root = Yote::ServerRoot->_new( $self );

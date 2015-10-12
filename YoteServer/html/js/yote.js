@@ -20,7 +20,7 @@ yote.init = function( yoteServerURL ) {
     // returns data
     var makeMethod = function( mName, args ) {
         var nm = '' + mName;
-        return function( data, methodargs ) ) {
+        return function( data, methodargs ) {
             if( args.async && ! ( methodargs && methodargs.sucHandler ) ) {
                 console.warn( "yote warning. method '" + nm + "' called without a success handler" );
             }
@@ -34,7 +34,7 @@ yote.init = function( yoteServerURL ) {
     };
 
     // method for translating and storing the objects
-    function makeObj = function( datastructure, args ) {
+    var makeObj = function( datastructure, args ) {
         /* method that returns the value of the given field on the yote obj */
         var obj = id2obj[ datastructure.id ];
         if( ! obj ) {
@@ -50,10 +50,10 @@ yote.init = function( yoteServerURL ) {
             return fetch( val );
         };
         obj.toData = function() {
-            { id  : this.id,
-              cls : this.cls,
-              data : this.data,
-            }
+            return { id  : this.id,
+                     cls : this.cls,
+                     data : this.data
+                   };
         }; //ugh, case of a list returned?
         
         var mnames = class2meths[ datastructure.cls ] || [];
@@ -101,7 +101,7 @@ yote.init = function( yoteServerURL ) {
         return function() {
             if( createArgs.returnRaw ) {
                 returnVal = this.responseText;
-                var proccessed = processRaw( returnVal ); // to create objects, etc
+                var proccessed = processRaw( returnVal, methodArgs ); // to create objects, etc
                 if( methodArgs && methodArgs.sucHandler ) {
                     methodArgs.sucHandler( processed );
                 }
@@ -117,7 +117,7 @@ yote.init = function( yoteServerURL ) {
     var contact = function(id,action,data,contactArgs,methodArgs) { // args has async,sucHandler,failHandler,returnRaw
         if( ! contactArgs ) { contactArgs = {} };
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener(contactArgs,methodArgs);
+        oReq.addEventListener("load", reqListener(contactArgs,methodArgs));
 
         console.log( 'url : ' + ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
@@ -127,7 +127,7 @@ yote.init = function( yoteServerURL ) {
         oReq.open("POST", ( yoteServerURL || "http://127.0.0.1:8881" ) + 
                   '/' + id +
                   '/' + ( token ? token : '_' ) + 
-                  '/' + action, contactArgs.async );
+                  '/' + action, contactArgs.async ? true : false );
         oReq.send(data ? 'p=' + data.map(function(p) {
             return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
                   : undefined );
@@ -142,10 +142,10 @@ yote.init = function( yoteServerURL ) {
 
     var workers = {};
 
-    yote.call( workerUrl, args, callback ) {
+    yote.call = function( workerUrl, args, callback ) {
         var worker = workers[ workerUrl ];
         if( ! worker ) {
-            worker = new Worker( "/__/" + workerURL );
+            worker = new Worker( "/__/" + workerUrl );
             workers[ workerUrl ] = worker;
         }
         worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?

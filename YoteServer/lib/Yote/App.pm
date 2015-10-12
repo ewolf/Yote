@@ -4,7 +4,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use 'Yote::Server';
+use Yote::Server;
 
 use base 'Yote::ServerApp';
 
