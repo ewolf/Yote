@@ -7,6 +7,22 @@ DESCRIPTION
         obtained or a timeout has occurred. A lock may only be locked
         for a specific amount of time before the lock is timed out.
 
+        The protocol used is RESTFUL HTTP though the helper class wraps
+        that. It uses the GET verb with the following paths :
+
+         * CHECK/key - returns 1 if the key in question is currently locked 
+                       returns 0 if not
+
+         * LOCK/key/requester - returns lock expire time or 0 
+                                if there was an error
+
+         * UNLOCK/key/requester - returns 1 if the unlock went as expected, 
+                                  0 otherwise
+
+         * VERIFY/key/requester - returns 1 if the key is locked to the
+                                  requester and did not time out and 0 
+                                  otherwise.
+
         This does not do deadlock detection, relying on the timeouts to 
         prevent the system from getting in a hopelessly tangled state.
         Care should be taken, as with any resource locking system, with
@@ -74,7 +90,12 @@ METHODS
         Kills the lock server, breaking off any connections that are waiting for a lock.
 
   start
-        Starts the lock server in a child process, opening up a tcpip socket.
+        Starts the lock server in a child process, opening up a 
+        tcpip socket and returning the child pid or 0 if there
+        was an error.
+
+  run
+        Runs the lock server.
 
 Helper package
   NAME
@@ -102,24 +123,6 @@ Helper package
         Attempt to get unlock the given key. Returns true if the
         key was locked to this client ( or someting with the same name ).
 
-PROTOCOL
-  CHECK key
-        Returns 1 if the key is currently locked by anyone. 
-        Returns 0 otherwise
-
-  LOCK key lockername
-        Returns 1 if the key can be locked by this locker and no pending lock attempt
-                  or lock by this locker already exists.
-        Returns 0 otherwise
-
-  UNLOCK key lockername
-        Returns 1 if the the locker had lock and can unlock the key.
-        Returns 0 otherwise
-
-  VERIFY key lockername
-        Returns 1 if the the locker still has the lock on the given key (and has not lost it due to timeouts )
-        Returns 0 otherwise
-
 AUTHOR
            Eric Wolf        coyocanid@gmail.com
 
@@ -128,5 +131,5 @@ COPYRIGHT AND LICENSE
            under the same terms as Perl itself.
 
 VERSION
-           Version 1.0  (October 12, 2015))
+           Version 1.1  (October 12, 2015))
 

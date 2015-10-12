@@ -92,7 +92,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.1';
+$VERSION = '1.2';
 
 
 $Lock::Server::DEBUG = 0;
@@ -537,6 +537,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.1  (October 12, 2015))
+       Version 1.2  (October 12, 2015))
 
 =cut

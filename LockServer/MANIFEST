@@ -7,3 +7,5 @@ MANIFEST			This list of files
 README
 t/locktest.t
 VERSIONS
+META.yml
+META.json
