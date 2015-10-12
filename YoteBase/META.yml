@@ -17,22 +17,22 @@ name: Yote
 provides:
   Yote:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
   Yote::Array:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
   Yote::Hash:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
   Yote::Obj:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
   Yote::ObjStore:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
   Yote::YoteDB:
     file: lib/Yote.pm
-    version: '1.0'
+    version: '1.2'
 requires:
   DB::DataStore: '1'
   Devel::Refcount: '0.1'
@@ -41,4 +41,4 @@ requires:
   perl: v5.12.0
 resources:
   license: http://dev.perl.org/licenses/
-version: '1.0'
+version: '1.2'

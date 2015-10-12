@@ -59,14 +59,18 @@ sub test_suite {
     is_deeply( $ds->get_record( 2 ), $r[2], "Second record" );
     is_deeply( $ds->get_record( 1 ), $r[1], "First record" );
     is_deeply( $ds->get_record( 3 ), $r[3], "Third record" );
-    is_deeply( $ds->get_records( 2, 2 ), [ $r[2], $r[3] ], "get_records multiple" );
-    is_deeply( $ds->get_records( 1, 1 ), [ $r[1] ], "get_records first" );
-    is_deeply( $ds->get_records( 3, 1 ), [ $r[3] ], "get_records last" );
 
-    $ds->splice_records( 2, 1, $r[4], $r[5] );
+# splice and get_records is deprecated for now until needed
+#    is_deeply( $ds->get_records( 2, 2 ), [ $r[2], $r[3] ], "get_records multiple" );
+#    is_deeply( $ds->get_records( 1, 1 ), [ $r[1] ], "get_records first" );
+#    is_deeply( $ds->get_records( 3, 1 ), [ $r[3] ], "get_records last" );
+#
+#    $ds->splice_records( 2, 1, $r[4], $r[5] );
+#    is( $ds->entry_count, 4, "four records after splice" );
+#    is_deeply( $ds->get_records( 1, 4 ), [ $r[1], $r[4], $r[5], $r[3] ], "correct records after splice" );
 
-    is( $ds->entry_count, 4, "four records after splice" );
-    is_deeply( $ds->get_records( 1, 4 ), [ $r[1], $r[4], $r[5], $r[3] ], "correct records after splice" );
+    # test for record too large. idx out of bounds
+    
 
 } #test suite
 

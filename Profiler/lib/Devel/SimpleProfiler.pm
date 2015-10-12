@@ -38,7 +38,7 @@ our( @stack, %calltimes, %callers, %calls, $tmpFile, $re );
  Devel::SimpleProfiler::analyze('total');
  exit;
 
- # ---- PRINTS OUT -----
+ # ---- PRINTS OUT (and sorts by total) -----
  performance stats ( all times are in ms)
 
              sub  | # calls | total t | mean t | avg t | max t | min t

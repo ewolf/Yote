@@ -12,7 +12,7 @@ use Yote;
 use JSON;
 use URI::Escape;
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -41,7 +41,7 @@ sub start {
     $self->{STORE}{_locker} = $self->{_locker};
     $self->{_locker}->start;
 
-    $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
+#    $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
 
     if( my $pid = fork ) {
         # parent
@@ -125,7 +125,6 @@ sub run {
 } #run
 
 sub _log {
-    if( $_[0] =~ /HASH/ ) {    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]); }
     print STDERR 'Yote::Server : ' . shift . "\n" if $DEBUG;
 }
 
@@ -222,7 +221,6 @@ sub _process_request {
                             map { s/^[^=]+=//; s/\+/ /gs; $_; } 
                             split ( '&', $data ) ];
         }
-        print STDERR Data::Dumper->Dump([$params,"PPP"]);
         _log( "\n   (params)--> : ".join(',',@$params) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {
@@ -232,13 +230,7 @@ sub _process_request {
             exit;
         }
 
-        # check to see if it is just simple webserving
-        
-        my $server_root = $self->{SERVER_ROOT};
-        unless( $server_root ) {
-            $server_root = $self->{STORE}->fetch_server_root;
-            $self->{SERVER_ROOT} = $server_root;
-        }
+        my $server_root = $self->{STORE}->fetch_server_root;
         my $server_root_id = $server_root->{ID};
 
         unless( $obj_id eq '_' || 
@@ -413,6 +405,7 @@ sub stow_all {
     my $self = $_[0];
     for my $obj (values %{$self->{_DIRTY}} ) {
         my $obj_id = $self->_get_id( $obj );
+        $self->{OBJ_UPDATE_DB}->ensure_entry_count( $obj_id );
         $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     }
     $self->SUPER::stow_all;
@@ -625,7 +618,8 @@ sub _setHas {
     return 1 if index( $id, 'v' ) == 0 || $token eq '_';
     $self->{STORE}->lock( "_doesHave_Token2objs" );
     my $obj_data = $self->get__doesHave_Token2objs;
-    $obj_data->{$id} = time;
+    $obj_data->{$token}{$id} = time;
+    $self->{STORE}->_stow( $obj_data );
     $self->{STORE}->unlock( "_doesHave_Token2objs" );
 }
 
@@ -643,6 +637,7 @@ sub _setMay {
     $self->{STORE}->lock( "_mayHave_Token2objs" );
     my $obj_data = $self->get__mayHave_Token2objs;
     $obj_data->{$token}{$id} = time - 1;
+    $self->{STORE}->_stow( $obj_data );
     $self->{STORE}->unlock( "_mayHave_Token2objs" );
 }
 
@@ -765,7 +760,6 @@ sub fetch_root {
 }
 
 sub fetch {
-    print STDERR Data::Dumper->Dump(["FETCH"]);
     my( $self, $token, @ids ) = @_;
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};

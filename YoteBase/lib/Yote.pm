@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 =head1 NAME
 
@@ -95,7 +95,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 =head1 NAME
 
@@ -294,6 +294,7 @@ sub _get_id {
 sub __get_id {
     my( $self, $ref ) = @_;
     my $class = ref( $ref );
+    die "__get_id requires reference. got '$ref'" unless $class;
     if( $class eq 'Yote::Array') {
         return $ref->[0];
     }
@@ -432,6 +433,12 @@ sub _is_dirty {
     $ans;
 } #_is_dirty
 
+sub _purge {
+    my $self = shift;
+    $self->{_DIRTY} = {};
+    $self->{_WEAK_REFS} = {};
+}
+
 #
 # Returns data structure representing object. References are integers. Values start with 'v'.
 #
@@ -510,7 +517,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -719,7 +726,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -812,7 +819,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -885,7 +892,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.2';
 
 #
 # This the main index and stores in which table and position
@@ -1069,6 +1076,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.01  (November 2, 2015))
+       Version 1.2  (November 2, 2015))
 
 =cut

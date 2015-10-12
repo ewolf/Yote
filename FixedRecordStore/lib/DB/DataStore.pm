@@ -124,13 +124,12 @@ Returns the id of the record written to.
 =cut
 sub stow {
     my( $self, $data, $id ) = @_;
+
     $id //= $self->{OBJ_INDEX}->next_id;
 
     my $save_size = do { use bytes; length( $data ); };
 
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-
-    print STDERR Data::Dumper->Dump(["STOW FIXED",$data,$id]);
 
     #
     # Check if this record had been saved before, and that the
@@ -462,10 +461,6 @@ sub get_record {
 
 # how about an ensure_entry_count right here?
 # also a has_record
-    unless( $idx > 0 ) {
-        print STDERR Data::Dumper->Dump(["HI"]);
-        use Carp 'longmess'; 
-        print STDERR Data::Dumper->Dump([longmess]); }
    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
@@ -530,13 +525,17 @@ sub put_record {
     my $fh = $self->_filehandle;
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
 
+    # allows the put_record to grow the data store by no more than one entry
+    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) if $idx > (1+$self->entry_count);
+    die "Index out of bounds" if $idx > (1+$self->entry_count);
+
     my $to_write_length = do { use bytes; length( $to_write ); };
     if( $to_write_length < $self->{RECORD_SIZE} ) {
         my $del = $self->{RECORD_SIZE} - $to_write_length;
         $to_write .= "\0" x $del;
-        my $to_write_length = do { use bytes; length( $to_write ); };
-        die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
+        $to_write_length = do { use bytes; length( $to_write ); };
     }
+    die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
 
 # how about an ensure_entry_count right here?
 

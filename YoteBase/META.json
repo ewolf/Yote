@@ -38,27 +38,27 @@
    "provides" : {
       "Yote" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       },
       "Yote::Array" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       },
       "Yote::Hash" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       },
       "Yote::Obj" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       },
       "Yote::ObjStore" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       },
       "Yote::YoteDB" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.0"
+         "version" : "1.2"
       }
    },
    "release_status" : "stable",
@@ -67,5 +67,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.0"
+   "version" : "1.2"
 }
