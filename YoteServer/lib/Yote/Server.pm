@@ -48,7 +48,7 @@ sub start {
         $self->{server_pid} = $pid;
         return $pid;
     }
-    use Profiler;Profiler::start;
+    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
     $0 = "YoteServer process";
     # child process
     $self->run;
@@ -121,7 +121,7 @@ sub _process_request {
         # parent
         push @{$self->{_pids}},$pid;
     } else {
-        use Profiler;Profiler::start;
+      use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
         my( $self, $sock ) = @_;
         #child
         $0 = "YoteServer processing request";

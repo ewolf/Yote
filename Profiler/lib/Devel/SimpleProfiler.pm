@@ -1,4 +1,4 @@
-package Profiler;
+package Devel::SimpleProfiler;
 
 use strict;
 use warnings;
@@ -11,28 +11,27 @@ use File::Temp qw/ tempfile /;
 
 our( @stack, %calltimes, %callers, %calls, $tmpFile, $re );
 
-#my( $fh, $tmpFile ) = tempfile( "profilerFooXXXXXX", DIR => '/tmp' );
 =head1 NAME
 
-   Profiler - quick and dirty perl code profiler
+   Devel::SimpleProfiler - quick and dirty perl code profiler
 
 =head1 SYNPOSIS
 
- use Profiler;
- Profiler::init( "/tmp/tmpfile",
+ use Devel::SimpleProfiler;
+ Devel::SimpleProfiler::init( "/tmp/tmpfile",
                  qr/RegexToMatchSubNames/ );
- Profiler::start;
+ Devel::SimpleProfiler::start;
 
  ....
 
  if( ! fork ) {
      # must restart for child process
-     Profiler::start;
+     Devel::SimpleProfiler::start;
  }
 
  ....
 
- Profiler::analyze;
+ Devel::SimpleProfiler::analyze;
  exit;
 
  # ---- PRINTS OUT -----
@@ -46,8 +45,22 @@ our( @stack, %calltimes, %callers, %calls, $tmpFile, $re );
 
  .... 
 
-=cut
+=head1 DESCRIPTION
 
+    This is meant to be a simple way to get a performance benchmark for perl subs.
+    It uses the fantastic Aspect module written by Adam Kennedy, Marcel Gruenauer 
+    and Ran Eilam to monkey patch select perl subs and gather statistics about them.
+
+=head1 METHODS
+
+=head2 init
+
+    init takes two arguments : a temp file to use and a regular expression to find
+    subs to measure. By default, the file is /tmp/foo and the regex is qr/^main:/;
+ 
+    init should be called once for a run.
+
+=cut
 sub init {
     ( $tmpFile, $re ) = @_;
     $tmpFile ||= '/tmp/foo';
@@ -55,6 +68,21 @@ sub init {
     unlink $tmpFile;
 }
 
+=head2 analyze
+
+    analyze simply outputs the data collected from the profiler so far in a table with
+    the columns
+      * sub name
+      * total number of calls
+      * total time in ms
+      * mean time in ms
+      * average time in ms
+      * max time in ms
+      * min time in ms
+
+    This can be called as many times as desired.
+
+=cut
 sub analyze {
     my( %funtimes, %funcalls, %funcalled );
     open( IN, "<$tmpFile" );
@@ -69,7 +97,7 @@ sub analyze {
         }
     }
     _analyze( \%funtimes, \%funcalled, \%funcalls );
-}
+} #analyze
 
 sub _analyze {
     my( $calltimes, $callers, $calls ) = @_;
@@ -91,7 +119,7 @@ sub _analyze {
         };
     }
     my( @titles ) = ( 'sub', '# calls', 'total t', 'mean t', 'avg t', 'max t', 'min t' );
-    my $minwidth = 6;
+    my $minwidth = 7;
     print "\n performance stats ( all times are in ms)\n\n";
     print sprintf( "%*s  | ", $longsub, "sub" ). join( " | ", map { sprintf( "%*s", $minwidth, $_ ) } @titles[1..$#titles] ) ."\n";
     print '-' x $longsub . '--+-' . join( "-+-", map { '-' x $minwidth } @titles[1..$#titles] )."\n";
@@ -115,8 +143,14 @@ sub _analyze {
     }
 } #_analyze 
 
+=head2 start
 
+    This is called to start or continue the data collection process. It takes an option
+    regex parameter in case something different is desired 
+
+=cut
 sub start {
+    my $re = shift || $re;
     my $count = 0;
     around {
         my $subname = $_->{sub_name};

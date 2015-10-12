@@ -37,9 +37,9 @@ my $fooObj   = $root->get_fooObj;
 my $innerfoo = $fooObj->get_innerfoo;
 $store->stow_all;
 
-use Profiler;
-Profiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
-Profiler::start;
+use Devel::SimpleProfiler;
+Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
+Devel::SimpleProfiler::start;
 
 my( $pid, $count );
 until( $pid ) {
@@ -68,7 +68,7 @@ $server->stop;
 
 done_testing;
 
-Profiler::analyze;
+Devel::SimpleProfiler::analyze;
 
 exit( 0 );
 
@@ -212,7 +212,7 @@ sub test_suite {
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
                                   data => {
-                                      extra   => 'WOOF',
+                                      extra   => 'vWOOF',
                                       txt     => 'vSOMETEXT',
                                       fooObj  => $store->_get_id( $fooObj ),
                                       fooHash => $store->_get_id( $fooHash ),
