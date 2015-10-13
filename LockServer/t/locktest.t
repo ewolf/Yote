@@ -13,7 +13,7 @@ $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 BEGIN {
     use_ok( "Lock::Server" ) || BAIL_OUT( "Unable to load Lock::Server" );
 }
-$Lock::Server::DEBUG = 0;
+$Lock::Server::DEBUG = 1;
 test_suite();
 done_testing;
 
@@ -50,11 +50,11 @@ sub test_suite {
     }
 
     while( @pids ) { 
-	my $pid = shift @pid;
+	my $pid = shift @pids;
 	waitpid $pid, 0;
     }
 
-    $locks->stop;
+#    $locks->stop;
 
 } #test suite
 
