@@ -10,7 +10,7 @@ use base 'Yote::Server::ListContainer';
 sub _allowedUpdates {
     [ qw( product
           notes
-          amount_per_run
+          units_per_unit
        ) ]
 }
 

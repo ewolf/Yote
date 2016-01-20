@@ -16,13 +16,25 @@ sub _allowedUpdates {
     [ qw(
         name 
         notes
+
         produced_in_run
         run_hours
         min_run_time
+
         employees_required 
-        overhead
+        overhead_cost_per_run
+        overhead_cost_per_hour
       ) ]
 } #allowedUpdates
+
+sub run_time {
+    my( $self, $quan ) = @_;
+    my $min  = $self->get_min_run_time;
+    my $rate = $self->get_production_rate;
+    return $min unless $rate;
+    my $time = $quan / $rate;
+    return $min > $time ? $min : $time;
+}
 
 sub calculate {
     my $self = shift;
