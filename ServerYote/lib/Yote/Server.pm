@@ -560,6 +560,7 @@ sub _log {
 $Yote::ServerObj::PKG2METHS = {};
 sub __discover_methods {
     my $pkg = shift;
+    print STDERR Data::Dumper->Dump([">>$pkg<<"]);
     my $meths = $Yote::ServerObj::PKG2METHS->{$pkg};
     if( $meths ) {
         return $meths;
@@ -567,6 +568,7 @@ sub __discover_methods {
 
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
+    print STDERR Data::Dumper->Dump([\@m,"A ($pkg)",[keys %{"${pkg}\::"}]]);
 
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
         return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
@@ -577,11 +579,14 @@ sub __discover_methods {
         my $pm = __discover_methods( $class );
         push @m, @$pm;
     }
-
+    print STDERR Data::Dumper->Dump([\@m,"B ($pkg)"]);
+    
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
 
     $meths = [ grep { $_ !~ /^(_|[gs]et_|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ && ! $base{$_} } @m ];
+
+    print STDERR Data::Dumper->Dump([$meths,"C ($pkg)"]);
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;

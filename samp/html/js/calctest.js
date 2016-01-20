@@ -19,6 +19,11 @@ var init = yote.registerFunction( 'init', function() {
     yote.expose( app, scenes, scenes.toArray() );
 } );
 
+var updateScene = yote.registerFunction( 'updateScene', function() {
+    var app = yote.fetch_app('CalcTest');
+    
+} );
+
 var reset = yote.registerFunction( 'reset', function() {
     var app = yote.fetch_app( 'CalcTest' );
     app.reset();

@@ -3,28 +3,9 @@ importScripts( '/__/js/yote.js' );
 yote.initWorker();
 
 
-// transform the response into something anyone can use
-function xform_out( res ) {
-    if( typeof res === 'object' ) {
-        if( Array.isArray( res ) ) {
-            return res.map( function( x ) { return xform_out( x ) } );
-        }
-        var obj = yote.__object_library[ res.id ];
-        if( obj ) { return res.id }
-        var ret = {};
-        for( var key in res ) {
-            ret[key] = xform_out( res[key] );
-        }
-        return ret;
-        
-    }
-    if( typeof res === 'undefined' ) return undefined;
-    return 'v' + res;
-}//xform_out
-
 function resp( res ) {
-    console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', xform_out( res ), yote.getRawSteps() ] ) );
-    postMessage( JSON.stringify( [ 'OK', xform_out( res ), yote.getRawSteps() ] ) );
+    console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', yote.xform_out( res ), yote.getRawSteps() ] ) );
+    postMessage( JSON.stringify( [ 'OK', yote.xform_out( res ), yote.getRawSteps() ] ) );
     yote.clearRawSteps();
 }
 function err( msg ) {
@@ -44,7 +25,7 @@ onmessage = function(e) {
     }
 
     var type   = data[0];
-    var params = data[1];
+    var params = yote.xform_in( data[1]);
 
     if( type === 'include' ) {
         for( var i=0, len=params.length; i<len; i++ ) {
@@ -63,7 +44,7 @@ onmessage = function(e) {
         yote.token = res[1];
         return resp( res );
     }
-    else if( type === 'call' ) {
+    else if( type === 'function_call' ) {
         var funcpath = data[ 2 ].split( '.' );
         var funcall = yote.functions;
         for( var i=0, len=funcpath.length; i < len; i++ ) {
@@ -74,4 +55,10 @@ onmessage = function(e) {
         }
         return resp( funcall(params) );
     }
+
+    else if( type === 'method_call' ) {
+        // params is a list of the form [ object, methodname, params ]
+        return params[0][ params[1] ]( params[2] );
+    }
+
 } //onMessage

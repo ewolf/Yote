@@ -18,29 +18,36 @@
                   var app = yote.fetch_app( 'CalcTest' );
                   
                   app.addUpdateListener( function( appo ) {
-                      document.getElementById( 'hourCost' ).val = appo.get('calcResult');
+                      document.getElementById( 'hourCost' ).value = appo.get('calcResult');
                   } );
 
                   function updateScenes() {
                       // redo select
-                      var app = yote.fetch_app( 'CalcTest' );
                       var sel = document.getElementById( 'scenario_sel' );
                       while( sel.options.length > 0 ) {
                           sel.remove( 0 );
                       }
-                      var scenes = app.get( 'scenarios' );
+                      var scenes = app.get( 'scenarios' ).toArray();
                       if( scenes ) {
                           for( var i=0, len=scenes.length; i<len; i++ ) {
-                              var sen = scenes.get(i);
+                              var sen = scenes[i];
                               sel.options[sel.options.length] = new Option( sen.get('name'), sel.options.length );
                           }
                       }
                   }
 
-                  function selectScene( scene ) {
-                      alert( 'selected scenario "' + scene.get('name') + '"' );
+                  function selectScene( scene, idx ) {
+                      document.getElementById( "sceneName" ).value = scene.get('name');
+                      document.getElementById( "scenario_sel" ).value = idx;
+                      app.setCurrentSceneIdx( [idx] ); //yes, this is async and that's okey
                   }
 
+                  document.getElementById( "scenario_sel" ).addEventListener('click',function() {
+                      var seld = document.getElementById( "scenario_sel" ).value;
+                      var sels = app.get( 'scenarios' ).toArray();
+                      selectScene( sels[seld], seld );
+                   } );
+                  
                   document.getElementById( "new_scene" ).addEventListener('click',function() {
                       yote.callWorker( {
                           callpath : 'new_scene',
@@ -62,7 +69,7 @@
                           } );
                       }
                   } );
-                  
+
                   document.getElementById( "calc" ).addEventListener('click',function() {
                       yote.callWorker( {
                           callpath : 'calc',
@@ -77,7 +84,19 @@
                           }
                       } );
                   } );
+
+                  document.getElementById( "sceneName" ).addEventListener( 'keypress', function(ev) {
+                      if( ev.keyCode == 13 || ev.charCode == 13 ) {
+                          currScene.update( [{ name : this.value }], function() {
+                              updateScenes();
+                          } );
+                      }
+                  } );
                   updateScenes();
+                  var sels = app.get( 'scenarios' ).toArray();
+                  var currIdx = app.get( 'current_scene_idx' ) || 0;
+                  var currScene = sels[currIdx];
+                  selectScene( currScene, currIdx );
               }
           ] )
               .fail( 1, function() { console.log( "Step 1 failed" ) } )
@@ -92,17 +111,20 @@
   <body onLoad="init()">
     <h1>Production Line Scenario Manager</h1>
 
-<button type="button" id="RESET">RESET</button>
+    <button type="button" id="RESET">RESET</button>
+    <BR><BR>
 Available Scenarios <select id="scenario_sel"></select>
-    <button type="button" id="new_scene">Create New Scenario</button>
+    <button type="button" id="new_scene">Create New Scenario</button> <BR>
 
-    Scenario Name <input type="text" id="sceneName"> <br><br>
-    <input type="number" id="numEmpl"> Number of Employees <br>
-    <input type="number" id="wage"> Hourly Wage <br>
+Scenario Name <input type="text" id="sceneName"> <br>
+
+
+    <br> (test area ) <br>
+    Number of Employees <input type="number" id="numEmpl"><br>
+    Hourly Wage <input type="number" id="wage"> <br>
     
     <div style="border:1px solid black; display:inline-block">
        <div id="hourCost"></div>
-       Cost per hour
     </div>
 
     <button type="button" id="calc">Calc</button> <br>

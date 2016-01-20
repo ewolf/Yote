@@ -47,27 +47,27 @@ yote._init = function( yoteServerURL, isWorker ) {
     // returns data
     var makeMethod = function( mName ) {
         var nm = '' + mName;
-        return function( data, rawOrHandler ) {
-            if( typeof rawOrHandler === 'boolean') {
-                var useRaw = rawOrHandler;
-            } else {
-                var sucHandler = rawOrHandler;
-            }
-
-            if( ! isWorker && sucHandler ) {
-                console.warn( "yote warning. method '" + nm + "' called with a success handler but is not worker" );
-                // big warnings anyway, using this as not a worker
-                // since if there is a worker, its object cache may become out of date :/
-                // TODO: yote worker methods rather than onmessage? 
-                // maybe even grab window.onmessage
-            }
+        return function( data, rawOrHandler, failhandler ) {
+            var that = this;
             var id = this.id;
-            var res = contact( id, nm, data, useRaw );
+            
             if( isWorker ) { 
-                return res; 
-            }
-            if( sucHandler ) {
-                sucHandler();
+                if( typeof rawOrHandler === 'boolean') {
+                    var useRaw = rawOrHandler;
+                } else {
+                    var sucHandler = rawOrHandler;
+                }
+                var res = contact( id, nm, data, useRaw, sucHandler );
+                return res;
+            } else {
+                // here we contact the worker which passes
+                // the request forwards
+                yote.callWorker( {
+                    callType  : 'method_call',
+                    params      : [ that, nm, data || []],
+                    callback    : typeof rawOrHandler === 'function' ? rawOrHandler : undefined,
+                    failhandler : failhandler
+                } );
             }
         };
     };
@@ -87,6 +87,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             obj.listeners = [];
             id2obj[ datastructure.id ] = obj;
         }
+        obj.cls = datastructure.cls;
         obj._data = datastructure.data;
 
         // takes a function that takes this object as a
@@ -188,7 +189,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
     var returnVal = '';
-    var reqListener = function( returnRaw ) { 
+    var reqListener = function( returnRaw, handl ) { 
         return function() {
             console.log( "GOT [ " + workerTxt + "] FROM SERVER : " + this.responseText );
             if( isWorker ) {
@@ -199,6 +200,9 @@ yote._init = function( yoteServerURL, isWorker ) {
             } else {
                 returnVal = this.responseText; 
             };
+            if( handl ) {
+                handl( returnVal );
+            }
         };
     };
 
@@ -226,9 +230,9 @@ yote._init = function( yoteServerURL, isWorker ) {
         return obj;
     }
 
-    var contact = function(id,action,data,returnRaw) { 
+    var contact = function(id,action,data,returnRaw,handl) { 
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener( returnRaw ) );
+        oReq.addEventListener("load", reqListener( returnRaw,handl ) );
 
         console.log( "[ " + workerTxt + "] contacting server via url : " + ( yoteServerURL || "" ) + 
                      '/' + id +
@@ -239,7 +243,7 @@ yote._init = function( yoteServerURL, isWorker ) {
                   '/' + id +
                   '/' + ( yote.token ? yote.token : '_' ) + 
                   '/' + action, 
-                  ! isWorker );
+                  ! isWorker ); // ! isWorker is the same as async
 
         var readiedData = readyObjForContact( data );
         var sendData = JSON.stringify(  typeof readiedData === 'object' ? readiedData : [ readiedData ] );
@@ -259,17 +263,18 @@ yote._init = function( yoteServerURL, isWorker ) {
 
     var workers = {};
 
-    function xform_in( item ) {
+    // translates text to objects
+    yote.xform_in = function( item ) {
         if( typeof item === 'object' ) {
             if( item === null ) {
                 return undefined;
             }
             if( Array.isArray( item ) ) {
-                return item.map( function( x ) { return xform_in(x); } );
+                return item.map( function( x ) { return yote.xform_in(x); } );
             } else {
                 var ret = {};
                 for( var k in item ) {
-                    ret[ k ] = xform_in( item[k] );
+                    ret[ k ] = yote.xform_in( item[k] );
                 }
                 return ret;
             }
@@ -290,7 +295,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             callback    = args.callback,
             callpath    = args.callpath,
             failhanlder = args.failhandler, 
-            calltype    = args.callType || 'call',
+            calltype    = args.callType || 'function_call',
             expectAlist = args.expectReturnedList;
         // have to find a way to get the update arguments from the
         // controls
@@ -312,15 +317,35 @@ yote._init = function( yoteServerURL, isWorker ) {
                 for( var i=0; i<rawRespData.length; i++ ) {
                     yote.processRaw( rawRespData[i] );
                 }
-                var resp = xform_in( resp[1] );
+                var resp = yote.xform_in( resp[1] );
 
                 if( callback ) {
                     callback( resp );
                 }
             }
         }
-        worker.postMessage( [ calltype, callParams, callpath ] );
+        worker.postMessage( [ calltype, yote.xform_out( callParams ), callpath ] );
     }; //yote.callWorker
+
+    // transform from objects to text
+    yote.xform_out =  function( res ) {
+        if( typeof res === 'object' ) {
+            if( Array.isArray( res ) ) {
+                return res.map( function( x ) { return yote.xform_out( x ) } );
+            }
+            var obj = yote.__object_library[ res.id ];
+            if( obj ) { return res.id }
+            var ret = {};
+            for( var key in res ) {
+                ret[key] = yote.xform_out( res[key] );
+            }
+            return ret;
+            
+        }
+        if( typeof res === 'undefined' ) return undefined;
+        return 'v' + res;
+    }//yote.xform_out
+
 
     yote.doSequence = function( functions ) {
         if( typeof functions !== 'object' || functions.length === 0 ) {
@@ -432,7 +457,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     yote.readyWorkerCall = function( callname, args ) {
         return function( callback, failhandler ) {
             yote.callWorker( {
-                callType  : 'call',
+                callType  : 'function_call',
                 callpath    : callname,
                 params      : args || [],
                 callback    : callback,

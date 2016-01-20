@@ -29,6 +29,11 @@ sub reset {
     $self->set_scenarios( [ $self->new_scene() ] );
 }
 
+sub setCurrentSceneIdx {
+    my( $self, $scene_idx ) = @_;
+    $self->set_current_scene_idx( $scene_idx );
+}
+
 sub new_scene {
     my $self = shift;
     my $scenes = $self->get_scenarios([]);
