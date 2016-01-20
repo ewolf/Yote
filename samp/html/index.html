@@ -12,10 +12,72 @@
               yote.loadApp( 'CalcTest' ),
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ),
+//              yote.readyWorkerCall( 'reset' ),
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
-                  $( '#del_scene' ).data( 'parent', app.id );
+                  var currScenario;
+
+                  $( '#del_scenario' ).each( function() {
+                      $(this).data( 'parent', app.id );
+                  } );
+                  $( '.app' ).each( function() {
+                      $(this).data( 'id', app.id );
+                  } ); 
+
+                  updateScenarioSelect();
+                  selectScenario( app.get( 'current_scenario' ) );
+
+                  function updateScenarioSelect() {
+                      // redo select
+                      var $sel = $( '#scenario_sel' );
+                      $sel.empty();
+                      $( '#del_scenario').hide();
+                      var scenarios = app.get( 'scenarios' ).toArray();
+                      if( scenarios ) {
+                          for( var i=0, len=scenarios.length; i<len; i++ ) {
+                              var sen = scenarios[i];
+                              $sel.append('<option value="' + sen.id + '">' + sen.get('name' ) + '</option>' );
+                          }
+                          if( scenarios.length > 1 ) {
+                              $( '#del_scenario').show();
+                          }
+                      }
+                  } //updateScenarioSelect
+
+                  function selectScenario( scenario ) {
+                      $( "#scenario_sel" ).val( scenario.id );
+                      $( "#del_scenario" ).data( 'id', scenario.id );
+                      currScenario = scenario;
+
+                      yote.callWorker( {
+                          callpath : 'select_scenario',
+                          params : scenario,
+                          callback : function( resp ) {
+                              currScenario = scenario;
+                              $( '.scenario,#del_scenario' ).each( function() {
+                                  $(this).data('id', currScenario.id );
+                              } );
+                              updateProdLines();
+                              $( '#product-title' ).text( "Products for '" + currScenario.get('name') + '"' );
+                          }
+                      } );
+                      return true;
+                  } //selectScenario
+                  
+
+                  $( "#RESET" ).off().on('click',function() {
+                      if( confirm( 'really delete everything?' ) ) {
+                          yote.callWorker( {
+                              callpath : 'reset',
+                              callback : function( resp ) {
+                                  updateScenarioSelect();
+                                  selectScenario( app.get('current_scenario') );
+                              }
+                          } );
+                      }
+                  } );
+
                   function updateDataFields() {
                       $( '.showField' ).each( function() {
                           var $this = $( this );
@@ -35,7 +97,7 @@
                   } //updateDataFields
                   
                   function activateUpdateFields() {
-                      $( '.updateField' ).on( 'keypress', function(ev) {
+                      $( '.updateField' ).off().on( 'keypress', function(ev) {
                           var kk = ev.keyCode || ev.charCode;
                           if( kk == 13 || kk == 9 ) {
                               var $this = $( this );
@@ -45,62 +107,50 @@
                               inpt[ fld ] = $this.val() ;
 
                               obj.update( [ inpt ], function() {
-                                  updateScenes();
-                                  selectScene( currScene );
+                                  updateScenarioSelect();
+                                  selectScenario( app.get( 'current_scenario' ) );
                               } );
                           }
                       } );
-                      $( '.delAction' ).on( 'click', function(ev) {
+                      $( '.delAction' ).off().on( 'click', function(ev) {
                           var $this  = $(this);
                           var par    = yote.fetch($this.data( 'parent' ));
                           var obj    = yote.fetch($this.data( 'id' ));
-                          var action = $this.data('del-action');
-                          par[action]( [obj], function() {
-                              selectScene( currScene );
+                          par.remove_entry( [obj], function() {
+                              updateScenarioSelect();
+                              selectScenario( app.get( 'current_scenario' ) );
                           } );
                       } );
-                      $( '.addAction' ).on( 'click', function(ev) {
+                      $( '.addAction' ).off().on( 'click', function(ev) {
                           var $this = $(this);
                           var create_action = $this.data('action');
                           var list  = $this.data('list');
-                          alert( list );
-                          var parent = yote.fetch( $this.data('parent') );
-                          var newentry = parent[ create_action ]( [list], function() {
-                              selectScene( currScene );
+                          var listOn = yote.fetch( $this.data('id') );
+                          yote.callWorker( {
+                              callpath : 'addEntry',
+                              params   : [ listOn, list ],
+                              callback : function( newthing ) {
+                                  updateScenarioSelect();
+                                  selectScenario( app.get( 'current_scenario' ) ) || updateProdLines();
+                              }
                           } );
                       } );
                   } //activateUpdateFields
 
-                  function updateScenes() {
-                      // redo select
-                      var $sel = $( '#scenario_sel' );
-                      $sel.empty();
-                      $( '#del_scene').hide();
-                      var scenes = app.get( 'scenarios' ).toArray();
-                      if( scenes ) {
-                          for( var i=0, len=scenes.length; i<len; i++ ) {
-                              var sen = scenes[i];
-                              $sel.append('<option value="' + sen.id + '">' + sen.get('name' ) + '</option>' );
-                          }
-                          if( scenes.length > 1 ) {
-                              $( '#del_scene').show();
-                          }
-                      }
-                  }
 
                   function updateProdLines() {
-                      var lines = currScene.get( 'product_lines' ).toArray();
+                      var lines = currScenario.get( 'product_lines' ).toArray();
                       $('#products').empty();
                       for( var i=0; i<lines.length; i++ ) {
                           var line = lines[i];
                           var buf = '<div><br>\
  <input class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
- <button class="delAction product-line" data-parent="' + currScene.id + '" data-id="' + line.id + '" data-del-action="remove_entry">Delete</button> \
+ <button class="delAction product-line" data-parent="' + currScenario.id + '" data-id="' + line.id + '">Delete</button> \
  <br>\
  Desc <input class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text">\
  <span  class="showField" data-id="' + line.id + '" data-field="production_rate"></span> units per hour\
  <h5>Process Steps</h5>\
- <button class="addAction product-line" data-action="add_entry" data-list="steps"  data-parent="' + line.id + '">Add Step</button>\
+ <button class="addAction product-line" data-list="steps"  data-id="' + line.id + '">Add Step</button>\
  <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
                           var steps = line.get( 'steps' ).toArray();
                           for( var j=0; j<steps.length; j++ ) {
@@ -125,99 +175,11 @@
                       activateUpdateFields();
                   } // updateProdLines
 
-                  function selectScene( scene ) {
-                      $( "#scenario_sel" ).val( scene.id );
-                      $( "#scenario_sel" ).val( scene.id );
-                      $( "#del_scene" ).data( 'id', scene.id );
-                      yote.callWorker( {
-                          callpath : 'select_scene',
-                          params : scene,
-                          callback : function( resp ) {
-                              currScene = scene;
-                              $( '.scenario' ).each( function() {
-                                  var $this = $( this );
-                                  $this.data( 'id', currScene.id );
-                              } );
-                              updateProdLines();
-                              $( '#product-title' ).text( "Products for '" + currScene.get('name') + '"' );
-                          }
-                      } );
-                      
-
-                  }
-
-                  $( "#scenario_sel" ).on('click',function() {
+                  $( "#scenario_sel" ).off().on('change',function() {
                       var seld_id = $( "#scenario_sel" ).val();
                       var sel = yote.fetch( seld_id );
-                      selectScene( sel );
+                      selectScenario( sel );
                    } );
-
-                  $( "#del_scene" ).on('click',function() {
-                      if( confirm( "Really delete scene " + currScene.get('name') ) ) {
-                          app.drop_scene( [currScene], function() {
-                              updateScenes();
-                              selectScene( app.get( 'current_scene' ) );
-                          } );
-                      }
-                  } );
-
-
-                  $( "#new_product" ).on('click',function() {
-                      yote.callWorker( {
-                          callpath : 'new_product_line',
-                          callback : function(newline) {
-                              updateProdLines();
-                          }
-                      } );
-                  } )
-
-                  $( "#new_scene" ).on('click',function() {
-                      yote.callWorker( {
-                          callpath : 'new_scene',
-                          callback : function( news ) {
-                              updateScenes();
-                              selectScene( news );
-                          }
-                      } );
-                  } )
-
-                  $( "#RESET" ).on('click',function() {
-                      if( confirm( 'really delete everything?' ) ) {
-                          yote.callWorker( {
-                              callpath : 'reset',
-                              callback : function( resp ) {
-                                  updateScenes();
-                                  selectScene( app.get('scenarios').get(0) );
-                              }
-                          } );
-                      }
-                  } );
-
-                  // OLD vvvvvvvvvv--------------------
-                  $( "#calc" ).on('click',function() {
-                      yote.callWorker( {
-                          callpath : 'calc',
-                          params    : {
-                              number_employees : $( '#numEmpl' ).val(),
-                              hourly_wage      : $( '#wage' ).val()
-                          },
-                          callback : function( response ) {
-                              // this response has the result of the calculation state
-                              // is stored in the response object's calcResult field
-                              $( "#hourCost" ).text( response.get( 'calcResult' ) );
-                          }
-                      } );
-                  } );
-                  app.addUpdateListener( function( appo ) {
-                      $( '#hourCost' ).val( appo.get('calcResult') );
-                  } );
-
-                  // OLD ^^^^^^^^^^^^^--------------------
-
-                  updateScenes();
-                  var sels = app.get( 'scenarios' ).toArray();
-                  var currScene = app.get('current_scene' );
-                  selectScene( currScene );
 
 
 
@@ -237,15 +199,15 @@
 
     <button type="button" id="RESET">RESET</button>
     <hr>
-    Available Scenarios <select id="scenario_sel"></select>
-    <button type="button" id="new_scene">Create New Scenario</button>
-        <button type="button" class="delAction scenario" style="display:none" data-id="" data-parent="" data-del-action="remove_entry" id="del_scene">Delete Scenario</button> <BR>
+    Available Scenarios <select class="app" id="scenario_sel"></select>
+    <button type="button" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</button>
+        <button type="button" class="delAction app" style="display:none" id="del_scenario">Delete Scenario</button> <BR>
 <div>
     Scenario Name <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text"> <br>
     Description <input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> <br>
     <hr>
     <h4 id="product-title">Products</h4>
-    <button type="button" id="new_product">Create New Product Line</button>
+    <button type="button" class="addAction scenario" data-list="product_lines" data-id="">Create New Product Line</button>
     <div id="products">
       No Products
     </div>

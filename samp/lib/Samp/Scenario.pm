@@ -20,7 +20,7 @@ sub lists {
 
 sub _init {
     my $self = shift;
-    $self->SUPER::_init;
+    $self->SUPER::_init();
     $self->set_overhead(0);
 } #_init
 

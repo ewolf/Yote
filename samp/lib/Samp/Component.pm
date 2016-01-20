@@ -10,7 +10,7 @@ use base 'Yote::ServerObj';
 # --vvv override -------
 sub allowedUpdates { [] } #override returning a list of allowed updates
 
-sub lists {}  # override with list-name -> class
+sub lists { {} }  # override with list-name -> class
 
 sub calculate {}  #override
 
@@ -43,10 +43,10 @@ sub add_entry {
 
     my $class = $self->lists->{$list};
     die "Unknown list '$list'" unless $class;
-    my $obj = $class->new( {
+    my $obj = $self->{STORE}->newobj( {
         parent => $self,
-                           } );
-    my $add = "add_to_list";
+                                      },$class  );
+    my $add = "add_to_$list";
     $self->$add( $obj );
     $obj;       
 }

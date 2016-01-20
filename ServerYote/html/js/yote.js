@@ -113,6 +113,9 @@ yote._init = function( yoteServerURL, isWorker ) {
             } 
             return fetch( val );
         };
+        obj._is = function( other ) {
+            return typeof other === 'object' && other.id === this.id;
+        };
         obj._toData = function() {
             return { id  : this.id,
                      cls : this.cls,

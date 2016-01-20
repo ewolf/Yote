@@ -7,7 +7,7 @@ no warnings 'uninitialized';
 use base 'Samp::Component';
 
 sub lists {
-    employees => 'Samp::Employee',
+    { employees => 'Samp::Employee', }
 }
 
 sub allowedUpdates {

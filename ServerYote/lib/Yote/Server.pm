@@ -331,7 +331,7 @@ sub _process_request {
             _log( "INTERNAL SERVER ERROR '$@'" );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
-            return;
+            exit; #end forked process
         }
 
         my( @out_res );
@@ -350,7 +350,7 @@ sub _process_request {
                         @$val ];
             } elsif ( ref $val eq 'HASH' ) {
                 $data = {
-                    map { my $d = $store->_xform_in( $obj->{$_} );
+                    map { my $d = $store->_xform_in( $val->{$_} );
                           $server_root->_setMay( $d, $token );
                           $_ => $d }
                         keys %$val };

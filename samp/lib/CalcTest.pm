@@ -17,35 +17,33 @@ sub _init {
 # handy RESET for testing
 sub reset {
     my $self = shift;
-    $self->set_scenarios( [ $self->new_scene() ] );
+    $self->set_scenarios( [] );
+    $self->add_entry();
 }
 
-sub new_scene {
+sub add_entry {
     my $self = shift;
-    my $scenes = $self->get_scenarios([]);
+    my $scenarios = $self->get_scenarios([]);
     my $news = $self->{STORE}->newobj( {
-        name => 'scenario ' . scalar(1 + @$scenes),
+        name => 'scenario ' . scalar(1 + @$scenarios),
         app  => $self,
                                    }, 'Samp::Scenario' );
-    push @$scenes, $news;
-    $self->set_current_scene( $news );
+    push @$scenarios, $news;
+    $self->set_current_scenario( $news );
     $news;
 }
 
 
-# remove
-sub setCurrentScene {
-    my( $self, $scene ) = @_;
-    $self->set_current_scene( $scene );
+sub setCurrentScenario {
+    my( $self, $scenario ) = @_;
+    $self->set_current_scenario( $scenario );
 }
 
-# remove?
-sub drop_scene {
-    my( $self, $scene ) = @_;
-    $self->remove_from_scenarios($scene);
-    $self->set_current_scene( $self->get_scenes()->[0] );
-} #drop_scene
-print STDERR Data::Dumper->Dump(["LODY"]);
+sub remove_entry {
+    my( $self, $scenario ) = @_;
+    $self->remove_from_scenarios($scenario);
+    $self->set_current_scenario( $self->get_scenarios()->[0] );
+} #drop_scenario
 
 1;
 

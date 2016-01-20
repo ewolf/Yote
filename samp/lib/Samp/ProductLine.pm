@@ -15,7 +15,7 @@ sub allowedUpdates {
 }
 
 sub lists {
-    steps     => 'Samp::Step',
+    { steps     => 'Samp::Step' } ,
 }
 
 #
