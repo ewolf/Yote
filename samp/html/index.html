@@ -135,7 +135,6 @@
                       ( cur_val === val ? 'selected="true" ' : '' ) + 
                       'data-id="' + val + '" value="' + val + '">' + title + '</option>';
               }
-  
               $sel.empty().append( buf );
               $sel.val( cur_val );
 
@@ -409,8 +408,13 @@
               
               var ings = prd.get( 'ingredients' );
               updateListener( ings, '_ingsChange', function() {
+                  $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
                   setup_ingredients_table( prd );
+                  activateControls();
               }, true );
+              updateListener( prd, '_selectorListener', function() {
+                  $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
+              } );
               ings.each( function( ing, i ) {
                   watchForUpdates( ing );
               } );
