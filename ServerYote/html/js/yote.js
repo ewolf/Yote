@@ -77,12 +77,24 @@ yote._init = function( yoteServerURL, isWorker ) {
     var makeObj = function( datastructure ) {
         /* method that returns the value of the given field on the yote obj */
         var obj = id2obj[ datastructure.id ];
-        if( ! obj ) {
+        if( obj ) {
+            // fire off an event for any update listeners
+            for( var i=0, len=obj.listeners.length; i<len; i++ ) {
+                obj.listeners[i]( obj );
+            }
+        } else {
             obj = {};
             obj.id = datastructure.id;
+            obj.listeners = [];
             id2obj[ datastructure.id ] = obj;
         }
         obj._data = datastructure.data;
+
+        // takes a function that takes this object as a
+        // parameter
+        obj.addUpdateListener = function( listner ) {
+            obj.listeners.push( listener );
+        }
         obj.get = function( key ) {
             var val = this._data[key];
             if( val.startsWith( 'v' ) ) {
@@ -121,7 +133,12 @@ yote._init = function( yoteServerURL, isWorker ) {
         // updates
         if( res.updates ) {
             res.updates.forEach( function( upd ) {
-                makeObj( upd );
+                if( typeof upd !== 'object' || ! upd.id ) {
+                    console.error( "Update error, was expecting object, not : '" + upd + "'" );
+                } else {
+                    // good place for an update listener
+                    makeObj( upd );
+                }
             } ); //updates section
         }
         
@@ -237,11 +254,13 @@ yote._init = function( yoteServerURL, isWorker ) {
             // at processing the raw, this process will have access 
             // to all the yote data'
             var resp = JSON.parse( e.data );
-            var ok       = resp[0];
+            var ok   = resp[0];
             if( ok === 'OK' ) {
                 var respData = resp[1];
 
-                // data to here
+                // this is all in non-worker space
+                // might be a good place to check for updates
+                // updates could fire as events, of course
                 var resp = yote.processRaw( respData, expectAlist );
                 
                 if( callback ) {

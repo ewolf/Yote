@@ -14,10 +14,11 @@
                   // and when referenced, they can be connected to controls.
                   window.app = app; //so that by name referencing of this variable works, and then 
               } ),
-              yote.workerLoadInclude( "/__/calc_test/js/calctest.js" ),
+              yote.workerLoadInclude( "/__/bak/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ), //calls the method init
               function() {
-                  console.log( '*************** ADDL **********************' );
+                  // tie the calcResult field of the app to an informative hourCost div
+                  
                   document.getElementById( "calc" ).addEventListener('click',function() {
                       console.log( 'calc' );
                       yote.callWorker( {

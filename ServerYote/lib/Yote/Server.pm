@@ -807,7 +807,7 @@ sub fetch_app {
         if( $@ ) {
             # TODO - have/use a good logging system with clarity and stuff
             # warnings, errors, etc
-            _log( "App '$app_name' not found" );
+            _log( "App '$app_name' not found $@" );
             return undef;
         }
         _log( "Loading app '$app_name'" );
