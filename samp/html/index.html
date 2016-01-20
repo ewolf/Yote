@@ -8,22 +8,119 @@
       function init() {
           yote.initMain();
 
+          function resetDataFieldListeners(cls) {
+              $( '.showField' + ( cls ? '.' + cls : '' ) ).each( function() {
+                  $(this).removeClass( 'showFieldInit' );
+              } );
+          }
+          
+          function updateDataFields() {
+              $( '.showField' ).each( function() {
+                  var $this = $( this );
+                  if( $this.hasClass('showFieldInit') ) {
+                      return;
+                  }
+                  $this.addClass('showFieldInit');
+                  
+                  var oid = $this.data( 'id' );
+                  var obj = yote.fetch( oid );
+                  var fld = $this.data('field');
+                  if( obj ) {
+                      if( $this.is( 'input' ) ) {
+                          $this.val( obj.get( fld ) );
+                      } else {
+                          $this.text( obj.get( fld ) );
+                      }
+                  } else {
+                      console.warn( ["Unable to update data field", $this ] );
+                  }
+              } );
+              $( '.updateField' )
+                  .off('keydown')
+                  .on( 'keydown', function(ev) {
+                      var kk = ev.keyCode || ev.charCode;
+                      if( kk == 13 || kk == 9 ) {
+                          var $this = $( this );
+                          var obj = yote.fetch( $this.data('id') );
+                          var fld = $this.data('field');
+                          var inpt = {};
+                          inpt[ fld ] = $this.val() ;
+                          
+                          obj.update( [ inpt ], function() {
+//                              updateScenarioSelect();
+//                              selectScenario( app.get( 'current_scenario' ) );
+                          } );
+                      }
+                  } );
+                                                            
+              $( '.updateFieldControl>span' ).off('click').on( 'click',
+                                                     function() {
+                                                         var $this = $(this);
+                                                         $this.parent().addClass( 'editing' );
+                                                         var $inpt = $this.parent().find( 'input' );
+                                                         $inpt.data('original', $inpt.val() );
+                                                     } );
+              $( '.updateFieldControl>input' )
+                  .off('keyup')
+                  .on( 'keyup',
+                       function() {
+                           var $this = $(this);
+                           $this.toggleClass('edited', $this.data('original') != $this.val() );
+                       } )
+                  .on( 'keydown', function(ev) {
+                      var kk = ev.keyCode || ev.charCode;
+                      var $this = $(this);
+                      if( kk == 27 )  { //escape
+                          $this.val( $this.data( 'original' ) );
+                          $this.parent().removeClass( 'editing' );
+                          $this.removeClass('edited' );
+                      } else if( kk == 13 || kk == 9 ) { //enter or tab
+                          var p = $this.parent();
+                          p.removeClass( 'editing' );
+                          p.find('span').text( $this.val() );
+                          $this.removeClass('edited' );
+                      }
+                      $this.toggleClass('edited', $this.data('original') == $this.val() );
+                  } );
+              
+          } //updateDataFields
+
           function setup_app(app) {
+              // * ) reset app listeners
+              resetDataFieldListeners( 'app' );
+              
               // * ) update data-id of things app
+              $( '.app' ).each( function() {
+                  $(this).data( 'id', app.id );
+              } );
+              
               // * ) set up scenario picker
+              
               // * ) set up scenario
+              setup_scenario( app.get( 'current_scenario' ) );
+              
               // * ) set up update listener on app/current_scenario which calls setup_scenario
               // * ) check for edit/showFields that were not initialized
+              updateDataFields();
           }
 
-          function setup_scenario(scene) {
+          function setup_scenario(scenario) {
+              // * ) reset scenario listeners
+              resetDataFieldListeners( 'scenario' );
+              
               // * ) update data-id of things scenario
+              $( '.scenario' ).each( function() {
+                  $(this).data( 'id', scenario.id );
+              } );
+
+              
               // * ) setup products table
               // * ) setup focused product picker
               // * ) setup focused product
               // * ) set up update listener on focused product picker
               // * ) set up update listener on products list which calls setup_product
               // * ) check for edit/showFields that were not initialized
+              updateDataFields();
           }
 
           function setup_product(prd) {
@@ -47,6 +144,8 @@
               yote.readyWorkerCall( 'init' ),
 //              yote.readyWorkerCall( 'reset' ), //uncomment this to reset everything
               function() {
+                  setup_app( yote.fetch_app( 'CalcTest' ) ); 
+                  return;
                   // setup_app( yote.fetch_app( 'CalcTest' ) );
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
@@ -284,22 +383,19 @@
     </script>
 
     <style>
-    span.updateField { display: inline-block; background-color:lightgrey; }
-    span.updateField:hover { cursor: pointer; background-color:yellow; }
-    span.updateField>input { display: none; }
-    span.updateField>span { display: inline; }
-    span.updateField.editing>input { display: inline; background-color:lightgray; }
-    span.updateField.editing>input.edited { display: inline; background-color:yellow; }
-    span.updateField.editing>span { display: none; }
+    span.updateFieldControl { display: inline-block; background-color:lightgrey; }
+    span.updateFieldControl:hover { cursor: pointer; background-color:yellow; }
+    span.updateFieldControl>input { display: none; }
+    span.updateFieldControl>span { display: inline; }
+    span.updateFieldControl.editing>input { display: inline; background-color:lightgray; }
+    span.updateFieldControl.editing>input.edited { display: inline; background-color:yellow; }
+    span.updateFieldControl.editing>span { display: none; }
     </style>
 
   </head>
   <body onLoad="init()">
     <h1>Shoppe Demo</h1>
 
-    <hr>
-    <button type="button" id="RESET">RESET</button> (warning, reset will clear everything)
-    <hr>
     <h3>Scenarios</h3>
     <p>
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</a>
@@ -312,7 +408,7 @@
           <dl>
             <dt>Scenario Name</dt>
             <dd>
-              <span class="updateField">
+              <span class="updateFieldControl">
                     <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text">
                     <span class="showField scenario" data-id="ofobj" data-field="name"></span>
               </span>
