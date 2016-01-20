@@ -25,13 +25,11 @@ sub fetch_scenario {
 
 sub reset {
     my $self = shift;
-    print STDERR Data::Dumper->Dump(["RESETTING APP"]);
     $self->set_scenarios( [ $self->new_scene() ] );
 }
 
 sub setCurrentScene {
     my( $self, $scene ) = @_;
-    print STDERR Data::Dumper->Dump([$scene,"XXX"]);
     $self->set_current_scene( $scene );
 }
 

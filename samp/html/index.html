@@ -37,14 +37,12 @@
                   function selectScene( scene ) {
                       $( '#sceneName' ).val( scene.get('name') );
                       $( "#scenario_sel" ).val( scene.id );
-                      alert( 'set to ' + scene );
                       app.setCurrentScene( scene ); //yes, this is async and that's okey
                       currScene = scene;
 
                       $( '.scenario.updateField' ).each( function() {
                           var $this = $( this );
                           $this.data( 'id', scene.id );
-                          $this.data( 'field', scene.id );
                           $this.val( scene.get( $this.data('field') ) );
                       } );
                   }
@@ -103,11 +101,16 @@
                       if( ev.keyCode == 13 || ev.charCode == 13 ) {
                           var $this = $( this );
                           var obj = yote.fetch( $this.data('id') );
-                          var f = $this.data('field');
-                          obj.update( [
-                              {    
-                                   f : $this.val()
-                              } ] );
+                          var fld = $this.data('field'); 
+                          var inpt = {};
+                          inpt[ fld ] = $this.val() ;
+
+                          obj.update( [ inpt ], function() {
+                              if( fld === 'name' ) {
+                                  updateScenes();
+                                  selectScene( currScene );
+                              }
+                          } );
                       }
                   } );
               }
