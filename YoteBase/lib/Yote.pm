@@ -531,7 +531,28 @@ use overload
     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
 
-# add a get()/set() here?
+sub set {
+    my( $self, $fld, $val ) = @_;
+
+    my $inval = $self->{STORE}->_xform_in( $val );
+    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+    $self->{DATA}{$fld} = $inval;
+    return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+sub get {
+    my( $self, $fld, $default ) = @_;
+    my $cur = $self->{DATA}{$fld};
+    if( ! defined( $cur ) && defined( $default ) ) {
+        if( ref( $default ) ) {
+            # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of tihngs to save
+            $self->{STORE}->_dirty( $default->{STORE}->_get_id( $default ) );
+        }
+                $self->{STORE}->_dirty( $self, $self->{ID} );
+        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
+    }
+    return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+}
+
 
 # -----------------------
 #
@@ -634,6 +655,7 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
+                    # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of tihngs to save
                     $self->{STORE}->_dirty( $init_val, $self->{STORE}->_get_id( $init_val ) );
                 }
                 $self->{STORE}->_dirty( $self, $self->{ID} );

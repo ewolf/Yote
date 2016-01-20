@@ -36,7 +36,8 @@
                   
                   function activateUpdateFields() {
                       $( '.updateField' ).on( 'keypress', function(ev) {
-                          if( ev.keyCode == 13 || ev.charCode == 13 ) {
+                          var kk = ev.keyCode || ev.charCode;
+                          if( kk == 13 || kk == 9 ) {
                               var $this = $( this );
                               var obj = yote.fetch( $this.data('id') );
                               var fld = $this.data('field');
@@ -100,11 +101,19 @@
  <button class="addAction product-line" data-action="new_step" data-parent="' + line.id + '">Add Step</button>\
  <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
                           var steps = line.get( 'steps' ).toArray();
-                          alert( steps.length );
                           for( var j=0; j<steps.length; j++ ) {
                               var step = steps[j];
-                              alert( step );
-                              buf += 'In <input class="updateField showField step" data-id="' + step.id + '" data-field="hours" type="text"> hours, this produces <input class="updateField showField step" data-id="' + step.id + '" data-field="units_produced" type="text"> units for a rate of <span class="showField" data-id="' + step.id + '" data-field="production_rate"></span> units produced per hour';
+                              buf += '<input class="updateField step showField" \
+                                             place-holder="step name" data-id="' + step.id + '" \
+                                             data-field="name" type="text"> \
+                                      Can produce <input class="updateField showField step" \
+                                                  data-id="' + step.id + '" \
+                                                  data-field="units_produced" type="text"> \
+                                      units per <input class="updateField showField step" \
+                                                       data-id="' + step.id + '" data-field="hours" type="text"> \
+                                      hour. Rate of <span class="showField" data-id="' + step.id + '" \
+                                                         data-field="production_rate"></span>  \
+                                      <BR>';
                           }
 
                           buf += '</div>';
