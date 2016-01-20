@@ -7,7 +7,7 @@ no warnings 'uninitialized';
 use base 'Samp::Component';
 use Samp::ProductLine;
 
-my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round downd sweet home 3d
+my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round down
 
 sub allowedUpdates {
     [qw( name 
@@ -33,7 +33,8 @@ sub _init {
 
 sub calculate {
     my $self = shift;
-    $self->set_employee_monthly_cost( $self->get_employee_count() * $self->get_employee_pay_rate() );
+    my $hours_in_month = (365.0/12) * 8;
+    $self->set_employee_monthly_cost( $self->get_employee_count() * $self->get_employee_pay_rate() * $hours_in_month );
 }
 
 1;

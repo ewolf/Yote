@@ -70,6 +70,11 @@
               } );
           } //activateUpdateFields
 
+          var costForm = new Intl.NumberFormat( "en-US", {
+              minimumFractionDigits : 2,
+              style : "decimal",
+          } );
+
           function watchObjects() {
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
@@ -82,6 +87,9 @@
                           }
                           var fld = $this.data( 'field' );
                           var val = o.get( fld );
+                          if( $this.data( 'format' ) == '$' ) {
+                              val = costForm.format( val );
+                          }
                           if( $this.is( 'input' ) ) {
                               $this.val( val );
                           } else {
@@ -186,7 +194,7 @@
 
               // * ) set up watchers
               watchObject( prods, function() { 
-                  setup_picker( scnz,$('#prod_sel') );
+                  setup_picker( prods,$('#prod_sel') );
               } );
               watchObjects(scenario);
               watchObject( scenario, function() { 
@@ -430,9 +438,9 @@
             <dt>Number of Employees</dt>
             <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" > </dd>
             <dt>Employee Pay</dt>
-            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_pay_rate" type="text" size="5"> $/hour </dd>
+            <dd><input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> $/hour </dd>
           </dl>
-          <span class="showField scenario" data-id="ofobj" data-field="employee_monthly_cost"></span> $/month
+          $ <span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month
 
     <hr>
     <h4 id="product-title">Products</h4>
@@ -441,9 +449,9 @@
     <hr>
     <h4 id="product-title">Products</h4>
 
-    <select class="app" id="product_sel"></select>
+    <select class="scenario" id="prod_sel" data-id="sceneid"></select>
 
-    <button type="button" class="addAction scenario" data-list="product_lines" data-id="">Create New Product Line</button>
+    <button type="button" class="addAction scenario" data-list="product_lines" data-id="sceneid">Create New Product Line</button>
     <div id="curr_product">
       No Products
     </div>
