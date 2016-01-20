@@ -8,13 +8,46 @@
       function init() {
           yote.initMain();
 
+          function setup_app(app) {
+              // * ) update data-id of things app
+              // * ) set up scenario picker
+              // * ) set up scenario
+              // * ) set up update listener on app/current_scenario which calls setup_scenario
+              // * ) check for edit/showFields that were not initialized
+          }
+
+          function setup_scenario(scene) {
+              // * ) update data-id of things scenario
+              // * ) setup products table
+              // * ) setup focused product picker
+              // * ) setup focused product
+              // * ) set up update listener on focused product picker
+              // * ) set up update listener on products list which calls setup_product
+              // * ) check for edit/showFields that were not initialized
+          }
+
+          function setup_product(prd) {
+              // * ) update data-id of things product
+              // * ) setup_steps_table from list
+              // * ) set up update listener on steps list which calls setup_steps_table
+              // * ) setup new step button
+              // * ) check for edit/showFields that were not initialized
+          }
+
+          function setup_steps_table(steps) {
+              // * ) empty steps table
+              // * ) fill steps table with steps
+              // * ) check for edit/showFields that were not initialized
+          }
+
           yote.doSequence( [ //function is passed in take two args, a callback and a fail handler
               yote.initRoot(),
               yote.loadApp( 'CalcTest' ),
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ),
-//              yote.readyWorkerCall( 'reset' ),
+//              yote.readyWorkerCall( 'reset' ), //uncomment this to reset everything
               function() {
+                  // setup_app( yote.fetch_app( 'CalcTest' ) );
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
                   var currScenario;
