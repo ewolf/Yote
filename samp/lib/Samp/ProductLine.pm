@@ -58,7 +58,7 @@ sub ingredients {
 sub _valid_choice {
     my( $self, $field, $val ) = @_;
     if( $field eq 'expected_sales_per' ) {
-        my %c = map { $_ => 1 } @{expected_sales_per()};
+        my %c = map { $_ => 1 } (expected_sales_per());
         return $c{$val};
     } elsif( $field eq 'ingredients' ) {
         my @ings = $self->ingredients();
@@ -247,6 +247,8 @@ sub calculate {
         $self->set_overhead_cost_percentage( undef );
     }
 
+    $self->get_parent->calculate;
+    
 } #calculate
 
 

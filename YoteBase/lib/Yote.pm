@@ -409,7 +409,7 @@ sub _xform_in {
     if( ref( $val ) ) {
         return $self->_get_id( $val );
     }
-    return "v$val";
+    return defined $val ? "v$val" : undef;
 }
 
 sub _xform_out {

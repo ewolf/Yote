@@ -353,7 +353,7 @@
                   if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenarios' ) ) ) {
                       curScene = app.get( 'current_scenarios' );
                       var key = 'set-build-select-listener';
-                      $( '#sel' ).data( key, false );
+                      $( '#scene_sel' ).data( key, false );
                       setup_scenario( curScene );
                   }
               }, true );
@@ -415,6 +415,8 @@
               updateListener( scenario, '_curProdWatcher', function() {
                   if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_lines' ) ) ) {                  
                       curProd = scenario.get( 'current_product_lines' );
+                      var key = 'set-build-select-listener';
+                      $( '#prod_sel' ).data( key, false );
                       setup_product( curProd );
                   }
               }, true );
@@ -537,12 +539,13 @@
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
     <p>
-      Selected Scenario <select class="showField editField app" data-field="current_scenarios"  data-var-is="object" data-src-field="scenarios"></select>
+      Selected Scenario <select class="showField editField app" data-field="current_scenarios"
+                                data-var-is="object" data-src-field="scenarios" id="scene_sel"></select>
       <a href="" class="delAction app-child scenario" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
     <div>
       <h3>Configure Scenario '<span class="showField scenario" data-field="name"></span>'</h3>
-      <table>
+      <table border="1">
         <tr><th>Scenario Name</th>
           <td>
             <div class="updateFieldControl scenario" data-classes="scenario" data-field="name" data-input-type="text" ></div>
@@ -556,14 +559,14 @@
           <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
 
         <tr><th>Monthly Cost of Production</th>
-          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
+          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span> </td></tr>
         
         <tr><th>Monthly Overhead</th>
-          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
+          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span> </td></tr>
         
       </table>
 
-      <table id="employee-tab">
+      <table id="employee-tab" border="1">
         <thead>
           <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Hours Per Week</th> <th>Notes</th> <th>Action</th> </tr>
         </thead>
@@ -572,9 +575,9 @@
       </table>
       <a href="" class="addAction scenario" data-list="employees">New Employee</a>
 
-      <table id="expenses-tab">
+      <table id="expenses-tab" border="1">
         <thead>
-          <tr> <th>Expense</th> <th>Cost</th> <th> <th>Notes</th> </tr>
+          <tr> <th>Expense</th> <th>Cost</th> <th>Notes</th> <th>Action</th> </tr>
         </thead>
         <tbody>
         </tbody>
@@ -584,29 +587,48 @@
     <hr>
     
       <h4 id="product-title">Products Summary</h4>
-      <table id="product-tab">
+      <table id="product-tab" border="1">
         <thead>
-          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Revenue</th> <th>Cost</th> <th>Profit</th> </tr>
+          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Revenue</th> <th>Cost</th> <th>Profit</th> <th>Action</th> </tr>
         </thead>
         <tbody>
         </tbody>
       </table>
+       <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
       <hr>
       <h4 id="product-title">Product Detail</h4>
 
       <select class="showField editField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
 
-      <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
-      <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</a>
       <span id="no_products">No Products</span>
       <div id="curr_product">
-        Name : <div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> <br>
-        Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
 
-        <table>
-          <tr> <th>Cost / batch</th> 
-            <td><div class="updateFieldControl product" data-classes="product" data-field="total_cost_per_batch" data-input-type="number"></div></td> 
+        <table  border="1">
+          <thead>
+            <tr> <th colspan="3">Details</th> </tr>
+          </thead>
+          <tbody>
+          <tr> <th>Name</th>
+            <td><div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> </td></tr>
+          <tr> <th>Notes</th>
+            <td><div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div></td></tr>
+          <tr> <th colspan="3">Costs</th> </tr>
+          <tr> <th>Food Cost / batch</th> 
+            <td>
+              <div class="updateFieldControl product" data-classes="product" data-field="food_cost_per_batch" data-format="$"></div> <br>
+            </td>
           </tr>
+          <tr> <th>Packaging Cost / item</th> 
+            <td>
+              <div class="updateFieldControl product" data-classes="product" data-field="packaing_cost_per_item" data-format="$"></div> 
+            </td>
+          </tr>
+          <tr> <th colspan="3">Production</th> </tr>
+          <tr> <th>Production Rate </th> <td><span class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
+          <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
+          <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
+
+          <tr> <th colspan="3">Profit/Loss</th> </tr>
           <tr> <th>Sale Price / unit</th>
             <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td>
           </tr>
@@ -614,10 +636,8 @@
             <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
             <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
           </tr>
-          <tr> <th>Production Rate </th> <td><span class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
-          <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
-          <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
           <tr><th> </th> <td><div></div></td> </tr>
+          </tbody>
         </table>
 
         <h4>Ingredients</h4>
@@ -635,9 +655,9 @@
 
         <h4>Steps</h4>
 
-        <table border=1 id="steps-tab">
+        <table border="1" id="steps-tab">
           <thead>
-            <tr> <th>Name</th> <th>Items per step</th>  <th>Duration of Step (hours) </th> <th>Min time for step</th> <th>Employees Needed</th> <th>Overhead per Run</th> <th>Overhead per Hour</th> <th>Notes</th> <th>Actions</th> </tr>
+            <tr> <th>Name</th> <th>Items per step</th>  <th>Duration of Step (hours) </th> <th>Min time for step</th> <th>Employees</th> <th>Overhead per Run</th> <th>Overhead per Hour</th> <th>Notes</th> <th>Actions</th> </tr>
           </thead>
           <tbody>
           </tbody>
@@ -665,9 +685,14 @@
         <tr id="expenses-row"> 
           <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
           <td>
-              <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
-              <select class="showField editField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
+            <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
+            <select class="showField editField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
+          </td>
+          
+          <td>
+            <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
+          </td>
+          
           <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
         </tr>
         
@@ -702,9 +727,11 @@
             <div class="updateFieldControl" data-id="ID" data-field="expected_sales" data-format="$" data-input-type="number"></div>
             <select class="showField editField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
           </td>
-          <td>
-            
-          </td>
+
+          <td> <span class="showField" data-id="ID" data-field="batch_revenue"></span> </td>
+          
+          <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID" data-needs-confirmation="y" data-delete-message="Reallly delete this product?" data-from="product_lines">delete</a> </td>
+
         </tr>
 
       </table>

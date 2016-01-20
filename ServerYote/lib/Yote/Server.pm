@@ -511,7 +511,7 @@ sub _xform_in {
         return $self->_get_id( $val );
     }
 
-    return "v$val";
+    return defined $val ? "v$val" : undef;
 } #_xform_in
 
 

@@ -86,6 +86,7 @@ sub add_entry {
     $self->_on_add( $listName, $obj, $parentArgs );
     push @$list, $obj;
     $self->select_current( $listName, $obj );
+    $self->calculate;
     $obj, $obj->gather_all;
 } #add_entry
 
@@ -135,7 +136,7 @@ sub remove_entry {
         }
     }
     $item->_when_removed( $self, $from, $moreArgs );
-
+    $self->calculate;
 } #remove_entry
 
 # TODO - implement a copy?

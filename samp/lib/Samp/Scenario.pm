@@ -92,10 +92,10 @@ sub calculate {
     #
     my $prod_costs = 0;
     my $prod_revenue = 0;
-    for my $prod (@{$self->get_products([])}) {
+    for my $prod (@{$self->get_product_lines([])}) {
         $prod_costs += $prod->get_partial_cost_per_batch * $prod->get_required_monthly_batches;
         my $fact = $factor{$prod->get_expected_sales_per};
-        $prod_revenue += $prod->get_sale_price * $prod->expected_sales / $fact if $fact;
+        $prod_revenue += $prod->get_sale_price * $prod->get_expected_sales / $fact if $fact;
     }
     $self->set_monthly_product_costs( $prod_costs );
     $self->set_montly_product_revenue( $prod_revenue );
