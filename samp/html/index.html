@@ -2,8 +2,7 @@
   <head>
     <title> Calcy Testy</title>
     <script src="/__/js/yote.js"></script>
-    <script src="js/calctest.js"></script>
-
+    <script src="/__/js/jquery-1.12.0.min.js"></script>
     <script>
       function init() {
           yote.initMain();
@@ -18,37 +17,36 @@
                   var app = yote.fetch_app( 'CalcTest' );
                   
                   app.addUpdateListener( function( appo ) {
-                      document.getElementById( 'hourCost' ).value = appo.get('calcResult');
+                      $( '#hourCost' ).val( appo.get('calcResult') );
                   } );
 
                   function updateScenes() {
                       // redo select
-                      var sel = document.getElementById( 'scenario_sel' );
-                      while( sel.options.length > 0 ) {
-                          sel.remove( 0 );
-                      }
+                      var $sel = $( '#scenario_sel' );
+                      $sel.empty();
+                      
                       var scenes = app.get( 'scenarios' ).toArray();
                       if( scenes ) {
                           for( var i=0, len=scenes.length; i<len; i++ ) {
                               var sen = scenes[i];
-                              sel.options[sel.options.length] = new Option( sen.get('name'), sel.options.length );
+                              $sel.append('<option value="' + sen.id + '">' + sen.get('name' ) + '</option>' );
                           }
                       }
                   }
 
-                  function selectScene( scene, idx ) {
-                      document.getElementById( "sceneName" ).value = scene.get('name');
-                      document.getElementById( "scenario_sel" ).value = idx;
-                      app.setCurrentSceneIdx( [idx] ); //yes, this is async and that's okey
+                  function selectScene( scene ) {
+                      $( '#sceneName' ).val( scene.get('name') );
+                      $( "#scenario_sel" ).val( scene.id );
+                      app.setCurrentScene( scene ); //yes, this is async and that's okey
                   }
 
-                  document.getElementById( "scenario_sel" ).addEventListener('click',function() {
-                      var seld = document.getElementById( "scenario_sel" ).value;
-                      var sels = app.get( 'scenarios' ).toArray();
-                      selectScene( sels[seld], seld );
+                  $( "#scenario_sel" ).on('click',function() {
+                      var seld_id = $( "#scenario_sel" ).val();
+                      var sel = yote.fetch( seld_id );
+                      selectScene( sel );
                    } );
                   
-                  document.getElementById( "new_scene" ).addEventListener('click',function() {
+                  $( "#new_scene" ).on('click',function() {
                       yote.callWorker( {
                           callpath : 'new_scene',
                           callback : function( news ) {
@@ -58,7 +56,7 @@
                       } );
                   } )
 
-                  document.getElementById( "RESET" ).addEventListener('click',function() {
+                  $( "#RESET" ).on('click',function() {
                       if( confirm( 'really delete everything?' ) ) {
                           yote.callWorker( {
                               callpath : 'reset',
@@ -70,22 +68,22 @@
                       }
                   } );
 
-                  document.getElementById( "calc" ).addEventListener('click',function() {
+                  $( "#calc" ).on('click',function() {
                       yote.callWorker( {
                           callpath : 'calc',
                           params    : {
-                              number_employees : document.getElementById( 'numEmpl' ).value,
-                              hourly_wage      : document.getElementById( 'wage' ).value
+                              number_employees : $( '#numEmpl' ).val(),
+                              hourly_wage      : $( '#wage' ).val()
                           },
                           callback : function( response ) {
                               // this response has the result of the calculation state
                               // is stored in the response object's calcResult field
-                              document.getElementById( "hourCost" ).innerHTML = response.get( 'calcResult' );
+                              $( "#hourCost" ).text( response.get( 'calcResult' ) );
                           }
                       } );
                   } );
 
-                  document.getElementById( "sceneName" ).addEventListener( 'keypress', function(ev) {
+                  $( "#sceneName" ).on( 'keypress', function(ev) {
                       if( ev.keyCode == 13 || ev.charCode == 13 ) {
                           currScene.update( [{ name : this.value }], function() {
                               updateScenes();
@@ -113,11 +111,16 @@
 
     <button type="button" id="RESET">RESET</button>
     <BR><BR>
-Available Scenarios <select id="scenario_sel"></select>
+    Available Scenarios <select id="scenario_sel"></select>
     <button type="button" id="new_scene">Create New Scenario</button> <BR>
-
-Scenario Name <input type="text" id="sceneName"> <br>
-
+<div>
+    Scenario Name <input type="text" id="sceneName"> <br>
+    Description <input type="text" id="sceneName"> <br>
+    <h4>Steps</h4>
+    <div id="steps">
+      
+    </div>
+</div>
 
     <br> (test area ) <br>
     Number of Employees <input type="number" id="numEmpl"><br>

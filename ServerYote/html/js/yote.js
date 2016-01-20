@@ -42,6 +42,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     var fetch = function( id ) {
         return id2obj[ id ] || yote.root.fetch( id );
     }
+    yote.fetch = fetch;
 
     // creates a proxy method that contacts the server and
     // returns data

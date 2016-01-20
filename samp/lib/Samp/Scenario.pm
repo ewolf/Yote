@@ -7,13 +7,12 @@ no warnings 'uninitialized';
 use Yote::Server;
 use base 'Yote::ServerObj';
 
-our %EditFields = (
-    name => 1,
-    );
+our ( %EditFields ) = ( map { $_ => 1 } ( qw( name description  ) ) );
 
 sub _init {
     my $self = shift;
     $self->set_employees([]);
+    $self->set_equipment([]);
     $self->set_overhead(0);
     $self->set_product_lines([]);
 }

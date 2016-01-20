@@ -29,9 +29,9 @@ sub reset {
     $self->set_scenarios( [ $self->new_scene() ] );
 }
 
-sub setCurrentSceneIdx {
-    my( $self, $scene_idx ) = @_;
-    $self->set_current_scene_idx( $scene_idx );
+sub setCurrentScene {
+    my( $self, $scene ) = @_;
+    $self->set_current_scene( $scene );
 }
 
 sub new_scene {
@@ -41,6 +41,7 @@ sub new_scene {
         name => 'scenario ' . scalar(1 + @$scenes)
                                    }, 'Samp::Scenario' );
     push @$scenes,  $news;
+    $self->setCurrentScene( $news );
     $news;
 }
 
