@@ -58,7 +58,8 @@ onmessage = function(e) {
 
     else if( type === 'method_call' ) {
         // params is a list of the form [ object, methodname, params ]
-        return params[0][ params[1] ]( params[2] );
+        var ret = params[0][ params[1] ]( params[2] );
+        return resp( ret );
     }
 
 } //onMessage
