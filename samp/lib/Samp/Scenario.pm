@@ -14,8 +14,19 @@ sub _init {
     $self->set_employees([]);
     $self->set_equipment([]);
     $self->set_overhead(0);
-    $self->set_product_lines([]);
-}
+    $self->set_product_lines([  
+        $self->{STORE}->newobj( { name => 'product name' }, 'Samp::ProductLine' )
+        ]);
+} #_init
+
+sub new_product_line {
+    my $self  = shift;
+    my $prods = $self->get_product_lines([]);
+    my $newp  = $self->{STORE}->newobj( { name => 'product name' }, 'Samp::ProductLine' );
+    
+    push @$prods,  $newp;
+    $newp;
+} #new_product_line
 
 sub update {
     my( $self, $fields ) = @_;

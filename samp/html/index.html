@@ -15,7 +15,7 @@
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
-                  
+
                   app.addUpdateListener( function( appo ) {
                       $( '#hourCost' ).val( appo.get('calcResult') );
                   } );
@@ -64,7 +64,18 @@
                           } );
                       }
                   } );
-                                                                  
+
+
+                  $( "#new_product" ).on('click',function() {
+                      yote.callWorker( {
+                          callpath : 'new_product',
+                          callback : function( news ) {
+                              updateScenes();
+                              selectScene( news );
+                          }
+                      } );
+                  } )
+
                   $( "#new_scene" ).on('click',function() {
                       yote.callWorker( {
                           callpath : 'new_scene',
@@ -113,7 +124,7 @@
                       if( ev.keyCode == 13 || ev.charCode == 13 ) {
                           var $this = $( this );
                           var obj = yote.fetch( $this.data('id') );
-                          var fld = $this.data('field'); 
+                          var fld = $this.data('field');
                           var inpt = {};
                           inpt[ fld ] = $this.val() ;
 
@@ -147,16 +158,17 @@
 <div>
     Scenario Name <input class="updateField scenario" data-id="ofobj" data-field="name" type="text"> <br>
     Description <input class="updateField scenario" data-id="ofobj" data-field="description" type="text"> <br>
-    <h4>Steps</h4>
-    <div id="steps">
-      
+    <h4>Products</h4>
+    <button type="button" id="new_product">Create New Product Line</button>
+    <div id="products">
+
     </div>
 </div>
 
     <br> (test area ) <br>
     Number of Employees <input type="number" id="numEmpl"><br>
     Hourly Wage <input type="number" id="wage"> <br>
-    
+
     <div style="border:1px solid black; display:inline-block">
        <div id="hourCost"></div>
     </div>
