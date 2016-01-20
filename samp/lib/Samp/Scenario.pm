@@ -30,31 +30,7 @@ sub _init {
     $self->set_overhead(0);
 } #_init
 
-sub calculate {
-    my( $self ) = @_;
-    my $lines = $self->get_product_lines([]);
-
-    my( $slowest_rate, $bottleneck );
-    for my $line (@$lines) {
-        my $line_rate = $line->get_production_rate();
-        $rate //= $line_rate;
-        if( $line_rate < $slowest_rate ) {
-            $slowest_rate =  $line_rate;
-            $bottleneck = $line;
-        }
-        
-        # rate is per hour. Calculate how long it would take
-        # to do a production run of X
-    }
-
-    my $hours = 0;
-    for my $line (@$lines) {
-        my $line_rate = $line->get_production_rate();
-        if( $line_rate > 0 ) {
-            $hours += $slowest_rate / $line_rate; # items / (items/hour)  --> hours
-        }
-    }
-    
+sub calculate {   
 }
 
 1;

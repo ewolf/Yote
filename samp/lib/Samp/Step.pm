@@ -21,7 +21,7 @@ sub calculate {
     my $self = shift;
     my $hours = $self->get_hours();
     if( $hours > 0 ) {
-        $self->set_production_rate( sprintf( "%.0f", $self->get_units_produced() / $self->get_hours() ) );
+        $self->set_production_rate( sprintf( "%.2f", $self->get_units_produced() / $self->get_hours() ) );
     } else {
         $self->set_production_rate( 'n/a' );
     }

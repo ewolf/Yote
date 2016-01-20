@@ -55,7 +55,7 @@ sub remove_entry {
     my( $self, $item, $from ) = @_;
     die "Unknown list '$from'" unless $self->lists->{$from};
     my $rem = "remove_from_$from";
-    $self->$rem;
+    $self->$rem($item);
 }
 
 # TODO - implement a copy?

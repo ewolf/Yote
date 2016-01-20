@@ -597,7 +597,6 @@ sub __discover_methods {
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
-
     $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     

@@ -49,7 +49,7 @@ var init = yote.registerFunction( 'init', function() {
 var select_scenario = yote.registerFunction( 'select_scenario', function( scenario ) {
     var lines = scenario.get( 'product_lines' );
     yote.expose( lines.toArray() );
-    app.setCurrentScene( scenario );
+    app.setCurrentScenario( scenario );
     currScenario = scenario;
 console.warn( ['zoinks', currScenario.get( 'product_lines' ).toArray() ] );
     yote.expose( currScenario.get( 'product_lines' ).toArray() );

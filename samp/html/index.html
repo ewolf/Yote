@@ -4,6 +4,7 @@
     <script src="/__/js/yote.js"></script>
     <script src="/__/js/jquery-1.12.0.min.js"></script>
     <script>
+      <!--
       function init() {
           yote.initMain();
 
@@ -28,6 +29,8 @@
                   updateScenarioSelect();
                   selectScenario( app.get( 'current_scenario' ) );
 
+
+                  
                   function updateScenarioSelect() {
                       // redo select
                       var $sel = $( '#scenario_sel' );
@@ -97,7 +100,7 @@
                   } //updateDataFields
 
                   function activateUpdateFields() {
-                      $( '.updateField' ).off().on( 'keydown', function(ev) {
+                      $( 'input.updateField' ).off().on( 'keydown', function(ev) {
                           var kk = ev.keyCode || ev.charCode;
                           if( kk == 13 || kk == 9 ) {
                               var $this = $( this );
@@ -112,11 +115,43 @@
                               } );
                           }
                       } );
+                      $( 'span.updateField>span' ).off().on( 'click',
+                                                             function() {
+                                                                 var $this = $(this);
+                                                                 $this.parent().addClass( 'editing' );
+                                                                 var $inpt = $this.parent().find( 'input' );
+                                                                 $inpt.data('original', $inpt.val() );
+                                                             } );
+                      $( 'span.updateField>input' ).on( 'keydown',
+                                                        function(ev) {
+                                                            var kk = ev.keyCode || ev.charCode;
+                                                            var $this = $(this);
+                                                            if( kk == 27 )  {
+                                                                $this.val( $this.data( 'original' ) );
+                                                                $this.parent().removeClass( 'editing' );
+                                                                $this.removeClass('edited' );
+                                                            } else if( kk == 13 || kk == 9 ) {
+                                                                var p = $this.parent();
+                                                                p.removeClass( 'editing' );
+                                                                p.find('span').text( $this.val() );
+                                                                $this.removeClass('edited' );
+                                                            }
+                                                            $this.toggleClass('edited', $this.data('original') == $this.val() );
+                                                        } );
+                      $( 'span.updateField>input' ).on( 'keyup', function() {
+                          var $this = $(this);
+                          console.log( [$this.data('original'),$this.val(), $this.data('original')!=$this.val()] );
+                          $this.toggleClass('edited', $this.data('original') != $this.val() );
+                      } );
+
                       $( '.delAction' ).off().on( 'click', function(ev) {
                           var $this  = $(this);
+                          if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
+                              return;
+                          }
                           var par    = yote.fetch($this.data( 'parent' ));
                           var obj    = yote.fetch($this.data( 'id' ));
-                          par.remove_entry( [obj], function() {
+                          par.remove_entry( [obj,$this.data('from')], function() {
                               updateScenarioSelect();
                               selectScenario( app.get( 'current_scenario' ) );
                           } );
@@ -156,17 +191,26 @@
 
                           var buf = '<div style="border:solid black 1px;margin:4px;padding:5px;"><br>\
  <input placeholder="Product Line Name" class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
- <button class="delAction product-line" data-parent="' + currScenario.id + '" data-id="' + line.id + '">Delete</button> \
+ <button class="delAction product-line" data-parent="' + currScenario.id + '" data-from="product_lines" data-id="' + line.id + '">Delete</button> \
  <br>\
  <input placeholder="Description" class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text"> <BR>\
  Produces <span  class="showField" data-id="' + line.id + '" data-field="production_rate">?</span> units per hour <br>\
  Cost of production <span  class="showField" data-id="' + line.id + '" data-field="production_cost">?</span> dollars per hour <br>\
+\
+ Units per day <span  class="showField" data-id="' + line.id + '" data-field="produced_in_day">?</span> <br> \
+ Units per month <span  class="showField" data-id="' + line.id + '" data-field="produced_in_month">?</span> <br> \
+\
  <h5>Process Steps</h5>\
  <button class="addAction product-line" data-list="steps"  data-id="' + line.id + '">Add Step</button>\
  <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
                           var steps = line.get( 'steps' ).toArray();
                           for( var j=0; j<steps.length; j++ ) {
                               var step = steps[j];
+
+                              // ~~~~~~~~ HERE is here
+                              //  ~~~~~~~~~~ how about a table, and include employees required for step, min step time,
+                              // ~~~~~~~~ max step time (or max batch size?)
+                              
                               buf += '<input class="updateField step showField" \
                                              place-holder="step name" data-id="' + step.id + '" \
                                              data-field="name" type="text"> \
@@ -203,23 +247,51 @@
               .fail( '*', function() { console.log( "Do this failure unles the step has a specific error message" ) } )
               .start();
       }
+-->
     </script>
+
+    <style>
+    span.updateField { display: inline-block; background-color:lightgrey; }
+    span.updateField:hover { cursor: pointer; background-color:yellow; }
+    span.updateField>input { display: none; }
+    span.updateField>span { display: inline; }
+    span.updateField.editing>input { display: inline; background-color:lightgray; }
+    span.updateField.editing>input.edited { display: inline; background-color:yellow; }
+    span.updateField.editing>span { display: none; }
+    </style>
 
   </head>
   <body onLoad="init()">
-    <h1>Production Line Scenario Manager</h1>
+    <h1>Shoppe Demo</h1>
 
-    <button type="button" id="RESET">RESET</button>
     <hr>
-    Available Scenarios <select class="app" id="scenario_sel"></select>
-    <button type="button" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</button>
-        <button type="button" class="delAction app" style="display:none" id="del_scenario">Delete Scenario</button> <BR>
-<div>
-    Scenario Name <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text"> <br>
-    Description <input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> <br>
-    Number of Employees <input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" >
-    at <input class="updateField showField scenario" data-id="ofobj" data-field="employee_pay_rate" type="text" size="5">
-    $/hour = <input class="updateField showField scenario" data-id="ofobj" data-field="employee_monthly_cost" type="text" size="6"> $/month
+    <button type="button" id="RESET">RESET</button> (warning, reset will clear everything)
+    <hr>
+    <h3>Scenarios</h3>
+    <p>
+      Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</a>
+    </p>
+    Selected Scenario <select class="app" id="scenario_sel"></select>
+    
+        <a href="" class="delAction app" style="display:none" id="del_scenario" data-needs-confirmation="y" data-delete-message="Really delete this scenario?">Delete this Scenario</a> <BR>
+        <div>
+          <h3>Configure Scenario</h3>
+          <dl>
+            <dt>Scenario Name</dt>
+            <dd>
+              <span class="updateField">
+                    <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text">
+                    <span class="showField scenario" data-id="ofobj" data-field="name"></span>
+              </span>
+                   </dd>
+            <dt>Description</dt>
+            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> </dd>
+            <dt>Number of Employees</dt>
+            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" > </dd>
+            <dt>Employee Pay</dt>
+            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_pay_rate" type="text" size="5"> $/hour </dd>
+          </dl>
+          <span class="showField scenario" data-id="ofobj" data-field="employee_monthly_cost"></span> $/month
     <hr>
     <h4 id="product-title">Products</h4>
     <table id="product-table"> 
