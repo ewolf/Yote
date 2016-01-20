@@ -335,23 +335,23 @@ sub _process_request {
         }
 
         my( @out_res );
-
+        my( @mays, @has );
 
         for my $res (@res) {
             my $val = $store->_xform_in( $res );
             # mark that it may and does have the token
-            $server_root->_setMay( $val, $token );
+            push @mays, $val;
 
             if ( ref $val eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
-                          $server_root->_setMay( $d, $token );
+                          push @mays, $d;
                           $d } 
                         @$val ];
             } elsif ( ref $val eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $val->{$_} );
-                          $server_root->_setMay( $d, $token );
+                          push @mays, $d;
                           $_ => $d }
                         keys %$val };
             } 
@@ -368,15 +368,13 @@ sub _process_request {
                 unless( $store->_last_updated( $server_root_id ) ) {
                     $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ time ] );
                 }
-                $server_root->_setHas( $server_root_id, $token );
+                push @has, $server_root_id;
             }
         } else {
             $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
         }
 
-        for my $res (@out_res) {
-            $server_root->_setHas( $res, $token );
-        }
+        push @has, @out_res;
         
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
@@ -387,13 +385,13 @@ sub _process_request {
             if ( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
-                          $server_root->_setMay( $d, $token );
+                          push @mays, $d;
                           $d } 
                         @$obj ];
             } elsif ( $ref eq 'HASH' ) {
                 $data = {
                     map { my $d = $store->_xform_in( $obj->{$_} );
-                          $server_root->_setMay( $d, $token );
+                          push @mays, $d;
                           $_ => $d }
                         keys %$obj };
             } else {
@@ -401,20 +399,24 @@ sub _process_request {
 
                 $data = {
                     map { my $d = $obj_data->{$_};
-                          $server_root->_setMay( $d, $token );
+                          push @mays, $d;
                           $_ => $d }
                         grep { $_ !~ /^_/ }
                         keys %$obj_data };
                 $methods{$ref} ||= $obj->_callable_methods;
             }
-            $server_root->_setHas( $obj_id, $token );
+            push @has, $obj_id;
             my $update = {
                 id    => $obj_id,
                 cls   => $ref,
                 data  => $data,
             };
             push @updates, $update;
-        }                       #each obj_id to update
+        } #each obj_id to update
+
+
+        $server_root->_setHasAndMay( \@has, \@mays, $token );
+
         
         my $out_res = to_json( { result  => \@out_res,
                                  updates => \@updates,
@@ -701,15 +703,31 @@ sub _resetHasAndMay {
     }
 } #_resetHasAndMay
 
-sub _setHas {
-    my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0 || $token eq '_';
-    $self->{STORE}->lock( "_doesHave_Token2objs" );
+sub _setHasAndMay {
+    my( $self, $has, $may, $token ) = @_;
+
+    $self->{STORE}->lock( "_has_and_may_Token2objs" );
+
+    # has
     my $obj_data = $self->get__doesHave_Token2objs;
-    $obj_data->{$token}{$id} = time;
+    for my $id (@$has) {
+        next if index( $id, 'v' ) == 0 || $token eq '_';
+        $obj_data->{$token}{$id} = time;
+    }
     $self->{STORE}->_stow( $obj_data );
-    $self->{STORE}->unlock( "_doesHave_Token2objs" );
-}
+    
+    # may
+    $obj_data = $self->get__mayHave_Token2objs;
+    for my $id (@$may) {
+        next if index( $id, 'v' ) == 0 || $token eq '_';
+        $obj_data->{$token}{$id} = time - 1;
+    }
+
+    $self->{STORE}->_stow( $obj_data );
+    
+    $self->{STORE}->unlock( "_has_and_may_Token2objs" );
+} #_setHasAndMay
+
 
 sub _getMay {
     my( $self, $id, $token ) = @_;
@@ -719,15 +737,6 @@ sub _getMay {
     $obj_data->{$token} && $obj_data->{$token}{$id};
 }
 
-sub _setMay {
-    my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0 || $token eq '_';
-    $self->{STORE}->lock( "_mayHave_Token2objs" );
-    my $obj_data = $self->get__mayHave_Token2objs;
-    $obj_data->{$token}{$id} = time - 1;
-    $self->{STORE}->_stow( $obj_data );
-    $self->{STORE}->unlock( "_mayHave_Token2objs" );
-}
 
 
 sub _updates_needed {

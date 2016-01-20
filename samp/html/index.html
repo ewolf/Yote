@@ -119,6 +119,9 @@
               $( '.app' ).each( function() {
                   $(this).data( 'id', app.id );
               } );
+              $( '.app-child' ).each( function() {
+                  $(this).data( 'parent', app.id );
+              } );
 
               var curScene = app.get( 'current_scenarios' );
 
@@ -126,6 +129,11 @@
               var scnz = app.get('scenarios');
               setup_picker( app, 'scenarios',$('#scenario_sel'), app.setCurrentScenario );
               
+              if( scnz.length() > 1 ) {
+                  $( '#del_scenario').show();
+              } else {
+                  $( '#del_scenario').hide();
+              }
 
               // * ) set up scenario
               setup_scenario( curScene, app );
@@ -190,6 +198,9 @@
               // * ) update data-id of things scenario
               $( '.scenario' ).each( function() {
                   $(this).data( 'id', scenario.id );
+              } );
+              $( '.scenario-child' ).each( function() {
+                  $(this).data( 'parent', scenario.id );
               } );
 
               var prods = scenario.get( 'product_lines' );
@@ -273,7 +284,7 @@
     </p>
     Selected Scenario <select class="app" id="scenario_sel"></select>
     
-        <a href="" class="delAction app" style="display:none" id="del_scenario" data-needs-confirmation="y" data-delete-message="Really delete this scenario?">Delete this Scenario</a> <BR>
+        <a href="" class="delAction app-child scenario" style="display:none" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">Delete this Scenario</a> <BR>
         <div>
           <h3>Configure Scenario</h3>
           <dl>

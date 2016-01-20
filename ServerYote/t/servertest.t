@@ -142,11 +142,13 @@ sub test_suite {
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
 
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
-               l2a( qw( fetch_app
+               l2a( qw(  create_token
                          fetch
-                         test
+                         fetch_app
                          fetch_root
-                         create_token
+                         init_root
+                         test
+                         update
                   ) ), 'correct methods for fetched server root' );
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
@@ -171,11 +173,13 @@ sub test_suite {
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
     is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
-               l2a( qw( fetch_app
-                         fetch
-                         test
-                         fetch_root
-                         create_token
+               l2a( qw( create_token
+                        fetch
+                        fetch_app
+                        fetch_root
+                        init_root
+                        test
+                        update
                     ) ), 'correct methods for server root' );
 
 
