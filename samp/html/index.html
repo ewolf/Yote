@@ -41,7 +41,7 @@
                                                                $this.parent().removeClass( 'editing' );
                                                            }
                                                        } );
-              $( 'div.updateFieldControl' + fc + '>input' ).on( 'keydown',
+              $( 'div.updateFieldControl' + fc + '>input' ).off('keydown').on( 'keydown',
                                                 function(ev) {
                                                     var kk = ev.keyCode || ev.charCode;
                                                     var $this = $(this);
@@ -53,6 +53,7 @@
                                                         var p = $this.parent();
                                                         p.removeClass( 'editing' );
                                                         p.find('span').text( $this.val() );
+                                                        $this.parent().removeClass( 'editing' );
                                                         $this.removeClass('edited' );
                                                     }
                                                     $this.toggleClass('edited', $this.data('original') == $this.val() );
@@ -150,7 +151,7 @@
 
           function activateUpdateFieldsAndActions(fieldClass) {
               var fc = fieldClass ? '.' + fieldClass : '';
-              $( 'input.updateField' + fc ).off('keydown').on( 'keydown', function(ev) {
+              $( 'input.updateField' + fc ).on( 'keydown', function(ev) {
                   var kk = ev.keyCode || ev.charCode;
                   if( kk == 13 || kk == 9 ) {
                       var $this = $( this );
@@ -572,7 +573,7 @@
 
       <table border=1 id="steps_tab">
         <thead>
-          <tr> <th>Name</th> <th>Items per Batch</th>  <th>Duration of Batch ( hours) </th> <th>Employees Needed</th> <th>Overhead</th> <th>Actions</th> </tr>
+    <tr> <th>Name</th> <th>Items per Batch</th>  <th>Duration of Batch ( hours) </th> <th>Employees Needed</th> <th>Overhead ($)</th> <th>Actions</th> </tr>
         </thead>
         <tbody>
         </tbody>
