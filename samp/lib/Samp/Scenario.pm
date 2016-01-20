@@ -14,6 +14,7 @@ sub allowedUpdates {
          description 
          employee_count
          employee_pay_rate
+         current_product_line
     )]
 }
 sub lists {

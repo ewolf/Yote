@@ -45,6 +45,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         }
         var r = id2obj[ id ];
         if( typeof r === 'undefined' ) {
+            console.warn( "warning : nonWorker fetching asynchronously" );
             r = yote.root.fetch( id );
         }
         return r;
@@ -92,7 +93,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         if( ! isUpdate ) {
             obj = {};
             obj.id = datastructure.id;
-            obj.listeners = [];
+            obj.listeners = {};
             id2obj[ datastructure.id ] = obj;
         }
         obj.cls = datastructure.cls;
@@ -100,8 +101,9 @@ yote._init = function( yoteServerURL, isWorker ) {
 
         // takes a function that takes this object as a
         // parameter
-        obj.addUpdateListener = function( listener ) {
-            obj.listeners.push( listener );
+        obj.addUpdateListener = function( listener, key ) {
+            key += '';
+            obj.listeners[ key ] = listener;
         }
         obj.get = function( key ) {
             var val = this._data[key];
@@ -131,6 +133,9 @@ yote._init = function( yoteServerURL, isWorker ) {
                 }
                 return a;
             }
+            obj.length = function() {
+                return Object.keys( obj._data ).length;
+            }
         }
         
         var mnames = class2meths[ datastructure.cls ] || [];
@@ -140,9 +145,10 @@ yote._init = function( yoteServerURL, isWorker ) {
 
         // fire off an event for any update listeners
         if( isUpdate ) {
-            for( var i=0, len=obj.listeners.length; i<len; i++ ) {
-                obj.listeners[i]( obj );
-            }
+            var listens = obj.listeners;
+            for( var k in listens ) {
+                listens[k]( obj );
+            };
         }
 
     } //makeObj
