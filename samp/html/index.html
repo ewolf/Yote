@@ -18,6 +18,15 @@
           } );
 
           function activateUpdateFields() {
+              $( 'span.updateFieldControl' ).each( function() {
+                  var $this = $(this);
+                  if( $this.data( 'filled' ) != 'y' ) {
+                      $this.data( 'filled', 'y' );
+                      
+                      $this.append( '<input class="updateField showField scenario" data-id="' +  + '" data-field="name" type="text">' +
+                                    '<span class="showField scenario" data-id="ofobj" data-field="name"></span>' );
+                  }
+              } );
               $( 'input.updateField' ).off('keydown').on( 'keydown', function(ev) {
                   var kk = ev.keyCode || ev.charCode;
                   if( kk == 13 || kk == 9 ) {
@@ -66,6 +75,7 @@
                   var par    = yote.fetch($this.data( 'parent' ));
                   var obj    = yote.fetch($this.data( 'id' ));
                   par.remove_entry( [obj,$this.data('from')] );
+                  ev.preventDefault();
               } );
               $( '.addAction' ).off('click').on( 'click', function(ev) {
                   var $this = $(this);
@@ -211,6 +221,18 @@
               if( prods.length() > 0 ) {
                   var buf = '<tr>' + [ 'name', 'production rate' ]
                       .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
+                  var prodl = prods.toArray();
+                  for( var i=0; i<prodl.length; i++) {
+                      var line = prodl[i];
+                      buf += '<tr>' + [ 'name', 'production rate' ]
+                          .map( function(w) { return '<td>' + line.get(w) + '</td>'; } ).join('') + '</tr>';
+                  }
+                  $tab.append( buf );
+                  $( '#no_products' ).hide();
+                  $( '#curr_products' ).show();
+              } else {
+                  $( '#no_products' ).show();
+                  $( '#curr_products' ).hide();
               }
 
 
@@ -248,10 +270,19 @@
 
           function setup_product(prd) {
               // * ) update data-id of things product
+              $( '.product' ).each( function() {
+                  $(this).data( 'id', prd.id );
+              } );
+              $( '.product-child' ).each( function() {
+                  $(this).data( 'parent', prd.id );
+              } );
+
               // * ) setup_steps_table from list
               // * ) set up update listener on steps list which calls setup_steps_table
               // * ) setup new step button
               // * ) check for edit/showFields that were not initialized
+              activateUpdateFields();
+              watchObjects(prd);
           }
 
           function setup_steps_table(steps) {
@@ -272,6 +303,7 @@
     span.updateFieldControl.editing>input { display: inline; background-color:lightgray; }
     span.updateFieldControl.editing>input.edited { display: inline; background-color:yellow; }
     span.updateFieldControl.editing>span { display: none; }
+    span.showField { padding: .2em; background-color:#EFE; border: groove 1px #DDD; }
     </style>
 
   </head>
@@ -282,36 +314,38 @@
     <p>
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</a>
     </p>
-    Selected Scenario <select class="app" id="scenario_sel"></select>
-    
-        <a href="" class="delAction app-child scenario" style="display:none" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">Delete this Scenario</a> <BR>
+    <p>
+      Selected Scenario <select class="app" id="scenario_sel"></select>
+      (<a href="" class="delAction app-child scenario" style="display:none" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">Delete this Scenario</a>)
+    </p>
         <div>
-          <h3>Configure Scenario</h3>
-          <dl>
-            <dt>Scenario Name</dt>
-            <dd>
-              <span class="updateFieldControl">
-                    <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text">
-                    <span class="showField scenario" data-id="ofobj" data-field="name"></span>
-              </span>
-                   </dd>
-            <dt>Description</dt>
-            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> </dd>
-            <dt>Number of Employees</dt>
-            <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" > </dd>
-            <dt>Employee Pay</dt>
-            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </dd>
-            <dt>Monthly Rent</dt>
-            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </dd>            
-            <dt>Monthly Utilities</dt>
-            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </dd>            
-          </dl>
-          Employee Monthly Cost $<span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month
-          <br>
-          Monthly Cost $<span class="showField scenario" data-id="ofobj" data-format="$" data-field="monthly_cost"></span> / month
-
+          <h3>Configure Scenario '<span class="showField scenario" data-field="name"></span>'</h3>
+          <table>
+            <tr><th>Scenario Name</th>
+            <td>
+              <span class="updateFieldControl scenario" data-field="name" ></span>
+            <!--
+                <span class="updateFieldControl">
+                  <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text">
+                  <span class="showField scenario" data-id="ofobj" data-field="name"></span>
+                  </span>
+                  -->
+              </td></tr>
+            <tr><th>Description</th>
+            <td><input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> </td></tr>
+            <tr><th>Number of Employees</th>
+            <td><input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" > </td></tr>
+            <tr><th>Employee Pay</th>
+            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </td></tr>
+            <tr><th>Monthly Rent</th>
+            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </td></tr>            
+            <tr><th>Monthly Utilities</th>
+            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </td></tr>            
+            <tr><th>Employee Monthly Cost</th><td>$<span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month</td></tr>
+            <tr><th>Monthly Cost</th><td>$<span class="showField scenario" data-id="ofobj" data-format="$" data-field="monthly_cost"></span>a / month</td></tr>
+          </table>
     <hr>
-    <h4 id="product-title">Products</h4>
+    <h4 id="product-title">Product Summary</h4>
     <table id="product-table"> 
     </table>
     <hr>
@@ -319,9 +353,10 @@
 
     <select class="scenario" id="prod_sel" data-id="sceneid"></select>
 
-    <button type="button" class="addAction scenario" data-list="product_lines" data-id="sceneid">Create New Product Line</button>
+    <a href="" class="addAction scenario" data-list="product_lines" data-id="sceneid">Create New Product Line</button>
+    <span id="no_products">No Products</span>
     <div id="curr_product">
-      No Products
+      <span class="showField product" data-id="ofobj" data-field="name"></span>
     </div>
     </div>
 
