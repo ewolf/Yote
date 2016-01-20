@@ -31,7 +31,9 @@ sub _init {
     $self->set_overhead(0);
 } #_init
 
-sub calculate {   
+sub calculate {
+    my $self = shift;
+    $self->set_employee_monthly_cost( $self->get_employee_count() * $self->get_employee_pay_rate() );
 }
 
 1;
