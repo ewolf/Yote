@@ -9,6 +9,10 @@ use base 'Yote::ServerObj';
 
 use Samp::Step;
 
+our ( %EditFields ) = ( map { $_ => 1 } ( 
+                            qw( name
+                                description  ) ) );
+
 sub _init {
     my $self = shift;
     $self->set_name( "product" );
@@ -48,7 +52,15 @@ sub add_employee {
         hourly_wage => 15,
                                                      } ) );
 }
-
+sub update {
+    my( $self, $fields ) = @_;
+    for my $field (keys %$fields) {
+        if( $EditFields{$field} ) {
+            my $x = "set_$field";
+            $self->$x( $fields->{$field} );
+        }
+    }
+}
 1;
 
 __END__

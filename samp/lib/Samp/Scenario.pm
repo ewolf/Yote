@@ -6,6 +6,7 @@ no warnings 'uninitialized';
 
 use Yote::Server;
 use base 'Yote::ServerObj';
+use Samp::ProductLine;
 
 our ( %EditFields ) = ( map { $_ => 1 } ( qw( name description  ) ) );
 

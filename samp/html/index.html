@@ -16,6 +16,38 @@
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
 
+                  function updateDataFields() {
+                      $( '.updateField' ).each( function() {
+                          var $this = $( this );
+                          var oid = $this.data( 'id' );
+                          var obj = yote.fetch( oid );
+                          if( obj ) {
+                              $this.val( obj.get( $this.data('field') ) );
+                          } else {
+                              console.warn( ["Unable to update data field", $this ] );
+                          }
+                      } );
+                  } //updateDataFields
+                  
+                  function activateUpdateFields() {
+                      $( '.updateField' ).on( 'keypress', function(ev) {
+                          if( ev.keyCode == 13 || ev.charCode == 13 ) {
+                              var $this = $( this );
+                              var obj = yote.fetch( $this.data('id') );
+                              var fld = $this.data('field');
+                              var inpt = {};
+                              inpt[ fld ] = $this.val() ;
+
+                              obj.update( [ inpt ], function() {
+                                  if( fld === 'name' ) {
+                                      updateScenes();
+                                      selectScene( currScene );
+                                  }
+                              } );
+                          }
+                      } );
+                  } //activateUpdateFields
+
                   function updateScenes() {
                       // redo select
                       var $sel = $( '#scenario_sel' );
@@ -34,8 +66,6 @@
                   }
 
                   function updateProdLines() {
-                      var cs = currScene.get( 'product_lines' );
-                      return;
                       var lines = currScene.get( 'product_lines' ).toArray();
                       $('#products').empty();
                       for( var i=0; i<lines.length; i++ ) {
@@ -43,32 +73,32 @@
                           $('#products').append( '<div>' +
                                                  '<button type="delAction product-line" data-parent="' + currScene.id + '" data-id="' + line.id + '">Delete</button>' + 
                                                  'Name <input class="updateField product-line" data-id="' + line.id + '" data-field="name" type="text"> <br>' + 
-                                                 'Desc <input class="updateField product-line" data-id="' + line.id + '" data-field="Description" type="text"> <br>' + 
+                                                 'Desc <input class="updateField product-line" data-id="' + line.id + '" data-field="description" type="text"> <br>' + 
 
                                                  '</div>' );
 
                       }
-                  }
+                      updateDataFields();
+                      activateUpdateFields();
+                  } // updateProdLines
 
                   function selectScene( scene ) {
                       $( '#sceneName' ).val( scene.get('name') );
                       $( "#scenario_sel" ).val( scene.id );
-                      app.setCurrentScene( scene ); //yes, this is async and that's okey
                       yote.callWorker( {
                           callpath : 'select_scene',
                           params : scene,
                           callback : function( resp ) {
                               currScene = scene;
+                              $( '.scenario.updateField' ).each( function() {
+                                  var $this = $( this );
+                                  $this.data( 'id', currScene.id );
+                              } );
                               updateProdLines();
                           }
                       } );
                       
 
-                      $( '.scenario.updateField' ).each( function() {
-                          var $this = $( this );
-                          $this.data( 'id', scene.id );
-                          $this.val( scene.get( $this.data('field') ) );
-                      } );
                   }
 
                   $( "#scenario_sel" ).on('click',function() {
@@ -89,10 +119,9 @@
 
                   $( "#new_product" ).on('click',function() {
                       yote.callWorker( {
-                          callpath : 'new_product',
+                          callpath : 'new_product_line',
                           callback : function(newline) {
                               updateProdLines();
-                              selectLine( newline );
                           }
                       } );
                   } )
@@ -157,22 +186,6 @@
                       } );
                   } );
 
-                  $( '.updateField' ).on( 'keypress', function(ev) {
-                      if( ev.keyCode == 13 || ev.charCode == 13 ) {
-                          var $this = $( this );
-                          var obj = yote.fetch( $this.data('id') );
-                          var fld = $this.data('field');
-                          var inpt = {};
-                          inpt[ fld ] = $this.val() ;
-
-                          obj.update( [ inpt ], function() {
-                              if( fld === 'name' ) {
-                                  updateScenes();
-                                  selectScene( currScene );
-                              }
-                          } );
-                      }
-                  } );
               }
           ] )
               .fail( 1, function() { console.log( "Step 1 failed" ) } )
