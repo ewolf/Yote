@@ -146,6 +146,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     var returnVal = '';
     var reqListener = function( returnRaw ) { 
         return function() {
+            console.log( "GOT FROM SERVER : " + this.responseText );
             if( isWorker && !returnRaw ) {
                 returnVal = processRaw( this.responseText ); 
             } else {
@@ -175,8 +176,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener( returnRaw ) );
 
-        console.log( '<<' + yoteServerURL + '>>' );
-        console.log( 'url : ' + ( yoteServerURL || "" ) + 
+        console.log( 'contacting server via url : ' + ( yoteServerURL || "" ) + 
                      '/' + id +
                      '/' + ( token ? token : '_' ) + 
                      '/' + action )
@@ -188,8 +188,7 @@ yote._init = function( yoteServerURL, isWorker ) {
                   ! isWorker );
 
         var sendData = JSON.stringify( readyObjForContact( data ) );
-console.log( [ 'data', data ] );
-console.log( "About to send " + sendData );
+        console.log( "About to send to server : " + sendData );
 //        oReq.send( sendData ? 'p=' + sendData : undefined );
         // data must always be an array, though that array may have different data structures inside of it
         // as vehicles for data
@@ -211,12 +210,12 @@ console.log( "About to send " + sendData );
 
     // contacts worker immediately
     yote.callWorker = function( args ) {
-        var workerUrl   = args.workerUrl, 
+        var workerUrl   = "js/worker-yote.js",
             callParams  = args.params, 
             callback    = args.callback,
             callpath    = args.callpath,
             failhanlder = args.failhandler, 
-            calltype    = args.callType,
+            calltype    = args.callType || 'call',
             expectAlist = args.expectReturnedList;
         // have to find a way to get the update arguments from the
         // controls
@@ -260,8 +259,9 @@ console.log( "About to send " + sendData );
             },
             start : function() {
                 var that = this;
-                if( this.functions.length > 1 ) {
+                if( this.functions.length > 0 ) {
                     var fun = this.functions.shift();
+                    console.log( ['start got fun', fun ] );
                     fun( function() { that.start(); that.step++ },
                      function( err ) {
                          if( yote.failHandlers["++*"] ) {
@@ -304,7 +304,6 @@ console.log( "About to send " + sendData );
     yote.loadApp = function( appname, callback ) {
         return function( cb, failhandler ) {
             yote.callWorker( {
-                workerUrl : "js/worker-yote.js",
                 params    : [ appname ],
                 callType  : 'fetch_app',
                 callback  : function( result ) {
@@ -320,7 +319,6 @@ console.log( "About to send " + sendData );
     yote.workerLoadInclude = function( includeFile ) { // TODO : make this a list of 'em
         return function( callback, failhandler ) {
             yote.callWorker( {
-                workerUrl : "js/worker-yote.js",
                 params    : [ includeFile ],
                 callType  : 'include',
                 callback  : callback,
@@ -331,7 +329,6 @@ console.log( "About to send " + sendData );
     yote.readyWorkerCall = function( callname, args ) {
         return function( callback, failhandler ) {
             yote.callWorker( {
-                workerUrl   : "js/worker-yote.js",
                 callType  : 'call',
                 callpath    : callname,
                 params      : args || [], // automatically update objects? Maybe?? Not sure :/ will think

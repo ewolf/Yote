@@ -7,9 +7,11 @@ console.log( "worker-yote.js init" );
 var root = yote.fetch_root();
 
 function resp( msg ) {
+        console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', msg ] ) );
     postMessage( JSON.stringify( [ 'OK', msg ] ) );
 }
 function err( msg ) {
+    console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'ERR', msg ] ) );
     postMessage( JSON.stringify( [ 'ERR', msg ] ) );
 }
 
@@ -17,9 +19,9 @@ onmessage = function(e) {
     var data = e.data; 
     // _import, file1, file2, file3....
     // _call, app, object, method, args
-    console.log( [ "worker-yote.js GOT MESSAGE", data ] );
+    console.log( "WORKER GOT : "  + JSON.stringify( data ) );
 
-    if( data.length != 2 ) {
+    if( data.length < 2 || data.length > 3 ) {
         console.warn( "worker given something other than two parameters : " + data.join(",") );
     }
 
