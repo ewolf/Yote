@@ -1,0 +1,65 @@
+<html>
+  <head>
+    <title>Bakery Calcy</title>
+    <script src="/__/js/yote.js"></script>
+    <script src="js/bakery.js"></script>
+
+    <script>
+      function init() {
+          yote.initMain();
+
+          yote.doSequence( [ //functionis passed in take two args, a callback and a fail handler
+              yote.loadApp( 'Bakery', function( app ) { 
+                  // loading the app so that yote objects can be referenced here
+                  // and when referenced, they can be connected to controls.
+                  window.app = app; //so that by name referencing of this variable works, and then 
+              } ),
+              yote.workerLoadInclude( "/__/bakery/js/bakery.js" ),
+              yote.readyWorkerCall( 'init' ), //calls the method init
+              function() {
+                  console.log( '*************** ADDL **********************' );
+                  document.getElementById( "calc" ).addEventListener('click',function() {
+console.log( 'calc' );
+                      yote.callWorker( {
+                          call_name : 'calc',
+                          params    : {
+                              number_employees : document.getElementById( 'numEmpl' ).value,
+                              hourly_wage      : document.getElementById( 'wage' ).value
+                          },
+                          callback : function( response ) {
+                              // this response has the result of the calculation state
+console.log( [ 'click resp', response ] );
+                              // display the state of the object, which, for this case is displayed in the app
+                              var app = window.app;
+
+                          }
+                      } );
+                  } );
+              }
+          ] )
+              .fail( 1, function() { console.log( "Step 1 failed" ) } )
+              .fail( '++*', function() { console.log( "Before any failure do this" ) } )
+              .fail( '*++', function() { console.log( "After any failure do this" ) } )
+              .fail( '*', function() { console.log( "Do this failure unles the step has a specific error message" ) } )
+              .start();
+      }
+    </script>
+
+  </head>
+  <body onLoad="init()">
+    <h1>Bakery Calcy</h1>
+
+    <h2>Just have a simple calculation and result for now. How about employees times salary to find monthly cost</h2>
+    
+    <input type="number" id="numEmpl"> Number of Employees <br>
+    <input type="number" id="wage"> Hourly Wage <br>
+    
+    <div style="border:1px solid black; display:inline-block">
+       <div id="hourCost"></div>
+       Cost per hour
+    </div>
+
+    <button type="button" id="calc">Calc</button> <br>
+
+  </body>
+</html>
