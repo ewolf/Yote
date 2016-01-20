@@ -18,8 +18,5 @@ yote.registerFunction( 'calc', function( params ) {
 
 yote.registerFunction( 'init', function() {
     console.log( "**** CALC TEST INIT ****" );
-    var app = yote.fetch_app( 'CalcTest' );
-    app.addUpdateListener( function( appo ) {
-        document.getElementById( 'hourCost' ).val = appo.get('calcResult');
-    } );
+    yote.fetch_app( 'CalcTest' );
 } );

@@ -77,12 +77,8 @@ yote._init = function( yoteServerURL, isWorker ) {
     var makeObj = function( datastructure ) {
         /* method that returns the value of the given field on the yote obj */
         var obj = id2obj[ datastructure.id ];
-        if( obj ) {
-            // fire off an event for any update listeners
-            for( var i=0, len=obj.listeners.length; i<len; i++ ) {
-                obj.listeners[i]( obj );
-            }
-        } else {
+        var isUpdate = typeof obj === 'object';
+        if( ! isUpdate ) {
             obj = {};
             obj.id = datastructure.id;
             obj.listeners = [];
@@ -92,7 +88,7 @@ yote._init = function( yoteServerURL, isWorker ) {
 
         // takes a function that takes this object as a
         // parameter
-        obj.addUpdateListener = function( listner ) {
+        obj.addUpdateListener = function( listener ) {
             obj.listeners.push( listener );
         }
         obj.get = function( key ) {
@@ -113,6 +109,14 @@ yote._init = function( yoteServerURL, isWorker ) {
         mnames.forEach( function( mname ) {
             obj[ mname ] = makeMethod( mname );
         } );
+
+        // fire off an event for any update listeners
+        if( isUpdate ) {
+            for( var i=0, len=obj.listeners.length; i<len; i++ ) {
+                obj.listeners[i]( obj );
+            }
+        }
+
     } //makeObj
     
     var processRaw = function(rawResponse,expectAlist) {
@@ -323,7 +327,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             if( app ) {
                 return app;
             }
-            app = yote.root.fetch_app( appname );
+            app = yote.root.fetch_app( appname, true );
             if( app ) {
                 yote.apps[ appname ] = app;
             } else {
@@ -333,6 +337,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         else {
             console.warn( "NON WORKER FETCHING CALL" );
         }
+        return app;
     }; //fetch_app
     
     yote.loadApp = function( appname, callback ) {

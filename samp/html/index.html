@@ -18,6 +18,10 @@
               yote.readyWorkerCall( 'init' ), //calls the method init
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
+                  var app = yote.fetch_app( 'CalcTest' );
+                  app.addUpdateListener( function( appo ) {
+                      document.getElementById( 'hourCost' ).val = appo.get('calcResult');
+                  } );
                   
                   document.getElementById( "calc" ).addEventListener('click',function() {
                       console.log( 'calc' );
