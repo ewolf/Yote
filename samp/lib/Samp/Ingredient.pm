@@ -15,8 +15,9 @@ sub _allowedUpdates {
 }
 
 sub _when_added {
-    my( $self, $toProduct, $listName, $itemArgs ) = @_;
-    $self->set_product( $itemArgs );
+    my( $self, $toProduct, $listName, $ingredientProduct ) = @_;
+    $self->set_product( $ingredientProduct );
+    $ingredientProduct->add_to_ingredient_of( $toProduct );
 }
 
 

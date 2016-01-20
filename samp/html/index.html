@@ -147,8 +147,8 @@
                           val = yote.fetch( val );
                       }
                       inpt[ cur_fld ] = val;
-                      var o = yote.fetch( $sel.data('id') );
-                      o.update( [ inpt ] );
+                      var targ_o = yote.fetch( $sel.data('id') );
+                      targ_o.update( [ inpt ] );
                   } );
               }
               if( listIsObj ) {
@@ -167,6 +167,7 @@
                                         '       type="'       + $ctrl.data('input-type') + '">' +
                                         '<span class="showField ' + $ctrl.data('classes') + '"' + 
                                         '      data-id="' + $ctrl.data('id') + '"' + 
+                                        '      data-format="'+ $ctrl.data( 'format' ) + '"' + 
                                         '      data-field="' + $ctrl.data('field') + '">' + 
                                         '  &nbsp;</span>' );
               } );
@@ -224,16 +225,16 @@
                   }
               } );
               modifyControl( 'select.editField', 'build-select', function( $ctrl ) {
-                  var list_src_fld       = $ctrl.data('src-field');
-                  var obj = yote.fetch( $ctrl.data('id') );
+                  var list_src_fld = $ctrl.data('src-field');
+                  var source_obj   = $ctrl.data('source-id') ? yote.fetch( $ctrl.data('source-id') ) : yote.fetch( $ctrl.data('id') );
 
                   if( list_src_fld ) {
-                      var list = obj.get( list_src_fld );
+                      var list = source_obj.get( list_src_fld );
                       _updateSelect( $ctrl, list, true );
                   } else {
                       var collection_src_fld = $ctrl.data('src-collection');
                       
-                      obj.choices( [collection_src_fld], function( valTitles ) {
+                      source_obj.choices( [collection_src_fld], function( valTitles ) {
                           _updateSelect( $ctrl, valTitles, false );
                       } );
                   }
@@ -350,27 +351,22 @@
 
           function setup_scenario(scenario) {
               var prods = scenario.get( 'product_lines' );
+              
               updateListener( prods, '_productCountWatched', function() {
-                  prods.addUpdateListener( function() {
-                      if( prods.length() > 0 ) {
-                          $( '#no_products' ).hide();
-                          $( '#curr_products,#del_prod,#prod_sel' ).show();
-                      } else {
-                          $( '#no_products' ).show();
-                          $( '#curr_products,#del_prod,#prod_sel' ).hide();
-                      }
-                      var $tab = $( '#product-table' ).empty();
-                      if( prods.length() > 0 ) {
-                          var buf = '<tr>' + [ 'name', 'production rate' ]
-                              .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
-                          var prodl = prods.toArray();
-                          for( var i=0; i<prodl.length; i++) {
-                              var line = prodl[i];
-                              buf += '<tr>' + [ 'name', 'production_rate' ]
-                                  .map( function(w) { return '<td>' + line.get(w) + '</td>'; } ).join('') + '</tr>';
-                          }
-                          $tab.append( buf );
-                      }
+                  if( prods.length() > 0 ) {
+                      $( '#no_products' ).hide();
+                      $( '#curr_products,#del_prod,#prod_sel' ).show();
+                  } else {
+                      $( '#no_products' ).show();
+                      $( '#curr_products,#del_prod,#prod_sel' ).hide();
+                  }
+                  var $tab = $( '#product-table' ).find( 'tbody' ).empty();
+                  prods.each( function( prod, i ) {
+                      var row = fill_template( '#prod-row', {
+                          PROD : prod.id
+                      }, [ 'id' ] );
+                      $tab.append( row );
+                      watchForUpdates( prod )
                   } );
               }, true );
 
@@ -391,7 +387,6 @@
                   return false;
               }
 
-              setup_ingredients_table( prd );
               $( '#new_ingredient' ).off('change').on( 'change', function() {
                   var $this = $( this );
                   var val = $this.val();
@@ -415,16 +410,18 @@
               updateListener( prd, '_selectorListener', function() {
                   $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
               } );
-              ings.each( function( ing, i ) {
-                  watchForUpdates( ing );
-              } );
 
+              var steps = prd.get( 'steps' );
+              updateListener( steps, '_stepslistener', function() {
+                  setup_steps_table( prd );
+              }, true );
+
+              
               energize( 'product', prd );
           } //setup_product
 
           function setup_ingredients_table( prd ) {
               var $tab = $( '#ingredients_tab' ).find( 'tbody' );
-              // * ) empty steps table
               $tab.empty();
 
               var ings = prd.get( 'ingredients' );
@@ -436,24 +433,33 @@
                       ING  : ing.id
                   }, ['id','parent'] );
                   $tab.append( row );
-                  watchForUpdates( prod );
               } );
                                      
               activateControls();
-
+              ings.each( function( ing, i ) {
+                  var prod = ing.get( 'product' );
+                  watchForUpdates( prod, ing );
+              } );
           } //setup_ingredients_table
 
           function setup_steps_table( prd ) {
               var $tab = $( '#steps_tab' ).find( 'tbody' );
               // * ) empty steps table
               $tab.empty();
-              var buf = '';
-
               
               var steps = prd.get( 'steps' );
-              steps.removeUpdateListeners().addUpdateListener( function() {
-                  setup_steps_table( prd );
+              steps.each( function( step, i ) {
+                  var row = fill_template( '#step-row', {
+                      STEP : step.id
+                  }, [ 'id' ] );
+                  $tab.append( row );
+                  watchForUpdates(step);
               } );
+              activateControls();
+              steps.each( function( step, i ) {
+                  watchForUpdates(step);
+              } );
+              /*
               var stepl = steps.toArray();
               for( var i=0; i<stepl.length; i++ ) {
                   var step = stepl[ i ];
@@ -475,14 +481,11 @@
                 '</tr>';
               }
               $tab.append( buf );
-              
-              activateControls();
-
               for( var i=0; i<stepl.length; i++ ) {
                   var step = stepl[ i ];
                   watchForUpdates(step);
               }
-
+*/
           } //setup_steps_table
 
       } //init
@@ -537,11 +540,16 @@
             <tr><th>Monthly Cost</th><td>$<span class="showField scenario" data-format="$" data-field="monthly_cost"></span> / month</td></tr>
           </table>
     <hr>
-    <h4 id="product-title">Product Summary</h4>
-    <table id="product-table"> 
+    <h4 id="product-title">Products Summary</h4>
+    <table id="product-table">
+        <thead>
+          <tr> <th>Product</th> <th>Sale Price</th> <th>Sales</th> <th>Profit</th> <th>Food Cost</th> <th>Labor Cost</th></tr>
+        </thead>
+        <tbody>
+        </tbody>
     </table>
     <hr>
-    <h4 id="product-title">Products</h4>
+    <h4 id="product-title">Product Detail</h4>
 
     <select class="showField editField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
 
@@ -553,6 +561,7 @@
       Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
 
     <table>
+      <tr> <th>Cost / batch</th> <td><div class="updateFieldControl product" data-classes="product" data-field="cost_per_batch" data-input-type="number"></div></td> </tr>
       <tr> <th>Sale Price / unit</th> <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td> </tr>
       <tr>
         <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
@@ -576,13 +585,13 @@
       <select class="editField showField product" 
               id="new_ingredient"
               data-src-collection="ingreds"
-              ></select> Need to have a refreshing function for this
+              ></select>
 
       <h4>Steps</h4>
 
       <table border=1 id="steps_tab">
         <thead>
-    <tr> <th>Name</th> <th>Items per Batch</th>  <th>Duration of Batch ( hours) </th> <th>Employees Needed</th> <th>Overhead ($)</th> <th>Actions</th> </tr>
+    <tr> <th>Name</th> <th>Items per Batch</th>  <th>Duration of Batch ( hours) </th> <th>Employees Needed</th> <th>Notes</th> <th>Overhead ($)</th> <th>Actions</th> </tr>
         </thead>
         <tbody>
         </tbody>
@@ -602,6 +611,26 @@
           <td> <div class="updateFieldControl" data-id="ING" data-field="notes"></div> </td>
           <td> <a href="" class="delAction" data-parent="PARENTPROD" data-id="ING" data-from="ingredients">delete</a> </td>
         </tr>
+
+
+        <tr id="step-row"> 
+          <td> <div class="updateFieldControl" data-id="STEP" data-field="name"></div> </td>
+          <td> <div class="updateFieldControl" data-id="STEP" data-field="produced_in_run" data-input-type="number"></div> </td>
+          <td> <div class="updateFieldControl" data-id="STEP" data-field="run_hours" data-input-type="number"></div> </td>
+          <td> <div class="updateFieldControl" data-id="STEP" data-field="employees_required"></div> </td>
+          <td> <div class="updateFieldControl" data-id="STEP" data-field="notes"></div> </td>
+        </tr>
+
+
+        <tr id="prod-row"> 
+          <td> <div class="updateFieldControl" data-id="PROD" data-field="name"></div> </td>
+          <td> <div class="updateFieldControl" data-id="PROD" data-format="$" data-field="sale_price"></div> </td>
+          <td>
+            <div class="updateFieldControl" data-id="PROD" data-field="expected_sales" data-format="$" data-input-type="number"></div>
+            <select class="showField editField" data-id="PROD" data-field="expected_sales_per" data-src-collection="expected_sales_per"></select>
+          </td>
+        </tr>
+
       </table>
     </section>
 
