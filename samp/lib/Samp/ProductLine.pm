@@ -20,8 +20,8 @@ sub _allowedUpdates {
 }
 
 sub _lists {
-    { steps     => 'Samp::Step',
-      ingredients => 'Samp::ProductLine',
+    { steps       => 'Samp::Step',
+      ingredients => 'Yote::Obj',
     };
 }
 

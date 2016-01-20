@@ -23,6 +23,24 @@
               watchForUpdates( obj );
           }
 
+          function fill_template( sel, vars, fields ) {
+              var $template = $( sel );
+              if( $template.length != 1 ) {
+                  console.warn( "error filling template '" + sel + "'" );
+                  return undefined;
+              }
+              $template.find("*").each( function() {
+                  var $this = $(this);
+                  for( var i=0;i<fields.length; i++ ) {
+                      var fld = fields[i];
+                      if( vars[$this.data( fld )] ) {
+                          vars[$this.data( fld )] = vars[$this.data( fld )];
+                      }
+                  }
+              } );
+              return $template;
+          } //fill_template
+
           function setIds( cls, obj ) {
               $( '.' + cls + ',.'+cls+'-child' ).each( function() {
                   var $this = $(this);
@@ -366,21 +384,14 @@
               ings.removeUpdateListeners().addUpdateListener( function() {
                   setup_ingredients_table( prd );
               } );
-              var ingsl = ings.toArray();
-              for( var i=0; i<ingsl.length; i++ ) {
-                  var ing = ingsl[ i ];
+              var ingsl = ings.each( function( ing, i ) {
                   var prod = ing.get( 'parent' );
-                  buf += '<tr>  ' +
-                      '<td><span class="showField" data-id="' + prod.id + '" data-field="name"></span> </td>' +
-                      '<td><span class="showField" data-id="' + ing.id + '" data-field="amount_per_run"></span> </td>' +
-                      '<td><span class="showField" data-id="' + ing.id + '" data-field="notes"></span> </td>' +
-                      '<td><a href="" class="delAction product-child" data-id="' + ing.id + '" data-from="ingredients"></a> </td>' +
-                      '</tr>';
-              }              
-
-              buf += '<tr> <td colspan="3"> <select class="editField showField scenario" data-field="current_product_lines" data-use-raw-list="true" data-list-field="product_lines" id="new_ingredient">' +
-                  '<option value="-">Choose Ingredient</option>';
-
+                  $tab.append( fill_template( '#ingredient-row', {
+                      PROD : prod.id,
+                      ING  : ing.id
+                  }, 'id' ) );
+              }
+                                     
               var scenario = prd.get('parent');
               var prodsl = scenario.get( 'product_lines' ).toArray();
               for( var i=0; i<prodsl.length; i++ ) {
@@ -465,6 +476,7 @@
     div.updateFieldControl.editing>input.edited { display: inline; background-color:yellow; }
     div.updateFieldControl.editing>span { display: none; }
     span.showField {  }
+    .template { display: none }
     </style>
 
   </head>
@@ -536,8 +548,28 @@
         <tbody>
         </tbody>
       </table>
+      <select class="editField showField scenario" 
+              id="new_ingredient"
+              data-source-field="what list variable on the object to use. if used, collection wont be"
+              data-source-collection="what key item will build source with. if used field wont be"
+              data-empty-option="Choose Ingredient"
+              
 
-    
+              data-field="current_product_lines" 
+              data-use-raw-list="true" 
+              data-list-field="product_lines" 
+              ></select>
+
+      <tr class="template" id="ingredient-row"> 
+        <td> 
+
+           <select class="editField showField" data-id="ING" data-field="current_product_lines" data-use-raw-list="true" data-list-field="product_lines" id="new_ingredient"></select>
+
+<span class="showField" data-id="PROD" data-field="name"></span> </td>
+        <td> <span class="showField" data-id="ING" data-field="amount_per_run"></span> </td>
+        <td> <span class="showField" data-id="ING" data-field="notes"></span> </td>
+        <td> <a href="" class="delAction product-child" data-id="ING" data-from="ingredients"></a> </td>
+      </tr>
       <h4>Steps</h4>
 
       <table border=1 id="steps_tab">

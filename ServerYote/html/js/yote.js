@@ -124,10 +124,15 @@ yote.init = function( args ) {
                     a[k] = obj.get( k );
                 }
                 return a;
-            }
+            };
+            obj.each = function( fun ) {
+                for( var k in obj._data ) {
+                    fun( obj.get( k ), k );
+                }
+            };
             obj.length = function() {
                 return Object.keys( obj._data ).length;
-            }
+            };
         }
         
         var mnames = class2meths[ datastructure.cls ] || [];
