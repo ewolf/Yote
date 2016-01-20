@@ -14,17 +14,51 @@
                   // and when referenced, they can be connected to controls.
                   window.app = app; //so that by name referencing of this variable works, and then 
               } ),
+              
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
-              yote.readyWorkerCall( 'init' ), //calls the method init
+              yote.readyWorkerCall( 'init' ),
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
+                  
                   app.addUpdateListener( function( appo ) {
                       document.getElementById( 'hourCost' ).val = appo.get('calcResult');
                   } );
+
+                  function updateScenes() {
+                      // redo select
+                      var sel = document.getElementById( 'scenario_sel' );
+                      while( sel.options.length > 0 ) {
+                          sel.remove( 0 );
+                      }
+                      var scenes = app.get( 'scenarios' );
+                      if( scenes ) {
+                          for( var i=0, len=scenes.length; i<len; i++ ) {
+                              var sen = scenes.get(i);
+                              sel.options[sel.options.length] = new Option( sen.get('name'), sel.options.length );
+                          }
+                      }
+                  }
+
+                  function selectScene( scene ) {
+                      alert( 'selected scenario "' + scene.get('name') + '"' );
+                  }
+
+                  document.getElementById( "new_scene" ).addEventListener('click',function() {
+                      var news = app.new_scene();
+                      updateScenes();
+                      selectScene( news );
+                  } );
+
+                  document.getElementById( "RESET" ).addEventListener('click',function() {
+                      if( confirm( 'really delete everything?' ) ) {
+                          app.reset();
+                          updateScenes();
+                          selectScene( app.get('scenarios').get(0) );
+                      }
+                  } );
                   
                   document.getElementById( "calc" ).addEventListener('click',function() {
-                      console.log( 'calc' );
                       yote.callWorker( {
                           callpath : 'calc',
                           params    : {
@@ -33,12 +67,12 @@
                           },
                           callback : function( response ) {
                               // this response has the result of the calculation state
-console.log( [ 'click resp', response ] );
-                              // display the state of the object, which, for this case is displayed in the app
+                              // is stored in the response object's calcResult field
                               document.getElementById( "hourCost" ).innerHTML = response.get( 'calcResult' );
                           }
                       } );
                   } );
+                  updateScenes();
               }
           ] )
               .fail( 1, function() { console.log( "Step 1 failed" ) } )
@@ -51,10 +85,13 @@ console.log( [ 'click resp', response ] );
 
   </head>
   <body onLoad="init()">
-    <h1>TEst Calcy</h1>
+    <h1>Production Line Scenario Manager</h1>
 
-    <h2>Just have a simple calculation and result for now. How about employees times salary to find monthly cost</h2>
-    
+<button type="button" id="RESET">RESET</button>
+Available Scenarios <select id="scenario_sel"></select>
+    <button type="button" id="new_scene">Create New Scenario</button>
+
+    Scenario Name <input type="text" id="sceneName"> <br><br>
     <input type="number" id="numEmpl"> Number of Employees <br>
     <input type="number" id="wage"> Hourly Wage <br>
     

@@ -12,6 +12,30 @@ sub _init {
     my $self = shift;
 }
 
+sub fetch_scenario {
+    my( $self, $idx ) = @_;
+    my $scens = $self->get_scenarios([]);
+    if( $idx > $#$scens || $idx < 0 ) {
+        die "Invalid scenario index";
+    }
+    return $scens->[$idx];
+}
+
+sub reset {
+    my $self = shift;
+    print STDERR Data::Dumper->Dump(["RESETTING APP"]);
+    $self->set_scenarios( [ $self->new_scene() ] );
+}
+
+sub new_scene {
+    my $scenes = shift->get_scenarios([]);
+    my $news = new Samp::Scenario( {
+        name => 'scenario ' . scalar(1 + @$scenes)
+                                   } );
+    push @$scenes,  $news;
+    $news;
+}
+
 sub calc { 
     my( $self, @data ) = @_;
 
@@ -24,6 +48,54 @@ sub calc {
     return $self;
 }
 
+
+
 1;
 
 __END__
+
+
+the purpose of this is to improve efficency for
+a production process.
+
+this estimates the bottlenecks in a process and
+calculates the max rate given the resources
+available
+
+>>>><<<<<
+
+{shop:
+    employees:
+         <add new>
+    products:
+         wedding cakes
+         store cakes
+         chocolates
+
+
+shop has the following features :
+
+    employees : <designation,hourly cost>
+
+for example, for chococlates :
+
+    produces : chocolates
+   
+    avg food cost : %
+    avg packaging cost : %
+
+    unit sale
+
+    max units that can be stored
+
+    the pipeline has the following steps :
+          making fillings ( caramel, etc )
+
+          tempering chocolate & enrobing
+
+          packaging
+
+    each step of the way notes how many employees it takes
+
+
+             

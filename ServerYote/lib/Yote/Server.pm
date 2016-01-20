@@ -564,7 +564,7 @@ sub __discover_methods {
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
 
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
+        return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
     }
     
     for my $class ( @{"${pkg}\::ISA" } ) {

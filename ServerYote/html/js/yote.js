@@ -93,6 +93,9 @@ yote._init = function( yoteServerURL, isWorker ) {
         }
         obj.get = function( key ) {
             var val = this._data[key];
+            if( typeof val === 'undefined' ) {
+                return undefined;
+            }
             if( val.startsWith( 'v' ) ) {
                 return val.substring( 1 );
             } 

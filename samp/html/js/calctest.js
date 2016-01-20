@@ -9,14 +9,10 @@
 
 
 yote.registerFunction( 'calc', function( params ) {
-    console.log( "**** CALC CALLED ****" );
-    console.log( [ 'PARAMS', params ] );
     var app = yote.fetch_app( 'CalcTest' );
-    console.log( [ "APP IS ", app ] );
     return app.calc( [params.number_employees, params.hourly_wage], true );
 } );
 
 yote.registerFunction( 'init', function() {
-    console.log( "**** CALC TEST INIT ****" );
-    yote.fetch_app( 'CalcTest' );
+
 } );
