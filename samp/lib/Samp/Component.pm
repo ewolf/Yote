@@ -57,7 +57,7 @@ sub gather {
     my @res;
     for my $list (keys %$listhash) {
         my $l = $self->get( $list, [] );
-        push @res, $l, (map { $_->gather } @$l);
+        push @res, $l, (map { $_, $_->gather } @$l);
     }
     @res;
 } #gather

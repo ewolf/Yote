@@ -6,7 +6,15 @@
     <script>
       <!--
       function init() {
-          yote.initMain();
+          // THIS IS IT, THE WHOLE INIT ENCHILADA
+          yote.init( {
+              appName : 'CalcTest',
+              handler : function( root, app ) {
+                  app.gather( [], function() {
+                      setup_app( app );
+                  } );
+              }
+          } );
 
           function activateUpdateFields() {
               $( 'input.updateField' ).off().on( 'keydown', function(ev) {
@@ -73,42 +81,36 @@
           } );
 
           function watchObjects() {
+              var updater = function(o) {
+                  var id = o.id;
+                  $( ".showField" ).each( function() {
+                      var $this = $(this);
+                      if( $this.data('id') != id ) {
+                          return;
+                      }
+                      var fld = $this.data( 'field' );
+                      var val = o.get( fld );
+                      if( $this.data( 'format' ) == '$' ) {
+                          val = costForm.format( val );
+                      }
+                      if( $this.is( 'input' ) ) {
+                          $this.val( val );
+                      } else {
+                          $this.text( val );
+                      }
+                  } );
+              }              
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
-                  var updater = function(o) {
-                      var id = o.id;
-                      $( ".showField" ).each( function() {
-                          var $this = $(this);
-                          if( $this.data('id') != id ) {
-                              return;
-                          }
-                          var fld = $this.data( 'field' );
-                          var val = o.get( fld );
-                          if( $this.data( 'format' ) == '$' ) {
-                              val = costForm.format( val );
-                          }
-                          if( $this.is( 'input' ) ) {
-                              $this.val( val );
-                          } else {
-                              $this.text( val );
-                          }
-                      } );
-                  }
+                  
                   obj.addUpdateListener( updater, 'update' );
                   updater( obj );
               }
           } //watchObjects
 
-          function watchObject( obj, onUpdate, key ) { // when changed, onUpdate is called on that object.
-              obj.addUpdateListener( function(o) {
-                  onUpdate(o);
-              }, key );
-          } //watchObject
+          var curScene, curProd;
 
-          var app, curScene, curProd;
-
-          function setup_app(a) {
-              app = a;
+          function setup_app(app) {
 
               // * ) update data-id of things app
               $( '.app' ).each( function() {
@@ -126,7 +128,7 @@
               setup_scenario( curScene );
 
               // * ) set up watchers
-              watchObject( scnz, function() { 
+              scnz.addUpdateListener( function() { 
                   setup_picker( scnz,$('#scenario_sel') );
                   if( scnz.length() > 1 ) {
                       $( '#del_scenario').show();
@@ -135,8 +137,8 @@
                   }
               } );
               watchObjects(app); //connects todata fields
-              watchObject( app, function(app) {
-                  if( ! curScene._is( app.get('current_scenario') ) ) {
+              app.addUpdateListener( function(app) {
+                  if( ! yote.sameYoteObjects( curScene, app.get('current_scenario') ) ) {
                       curScene = app.get('current_scenario');
                       setup_scenario( curScene );
                   }
@@ -158,7 +160,7 @@
               var sceneArr = scenes.toArray();
               $select.empty().append(
                   sceneArr.map( function( sc ) {
-                      var seld = curScene._is( sc ) ? ' selected' : '';
+                      var seld = yote.sameYoteObjects( curScene, sc ) ? ' selected' : '';
                       return '<option value="' + sc.id + '"' + seld + '>' + 
                           sc.get('name') + '</option>';
                   } ).join('')
@@ -185,17 +187,17 @@
               setup_picker( prods,$('#prod_sel') );
 
               // * ) setup focused product
-              curProd = app.get( 'current_product_line' );
+              curProd = scenario.get( 'current_product_line' );
               if( typeof curProd !== 'object' ) { curProd = undefined; }
               setup_product( curProd );
 
               // * ) set up watchers
-              watchObject( prods, function() { 
+              prods.addUpdateListener( function() { 
                   setup_picker( prods,$('#prod_sel') );
               } );
               watchObjects(scenario);
-              watchObject( scenario, function() { 
-                  if( ! curProd || ! curProd._is( curScene.get('current_product_line') ) ) {
+              scenario.addUpdateListener( function() { 
+                  if( ! yote.sameYoteObjects( curProd, curScene.get('current_product_line') ) ) {
                       curProd = curScene.get('current_product_line');
                       if( typeof curProd !== 'object' ) { curProd = undefined; }
                       setup_product( curProd );
@@ -226,29 +228,7 @@
               // * ) check for edit/showFields that were not initialized
           }
 
-          // THIS IS IT, THE WHOLE INIT AN ENCHILADA
-          yote.initRoot( 'CalcTest', function( app ) {
-              app.gather( [], function() {
-                  setup_app( app );
-              } );
-          } );
-          
-//           yote.doSequence( [ //function is passed in take two args, a callback and a fail handler
-//               yote.initRoot(),
-//               yote.loadApp( 'CalcTest' ),
-//               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
-//               yote.readyWorkerCall( 'init' ),
-// //              yote.readyWorkerCall( 'reset' ), //uncomment this to reset everything
-//               function() {
-//                   setup_app( yote.fetch_app( 'CalcTest' ) ); 
-//               }
-//           ] )
-//               .fail( 1, function() { console.log( "Step 1 failed" ) } )
-//               .fail( '++*', function() { console.log( "Before any failure do this" ) } )
-//               .fail( '*++', function() { console.log( "After any failure do this" ) } )
-//               .fail( '*', function() { console.log( "Do this failure unles the step has a specific error message" ) } )
-//               .start();
-      }
+      } //init
 -->
     </script>
 
