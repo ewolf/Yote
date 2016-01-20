@@ -63,10 +63,7 @@
                   var create_action = $this.data('action');
                   var list  = $this.data('list');
                   var listOn = yote.fetch( $this.data('id') );
-                  yote.callWorker( {
-                      callpath : 'addEntry',
-                      params   : [ listOn, list ]
-                  } );
+                  listOn.add_entry( [list] );
               } );
           } //activateUpdateFields
 
@@ -212,7 +209,7 @@
                   curScene.update( [{ current_product_line : line }] );
               } );
               activateUpdateFields();
-
+              
           } //setup_scenario
 
           function setup_product(prd) {
@@ -229,175 +226,28 @@
               // * ) check for edit/showFields that were not initialized
           }
 
-          yote.doSequence( [ //function is passed in take two args, a callback and a fail handler
-              yote.initRoot(),
-              yote.loadApp( 'CalcTest' ),
-              yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
-              yote.readyWorkerCall( 'init' ),
-//              yote.readyWorkerCall( 'reset' ), //uncomment this to reset everything
-              function() {
-                  setup_app( yote.fetch_app( 'CalcTest' ) ); 
-                  return;
-                  // setup_app( yote.fetch_app( 'CalcTest' ) );
-                  // tie the calcResult field of the app to an informative hourCost div
-                  var app = yote.fetch_app( 'CalcTest' );
-                  var currScenario;
-
-                  $( '#del_scenario' ).each( function() {
-                      $(this).data( 'parent', app.id );
-                  } );
-                  $( '.app' ).each( function() {
-                      $(this).data( 'id', app.id );
-                  } );
-
-                  updateScenarioSelect();
-                  selectScenario( app.get( 'current_scenario' ) );
-
-
-                  
-                  function updateScenarioSelect() {
-                      // redo select
-                      var $sel = $( '#scenario_sel' );
-                      $sel.empty();
-                      $( '#del_scenario').hide();
-                      var scenarios = app.get( 'scenarios' ).toArray();
-                      if( scenarios ) {
-                          for( var i=0, len=scenarios.length; i<len; i++ ) {
-                              var sen = scenarios[i];
-                              $sel.append('<option value="' + sen.id + '">' + sen.get('name' ) + '</option>' );
-                          }
-                          if( scenarios.length > 1 ) {
-                              $( '#del_scenario').show();
-                          }
-                      }
-                  } //updateScenarioSelect
-
-                  function selectScenario( scenario ) {
-                      $( "#scenario_sel" ).val( scenario.id );
-                      $( "#del_scenario" ).data( 'id', scenario.id );
-                      currScenario = scenario;
-
-                      yote.callWorker( {
-                          callpath : 'select_scenario',
-                          params : scenario,
-                          callback : function( resp ) {
-                              currScenario = scenario;
-                              $( '.scenario,#del_scenario' ).each( function() {
-                                  $(this).data('id', currScenario.id );
-                              } );
-                              updateProdLines();
-                              $( '#product-title' ).text( "Products for '" + currScenario.get('name') + '"' );
-                          }
-                      } );
-                      return true;
-                  } //selectScenario
-
-
-                  $( "#RESET" ).off().on('click',function() {
-                      if( confirm( 'really delete everything?' ) ) {
-                          yote.callWorker( {
-                              callpath : 'reset',
-                              callback : function( resp ) {
-                                  updateScenarioSelect();
-                                  selectScenario( app.get('current_scenario') );
-                              }
-                          } );
-                      }
-                  } );
-
-                  function updateDataFields() {
-                      $( '.showField' ).each( function() {
-                          var $this = $( this );
-                          var oid = $this.data( 'id' );
-                          var obj = yote.fetch( oid );
-                          var fld = $this.data('field');
-                          if( obj ) {
-                              if( $this.is( 'input' ) ) {
-                                  $this.val( obj.get( fld ) );
-                              } else {
-                                  $this.text( obj.get( fld ) );
-                              }
-                          } else {
-                              console.warn( ["Unable to update data field", $this ] );
-                          }
-                      } );
-                  } //updateDataFields
-
-
-
-                  function updateProdLines() {
-                      var lines = currScenario.get( 'product_lines' ).toArray();
-                      $('#products').empty();
-                      var $table = $( '#product-table' ).empty().append( '<tr> <th> Product </th> <th> Production Rate </th> <th> Production Cost </th> <th> Profit </th> </tr>' );
-                      for( var i=0; i<lines.length; i++ ) {
-                          var line = lines[i];
-
-                          // build up the table
-                          $table.append( '<tr> <td> ' + [ line.get('name'),
-                                                          '<span  class="showField" data-id="' + line.id + '" data-field="production_rate">?</span>',
-                                                          '<span  class="showField" data-id="' + line.id + '" data-field="production_cost">?</span>',
-                                                                                                                    '<span  class="showField" data-id="' + line.id + '" data-field="profit">?</span>',                   
-                                                        ].join(' </td><td> ') + '</td></tr>' );
-
-                          // build up the sections below the table
-
-                          var buf = '<div style="border:solid black 1px;margin:4px;padding:5px;"><br>\
- <input placeholder="Product Line Name" class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
- <button class="delAction product-line" data-parent="' + currScenario.id + '" data-from="product_lines" data-id="' + line.id + '">Delete</button> \
- <br>\
- <input placeholder="Description" class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text"> <BR>\
- Produces <span  class="showField" data-id="' + line.id + '" data-field="production_rate">?</span> units per hour <br>\
- Cost of production <span  class="showField" data-id="' + line.id + '" data-field="production_cost">?</span> dollars per hour <br>\
-\
- Units per day <span  class="showField" data-id="' + line.id + '" data-field="produced_in_day">?</span> <br> \
- Units per month <span  class="showField" data-id="' + line.id + '" data-field="produced_in_month">?</span> <br> \
-\
- <h5>Process Steps</h5>\
- <button class="addAction product-line" data-list="steps"  data-id="' + line.id + '">Add Step</button>\
- <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
-                          var steps = line.get( 'steps' ).toArray();
-                          for( var j=0; j<steps.length; j++ ) {
-                              var step = steps[j];
-
-                              // ~~~~~~~~ HERE is here
-                              //  ~~~~~~~~~~ how about a table, and include employees required for step, min step time,
-                              // ~~~~~~~~ max step time (or max batch size?)
-                              
-                              buf += '<input class="updateField step showField" \
-                                             place-holder="step name" data-id="' + step.id + '" \
-                                             data-field="name" type="text"> \
-                                      Can produce <input class="updateField showField step" \
-                                                  data-id="' + step.id + '" \
-                                                  data-field="units_produced" type="text"> \
-                                      units per <input class="updateField showField step" \
-                                                       data-id="' + step.id + '" data-field="hours" type="text"> \
-                                      hour. Rate of <span class="showField" data-id="' + step.id + '" \
-                                                         data-field="production_rate"></span>  \
-                                      <BR>';
-                          }
-
-                          buf += '</div>';
-                          $('#products').append( buf );
-                      }
-                      updateDataFields();
-                      activateUpdateFields();
-                  } // updateProdLines
-
-                  $( "#scenario_sel" ).off().on('change',function() {
-                      var seld_id = $( "#scenario_sel" ).val();
-                      var sel = yote.fetch( seld_id );
-                      selectScenario( sel );
-                   } );
-
-
-
-              }
-          ] )
-              .fail( 1, function() { console.log( "Step 1 failed" ) } )
-              .fail( '++*', function() { console.log( "Before any failure do this" ) } )
-              .fail( '*++', function() { console.log( "After any failure do this" ) } )
-              .fail( '*', function() { console.log( "Do this failure unles the step has a specific error message" ) } )
-              .start();
+          // THIS IS IT, THE WHOLE INIT AN ENCHILADA
+          yote.initRoot( 'CalcTest', function( app ) {
+              app.gather( [], function() {
+                  setup_app( app );
+              } );
+          } );
+          
+//           yote.doSequence( [ //function is passed in take two args, a callback and a fail handler
+//               yote.initRoot(),
+//               yote.loadApp( 'CalcTest' ),
+//               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
+//               yote.readyWorkerCall( 'init' ),
+// //              yote.readyWorkerCall( 'reset' ), //uncomment this to reset everything
+//               function() {
+//                   setup_app( yote.fetch_app( 'CalcTest' ) ); 
+//               }
+//           ] )
+//               .fail( 1, function() { console.log( "Step 1 failed" ) } )
+//               .fail( '++*', function() { console.log( "Before any failure do this" ) } )
+//               .fail( '*++', function() { console.log( "After any failure do this" ) } )
+//               .fail( '*', function() { console.log( "Do this failure unles the step has a specific error message" ) } )
+//               .start();
       }
 -->
     </script>
@@ -438,9 +288,15 @@
             <dt>Number of Employees</dt>
             <dd><input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" > </dd>
             <dt>Employee Pay</dt>
-            <dd><input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> $/hour </dd>
+            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </dd>
+            <dt>Monthly Rent</dt>
+            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </dd>            
+            <dt>Monthly Utilities</dt>
+            <dd>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </dd>            
           </dl>
-          $ <span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month
+          Employee Monthly Cost $<span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month
+          <br>
+          Monthly Cost $<span class="showField scenario" data-id="ofobj" data-format="$" data-field="monthly_cost"></span> / month
 
     <hr>
     <h4 id="product-title">Products</h4>

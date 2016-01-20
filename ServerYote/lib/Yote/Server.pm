@@ -585,7 +585,7 @@ sub __discover_methods {
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et(_|$)|(can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
+        return [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
     }
 
     my %hasm = map { $_ => 1 } @m;

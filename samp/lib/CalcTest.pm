@@ -33,6 +33,11 @@ sub add_entry {
     $news;
 }
 
+sub gather {
+    my $self = shift;
+    my $scenes = $self->get_scenarios([]);
+    return $scenes, map { $_, $_->gather } @$scenes;
+}
 
 sub setCurrentScenario {
     my( $self, $scenario ) = @_;

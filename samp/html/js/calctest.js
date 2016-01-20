@@ -34,14 +34,12 @@ function expose_all() {
 var addEntry = yote.registerFunction( 'addEntry', function(args) {
     var parent = args[0], listname = args[ 1 ];
     var newentry = parent.add_entry( [ listname ] );
-    expose_all();
     return newentry;
     
 } );
 
 var init = yote.registerFunction( 'init', function() {
     app = yote.fetch_app( 'CalcTest' );
-    expose_all();
     currScenario = app.get( 'current_scenario' );
     return currScenario;
 } );

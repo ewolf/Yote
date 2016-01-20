@@ -42,6 +42,9 @@ onmessage = function(e) {
         var res = yote.worker_init_root();
         yote.root = res[0];
         yote.token = res[1];
+        if( typeof params[0] !== 'undefined' ) {
+            res[ 2 ] = yote.fetch_app( params[0] );
+        }
         return resp( res );
     }
     else if( type === 'function_call' ) {

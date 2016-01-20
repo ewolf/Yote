@@ -425,7 +425,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             }
         }
         else {
-            console.warn( " [ " + workerTxt + "] NON WORKER FETCHING CALL" );
+            console.warn( " [ " + workerTxt + "] NON WORKER FETCHING CALL ASYNC" );
         }
     }; //fetch_app
 
@@ -444,6 +444,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         };
     };
 
+    /*
     yote.initRoot = function( appname, callback ) {
         return function( cb, failhandler ) {
             yote.callWorker( {
@@ -459,6 +460,21 @@ yote._init = function( yoteServerURL, isWorker ) {
                 failhandler : failhandler
             } );
         };
+    };
+    */
+
+    yote.initRoot = function( app, callback, failhandler ) {
+        yote.callWorker( {
+            params    : [app],
+            callType  : 'init_root',
+            callback  : function( result ) {
+                yote.root  = result[0];
+                yote.token = result[1]
+                
+                if( callback ) callback( result[2] );
+            },
+            failhandler : failhandler
+        } );
     };
 
     yote.workerLoadInclude = function( includeFile ) { // TODO : make this a list of 'em

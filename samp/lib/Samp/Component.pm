@@ -51,6 +51,17 @@ sub add_entry {
     $obj;       
 }
 
+sub gather {
+    my $self = shift;
+    my $listhash = $self->lists;
+    my @res;
+    for my $list (keys %$listhash) {
+        my $l = $self->get( $list, [] );
+        push @res, $l, (map { $_->gather } @$l);
+    }
+    @res;
+} #gather
+
 sub remove_entry {
     my( $self, $item, $from ) = @_;
     die "Unknown list '$from'" unless $self->lists->{$from};
