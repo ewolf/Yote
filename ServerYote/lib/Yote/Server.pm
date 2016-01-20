@@ -584,11 +584,11 @@ sub __discover_methods {
 
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
-
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
+        return [ grep { $_ !~ /^(_|[gs]et(_|$)|(can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
     }
-    
+
+    my %hasm = map { $_ => 1 } @m;
     for my $class ( @{"${pkg}\::ISA" } ) {
         next if $class eq 'Yote::ServerObj' || $class eq 'Yote::Obj';
         my $pm = __discover_methods( $class );
@@ -598,8 +598,7 @@ sub __discover_methods {
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
 
-    $meths = [ grep { $_ !~ /^(_|[gs]et_|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ && ! $base{$_} } @m ];
-
+    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -842,7 +841,7 @@ sub fetch_app {
         _log( "App '$app_name' not found" );
         return undef;
     }
-    return $app->can_access( @args ) ? $app : undef;
+    return $app->_can_access( @args ) ? $app : undef;
 } #fetch_app
 
 sub fetch_root {
@@ -883,7 +882,7 @@ no warnings 'uninitialized';
 
 use base 'Yote::ServerObj';
 
-sub can_access {
+sub _can_access {
     1;
 }
 
@@ -909,4 +908,4 @@ now for requests :
 
  they can be on the root object, specified by '_'
 
- root will have a method : can_access( $obj, /%headers, methodname )
+ root will have a method : _can_access( $obj, /%headers, methodname )

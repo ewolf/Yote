@@ -14,38 +14,11 @@ sub _init {
     my $self = shift;
 }
 
-sub fetch_scenario {
-    my( $self, $idx ) = @_;
-    my $scens = $self->get_scenarios([]);
-    if( $idx > $#$scens || $idx < 0 ) {
-        die "Invalid scenario index";
-    }
-    return $scens->[$idx];
-}
-
+# handy RESET for testing
 sub reset {
     my $self = shift;
     $self->set_scenarios( [ $self->new_scene() ] );
 }
-
-sub setCurrentScene {
-    my( $self, $scene ) = @_;
-    $self->set_current_scene( $scene );
-}
-
-sub drop_scene {
-    my( $self, $scene ) = @_;
-    my $scenes = $self->get_scenarios([]);
-    if( $scene && @$scenes > 1 ) {
-        for( my $i=0; $i<@$scenes; $i++ ) {
-            if( $scene eq  $scenes->[$i] ) {
-                splice @$scenes, $i, 1;
-                last;
-            }
-        }
-        $self->set_current_scene( $scenes->[0] );
-    }
-} #drop_scene
 
 sub new_scene {
     my $self = shift;
@@ -54,24 +27,25 @@ sub new_scene {
         name => 'scenario ' . scalar(1 + @$scenes),
         app  => $self,
                                    }, 'Samp::Scenario' );
-    push @$scenes,  $news;
-    $self->setCurrentScene( $news );
+    push @$scenes, $news;
+    $self->set_current_scene( $news );
     $news;
 }
 
-sub calc { 
-    my( $self, @data ) = @_;
 
-    # 1 get the incoming 
-
-    $self->set_calcResult( $data[0] + $data[1] );
-    $self->set_hourCost( 12 );
-
-    print STDERR Data::Dumper->Dump(["CALC", \@data]);
-    return $self;
+# remove
+sub setCurrentScene {
+    my( $self, $scene ) = @_;
+    $self->set_current_scene( $scene );
 }
 
-
+# remove?
+sub drop_scene {
+    my( $self, $scene ) = @_;
+    $self->remove_from_scenarios($scene);
+    $self->set_current_scene( $self->get_scenes()->[0] );
+} #drop_scene
+print STDERR Data::Dumper->Dump(["LODY"]);
 
 1;
 

@@ -8,7 +8,10 @@ use Yote::Server;
 use base 'Yote::ServerObj';
 use Samp::ProductLine;
 
-our ( %EditFields ) = ( map { $_ => 1 } ( qw( name description  ) ) );
+our ( %EditFields ) = ( map { $_ => 1 } ( 
+                            qw( name 
+                                description  
+                      ) ) );
 
 sub _init {
     my $self = shift;
@@ -49,6 +52,19 @@ sub update {
             my $x = "set_$field";
             $self->$x( $fields->{$field} );
         }
+    }
+    $self->calculate();
+}
+
+sub calculate {
+    my( $self ) = @_;
+    my $lines = $self->get_product_lines([]);
+
+    my $rate;
+    for my $line (@$lines) {
+        my $line_rate = $line->get_production_rate();
+        $rate //= $line_rate;
+        $rate = $line_rate < $rate ? $line_rate : $rate;
     }
 }
 

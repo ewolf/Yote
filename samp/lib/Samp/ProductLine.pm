@@ -11,7 +11,10 @@ use Samp::Step;
 
 our ( %EditFields ) = ( map { $_ => 1 } ( 
                             qw( name
-                                description  ) ) );
+                                description
+                                units_produced
+                                hours
+  ) ) );
 
 sub _init {
     my $self = shift;
@@ -26,10 +29,16 @@ sub _init {
 
 sub new_step {
     my $self = shift;
-    $self->add_to_steps( $self->{STORE}->newobj( {
+    
+    my $step = $self->{STORE}->newobj( {
         product_line => $self,
-                                   }, 'Samp::Step' ) );
-}
+                                       }, 'Samp::Step' );
+    
+    $self->add_to_steps( $step );
+
+    $step;
+    
+} #new_step
 
 # avg hours in month? est 52 weeks
 # 52*40/12 --> 173 hours/month
@@ -60,7 +69,24 @@ sub update {
             $self->$x( $fields->{$field} );
         }
     }
+    $self->calculate();
 }
+
+
+sub calculate {
+    my $self = shift;
+
+    my $steps = $self->get_steps([]);
+    my $rate;
+    for my $step (@$steps) {
+        my $step_rate = $step->get_production_rate();
+        $rate //= $step_rate;
+        $rate = $step_rate < $rate ? $step_rate : $rate;
+    }
+
+    $self->set_production_rate( $rate );
+}
+
 1;
 
 __END__

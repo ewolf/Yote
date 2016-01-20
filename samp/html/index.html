@@ -15,14 +15,19 @@
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
                   var app = yote.fetch_app( 'CalcTest' );
-
+                  $( '#del_scene' ).data( 'parent', app.id );
                   function updateDataFields() {
-                      $( '.updateField' ).each( function() {
+                      $( '.showField' ).each( function() {
                           var $this = $( this );
                           var oid = $this.data( 'id' );
                           var obj = yote.fetch( oid );
+                          var fld = $this.data('field');
                           if( obj ) {
-                              $this.val( obj.get( $this.data('field') ) );
+                              if( $this.is( 'input' ) ) {
+                                  $this.val( obj.get( fld ) );
+                              } else {
+                                  $this.text( obj.get( fld ) );
+                              }
                           } else {
                               console.warn( ["Unable to update data field", $this ] );
                           }
@@ -39,12 +44,27 @@
                               inpt[ fld ] = $this.val() ;
 
                               obj.update( [ inpt ], function() {
-                                  if( fld === 'name' ) {
-                                      updateScenes();
-                                      selectScene( currScene );
-                                  }
+                                  updateScenes();
+                                  selectScene( currScene );
                               } );
                           }
+                      } );
+                      $( '.delAction' ).on( 'click', function(ev) {
+                          var $this  = $(this);
+                          var par    = yote.fetch($this.data( 'parent' ));
+                          var obj    = yote.fetch($this.data( 'id' ));
+                          var action = $this.data('del-action');
+                          par[action]( [obj], function() {
+                              selectScene( currScene );
+                          } );
+                      } );
+                      $( '.addAction' ).on( 'click', function(ev) {
+                          var $this = $(this);
+                          var create_action = $this.data('action');
+                          var parent = yote.fetch( $this.data('parent') );
+                          var newstep = parent[ create_action ]( [], function() {
+                              selectScene( currScene );
+                          } );
                       } );
                   } //activateUpdateFields
 
@@ -70,31 +90,45 @@
                       $('#products').empty();
                       for( var i=0; i<lines.length; i++ ) {
                           var line = lines[i];
-                          $('#products').append( '<div>' +
-                                                 '<button type="delAction product-line" data-parent="' + currScene.id + '" data-id="' + line.id + '">Delete</button>' + 
-                                                 'Name <input class="updateField product-line" data-id="' + line.id + '" data-field="name" type="text"> <br>' + 
-                                                 'Desc <input class="updateField product-line" data-id="' + line.id + '" data-field="description" type="text"> <br>' + 
+                          var buf = '<div><br>\
+ <input class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
+ <button class="delAction product-line" data-parent="' + currScene.id + '" data-id="' + line.id + '" data-del-action="drop_line">Delete</button> \
+ <br>\
+ Desc <input class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text">\
+ <span  class="showField" data-id="' + line.id + '" data-field="production_rate"></span> units per hour\
+ <h5>Process Steps</h5>\
+ <button class="addAction product-line" data-action="new_step" data-parent="' + line.id + '">Add Step</button>\
+ <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
+                          var steps = line.get( 'steps' ).toArray();
+                          alert( steps.length );
+                          for( var j=0; j<steps.length; j++ ) {
+                              var step = steps[j];
+                              alert( step );
+                              buf += 'In <input class="updateField showField step" data-id="' + step.id + '" data-field="hours" type="text"> hours, this produces <input class="updateField showField step" data-id="' + step.id + '" data-field="units_produced" type="text"> units for a rate of <span class="showField" data-id="' + step.id + '" data-field="production_rate"></span> units produced per hour';
+                          }
 
-                                                 '</div>' );
-
+                          buf += '</div>';
+                          $('#products').append( buf );
                       }
                       updateDataFields();
                       activateUpdateFields();
                   } // updateProdLines
 
                   function selectScene( scene ) {
-                      $( '#sceneName' ).val( scene.get('name') );
                       $( "#scenario_sel" ).val( scene.id );
+                      $( "#scenario_sel" ).val( scene.id );
+                      $( "#del_scene" ).data( 'id', scene.id );
                       yote.callWorker( {
                           callpath : 'select_scene',
                           params : scene,
                           callback : function( resp ) {
                               currScene = scene;
-                              $( '.scenario.updateField' ).each( function() {
+                              $( '.scenario' ).each( function() {
                                   var $this = $( this );
                                   $this.data( 'id', currScene.id );
                               } );
                               updateProdLines();
+                              $( '#product-title' ).text( "Products for '" + currScene.get('name') + '"' );
                           }
                       } );
                       
@@ -174,17 +208,7 @@
                   var currScene = app.get('current_scene' );
                   selectScene( currScene );
 
-                  $( '.delAction' ).on( 'click', function(ev) {
-                      var $this = $(this);
-                      var meth  = $this.data( 'call' );
-                      var par   = yote.fetch($this.data( 'parent' ));
-                      var obj   = yote.fetch($this.data( 'id' ));
-                      par[meth]( [obj], function() {
-                          updateScenes();
-                          var currScene = app.get('current_scene' );
-                          selectScene( currScene );
-                      } );
-                  } );
+
 
               }
           ] )
@@ -201,20 +225,21 @@
     <h1>Production Line Scenario Manager</h1>
 
     <button type="button" id="RESET">RESET</button>
-    <BR><BR>
+    <hr>
     Available Scenarios <select id="scenario_sel"></select>
     <button type="button" id="new_scene">Create New Scenario</button>
-        <button type="button" style="display:none" id="del_scene">Delete Scenario</button> <BR>
+        <button type="button" class="delAction scenario" style="display:none" data-id="" data-parent="" data-del-action="drop_scene" id="del_scene">Delete Scenario</button> <BR>
 <div>
-    Scenario Name <input class="updateField scenario" data-id="ofobj" data-field="name" type="text"> <br>
-    Description <input class="updateField scenario" data-id="ofobj" data-field="description" type="text"> <br>
-    <h4>Products</h4>
+    Scenario Name <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text"> <br>
+    Description <input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> <br>
+    <hr>
+    <h4 id="product-title">Products</h4>
     <button type="button" id="new_product">Create New Product Line</button>
     <div id="products">
       No Products
     </div>
 </div>
-
+<hr>
     <br> (test area ) <br>
     Number of Employees <input type="number" id="numEmpl"><br>
     Hourly Wage <input type="number" id="wage"> <br>

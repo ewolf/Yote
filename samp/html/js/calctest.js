@@ -18,7 +18,11 @@ var init = yote.registerFunction( 'init', function() {
     yote.expose( app, scenes, scenes.toArray() );
     currScene = app.get( 'current_scene' );
     if( currScene ) {
-        yote.expose( currScene.get( 'product_lines' ).toArray() );
+        var lines = currScene.get( 'product_lines' ).toArray();
+        for( var i=0; i<lines.length; i++ ) {
+            var line = lines[i];
+            yote.expose( line, line.get('steps').toArray() );
+        }
         return currScene;
     }
 } );
