@@ -150,7 +150,7 @@ sub __transform_params {
         die "Transforming Params: got weird ref '" . ref( $param ) . "'";
     }
     if( index( $param, 'v' ) == 0 ) {
-        if( $server_root->getMay( $param, $token ) ) {
+        if( $server_root->_getMay( $param, $token ) ) {
             return $self->{STORE}->_xform_out( $param );
         }
         die( "Bad Req Param, server says no : $param" );
@@ -244,12 +244,15 @@ sub _process_request {
 
         # root is /_/
         my( $obj_id, $token, $action, $params );
+
         if ( $verb eq 'GET' ) {
             ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
+
             $params = [ map { URI::Escape::uri_unescape($_) } @params ];
             
         } elsif ( $verb eq 'POST' ) {
             ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
+
             $params = $data ? from_json( $data ) : []; # this has to be checked against is valid, yes
         }
         _log( "\n   (params)--> : ".join(',',@$params) );
@@ -435,6 +438,12 @@ sub _new { #Yote::ServerStore
     $self->{OBJ_UPDATE_DB} = DB::DataStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
     $self;
 } #_new
+
+sub _dirty {
+    my( $self, $ref, $id ) = @_;
+    $self->SUPER::_dirty( $ref, $id );
+    $self->{OBJ_UPDATE_DB}->put_record( $id, [ time ] );
+}
 
 sub stow_all {
     my $self = $_[0];
@@ -712,7 +721,7 @@ sub _updates_needed {
         next if index( $obj_id, 'v' ) == 0;
         my $last_update_sent = $obj_data->{$obj_id};
         my $last_updated = $store->_last_updated( $obj_id );
-        if( $last_update_sent < $last_updated || $last_updated == 0 ) {
+        if( $last_update_sent <= $last_updated || $last_updated == 0 ) {
             unless( $last_updated ) {
                 $store->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
             }

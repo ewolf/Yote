@@ -1,5 +1,5 @@
 /* 
-   library file for bakery app
+   library file for calc test
 
 
    note : this relies upon the worker-yote and the non-worker runtime
@@ -11,11 +11,11 @@
 yote.registerFunction( 'calc', function( params ) {
     console.log( "**** CALC CALLED ****" );
     console.log( [ 'PARAMS', params ] );
-    var app = yote.fetch_app( 'Bakery' );
+    var app = yote.fetch_app( 'CalcTest' );
     console.log( [ "APP IS ", app ] );
-    app.calc( params.number_employees, params.hourly_wage );
+    app.calc( [params.number_employees, params.hourly_wage] );
 } );
 
 yote.registerFunction( 'init', function() {
-    console.log( "**** BAKERY INIT ****" );
+    console.log( "**** CALC TEST INIT ****" );
 } );

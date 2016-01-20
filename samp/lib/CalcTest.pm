@@ -1,4 +1,4 @@
-package Bakery;
+package CalcTest;
 
 use strict;
 use warnings;
@@ -13,14 +13,14 @@ sub _init {
 }
 
 sub calc { 
-    my( $self, @data ) = shift;
+    my( $self, @data ) = @_;
 
     # 1 get the incoming 
 
     $self->set_calcResult( $data[0] + $data[1] );
     $self->set_hourCost( 12 );
 
-    print STDERR Data::Dumper->Dump(["CALC", $self]);
+    print STDERR Data::Dumper->Dump(["CALC", \@data]);
     return $self;
 }
 

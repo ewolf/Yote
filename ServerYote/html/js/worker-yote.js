@@ -36,7 +36,7 @@ onmessage = function(e) {
         return resp();
     }
     else if( type === 'fetch_app' ) {
-        var rawResp =  root.fetch_app( params[0], true );
+        var rawResp =  yote.fetch_app( params[0], true );
         return resp( rawResp );
     }
     else if( type === 'call' ) {

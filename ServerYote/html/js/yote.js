@@ -156,7 +156,13 @@ yote._init = function( yoteServerURL, isWorker ) {
     };
 
     function readyObjForContact( obj ) {
-        if( typeof obj !== 'object' ) { return obj ? [obj] : undefined }
+        if( typeof obj !== 'object' ) {
+            return typeof obj === 'undefined' ? undefined : 'v' + obj;
+        }
+        if( id2obj[ obj.id ] === obj ) {
+            return obj.id;
+        }
+
         for( var idx in obj ) {
             var v = obj[idx];
             if( typeof v === 'object' ) {
@@ -170,6 +176,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             }
             obj[idx] = v;
         }
+        return obj;
     }
 
     var contact = function(id,action,data,returnRaw) { 
@@ -187,7 +194,8 @@ yote._init = function( yoteServerURL, isWorker ) {
                   '/' + action, 
                   ! isWorker );
 
-        var sendData = JSON.stringify( readyObjForContact( data ) );
+        var readiedData = readyObjForContact( data );
+        var sendData = JSON.stringify(  typeof readiedData === 'object' ? readiedData : [ readiedData ] );
         console.log( "About to send to server : " + sendData );
 //        oReq.send( sendData ? 'p=' + sendData : undefined );
         // data must always be an array, though that array may have different data structures inside of it
@@ -251,16 +259,23 @@ yote._init = function( yoteServerURL, isWorker ) {
         }
         return {
             functions    : functions,
+            done_fun     : [],
             step         : 0,
             failHandlers : {},
             fail : function( step, failfun ) {
                 this.failHandlers[ step ] = failfun;
                 return this;
             },
+            reset : function() {
+                this.functions = this.done_fun.concat( this.functions );
+                this.step = 0;
+                return this;
+            },
             start : function() {
                 var that = this;
                 if( this.functions.length > 0 ) {
                     var fun = this.functions.shift();
+                    this.done_fun.push( fun );
                     console.log( ['start got fun', fun ] );
                     fun( function() { that.start(); that.step++ },
                      function( err ) {
@@ -297,7 +312,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             }
         }
         else {
-            
+            console.warn( "NON WORKER FETCHING CALL" );
         }
     }; //fetch_app
     
@@ -331,7 +346,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             yote.callWorker( {
                 callType  : 'call',
                 callpath    : callname,
-                params      : args || [], // automatically update objects? Maybe?? Not sure :/ will think
+                params      : args || [],
                 callback    : callback,
                 failhandler : failhandler
             } );
