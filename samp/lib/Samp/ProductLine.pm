@@ -8,14 +8,13 @@ use base 'Samp::Component';
 
 use Samp::Step;
 
-sub allowedupdates {
-    qw( name description units_produced hours food_cost
+sub allowedUpdates {
+    [ qw( name description units_produced hours food_cost
         sale_price packaging_cost
-       );
+       ) ]
 }
 
 sub lists {
-    employees => 'Samp::Employee',
     steps     => 'Samp::Step',
 }
 

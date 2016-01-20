@@ -6,12 +6,15 @@ no warnings 'uninitialized';
 
 use base 'Samp::Component';
 
+sub lists {
+    employees => 'Samp::Employee',
+}
 
-sub allowedupdates {
-    qw(
+sub allowedUpdates {
+    [ qw(
         name description units_produced hours min_run_time
         employees_required equipment_required
-      );
+      ) ]
 }
 
 sub calculate {

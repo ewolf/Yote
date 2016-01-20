@@ -48,7 +48,7 @@ var new_scene = yote.registerFunction( 'new_scene', function() {
 } );
 
 var new_prod = yote.registerFunction( 'new_product_line', function() {
-    var scene = app.get('current_scene');
-    var newprod = scene.new_product_line([]);
+    var scene   = app.get('current_scene');
+    var newprod = scene.add_entry( 'product_line' );
     return newprod;
 } );

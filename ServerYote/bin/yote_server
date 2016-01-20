@@ -119,7 +119,7 @@ if( $cmd eq 'restart' ) {
     if( my $pid = check_pidfile( $pidfile ) ) {
         print "Stopping $0\n";
         kill 'INT', $pid;
-        sleep 2;
+        sleep 4;
         print "Done\n";
     }    
     start_yote();

@@ -7,8 +7,8 @@ no warnings 'uninitialized';
 use base 'Samp::Component';
 use Samp::ProductLine;
 
-sub allowedupdates {
-    qw( name description )
+sub allowedUpdates {
+    [qw( name description )]
 }
 sub lists {
     {
@@ -20,7 +20,7 @@ sub lists {
 
 sub _init {
     my $self = shift;
-    $self->SUPER::init;
+    $self->SUPER::_init;
     $self->set_overhead(0);
 } #_init
 
