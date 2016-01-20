@@ -96,7 +96,7 @@ sub add_entry {
     my $class = $self->_lists->{$listName};
     
     die "Unknown list '$listName' in ".ref($self) unless $class;
-    my $list = $self->get( $listName );
+    my $list = $self->get( $listName, [] );
     $obj //= $self->{STORE}->newobj( {
         parent => $self,
         name   => $listName.' '.(1 + @$list),

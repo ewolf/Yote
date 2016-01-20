@@ -126,7 +126,6 @@ yote.init = function( args ) {
                 return a;
             };
             obj.each = function( fun ) {
-                console.warn( [ 'BLA', obj ] );
                 for( var k in obj._data ) {
                     fun( obj.get( k ), k );
                 }
@@ -150,7 +149,29 @@ yote.init = function( args ) {
 
     } //makeObj
     
-    function processRaw(rawResponse,expectAlist) {
+    function processReturn( returnData ) {
+        if( Array.isArray( returnData ) ) {
+            var ret = returnData.map( function( x ) {
+                return processReturn( x );
+            } );
+            return ret;
+        } 
+        else if( typeof returnData === 'object' ) {
+            var ret = {};
+            for( var k in returnData ) {
+                ret[k] = processReturn( returnData[k] );
+            }
+            return ret;
+        } 
+        else if( typeof returnData === 'string' && returnData.startsWith('v') ) {
+            return returnData.substring(1);
+        }
+        else if( typeof returnData !== 'undefined' ) {    
+            return yote.fetch( returnData );
+        }
+    } //processReturn
+
+    function processRaw(rawResponse) {
         if( ! rawResponse ) {
             return;
         }
@@ -169,7 +190,7 @@ yote.init = function( args ) {
         if( res.updates ) {
             res.updates.forEach( function( upd ) {
                 if( typeof upd !== 'object' || ! upd.id ) {
-                    console.error( "Update error, was expecting object, not : '" + upd + "'" );
+                    console.warn( "Update error, was expecting object, not : '" + upd + "'" );
                 } else {
                     // good place for an update listener
                     makeObj( upd );
@@ -179,15 +200,8 @@ yote.init = function( args ) {
         
         // results
         if( res.result ) {
-            var resses = [];
-            res.result.forEach( function( ret ) {
-                if( typeof ret === 'string' && ret.startsWith( 'v' ) ) {
-                    resses.push( ret.substring(1) );
-                } else {
-                    resses.push( yote.fetch( ret ) );
-                }
-            } );
-            return (resses.length > 1 || expectAlist) ? resses : resses[0];
+            var resses = processReturn( res.result );
+            return resses.length > 1 ? resses : resses[0];
         }
     }; //processRaw
 

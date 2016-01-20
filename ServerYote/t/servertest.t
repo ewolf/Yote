@@ -63,7 +63,6 @@ sleep 1;
 
 test_suite();
 
-print STDERR Data::Dumper->Dump(["STOPPING"]);
 $server->stop;
 
 done_testing;
@@ -75,7 +74,7 @@ exit( 0 );
 sub msg {  #returns resp code, headers, response pased from json 
     my( $obj_id, $token, $action, @params ) = @_;
     
-    my $socket = new IO::Socket::INET( "127.0.0.1:8881" ) or die "FOO $@";
+    my $socket = new IO::Socket::INET( "127.0.0.1:8881" ) or die "Error starting server : $@";
     $socket->print( "GET /" . join( '/',  $obj_id, 
                                     $token, 
                                     $action, 

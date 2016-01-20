@@ -129,7 +129,8 @@ sub run {
 } #run
 
 sub _log {
-    print STDERR 'Yote::Server : ' . shift . "\n" if $DEBUG;
+    my $msg = shift;
+    print STDERR "Yote::Server : $msg\n" if $DEBUG;
 }
 
 sub __transform_params {
@@ -157,6 +158,20 @@ sub __transform_params {
     }
     return $self->{STORE}->fetch($param); #oops!
 } #__transform_params
+
+sub _find_ids_in_data {
+    my $data = shift;
+    my $r = ref( $data );
+    if( $r eq 'ARRAY' ) {
+        return grep { $_ && index($_,'v')!=0 } map { ref( $_ ) ? _find_ids_in_data($_) : $_ } @$data;
+    }
+    elsif( $r eq 'HASH' ) {
+        return grep { $_ && index($_,'v')!=0} map { ref( $_ ) ? _find_ids_in_data($_) : $_ } values %$data;
+    }
+    elsif( $r ) {
+        die "_find_ids_in_data encountered a non ARRAY or HASH reference";
+    }
+} #_find_ids_in_data
 
 sub _process_request {
     #
@@ -266,7 +281,6 @@ sub _process_request {
 
         my $server_root = $self->{STORE}->fetch_server_root;
         my $server_root_id = $server_root->{ID};
-
         unless( $obj_id eq '_' || 
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
@@ -335,33 +349,10 @@ sub _process_request {
         }
 
         my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
-        my @mays = 
+
+        my @has = _find_ids_in_data( $out_res );
+        my @mays = @has, $store->_find_ids_referenced( @has );
         
-        my( @out_res );
-        my( @mays, @has );
-
-        for my $res (@res) {
-            my $val = $store->_xform_in( $res, 'allow datastructures' );
-            # mark that it may and does have the token
-            push @mays, $val;
-
-            if ( ref $val eq 'ARRAY' ) {
-                $data = [ 
-                    map { my $d = $store->_xform_in( $_, 'allow datastructures' );
-                          push @mays, $d;
-                          $d } 
-                        @$val ];
-            } elsif ( ref $val eq 'HASH' ) {
-                $data = {
-                    map { my $d = $store->_xform_in( $val->{$_}, 'allow datastructures' );
-                          push @mays, $d;
-                          $_ => $d }
-                        keys %$val };
-            } 
-
-
-            push @out_res, $val;
-        }
         my $ids_to_update;
         if ( ( $action eq 'fetch_root' || $action eq 'init_root' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
             # if there is a token, make it known that the token 
@@ -374,17 +365,15 @@ sub _process_request {
                 push @has, $server_root_id;
             }
         } else {
-            $ids_to_update = $server_root->_updates_needed( $token, \@out_res );
+            $ids_to_update = $server_root->_updates_needed( $token, \@has );
         }
-
-        push @has, @out_res;
         
         my( @updates, %methods );
         for my $obj_id (@$ids_to_update) {
             my $obj = $store->fetch( $obj_id );
             my $ref = ref( $obj );
 
-            my( $data, $meths );
+            my( $data );
             if ( $ref eq 'ARRAY' ) {
                 $data = [ 
                     map { my $d = $store->_xform_in( $_ );
@@ -417,11 +406,9 @@ sub _process_request {
             push @updates, $update;
         } #each obj_id to update
 
-
         $server_root->_setHasAndMay( \@has, \@mays, $token );
 
-        print STDERR Data::Dumper->Dump([\@out_res,\@updates,\%methods,"????"]);
-        my $out_json = to_json( { result  => \@out_res,
+        my $out_json = to_json( { result  => $out_res,
                                  updates => \@updates,
                                  methods => \%methods,
                              } );
@@ -510,12 +497,12 @@ sub _xform_in {
 
     my $r = ref $val;
     if( $r ) {
-        if( $allow_datastructures ) {
+        if( $allow_datastructures) {
             # check if this is a yote object
-            if( ref( $val ) eq 'ARRAY' ) {
+            if( ref( $val ) eq 'ARRAY' && ! tied @$val ) {
                 return [ map { ref $_ ? $self->_xform_in( $_, $allow_datastructures ) : "v$_" } @$val ];
             }
-            elsif( ref( $val ) eq 'HASH' ) {
+            elsif( ref( $val ) eq 'HASH' && ! tied %$val ) {
                 return { map { $_ => ( ref( $val->{$_} ) ? $self->_xform_in( $val->{$_}, $allow_datastructures ) : "v$_" ) } keys %$val };
             }
         }
@@ -524,6 +511,21 @@ sub _xform_in {
 
     return "v$val";
 } #_xform_in
+
+
+sub _find_ids_referenced {
+    my( $self, @ids ) = @_;
+    my( @refd );
+    for my $obj (map { $self->_xform_out( $_ ) } @ids ) {
+        if( ref $obj eq 'ARRAY' ) {
+            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } @$obj;
+        } elsif( ref $obj eq 'HASH' ) {
+            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } values %$obj;
+        } else {
+            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } map { $obj->{DATA}{$_} } grep { index($_,'_') != 0 } keys %{$obj->{DATA}};
+        }
+    }
+}
 
 sub newobj {
     my( $self, $data, $class ) = @_;
@@ -538,7 +540,6 @@ sub fetch_server_root {
 
     my $system_root = $self->fetch_root;
     my $server_root = $system_root->get_server_root;
-    $self->{SERVER_ROOT} ||= $server_root;
     unless( $server_root ) {
         $server_root = Yote::ServerRoot->_new( $self );
         $system_root->set_server_root( $server_root );
@@ -554,6 +555,7 @@ sub fetch_server_root {
     # then verify if the command can run on the app object with those args
     # or even : $myapp->run( 'command', @args );
 
+    $self->{SERVER_ROOT} ||= $server_root;
 
     $server_root;
     
@@ -604,7 +606,7 @@ sub __discover_methods {
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
-    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
+    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|AUTOLOAD|DESTROY|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -727,7 +729,6 @@ sub _setHasAndMay {
         next if index( $id, 'v' ) == 0 || $token eq '_';
         $obj_data->{$token}{$id} = time - 1;
     }
-
     $self->{STORE}->_stow( $obj_data );
     
     $self->{STORE}->unlock( "_has_and_may_Token2objs" );
@@ -747,7 +748,6 @@ sub _getMay {
 sub _updates_needed {
     my( $self, $token, $outRes ) = @_;
     return [] if $token eq '_';
-
 
     my $obj_data = $self->get__doesHave_Token2objs()->{$token};
     my $store = $self->{STORE};
