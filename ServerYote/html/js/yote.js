@@ -17,7 +17,6 @@ yote.expose = function() {
 
 yote.initMain = function( yoteServerURL ) {
     yote._init( yoteServerURL, false );
-//    yote._findControls();
 }; //initWorker
 
 yote.initWorker = function( yoteServerURL ) {
@@ -59,8 +58,11 @@ yote._init = function( yoteServerURL, isWorker ) {
         return function( data, rawOrHandler, failhandler ) {
             var that = this;
             var id = this.id;
-            
-            if( isWorker ) { 
+
+            if( 1 ) {
+                var res = contact( id, nm, data, false, rawOrHandler );
+            }
+            else if( isWorker ) { 
                 if( typeof rawOrHandler === 'boolean') {
                     var useRaw = rawOrHandler;
                 } else {
@@ -209,6 +211,13 @@ yote._init = function( yoteServerURL, isWorker ) {
     var reqListener = function( returnRaw, handl ) { 
         return function() {
             console.log( "GOT [ " + workerTxt + "] FROM SERVER : " + this.responseText );
+
+            returnVal = processRaw( this.responseText );
+            if( handl ) {
+                handl( returnVal );
+            }
+            return;
+            
             if( isWorker ) {
                 yote.addRawStep( this.responseText );
             }
@@ -447,9 +456,9 @@ yote._init = function( yoteServerURL, isWorker ) {
     /*
     yote.initRoot = function( appname, callback ) {
         return function( cb, failhandler ) {
-            yote.callWorker( {
+            yote.callworker( {
                 params    : [],
-                callType  : 'init_root',
+                calltype  : 'init_root',
                 callback  : function( result ) {
                     yote.root  = result[0];
                     yote.token = result[1]
@@ -463,17 +472,15 @@ yote._init = function( yoteServerURL, isWorker ) {
     };
     */
 
-    yote.initRoot = function( app, callback, failhandler ) {
-        yote.callWorker( {
-            params    : [app],
-            callType  : 'init_root',
-            callback  : function( result ) {
-                yote.root  = result[0];
-                yote.token = result[1]
-                
-                if( callback ) callback( result[2] );
-            },
-            failhandler : failhandler
+    yote.initRoot = function( appname, callback, failhandler ) {
+        contact( '_', 'init_root', [], false, function(res) {
+            yote.root = res[0];
+            yote.token = res[1];
+            if( appname ) {
+                yote.root.fetch_app( [appname], function( app ) {
+                    callback( app );
+                } );
+            }
         } );
     };
 
