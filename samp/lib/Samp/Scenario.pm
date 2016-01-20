@@ -14,7 +14,6 @@ sub _allowedUpdates {
          description 
          employee_count
          employee_pay_rate
-         current_product_line
          monthly_rent
          monthly_utilities
     )]
@@ -28,8 +27,8 @@ sub _lists {
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
-    $self->set_current_product_line( $self->add_entry( 'product_lines' ) );
-    $self->set_number_of_employees(3);
+    $self->set_current_product_lines( $self->add_entry( 'product_lines' ) );
+    $self->set_employee_count(3);
     $self->set_employee_pay_rate(15);
     $self->set_monthly_rent(0);
     $self->set_monthly_utilities(0);

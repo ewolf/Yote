@@ -44,6 +44,7 @@ sub __allowedUpdates {
 sub update {
     my( $self, $updates ) = @_;
     my %allowed = $self->__allowedUpdates;
+    print STDERR Data::Dumper->Dump([$updates,\%allowed,"UP"]);
     for my $fld (keys %$updates) {
         die "Cant update '$fld'" unless $allowed{$fld};
         my $s = "set_$fld";
