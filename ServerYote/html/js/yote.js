@@ -126,6 +126,7 @@ yote.init = function( args ) {
                 return a;
             };
             obj.each = function( fun ) {
+                console.warn( [ 'BLA', obj ] );
                 for( var k in obj._data ) {
                     fun( obj.get( k ), k );
                 }

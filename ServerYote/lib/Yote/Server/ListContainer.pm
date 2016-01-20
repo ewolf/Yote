@@ -49,8 +49,9 @@ sub choices {
     my( $self, $field ) = @_;
     my $l = $self->get( $field );
     if( ref( $l ) eq 'ARRAY' ) {
-        return $l;
+        return @$l;
     }
+    return ();
 }
 sub calculate {}  #override
 
@@ -58,9 +59,9 @@ sub calculate {}  #override
 
 sub _valid_choices {
     my( $self, $field ) = @_;
-    my $choices = $self->choices( $field );
-    if( $choices) {
-        return { map { $_ => 1 } map { ref $_ eq 'ARRAY' ? $_->[0]  : $_ } @$choices };
+    my( @choices ) = $self->choices( $field );
+    if( @choices) {
+        return { map { $_ => 1 } map { ref $_ eq 'ARRAY' ? $_->[0]  : $_ } @choices };
     }
 }
 
@@ -72,14 +73,14 @@ sub update {
     my( $self, $updates ) = @_;
     my %allowed = $self->__allowedUpdates;
     for my $fld (keys %$updates) {
-        die "Cant update '$fld'" unless $allowed{$fld};
+        die "Cant update '$fld' in ".ref($self) unless $allowed{$fld};
         my $val = $updates->{$fld};
         my $valid_choices = $self->_valid_choices($fld);
         if( $valid_choices && ! $valid_choices->{$val} ) {
             if( $valid_choices->{undef} ) {
                 $val = undef;
             } else {
-                die "Cant update '$fld' to $val";
+                die "Cant update '$fld' to $val in " . ref($self);
             }
         }
         $self->set( $fld, $val )
@@ -94,7 +95,7 @@ sub add_entry {
     
     my $class = $self->_lists->{$listName};
     
-    die "Unknown list '$listName'" unless $class;
+    die "Unknown list '$listName' in ".ref($self) unless $class;
     my $list = $self->get( $listName );
     $obj //= $self->{STORE}->newobj( {
         parent => $self,
@@ -109,7 +110,7 @@ sub add_entry {
 
 sub select_current {
     my( $self, $listName, $item ) = @_;
-    die "Unknown list '$listName'" unless $self->_lists->{$listName};
+    die "Unknown list '$listName' in ".ref($self) unless $self->_lists->{$listName};
     $self->set( "current_$listName", $item );
     $item;
 } #select_current
@@ -138,7 +139,7 @@ sub gather_all {
 
 sub remove_entry {
     my( $self, $item, $from ) = @_;
-    die "Unknown list '$from'" unless $self->_lists->{$from};
+    die "Unknown list '$from' in ".ref($self) unless $self->_lists->{$from};
     my $list = $self->get($from);
     for( my $i=0; $i<@$list; $i++ ) {
         if( $list->[$i] == $item ) {

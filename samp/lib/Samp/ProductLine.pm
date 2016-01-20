@@ -28,12 +28,13 @@ sub _lists {
 
 sub choices {
     my( $self, $field ) = @_;
-    if( $field eq 'ingredients' ) {
+    if( $field eq 'ingreds' ) {
         my $scene = $self->get_parent;
-        return [ [undef,"choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines}];
+        return ( ['', "choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines} );
     } elsif( $field eq 'expected_sales_per' ) {
-        return [qw( day week month year )];
+        return (qw( day week month year ));
     }
+    return ();
 } #choices
 
 #

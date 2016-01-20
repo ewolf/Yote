@@ -7,6 +7,7 @@
       <!--
       function init() {
           // THIS IS IT, THE WHOLE INIT ENCHILADA
+          $( '.template' ).each( function() { $(this).find('*').each(function() { $(this).toggleClass('template', true ); } ) } );
           yote.init( {
               appName : 'CalcTest',
               handler : function( root, app ) {
@@ -24,13 +25,17 @@
           }
 
           function fill_template( sel, vars, fields ) {
+              return;
               var $template = $( sel );
               if( $template.length != 1 ) {
-                  console.warn( "error filling template '" + sel + "'" );
+                  console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
                   return undefined;
               }
+              $template = $template.clone();
+              $template.attr( 'id', $template.attr('id') + '-clone' );
               $template.find("*").each( function() {
                   var $this = $(this);
+                  $this.removeClass( 'template' );
                   for( var i=0;i<fields.length; i++ ) {
                       var fld = fields[i];
                       if( vars[$this.data( fld )] ) {
@@ -69,38 +74,45 @@
           } //updateListener
 
           function modifyControl( selector, key, fun ) {
+              selector = selector;
               if( typeof key === 'object' ) {
                   for( var k in key ) {
                       modifyControl( selector, k, key[k] );
                   }
                   return;
               }
-              var $sel = $( selector );
               key = 'set-' + key + '-listener';
               $( selector ).each( function() {
                   var $this = $( this );
-                  if( ! $this.data( key ) && $this.data('id') ) {
-                      $this.data( key, true );
-                      fun( $this );
+                  if( ! $this.hasClass('template') ) {
+                      if( ! $this.data( key ) && $this.data('id') ) {
+                          $this.data( key, true );
+                          fun( $this );
+                      }
                   }
               } );
           }
 
-          function _updateSelect( $sel, list ) {
-
-              var list_fld = $sel.data('list-field');
+          function _updateSelect( $sel, list, listIsObj ) {
+              var cur_val;
+              var list_fld = $sel.data('src-field');
 
               var obj = yote.fetch( $sel.data('id') );
-              list = list || obj.get( list_fld );
+              if( listIsObj ) {
+                  list = list || obj.get( list_fld );
+                  valTitles = list.toArray();
+              } else {
+                  valTitles = list;
+              }
               var cur_fld = $sel.data('field');
-              var cur_val = obj.get( cur_fld );
-              if( typeof cur_val === 'object' ) {
-                  cur_val = cur_val.id;
+              if( cur_fld ) {
+                  cur_val = obj.get( cur_fld );
+                  if( typeof cur_val === 'object' ) {
+                      cur_val = cur_val.id;
+                  }
               }
 
-              var isObj = $sel.data( 'list-stores') === 'object';
-
-              var valTitles = list.toArray();
+              var isObj = $sel.data( 'var-is') === 'object';
               var buf = '';
               for( var i=0; i<valTitles.length; i++ ) {
                   var vt = valTitles[i];
@@ -120,26 +132,31 @@
                   }
                   buf += '<option class="showField" ' + 
                       'data-field="name" ' +
-                      ( cur_val === val ? 'selected ' : '' ) + 
+                      ( cur_val === val ? 'selected="true" ' : '' ) + 
                       'data-id="' + val + '" value="' + val + '">' + title + '</option>';
               }
+  
               $sel.empty().append( buf );
+              $sel.val( cur_val );
 
-              $sel.off('change').on('change',function() {
-                  var $this = $(this);
-                  var val = $this.val();
-                  var inpt = {};
-                  if( isObj ) {
-                      val = yote.fetch( val );
-                  }
-                  inpt[ cur_fld ] = val;
-                  var o = yote.fetch( $sel.data('id') );
-                  o.update( [ inpt ] );
-              } );
-
-              updateListener( list, 'select-listener', function() { 
-                  _updateSelect($sel,list);
-              }, false );
+              if( cur_fld ) {
+                  $sel.off('change').on('change',function() {
+                      var $this = $(this);
+                      var val = $this.val();
+                      var inpt = {};
+                      if( isObj ) {
+                          val = yote.fetch( val );
+                      }
+                      inpt[ cur_fld ] = val;
+                      var o = yote.fetch( $sel.data('id') );
+                      o.update( [ inpt ] );
+                  } );
+              }
+              if( listIsObj ) {
+                  updateListener( list, 'select-listener', function() { 
+                      _updateSelect($sel,list,listIsObj);
+                  }, false );
+              }
           } // _updateSelect
 
 
@@ -160,6 +177,16 @@
                                 var $this = $(this);
                                 $this.parent().addClass( 'editing' );
                                 var $inpt = $this.parent().find( 'input' );
+                                $inpt.data('original', $inpt.val() );
+                                $inpt.focus();
+                            } );
+              } );
+              modifyControl( 'div.updateFieldControl', 'updateField-click', function( $ctrl ) {
+                  $ctrl.on( 'click',
+                            function() {
+                                var $this = $(this);
+                                $this.addClass( 'editing' );
+                                var $inpt = $this.find( 'input' );
                                 $inpt.data('original', $inpt.val() );
                                 $inpt.focus();
                             } );
@@ -198,21 +225,17 @@
                   }
               } );
               modifyControl( 'select.editField', 'build-select', function( $ctrl ) {
-                  var list_fld = $ctrl.data('list-field');
-                  
+                  var list_src_fld       = $ctrl.data('src-field');
                   var obj = yote.fetch( $ctrl.data('id') );
-                  var list = obj.get( list_fld );
-                  
-                  var cur_fld = $ctrl.data('field');
-                  var cur_val = obj.get( cur_fld );
-                  if( typeof cur_val === 'object' ) {
-                      cur_val = cur_val.id;
-                  }
-                  if( $ctrl.data('use-raw-list') ) {
-                      _updateSelect( $ctrl, list );
+
+                  if( list_src_fld ) {
+                      var list = obj.get( list_src_fld );
+                      _updateSelect( $ctrl, list, true );
                   } else {
-                      obj.choices( [$ctrl.data('list-source')], function( valTitles ) {
-                          _updateSelect( $ctrl, valTitles );
+                      var collection_src_fld = $ctrl.data('src-collection');
+                      
+                      obj.choices( [collection_src_fld], function( valTitles ) {
+                          _updateSelect( $ctrl, valTitles, false );
                       } );
                   }
               } );
@@ -281,8 +304,10 @@
                       } else {
                           $this.val( val );
                       }
-                  } else {
+                  } else if( val ) {
                       $this.text( val );
+                  } else {
+                      $this.html( '&nbsp;' );
                   }
               } );
           }              
@@ -384,13 +409,13 @@
               ings.removeUpdateListeners().addUpdateListener( function() {
                   setup_ingredients_table( prd );
               } );
-              var ingsl = ings.each( function( ing, i ) {
+              ings.each( function( ing, i ) {
                   var prod = ing.get( 'parent' );
                   $tab.append( fill_template( '#ingredient-row', {
                       PROD : prod.id,
                       ING  : ing.id
-                  }, 'id' ) );
-              }
+                  }, ['id'] ) );
+              } );
                                      
               var scenario = prd.get('parent');
               var prodsl = scenario.get( 'product_lines' ).toArray();
@@ -406,16 +431,17 @@
 
               $tab.append( buf );
 
-              for( var i=0; i<ingsl.length; i++ ) {
-                  var ing = ingsl[ i ];
+              ings.each( function( ing, i ) {
                   watchForUpdates( ing );
-              }
+              } );
 
               $( '#new_ingredient' ).on( 'change', function() {
                   var $this = $( this );
                   var chosen = yote.fetch( $this.val() );
-                  prd.add_entry( [{ listName : 'ingredients',
-                                   itemArgs : chosen }] );
+                  if( chosen ) {
+                      prd.add_entry( [{ listName : 'ingredients',
+                                        item     : chosen }] );
+                  }
               } );
               
           } //setup_ingredients_table
@@ -467,17 +493,19 @@
     </script>
 
     <style>
-    div.updateFieldControl { display: inline-block; padding: .2em; border: groove 1px #FEFEFE; }
+    div.updateFieldControl { display: inline-block; padding: .2em; border: groove 1px #FEFEFE;  min-width: 3em; }
     div.updateFieldControl:hover  { cursor: pointer; background-color:yellow; }
     div.updateFieldControl>span:hover { cursor: pointer; background-color:yellow; }
     div.updateFieldControl>input { display: none; }
-    div.updateFieldControl>span { display: inline; }
+    div.updateFieldControl>span { display: inline; min-width: 3em; }
     div.updateFieldControl.editing>input { display: inline; background-color:#EFF; }
     div.updateFieldControl.editing>input.edited { display: inline; background-color:yellow; }
     div.updateFieldControl.editing>span { display: none; }
     span.showField {  }
     .template { display: none }
     </style>
+
+
 
   </head>
   <body onLoad="init()">
@@ -488,7 +516,7 @@
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
     <p>
-      Selected Scenario <select class="showField editField app" data-field="current_scenarios" data-use-raw-list="true" data-list-stores="object" data-list-field="scenarios"></select>
+      Selected Scenario <select class="showField editField app" data-field="current_scenarios"  data-var-is="object" data-src-field="scenarios"></select>
       <a href="" class="delAction app-child scenario" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
         <div>
@@ -518,20 +546,20 @@
     <hr>
     <h4 id="product-title">Products</h4>
 
-    <select class="showField editField scenario" data-field="current_product_lines" data-use-raw-list="true" data-list-stores="object" data-list-field="product_lines" id="prod_sel"></select>
+    <select class="showField editField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
 
     <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
     <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</a>
     <span id="no_products">No Products</span>
     <div id="curr_product">
-      Name : <div class="updateFieldControl product" data-classes="product" data-far="yes" data-field="name" data-input-type="text"></div> <br>
+      Name : <div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> <br>
       Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
 
     <table>
       <tr> <th>Sale Price / unit</th> <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td> </tr>
       <tr>
         <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
-        <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-list-source="expected_sales_per" data-input-type="number"></span></td>
+        <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-src-collection="expected_sales_per"></span></td>
        </tr>
 
 
@@ -548,28 +576,11 @@
         <tbody>
         </tbody>
       </table>
-      <select class="editField showField scenario" 
+      <select class="editField showField product" 
               id="new_ingredient"
-              data-source-field="what list variable on the object to use. if used, collection wont be"
-              data-source-collection="what key item will build source with. if used field wont be"
-              data-empty-option="Choose Ingredient"
-              
-
-              data-field="current_product_lines" 
-              data-use-raw-list="true" 
-              data-list-field="product_lines" 
+              data-src-collection="ingreds"
               ></select>
 
-      <tr class="template" id="ingredient-row"> 
-        <td> 
-
-           <select class="editField showField" data-id="ING" data-field="current_product_lines" data-use-raw-list="true" data-list-field="product_lines" id="new_ingredient"></select>
-
-<span class="showField" data-id="PROD" data-field="name"></span> </td>
-        <td> <span class="showField" data-id="ING" data-field="amount_per_run"></span> </td>
-        <td> <span class="showField" data-id="ING" data-field="notes"></span> </td>
-        <td> <a href="" class="delAction product-child" data-id="ING" data-from="ingredients"></a> </td>
-      </tr>
       <h4>Steps</h4>
 
       <table border=1 id="steps_tab">
@@ -583,5 +594,21 @@
     </div>
     </div>
     <hr>
-  </body>
+
+    <section class="template">
+      <tr id="ingredient-row"> 
+        <td> 
+
+           <select class="editField showField" data-id="ING" data-field="current_product_lines" data-src-field="product_lines" id="new_ingredient"></select>
+
+<span class="showField" data-id="PROD" data-field="name"></span> </td>
+        <td> <span class="showField" data-id="ING" data-field="amount_per_run"></span> </td>
+        <td> <span class="showField" data-id="ING" data-field="notes"></span> </td>
+        <td> <a href="" class="delAction product-child" data-id="ING" data-from="ingredients"></a> </td>
+     </tr>
+    </section>
+
+
+    </body>
+    
 </html>

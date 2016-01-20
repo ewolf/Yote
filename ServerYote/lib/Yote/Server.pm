@@ -255,7 +255,7 @@ sub _process_request {
 
             $params = $data ? from_json( $data ) : []; # this has to be checked against is valid, yes
         }
-        _log( "\n   (params)--> : ".join(',',@$params) );
+        _log( "\n   (params)--> : ".Data::Dumper->Dump([$params]) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {
             _log( "Bad action (underscore) : '$action'" );
@@ -334,23 +334,26 @@ sub _process_request {
             exit; #end forked process
         }
 
+        my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
+        my @mays = 
+        
         my( @out_res );
         my( @mays, @has );
 
         for my $res (@res) {
-            my $val = $store->_xform_in( $res );
+            my $val = $store->_xform_in( $res, 'allow datastructures' );
             # mark that it may and does have the token
             push @mays, $val;
 
             if ( ref $val eq 'ARRAY' ) {
                 $data = [ 
-                    map { my $d = $store->_xform_in( $_ );
+                    map { my $d = $store->_xform_in( $_, 'allow datastructures' );
                           push @mays, $d;
                           $d } 
                         @$val ];
             } elsif ( ref $val eq 'HASH' ) {
                 $data = {
-                    map { my $d = $store->_xform_in( $val->{$_} );
+                    map { my $d = $store->_xform_in( $val->{$_}, 'allow datastructures' );
                           push @mays, $d;
                           $_ => $d }
                         keys %$val };
@@ -417,8 +420,8 @@ sub _process_request {
 
         $server_root->_setHasAndMay( \@has, \@mays, $token );
 
-        
-        my $out_res = to_json( { result  => \@out_res,
+        print STDERR Data::Dumper->Dump([\@out_res,\@updates,\%methods,"????"]);
+        my $out_json = to_json( { result  => \@out_res,
                                  updates => \@updates,
                                  methods => \%methods,
                              } );
@@ -427,10 +430,10 @@ sub _process_request {
             'Server: Yote',
             'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
-            'Content-Length: ' . length( $out_res ),
+            'Content-Length: ' . length( $out_json ),
         );
-        _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_res )\n" );
-        $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_res\n" );
+        _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
+        $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
 
         $sock->close;
         $self->{STORE}->stow_all;
@@ -505,13 +508,15 @@ sub _log {
 sub _xform_in {
     my( $self, $val, $allow_datastructures ) = @_;
 
-    if( ref( $val ) ) {
+    my $r = ref $val;
+    if( $r ) {
         if( $allow_datastructures ) {
             # check if this is a yote object
-            if( $val->isa( 'Yote::Obj' ) ) { #keeping this in this rare case as isa is not the cheapist operation
-                return $self->_get_id( $val );
-            } else {
-                return $val;
+            if( ref( $val ) eq 'ARRAY' ) {
+                return [ map { ref $_ ? $self->_xform_in( $_, $allow_datastructures ) : "v$_" } @$val ];
+            }
+            elsif( ref( $val ) eq 'HASH' ) {
+                return { map { $_ => ( ref( $val->{$_} ) ? $self->_xform_in( $val->{$_}, $allow_datastructures ) : "v$_" ) } keys %$val };
             }
         }
         return $self->_get_id( $val );
