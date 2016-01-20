@@ -37,6 +37,7 @@ sub calculate {
     my $self = shift;
 
     my $steps = $self->get_steps([]);
+    
     my $rate;
     for my $step (@$steps) {
         my $step_rate = $step->get_production_rate();
@@ -45,6 +46,29 @@ sub calculate {
     }
 
     $self->set_production_rate( $rate );
+
+
+    my( $slowest_rate, $bottleneck );
+    for my $step (@$steps) {
+        my $step_rate = $step->get_production_rate();
+        $slowest_rate //= $step_rate;
+        $bottleneck //= $step;
+        if( $step_rate < $slowest_rate ) {
+            $slowest_rate =  $step_rate;
+            $bottleneck = $step;
+        }
+    } 
+        
+    # rate is per hour. Calculate how long it would take
+    # to do a production run of X
+    my $hours = 0;
+    for my $line (@$lines) {
+        my $line_rate = $line->get_production_rate();
+        if( $line_rate ) {
+            $hours += $slowest_rate / $line_rate; # items / (items/hour)  --> hours
+        }
+    }
+    $self->set_production_rate( $slowest_rate / $hours ) if $hours;
 }
 
 1;

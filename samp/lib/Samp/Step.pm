@@ -25,7 +25,7 @@ sub calculate {
     } else {
         $self->set_production_rate( 'n/a' );
     }
-    $self->get_product_line()->calculate();
+    $self->get_parent()->calculate();
 }
 
 1;

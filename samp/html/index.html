@@ -23,7 +23,7 @@
                   } );
                   $( '.app' ).each( function() {
                       $(this).data( 'id', app.id );
-                  } ); 
+                  } );
 
                   updateScenarioSelect();
                   selectScenario( app.get( 'current_scenario' ) );
@@ -64,7 +64,7 @@
                       } );
                       return true;
                   } //selectScenario
-                  
+
 
                   $( "#RESET" ).off().on('click',function() {
                       if( confirm( 'really delete everything?' ) ) {
@@ -95,9 +95,9 @@
                           }
                       } );
                   } //updateDataFields
-                  
+
                   function activateUpdateFields() {
-                      $( '.updateField' ).off().on( 'keypress', function(ev) {
+                      $( '.updateField' ).off().on( 'keydown', function(ev) {
                           var kk = ev.keyCode || ev.charCode;
                           if( kk == 13 || kk == 9 ) {
                               var $this = $( this );
@@ -141,14 +141,26 @@
                   function updateProdLines() {
                       var lines = currScenario.get( 'product_lines' ).toArray();
                       $('#products').empty();
+                      var $table = $( '#product-table' ).empty().append( '<tr> <th> Product </th> <th> Production Rate </th> <th> Production Cost </th> <th> Profit </th> </tr>' );
                       for( var i=0; i<lines.length; i++ ) {
                           var line = lines[i];
-                          var buf = '<div><br>\
- <input class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
+
+                          // build up the table
+                          $table.append( '<tr> <td> ' + [ line.get('name'),
+                                                          '<span  class="showField" data-id="' + line.id + '" data-field="production_rate">?</span>',
+                                                          '<span  class="showField" data-id="' + line.id + '" data-field="production_cost">?</span>',
+                                                                                                                    '<span  class="showField" data-id="' + line.id + '" data-field="profit">?</span>',                   
+                                                        ].join(' </td><td> ') + '</td></tr>' );
+
+                          // build up the sections below the table
+
+                          var buf = '<div style="border:solid black 1px;margin:4px;padding:5px;"><br>\
+ <input placeholder="Product Line Name" class="updateField showField product-line" data-id="' + line.id + '" data-field="name" type="text">\
  <button class="delAction product-line" data-parent="' + currScenario.id + '" data-id="' + line.id + '">Delete</button> \
  <br>\
- Desc <input class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text">\
- <span  class="showField" data-id="' + line.id + '" data-field="production_rate"></span> units per hour\
+ <input placeholder="Description" class="updateField showField product-line" data-id="' + line.id + '" data-field="description" type="text"> <BR>\
+ Produces <span  class="showField" data-id="' + line.id + '" data-field="production_rate">?</span> units per hour <br>\
+ Cost of production <span  class="showField" data-id="' + line.id + '" data-field="production_cost">?</span> dollars per hour <br>\
  <h5>Process Steps</h5>\
  <button class="addAction product-line" data-list="steps"  data-id="' + line.id + '">Add Step</button>\
  <div style="margin-left:3em;" data-product-line-id="' + line.id + '">';
@@ -205,6 +217,13 @@
 <div>
     Scenario Name <input class="updateField showField scenario" data-id="ofobj" data-field="name" type="text"> <br>
     Description <input class="updateField showField scenario" data-id="ofobj" data-field="description" type="text"> <br>
+    Number of Employees <input class="updateField showField scenario" data-id="ofobj" data-field="employee_count" type="text" size="3" >
+    at <input class="updateField showField scenario" data-id="ofobj" data-field="employee_pay_rate" type="text" size="5">
+    $/hour = <input class="updateField showField scenario" data-id="ofobj" data-field="employee_monthly_cost" type="text" size="6"> $/month
+    <hr>
+    <h4 id="product-title">Products</h4>
+    <table id="product-table"> 
+    </table>
     <hr>
     <h4 id="product-title">Products</h4>
     <button type="button" class="addAction scenario" data-list="product_lines" data-id="">Create New Product Line</button>
