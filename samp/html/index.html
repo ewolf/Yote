@@ -196,6 +196,11 @@
                           buf += '<option class="showField" ' + dataid + ' value="' + val + '">' + title + '</option>';
                       }
                       $ctrl.empty().append( buf ).val( cur_val );
+                      if( ! buf && $ctrl.data( 'hide-on-empty' ) ) {
+                          $ctrl.hide();
+                      } else {
+                          $ctrl.show();
+                      }
 
                       if( typeof targ_fld !== 'undefined' ) {
                           $ctrl.on( 'change', function( ev ) {
@@ -214,7 +219,7 @@
                   var funName = $ctrl.data( 'src-method' );
                   if( funName ) {
                       source_obj[funName]([], function( l ) {
-                          list = l;
+                          list = l || [];
                           if( ! Array.isArray( list ) ) {
                               list = [ list ];
                           }
@@ -512,14 +517,16 @@
                       listName : 'steps',
                       listOn : prd,
                       onEachRow : function( row, step, i ) {
-                          var tab = row.find('table');
-                          var emps = step.get('employees');
-                          if( emps ) {
-                              emps.each( function( emp, j ) {
-                                  tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td></tr>' );
-                              } );
-                          }
-                          
+                          var updateTab = function() {
+                              var tab = row.find('table').empty();
+                              var emps = step.get('employees');
+                              if( emps ) {
+                                  emps.each( function( emp, j ) {
+                                      tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td> <td><a href="" class="delAction" data-id="' + emp.id + '" data-from="employees" data-parent="' + step.id + '">remove</a></tr>' );
+                                  } );
+                              }
+                          };
+                          updateTab();
                           var $sel = row.find('select');
                           $sel.attr( 'data-id', step.id );
                           $sel.on( 'change', function() {
@@ -532,6 +539,13 @@
                                   }
                               }
                           } );
+                          var step_emps = step.get('employees');
+                          if( step_emps ) {
+                              updateListener( step_emps, '_update-the-employee-cell', function () {
+                                  alert('l');
+                                  updateTab();
+                              } );
+                          }
                       }
                   }  );
               }, true );
@@ -705,10 +719,7 @@
           <tbody>
           </tbody>
         </table>
-        <select class="updateField showField product" 
-                id="new_ingredient"
-                data-src-method="ingredients"
-                ></select>
+        <select class="updateField showField product" id="new_ingredient" data-src-method="ingredients"></select>
 
         <h4>Steps</h4>
 
@@ -771,9 +782,7 @@
           <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> </td>
           
-          <td> <table></table> <select class="updateField showField" data-imp="true" data-src-method="employees"></select></td>
-          
-          
+          <td> <table></table> <select class="updateField showField" data-hide-on-empty="true" data-src-method="employees"></select></td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_run"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_hour"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>

@@ -21,6 +21,12 @@ sub _allowedUpdates {
       ) ]
 } #allowedUpdates
 
+sub _lists {
+    { 
+        employees       => 'Samp::Employee',
+    };
+}
+
 sub _init {
     my $self = shift;
     $self->SUPER::_init;
