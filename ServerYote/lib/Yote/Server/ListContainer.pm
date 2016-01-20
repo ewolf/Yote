@@ -104,7 +104,8 @@ sub add_entry {
     $obj->_when_added( $self, $listName, $itemArgs );
     $self->_on_add( $listName, $obj, $parentArgs );
     push @$list, $obj;
-    $obj;
+    $self->select_current( $listName, $obj );
+    $obj, $obj->gather_all;
 } #add_entry
 
 sub select_current {
@@ -145,10 +146,10 @@ sub remove_entry {
             splice @$list, $i, 1;
             if( @$list ) {
                 $i-- if $i > $#$list;
-                $self->set( "current_$from", $list->[$i] );
+                $self->select_current( $from, $list->[$i] );
                 return $item;
             } else {
-                $self->set( "current_$from", undef );
+                $self->select_current( $from, undef );
             }
         }
     }

@@ -72,6 +72,9 @@
               list = list || obj.get( list_fld );
               var cur_fld = $sel.data('field');
               var cur_val = obj.get( cur_fld );
+              if( typeof cur_val === 'object' ) {
+                  cur_val = cur_val.id;
+              }
 
               var isObj = $sel.data( 'list-stores') === 'object';
 
@@ -174,10 +177,7 @@
                   var create_action = $this.data('action');
                   var list  = $this.data('list');
                   var listOn = yote.fetch( $this.data('id') );
-                  listOn.add_entry( [{ listName: list }],
-                                    function( item ) {
-                      item.gather_all();
-                  } );
+                  listOn.add_entry( [{ listName: list }] );
                   ev.preventDefault();
               } );
           } //activateUpdateFieldsAndActions
@@ -402,7 +402,7 @@
               var ingsl = ings.toArray();
               for( var i=0; i<ingsl.length; i++ ) {
                   var ing = ingsl[ i ];
-                  var prod = ing.get( 'product_line' );
+                  var prod = ing.get( 'parent' );
                   buf += '<tr>  ' +
                       '<td><span class="showField" data-id="' + prod.id + '" data-field="name"></span> </td>' +
                       '<td><span class="showField" data-id="' + ing.id + '" data-field="amount_per_run"></span> </td>' +
