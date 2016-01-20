@@ -33,7 +33,7 @@ sub setCurrentScene {
     $self->set_current_scene( $scene );
 }
 
-sub delete_scene {
+sub drop_scene {
     my( $self, $scene ) = @_;
     my $scenes = $self->get_scenarios([]);
     if( $scene && @$scenes > 1 ) {
@@ -45,13 +45,14 @@ sub delete_scene {
         }
         $self->set_current_scene( $scenes->[0] );
     }
-}
+} #drop_scene
 
 sub new_scene {
     my $self = shift;
     my $scenes = $self->get_scenarios([]);
     my $news = $self->{STORE}->newobj( {
-        name => 'scenario ' . scalar(1 + @$scenes)
+        name => 'scenario ' . scalar(1 + @$scenes),
+        app  => $self,
                                    }, 'Samp::Scenario' );
     push @$scenes,  $news;
     $self->setCurrentScene( $news );

@@ -19,9 +19,9 @@ var init = yote.registerFunction( 'init', function() {
     yote.expose( app, scenes, scenes.toArray() );
 } );
 
-var updateScene = yote.registerFunction( 'updateScene', function() {
-    var app = yote.fetch_app('CalcTest');
-    
+var select_scene = yote.registerFunction( 'select_scene', function( scene ) {
+    var lines = scene.get( 'product_lines' );
+    yote.expose( lines.toArray() );
 } );
 
 var reset = yote.registerFunction( 'reset', function() {
@@ -34,4 +34,9 @@ var reset = yote.registerFunction( 'reset', function() {
 var new_scene = yote.registerFunction( 'new_scene', function() {
     var app = yote.fetch_app( 'CalcTest' );
     return app.new_scene([]);
+} );
+
+var new_prod = yote.registerFunction( 'new_product_line', function() {
+    var scene = yote.fetch_app( 'CalcTest' ).get_current_scene();
+    return scene.new_productLine([]);
 } );

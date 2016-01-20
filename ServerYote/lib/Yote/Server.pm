@@ -336,10 +336,27 @@ sub _process_request {
 
         my( @out_res );
 
+
         for my $res (@res) {
             my $val = $store->_xform_in( $res );
             # mark that it may and does have the token
             $server_root->_setMay( $val, $token );
+
+            if ( ref $val eq 'ARRAY' ) {
+                $data = [ 
+                    map { my $d = $store->_xform_in( $_ );
+                          $server_root->_setMay( $d, $token );
+                          $d } 
+                        @$val ];
+            } elsif ( ref $val eq 'HASH' ) {
+                $data = {
+                    map { my $d = $store->_xform_in( $obj->{$_} );
+                          $server_root->_setMay( $d, $token );
+                          $_ => $d }
+                        keys %$val };
+            } 
+
+
             push @out_res, $val;
         }
         my $ids_to_update;
@@ -845,7 +862,7 @@ sub fetch {
     my @ret = map { $store->fetch($_) }
       grep { ! ref($_) && $may->{$_}  }
     @ids;
-    die "Invalid id(s)" unless @ret == @ids;
+    die "Invalid id(s) ".join(",",grep { !ref($_) && !$may->{$_} } @ids) unless @ret == @ids;
     @ret;
 } #fetch
 

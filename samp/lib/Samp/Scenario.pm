@@ -19,6 +19,19 @@ sub _init {
         ]);
 } #_init
 
+sub drop_line {
+    my( $self, $line ) = @_;
+    my $lines = $self->get_product_lines([]);
+    if( $lines && @$lines > 1 ) {
+        for( my $i=0; $i<@$lines; $i++ ) {
+            if( $line eq  $lines->[$i] ) {
+                splice @$lines, $i, 1;
+                last;
+            }
+        }
+    }
+} #drop_line
+
 sub new_product_line {
     my $self  = shift;
     my $prods = $self->get_product_lines([]);

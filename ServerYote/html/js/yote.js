@@ -40,7 +40,14 @@ yote._init = function( yoteServerURL, isWorker ) {
 
     // returns an object, either the cache or server
     var fetch = function( id ) {
-        return id2obj[ id ] || yote.root.fetch( id );
+        if( isWorker ) {
+            return id2obj[ id ] || yote.root.fetch( id );
+        }
+        var r = id2obj[ id ];
+        if( typeof r === 'undefined' ) {
+            r = yote.root.fetch( id );
+        }
+        return r;
     }
     yote.fetch = fetch;
 
