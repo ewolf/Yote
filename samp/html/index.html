@@ -17,7 +17,7 @@
           } );
 
           function activateUpdateFields() {
-              $( 'input.updateField' ).off().on( 'keydown', function(ev) {
+              $( 'input.updateField' ).off('keydown').on( 'keydown', function(ev) {
                   var kk = ev.keyCode || ev.charCode;
                   if( kk == 13 || kk == 9 ) {
                       var $this = $( this );
@@ -28,14 +28,14 @@
                       obj.update( [ inpt ] );
                   }
               } );
-              $( 'span.updateField>span' ).off().on( 'click',
+              $( 'span.updateFieldControl>span' ).off('click').on( 'click',
                                                      function() {
                                                          var $this = $(this);
                                                          $this.parent().addClass( 'editing' );
                                                          var $inpt = $this.parent().find( 'input' );
                                                          $inpt.data('original', $inpt.val() );
                                                      } );
-              $( 'span.updateField>input' ).on( 'keydown',
+              $( 'span.updateFieldControl>input' ).on( 'keydown',
                                                 function(ev) {
                                                     var kk = ev.keyCode || ev.charCode;
                                                     var $this = $(this);
@@ -51,13 +51,13 @@
                                                     }
                                                     $this.toggleClass('edited', $this.data('original') == $this.val() );
                                                 } );
-              $( 'span.updateField>input' ).off().on( 'keyup', function() {
+              $( 'span.updateFieldControl>input' ).off('keyup').on( 'keyup', function() {
                   var $this = $(this);
                   console.log( [$this.data('original'),$this.val(), $this.data('original')!=$this.val()] );
                   $this.toggleClass('edited', $this.data('original') != $this.val() );
               } );
 
-              $( '.delAction' ).off().on( 'click', function(ev) {
+              $( '.delAction' ).off('click').on( 'click', function(ev) {
                   var $this  = $(this);
                   if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
                       return;
@@ -66,7 +66,7 @@
                   var obj    = yote.fetch($this.data( 'id' ));
                   par.remove_entry( [obj,$this.data('from')] );
               } );
-              $( '.addAction' ).off().on( 'click', function(ev) {
+              $( '.addAction' ).off('click').on( 'click', function(ev) {
                   var $this = $(this);
                   var create_action = $this.data('action');
                   var list  = $this.data('list');
@@ -80,35 +80,36 @@
               style : "decimal",
           } );
 
+          var updater = function(o) {
+              var id = o.id;
+              $( ".showField" ).each( function() {
+                  var $this = $(this);
+                  if( $this.data('id') != id ) {
+                      return;
+                  }
+                  var fld = $this.data( 'field' );
+                  var val = o.get( fld );
+                  if( $this.data( 'format' ) == '$' ) {
+                      val = costForm.format( val );
+                  }
+                  if( $this.is( 'input' ) ) {
+                      $this.val( val );
+                  } else {
+                      $this.text( val );
+                  }
+              } );
+          }              
+
           function watchObjects() {
-              var updater = function(o) {
-                  var id = o.id;
-                  $( ".showField" ).each( function() {
-                      var $this = $(this);
-                      if( $this.data('id') != id ) {
-                          return;
-                      }
-                      var fld = $this.data( 'field' );
-                      var val = o.get( fld );
-                      if( $this.data( 'format' ) == '$' ) {
-                          val = costForm.format( val );
-                      }
-                      if( $this.is( 'input' ) ) {
-                          $this.val( val );
-                      } else {
-                          $this.text( val );
-                      }
-                  } );
-              }              
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
-                  
-                  obj.addUpdateListener( updater, 'update' );
-                  updater( obj );
+                  if( ! obj._watched ) {
+                      obj.addUpdateListener( updater, 'update' );
+                      updater( obj );
+                      obj._watched = true;
+                  }
               }
           } //watchObjects
-
-          var curScene, curProd;
 
           function setup_app(app) {
 
@@ -117,19 +118,20 @@
                   $(this).data( 'id', app.id );
               } );
 
-              curScene = app.get( 'current_scenario' );
+              var curScene = app.get( 'current_scenario' );
 
               // set up scenario picker
               var scnz = app.get('scenarios');
-              setup_picker( scnz,$('#scenario_sel') );
+              setup_picker( curScene, scnz,$('#scenario_sel'), app.setCurrentScenario );
               
 
               // * ) set up scenario
               setup_scenario( curScene );
 
               // * ) set up watchers
+              scnz.removeUpdateListeners();
               scnz.addUpdateListener( function() { 
-                  setup_picker( scnz,$('#scenario_sel') );
+                  setup_picker( curScene, scnz, $('#scenario_sel'), app.setCurrentScenario );
                   if( scnz.length() > 1 ) {
                       $( '#del_scenario').show();
                   } else {
@@ -137,6 +139,7 @@
                   }
               } );
               watchObjects(app); //connects todata fields
+              app.removeUpdateListeners();
               app.addUpdateListener( function(app) {
                   if( ! yote.sameYoteObjects( curScene, app.get('current_scenario') ) ) {
                       curScene = app.get('current_scenario');
@@ -144,28 +147,24 @@
                   }
               } );
 
-              // updating the scenario selector changes the current scenario
-              $( '#scenario_sel' ).off().on('change',function() {
-                  var seld_id = $( "#scenario_sel" ).val();
-                  var sel = yote.fetch( seld_id );
-                  app.setCurrentScenario( sel, function() {
-                      activateUpdateFields();
-                  } );
-              } );
-
-
           } //setup_app
 
-          function setup_picker(scenes,$select) {
-              var sceneArr = scenes.toArray();
+          function setup_picker(obj,items,$select,onChange) {
+              var list = items.toArray();
               $select.empty().append(
-                  sceneArr.map( function( sc ) {
-                      var seld = yote.sameYoteObjects( curScene, sc ) ? ' selected' : '';
-                      return '<option value="' + sc.id + '"' + seld + '>' + 
-                          sc.get('name') + '</option>';
+                  list.map( function( item ) {
+                      var seld = yote.sameYoteObjects( obj, item ) ? ' selected' : '';
+                      return '<option value="' + item.id + '"' + seld + '>' + 
+                          item.get('name') + '</option>';
                   } ).join('')
               );
-          }
+
+              $select.off('change').on('change',function() {
+                  var seld_id = $select.val();
+                  var obj = yote.fetch( seld_id );
+                  onChange && onChange( obj );
+              } );
+          } //setup_picker
           
           function setup_scenario(scenario) {
               // * ) update data-id of things scenario
@@ -183,33 +182,33 @@
                       .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
               }
 
-              // * ) setup focused product picker
-              setup_picker( prods,$('#prod_sel') );
 
               // * ) setup focused product
               curProd = scenario.get( 'current_product_line' );
-              if( typeof curProd !== 'object' ) { curProd = undefined; }
-              setup_product( curProd );
+
+              if( curProd ) {
+                  setup_product( curProd );
+                  
+                  // * ) setup focused product picker
+                  setup_picker( curProd,prods,$('#prod_sel'), setup_product )
+              }
 
               // * ) set up watchers
+              prods.removeUpdateListeners();
               prods.addUpdateListener( function() { 
-                  setup_picker( prods,$('#prod_sel') );
+                  setup_picker( curProd, prods,$('#prod_sel'), scenario.setup_product );
               } );
               watchObjects(scenario);
+              scenario.removeUpdateListeners();
+
               scenario.addUpdateListener( function() { 
-                  if( ! yote.sameYoteObjects( curProd, curScene.get('current_product_line') ) ) {
-                      curProd = curScene.get('current_product_line');
+                  if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_line') ) ) {
+                      curProd = scenario.get('current_product_line');
                       if( typeof curProd !== 'object' ) { curProd = undefined; }
                       setup_product( curProd );
                   }
               } );
 
-              // updating the scenario selector changes the current scenario
-              $( "#prod_sel" ).off().on('change',function(scene) {
-                  var line_id = $( "#prod_sel" ).val();
-                  var line = yote.fetch( line_id );
-                  curScene.update( [{ current_product_line : line }] );
-              } );
               activateUpdateFields();
               
           } //setup_scenario

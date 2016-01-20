@@ -6,49 +6,61 @@ no warnings 'uninitialized';
 
 use Yote::Server;
 
-use base 'Yote::ServerApp';
+use base 'Yote::Server::App';
 
 use Samp::Scenario;
 
 sub _init {
     my $self = shift;
+    $self->set_current_scenario( $self->add_entry() );
+}
+
+sub _lists {
+    {
+        scenarios => 'Samp::Scenario',
+    };
 }
 
 # handy RESET for testing
 sub reset {
     my $self = shift;
     $self->set_scenarios( [] );
-    $self->add_entry();
+    $self->set_current_scenario( $self->add_entry() );
 }
 
-sub add_entry {
-    my $self = shift;
-    my $scenarios = $self->get_scenarios([]);
-    my $news = $self->{STORE}->newobj( {
-        name => 'scenario ' . scalar(1 + @$scenarios),
-        app  => $self,
-                                   }, 'Samp::Scenario' );
-    push @$scenarios, $news;
-    $self->set_current_scenario( $news );
-    $news;
-}
+# sub add_entry {
+#     my $self = shift;
+#     my $scenarios = $self->get_scenarios([]);
+#     my $news = $self->{STORE}->newobj( {
+#         name => 'scenario ' . scalar(1 + @$scenarios),
+#         app  => $self,
+#                                    }, 'Samp::Scenario' );
+#     push @$scenarios, $news;
+#     $self->set_current_scenario( $news );
+#     $news;
+# }
 
-sub gather {
-    my $self = shift;
-    my $scenes = $self->get_scenarios([]);
-    return $scenes, map { $_, $_->gather } @$scenes;
-}
+# sub gather {
+#     my $self = shift;
+#     my $scenes = $self->get_scenarios([]);
+#     return $scenes, map { $_, $_->gather } @$scenes;
+# }
 
-sub setCurrentScenario {
-    my( $self, $scenario ) = @_;
-    $self->set_current_scenario( $scenario );
-}
+# sub select {
+#     my( $self, $dummy, $scenario ) = @_;
+#     $self->set_current_scenario( $scenario );
+# }
 
-sub remove_entry {
-    my( $self, $scenario ) = @_;
-    $self->remove_from_scenarios($scenario);
-    $self->set_current_scenario( $self->get_scenarios()->[0] );
-} #drop_scenario
+# sub remove_entry {
+#     my( $self, $scenario ) = @_;
+#     my $scenes = $self->get_scenarios();
+#     if( @$scenes > 1 ) {
+#         $self->remove_from_scenarios($scenario);
+#         $self->set_current_scenario( $self->get_scenarios()->[0] );
+#     } else {
+#         die "Tried to remove last scenario";
+#     }
+# } #drop_scenario
 
 1;
 

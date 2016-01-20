@@ -9,7 +9,7 @@ use Samp::ProductLine;
 
 my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round down
 
-sub allowedUpdates {
+sub _allowedUpdates {
     [qw( name 
          description 
          employee_count
@@ -19,7 +19,7 @@ sub allowedUpdates {
          monthly_utilities
     )]
 }
-sub lists {
+sub _lists {
     {
         employees => 'Samp::Employee',
         equipment => 'Samp::Equipment',
@@ -30,6 +30,7 @@ sub lists {
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
+    $self->set_current_product_line( $self->add_entry( 'product_lines' ) );
     $self->set_number_of_employees(3);
     $self->set_employee_pay_rate(15);
     $self->set_monthly_rent(0);
