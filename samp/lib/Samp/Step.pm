@@ -4,7 +4,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use base 'Samp::Component';
+use base 'Yote::Server::ListContainer';
 
 sub lists {
     { employees => 'Samp::Employee', }

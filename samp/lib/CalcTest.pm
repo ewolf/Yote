@@ -12,7 +12,7 @@ use Samp::Scenario;
 
 sub _init {
     my $self = shift;
-    $self->set_current_scenario( $self->add_entry() );
+    $self->set_current_scenarios( $self->add_entry() );
 }
 
 sub _lists {
@@ -25,7 +25,7 @@ sub _lists {
 sub reset {
     my $self = shift;
     $self->set_scenarios( [] );
-    $self->set_current_scenario( $self->add_entry() );
+    $self->set_current_scenarios( $self->add_entry('scenarios') );
 }
 
 # sub add_entry {

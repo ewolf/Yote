@@ -4,7 +4,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use base 'Samp::Component';
+use base 'Yote::Server::ListContainer';
 use Samp::ProductLine;
 
 my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round down
@@ -21,8 +21,6 @@ sub _allowedUpdates {
 }
 sub _lists {
     {
-        employees => 'Samp::Employee',
-        equipment => 'Samp::Equipment',
         product_lines => 'Samp::ProductLine',
     };
 }

@@ -10,7 +10,8 @@
           yote.init( {
               appName : 'CalcTest',
               handler : function( root, app ) {
-                  app.gather( [], function() {
+//                  app.reset();return;
+                  app.gather_all( [], function() {
                       setup_app( app );
                   } );
               }
@@ -72,6 +73,7 @@
                   var list  = $this.data('list');
                   var listOn = yote.fetch( $this.data('id') );
                   listOn.add_entry( [list] );
+                  ev.preventDefault();
               } );
           } //activateUpdateFields
 
@@ -104,10 +106,10 @@
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
                   if( ! obj._watched ) {
-                      obj.addUpdateListener( updater, 'update' );
-                      updater( obj );
+                      obj.addUpdateListener( updater );
                       obj._watched = true;
                   }
+                  updater( obj );
               }
           } //watchObjects
 
@@ -118,20 +120,20 @@
                   $(this).data( 'id', app.id );
               } );
 
-              var curScene = app.get( 'current_scenario' );
+              var curScene = app.get( 'current_scenarios' );
 
               // set up scenario picker
               var scnz = app.get('scenarios');
-              setup_picker( curScene, scnz,$('#scenario_sel'), app.setCurrentScenario );
+              setup_picker( app, 'scenarios',$('#scenario_sel'), app.setCurrentScenario );
               
 
               // * ) set up scenario
-              setup_scenario( curScene );
+              setup_scenario( curScene, app );
 
               // * ) set up watchers
               scnz.removeUpdateListeners();
               scnz.addUpdateListener( function() { 
-                  setup_picker( curScene, scnz, $('#scenario_sel'), app.setCurrentScenario );
+                  setup_picker( app, 'scenarios', $('#scenario_sel'), app.setCurrentScenario );
                   if( scnz.length() > 1 ) {
                       $( '#del_scenario').show();
                   } else {
@@ -141,19 +143,35 @@
               watchObjects(app); //connects todata fields
               app.removeUpdateListeners();
               app.addUpdateListener( function(app) {
-                  if( ! yote.sameYoteObjects( curScene, app.get('current_scenario') ) ) {
-                      curScene = app.get('current_scenario');
-                      setup_scenario( curScene );
+                  if( ! yote.sameYoteObjects( curScene, app.get('current_scenarios') ) ) {
+                      curScene = app.get('current_scenarios');
+                      setup_scenario( curScene, app );
                   }
               } );
 
           } //setup_app
 
-          function setup_picker(obj,items,$select,onChange) {
+          function update_picker(obj,listName,$select) {
+              var items = obj.get( listName );
               var list = items.toArray();
+              var curr = obj.get( 'current_' + listName );
               $select.empty().append(
                   list.map( function( item ) {
-                      var seld = yote.sameYoteObjects( obj, item ) ? ' selected' : '';
+                      var seld = yote.sameYoteObjects( curr, item ) ? ' selected' : '';
+                      return '<option value="' + item.id + '"' + seld + '>' + 
+                          item.get('name') + '</option>';
+                  } ).join('')
+              );
+          }
+          
+          function setup_picker(obj,listName,$select,onChange) {
+              update_picker(obj,listName,$select);
+              var items = obj.get( listName );
+              var list = items.toArray();
+              var curr = obj.get( 'current_' + listName );
+              $select.empty().append(
+                  list.map( function( item ) {
+                      var seld = yote.sameYoteObjects( curr, item ) ? ' selected' : '';
                       return '<option value="' + item.id + '"' + seld + '>' + 
                           item.get('name') + '</option>';
                   } ).join('')
@@ -161,12 +179,14 @@
 
               $select.off('change').on('change',function() {
                   var seld_id = $select.val();
-                  var obj = yote.fetch( seld_id );
-                  onChange && onChange( obj );
+                  var o = yote.fetch( seld_id );
+                  obj.select_current( [listName, o], function() {
+                      onChange && onChange( o );
+                  } );
               } );
           } //setup_picker
           
-          function setup_scenario(scenario) {
+          function setup_scenario(scenario,app) {
               // * ) update data-id of things scenario
               $( '.scenario' ).each( function() {
                   $(this).data( 'id', scenario.id );
@@ -184,33 +204,35 @@
 
 
               // * ) setup focused product
-              curProd = scenario.get( 'current_product_line' );
+              curProd = scenario.get( 'current_product_lines' );
 
               if( curProd ) {
                   setup_product( curProd );
                   
                   // * ) setup focused product picker
-                  setup_picker( curProd,prods,$('#prod_sel'), setup_product )
+                  setup_picker( scenario,'product_lines',$('#prod_sel'), setup_product )
               }
 
               // * ) set up watchers
               prods.removeUpdateListeners();
               prods.addUpdateListener( function() { 
-                  setup_picker( curProd, prods,$('#prod_sel'), scenario.setup_product );
+                  setup_picker( scenario, 'product_lines' ,$('#prod_sel'), scenario.setup_product );
               } );
-              watchObjects(scenario);
+
               scenario.removeUpdateListeners();
 
-              scenario.addUpdateListener( function() { 
-                  if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_line') ) ) {
-                      curProd = scenario.get('current_product_line');
+              scenario.addUpdateListener( function() {
+                  update_picker( app, 'scenarios', $('#scenario_sel') );
+
+                  if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_lines') ) ) {
+                      curProd = scenario.get('current_product_lines');
                       if( typeof curProd !== 'object' ) { curProd = undefined; }
                       setup_product( curProd );
                   }
               } );
 
               activateUpdateFields();
-              
+              watchObjects(scenario);
           } //setup_scenario
 
           function setup_product(prd) {

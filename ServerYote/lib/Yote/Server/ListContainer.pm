@@ -100,6 +100,10 @@ sub remove_entry {
     die "Unknown list '$from'" unless $self->_lists->{$from};
     my $rem = "remove_from_$from";
     $self->$rem($item);
+    my $l = $self->get($from);
+    if( $item == $self->get( "current_$from" ) && scalar( @$l ) > 0 ) {
+        $self->set( "current_$from", $l->[0] );
+    }
 }
 
 # TODO - implement a copy?
