@@ -13,7 +13,7 @@ yote.registerFunction( 'calc', function( params ) {
     console.log( [ 'PARAMS', params ] );
     var app = yote.fetch_app( 'CalcTest' );
     console.log( [ "APP IS ", app ] );
-    app.calc( [params.number_employees, params.hourly_wage] );
+    return app.calc( [params.number_employees, params.hourly_wage], true );
 } );
 
 yote.registerFunction( 'init', function() {

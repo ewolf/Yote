@@ -14,7 +14,7 @@
                   // and when referenced, they can be connected to controls.
                   window.app = app; //so that by name referencing of this variable works, and then 
               } ),
-              yote.workerLoadInclude( "/__/bak/js/calctest.js" ),
+              yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ), //calls the method init
               function() {
                   // tie the calcResult field of the app to an informative hourCost div
@@ -35,6 +35,7 @@
                               // this response has the result of the calculation state
 console.log( [ 'click resp', response ] );
                               // display the state of the object, which, for this case is displayed in the app
+                              document.getElementById( "hourCost" ).innerHTML = response.get( 'calcResult' );
                           }
                       } );
                   } );

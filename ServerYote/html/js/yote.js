@@ -320,7 +320,7 @@ yote._init = function( yoteServerURL, isWorker ) {
 
 
     yote.apps = {};
-    yote.fetch_app = function( appname, callback ) {
+    yote.fetch_app = function( appname ) {
         var app = yote.apps[ appname ];
         
         if( isWorker ) { //safe to directly call
@@ -328,8 +328,8 @@ yote._init = function( yoteServerURL, isWorker ) {
                 return app;
             }
             app = yote.root.fetch_app( appname, true );
-            if( app ) {
-                yote.apps[ appname ] = app;
+            if( app ) {                
+                yote.apps[ appname ] = processRaw(app);
             } else {
                 console.warn( "Unable to fetch app '" + appname + "'" );
             }
