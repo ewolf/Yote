@@ -41,28 +41,33 @@
                                                                $this.parent().removeClass( 'editing' );
                                                            }
                                                        } );
-              $( 'div.updateFieldControl' + fc + '>input' ).off('keydown').on( 'keydown',
-                                                function(ev) {
-                                                    var kk = ev.keyCode || ev.charCode;
-                                                    var $this = $(this);
-                                                    if( kk == 27 )  {
-                                                        $this.val( $this.data( 'original' ) );
-                                                        $this.parent().removeClass( 'editing' );
-                                                        $this.removeClass('edited' );
-                                                    } else if( kk == 13 || kk == 9 ) {
-                                                        var p = $this.parent();
-                                                        p.removeClass( 'editing' );
-                                                        p.find('span').text( $this.val() );
-                                                        $this.parent().removeClass( 'editing' );
-                                                        $this.removeClass('edited' );
-                                                    }
-                                                    $this.toggleClass('edited', $this.data('original') == $this.val() );
-                                                } );
-              $( 'div.updateFieldControl' + fc + '>input' ).on( 'keyup', function() {
-                  var $this = $(this);
-                  $this.toggleClass('edited', $this.data('original') != $this.val() );
+              $( 'div.updateFieldControl' + fc + '>input' ).each( function( idx, el ) {
+                  var $this = $( el );
+                  if( ! $this.data( 'updateFieldControlKeydownListener' ) ) {
+                      $this.data( 'updateFieldControlKeydownListener', true );
+                      $this.on( 'keydown',
+                                function(ev) {
+                                    var kk = ev.keyCode || ev.charCode;
+                                    var $this = $(this);
+                                    if( kk == 27 )  {
+                                        $this.val( $this.data( 'original' ) );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    } else if( kk == 13 || kk == 9 ) {
+                                        var p = $this.parent();
+                                        p.removeClass( 'editing' );
+                                        p.find('span').text( $this.val() );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    }
+                                    $this.toggleClass('edited', $this.data('original') == $this.val() );
+                                } );
+                      $( 'div.updateFieldControl' + fc + '>input' ).on( 'keyup', function() {
+                          var $this = $(this);
+                          $this.toggleClass('edited', $this.data('original') != $this.val() );
+                      } );
+                  }
               } );
-
           } //udpateFieldControls
 
           function _updateSelect( $sel, list ) {
@@ -140,10 +145,10 @@
                       cur_val = cur_val.id;
                   }
                   if( $this.data('use-raw-list') ) {
-                      _updateSelect( $this, list, obj, list_fld, $this.data('list-stores') === 'object', cur_val );
+                      _updateSelect( $this, list );
                   } else {
-                      obj.choices( [list_fld], function( valTitles ) {
-                          _updateSelect( $this, valTitles, obj, list_fld, $this.data('list-stores') === 'object', cur_val );
+                      obj.choices( [$this.data('list-source')], function( valTitles ) {
+                          _updateSelect( $this, valTitles );
                       } );
                   }
               } );
@@ -322,7 +327,7 @@
                   var prodl = prods.toArray();
                   for( var i=0; i<prodl.length; i++) {
                       var line = prodl[i];
-                      buf += '<tr>' + [ 'name', 'production rate' ]
+                      buf += '<tr>' + [ 'name', 'production_rate' ]
                           .map( function(w) { return '<td>' + line.get(w) + '</td>'; } ).join('') + '</tr>';
                   }
                   $tab.append( buf );
@@ -370,7 +375,7 @@
                   $(this).data( 'id', prd.id );
               } );
               updateFieldControls( 'product' );
-
+              updateSelects( 'product' );
               // ingredients are other products that are used to make this one
               setup_ingredients_table( prd );
               
@@ -529,11 +534,11 @@
             <tr><th>Number of Employees</th>
             <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="employee_count" data-input-type="number"></div>  </td></tr>
             <tr><th>Employee Pay</th>
-            <td>$ <input class="updateField showField scenario" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </td></tr>
+            <td>$ <div class="updateFieldControl scenario" data-classes="scenario" data-field="employee_pay_rate" data-input-type="number"></div> hour </td></tr>
             <tr><th>Monthly Rent</th>
-            <td>$ <input class="updateField showField scenario" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </td></tr>            
+            <td>$ <div class="updateFieldControl scenario" data-classes="scenario" data-field="monthly_rent" data-input-type="number"></div> /month </td></tr>            
             <tr><th>Monthly Utilities</th>
-            <td>$ <input class="updateField showField scenario" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </td></tr>            
+            <td>$ <div class="updateFieldControl scenario" data-classes="scenario" data-field="monthly_utilities" data-input-type="number"></div> /month </td></tr>
             <tr><th>Employee Monthly Cost</th><td>$<span class="showField scenario" data-format="$" data-field="employee_monthly_cost"></span> / month</td></tr>
             <tr><th>Monthly Cost</th><td>$<span class="showField scenario" data-format="$" data-field="monthly_cost"></span> / month</td></tr>
           </table>
@@ -553,8 +558,15 @@
       Name : <div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> <br>
       Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
 
-      <table>
-        <tr> <th>Production Rate </th> <td><span class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
+    <table>
+      <tr> <th>Sale Price / unit</th> <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td> </tr>
+      <tr>
+        <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
+        <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-list-source="expected_sales_per" data-input-type="number"></span></td>
+       </tr>
+
+
+        <tr> <th>Production Rate </th> <td><div class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
         <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
         <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
         <tr><th> </th> <td><div></div></td> </tr>

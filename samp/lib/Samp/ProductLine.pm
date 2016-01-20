@@ -13,6 +13,9 @@ sub _allowedUpdates {
           notes
           food_cost
           sale_price
+          sale_price
+          expected_sales
+          expected_sales_per
        ) ]
 }
 
@@ -28,6 +31,8 @@ sub choices {
     if( $field eq 'ingredients' ) {
         my $scene = $self->get_parent;
         return [ [undef,"choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines}];
+    } elsif( $field eq 'expected_sales_per' ) {
+        return [qw( day week month year )];
     }
 } #choices
 
