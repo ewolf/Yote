@@ -69,6 +69,12 @@ sub calculate {
     #      food cost per item/batch  ( includes cost to make ingredients )
     #      packaging cost per item/batch ( includes cost to make ingredients )
     #
+    #    partial cost per item/batch 
+    #      labor cost per item/batch ( excludes cost to make ingredients )
+    #      food cost per item/batch  ( excludes cost to make ingredients )
+    #      packaging cost per item/batch ( excludes cost to make ingredients )
+    #
+    #
     #    profit per item/batch
     #      labor cost percentage
     #      food cost percentage
@@ -170,9 +176,17 @@ sub calculate {
     for my $step (@$steps) {
         $step->set_is_bottleneck(0);
         my $run_time = $step->run_time( $batch_size );
-        $labor_cost_per_batch += $step->employees_required * $run_time;
+
+        for my $emp (@{$step->get_employees([])}) {
+            $labor_cost_per_batch += $emp->get_hourly_pay * $run_time;
+        }
+
         $overhead_cost_per_batch += $step->get_overhead_cost_per_run + $step->get_overhead_cost_per_hour * $run_time;
     }
+    $self->set_partial_packaging_cost_per_batch( $packaging_cost_per_batch );  #***************
+    $self->set_partial_food_cost_per_batch( $food_cost_per_batch );            #***************
+    $self->set_partial_labor_cost_per_batch( $labor_cost_per_batch );          #***************
+    $self->set_partial_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $labor_cost_per_batch );          #***************
 
     for my $ing (@{$self->get_ingredients([])}) {
         my $ingProd = $ing->get_product;

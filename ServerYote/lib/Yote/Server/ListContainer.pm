@@ -17,7 +17,7 @@ use Yote::Server;
 use base 'Yote::ServerObj';
 
 # --vvv override -------
-sub _allowedUpdates { [] } #override returning a list of allowed updates
+sub _allowedUpdates { [qw(name notes)] } #override returning a list of allowed updates
 
 sub _lists { {} }  # override with list-name -> class
 
@@ -26,7 +26,15 @@ sub _lists { {} }  # override with list-name -> class
 sub _on_add { my($self,$listName,$obj,$moreArgs) =@_; } 
 
 # what to run when added to something
-sub _when_added { my($self,$toObj,$listName,$moreArgs) =@_;}
+sub _when_added { 
+    my($self,$toObj,$listName,$itemArgs) = @_;
+    $self->update( $itemArgs );
+}
+
+# what to run when this is removed from something
+sub _when_removed { 
+    my($self,$fromObj,$listName,$itemArgs) = @_;
+}
 
 sub _gather {}
 
@@ -138,7 +146,7 @@ sub gather_all {
 } #gather_all
 
 sub remove_entry {
-    my( $self, $item, $from ) = @_;
+    my( $self, $item, $from, $moreArgs ) = @_;
     die "Unknown list '$from' in ".ref($self) unless $self->_lists->{$from};
     my $list = $self->get($from);
     for( my $i=0; $i<@$list; $i++ ) {
@@ -153,6 +161,8 @@ sub remove_entry {
             }
         }
     }
+    $item->_when_removed( $self, $from, $moreArgs );
+
 } #remove_entry
 
 # TODO - implement a copy?

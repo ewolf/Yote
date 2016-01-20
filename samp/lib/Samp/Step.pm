@@ -6,12 +6,6 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
-sub _init {
-    my $self = shift;
-    $self->SUPER::_init();
-} #_init
-
-
 sub _allowedUpdates {
     [ qw(
         name 
