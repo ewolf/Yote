@@ -20,6 +20,7 @@ sub _allowedUpdates {
           food_cost_per_batch
           packaging_cost_per_item
 
+          manually_set_batch_size
           batch_size
 
           life_as_ingredient
@@ -32,6 +33,20 @@ sub _lists {
       ingredients => 'Samp::Ingredient', #TODO - maybe this should be a hash?
     };
 }
+
+sub _init {
+    my $self = shift;
+    $self->SUPER::_init;
+    $self->set_sale_price( 0 );
+    $self->set_expected_sales( 0 );
+    $self->set_expected_sales_per( 'day' );
+
+    $self->set_food_cost_per_batch(0);
+    $self->set_packaging_cost_per_item(0);
+
+    $self->set_batch_size_used( 0 ); #*************
+    
+} #_init
 
 sub monthly_units_needed_for_ingredient {
     my( $self, $prod ) = @_;
@@ -63,11 +78,12 @@ sub _valid_choice {
     } elsif( $field eq 'ingredients' ) {
         my @ings = $self->ingredients();
         shift @ings;
-        my %vals = map { $_->{ID} => 1 } @ings;
-        return $vals{$val};
+
+        my %vals = map { $_->{ID} => 1 } grep { $_ != $self } @ings;
+        return defined $val ? $vals{$val} : 1;
     }
     return 1;
-}
+} #_valid_choice
 
 sub calculate {
     # calculate redux
@@ -106,9 +122,10 @@ sub calculate {
     my $steps = $self->get_steps([]);
 
     my( $slowest_rate, $bottleneck, $scaled_run_time );
+    my $failure_rate = 0;
     for my $step (@$steps) {
         $step->set_is_bottleneck(0);
-        my $step_rate = $step->get_production_rate;
+        my $step_rate = $step->get_yield;
         $slowest_rate //= $step_rate;
         $slowest_rate //= $step_rate;
         $bottleneck //= $step;
@@ -122,11 +139,11 @@ sub calculate {
     # -------------------------- BATCH SIZE ----------------------------------
     #
 
-    $bottleneck->set_is_bottleneck(1) if $bottleneck;
+    $bottleneck->set_is_bottleneck(1) if $bottleneck;                                             # ***** (step) VARSET *****
 
-    my $batch_size = $self->get_batch_size || $slowest_rate;
+    my $batch_size = $self->get_manually_set_batch_size ? $self->get_batch_size : $slowest_rate;
 
-    $self->set_batch_size_used( $batch_size ); #*************
+    $self->set_batch_size_used( $batch_size || 0 ); #*************
     
     my $run_time = 0;
     for my $step (@$steps) {

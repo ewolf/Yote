@@ -12,7 +12,7 @@ sub _allowedUpdates {
         notes
 
         produced_in_run
-        run_hours
+        run_minutes
         min_run_time
 
         employees_required 
@@ -20,6 +20,12 @@ sub _allowedUpdates {
         overhead_cost_per_hour
       ) ]
 } #allowedUpdates
+
+sub _init {
+    my $self = shift;
+    $self->SUPER::_init;
+    $self->set_is_bottleneck(0);
+}
 
 sub run_time {
     my( $self, $quan ) = @_;
@@ -30,12 +36,26 @@ sub run_time {
     return $min > $time ? $min : $time;
 }
 
+sub employees {
+    my $self = shift;
+    my $prodline = $self->get_parent;
+    my $scene = $prodline->get_parent;
+
+    my %my_emps  = map  { $_->{ID} => $_ } @{$self->get_employees([])};
+    
+    return grep { ! $my_emps{$_->{ID}} } @{$scene->get_employees};
+
+} #employees
+
 sub calculate {
     my $self = shift;
-    my $hours = $self->get_run_hours();
+    my $hours = $self->get_run_minutes() / 60;
     if( $hours > 0 ) {
-        $self->set_production_rate( $self->get_produced_in_run() / $hours );
-    } else {
+        my $rate =  $self->get_produced_in_run() / $hours ;
+        $self->set_production_rate( $rate );                             # ***** VARSET *****
+        $self->set_yield( $rate - $rate * $self->get_failure_rate/100 ); # ***** VARSET *****
+    } else { 
+        $self->set_yield( 0 );
         $self->set_production_rate(0);
     }
     $self->get_parent()->calculate();

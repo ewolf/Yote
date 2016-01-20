@@ -80,6 +80,7 @@
               key = 'set-' + key + '-listener';
               $( selector ).each( function(idx,val) {
                   var $this = $( val );
+                  if( $this.data('imp') ) { try {asfd();}catch(e){} }
                   if( ! $.contains( $('#templates')[0], val ) ) {
                       if( ! $this.data( key ) && $this.data('id') ) {
                           $this.data( key, true );
@@ -95,7 +96,7 @@
                   $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.data('classes') + '" ' + 
                                         '       data-id="'    + $ctrl.data('id') + '"' + 
                                         '       data-field="' + $ctrl.data( 'field' ) + '"' + 
-                                        '       type="'       + $ctrl.data('input-type') + '">' +
+                                        '       type="'       + ( $ctrl.data('input-type') || 'text' )+ '">' +
                                         '<span class="showField ' + $ctrl.data('classes') + '"' + 
                                         '      data-id="' + $ctrl.data('id') + '"' + 
                                         '      data-format="'+ $ctrl.data( 'format' ) + '"' + 
@@ -155,7 +156,7 @@
                       $ctrl.toggleClass('edited', $ctrl.data('original') != $ctrl.val() );
                   }
               } );
-              modifyControl( 'select.editField', 'build-select', function( $ctrl ) {
+              modifyControl( 'select.updateField', 'build-select', function( $ctrl ) {
                   // data : 
                   //   field - field on object to modify
                   //   id - object to modify
@@ -166,13 +167,13 @@
                   var targ_obj = yote.fetch( $ctrl.data( 'id' ) );
                   var targ_fld = $ctrl.data( 'field' );
                   var cur_val    = targ_obj.get( targ_fld );
-                  if( $ctrl.data('var-is') === 'object' ) {
+                  if( $ctrl.data('var-is') === 'object' && cur_val ) {
                       cur_val = cur_val.id;
                   }
 
                   var source_id  = $ctrl.data( 'src-id' );
                   var list;
-                  var dostuff = function() {
+                  var fillOptions = function() {
                       var buf = '';
                       for( var i=0; i<list.length; i++ ) {
                           var el = list[i];
@@ -196,24 +197,28 @@
                       }
                       $ctrl.empty().append( buf ).val( cur_val );
 
-                      $ctrl.on( 'change', function( ev ) {
-                          var val = $ctrl.val();
-                          if( $ctrl.data('var-is') === 'object' ) {
-                              val = yote.fetch( val );
-                          }
-                          var up = {};
-                          up[ targ_fld ] = val;
-                          targ_obj.update( [up] );
-
-                      } );
-                  } //dostuff
+                      if( typeof targ_fld !== 'undefined' ) {
+                          $ctrl.on( 'change', function( ev ) {
+                              var val = $ctrl.val();
+                              if( $ctrl.data('var-is') === 'object' ) {
+                                  val = yote.fetch( val );
+                              }
+                              var up = {};
+                              up[ targ_fld ] = val;
+                              targ_obj.update( [up] );
+                          } );
+                      }  
+                  } //fillOptions
 
                   var source_obj = source_id ? yote.fetch( source_id ) : targ_obj;
                   var funName = $ctrl.data( 'src-method' );
                   if( funName ) {
                       source_obj[funName]([], function( l ) {
                           list = l;
-                          dostuff();
+                          if( ! Array.isArray( list ) ) {
+                              list = [ list ];
+                          }
+                          fillOptions();
                           updateListener( source_obj, 'select-chooser-build-select', function() {
                               var key = 'set-build-select-listener';
                               $ctrl.data( key, false );
@@ -223,7 +228,7 @@
                   } else {
                       var listO = source_obj.get( $ctrl.data( 'src-field' ) );
                       list = listO.toArray();
-                      dostuff();
+                      fillOptions();
                       updateListener( listO, 'select-chooser-build-select', function() {
                           var key = 'set-build-select-listener';
                           $ctrl.data( key, false );
@@ -232,6 +237,16 @@
                   }
 
               } );
+              modifyControl( 'input.updateField[type="checkbox"]', 'checked', function( $ctl ) {
+                  $ctl.on( 'change', function(ev) {
+                      var $this = $( this );
+                      var obj = yote.fetch( $this.data('id') );
+                      var fld = $this.data('field');
+                      var inpt = {};
+                      inpt[ fld ] = $this.is(':checked') ? 1 : 0;
+                      obj.update( [ inpt ] );
+                  } );
+              });
               modifyControl( 'input.updateField', 'input-keydown', function( $ctl ) {
                   $ctl.on( 'keydown', function(ev) {
                       var kk = ev.keyCode || ev.charCode;
@@ -263,7 +278,8 @@
                       var create_action = $this.data('action');
                       var list  = $this.data('list');
                       var listOn = yote.fetch( $this.data('id') );
-                      listOn.add_entry( [{ listName: list }], function( newo ) { watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
+                      listOn.add_entry( [{ listName: list }], function( newo ) {
+                          watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
                       ev.preventDefault();
                   } );
               } );
@@ -279,8 +295,14 @@
                       FROMID : args.listOn.id
                   }, args.fieldList || [ 'id', 'parent' ] );
                   $tab.append( row );
+
+                  if( args.onEachRow ) {
+                      args.onEachRow( row, item, i );
+                  }
+                      
                   watchForUpdates(item);
               } );
+
               activateControls();
               items.each( function( item, i ) {
                   watchForUpdates(item);
@@ -307,7 +329,16 @@
                       val = _costForm.format( val );
                   }
                   if( $this.is( 'input' ) ) {
-                      $this.val( val );
+                      var t = $this.attr('type');
+                      if( $this.attr( 'type' ) === 'checkbox' ) {
+                          if( val === "1" ) {
+                              $this.prop( 'checked', true );
+                          } else {
+                              $this.prop( 'checked', false );
+                          }
+                      } else {
+                          $this.val( val );
+                      }
                   } else if( $this.is( 'select' ) ) {
                       if( typeof val === 'object' ) {
                           $this.val( val.id );
@@ -367,10 +398,10 @@
               updateListener( prods, '_productCountWatched', function() {
                   if( prods.length() > 0 ) {
                       $( '#no_products' ).hide();
-                      $( '#curr_products,#del_prod,#prod_sel' ).show();
+                      $( '#curr_product,#del_prod,#prod_sel' ).show();
                   } else {
                       $( '#no_products' ).show();
-                      $( '#curr_products,#del_prod,#prod_sel' ).hide();
+                      $( '#curr_product,#del_prod,#prod_sel' ).hide();
                   }
 
                   setup_table( {
@@ -426,16 +457,26 @@
 
           
           function setup_product(prd) {
-              if( typeof prd === 'undefined' ) {
-                  $( '#curr_products,#del_prod,#prod_sel' ).hide();                  
+              if( ! prd ) {
+                  $( '#curr_products,#del_prod,#prod_sel' ).hide();
                   return false;
               }
-
+              updateListener( prd, '_manual_batchsize_watch', function() {
+                  if( prd.get( 'manually_set_batch_size' ) == "1" ) {
+                      // the following field is the set batch size (editable)
+                      $( '#set_batches' ).show();
+                      $( '#read_batches' ).hide();
+                  } else {
+                      // the following field is the reported used batch sized (not editable)
+                      $( '#set_batches' ).hide();
+                      $( '#read_batches' ).show();
+                  }
+              }, true );
               $( '#new_ingredient' ).off('change').on( 'change', function() {
                   var $this = $( this );
                   var val = $this.val();
                   if( val ) {
-                      var chosen = yote.fetch( $this.val() );
+                      var chosen = yote.fetch( val );
                       if( chosen ) {
                           prd.add_entry( [{ listName : 'ingredients',
                                             itemArgs : chosen }], function( newi ) { 
@@ -443,18 +484,26 @@
                                                 watchForUpdates( o ); } );
                       }
                   }
+                  $this.val( undefined ); 
               } );
-              
+
+              // refresh ingredients table if the ingredients list changes
               var ings = prd.get( 'ingredients' );
               updateListener( ings, '_ingsChange', function() {
                   $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
                   setup_ingredients_table( prd );
                   activateControls();
               }, true );
+
+              //
+              // remove the flag on the 'new_gredient' select so that it refreshes. Do this when the
+              // product line changes
+              //
               updateListener( prd, '_selectorListener', function() {
                   $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
               } );
 
+              // set up steps table once, then every time the steps list changes
               var steps = prd.get( 'steps' );
               updateListener( steps, '_stepslistener', function() {
                   setup_table( {
@@ -462,6 +511,28 @@
                       rowSel : '#step-row',
                       listName : 'steps',
                       listOn : prd,
+                      onEachRow : function( row, step, i ) {
+                          var tab = row.find('table');
+                          var emps = step.get('employees');
+                          if( emps ) {
+                              emps.each( function( emp, j ) {
+                                  tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td></tr>' );
+                              } );
+                          }
+                          
+                          var $sel = row.find('select');
+                          $sel.attr( 'data-id', step.id );
+                          $sel.on( 'change', function() {
+                              var $this = $(this);
+                              var val = $this.val();
+                              if( val ) {
+                                  var chosen = yote.fetch( val );
+                                  if( chosen ) {
+                                      step.add_entry( [{ listName : 'employees', item : chosen }] );
+                                  }
+                              }
+                          } );
+                      }
                   }  );
               }, true );
 
@@ -491,26 +562,6 @@
               } );
           } //setup_ingredients_table
 
-          function setup_steps_table( prd ) {
-              var $tab = $( '#steps-tab' ).find( 'tbody' );
-              // * ) empty steps table
-              $tab.empty();
-              
-              var steps = prd.get( 'steps' );
-              steps.each( function( step, i ) {
-                  var row = fill_template( '#step-row', {
-                      STEP : step.id,
-                      PROD : prd.id
-                  }, [ 'id' ] );
-                  $tab.append( row );
-                  watchForUpdates(step);
-              } );
-              activateControls();
-              steps.each( function( step, i ) {
-                  watchForUpdates(step);
-              } );
-          } //setup_steps_table
-
       } //init
 -->
     </script>
@@ -539,52 +590,54 @@
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
     <p>
-      Selected Scenario <select class="showField editField app" data-field="current_scenarios"
+      Selected Scenario <select class="showField updateField app" data-field="current_scenarios"
                                 data-var-is="object" data-src-field="scenarios" id="scene_sel"></select>
       <a href="" class="delAction app-child scenario" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
     <div>
       <h3>Configure Scenario '<span class="showField scenario" data-field="name"></span>'</h3>
-      <table border="1">
-        <tr><th>Scenario Name</th>
-          <td>
-            <div class="updateFieldControl scenario" data-classes="scenario" data-field="name" data-input-type="text" ></div>
-        </td></tr>
-        <tr><th>Description</th>
-          <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="description" data-input-type="text"></div> </td></tr>
-        <tr><th>Notes</th>
-          <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="notes" data-input-type="text"></div> </td></tr>
+      <p>
+        <table border="1">
+          <tr><th>Scenario Name</th>
+            <td>
+              <div class="updateFieldControl scenario" data-classes="scenario" data-field="name" data-input-type="text" ></div>
+          </td></tr>
+          <tr><th>Description</th>
+            <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="description" data-input-type="text"></div> </td></tr>
+          <tr><th>Notes</th>
+            <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="notes" data-input-type="text"></div> </td></tr>
 
-        <tr><th>Monthly Payroll</th>
-          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
+          <tr><th>Monthly Payroll</th>
+            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
 
-        <tr><th>Monthly Cost of Production</th>
-          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span> </td></tr>
-        
-        <tr><th>Monthly Overhead</th>
-          <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span> </td></tr>
-        
-      </table>
-
-      <table id="employee-tab" border="1">
-        <thead>
-          <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Hours Per Week</th> <th>Notes</th> <th>Action</th> </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
-      <a href="" class="addAction scenario" data-list="employees">New Employee</a>
-
-      <table id="expenses-tab" border="1">
-        <thead>
-          <tr> <th>Expense</th> <th>Cost</th> <th>Notes</th> <th>Action</th> </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
-      <a href="" class="addAction scenario" data-list="expenses">New Expense</a>      
-      
-    <hr>
+          <tr><th>Monthly Cost of Production</th>
+            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span> </td></tr>
+          
+          <tr><th>Monthly Overhead</th>
+            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span> </td></tr>
+        </table>
+      </p>
+      <p>
+        <table id="employee-tab" border="1">
+          <thead>
+            <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Hours Per Week</th> <th>Notes</th> <th>Action</th> </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+        <a href="" class="addAction scenario" data-list="employees">New Employee</a>
+      </p>
+      <p>
+        <table id="expenses-tab" border="1">
+          <thead>
+            <tr> <th>Expense</th> <th>Cost</th> <th>Notes</th> <th>Action</th> </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+        <a href="" class="addAction scenario" data-list="expenses">New Expense</a>      
+      </p>        
+      <hr>
     
       <h4 id="product-title">Products Summary</h4>
       <table id="product-tab" border="1">
@@ -598,7 +651,7 @@
       <hr>
       <h4 id="product-title">Product Detail</h4>
 
-      <select class="showField editField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
+      <select class="showField updateField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
 
       <span id="no_products">No Products</span>
       <div id="curr_product">
@@ -624,7 +677,11 @@
             </td>
           </tr>
           <tr> <th colspan="3">Production</th> </tr>
-          <tr> <th>Production Rate </th> <td><span class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
+    <tr> <th>Manually Set Batches Produced ? </th> <td><input class="showField updateField product" data-field="manually_set_batch_size" type="checkbox"></td> </tr>
+          <tr> <th>Batches Produced </th> <td>
+              <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batch_size"></div>
+              <span id="read_batches" class="showField product" data-format="$" data-field="batch_size_used"></span>
+          </td> </tr>
           <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
           <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
 
@@ -634,21 +691,21 @@
           </tr>
           <tr>
             <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
-            <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
+            <th>per</th> <td><select class="showField updateField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
           </tr>
           <tr><th> </th> <td><div></div></td> </tr>
           </tbody>
         </table>
 
-        <h4>Ingredients</h4>
+        <h4>Components</h4>
         <table border="1" id="ingredients_tab">
           <thead>
-            <tr> <th>Ingredient</th> <th>Amount per Item</th> <th>Notes</th> <th>Action</th> </tr>
+            <tr> <th>Component</th> <th>Amount per Item</th> <th>Notes</th> <th>Action</th> </tr>
           </thead>
           <tbody>
           </tbody>
         </table>
-        <select class="editField showField product" 
+        <select class="updateField showField product" 
                 id="new_ingredient"
                 data-src-method="ingredients"
                 ></select>
@@ -657,7 +714,7 @@
 
         <table border="1" id="steps-tab">
           <thead>
-            <tr> <th>Name</th> <th>Items per step</th>  <th>Duration of Step (hours) </th> <th>Min time for step</th> <th>Employees</th> <th>Overhead per Run</th> <th>Overhead per Hour</th> <th>Notes</th> <th>Actions</th> </tr>
+            <tr> <th>Name</th> <th>Items per step</th>  <th>Duration of Step (minutes) </th> <th>Failure Rate</th> <th>Min time for step</th> <th>Employees</th> <th>Overhead per Run</th> <th>Overhead per Hour</th> <th>Notes</th> <th>Actions</th> </tr>
           </thead>
           <tbody>
           </tbody>
@@ -686,7 +743,7 @@
           <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
           <td>
             <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
-            <select class="showField editField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
+            <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
           </td>
           
           <td>
@@ -710,9 +767,13 @@
         <tr id="step-row"> 
           <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="produced_in_run" data-input-type="number"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="run_hours" data-input-type="number"></div> </td>
+          <td> <div class="updateFieldControl" data-id="ID" data-field="run_minutes" data-input-type="number"></div> </td>
+          <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="employees_required"></div> </td>
+          
+          <td> <table></table> <select class="updateField showField" data-imp="true" data-src-method="employees"></select></td>
+          
+          
           <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_run"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_hour"></div> </td>
           <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
@@ -725,7 +786,7 @@
           <td> <div class="updateFieldControl" data-id="ID" data-format="$" data-field="sale_price"></div> </td>
           <td>
             <div class="updateFieldControl" data-id="ID" data-field="expected_sales" data-format="$" data-input-type="number"></div>
-            <select class="showField editField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
+            <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
           </td>
 
           <td> <span class="showField" data-id="ID" data-field="batch_revenue"></span> </td>
