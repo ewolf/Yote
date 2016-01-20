@@ -17,58 +17,56 @@
               }
           } );
 
-          // fancy inputs that are editiable once clicked. update these before the rest of them
-          function updateFieldControls(fieldClass) {
-              var fc = fieldClass ? '.' + fieldClass : '';
-              $( 'div.updateFieldControl' + fc  ).each( function() {
-                  var $this = $(this);
-                  $this.empty().append( '<input class="updateField showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data( 'field' ) + '" type="' + $this.data('input-type') + '">' +
-                                    '<span class="showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data('field') + '">&nbsp;</span>' );
-              } );
+          function energize( cls, obj ) {
+              setIds( cls, obj );
+              activateControls();
+              watchForUpdates( obj );
+          }
 
-              $( 'div.updateFieldControl' + fc + '>span' ).off('click').on( 'click',
-                                                     function() {
-                                                         var $this = $(this);
-                                                         $this.parent().addClass( 'editing' );
-                                                         var $inpt = $this.parent().find( 'input' );
-                                                         $inpt.data('original', $inpt.val() );
-                                                         $inpt.focus();
-                                                     } );
-              $( 'div.updateFieldControl' + fc + '>input' ).off('blur').on( 'blur',
-                                                       function(ev) {
-                                                           var $this = $(this);
-                                                           if( $this.data( 'original' ) == $this.val() ) {
-                                                               $this.parent().removeClass( 'editing' );
-                                                           }
-                                                       } );
-              $( 'div.updateFieldControl' + fc + '>input' ).each( function( idx, el ) {
-                  var $this = $( el );
-                  if( ! $this.data( 'updateFieldControlKeydownListener' ) ) {
-                      $this.data( 'updateFieldControlKeydownListener', true );
-                      $this.on( 'keydown',
-                                function(ev) {
-                                    var kk = ev.keyCode || ev.charCode;
-                                    var $this = $(this);
-                                    if( kk == 27 )  {
-                                        $this.val( $this.data( 'original' ) );
-                                        $this.parent().removeClass( 'editing' );
-                                        $this.removeClass('edited' );
-                                    } else if( kk == 13 || kk == 9 ) {
-                                        var p = $this.parent();
-                                        p.removeClass( 'editing' );
-                                        p.find('span').text( $this.val() );
-                                        $this.parent().removeClass( 'editing' );
-                                        $this.removeClass('edited' );
-                                    }
-                                    $this.toggleClass('edited', $this.data('original') == $this.val() );
-                                } );
-                      $( 'div.updateFieldControl' + fc + '>input' ).on( 'keyup', function() {
-                          var $this = $(this);
-                          $this.toggleClass('edited', $this.data('original') != $this.val() );
-                      } );
+          function setIds( cls, obj ) {
+              $( '.' + cls + ',.'+cls+'-child' ).each( function() {
+                  var $this = $(this);
+
+                  if( $this.is( 'select' ) && $this.data( 'id' ) != obj.id ) {
+                      // special casey thing to regenerate select controls
+                      $this.removeClass( 'build-select' );
+                  }
+                  if( $this.hasClass( cls+'-child' ) ) {
+                      $this.data( 'parent', obj.id );
+                  }
+                  if( $this.hasClass( cls ) ) {
+                      $this.data( 'id', obj.id );
                   }
               } );
-          } //udpateFieldControls
+          }
+
+          function updateListener( obj, listenerName, listenerFunc, runOnStartup ) {
+              if( ! obj[ listenerName ] ) {
+                  obj[ listenerName ] = true;
+                  obj.addUpdateListener( listenerFunc );
+              }
+              if( runOnStartup ) {
+                  listenerFunc();
+              }
+          } //updateListener
+
+          function modifyControl( selector, key, fun ) {
+              if( typeof key === 'object' ) {
+                  for( var k in key ) {
+                      modifyControl( selector, k, key[k] );
+                  }
+                  return;
+              }
+              var $sel = $( selector );
+              key = 'set-' + key + '-listener';
+              $( selector ).each( function() {
+                  var $this = $( this );
+                  if( ! $this.data( key ) && $this.data('id') ) {
+                      $this.data( key, true );
+                      fun( $this );
+                  }
+              } );
+          }
 
           function _updateSelect( $sel, list ) {
 
@@ -117,84 +115,134 @@
                       val = yote.fetch( val );
                   }
                   inpt[ cur_fld ] = val;
-                  obj.update( [ inpt ] );
+                  var o = yote.fetch( $sel.data('id') );
+                  o.update( [ inpt ] );
               } );
 
-              if( ! list._select_listener ) {
-                  list._select_listener = true;
-                  list.addUpdateListener( function() { 
-                      _updateSelect($sel,list);
-                  } );
-              }
+              updateListener( list, 'select-listener', function() { 
+                  _updateSelect($sel,list);
+              }, false );
           } // _updateSelect
 
-          // selects with values corresponding to the back end stuff
-          function updateSelects(fieldClass) {
-              $( 'select.editField' + (fieldClass ? '.' + fieldClass : '' )  ).each( function() {
-                  // TODO : error cases
-                  var $this = $(this);
 
-                  var list_fld = $this.data('list-field');
-
-                  var obj = yote.fetch( $this.data('id') );
+          function activateControls()  {
+              modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
+                  $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.data('classes') + '" ' + 
+                                        '       data-id="'    + $ctrl.data('id') + '"' + 
+                                        '       data-field="' + $ctrl.data( 'field' ) + '"' + 
+                                        '       type="'       + $ctrl.data('input-type') + '">' +
+                                        '<span class="showField ' + $ctrl.data('classes') + '"' + 
+                                        '      data-id="' + $ctrl.data('id') + '"' + 
+                                        '      data-field="' + $ctrl.data('field') + '">' + 
+                                        '  &nbsp;</span>' );
+              } );
+              modifyControl( 'div.updateFieldControl>span', 'updateField-click', function( $ctrl ) {
+                  $ctrl.on( 'click',
+                            function() {
+                                var $this = $(this);
+                                $this.parent().addClass( 'editing' );
+                                var $inpt = $this.parent().find( 'input' );
+                                $inpt.data('original', $inpt.val() );
+                                $inpt.focus();
+                            } );
+              } );
+              modifyControl( 'div.updateFieldControl>input', {
+                  'updateField-blur' : function( $ctrl ) {
+                      $ctrl.on( 'blur',
+                                function(ev) {
+                                    var $this = $(this);
+                                    if( $this.data( 'original' ) == $this.val() ) {
+                                        $this.parent().removeClass( 'editing' );
+                                    }
+                                } );
+                  },
+                  'updateField-keydown' : function( $ctrl ) {
+                      $ctrl.on( 'keydown',
+                                function(ev) {
+                                    var kk = ev.keyCode || ev.charCode;
+                                    var $this = $(this);
+                                    if( kk == 27 )  {
+                                        $this.val( $this.data( 'original' ) );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    } else if( kk == 13 || kk == 9 ) {
+                                        var p = $this.parent();
+                                        p.removeClass( 'editing' );
+                                        p.find('span').text( $this.val() );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    }
+                                    $this.toggleClass('edited', $this.data('original') == $this.val() );
+                                } );
+                  },
+                  'updateField-keyup' : function( $ctrl ) {
+                      $ctrl.toggleClass('edited', $ctrl.data('original') != $ctrl.val() );
+                  }
+              } );
+              modifyControl( 'select.editField', 'build-select', function( $ctrl ) {
+                  var list_fld = $ctrl.data('list-field');
+                  
+                  var obj = yote.fetch( $ctrl.data('id') );
                   var list = obj.get( list_fld );
                   
-                  var cur_fld = $this.data('field');
+                  var cur_fld = $ctrl.data('field');
                   var cur_val = obj.get( cur_fld );
                   if( typeof cur_val === 'object' ) {
                       cur_val = cur_val.id;
                   }
-                  if( $this.data('use-raw-list') ) {
-                      _updateSelect( $this, list );
+                  if( $ctrl.data('use-raw-list') ) {
+                      _updateSelect( $ctrl, list );
                   } else {
-                      obj.choices( [$this.data('list-source')], function( valTitles ) {
-                          _updateSelect( $this, valTitles );
+                      obj.choices( [$ctrl.data('list-source')], function( valTitles ) {
+                          _updateSelect( $ctrl, valTitles );
                       } );
                   }
               } );
-          }
-
-          function activateUpdateFieldsAndActions(fieldClass) {
-              var fc = fieldClass ? '.' + fieldClass : '';
-              $( 'input.updateField' + fc ).on( 'keydown', function(ev) {
-                  var kk = ev.keyCode || ev.charCode;
-                  if( kk == 13 || kk == 9 ) {
-                      var $this = $( this );
-                      var obj = yote.fetch( $this.data('id') );
-                      var fld = $this.data('field');
-                      var inpt = {};
-                      inpt[ fld ] = $this.val() ;
-                      obj.update( [ inpt ] );
-                  } 
+              modifyControl( 'input.updateField', 'input-keydown', function( $ctl ) {
+                  $ctl.on( 'keydown', function(ev) {
+                      var kk = ev.keyCode || ev.charCode;
+                      if( kk == 13 || kk == 9 ) {
+                          var $this = $( this );
+                          var obj = yote.fetch( $this.data('id') );
+                          var fld = $this.data('field');
+                          var inpt = {};
+                          inpt[ fld ] = $this.val() ;
+                          obj.update( [ inpt ] );
+                      } 
+                  } );
               } );
 
-              $( '.delAction' + fc ).off('click').on( 'click', function(ev) {
-                  var $this  = $(this);
-                  if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
-                      return;
-                  }
-                  var par    = yote.fetch($this.data( 'parent' ));
-                  var obj    = yote.fetch($this.data( 'id' ));
-                  par.remove_entry( [obj,$this.data('from')] );
-                  ev.preventDefault();
+              modifyControl( '.delAction', 'delClick', function( $this ) {
+                  $this.on( 'click', function(ev) {
+                      if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
+                          return;
+                      }
+                      var par    = yote.fetch($this.data( 'parent' ));
+                      var obj    = yote.fetch($this.data( 'id' ));
+                      par.remove_entry( [obj,$this.data('from')] );
+                      ev.preventDefault();
+                  } );
               } );
-              $( '.addAction' + fc).off('click').on( 'click', function(ev) {
-                  var $this = $(this);
-                  var create_action = $this.data('action');
-                  var list  = $this.data('list');
-                  var listOn = yote.fetch( $this.data('id') );
-                  listOn.add_entry( [{ listName: list }] );
-                  ev.preventDefault();
+              modifyControl( '.addAction', 'addClick', function( $this ) {
+                  $this.on( 'click', function(ev) {
+                      var $this = $(this);
+                      var create_action = $this.data('action');
+                      var list  = $this.data('list');
+                      var listOn = yote.fetch( $this.data('id') );
+                      listOn.add_entry( [{ listName: list }] );
+                      ev.preventDefault();
+                  } );
               } );
-          } //activateUpdateFieldsAndActions
+          } //activateControls
 
-          var costForm = new Intl.NumberFormat( "en-US", {
+
+          var _costForm = new Intl.NumberFormat( "en-US", {
               minimumFractionDigits : 2,
               maximumFractionDigits : 2,              
               style : "decimal",
           } );
 
-          var updater = function(o) {
+          var _updater = function(o) {
               var id = o.id;
               $( ".showField" ).each( function() {
                   var $this = $(this);
@@ -203,8 +251,9 @@
                   }
                   var fld = $this.data( 'field' );
                   var val = o.get( fld );
+
                   if( $this.data( 'format' ) == '$' ) {
-                      val = costForm.format( val );
+                      val = _costForm.format( val );
                   }
                   if( $this.is( 'input' ) ) {
                       $this.val( val );
@@ -220,132 +269,46 @@
               } );
           }              
 
-          function watchObjects() {
+          function watchForUpdates() {
               // if the object changes, all HTML controls displaying data from that object are updated
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
                   if( ! obj._watched ) {
-                      obj.addUpdateListener( updater );
+                      obj.addUpdateListener( _updater );
                       obj._watched = true;
                   }
-                  updater( obj );
+                  _updater( obj );
               }
-          } //watchObjects
+          } //watchForUpdates
 
 // ---------------------------------------------------------------------------------------------------- //
 
           function setup_app(app) {
 
-              // get interesting data
-              var curScene = app.get( 'current_scenarios' );
+              // show and hide scenario delete so that it does not show if there are less than 2 scenarios
               var scnz     = app.get('scenarios');
+              updateListener( scnz, '_deleteListener', function() {
+                  if( scnz.length() > 1 ) {
+                      $( '#del_scenario').show();
+                  } else {
+                      $( '#del_scenario').hide();
+                  }
+              }, true );
 
-              // ** update controls ** //
-              $( '.app' ).each( function() { //make sure all 'app' controls have the id of the app
-                  $(this).data( 'id', app.id );
-              } );
-              updateFieldControls( 'app' ); // setup special input controls
-              updateSelects( 'app' );       // setup selects
+              var curScene = undefined;
+              updateListener( app, '_curSceneWatcher', function() {
+                  if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenarios' ) ) ) {
+                      curScene = app.get( 'current_scenarios' );
+                      setup_scenario( curScene );
+                  }
+              }, true );
 
-
-
-              // set up scenario picker
-              
-              if( scnz.length() > 1 ) {
-                  $( '#del_scenario').show();
-              } else {
-                  $( '#del_scenario').hide();
-              }
-
-              // * ) set up scenario
-              setup_scenario( curScene );
-              if( ! app._sceneWatcher ) {
-                  app._sceneWatcher = true;
-                  app.addUpdateListener( function() {
-                      if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenarios' ) ) ) {
-                          curScene = app.get( 'current_scenarios' );
-                          setup_scenario( curScene );
-                      }
-                  } );
-              }
-
-              // * ) set up watchers. if something is added or removed from the list, this will update
-              // the list
-              if( ! scnz._listwatched ) {
-                  scnz._listwatched = true;
-                  scnz.addUpdateListener( function() { 
-                      if( scnz.length() > 1 ) {
-                          $( '#del_scenario').show();
-                      } else {
-                          $( '#del_scenario').hide();
-                      }
-                  } );
-              }
-
-              $( '.app-child' ).each( function() {
-                  $(this).data( 'parent', app.id );
-              } );
-
-              activateUpdateFieldsAndActions( 'app' );
-
-              watchObjects(app); //connects objects to data fields
-
-              return true;
+              energize( 'app', app );
           } //setup_app
 
           function setup_scenario(scenario) {
-              // * ) update data-id of things scenario
-              $( '.scenario' ).each( function() {
-                  $(this).data( 'id', scenario.id );
-              } );
-              $( '.scenario-child' ).each( function() {
-                  $(this).data( 'parent', scenario.id );
-              } );
-              updateFieldControls( 'scenario' );
-              updateSelects( 'scenario' );
-
               var prods = scenario.get( 'product_lines' );
-
-              // * ) setup focused product
-              var curProd = scenario.get( 'current_product_lines' );
-
-              if( ! scenario._curprodlistener ) {
-                  scenario._curprodlistener = true;
-                  scenario.addUpdateListener( function() {
-                      if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_lines' ) ) ) {
-                          curProd = scenario.get( 'current_product_lines' );
-                          setup_product( curProd );
-                      }
-                  } );
-              }
-
-              // * ) setup products table
-              var $tab = $( '#product-table' ).empty();
-              if( prods.length() > 0 ) {
-                  var buf = '<tr>' + [ 'name', 'production rate' ]
-                      .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
-                  var prodl = prods.toArray();
-                  for( var i=0; i<prodl.length; i++) {
-                      var line = prodl[i];
-                      buf += '<tr>' + [ 'name', 'production_rate' ]
-                          .map( function(w) { return '<td>' + line.get(w) + '</td>'; } ).join('') + '</tr>';
-                  }
-                  $tab.append( buf );
-                  $( '#no_products' ).hide();
-                  $( '#curr_products,#del_prod,#prod_sel' ).show();
-              } else {
-                  $( '#no_products' ).show();
-                  $( '#curr_products,#del_prod,#prod_sel' ).hide();
-              }
-
-              if( curProd ) {
-                  setup_product( curProd );
-                  // * ) setup focused product picker
-              }
-
-              // * ) If anything is added to or removed from the list of product lines of the current scene
-              if( ! prods._listwatched ) {
-                  prods._listwatched = true;
+              updateListener( prods, '_productCountWatched', function() {
                   prods.addUpdateListener( function() {
                       if( prods.length() > 0 ) {
                           $( '#no_products' ).hide();
@@ -354,14 +317,30 @@
                           $( '#no_products' ).show();
                           $( '#curr_products,#del_prod,#prod_sel' ).hide();
                       }
+                      var $tab = $( '#product-table' ).empty();
+                      if( prods.length() > 0 ) {
+                          var buf = '<tr>' + [ 'name', 'production rate' ]
+                              .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
+                          var prodl = prods.toArray();
+                          for( var i=0; i<prodl.length; i++) {
+                              var line = prodl[i];
+                              buf += '<tr>' + [ 'name', 'production_rate' ]
+                                  .map( function(w) { return '<td>' + line.get(w) + '</td>'; } ).join('') + '</tr>';
+                          }
+                          $tab.append( buf );
+                      }
                   } );
-              }
+              }, true );
 
-              // if the scenario has changed, the scenario name might have changed
-              // or the current product may have changed to update both
-              activateUpdateFieldsAndActions('scenario');
-              watchObjects(scenario);
-              return true;
+              var curProd = undefined;
+              updateListener( scenario, '_curProdWatcher', function() {
+                  if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_lines' ) ) ) {                  
+                      curProd = scenario.get( 'current_product_lines' );
+                      setup_product( curProd );
+                  }
+              }, true );
+
+              energize( 'scenario', scenario );
           } //setup_scenario
 
           function setup_product(prd) {
@@ -369,30 +348,12 @@
                   $( '#curr_products,#del_prod,#prod_sel' ).hide();                  
                   return false;
               }
-              var scenario = prd.get('parent');
-              // * ) update data-id of things product
-              $( '.product' ).each( function() {
-                  $(this).data( 'id', prd.id );
-              } );
-              updateFieldControls( 'product' );
-              updateSelects( 'product' );
-              // ingredients are other products that are used to make this one
+
               setup_ingredients_table( prd );
               
-              // * ) setup_steps_table from list
-              // * ) set up update listener on steps list which calls setup_steps_table
-              // * ) setup new step button
-              // * ) check for edit/showFields that were not initialized
               setup_steps_table( prd );
 
-              $( '.product-child' ).each( function() {
-                  $(this).data( 'parent', prd.id );
-              } );
-
-              activateUpdateFieldsAndActions('product');
-              watchObjects(prd);
-
-              return true;
+              energize( 'product', prd );
           } //setup_product
 
           function setup_ingredients_table( prd ) {
@@ -417,7 +378,7 @@
                       '</tr>';
               }              
 
-              buf += '<tr> <td colspan="3"> <select class="editField showField product" id="new_ingredient">' +
+              buf += '<tr> <td colspan="3"> <select class="editField showField scenario" data-field="current_product_lines" data-use-raw-list="true" data-list-field="product_lines" id="new_ingredient">' +
                   '<option value="-">Choose Ingredient</option>';
 
               var scenario = prd.get('parent');
@@ -436,7 +397,7 @@
 
               for( var i=0; i<ingsl.length; i++ ) {
                   var ing = ingsl[ i ];
-                  watchObjects( ing );
+                  watchForUpdates( ing );
               }
 
               $( '#new_ingredient' ).on( 'change', function() {
@@ -446,8 +407,6 @@
                                    itemArgs : chosen }] );
               } );
               
-              return true;
-
           } //setup_ingredients_table
 
           function setup_steps_table( prd ) {
@@ -483,15 +442,13 @@
               }
               $tab.append( buf );
               
-              updateFieldControls( 'step' );
-              activateUpdateFieldsAndActions('step');
+              activateControls();
 
               for( var i=0; i<stepl.length; i++ ) {
                   var step = stepl[ i ];
-                  watchObjects(step);
+                  watchForUpdates(step);
               }
 
-              return true;
           } //setup_steps_table
 
       } //init
@@ -516,7 +473,7 @@
 
     <h3>Scenarios</h3>
     <p>
-      Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios" data-id="">Create New Scenario</a>
+      Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
     <p>
       Selected Scenario <select class="showField editField app" data-field="current_scenarios" data-use-raw-list="true" data-list-stores="object" data-list-field="scenarios"></select>
@@ -555,7 +512,7 @@
     <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</a>
     <span id="no_products">No Products</span>
     <div id="curr_product">
-      Name : <div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> <br>
+      Name : <div class="updateFieldControl product" data-classes="product" data-far="yes" data-field="name" data-input-type="text"></div> <br>
       Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
 
     <table>
