@@ -108,7 +108,7 @@ yote.init = function( args ) {
         }
         obj.get = function( key ) {
             var val = this._data[key];
-            if( typeof val === 'undefined' ) {
+            if( typeof val === 'undefined' || val === null ) {
                 return undefined;
             }
             if( typeof val === 'string' && val.startsWith( 'v' ) ) {
@@ -166,7 +166,7 @@ yote.init = function( args ) {
         else if( typeof returnData === 'string' && returnData.startsWith('v') ) {
             return returnData.substring(1);
         }
-        else if( typeof returnData !== 'undefined' ) {    
+        else if( returnData ) {    
             return yote.fetch( returnData );
         }
     } //processReturn
@@ -219,7 +219,7 @@ yote.init = function( args ) {
 
     function readyObjForContact( obj ) {
         if( typeof obj !== 'object' ) {
-            return typeof obj === 'undefined' ? undefined : 'v' + obj;
+            return typeof obj === 'undefined' || obj === null ? undefined : 'v' + obj;
         }
         if( id2obj[ obj.id ] === obj ) {
             return obj.id;
@@ -257,7 +257,7 @@ yote.init = function( args ) {
                   '/' + action, 
                   true ); // 
 
-        var readiedData = typeof data === 'undefined' ? undefined : readyObjForContact( data );
+        var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
 
         // for a single parameter, wrap into a parameter list
         var sendData = JSON.stringify(  readiedData );
@@ -287,7 +287,7 @@ yote.init = function( args ) {
                 return ret;
             }
         } else {
-            if( typeof item === 'undefined' ) return undefined;
+            if( typeof item === 'undefined' || item === null ) return undefined;
             if( typeof item === 'string' && item.startsWith('v') ) {
                 return item.substring( 1 );
             } else {

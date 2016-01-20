@@ -76,7 +76,7 @@ sub add_entry {
     my $class = $self->_lists->{$listName};
     
     die "Unknown list '$listName' in ".ref($self) unless $class;
-    die "Cant add this choice to list $listName in ".ref($self) unless $self->_valid_choice( $listName, $obj );
+    die "Cannot add this choice to list $listName in ".ref($self) unless $self->_valid_choice( $listName, $obj );
     my $list = $self->get( $listName, [] );
     $obj //= $self->{STORE}->newobj( {
         parent => $self,
