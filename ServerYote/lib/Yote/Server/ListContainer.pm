@@ -105,6 +105,7 @@ sub remove_entry {
         if( $list->[$i] == $item ) {
             splice @$list, $i, 1;
             if( @$list ) {
+                $i-- if $i > $#$list;
                 $self->set( "current_$from", $list->[$i] );
                 return $item;
             } else {
