@@ -7,6 +7,7 @@ no warnings 'uninitialized';
 use base 'Yote::Server::ListContainer';
 
 use Samp::Step;
+use Samp::Ingredient;
 
 sub _allowedUpdates {
     [ qw( name 
@@ -21,7 +22,7 @@ sub _allowedUpdates {
 
 sub _lists {
     { steps       => 'Samp::Step',
-      ingredients => 'Yote::Obj',
+      ingredients => 'Samp::Ingredient',
     };
 }
 

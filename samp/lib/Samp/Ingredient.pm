@@ -16,7 +16,7 @@ sub _allowedUpdates {
 
 sub _when_added {
     my( $self, $toProduct, $listName, $itemArgs ) = @_;
-    $self->set_product_line( $itemArgs );
+    $self->set_product( $itemArgs );
 }
 
 

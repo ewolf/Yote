@@ -25,7 +25,6 @@
           }
 
           function fill_template( sel, vars, fields ) {
-              return;
               var $template = $( sel );
               if( $template.length != 1 ) {
                   console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
@@ -33,13 +32,14 @@
               }
               $template = $template.clone();
               $template.attr( 'id', $template.attr('id') + '-clone' );
+              $template.removeClass('template');
               $template.find("*").each( function() {
                   var $this = $(this);
                   $this.removeClass( 'template' );
                   for( var i=0;i<fields.length; i++ ) {
                       var fld = fields[i];
                       if( vars[$this.data( fld )] ) {
-                          vars[$this.data( fld )] = vars[$this.data( fld )];
+                          $this.data( fld, vars[$this.data( fld )] );
                       }
                   }
               } );
@@ -270,7 +270,7 @@
                       var create_action = $this.data('action');
                       var list  = $this.data('list');
                       var listOn = yote.fetch( $this.data('id') );
-                      listOn.add_entry( [{ listName: list }] );
+                      listOn.add_entry( [{ listName: list }], function( newo ) { watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
                       ev.preventDefault();
                   } );
               } );
@@ -393,8 +393,27 @@
               }
 
               setup_ingredients_table( prd );
+              $( '#new_ingredient' ).off('change').on( 'change', function() {
+                  var $this = $( this );
+                  var val = $this.val();
+                  if( val ) {
+                      var chosen = yote.fetch( $this.val() );
+                      if( chosen ) {
+                          prd.add_entry( [{ listName : 'ingredients',
+                                            itemArgs : chosen }], function( newi ) { 
+                                                var o = Array.isArray( newi ) ? newi[0] : newi;
+                                                watchForUpdates( o ); } );
+                      }
+                  }
+              } );
               
-              setup_steps_table( prd );
+              var ings = prd.get( 'ingredients' );
+              updateListener( ings, '_ingsChange', function() {
+                  setup_ingredients_table( prd );
+              }, true );
+              ings.each( function( ing, i ) {
+                  watchForUpdates( ing );
+              } );
 
               energize( 'product', prd );
           } //setup_product
@@ -403,47 +422,21 @@
               var $tab = $( '#ingredients_tab' ).find( 'tbody' );
               // * ) empty steps table
               $tab.empty();
-              var buf = '';
 
               var ings = prd.get( 'ingredients' );
-              ings.removeUpdateListeners().addUpdateListener( function() {
-                  setup_ingredients_table( prd );
-              } );
               ings.each( function( ing, i ) {
-                  var prod = ing.get( 'parent' );
-                  $tab.append( fill_template( '#ingredient-row', {
+                  var prod = ing.get( 'product' );
+                  var row = fill_template( '#ingredient-row', {
+                      PARENTPROD : prd.id,
                       PROD : prod.id,
                       ING  : ing.id
-                  }, ['id'] ) );
+                  }, ['id','parent'] );
+                  $tab.append( row );
+                  watchForUpdates( prod );
               } );
                                      
-              var scenario = prd.get('parent');
-              var prodsl = scenario.get( 'product_lines' ).toArray();
-              for( var i=0; i<prodsl.length; i++ ) {
-                  var prod = prodsl[i];
-                  // do not include itself
-                  if( ! yote.sameYoteObjects( prod, prd ) ) {
-                      buf += '<option value="' + prod.id + '">' + prod.get('name') + '</option>';
-                  }
-              }
-              buf += '</select>' +
-                  '</td></tr>';
+              activateControls();
 
-              $tab.append( buf );
-
-              ings.each( function( ing, i ) {
-                  watchForUpdates( ing );
-              } );
-
-              $( '#new_ingredient' ).on( 'change', function() {
-                  var $this = $( this );
-                  var chosen = yote.fetch( $this.val() );
-                  if( chosen ) {
-                      prd.add_entry( [{ listName : 'ingredients',
-                                        item     : chosen }] );
-                  }
-              } );
-              
           } //setup_ingredients_table
 
           function setup_steps_table( prd ) {
@@ -559,7 +552,7 @@
       <tr> <th>Sale Price / unit</th> <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td> </tr>
       <tr>
         <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
-        <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-src-collection="expected_sales_per"></span></td>
+        <th>per</th> <td><select class="showField editField product" data-field="expected_sales_per" data-src-collection="expected_sales_per"></select></td>
        </tr>
 
 
@@ -579,7 +572,7 @@
       <select class="editField showField product" 
               id="new_ingredient"
               data-src-collection="ingreds"
-              ></select>
+              ></select> Need to have a refreshing function for this
 
       <h4>Steps</h4>
 
@@ -596,18 +589,17 @@
     <hr>
 
     <section class="template">
-      <tr id="ingredient-row"> 
-        <td> 
-
-           <select class="editField showField" data-id="ING" data-field="current_product_lines" data-src-field="product_lines" id="new_ingredient"></select>
-
-<span class="showField" data-id="PROD" data-field="name"></span> </td>
-        <td> <span class="showField" data-id="ING" data-field="amount_per_run"></span> </td>
-        <td> <span class="showField" data-id="ING" data-field="notes"></span> </td>
-        <td> <a href="" class="delAction product-child" data-id="ING" data-from="ingredients"></a> </td>
-     </tr>
+      <table>
+        <tr id="ingredient-row"> 
+          <td>
+            <span class="showField" data-id="PROD" data-field="name"></span>
+          </td>
+          <td> <div class="updateFieldControl" data-id="ING" data-field="amount_per_run"></div> </td>
+          <td> <div class="updateFieldControl" data-id="ING" data-field="notes"></div> </td>
+          <td> <a href="" class="delAction" data-parent="PARENTPROD" data-id="ING" data-from="ingredients">delete</a> </td>
+        </tr>
+      </table>
     </section>
-
 
     </body>
     
