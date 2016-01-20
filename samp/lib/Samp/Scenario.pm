@@ -19,7 +19,6 @@ sub _init {
 
 sub update {
     my( $self, $fields ) = @_;
-    print STDERR Data::Dumper->Dump([$self,$fields]);
     for my $field (keys %$fields) {
         if( $EditFields{$field} ) {
             my $x = "set_$field";

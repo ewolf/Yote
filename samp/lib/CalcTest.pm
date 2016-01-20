@@ -33,6 +33,20 @@ sub setCurrentScene {
     $self->set_current_scene( $scene );
 }
 
+sub delete_scene {
+    my( $self, $scene ) = @_;
+    my $scenes = $self->get_scenarios([]);
+    if( $scene && @$scenes > 1 ) {
+        for( my $i=0; $i<@$scenes; $i++ ) {
+            if( $scene eq  $scenes->[$i] ) {
+                splice @$scenes, $i, 1;
+                last;
+            }
+        }
+        $self->set_current_scene( $scenes->[0] );
+    }
+}
+
 sub new_scene {
     my $self = shift;
     my $scenes = $self->get_scenarios([]);

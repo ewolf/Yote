@@ -293,9 +293,7 @@ sub _process_request {
         # yote objects inside for may. Use a recursive helper function for this.
         my $in_params;
         eval {
-            print STDERR Data::Dumper->Dump([$params,"AFOR"]);
             $in_params = $self->__transform_params( $params, $token, $server_root );
-            print STDERR Data::Dumper->Dump([$in_params,"RRRA"]);
         };
         if( $@ ) {
             _log( $@ );
@@ -569,7 +567,6 @@ sub __discover_methods {
 
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
-    print STDERR Data::Dumper->Dump([\@m,"A ($pkg)",[keys %{"${pkg}\::"}]]);
 
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
         return [ grep { $_ !~ /^(_|[gs]et(_|$)|can|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA$)/ } @m ];
@@ -580,14 +577,12 @@ sub __discover_methods {
         my $pm = __discover_methods( $class );
         push @m, @$pm;
     }
-    print STDERR Data::Dumper->Dump([\@m,"B ($pkg)"]);
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
 
     $meths = [ grep { $_ !~ /^(_|[gs]et_|can|AUTOLOAD|BEGIN|isa|PKG2METHS|ISA$)/ && ! $base{$_} } @m ];
 
-    print STDERR Data::Dumper->Dump([$meths,"C ($pkg)"]);
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
