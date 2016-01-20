@@ -75,7 +75,6 @@ sub update {
         die "Cant update '$fld'" unless $allowed{$fld};
         my $val = $updates->{$fld};
         my $valid_choices = $self->_valid_choices($fld);
-        print STDERR Data::Dumper->Dump([$valid_choices,"VC"]);
         if( $valid_choices && ! $valid_choices->{$val} ) {
             if( $valid_choices->{undef} ) {
                 $val = undef;
