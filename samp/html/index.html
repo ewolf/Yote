@@ -9,6 +9,7 @@
           yote.initMain();
 
           yote.doSequence( [ //functionis passed in take two args, a callback and a fail handler
+              yote.initRoot(),
               yote.loadApp( 'CalcTest' ),
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ),
@@ -22,6 +23,7 @@
 
                   function updateScenes() {
                       // redo select
+                      var app = yote.fetch_app( 'CalcTest' );
                       var sel = document.getElementById( 'scenario_sel' );
                       while( sel.options.length > 0 ) {
                           sel.remove( 0 );

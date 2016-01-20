@@ -4,8 +4,6 @@ yote.initWorker();
 
 console.log( "worker-yote.js init" );
 
-var root = yote.fetch_root();
-
 function resp( msg ) {
         console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', msg ] ) );
     postMessage( JSON.stringify( [ 'OK', msg ] ) );
@@ -37,6 +35,10 @@ onmessage = function(e) {
     }
     else if( type === 'fetch_app' ) {
         var rawResp =  yote.fetch_app( params[0] );
+        return resp( rawResp );
+    }
+    else if( type === 'init_root' ) {
+        var rawResp = yote.worker_init_root();
         return resp( rawResp );
     }
     else if( type === 'call' ) {

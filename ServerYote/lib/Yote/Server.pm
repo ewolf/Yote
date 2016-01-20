@@ -321,6 +321,10 @@ sub _process_request {
                 unshift( @$in_params, $token );
             }
             (@res) = ($obj->$action( @$in_params ));
+            if( $action eq 'init_root' ) {
+                my $token = $server_root->create_token;
+                push @res, $token;
+            }
         };
 
         if ( $@ ) {
@@ -339,7 +343,7 @@ sub _process_request {
             push @out_res, $val;
         }
         my $ids_to_update;
-        if ( $action eq 'fetch_root' && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        if ( ( $action eq 'fetch_root' || $action eq 'init_root' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
             # if there is a token, make it known that the token 
             # has received server root data
             $ids_to_update = [ $server_root_id ];
@@ -824,6 +828,10 @@ sub fetch_app {
 } #fetch_app
 
 sub fetch_root {
+    return shift;
+}
+
+sub init_root {
     return shift;
 }
 

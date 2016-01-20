@@ -1,7 +1,4 @@
 var yote = {
-    fetch_root : function() {
-        throw new Error("init must be called before fetch_root");
-    },
     functions        : {},
     registerFunction : function( funname, fun ) {
         if( yote.functions[funname] ) {
@@ -24,6 +21,7 @@ yote.initWorker = function( yoteServerURL ) {
 yote._init = function( yoteServerURL, isWorker ) {
 
     isWorker = isWorker ? true : false; // can't be undefined or things like that
+    workerTxt = isWorker ? "ISWORKER" : "NOTWORK";
 
     if( ! yoteServerURL ) { 
         yoteServerURL = '';
@@ -32,10 +30,11 @@ yote._init = function( yoteServerURL, isWorker ) {
     // cache storing objects and their meta-data
     var class2meths = {};
     var id2obj = {};
+    yote.__object_library = id2obj;
 
     // returns an object, either the cache or server
     var fetch = function( id ) {
-        return id2obj[ id ] || this.root.fetch( id );
+        return id2obj[ id ] || yote.root.fetch( id );
     }
 
     // creates a proxy method that contacts the server and
@@ -139,7 +138,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         if( res.updates ) {
             res.updates.forEach( function( upd ) {
                 if( typeof upd !== 'object' || ! upd.id ) {
-                    console.error( "Update error, was expecting object, not : '" + upd + "'" );
+                    console.error( "Update error [ " + workerTxt + "], was expecting object, not : '" + upd + "'" );
                 } else {
                     // good place for an update listener
                     makeObj( upd );
@@ -168,7 +167,7 @@ yote._init = function( yoteServerURL, isWorker ) {
     var returnVal = '';
     var reqListener = function( returnRaw ) { 
         return function() {
-            console.log( "GOT FROM SERVER : " + this.responseText );
+            console.log( "GOT [ " + workerTxt + "] FROM SERVER : " + this.responseText );
             if( isWorker && !returnRaw ) {
                 returnVal = processRaw( this.responseText ); 
             } else {
@@ -204,8 +203,8 @@ yote._init = function( yoteServerURL, isWorker ) {
     var contact = function(id,action,data,returnRaw) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener( returnRaw ) );
-console.log( "HAZTOK? " + yote.token + " IN " + ( isWorker ? "INWORKER" : " NOTworker" )  );
-        console.log( 'contacting server via url : ' + ( yoteServerURL || "" ) + 
+
+        console.log( "[ " + workerTxt + "] contacting server via url : " + ( yoteServerURL || "" ) + 
                      '/' + id +
                      '/' + ( yote.token ? yote.token : '_' ) + 
                      '/' + action )
@@ -218,7 +217,7 @@ console.log( "HAZTOK? " + yote.token + " IN " + ( isWorker ? "INWORKER" : " NOTw
 
         var readiedData = readyObjForContact( data );
         var sendData = JSON.stringify(  typeof readiedData === 'object' ? readiedData : [ readiedData ] );
-        console.log( "About to send to server : " + sendData );
+        console.log( " [ " + workerTxt + "] About to send to server : " + sendData );
 //        oReq.send( sendData ? 'p=' + sendData : undefined );
         // data must always be an array, though that array may have different data structures inside of it
         // as vehicles for data
@@ -227,16 +226,10 @@ console.log( "HAZTOK? " + yote.token + " IN " + ( isWorker ? "INWORKER" : " NOTw
         return returnVal; //returnVal is set by the reqListener
     }; // contact
 
-    yote.__object_library = id2obj;
-    
-    yote.fetch_root = function() {
-        //want a session object as well as a token
-        yote.token = contact('_', 'create_token');
 
-console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' : 'notworker' ) );
-        this.root = contact('_', 'fetch_root');
-        return this.root;
-    }; //yote.fetch_root
+    yote.worker_init_root = function() {
+        return contact('_', 'init_root', undefined, true );
+    }; //yote._raw_root
 
     var workers = {};
 
@@ -280,7 +273,7 @@ console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' :
 
     yote.doSequence = function( functions ) {
         if( typeof functions !== 'object' || functions.length === 0 ) {
-            console.error( "Error, yote.doSequence called without worker" );
+            console.error( " [ " + workerTxt + "] Error, yote.doSequence called without worker" );
             return this;
         }
         return {
@@ -302,7 +295,7 @@ console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' :
                 if( this.functions.length > 0 ) {
                     var fun = this.functions.shift();
                     this.done_fun.push( fun );
-                    console.log( ['start got fun', fun ] );
+                    console.log( [" [ " + workerTxt + '] start  got fun', fun ] );
                     fun( function() { that.start(); that.step++ },
                      function( err ) {
                          if( yote.failHandlers["++*"] ) {
@@ -325,24 +318,24 @@ console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' :
     yote.apps = {};
     yote.fetch_app = function( appname ) {
         var app = yote.apps[ appname ];
+        if( app ) {
+            return app;
+        }
         
         if( isWorker ) { //safe to directly call
-            if( app ) {
-                return app;
-            }
             app = yote.root.fetch_app( appname, true );
             if( app ) {                
                 yote.apps[ appname ] = processRaw(app);
+                return app;
             } else {
-                console.warn( "Unable to fetch app '" + appname + "'" );
+                console.warn( " [ " + workerTxt + "] Unable to fetch app '" + appname + "'" );
             }
         }
         else {
-            console.warn( "NON WORKER FETCHING CALL" );
+            console.warn( " [ " + workerTxt + "] NON WORKER FETCHING CALL" );
         }
-        return app;
     }; //fetch_app
-    
+
     yote.loadApp = function( appname, callback ) {
         return function( cb, failhandler ) {
             yote.callWorker( {
@@ -350,6 +343,23 @@ console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' :
                 callType  : 'fetch_app',
                 callback  : function( result ) {
                     yote.apps[ appname ] = result;
+                    if( callback ) callback( result );
+                    cb();
+                },
+                failhandler : failhandler
+            } );
+        };
+    };
+
+    yote.initRoot = function( appname, callback ) {
+        return function( cb, failhandler ) {
+            yote.callWorker( {
+                params    : [],
+                callType  : 'init_root',
+                callback  : function( result ) {
+                    yote.token = result[0]
+                    yote.root  = result[1];
+                    
                     if( callback ) callback( result );
                     cb();
                 },
