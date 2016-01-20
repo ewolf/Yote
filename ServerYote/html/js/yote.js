@@ -1,7 +1,15 @@
 var yote = {
     fetch_root : function() {
         throw new Error("init must be called before fetch_root");
+    },
+    functions        : {},
+    registerFunction : function( funname, fun ) {
+        if( yote.functions[funname] ) {
+            console.warn( "yote.registerFunction overriding '" + funname + "'" );
+        }
+        yote.functions[ funname ] = fun;
     }
+
 }; // yote var
 
 yote.initMain = function( yoteServerURL ) {
@@ -189,6 +197,8 @@ console.log( "About to send " + sendData );
 
         return returnVal; //returnVal is set by the reqListener
     }; // contact
+
+    yote.__object_library = id2obj;
     
     yote.fetch_root = function() {
         //want a session object as well as a token
@@ -203,8 +213,10 @@ console.log( "About to send " + sendData );
     yote.callWorker = function( args ) {
         var workerUrl   = args.workerUrl, 
             callParams  = args.params, 
-            callback    = args.callback, 
+            callback    = args.callback,
+            callpath    = args.callpath,
             failhanlder = args.failhandler, 
+            calltype    = args.callType,
             expectAlist = args.expectReturnedList;
         // have to find a way to get the update arguments from the
         // controls
@@ -217,12 +229,20 @@ console.log( "About to send " + sendData );
             // possibility for foolishly changing the handlers?
             // at processing the raw, this process will have access 
             // to all the yote data'
-            var resp = yote.processRaw( e.data, expectAlist );
-            if( callback ) {
-                callback( resp );
+            var resp = JSON.parse( e.data );
+            var ok       = resp[0];
+            if( ok === 'OK' ) {
+                var respData = resp[1];
+
+                // data to here
+                var resp = yote.processRaw( respData, expectAlist );
+                
+                if( callback ) {
+                    callback( resp );
+                }
             }
         }
-        worker.postMessage( [ 'call', callParams ] );
+        worker.postMessage( [ calltype, callParams, callpath ] );
     }; //yote.callWorker
 
     yote.doSequence = function( functions ) {
@@ -260,12 +280,35 @@ console.log( "About to send " + sendData );
         };
     }; //yote.doSequence
 
+
+    yote.apps = {};
+    yote.fetch_app = function( appname, callback ) {
+        var app = yote.apps[ appname ];
+        
+        if( isWorker ) { //safe to directly call
+            if( app ) {
+                return app;
+            }
+            app = yote.root.fetch_app( appname );
+            if( app ) {
+                yote.apps[ appname ] = app;
+            } else {
+                console.warn( "Unable to fetch app '" + appname + "'" );
+            }
+        }
+        else {
+            
+        }
+    }; //fetch_app
+    
     yote.loadApp = function( appname, callback ) {
         return function( cb, failhandler ) {
             yote.callWorker( {
                 workerUrl : "js/worker-yote.js",
-                params    : [ 'fetch_app', appname ],
+                params    : [ appname ],
+                callType  : 'fetch_app',
                 callback  : function( result ) {
+                    yote.apps[ appname ] = result;
                     callback( result );
                     cb();
                 },
@@ -278,7 +321,8 @@ console.log( "About to send " + sendData );
         return function( callback, failhandler ) {
             yote.callWorker( {
                 workerUrl : "js/worker-yote.js",
-                params    : [ 'include', includeFile ],
+                params    : [ includeFile ],
+                callType  : 'include',
                 callback  : callback,
                 failhandler : failhandler
             } );
@@ -288,7 +332,9 @@ console.log( "About to send " + sendData );
         return function( callback, failhandler ) {
             yote.callWorker( {
                 workerUrl   : "js/worker-yote.js",
-                params      : [ 'call', args ], // automatically update objects? Maybe?? Not sure :/ will think
+                callType  : 'call',
+                callpath    : callname,
+                params      : args || [], // automatically update objects? Maybe?? Not sure :/ will think
                 callback    : callback,
                 failhandler : failhandler
             } );

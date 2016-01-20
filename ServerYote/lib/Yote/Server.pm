@@ -140,12 +140,13 @@ sub __transform_params {
     # is encountered.
     #
     my( $self, $param, $token, $server_root ) = @_;
+
     if( ref( $param ) eq 'HASH' ) {
-        return { map { $_ => $self->_transform_params($param->{$_}, $token, $server_root) } keys %$param };
+        return { map { $_ => $self->__transform_params($param->{$_}, $token, $server_root) } keys %$param };
     } 
     elsif( ref( $param ) eq 'ARRAY' ) {
-        return [ map { $self->_transform_params($_, $token, $server_root) } @$param ];
-    } else {
+        return [ map { $self->__transform_params($_, $token, $server_root) } @$param ];
+    } elsif( ref( $param ) ) {
         die "Transforming Params: got weird ref '" . ref( $param ) . "'";
     }
     if( index( $param, 'v' ) == 0 ) {
@@ -249,7 +250,7 @@ sub _process_request {
             
         } elsif ( $verb eq 'POST' ) {
             ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
-            $params = from_json( $data ); # this has to be checked against is valid, yes
+            $params = $data ? from_json( $data ) : []; # this has to be checked against is valid, yes
         }
         _log( "\n   (params)--> : ".join(',',@$params) );
 
@@ -474,7 +475,11 @@ sub _xform_in {
     if( ref( $val ) ) {
         if( $allow_datastructures ) {
             # check if this is a yote object
-            
+            if( $val->isa( 'Yote::Obj' ) ) { #keeping this in this rare case as isa is not the cheapist operation
+                return $self->_get_id( $val );
+            } else {
+                return $val;
+            }
         }
         return $self->_get_id( $val );
     }
@@ -805,7 +810,7 @@ sub fetch_app {
         _log( "App '$app_name' not found" );
         return undef;
     }
-    $app->can_access( @args ) ? $app : undef;
+    return $app->can_access( @args ) ? $app : undef;
 } #fetch_app
 
 sub fetch_root {
@@ -824,6 +829,12 @@ sub fetch {
     die "Invalid id(s)" unless @ret == @ids;
     @ret;
 } #fetch
+
+# while this is a non-op, it will cause any updated contents to be 
+# transfered to the caller automatically
+sub update {
+
+}
 
 # ------- END Yote::ServerRoot
 
