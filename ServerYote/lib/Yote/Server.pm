@@ -463,6 +463,25 @@ sub _log {
     Yote::Server::_log(shift);
 }
 
+#
+# Unlike the superclass version of this, this provides an arguemnt to
+# allow non-yote datastructures to be returned. The contents of those
+# data structures will all recursively be xformed in.
+#
+sub _xform_in {
+    my( $self, $val, $allow_datastructures ) = @_;
+
+    if( ref( $val ) ) {
+        if( $allow_datastructures ) {
+            # check if this is a yote object
+            
+        }
+        return $self->_get_id( $val );
+    }
+
+    return "v$val";
+} #_xform_in
+
 sub newobj {
     my( $self, $data, $class ) = @_;
     $class ||= 'Yote::ServerObj';
