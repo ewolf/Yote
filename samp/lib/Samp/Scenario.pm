@@ -1,5 +1,12 @@
 package Samp::Scenario;
 
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use Yote::Server;
+use base 'Yote::ServerObj';
+
 sub _init {
     my $self = shift;
     $self->set_employees([]);

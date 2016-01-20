@@ -9,12 +9,7 @@
           yote.initMain();
 
           yote.doSequence( [ //functionis passed in take two args, a callback and a fail handler
-              yote.loadApp( 'CalcTest', function( app ) { 
-                  // loading the app so that yote objects can be referenced here
-                  // and when referenced, they can be connected to controls.
-                  window.app = app; //so that by name referencing of this variable works, and then 
-              } ),
-              
+              yote.loadApp( 'CalcTest' ),
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
               yote.readyWorkerCall( 'init' ),
               function() {
@@ -45,16 +40,24 @@
                   }
 
                   document.getElementById( "new_scene" ).addEventListener('click',function() {
-                      var news = app.new_scene();
-                      updateScenes();
-                      selectScene( news );
-                  } );
+                      yote.callWorker( {
+                          callpath : 'new_scene',
+                          callback : function( news ) {
+                              updateScenes();
+                              selectScene( news );
+                          }
+                      } );
+                  } )
 
                   document.getElementById( "RESET" ).addEventListener('click',function() {
                       if( confirm( 'really delete everything?' ) ) {
-                          app.reset();
-                          updateScenes();
-                          selectScene( app.get('scenarios').get(0) );
+                          yote.callWorker( {
+                              callpath : 'reset',
+                              callback : function( resp ) {
+                                  updateScenes();
+                                  selectScene( app.get('scenarios').get(0) );
+                              }
+                          } );
                       }
                   } );
                   

@@ -7,6 +7,8 @@ no warnings 'uninitialized';
 use Yote::Server;
 use base 'Yote::ServerObj';
 
+use Samp::Step;
+
 sub _init {
     my $self = shift;
     $self->set_name( "product" );
@@ -20,9 +22,9 @@ sub _init {
 
 sub new_step {
     my $self = shift;
-    $self->add_to_steps( new Step( {
+    $self->add_to_steps( $self->{STORE}->newobj( {
         product_line => $self,
-                                   } ) );
+                                   }, 'Samp::Step' ) );
 }
 
 # avg hours in month? est 52 weeks
@@ -41,10 +43,10 @@ sub calc {
 
 sub add_employee {
     my $self = shift;
-    $self->add_to_employees( new Yote::Obj( {
+    $self->add_to_employees( $self->{STORE}->newobj( {
         name => "name",
         hourly_wage => 15,
-                             } ) );
+                                                     } ) );
 }
 
 1;

@@ -38,8 +38,6 @@ yote._init = function( yoteServerURL, isWorker ) {
         return id2obj[ id ] || this.root.fetch( id );
     }
 
-    var token;
-    
     // creates a proxy method that contacts the server and
     // returns data
     var makeMethod = function( mName ) {
@@ -206,15 +204,15 @@ yote._init = function( yoteServerURL, isWorker ) {
     var contact = function(id,action,data,returnRaw) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener( returnRaw ) );
-
+console.log( "HAZTOK? " + yote.token + " IN " + ( isWorker ? "INWORKER" : " NOTworker" )  );
         console.log( 'contacting server via url : ' + ( yoteServerURL || "" ) + 
                      '/' + id +
-                     '/' + ( token ? token : '_' ) + 
+                     '/' + ( yote.token ? yote.token : '_' ) + 
                      '/' + action )
         
         oReq.open("POST", ( yoteServerURL || "" ) + 
                   '/' + id +
-                  '/' + ( token ? token : '_' ) + 
+                  '/' + ( yote.token ? yote.token : '_' ) + 
                   '/' + action, 
                   ! isWorker );
 
@@ -233,7 +231,9 @@ yote._init = function( yoteServerURL, isWorker ) {
     
     yote.fetch_root = function() {
         //want a session object as well as a token
-        token = contact('_', 'create_token');
+        yote.token = contact('_', 'create_token');
+
+console.log( "CREATE TOKEN " + yote.token + " IN " + ( isWorker ?  'in worker' : 'notworker' ) );
         this.root = contact('_', 'fetch_root');
         return this.root;
     }; //yote.fetch_root
@@ -350,7 +350,7 @@ yote._init = function( yoteServerURL, isWorker ) {
                 callType  : 'fetch_app',
                 callback  : function( result ) {
                     yote.apps[ appname ] = result;
-                    callback( result );
+                    if( callback ) callback( result );
                     cb();
                 },
                 failhandler : failhandler

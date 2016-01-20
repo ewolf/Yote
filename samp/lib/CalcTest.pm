@@ -8,6 +8,8 @@ use Yote::Server;
 
 use base 'Yote::ServerApp';
 
+use Samp::Scenario;
+
 sub _init {
     my $self = shift;
 }
@@ -28,10 +30,11 @@ sub reset {
 }
 
 sub new_scene {
-    my $scenes = shift->get_scenarios([]);
-    my $news = new Samp::Scenario( {
+    my $self = shift;
+    my $scenes = $self->get_scenarios([]);
+    my $news = $self->{STORE}->newobj( {
         name => 'scenario ' . scalar(1 + @$scenes)
-                                   } );
+                                   }, 'Samp::Scenario' );
     push @$scenes,  $news;
     $news;
 }

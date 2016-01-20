@@ -16,3 +16,15 @@ yote.registerFunction( 'calc', function( params ) {
 yote.registerFunction( 'init', function() {
 
 } );
+
+yote.registerFunction( 'reset', function() {
+    var app = yote.fetch_app( 'CalcTest' );
+    app.reset();
+
+} );
+
+
+yote.registerFunction( 'new_scene', function() {
+    var app = yote.fetch_app( 'CalcTest' );
+    return app.new_scene([], true);
+} );

@@ -442,6 +442,7 @@ sub _new { #Yote::ServerStore
 sub _dirty {
     my( $self, $ref, $id ) = @_;
     $self->SUPER::_dirty( $ref, $id );
+    $self->{OBJ_UPDATE_DB}->ensure_entry_count( $id );
     $self->{OBJ_UPDATE_DB}->put_record( $id, [ time ] );
 }
 
