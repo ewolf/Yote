@@ -23,7 +23,8 @@ sub _lists { {} }  # override with list-name -> class
 
 
 # new item added to this object
-sub _on_add { my($self,$listName,$obj,$moreArgs) =@_; } 
+sub _on_add { my($self,$listName,$obj,$moreArgs) =@_; }
+sub _on_remove { my($self,$listName,$obj,$moreArgs) =@_; } 
 
 # what to run when added to something
 sub _when_added { 
@@ -110,16 +111,17 @@ sub gather {
 
 sub gather_all {
     my $self = shift;
+    my $seen = shift || {};
     my $listhash = $self->_lists;
     my @res;
     for my $list (keys %$listhash) {
         my $l = $self->get( $list, [] );
-        push @res, $l, (map { $_, $_->gather_all } @$l);
+        push @res, $l, (map { $_, $_->gather_all($seen) } grep { ref($_) && ! $seen->{$_->{ID}}++ } @$l);
     }
     @res, $self->_gather;
 } #gather_all
 
-sub remove_entry {
+sub remove_entry {  #TODO - paramertize this like add_entry does
     my( $self, $item, $from, $moreArgs ) = @_;
     die "Unknown list '$from' in ".ref($self) unless $self->_lists->{$from};
     my $list = $self->get($from);
@@ -135,6 +137,7 @@ sub remove_entry {
             }
         }
     }
+    $self->_on_remove( $from, $item, $moreArgs );
     $item->_when_removed( $self, $from, $moreArgs );
     $self->calculate;
 } #remove_entry

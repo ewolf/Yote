@@ -23,7 +23,7 @@ sub _allowedUpdates {
 
 sub _lists {
     { 
-        employees       => 'Samp::Employee',
+        step_employees       => 'Samp::Employee',
     };
 }
 
@@ -47,7 +47,7 @@ sub employees {
     my $prodline = $self->get_parent;
     my $scene = $prodline->get_parent;
 
-    my %my_emps  = map  { $_->{ID} => $_ } @{$self->get_employees([])};
+    my %my_emps  = map  { $_->{ID} => $_ } @{$self->get_step_employees([])};
     
     return grep { ! $my_emps{$_->{ID}} } @{$scene->get_employees};
 

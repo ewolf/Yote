@@ -519,10 +519,10 @@
                       onEachRow : function( row, step, i ) {
                           var updateTab = function() {
                               var tab = row.find('table').empty();
-                              var emps = step.get('employees');
-                              if( emps ) {
-                                  emps.each( function( emp, j ) {
-                                      tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td> <td><a href="" class="delAction" data-id="' + emp.id + '" data-from="employees" data-parent="' + step.id + '">remove</a></tr>' );
+                              var step_emps = step.get('step_employees');
+                              if( step_emps ) {
+                                  step_emps.each( function( emp, j ) {
+                                      tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td> <td><a href="" class="delAction" data-id="' + emp.id + '" data-from="step_employees" data-parent="' + step.id + '">remove</a></tr>' );
                                   } );
                               }
                           };
@@ -535,14 +535,21 @@
                               if( val ) {
                                   var chosen = yote.fetch( val );
                                   if( chosen ) {
-                                      step.add_entry( [{ listName : 'employees', item : chosen }] );
+                                      step.add_entry( [{ listName : 'step_employees', item : chosen }] );
                                   }
                               }
                           } );
-                          var step_emps = step.get('employees');
+                          var scene_emps = step.get('parent').get('parent').get('employees');
+                          updateListener( scene_emps, '_step_' + step.id + '_listen', function() {
+                              // make sure the employees here are also in the scene_emps
+                              var key = 'set-build-select-listener';
+                              $sel.data( key, false );
+                              updateTab();
+                              activateControls();
+                          }, false );
+                          var step_emps = step.get('step_employees');
                           if( step_emps ) {
                               updateListener( step_emps, '_update-the-employee-cell', function () {
-                                  alert('l');
                                   updateTab();
                               } );
                           }

@@ -15,13 +15,30 @@ sub _allowedUpdates {
       ) ]
 } #allowedUpdates
 
+sub _lists { #steps that this employee performs
+    { 
+        steps       => 'Samp::Step',
+    };
+}
+
+
 sub _when_added {
     my( $self, $toObj, $listName, $moreArgs ) = @_;
-#    $self->add_to_products_worked_on( $toObj );
+    if( $listName eq 'step_employees' ) {
+        $self->add_to_steps( $toObj );
+    }
 }
 sub _when_removed {
     my( $self, $fromObj, $listName, $moreArgs ) = @_;
-#    $self->remove_from_products_worked_on( $toObj );
+    if( $listName eq 'step_employees' ) {
+        $self->remove_from_steps( $fromObj );
+    }
+    if( $listName eq 'employees' ) {
+        # this is disallowed if this employee is in a step
+
+        #ugh, this can't work unless when_removed is executed before the removal
+        die "Cannot remove this employee. This employee performs a production step" if @{$self->get_steps([])} > 0;
+    }
 }
 
 sub calculate {
