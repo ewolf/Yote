@@ -72,6 +72,7 @@ sub select_current {
     my( $self, $listName, $item ) = @_;
     die "Unknown list '$listName'" unless $self->_lists->{$listName};
     $self->set( "current_$listName", $item );
+    $item;
 }
 
 sub gather {
@@ -99,13 +100,19 @@ sub gather_all {
 sub remove_entry {
     my( $self, $item, $from ) = @_;
     die "Unknown list '$from'" unless $self->_lists->{$from};
-    my $rem = "remove_from_$from";
-    $self->$rem($item);
-    my $l = $self->get($from);
-    if( $item == $self->get( "current_$from" ) && scalar( @$l ) > 0 ) {
-        $self->set( "current_$from", $l->[0] );
+    my $list = $self->get($from);
+    for( my $i=0; $i<@$list; $i++ ) {
+        if( $list->[$i] == $item ) {
+            splice @$list, $i, 1;
+            if( @$list ) {
+                $self->set( "current_$from", $list->[$i] );
+                return $item;
+            } else {
+                $self->set( "current_$from", undef );
+            }
+        }
     }
-}
+} #remove_entry
 
 # TODO - implement a copy?
 1;

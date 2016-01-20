@@ -20,22 +20,17 @@
           function updateFieldControls(fieldClass) {
               $( 'div.updateFieldControl' + (fieldClass ? '.' + fieldClass : '' )  ).each( function() {
                   var $this = $(this);
-                  if( $this.data( 'filled' ) != 'y' ) {
-                      $this.data( 'filled', 'y' );
-                      
-                      $this.append( '<input class="updateField showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data( 'field' ) + '" type="' + $this.data('input-type') + '">' +
+                  $this.empty().append( '<input class="updateField showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data( 'field' ) + '" type="' + $this.data('input-type') + '">' +
                                     '<span class="showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data('field') + '"></span>' );
-                  }
               } );
           }
 
           function activateUpdateFields() {
-              $( 'input.updateField' ).off('keyup').on( 'keyup', function(ev) {
+              $( 'input.updateField' ).off('keydown').on( 'keydown', function(ev) {
                   var kk = ev.keyCode || ev.charCode;
                   if( kk == 13 || kk == 9 ) {
                       var $this = $( this );
                       var obj = yote.fetch( $this.data('id') );
-                      watchObjects( obj );
                       var fld = $this.data('field');
                       var inpt = {};
                       inpt[ fld ] = $this.val() ;
@@ -57,9 +52,8 @@
                                                                $this.parent().removeClass( 'editing' );
                                                            }
                                                        } );
-              $( 'div.updateFieldControl>input' ).off('keyup').on( 'keyup',
+              $( 'div.updateFieldControl>input' ).on( 'keydown',
                                                 function(ev) {
-console.warn("KU" );
                                                     var kk = ev.keyCode || ev.charCode;
                                                     var $this = $(this);
                                                     if( kk == 27 )  {
@@ -75,7 +69,6 @@ console.warn("KU" );
                                                     $this.toggleClass('edited', $this.data('original') == $this.val() );
                                                 } );
               $( 'div.updateFieldControl>input' ).on( 'keyup', function() {
-console.warn( "KUU" );
                   var $this = $(this);
                   $this.toggleClass('edited', $this.data('original') != $this.val() );
               } );
@@ -96,8 +89,8 @@ console.warn( "KUU" );
                   var list  = $this.data('list');
                   var listOn = yote.fetch( $this.data('id') );
                   listOn.add_entry( [list], function( item ) {
-                      watchObjects( item );
-                      item.gather_all( [], function() { listOn.select_current( [ list, item ] ) } );
+                      item.gather_all( [], function() {
+                          listOn.select_current( [ list, item ] ) } );
                   } );
                   ev.preventDefault();
               } );
@@ -105,6 +98,7 @@ console.warn( "KUU" );
 
           var costForm = new Intl.NumberFormat( "en-US", {
               minimumFractionDigits : 2,
+              maximumFractionDigits : 2,              
               style : "decimal",
           } );
 
@@ -129,6 +123,7 @@ console.warn( "KUU" );
           }              
 
           function watchObjects() {
+              // if the object changes, all HTML controls displaying data from that object are updated
               for( var i=0; i<arguments.length; i++ ) {
                   var obj = arguments[ i ];
                   if( ! obj._watched ) {
@@ -165,33 +160,45 @@ console.warn( "KUU" );
               // * ) set up scenario
               setup_scenario( curScene );
 
-              // * ) set up watchers
-              scnz.removeUpdateListeners();
-              scnz.addUpdateListener( function() { 
-                  setup_picker( app, 'scenarios', $('#scenario_sel'), app.setCurrentScenario );
-                  if( scnz.length() > 1 ) {
-                      $( '#del_scenario').show();
-                  } else {
-                      $( '#del_scenario').hide();
-                  }
-              } );
+              // * ) set up watchers. if something is added or removed from the list, this will update
+              // the list
+              if( ! scnz._listwatched ) {
+                  scnz._listwatched = true;
+                  scnz.addUpdateListener( function() { 
+                      setup_picker( app, 'scenarios', $('#scenario_sel'), app.setCurrentScenario );
+                      if( scnz.length() > 1 ) {
+                          $( '#del_scenario').show();
+                      } else {
+                          $( '#del_scenario').hide();
+                      }
+                  } );
+              }
+
+              // watch for changes in the currently selected scenario in the app. If it changes
+              // then set the curApp variable and set up the scenario it involves
+              if( ! app._curr_watched ) {
+                  app._curr_watched = true;
+                  app.addUpdateListener( function(app) {
+                      // chained ands to create one 'tick'
+                      ( ! yote.sameYoteObjects( curScene, app.get('current_scenarios') ) ) && ( curScene = app.get('current_scenarios') ) && setup_scenario( curScene ) && $( '#scenario_sel' ).val( curScene.id );
+                  } );
+              }
+              activateUpdateFields();
               watchObjects(app); //connects todata fields
-              app.removeUpdateListeners();
-              app.addUpdateListener( function(app) {
-                  if( ! yote.sameYoteObjects( curScene, app.get('current_scenarios') ) ) {
-                      curScene = app.get('current_scenarios');
-                      setup_scenario( curScene );
-                  }
-              } );
 
           } //setup_app
 
+          function update_picker_name(obj,$select) {
+              $select.find( 'option[value='+obj.id+']' ).text( obj.get('name') );
+          }
+          
           function update_picker(obj,listName,$select) {
               var items = obj.get( listName );
               var list = items.toArray();
               var curr = obj.get( 'current_' + listName );
               $select.empty().append(
                   list.map( function( item ) {
+                      
                       var seld = yote.sameYoteObjects( curr, item ) ? ' selected' : '';
                       return '<option value="' + item.id + '"' + seld + '>' + 
                           item.get('name') + '</option>';
@@ -213,10 +220,7 @@ console.warn( "KUU" );
               );
 
               $select.off('change').on('change',function() {
-                  var seld_id = $select.val();
-                  var o = yote.fetch( seld_id );
-                  watchObjects( o );
-                  obj.select_current( [listName, o], function() {
+                  obj.select_current( [listName, yote.fetch( $select.val() )], function(o) {
                       onChange && onChange( o );
                   } );
               } );
@@ -236,7 +240,6 @@ console.warn( "KUU" );
 
               // * ) setup products table
               var $tab = $( '#product-table' ).empty();
-
               if( prods.length() > 0 ) {
                   var buf = '<tr>' + [ 'name', 'production rate' ]
                       .map( function(w) { return '<th>' + w + '</th>'; } ).join('') + '</tr>';
@@ -248,11 +251,11 @@ console.warn( "KUU" );
                   }
                   $tab.append( buf );
                   $( '#no_products' ).hide();
-                  $( '#curr_products' ).show();
+                  $( '#curr_products,#del_prod' ).show();
                   setup_picker( scenario,'product_lines',$('#prod_sel'), setup_product );
               } else {
                   $( '#no_products' ).show();
-                  $( '#curr_products' ).hide();
+                  $( '#curr_products,#del_prod,#prod_sel' ).hide();
               }
 
 
@@ -264,30 +267,41 @@ console.warn( "KUU" );
                   // * ) setup focused product picker
               }
 
-              // * ) set up watchers
-              prods.removeUpdateListeners();
-              prods.addUpdateListener( function() { 
-                  setup_picker( scenario, 'product_lines' ,$('#prod_sel'), scenario.setup_product );
-              } );
-
-              scenario.removeUpdateListeners();
-
-              scenario.addUpdateListener( function() {
-                  update_picker( scenario.get('parent'), 'scenarios', $('#scenario_sel') );
-
-                  if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_lines') ) ) {
-                      curProd = scenario.get('current_product_lines');
-                      if( curProd ) {
-                          setup_product( curProd );
+              // * ) If anything is added to or removed from the list of product lines of the current scene
+              if( ! prods._listwatched ) {
+                  prods._listwatched = true;
+                  prods.addUpdateListener( function() {
+                      if( prods.length() > 0 ) {
+                          $( '#no_products' ).hide();
+                          $( '#curr_products,#del_prod,#prod_sel' ).show();
+                          setup_picker( scenario, 'product_lines' ,$('#prod_sel'), setup_product );
+                      } else {
+                          $( '#no_products' ).show();
+                          $( '#curr_products,#del_prod,#prod_sel' ).hide();
                       }
-                  }
-              } );
+                  } );
+              }
 
-              activateUpdateFields( 'product' );
+              // if the scenario has changed, the scenario name might have changed
+              // or the current product may have changed to update both
+              if( ! scenario._curr_watched ) {
+                  scenario._curr_watched = true;
+                  scenario.addUpdateListener( function() {
+                      // chained ands to create one 'tick'
+                      ( ! yote.sameYoteObjects( curProd, scenario.get('current_product_lines') ) ) && ( curProd = scenario.get('current_product_lines') ) && setup_product( curProd ) && $( '#prod_sel' ).val( curProd.id );
+                      update_picker_name( scenario, $('#scenario_sel') );
+                  } );
+              }
+              activateUpdateFields();
               watchObjects(scenario);
+              return true;
           } //setup_scenario
 
           function setup_product(prd) {
+              if( typeof prd === 'undefined' ) {
+                  $( '#curr_products,#del_prod,#prod_sel' ).hide();                  
+                  return false;
+              }
               var scenario = prd.get('parent');
               // * ) update data-id of things product
               $( '.product' ).each( function() {
@@ -302,20 +316,24 @@ console.warn( "KUU" );
               // * ) setup new step button
               // * ) check for edit/showFields that were not initialized
 
-              prd.addUpdateListener( function() {
-                  setup_picker( scenario, 'product_lines' ,$('#prod_sel') );
+              if( ! prd._listwatched ) {
+                  prd._listwatched = true;
+                  prd.addUpdateListener( function() {
+                      setup_picker( scenario, 'product_lines' ,$('#prod_sel'), setup_product );
 
-                  if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_lines') ) ) {
-                      curProd = scenario.get('current_product_lines');
-                      if( curProd ) {
-                          setup_product( curProd );
+                      if( ! yote.sameYoteObjects( curProd, scenario.get('current_product_lines') ) ) {
+                          curProd = scenario.get('current_product_lines');
+                          if( curProd ) {
+                              setup_product( curProd );
+                          }
                       }
-                  }
-              } );
-
+                  } );
+              }
               activateUpdateFields();
               watchObjects(prd);
-          }
+
+              return true;
+          } //setup_product
 
           function setup_steps_table(steps) {
               // * ) empty steps table
@@ -349,7 +367,7 @@ console.warn( "KUU" );
     </p>
     <p>
       Selected Scenario <select class="app" id="scenario_sel"></select>
-      <a href="" class="delAction app-child scenario" style="display:none" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
+      <a href="" class="delAction app-child scenario" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
         <div>
           <h3>Configure Scenario '<span class="showField scenario" data-field="name"></span>'</h3>
@@ -363,13 +381,13 @@ console.warn( "KUU" );
             <tr><th>Number of Employees</th>
             <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="employee_count" data-input-type="number"></div>  </td></tr>
             <tr><th>Employee Pay</th>
-            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </td></tr>
+            <td>$ <input class="updateField showField scenario" data-format="$" data-field="employee_pay_rate" type="text" size="5"> hour </td></tr>
             <tr><th>Monthly Rent</th>
-            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </td></tr>            
+            <td>$ <input class="updateField showField scenario" data-format="$" data-field="monthly_rent" type="text" size="5"> /month </td></tr>            
             <tr><th>Monthly Utilities</th>
-            <td>$ <input class="updateField showField scenario" data-id="ofobj" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </td></tr>            
-            <tr><th>Employee Monthly Cost</th><td>$<span class="showField scenario" data-id="ofobj" data-format="$" data-field="employee_monthly_cost"></span> / month</td></tr>
-            <tr><th>Monthly Cost</th><td>$<span class="showField scenario" data-id="ofobj" data-format="$" data-field="monthly_cost"></span> / month</td></tr>
+            <td>$ <input class="updateField showField scenario" data-format="$" data-field="monthly_utilities" type="text" size="5"> /month </td></tr>            
+            <tr><th>Employee Monthly Cost</th><td>$<span class="showField scenario" data-format="$" data-field="employee_monthly_cost"></span> / month</td></tr>
+            <tr><th>Monthly Cost</th><td>$<span class="showField scenario" data-format="$" data-field="monthly_cost"></span> / month</td></tr>
           </table>
     <hr>
     <h4 id="product-title">Product Summary</h4>
@@ -378,14 +396,15 @@ console.warn( "KUU" );
     <hr>
     <h4 id="product-title">Products</h4>
 
-    <select class="scenario" id="prod_sel" data-id="sceneid"></select>
+    <select class="scenario" id="prod_sel" ></select>
 
-    <a href="" class="addAction scenario" data-list="product_lines" data-id="sceneid">Create New Product Line</button>
+    <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</button>
+    <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</button>
     <span id="no_products">No Products</span>
     <div id="curr_product">
-      <span class="showField product" data-id="ofobj" data-field="name"></span>
+      <span class="showField product" data-field="name"></span>
     </div>
     </div>
-
+    <hr>
   </body>
 </html>

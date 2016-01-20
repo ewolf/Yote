@@ -83,6 +83,7 @@ yote.init = function( args ) {
         /* method that returns the value of the given field on the yote obj */
         var obj = id2obj[ datastructure.id ];
         var isUpdate = typeof obj === 'object';
+        // TODO : maybe include what was updated and pass that to the action listener?
         if( ! isUpdate ) {
             obj = {
                 id        : datastructure.id,
