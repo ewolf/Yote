@@ -5,9 +5,15 @@ var yote = {
             console.warn( "yote.registerFunction overriding '" + funname + "'" );
         }
         yote.functions[ funname ] = fun;
+        return fun;
     }
 
 }; // yote var
+
+yote.expose = function() {
+    // a no op, but this makes variables visible from worker to
+    // main thread
+}
 
 yote.initMain = function( yoteServerURL ) {
     yote._init( yoteServerURL, false );
@@ -93,7 +99,7 @@ yote._init = function( yoteServerURL, isWorker ) {
             if( typeof val === 'undefined' ) {
                 return undefined;
             }
-            if( val.startsWith( 'v' ) ) {
+            if( typeof val === 'string' && val.startsWith( 'v' ) ) {
                 return val.substring( 1 );
             } 
             return fetch( val );
@@ -104,6 +110,16 @@ yote._init = function( yoteServerURL, isWorker ) {
                      data : this._data
                    };
         }; //ugh, case of a list returned?
+
+        if( datastructure.cls === 'ARRAY' ) {
+            obj.toArray = function() {
+                var a = [];
+                for( var k in obj._data ) {
+                    a[k] = obj.get( k );
+                }
+                return a;
+            }
+        }
         
         var mnames = class2meths[ datastructure.cls ] || [];
         mnames.forEach( function( mname ) {
@@ -150,7 +166,7 @@ yote._init = function( yoteServerURL, isWorker ) {
         if( res.result ) {
             var returns = [];
             res.result.forEach( function( ret ) {
-                if( ret.startsWith( 'v' ) ) {
+                if( typeof ret === 'string' && ret.startsWith( 'v' ) ) {
                     returns.push( ret.substring(1) );
                 } else {
                     returns.push( fetch( ret ) );
@@ -162,14 +178,24 @@ yote._init = function( yoteServerURL, isWorker ) {
 
     yote.processRaw = processRaw;
 
+    yote._raw_steps = [];
+    yote.addRawStep = function( step ) {
+        yote._raw_steps.push( step );
+    }
+    yote.clearRawSteps = function() { yote._raw_steps = []; }
+    yote.getRawSteps = function() { return yote._raw_steps; }
+
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
     var returnVal = '';
     var reqListener = function( returnRaw ) { 
         return function() {
             console.log( "GOT [ " + workerTxt + "] FROM SERVER : " + this.responseText );
-            if( isWorker && !returnRaw ) {
-                returnVal = processRaw( this.responseText ); 
+            if( isWorker ) {
+                yote.addRawStep( this.responseText );
+            }
+            if( isWorker &&  !returnRaw ) {
+                returnVal = processRaw( this.responseText );
             } else {
                 returnVal = this.responseText; 
             };
@@ -226,13 +252,37 @@ yote._init = function( yoteServerURL, isWorker ) {
         return returnVal; //returnVal is set by the reqListener
     }; // contact
 
-
+    
     yote.worker_init_root = function() {
-        return contact('_', 'init_root', undefined, true );
+        return contact('_', 'init_root' );
     }; //yote._raw_root
 
     var workers = {};
 
+    function xform_in( item ) {
+        if( typeof item === 'object' ) {
+            if( item === null ) {
+                return undefined;
+            }
+            if( Array.isArray( item ) ) {
+                return item.map( function( x ) { return xform_in(x); } );
+            } else {
+                var ret = {};
+                for( var k in item ) {
+                    ret[ k ] = xform_in( item[k] );
+                }
+                return ret;
+            }
+        } else {
+            if( typeof item === 'undefined' ) return undefined;
+            if( typeof item === 'string' && item.startsWith('v') ) {
+                return item.substring( 1 );
+            } else {
+                return id2obj[ item ];
+            }
+        }
+    }
+    
     // contacts worker immediately
     yote.callWorker = function( args ) {
         var workerUrl   = "js/worker-yote.js",
@@ -253,16 +303,17 @@ yote._init = function( yoteServerURL, isWorker ) {
             // possibility for foolishly changing the handlers?
             // at processing the raw, this process will have access 
             // to all the yote data'
+            console.log( "GOT [ " + workerTxt + "] FROM WORKER : " + e.data );
             var resp = JSON.parse( e.data );
             var ok   = resp[0];
             if( ok === 'OK' ) {
-                var respData = resp[1];
+                var rawRespData = resp[2];
 
-                // this is all in non-worker space
-                // might be a good place to check for updates
-                // updates could fire as events, of course
-                var resp = yote.processRaw( respData, expectAlist );
-                
+                for( var i=0; i<rawRespData.length; i++ ) {
+                    yote.processRaw( rawRespData[i] );
+                }
+                var resp = xform_in( resp[1] );
+
                 if( callback ) {
                     callback( resp );
                 }
@@ -323,9 +374,9 @@ yote._init = function( yoteServerURL, isWorker ) {
         }
         
         if( isWorker ) { //safe to directly call
-            app = yote.root.fetch_app( appname, true );
+            app = yote.root.fetch_app( appname );
             if( app ) {                
-                yote.apps[ appname ] = processRaw(app);
+                yote.apps[ appname ] = app;
                 return app;
             } else {
                 console.warn( " [ " + workerTxt + "] Unable to fetch app '" + appname + "'" );
@@ -357,8 +408,8 @@ yote._init = function( yoteServerURL, isWorker ) {
                 params    : [],
                 callType  : 'init_root',
                 callback  : function( result ) {
-                    yote.token = result[0]
-                    yote.root  = result[1];
+                    yote.root  = result[0];
+                    yote.token = result[1]
                     
                     if( callback ) callback( result );
                     cb();

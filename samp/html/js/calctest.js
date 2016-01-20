@@ -8,23 +8,25 @@
 */
 
 
-yote.registerFunction( 'calc', function( params ) {
+var calc = yote.registerFunction( 'calc', function( params ) {
     var app = yote.fetch_app( 'CalcTest' );
-    return app.calc( [params.number_employees, params.hourly_wage], true );
+    return app.calc( [params.number_employees, params.hourly_wage] );
 } );
 
-yote.registerFunction( 'init', function() {
-
+var init = yote.registerFunction( 'init', function() {
+    var app = yote.fetch_app( 'CalcTest' );
+    var scenes = app.get( 'scenarios' );
+    yote.expose( app, scenes, scenes.toArray() );
 } );
 
-yote.registerFunction( 'reset', function() {
+var reset = yote.registerFunction( 'reset', function() {
     var app = yote.fetch_app( 'CalcTest' );
     app.reset();
-
+    init();
 } );
 
 
-yote.registerFunction( 'new_scene', function() {
+var new_scene = yote.registerFunction( 'new_scene', function() {
     var app = yote.fetch_app( 'CalcTest' );
-    return app.new_scene([], true);
+    return app.new_scene([]);
 } );

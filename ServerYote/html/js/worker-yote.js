@@ -2,15 +2,35 @@ importScripts( '/__/js/yote.js' );
 
 yote.initWorker();
 
-console.log( "worker-yote.js init" );
 
-function resp( msg ) {
-        console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', msg ] ) );
-    postMessage( JSON.stringify( [ 'OK', msg ] ) );
+// transform the response into something anyone can use
+function xform_out( res ) {
+    if( typeof res === 'object' ) {
+        if( Array.isArray( res ) ) {
+            return res.map( function( x ) { return xform_out( x ) } );
+        }
+        var obj = yote.__object_library[ res.id ];
+        if( obj ) { return res.id }
+        var ret = {};
+        for( var key in res ) {
+            ret[key] = xform_out( res[key] );
+        }
+        return ret;
+        
+    }
+    if( typeof res === 'undefined' ) return undefined;
+    return 'v' + res;
+}//xform_out
+
+function resp( res ) {
+    console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'OK', xform_out( res ), yote.getRawSteps() ] ) );
+    postMessage( JSON.stringify( [ 'OK', xform_out( res ), yote.getRawSteps() ] ) );
+    yote.clearRawSteps();
 }
 function err( msg ) {
     console.log( "WORKER SENDING BACK : "  + JSON.stringify( [ 'ERR', msg ] ) );
     postMessage( JSON.stringify( [ 'ERR', msg ] ) );
+    yote.clearRawSteps();
 }
 
 onmessage = function(e) {
@@ -38,8 +58,10 @@ onmessage = function(e) {
         return resp( rawResp );
     }
     else if( type === 'init_root' ) {
-        var rawResp = yote.worker_init_root();
-        return resp( rawResp );
+        var res = yote.worker_init_root();
+        yote.root = res[0];
+        yote.token = res[1];
+        return resp( res );
     }
     else if( type === 'call' ) {
         var funcpath = data[ 2 ].split( '.' );
@@ -51,11 +73,5 @@ onmessage = function(e) {
             }
         }
         return resp( funcall(params) );
-    }
-    else if( type === 'sync-with-worker' ) {
-        // sync up the main thread objects with those in the
-        // worker thread. This does not require a call to 
-        // the server. This rather than the fetch app and everything?
-        return resp( JSON.stringify( yote.__object_library ) );
     }
 } //onMessage
