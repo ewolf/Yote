@@ -10,6 +10,7 @@ use Lock::Server;
 use Yote;
 
 use JSON;
+use Time::HiRes qw(time);
 use URI::Escape;
 
 use vars qw($VERSION);
@@ -350,9 +351,10 @@ sub _process_request {
 
         my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
 
+
         my @has = _find_ids_in_data( $out_res );
         my @mays = @has, $store->_find_ids_referenced( @has );
-        
+
         my $ids_to_update;
         if ( ( $action eq 'fetch_root' || $action eq 'init_root' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
             # if there is a token, make it known that the token 
@@ -360,7 +362,7 @@ sub _process_request {
             $ids_to_update = [ $server_root_id ];
             if ( $token > 1  ) {
                 unless( $store->_last_updated( $server_root_id ) ) {
-                    $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ time ] );
+                    $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ Time::HiRes::time ] );
                 }
                 push @has, $server_root_id;
             }
@@ -456,7 +458,7 @@ sub _dirty {
     my( $self, $ref, $id ) = @_;
     $self->SUPER::_dirty( $ref, $id );
     $self->{OBJ_UPDATE_DB}->ensure_entry_count( $id );
-    $self->{OBJ_UPDATE_DB}->put_record( $id, [ time ] );
+    $self->{OBJ_UPDATE_DB}->put_record( $id, [ Time::HiRes::time ] );
 }
 
 sub stow_all {
@@ -464,7 +466,7 @@ sub stow_all {
     for my $obj (values %{$self->{_DIRTY}} ) {
         my $obj_id = $self->_get_id( $obj );
         $self->{OBJ_UPDATE_DB}->ensure_entry_count( $obj_id );
-        $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
+        $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
     }
     $self->SUPER::stow_all;
 } #stow_all
@@ -474,7 +476,7 @@ sub _stow {
     $self->SUPER::_stow( $obj );
 
     my $obj_id = $self->_get_id( $obj );
-    $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
+    $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
 }
 
 sub _last_updated {
@@ -719,7 +721,7 @@ sub _setHasAndMay {
     my $obj_data = $self->get__doesHave_Token2objs;
     for my $id (@$has) {
         next if index( $id, 'v' ) == 0 || $token eq '_';
-        $obj_data->{$token}{$id} = time;
+        $obj_data->{$token}{$id} = Time::HiRes::time;
     }
     $self->{STORE}->_stow( $obj_data );
     
@@ -727,7 +729,7 @@ sub _setHasAndMay {
     $obj_data = $self->get__mayHave_Token2objs;
     for my $id (@$may) {
         next if index( $id, 'v' ) == 0 || $token eq '_';
-        $obj_data->{$token}{$id} = time - 1;
+        $obj_data->{$token}{$id} = Time::HiRes::time;
     }
     $self->{STORE}->_stow( $obj_data );
     
@@ -758,7 +760,7 @@ sub _updates_needed {
         my $last_updated = $store->_last_updated( $obj_id );
         if( $last_update_sent <= $last_updated || $last_updated == 0 ) {
             unless( $last_updated ) {
-                $store->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
+                $store->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
             }
             push @updates, $obj_id;
         }

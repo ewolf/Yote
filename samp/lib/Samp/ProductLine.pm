@@ -45,16 +45,29 @@ sub monthly_units_needed_for_ingredient {
     return $count;
 }
 
-sub choices {
-    my( $self, $field ) = @_;
-    if( $field eq 'ingreds' ) {
-        my $scene = $self->get_parent;
-        return ( ['', "choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines} );
-    } elsif( $field eq 'expected_sales_per' ) {
-        return (qw( day week month year ));
+sub expected_sales_per {
+    qw( day week month year );
+} #expected_sales_per
+
+sub ingredients {
+    my $self = shift;
+    my $scene = $self->get_parent;
+    return ( ['', "choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines} );
+} #ingredients
+
+sub _valid_choice {
+    my( $self, $field, $val ) = @_;
+    if( $field eq 'expected_sales_per' ) {
+        my %c = map { $_ => 1 } @{expected_sales_per()};
+        return $c{$val};
+    } elsif( $field eq 'ingredients' ) {
+        my @ings = $self->ingredients();
+        shift @ings;
+        my %vals = map { $_->{ID} => 1 } @ings;
+        return $vals{$val};
     }
-    return ();
-} #choices
+    return 1;
+}
 
 sub calculate {
     # calculate redux
@@ -109,7 +122,7 @@ sub calculate {
     # -------------------------- BATCH SIZE ----------------------------------
     #
 
-    $bottleneck->set_is_bottleneck(1);
+    $bottleneck->set_is_bottleneck(1) if $bottleneck;
 
     my $batch_size = $self->get_batch_size || $slowest_rate;
 
@@ -119,7 +132,7 @@ sub calculate {
     for my $step (@$steps) {
         $run_time += $step->run_time( $batch_size );
     }
-
+    return unless $run_time;
     
     #
     # -------------------------- BATCH TIME ----------------------------------

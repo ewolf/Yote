@@ -46,32 +46,11 @@ sub _init {
     }
 }
 
-#
-# for the <options val="value">title</option> of <select> controls
-# return list ref of valid choices for the given field
-# the choices can be value/title pairs or scalars. If scalars, it assumes
-# the value and title are the same. For scalar ListContainer objects, it
-# uses the name as the key
-#
-sub choices { 
-    my( $self, $field ) = @_;
-    my $l = $self->get( $field );
-    if( ref( $l ) eq 'ARRAY' ) {
-        return @$l;
-    }
-    return ();
-}
 sub calculate {}  #override
 
 # --^^^ override -------
 
-sub _valid_choices {
-    my( $self, $field ) = @_;
-    my( @choices ) = $self->choices( $field );
-    if( @choices) {
-        return { map { $_ => 1 } map { ref $_ eq 'ARRAY' ? $_->[0]  : $_ } @choices };
-    }
-}
+sub _valid_choice { return 1; }
 
 sub __allowedUpdates {
     map { $_ => 1 } @{shift->_allowedUpdates()};
@@ -83,14 +62,7 @@ sub update {
     for my $fld (keys %$updates) {
         die "Cant update '$fld' in ".ref($self) unless $allowed{$fld};
         my $val = $updates->{$fld};
-        my $valid_choices = $self->_valid_choices($fld);
-        if( $valid_choices && ! $valid_choices->{$val} ) {
-            if( $valid_choices->{undef} ) {
-                $val = undef;
-            } else {
-                die "Cant update '$fld' to $val in " . ref($self);
-            }
-        }
+        die "Cant update '$fld' to $val in " . ref($self) unless $self->_valid_choice($fld,$val);
         $self->set( $fld, $val )
     }
     $self->calculate;
@@ -104,6 +76,7 @@ sub add_entry {
     my $class = $self->_lists->{$listName};
     
     die "Unknown list '$listName' in ".ref($self) unless $class;
+    die "Cant add this choice to list $listName in ".ref($self) unless $self->_valid_choice( $listName, $obj );
     my $list = $self->get( $listName, [] );
     $obj //= $self->{STORE}->newobj( {
         parent => $self,

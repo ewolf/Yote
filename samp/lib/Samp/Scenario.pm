@@ -6,16 +6,16 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 use Samp::ProductLine;
+use Samp::PeriodicExpense;
+use Samp::Employee;
+use Samp::Equipment;
 
 my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round down
 
 sub _allowedUpdates {
     [qw( name 
+         notes
          description 
-         employee_count
-         employee_pay_rate
-         monthly_rent
-         monthly_utilities
          current_product_lines
     )]
 }
@@ -31,34 +31,26 @@ sub _lists {
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
-    $self->set_current_product_lines( 
-        $self->add_entry( {listName => 'product_lines',
-                           itemArgs => {
-                               name => 'first product',
-                           },
-                          } ) );
-    $self->set_employees( 
-        $self->add_entry( {listName => 'employees',
-                           itemArgs => {
-                               name       => 'PersonA',
-                               hourly_pay => 15,
-                               hours_per_week => 40,
-                           },
-                          } ) );
-    $self->set_equipment( 
-        $self->add_entry( {listName => 'equipment',
-                           itemArgs => {
-                               name => 'mixer',
-                           },
-                          } ) );
-    $self->set_expenses( 
-        $self->add_entry( {listName => 'expenses',
-                           itemArgs => {
-                               name => 'rent',
-                               cost => 4500,
-                               cost_period => 'month'
-                           },
-                          }, ) );
+    $self->add_entry( {listName => 'product_lines',
+                       itemArgs => {
+                           name => 'first product',
+                       } } );
+    $self->add_entry( {listName => 'employees',
+                       itemArgs => {
+                           name       => 'PersonA',
+                           hourly_pay => 15,
+                           hours_per_week => 40,
+                       } } );
+    $self->add_entry( {listName => 'equipment',
+                       itemArgs => {
+                           name => 'mixer',
+                       } } );
+    $self->add_entry( {listName => 'expenses',
+                       itemArgs => {
+                           name => 'rent',
+                           cost => 4500,
+                           cost_period => 'month'
+                       } } );
 
     $self->calculate;
 } #_init

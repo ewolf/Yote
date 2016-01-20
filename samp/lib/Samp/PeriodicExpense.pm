@@ -6,6 +6,12 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
+sub _init {
+    my $self = shift;
+    $self->SUPER::_init;
+    $self->set_cost_period( 'month' );
+}
+
 sub _allowedUpdates {
     [ qw(
         name 
@@ -15,13 +21,9 @@ sub _allowedUpdates {
       ) ]
 } #allowedUpdates
 
-sub choices {
-    my( $self, $field ) = @_;
-    if( $field eq 'cost_period_type' ) {
-        return (qw( month quarter year ));
-    }
-    return ();
-} #choices
+sub cost_period_type {
+    return (qw( month quarter year ));
+} #cost_period_type
 
 
 
