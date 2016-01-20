@@ -31,6 +31,7 @@ sub reset {
 
 sub setCurrentScene {
     my( $self, $scene ) = @_;
+    print STDERR Data::Dumper->Dump([$scene,"XXX"]);
     $self->set_current_scene( $scene );
 }
 

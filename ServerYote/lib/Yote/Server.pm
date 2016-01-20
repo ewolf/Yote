@@ -155,7 +155,7 @@ sub __transform_params {
         }
         die( "Bad Req Param, server says no : $param" );
     }
-    return $param;
+    return $self->{STORE}->fetch($param); #oops!
 } #__transform_params
 
 sub _process_request {
@@ -293,7 +293,9 @@ sub _process_request {
         # yote objects inside for may. Use a recursive helper function for this.
         my $in_params;
         eval {
+            print STDERR Data::Dumper->Dump([$params,"AFOR"]);
             $in_params = $self->__transform_params( $params, $token, $server_root );
+            print STDERR Data::Dumper->Dump([$in_params,"RRRA"]);
         };
         if( $@ ) {
             _log( $@ );
@@ -560,7 +562,6 @@ sub _log {
 $Yote::ServerObj::PKG2METHS = {};
 sub __discover_methods {
     my $pkg = shift;
-    print STDERR Data::Dumper->Dump([">>$pkg<<"]);
     my $meths = $Yote::ServerObj::PKG2METHS->{$pkg};
     if( $meths ) {
         return $meths;
@@ -848,7 +849,7 @@ sub fetch {
 
     my @ret = map { $store->fetch($_) }
       grep { ! ref($_) && $may->{$_}  }
-        @ids;
+    @ids;
     die "Invalid id(s)" unless @ret == @ids;
     @ret;
 } #fetch

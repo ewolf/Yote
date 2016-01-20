@@ -7,7 +7,7 @@
       function init() {
           yote.initMain();
 
-          yote.doSequence( [ //functionis passed in take two args, a callback and a fail handler
+          yote.doSequence( [ //function is passed in take two args, a callback and a fail handler
               yote.initRoot(),
               yote.loadApp( 'CalcTest' ),
               yote.workerLoadInclude( "/__/samp/js/calctest.js" ),
@@ -37,7 +37,16 @@
                   function selectScene( scene ) {
                       $( '#sceneName' ).val( scene.get('name') );
                       $( "#scenario_sel" ).val( scene.id );
+                      alert( 'set to ' + scene );
                       app.setCurrentScene( scene ); //yes, this is async and that's okey
+                      currScene = scene;
+
+                      $( '.scenario.updateField' ).each( function() {
+                          var $this = $( this );
+                          $this.data( 'id', scene.id );
+                          $this.data( 'field', scene.id );
+                          $this.val( scene.get( $this.data('field') ) );
+                      } );
                   }
 
                   $( "#scenario_sel" ).on('click',function() {
@@ -68,6 +77,7 @@
                       }
                   } );
 
+                  // OLD vvvvvvvvvv--------------------
                   $( "#calc" ).on('click',function() {
                       yote.callWorker( {
                           callpath : 'calc',
@@ -82,19 +92,24 @@
                           }
                       } );
                   } );
+                  // OLD ^^^^^^^^^^^^^--------------------
 
-                  $( "#sceneName" ).on( 'keypress', function(ev) {
-                      if( ev.keyCode == 13 || ev.charCode == 13 ) {
-                          currScene.update( [{ name : this.value }], function() {
-                              updateScenes();
-                          } );
-                      }
-                  } );
                   updateScenes();
                   var sels = app.get( 'scenarios' ).toArray();
-                  var currIdx = app.get( 'current_scene_idx' ) || 0;
-                  var currScene = sels[currIdx];
-                  selectScene( currScene, currIdx );
+                  var currScene = app.get('current_scene' );
+                  selectScene( currScene );
+
+                  $( '.updateField' ).on( 'keypress', function(ev) {
+                      if( ev.keyCode == 13 || ev.charCode == 13 ) {
+                          var $this = $( this );
+                          var obj = yote.fetch( $this.data('id') );
+                          var f = $this.data('field');
+                          obj.update( [
+                              {    
+                                   f : $this.val()
+                              } ] );
+                      }
+                  } );
               }
           ] )
               .fail( 1, function() { console.log( "Step 1 failed" ) } )
@@ -114,8 +129,8 @@
     Available Scenarios <select id="scenario_sel"></select>
     <button type="button" id="new_scene">Create New Scenario</button> <BR>
 <div>
-    Scenario Name <input type="text" id="sceneName"> <br>
-    Description <input type="text" id="sceneName"> <br>
+    Scenario Name <input class="updateField scenario" data-id="ofobj" data-field="name" type="text"> <br>
+    Description <input class="updateField scenario" data-id="ofobj" data-field="description" type="text"> <br>
     <h4>Steps</h4>
     <div id="steps">
       
