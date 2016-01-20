@@ -21,14 +21,12 @@ sub _allowedUpdates { [] } #override returning a list of allowed updates
 
 sub _lists { {} }  # override with list-name -> class
 
-sub calculate {}  #override
 
 # new item added to this object
-sub _on_add { my($self,$listName,$moreArgs) =@_; } 
+sub _on_add { my($self,$listName,$obj,$moreArgs) =@_; } 
 
 # what to run when added to something
 sub _when_added { my($self,$toObj,$listName,$moreArgs) =@_;}
-
 
 sub _gather {}
 
@@ -40,7 +38,31 @@ sub _init {
     }
 }
 
+#
+# for the <options val="value">title</option> of <select> controls
+# return list ref of valid choices for the given field
+# the choices can be value/title pairs or scalars. If scalars, it assumes
+# the value and title are the same. For scalar ListContainer objects, it
+# uses the name as the key
+#
+sub choices { 
+    my( $self, $field ) = @_;
+    my $l = $self->get( $field );
+    if( ref( $l ) eq 'ARRAY' ) {
+        return $l;
+    }
+}
+sub calculate {}  #override
+
 # --^^^ override -------
+
+sub _valid_choices {
+    my( $self, $field ) = @_;
+    my $choices = $self->choices( $field );
+    if( $choices) {
+        return { map { $_ => 1 } map { ref $_ eq 'ARRAY' ? $_->[0]  : $_ } @$choices };
+    }
+}
 
 sub __allowedUpdates {
     map { $_ => 1 } @{shift->_allowedUpdates()};
@@ -51,11 +73,20 @@ sub update {
     my %allowed = $self->__allowedUpdates;
     for my $fld (keys %$updates) {
         die "Cant update '$fld'" unless $allowed{$fld};
-        my $s = "set_$fld";
-        $self->$s( $updates->{$fld} );
+        my $val = $updates->{$fld};
+        my $valid_choices = $self->_valid_choices($fld);
+        print STDERR Data::Dumper->Dump([$valid_choices,"VC"]);
+        if( $valid_choices && ! $valid_choices->{$val} ) {
+            if( $valid_choices->{undef} ) {
+                $val = undef;
+            } else {
+                die "Cant update '$fld' to $val";
+            }
+        }
+        $self->set( $fld, $val )
     }
     $self->calculate;
-}
+} #update
 
 sub add_entry {
     my( $self, $args ) = @_;
@@ -71,7 +102,7 @@ sub add_entry {
         name   => $listName.' '.(1 + @$list),
                                         },$class  );
     $obj->_when_added( $self, $listName, $itemArgs );
-    $self->_on_add( $listName, $parentArgs );
+    $self->_on_add( $listName, $obj, $parentArgs );
     push @$list, $obj;
     $obj;
 } #add_entry

@@ -16,11 +16,23 @@ sub _init {
     $self->set_current_scenarios( $self->add_entry() );
 }
 
+sub _allowedUpdates {
+    [ 'current_scenarios' ];
+}
+
 sub _lists {
     {
         scenarios => 'Samp::Scenario',
     };
 }
+
+sub _on_add {
+    my( $self, $listName, $obj ) = @_;
+    if( $listName eq 'scenarios' ) {
+        $self->set_current_scenarios( $obj );
+    }
+}
+
 
 # handy RESET for testing
 sub reset {

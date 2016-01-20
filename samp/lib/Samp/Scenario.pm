@@ -16,6 +16,7 @@ sub _allowedUpdates {
          employee_pay_rate
          monthly_rent
          monthly_utilities
+         current_product_lines
     )]
 }
 sub _lists {
@@ -35,6 +36,14 @@ sub _init {
 
     $self->calculate;
 } #_init
+
+sub _on_add {
+    my( $self, $listName, $obj ) = @_;
+    if( $listName eq 'product_lines' ) {
+        $self->set_current_product_lines( $obj );
+    }
+}
+
 
 sub calculate {
     my $self = shift;

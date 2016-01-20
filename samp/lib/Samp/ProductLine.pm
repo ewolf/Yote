@@ -23,6 +23,14 @@ sub _lists {
 }
 
 
+sub choices {
+    my( $self, $field ) = @_;
+    if( $field eq 'ingredients' ) {
+        my $scene = $self->get_parent;
+        return [ [undef,"choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines}];
+    }
+} #choices
+
 #
 # avg hours in month? est 52 weeks
 # 52*40/12 --> 173 hours/month
