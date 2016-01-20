@@ -23,7 +23,12 @@ sub _lists { {} }  # override with list-name -> class
 
 sub calculate {}  #override
 
-sub _on_add { my($self,$listName) =@_; } # new item presented. override to set some data
+# new item added to this object
+sub _on_add { my($self,$listName,$moreArgs) =@_; } 
+
+# what to run when added to something
+sub _when_added { my($self,$toObj,$listName,$moreArgs) =@_;}
+
 
 sub _gather {}
 
@@ -44,7 +49,6 @@ sub __allowedUpdates {
 sub update {
     my( $self, $updates ) = @_;
     my %allowed = $self->__allowedUpdates;
-    print STDERR Data::Dumper->Dump([$updates,\%allowed,"UP"]);
     for my $fld (keys %$updates) {
         die "Cant update '$fld'" unless $allowed{$fld};
         my $s = "set_$fld";
@@ -54,26 +58,30 @@ sub update {
 }
 
 sub add_entry {
-    my( $self, $listName ) = @_;
-
+    my( $self, $args ) = @_;
+    
+    my($listName, $obj, $itemArgs, $parentArgs ) = @$args{'listName', 'item', 'itemArgs', 'parentArgs'};
+    
     my $class = $self->_lists->{$listName};
+    
     die "Unknown list '$listName'" unless $class;
     my $list = $self->get( $listName );
-    my $obj = $self->{STORE}->newobj( {
+    $obj //= $self->{STORE}->newobj( {
         parent => $self,
-        name   => $listName.' '.scalar(@$list),
-                                      },$class  );
-    $obj->_on_add( $listName );
+        name   => $listName.' '.(1 + @$list),
+                                        },$class  );
+    $obj->_when_added( $self, $listName, $itemArgs );
+    $self->_on_add( $listName, $parentArgs );
     push @$list, $obj;
-    $obj;       
-}
+    $obj;
+} #add_entry
 
 sub select_current {
     my( $self, $listName, $item ) = @_;
     die "Unknown list '$listName'" unless $self->_lists->{$listName};
     $self->set( "current_$listName", $item );
     $item;
-}
+} #select_current
 
 sub gather {
     my $self = shift;
@@ -92,7 +100,7 @@ sub gather_all {
     my @res;
     for my $list (keys %$listhash) {
         my $l = $self->get( $list, [] );
-        push @res, $l, (map { $_, $_->gather } @$l);
+        push @res, $l, (map { $_, $_->gather_all } @$l);
     }
     @res, $self->_gather;
 } #gather_all

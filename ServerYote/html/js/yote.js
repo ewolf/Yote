@@ -70,6 +70,8 @@ yote.init = function( args ) {
                 handler = data;
                 data = [];
             } else if( typeof data !== 'object' && typeof data !== 'undefined' ) {
+                // TODO - maybe detect if there are non-functions in the arguments list? gather into array all non-function args
+                // like so
                 data = [data];
             }
 
@@ -98,9 +100,11 @@ yote.init = function( args ) {
         // parameter
         obj.addUpdateListener = function( listener ) {
             obj.listeners.push( listener );
+            return this;
         }
         obj.removeUpdateListeners = function() {
             obj.listeners = [];
+            return this;
         }
         obj.get = function( key ) {
             var val = this._data[key];

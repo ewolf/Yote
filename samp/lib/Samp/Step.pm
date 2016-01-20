@@ -6,26 +6,33 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
-sub lists {
-    { employees => 'Samp::Employee', }
-}
+sub _init {
+    my $self = shift;
+    $self->SUPER::_init();
+} #_init
 
-sub allowedUpdates {
+
+sub _allowedUpdates {
     [ qw(
-        name description units_produced hours min_run_time
-        employees_required equipment_required
+        name 
+        notes
+        produced_in_run
+        run_hours
+        min_run_time
+        employees_required 
+        overhead
       ) ]
-}
+} #allowedUpdates
 
 sub calculate {
     my $self = shift;
-    my $hours = $self->get_hours();
+    my $hours = $self->get_run_hours();
     if( $hours > 0 ) {
-        $self->set_production_rate( sprintf( "%.2f", $self->get_units_produced() / $self->get_hours() ) );
+        $self->set_production_rate( $self->get_produced_in_run() / $hours );
     } else {
-        $self->set_production_rate( 'n/a' );
+        $self->set_production_rate(0);
     }
     $self->get_parent()->calculate();
-}
+} #calculate 
 
 1;

@@ -26,42 +26,8 @@ sub _lists {
 sub reset {
     my $self = shift;
     $self->set_scenarios( [] );
-    $self->set_current_scenarios( $self->add_entry('scenarios') );
+    $self->set_current_scenarios( $self->add_entry({ listName => 'scenarios' }) );
 }
-
-# sub add_entry {
-#     my $self = shift;
-#     my $scenarios = $self->get_scenarios([]);
-#     my $news = $self->{STORE}->newobj( {
-#         name => 'scenario ' . scalar(1 + @$scenarios),
-#         app  => $self,
-#                                    }, 'Samp::Scenario' );
-#     push @$scenarios, $news;
-#     $self->set_current_scenario( $news );
-#     $news;
-# }
-
-# sub gather {
-#     my $self = shift;
-#     my $scenes = $self->get_scenarios([]);
-#     return $scenes, map { $_, $_->gather } @$scenes;
-# }
-
-# sub select {
-#     my( $self, $dummy, $scenario ) = @_;
-#     $self->set_current_scenario( $scenario );
-# }
-
-# sub remove_entry {
-#     my( $self, $scenario ) = @_;
-#     my $scenes = $self->get_scenarios();
-#     if( @$scenes > 1 ) {
-#         $self->remove_from_scenarios($scenario);
-#         $self->set_current_scenario( $self->get_scenarios()->[0] );
-#     } else {
-#         die "Tried to remove last scenario";
-#     }
-# } #drop_scenario
 
 1;
 

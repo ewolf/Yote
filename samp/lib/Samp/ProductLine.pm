@@ -8,15 +8,20 @@ use base 'Yote::Server::ListContainer';
 
 use Samp::Step;
 
-sub allowedUpdates {
-    [ qw( name description units_produced hours food_cost
-        sale_price packaging_cost
+sub _allowedUpdates {
+    [ qw( name 
+          notes
+          food_cost
+          sale_price
        ) ]
 }
 
-sub lists {
-    { steps     => 'Samp::Step' }
+sub _lists {
+    { steps     => 'Samp::Step',
+      ingredients => 'Samp::ProductLine',
+    };
 }
+
 
 #
 # avg hours in month? est 52 weeks

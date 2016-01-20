@@ -10,7 +10,7 @@
           yote.init( {
               appName : 'CalcTest',
               handler : function( root, app ) {
-//                  app.reset();return;
+                  app.reset();return;
                   app.gather_all( [], function() {
                       setup_app( app );
                   } );
@@ -21,7 +21,7 @@
               $( 'div.updateFieldControl' + (fieldClass ? '.' + fieldClass : '' )  ).each( function() {
                   var $this = $(this);
                   $this.empty().append( '<input class="updateField showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data( 'field' ) + '" type="' + $this.data('input-type') + '">' +
-                                    '<span class="showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data('field') + '"></span>' );
+                                    '<span class="showField ' + $this.data('classes') + '" data-id="' + $this.data('id') + '" data-field="' + $this.data('field') + '">&nbsp;</span>' );
               } );
           }
 
@@ -88,7 +88,8 @@
                   var create_action = $this.data('action');
                   var list  = $this.data('list');
                   var listOn = yote.fetch( $this.data('id') );
-                  listOn.add_entry( [list], function( item ) {
+                  listOn.add_entry( { listName: list },
+                                    function( item ) {
                       item.gather_all( [], function() {
                           listOn.select_current( [ list, item ] ) } );
                   } );
@@ -140,9 +141,6 @@
               $( '.app' ).each( function() {
                   $(this).data( 'id', app.id );
               } );
-              $( '.app-child' ).each( function() {
-                  $(this).data( 'parent', app.id );
-              } );
               updateFieldControls( 'app' );
 
               var curScene = app.get( 'current_scenarios' );
@@ -183,6 +181,10 @@
                       ( ! yote.sameYoteObjects( curScene, app.get('current_scenarios') ) ) && ( curScene = app.get('current_scenarios') ) && setup_scenario( curScene ) && $( '#scenario_sel' ).val( curScene.id );
                   } );
               }
+              $( '.app-child' ).each( function() {
+                  $(this).data( 'parent', app.id );
+              } );
+
               activateUpdateFields();
               watchObjects(app); //connects todata fields
 
@@ -307,14 +309,16 @@
               $( '.product' ).each( function() {
                   $(this).data( 'id', prd.id );
               } );
-              $( '.product-child' ).each( function() {
-                  $(this).data( 'parent', prd.id );
-              } );
+              updateFieldControls( 'product' );
 
+              // ingredients are other products that are used to make this one
+              setup_ingredients_table( prd );
+              
               // * ) setup_steps_table from list
               // * ) set up update listener on steps list which calls setup_steps_table
               // * ) setup new step button
               // * ) check for edit/showFields that were not initialized
+              setup_steps_table( prd );
 
               if( ! prd._listwatched ) {
                   prd._listwatched = true;
@@ -329,17 +333,115 @@
                       }
                   } );
               }
+
+              $( '.product-child' ).each( function() {
+                  $(this).data( 'parent', prd.id );
+              } );
+
               activateUpdateFields();
               watchObjects(prd);
 
               return true;
           } //setup_product
 
-          function setup_steps_table(steps) {
+          function setup_ingredients_table( prd ) {
+              var $tab = $( '#ingredients_tab' ).find( 'tbody' );
               // * ) empty steps table
-              // * ) fill steps table with steps
-              // * ) check for edit/showFields that were not initialized
-          }
+              $tab.empty();
+              var buf = '';
+
+              var ings = prd.get( 'ingredients' );
+              ings.removeUpdateListeners().addUpdateListener( function() {
+                  setup_ingredients_table( prd );
+              } );
+              var ingsl = ings.toArray();
+              for( var i=0; i<ingsl.length; i++ ) {
+                  var ing = ingsl[ i ];
+                  var prod = ing.get( 'product_line' );
+                  buf += '<tr>  ' +
+                      '<td><span class="showField" data-id="' + prod.id + '" data-field="name"></span> </td>' +
+                      '<td><span class="showField" data-id="' + ing.id + '" data-field="amount_per_run"></span> </td>' +
+                      '<td><span class="showField" data-id="' + ing.id + '" data-field="notes"></span> </td>' +
+                      '<td><a href="" class="delAction product-child" data-id="' + ing.id + '" data-from="ingredients"></a> </td>' +
+                      '</tr>';
+              }              
+
+              buf += '<tr> <td colspan="3"> <select class="product" id="new_ingredient">' +
+                  '<option val="-">Choose Ingredient</option>';
+
+              var scenario = prd.get('parent');
+              var prodsl = scenario.get( 'product_lines' ).toArray();
+              for( var i=0; i<prodsl.length; i++ ) {
+                  var prod = prodsl[i];
+                  // do not include itself
+                  if( ! yote.sameYoteObjects( prod, prd ) ) {
+                      buf += '<option val="' + prod.id + '">' + prod.get('name') + '</option>';
+                  }
+              }
+              buf += '</select>' +
+                  '</td></tr>';
+
+              $tab.append( buf );
+
+              for( var i=0; i<ingsl.length; i++ ) {
+                  var ing = ingsl[ i ];
+                  watchObjects( ing );
+              }
+
+              $( '#new_ingredient' ).on( 'change', function() {
+                  var $this = $( this );
+                  var chosen = yote.fetch( $this.val() );
+                  prd.add_entry( { listName : 'ingredients',
+                                   itemArgs : chosen } );
+              } );
+              
+              return true;
+
+          } //setup_ingredients_table
+
+          function setup_steps_table( prd ) {
+              var $tab = $( '#steps_tab' ).find( 'tbody' );
+              // * ) empty steps table
+              $tab.empty();
+              var buf = '';
+
+              
+              var steps = prd.get( 'steps' );
+              steps.removeUpdateListeners().addUpdateListener( function() {
+                  setup_steps_table( prd );
+              } );
+              var stepl = steps.toArray();
+              for( var i=0; i<stepl.length; i++ ) {
+                  var step = stepl[ i ];
+                  buf += '<tr> ' +
+                      '<td><div class="updateFieldControl step" data-classes="step" data-id="' + step.id + '" data-field="name" data-input-type="text"></div> </td>' +
+
+                      '<td><div class="updateFieldControl step" data-classes="step" data-id="' + step.id + '" data-field="produced_in_run" data-input-type="number"></div> </td>' +
+
+                      '<td><div class="updateFieldControl step" data-classes="step" data-id="' + step.id + '" data-field="run_hours" data-input-type="number"></div> </td>' +
+
+                      '<td><div class="updateFieldControl step" data-classes="step" data-id="' + step.id + '" data-field="employees_required" data-input-type="number"></div> </td>' + 
+                  '<td><div class="updateFieldControl step" data-classes="step" data-id="' + step.id + '" data-field="overhead" data-input-type="number"></div> </td> ' +
+                      
+                  '<td>' +
+                      '<a href="" type="button" class="moveAction product-child step" data-direction="up" data-id="' + step.id + '" data-from="steps">move up</a><br>' +
+                      '<a href="" type="button" class="moveAction product-child step" data-direction="down" data-id="' + step.id + '" data-from="steps">move down</a><br>' + 
+                      '<a href="" class="delAction product-child" data-id="' + step.id + '" data-from="steps">delete</a><br>' +
+                  '</td> ' +
+                '</tr>';
+              }
+              $tab.append( buf );
+              
+              updateFieldControls( 'step' );
+              activateUpdateFields();
+
+              for( var i=0; i<stepl.length; i++ ) {
+                  var step = stepl[ i ];
+                  watchObjects(step);
+              }
+
+              return true;
+          } //setup_steps_table
 
       } //init
 -->
@@ -398,11 +500,39 @@
 
     <select class="scenario" id="prod_sel" ></select>
 
-    <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</button>
-    <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</button>
+    <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
+    <a href="" class="delAction scenario-child product" id="del_prod" data-needs-confirmation="y" data-from="product_lines" data-delete-message="Really delete this product?">Delete Product Line</a>
     <span id="no_products">No Products</span>
     <div id="curr_product">
-      <span class="showField product" data-field="name"></span>
+      Name : <div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> <br>
+      Notes : <div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div>
+
+      <table>
+        <tr> <th>Production Rate </th> <td><span class="showField product" data-format="$" data-field="production_rate"></span></td> </tr>
+        <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
+        <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
+        <tr><th> </th> <td><div></div></td> </tr>
+      </table>
+      <h4>Ingredients</h4>
+      <table border="1" id="ingredients_tab">
+        <thead>
+          <tr> <th>Ingredient</th> <th>Amount per Batch</th> <th>Notes</th> <th>Action</th> </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+
+    
+      <h4>Steps</h4>
+
+      <table border=1 id="steps_tab">
+        <thead>
+          <tr> <th>Name</th> <th>Items per Batch</th>  <th>Duration of Batch ( hours) </th> <th>Employees Needed</th> <th>Overhead</th> <th>Actions</th> </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+      <a href="" class="addAction product" data-list="steps">New Step</a>
     </div>
     </div>
     <hr>
