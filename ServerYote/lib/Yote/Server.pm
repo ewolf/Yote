@@ -132,7 +132,36 @@ sub _log {
     print STDERR 'Yote::Server : ' . shift . "\n" if $DEBUG;
 }
 
+sub __transform_params {
+    #
+    # Recursively transforms incoming parameters into values, yote objects, or non yote containers.
+    # This checks to make sure that the parameters are allowed by the given token.
+    # Throws execptions if the parametsr are not allowed, or if a reference that is not a hash or array
+    # is encountered.
+    #
+    my( $self, $param, $token, $server_root ) = @_;
+    if( ref( $param ) eq 'HASH' ) {
+        return { map { $_ => $self->_transform_params($param->{$_}, $token, $server_root) } keys %$param };
+    } 
+    elsif( ref( $param ) eq 'ARRAY' ) {
+        return [ map { $self->_transform_params($_, $token, $server_root) } @$param ];
+    } else {
+        die "Transforming Params: got weird ref '" . ref( $param ) . "'";
+    }
+    if( index( $param, 'v' ) == 0 ) {
+        if( $server_root->getMay( $param, $token ) ) {
+            return $self->{STORE}->_xform_out( $param );
+        }
+        die( "Bad Req Param, server says no : $param" );
+    }
+    return $param;
+} #__transform_params
+
 sub _process_request {
+    #
+    # Reads incomming request from the socket, parses it, performs it and
+    # prints the result back to the socket.
+    #
     my( $self, $sock ) = @_;
 
 
@@ -192,7 +221,6 @@ sub _process_request {
 
 
                 open( IN, "<$filename" );
-                my $data;
 
                 $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n" );
 
@@ -221,9 +249,7 @@ sub _process_request {
             
         } elsif ( $verb eq 'POST' ) {
             ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
-            $params = [ map { URI::Escape::uri_unescape($_) } 
-                            map { s/^[^=]+=//; s/\+/ /gs; $_; } 
-                            split ( '&', $data ) ];
+            $params = from_json( $data ); # this has to be checked against is valid, yes
         }
         _log( "\n   (params)--> : ".join(',',@$params) );
 
@@ -257,15 +283,19 @@ sub _process_request {
             exit;
         }
 
-        my( @in_params );
-        for my $param (@$params) {
-            unless( $server_root->_getMay( $param, $token ) ) {
-                _log( "Bad Req Param, server says no : $param" );
-                $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-                $sock->close;
-                exit;
-            }
-            push @in_params, $store->_xform_out( $param );
+        # now things are getting a bit more complicated. The params passed in
+        # are always a list, but they may contain other containers that are not
+        # yote objects. So, transform the incomming parameter list and check all
+        # yote objects inside for may. Use a recursive helper function for this.
+        my $in_params;
+        eval {
+            $in_params = $self->__transform_params( $params, $token, $server_root );
+        };
+        if( $@ ) {
+            _log( $@ );
+            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
+            $sock->close;
+            exit;
         }
 
         my $obj = $obj_id eq '_' ? $server_root :
@@ -284,9 +314,9 @@ sub _process_request {
                 # object in the system. It must check the token
                 # to see if that particular object is allowed/available
                 # to the caller
-                unshift( @in_params, $token );
+                unshift( @$in_params, $token );
             }
-            (@res) = ($obj->$action( @in_params ));
+            (@res) = ($obj->$action( @$in_params ));
         };
 
         if ( $@ ) {

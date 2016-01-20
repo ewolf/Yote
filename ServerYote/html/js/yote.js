@@ -104,25 +104,31 @@ yote._init = function( yoteServerURL, isWorker ) {
         // ** 3 parts : methods, updates and result
         
         // methods
-        for( var cls in res.methods ) {
-            class2meths[cls] = res.methods[ cls ];
+        if( res.methods ) {
+            for( var cls in res.methods ) {
+                class2meths[cls] = res.methods[ cls ];
+            }
         }
         
         // updates
-        res.updates.forEach( function( upd ) {
-            makeObj( upd );
-        } ); //updates section
+        if( res.updates ) {
+            res.updates.forEach( function( upd ) {
+                makeObj( upd );
+            } ); //updates section
+        }
         
         // results
-        var returns = [];
-        res.result.forEach( function( ret ) {
-            if( ret.startsWith( 'v' ) ) {
-                returns.push( ret.substring(1) );
-            } else {
-                returns.push( fetch( ret ) );
-            }
-        } );
-        return (returns.length > 1 || expectAlist) ? returns : returns[0];
+        if( res.result ) {
+            var returns = [];
+            res.result.forEach( function( ret ) {
+                if( ret.startsWith( 'v' ) ) {
+                    returns.push( ret.substring(1) );
+                } else {
+                    returns.push( fetch( ret ) );
+                }
+            } );
+            return (returns.length > 1 || expectAlist) ? returns : returns[0];
+        }
     }; //processRaw
 
     yote.processRaw = processRaw;
@@ -140,6 +146,23 @@ yote._init = function( yoteServerURL, isWorker ) {
         };
     };
 
+    function readyObjForContact( obj ) {
+        if( typeof obj !== 'object' ) { return obj ? [obj] : undefined }
+        for( var idx in obj ) {
+            var v = obj[idx];
+            if( typeof v === 'object' ) {
+                if( id2obj[ v.id ] === v ) {
+                    v = v.id;
+                } else {
+                    v = readyObjForContact( v );
+                }
+            } else {
+                v = 'v' + v;
+            }
+            obj[idx] = v;
+        }
+    }
+
     var contact = function(id,action,data,returnRaw) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("load", reqListener( returnRaw ) );
@@ -155,13 +178,16 @@ yote._init = function( yoteServerURL, isWorker ) {
                   '/' + ( token ? token : '_' ) + 
                   '/' + action, 
                   ! isWorker );
-        if( data && typeof data !== 'object' ) {
-            data = [ data ];
-        }
-        oReq.send(data ? 'p=' + data.map(function(p) {
-            return typeof p === 'object' ? p.id : 'v' + p }).join('&p=') 
-                  : undefined );
-        return returnVal;
+
+        var sendData = JSON.stringify( readyObjForContact( data ) );
+console.log( [ 'data', data ] );
+console.log( "About to send " + sendData );
+//        oReq.send( sendData ? 'p=' + sendData : undefined );
+        // data must always be an array, though that array may have different data structures inside of it
+        // as vehicles for data
+        oReq.send( sendData || '' );
+
+        return returnVal; //returnVal is set by the reqListener
     }; // contact
     
     yote.fetch_root = function() {
@@ -173,19 +199,11 @@ yote._init = function( yoteServerURL, isWorker ) {
 
     var workers = {};
 
-    yote.call = function( workerUrl, args, callback, expectReturnedList ) {
-        return yote._call( {
-            workerUrl   : args.workerUrl, 
-            callArgs    : args.args, 
-            callback    : args.callback, 
-            failhanlder : args.failhandler, 
-            expectAlist : args.expectReturnedList
-        } );
-    }
-    yote._call = function( args ) {
-        var workerUrl = args.workerUrl, 
-            callArgs = args.args, 
-            callback = args.callback, 
+    // contacts worker immediately
+    yote.callWorker = function( args ) {
+        var workerUrl   = args.workerUrl, 
+            callParams  = args.params, 
+            callback    = args.callback, 
             failhanlder = args.failhandler, 
             expectAlist = args.expectReturnedList;
         // have to find a way to get the update arguments from the
@@ -195,89 +213,86 @@ yote._init = function( yoteServerURL, isWorker ) {
             worker = new Worker( "/__/" + workerUrl );
             workers[ workerUrl ] = worker;
         }
-        worker.onmessage = function( e ) { //possibility for foolishly changing the handlers?
-            // at processing the raw, this process will have access to all the yote data'
+        worker.onmessage = function( e ) { 
+            // possibility for foolishly changing the handlers?
+            // at processing the raw, this process will have access 
+            // to all the yote data'
             var resp = yote.processRaw( e.data, expectAlist );
             if( callback ) {
                 callback( resp );
             }
         }
-        worker.postMessage( args );
-    }; //yote.call
+        worker.postMessage( [ 'call', callParams ] );
+    }; //yote.callWorker
 
-    var _inputsForAction, _displaysForAction, _actions = [];
-
-    yote._findControls = function() {
-        _inputsForAction   = {};
-        _displaysForAction = {};
-
-        var inputs   = document.getElementsByClassName( 'yote-input' );
-        for( var i=0, len = inputs.length; i<len; i++ ) {
-            var el = inputs[ i ];
-            var actionName = el.getAttribute( 'data-yote-action' );
-            if( actionName ) {
-                var ifa = _inputsForAction[ actionName ];
-                if( ! ifa ) {
-                    ifa = [];
-                    _inputsForAction[ actionName ] = ifa;
-                }
-                var paramnumber = parseInt( el.getAttribute( 'data-yote-param-number' ) );
-                if( isNaN( paramnumber ) ) {
-                    console.warn( "warning, parameter for " + actionname + " has no param number. ignoring" );
-                } else {
-                    ifa[ paramnumber ] = el;
-                }
-            }
+    yote.doSequence = function( functions ) {
+        if( typeof functions !== 'object' || functions.length === 0 ) {
+            console.error( "Error, yote.doSequence called without worker" );
+            return this;
         }
-
-        var displays = document.getElementsByClassName( 'yote-display' );
-        for( var i=0, len = displays.length; i<len; i++ ) {
-            var el = inputs[ i ];
-            var actionName = el.getAttribute( 'data-yote-action' );
-            if( actionName ) {
-                var ifa = _displaysForAction[ actionName ];
-                if( ! ifa ) {
-                    ifa = [];
-                    _displaysForAction[ actionName ] = ifa;
-                }
-                ifa.push( el );
+        return {
+            functions    : functions,
+            step         : 0,
+            failHandlers : {},
+            fail : function( step, failfun ) {
+                this.failHandlers[ step ] = failfun;
+                return this;
+            },
+            start : function() {
+                var that = this;
+                if( this.functions.length > 1 ) {
+                    var fun = this.functions.shift();
+                    fun( function() { that.start(); that.step++ },
+                     function( err ) {
+                         if( yote.failHandlers["++*"] ) {
+                             yote.failHandlers["++*"](err);
+                         }
+                         if( yote.failHandlers[this.step] ) {
+                             yote.failHandlers[this.step](er);
+                         }
+                         if( yote.failHandlers["*++"] ) {
+                             yote.failHandlers["*++"](err);
+                         }
+                     } );
+                } //if functions
+                return this;
             }
-        }
+        };
+    }; //yote.doSequence
 
-        var acts = document.getElementsByClassName( 'yote-action' );
-        for( var i=0, len = acts.length; i<len; i++ ) {
-            var el = acts[i];
-            if( ! el.getAttribute( 'data-yote-acted' ) ) {
-                el.setAttribute( 'data-yote-acted', 1 );
-                _actions.push( el );
-                el.addEventListener('click', yote._activateControl( el ) );
-            }
-        }
-    }; //yote._findControls
-
-    yote._activateControl = function(el) {
-        return function() {
-            var act     = el.getAttribute( 'yote-action' );
-            var parmFun = el.getAttribute( 'yote-params' );
-            if( ! act || ! parmFun ) {
-                console.warn( "could not activate control. yote-action or yote-params not found" );
-            }
-            yote._call( "js/worker-yote.js", window[parmFun](), window[act] );
+    yote.loadApp = function( appname, callback ) {
+        return function( cb, failhandler ) {
+            yote.callWorker( {
+                workerUrl : "js/worker-yote.js",
+                params    : [ 'fetch_app', appname ],
+                callback  : function( result ) {
+                    callback( result );
+                    cb();
+                },
+                failhandler : failhandler
+            } );
         };
     };
 
-    yote.workerLoadInclude = function( includeFile, callback, failhandler ) {
-        yote._call( {
-            workerUrl : "js/worker-yote.js",
-            callArgs  : [ 'include', [ includeFile ] ],
-            callback  : callback,
-            failhandler : failhandler
-        } );
-    };
-    yote.newCall = function( callFunctionName ) {
-        // look at registered contols and send the variables over
-//        yote.call( "js/worker-yote.js", window[](), window[act] );
-        yote._call( "js/worker-yote.js", 'call', window[](), window[act] );
-    };
+    yote.workerLoadInclude = function( includeFile ) { // TODO : make this a list of 'em
+        return function( callback, failhandler ) {
+            yote.callWorker( {
+                workerUrl : "js/worker-yote.js",
+                params    : [ 'include', includeFile ],
+                callback  : callback,
+                failhandler : failhandler
+            } );
+        };
+    }; //yote.workerLoadInclude
+    yote.readyWorkerCall = function( callname, args ) {
+        return function( callback, failhandler ) {
+            yote.callWorker( {
+                workerUrl   : "js/worker-yote.js",
+                params      : [ 'call', args ], // automatically update objects? Maybe?? Not sure :/ will think
+                callback    : callback,
+                failhandler : failhandler
+            } );
+        };
+    }; //yote.readyWorkerCall
 
 }; //yote._init

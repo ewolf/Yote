@@ -22,9 +22,14 @@ onmessage = function(e) {
     var type = data[0];
     if( type === 'include' ) {
         for( var i=1, len=data.length; i<len; i++ ) {
+            console.log( "worker importing " + data[i] );
             importScripts( data[i] );
         }
         return resp( 'IMPORTED' );
+    }
+    else if( type === 'fetch_app' ) {
+        var rawResp =  root.fetch_app( data[1], true );
+        return resp( rawResp );
     }
     else if( type === 'call' ) {
         var obj = root.fetch_app( data[1] );
