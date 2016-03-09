@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 =head1 NAME
 
@@ -95,7 +95,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 =head1 NAME
 
@@ -517,7 +517,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -748,7 +748,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -841,7 +841,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -914,7 +914,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.2';
+$VERSION = '1.3';
 
 #
 # This the main index and stores in which table and position
@@ -1098,6 +1098,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.2  (November 2, 2015))
+       Version 1.3  (Mar 9, 2016))
 
 =cut
