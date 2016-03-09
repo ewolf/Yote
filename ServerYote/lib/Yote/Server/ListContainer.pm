@@ -21,23 +21,7 @@ sub _allowedUpdates { [qw(name notes)] } #override returning a list of allowed u
 
 sub _lists { {} }  # override with list-name -> class
 
-
-# new item added to this object
-sub _on_add { my($self,$listName,$obj,$moreArgs) =@_; }
-sub _on_remove { my($self,$listName,$obj,$moreArgs) =@_; } 
-
-# what to run when added to something
-sub _when_added { 
-    my($self,$toObj,$listName,$itemArgs) = @_;
-    $self->update( $itemArgs );
-}
-
-# what to run when this is removed from something
-sub _when_removed { 
-    my($self,$fromObj,$listName,$itemArgs) = @_;
-}
-
-sub _gather {}
+sub _gather {}  # override with extra stuff to send across
 
 sub _init {
     my $self = shift;
@@ -66,7 +50,7 @@ sub update {
         die "Cant update '$fld' to $val in " . ref($self) unless $self->_valid_choice($fld,$val);
         $self->set( $fld, $val )
     }
-    $self->calculate;
+    $self->calculate( 'update' );;
 } #update
 
 sub add_entry {
@@ -83,11 +67,9 @@ sub add_entry {
         parent => $self,
         name   => $listName.' '.(1 + @$list),
                                         },$class  );
-    $obj->_when_added( $self, $listName, $itemArgs );
-    $self->_on_add( $listName, $obj, $parentArgs );
     push @$list, $obj;
     $self->select_current( $listName, $obj );
-    $self->calculate;
+    $self->calculate( 'new_entry', $listName );
     $obj, $obj->gather_all;
 } #add_entry
 
@@ -136,9 +118,7 @@ sub remove_entry {  #TODO - paramertize this like add_entry does
             }
         }
     }
-    $self->_on_remove( $from, $item, $moreArgs );
-    $item->_when_removed( $self, $from, $moreArgs );
-    $self->calculate;
+    $self->calculate( 'removed_entry', $listName );
     return $item;
 } #remove_entry
 

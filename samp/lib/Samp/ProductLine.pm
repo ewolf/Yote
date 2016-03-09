@@ -21,8 +21,8 @@ sub _allowedUpdates {
           food_cost_per_batch
           packaging_cost_per_item
 
-          manually_set_batch_size
           batch_size
+          batches_per_month
 
           life_as_ingredient
           shelf_life
@@ -143,7 +143,8 @@ sub calculate {
 
     $bottleneck->set_is_bottleneck(1) if $bottleneck;                                             # ***** (step) VARSET *****
 
-    my $batch_size = $self->get_manually_set_batch_size ? $self->get_batch_size : $slowest_rate;
+    my $batch_size = $self->get_batch_size;
+    $self->set_calculated_batch_size($slowest_rate);
 
     $self->set_batch_size_used( $batch_size || 0 ); #*************
     
@@ -151,7 +152,6 @@ sub calculate {
     for my $step (@$steps) {
         $run_time += $step->run_time( $batch_size );
     }
-    return unless $run_time;
     
     #
     # -------------------------- BATCH TIME ----------------------------------
@@ -182,16 +182,18 @@ sub calculate {
     for my $prod (@$ingredsOf) {
         # see how many batches of it are needed
         for my $ofIng (grep { $_->get_product == $self } @{$prod->get_ingredients([])}) {
-            $units_needed_in_month += $prod->get_required_monthly_batches * $prod->get_batch_size_used * $ofIng->get_units_per_unit;
+            $units_needed_in_month += $prod->get_required_monthly_batches * $prod->get_batch_size * $ofIng->get_units_per_unit;
         }
     }
 
-    my $units_needed_in_hour = $units_needed_in_month / $work_hours_in_month;
-    my $prod_hours_needed    = $units_needed_in_hour  / $run_time;
-    my $batches_needed       = $prod_hours_needed     / $run_time;
-    $batches_needed = sprintf( "%.1f", int($batches_needed) ) eq sprintf( "%.1f", $batches_needed ) ? $batches_needed : 1 + int($batches_needed);
+    if( $run_time ) {
+        my $units_needed_in_hour = $units_needed_in_month / $work_hours_in_month;
+        my $prod_hours_needed    = $units_needed_in_hour  / $run_time;
+        my $batches_needed       = $prod_hours_needed     / $run_time;
+        $batches_needed = sprintf( "%.1f", int($batches_needed) ) eq sprintf( "%.1f", $batches_needed ) ? $batches_needed : 1 + int($batches_needed);
 
-    $self->set_required_monthly_batches( $batches_needed ); #*************
+        $self->set_calculated_monthly_batches( $batches_needed ); #*************
+    }
     
     #
     #       ----------------------- COSTS ---------------------------
@@ -224,12 +226,13 @@ sub calculate {
     $self->set_partial_packaging_cost_per_batch( $packaging_cost_per_batch );  #***************
     $self->set_partial_food_cost_per_batch( $food_cost_per_batch );            #***************
     $self->set_partial_labor_cost_per_batch( $labor_cost_per_batch );          #***************
-    $self->set_partial_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $labor_cost_per_batch );          #***************
+    $self->set_partial_material_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $overhead_cost_per_batch );          #***************
+    $self->set_partial_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $labor_cost_per_batch + $overhead_cost_per_batch );          #***************
 
     for my $ing (@{$self->get_ingredients([])}) {
         my $ingProd = $ing->get_product;
         my $ingredient_count   = $batch_size * $ing->get_units_per_unit;
-        my $ingSize = $ingProd->get_batch_size_used;
+        my $ingSize = $ingProd->get_batch_size;
         if( $ingSize ) {
             my $ingredient_batches = $ingredient_count / $ingSize;
             $food_cost_per_batch += $ingredient_batches * $ingProd->get_food_cost_per_batch;
@@ -248,6 +251,7 @@ sub calculate {
         $food_cost_per_batch + 
         $overhead_cost_per_batch + 
         $packaging_cost_per_batch;
+    $self->set_total_material_cost_per_batch( $food_cost_per_batch + $overhead_cost_per_batch + $packaging_cost_per_batch );               #*************
     $self->set_total_cost_per_batch( $total_cost_per_batch );               #*************
     $self->set_total_cost_per_item( $total_cost_per_batch / $batch_size );  #*************
     

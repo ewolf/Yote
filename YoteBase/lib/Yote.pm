@@ -587,6 +587,22 @@ use overload
     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
 
+=head2 absorb( hashref )
+
+    pulls the hash data into this object.
+
+=cut
+sub absorb {
+    my( $self, $data ) = @_;
+    my $obj_store = $self->{STORE};
+    for my $key ( sort keys %$data ) {
+        $self->{DATA}{$key} = $obj_store->_xform_in( $data->{ $key } );
+    }
+    $obj_store->_dirty( $self, $self->{ID} );
+
+} #absorb
+
+
 =head2 set( $field, $value )
 
     Assigns the given value to the field in this object and returns the 
@@ -600,7 +616,7 @@ sub set {
     $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
     $self->{DATA}{$fld} = $inval;
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
+} #set
 
 
 =head2 get( $field, $default-value )
@@ -621,7 +637,7 @@ sub get {
         $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
     }
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-}
+} #get
 
 
 # -----------------------
@@ -786,10 +802,7 @@ sub _new { #new Yote::Obj
     $obj_store->_dirty( $obj, $obj->{ID} );
 
     if( ref( $data ) eq 'HASH' ) {
-        for my $key ( sort keys %$data ) {
-            $obj->{DATA}{$key} = $obj_store->_xform_in( $data->{ $key } );
-        }
-        $obj_store->_dirty( $obj, $obj->{ID} );
+        $obj->absorb( $data );
     } elsif( $data ) {
         die "Yote::Obj::new must be called with hash or undef. Was called with '". ref( $data ) . "'";
     }

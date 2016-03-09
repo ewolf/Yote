@@ -505,6 +505,16 @@
                   $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
               } );
 
+              var raws = prd.get( 'raw_materials' );
+              updateListener( raws, '_matslist', function() {
+                  setup_table( {
+                      tabSel : '#materials-tab',
+                      rowSel : '#material-row',
+                      listName : 'raw_materials',
+                      listOn : prd,
+                  } );
+              }, true );
+              
               // set up steps table once, then every time the steps list changes
               var steps = prd.get( 'steps' );
               updateListener( steps, '_stepslistener', function() {
@@ -675,9 +685,14 @@
         Monthly Cost of Production <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span>
       </p>
 
+      <p>
+        Revenue <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_revenue"></span>
+      </p>
+
+      
       <table id="product-tab">
         <thead>
-          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Revenue</th> <th>Cost</th> <th>Profit</th> <th>Action</th> </tr>
+          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Batches/Month</th> <th>Action</th> </tr>
         </thead>
         <tbody>
         </tbody>
@@ -710,7 +725,7 @@
             </tr>
 
             <tr> <th>Scheduled Batches / Month </th> <td>
-                <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batch_size"></div>
+                <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batches_per_month"></div>
             </td> </tr>
 
             <tr> <th>Est. Batches Needed / Month </th> <td>
@@ -728,7 +743,7 @@
         </table>
 
         <h4>Raw Materials</h4>
-        <table border="1" id="ingredients_tab">
+        <table border="1" id="materials-tab">
           <thead>
             <tr> <th>Item</th> <th>Cost/Unit</th><th>Units/Batch</th> <th>Notes</th> <th>Action</th> </tr>
           </thead>
@@ -736,7 +751,6 @@
           </tbody>
         </table>
         <a href="" class="addAction product" data-list="raw_materials">New Raw Material</a>
-        
         
         <h4>Components</h4>
         <table border="1" id="ingredients_tab">
@@ -747,7 +761,7 @@
           </tbody>
         </table>
         <select class="updateField showField product" id="new_ingredient" data-src-method="ingredients"></select>
-
+        
         <h4>Steps</h4>
 
         <table border="1" id="steps-tab">
@@ -791,9 +805,16 @@
         <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
       </tr>
 
-      <tr id="material-row">       
-        <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
-        <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
+    <tr id="material-row">
+      <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+      <td>
+        <div class="updateFieldControl" data-id="ID" data-field="cost_unit"></div>
+      </td>
+      <td>
+        <div class="updateFieldControl" data-id="ID" data-field="units_batch"></div>
+      </td>
+      <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
+      <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="raw_materials">delete</a> </td>
       </tr>
       
       <tr id="ingredient-row"> 
@@ -830,7 +851,7 @@
           <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
         </td>
 
-        <td> <span class="showField" data-id="ID" data-field="batch_revenue"></span> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="batch_size"></div> </td>
         
         <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID"
                 data-needs-confirmation="y" data-delete-message="Reallly delete this product?"
