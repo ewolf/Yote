@@ -56,7 +56,8 @@ my $builder = Module::Build->new(
     test_files         => [ 't/servertest.t', ],
     requires => {
         'perl'                  => 'v5.12',
-        'Yote'                  => 1.2,
+        'Yote'                  => 1.3,
+        'Lock::Server'          => 1.6,
         'Test::More'            => 0,
     },
     );
