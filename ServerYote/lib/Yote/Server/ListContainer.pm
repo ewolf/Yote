@@ -131,7 +131,6 @@ sub remove_entry {  #TODO - paramertize this like add_entry does
             if( @$list ) {
                 $i-- if $i > $#$list;
                 $self->select_current( $from, $list->[$i] );
-                return $item;
             } else {
                 $self->select_current( $from, undef );
             }
@@ -140,6 +139,7 @@ sub remove_entry {  #TODO - paramertize this like add_entry does
     $self->_on_remove( $from, $item, $moreArgs );
     $item->_when_removed( $self, $from, $moreArgs );
     $self->calculate;
+    return $item;
 } #remove_entry
 
 # TODO - implement a copy?

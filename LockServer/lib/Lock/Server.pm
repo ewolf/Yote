@@ -93,7 +93,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.4';
 
 
 $Lock::Server::DEBUG = 0;

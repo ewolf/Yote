@@ -11,6 +11,14 @@
               appName : 'CalcTest',
               handler : function( root, app ) {
 //                  app.reset();return;
+                  $( '#reset' ).on( 'click', function( ev ) {
+                      if( confirm( 'really reset everything?' ) ) {
+                          app.reset();
+                      } else {
+                          ev.preventDefault();
+                      }
+                  } );
+
                   app.gather_all( [], function() {
                       setup_app( app );
                   } );
@@ -378,9 +386,9 @@
               var scnz     = app.get('scenarios');
               updateListener( scnz, '_deleteListener', function() {
                   if( scnz.length() > 1 ) {
-                      $( '#del_scenario').show();
+                      $( '#scenario_picker').show();
                   } else {
-                      $( '#del_scenario').hide();
+                      $( '#scenario_picker').hide();
                   }
               }, true );
 
@@ -466,17 +474,6 @@
                   $( '#curr_products,#del_prod,#prod_sel' ).hide();
                   return false;
               }
-              updateListener( prd, '_manual_batchsize_watch', function() {
-                  if( prd.get( 'manually_set_batch_size' ) == "1" ) {
-                      // the following field is the set batch size (editable)
-                      $( '#set_batches' ).show();
-                      $( '#read_batches' ).hide();
-                  } else {
-                      // the following field is the reported used batch sized (not editable)
-                      $( '#set_batches' ).hide();
-                      $( '#read_batches' ).show();
-                  }
-              }, true );
               $( '#new_ingredient' ).off('change').on( 'change', function() {
                   var $this = $( this );
                   var val = $this.val();
@@ -522,7 +519,7 @@
                               var step_emps = step.get('step_employees');
                               if( step_emps ) {
                                   step_emps.each( function( emp, j ) {
-                                      tab.append( '<tr> <td>' + emp.get('name') + '</td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td> <td><a href="" class="delAction" data-id="' + emp.id + '" data-from="step_employees" data-parent="' + step.id + '">remove</a></tr>' );
+                                      tab.append( '<tr> <td> <span class="showField" data-id="' + emp.id + '" data-field="name">' + emp.get('name') + '</span> </td><td><a href="" class="delAction" id="' + emp.id + '" parent="' + step.id + '"></a></td> <td><a href="" class="delAction" data-id="' + emp.id + '" data-from="step_employees" data-parent="' + step.id + '">remove</a></tr>' );
                                   } );
                               }
                           };
@@ -598,6 +595,10 @@
     div.updateFieldControl.editing>span { display: none; }
     span.showField {  }
     .template { display: none }
+
+    section { margin-left: 2em; }
+    #scenario th { text-align: right ; }
+    #employee-tab td { text-align: center; }
     </style>
 
 
@@ -607,117 +608,136 @@
     <h1>Shoppe Demo</h1>
 
     <h3>Scenarios</h3>
+    <a href="" id="reset">reset all</a>
     <p>
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
-    <p>
+    <p id="scenario_picker">
       Selected Scenario <select class="showField updateField app" data-field="current_scenarios"
                                 data-var-is="object" data-src-field="scenarios" id="scene_sel"></select>
-      <a href="" class="delAction app-child scenario" id="del_scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
+      <a href="" class="delAction app-child scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
-    <div>
-      <h3>Configure Scenario '<span class="showField scenario" data-field="name"></span>'</h3>
+
+    <h3>Scenario</h3>
+    <section id="scenario">
+      <table>
+        <tr><th>Name</th>
+          <td>
+            <div class="updateFieldControl scenario" data-classes="scenario" data-field="name" data-input-type="text" ></div>
+        </td></tr>
+        <tr><th>Description</th>
+          <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="description" data-input-type="text"></div> </td></tr>
+        <tr><th>Notes</th>
+          <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="notes" data-input-type="text"></div> </td></tr>
+
+      </table>
+    </section>
+
+    <h4>Employees</h4>
+    <section id="employees">
       <p>
-        <table border="1">
-          <tr><th>Scenario Name</th>
-            <td>
-              <div class="updateFieldControl scenario" data-classes="scenario" data-field="name" data-input-type="text" ></div>
-          </td></tr>
-          <tr><th>Description</th>
-            <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="description" data-input-type="text"></div> </td></tr>
-          <tr><th>Notes</th>
-            <td><div class="updateFieldControl scenario" data-classes="scenario" data-field="notes" data-input-type="text"></div> </td></tr>
-
-          <tr><th>Monthly Payroll</th>
-            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span> </td></tr>
-
-          <tr><th>Monthly Cost of Production</th>
-            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span> </td></tr>
-          
-          <tr><th>Monthly Overhead</th>
-            <td><span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span> </td></tr>
-        </table>
+        Monthly Payroll <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span>
       </p>
-      <p>
-        <table id="employee-tab" border="1">
+      <div>
+        <table id="employee-tab">
           <thead>
-            <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Hours Per Week</th> <th>Notes</th> <th>Action</th> </tr>
+            <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Weekly Hours</th> <th>Notes</th> <th>Action</th> </tr>
           </thead>
           <tbody>
           </tbody>
         </table>
-        <a href="" class="addAction scenario" data-list="employees">New Employee</a>
-      </p>
-      <p>
-        <table id="expenses-tab" border="1">
-          <thead>
-            <tr> <th>Expense</th> <th>Cost</th> <th>Notes</th> <th>Action</th> </tr>
-          </thead>
-          <tbody>
-          </tbody>
-        </table>
-        <a href="" class="addAction scenario" data-list="expenses">New Expense</a>      
-      </p>        
-      <hr>
+        <p>
+          <a href="" class="addAction scenario" data-list="employees">Add Employee</a>
+        </p>
+      </div>
+    </section>
     
-      <h4 id="product-title">Products Summary</h4>
-      <table id="product-tab" border="1">
+    <h3>Expenses</h3>
+    <section id="expenses">
+      <p>
+        Monthly Expenses <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span>
+      </p>
+      <table id="expenses-tab">
+        <thead>
+          <tr> <th>Expense</th> <th>Cost</th> <th>Notes</th> <th>Action</th> </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+      <p>
+        <a href="" class="addAction scenario" data-list="expenses">Add Expense</a>
+      </p>
+    </section>        
+    
+    <h4>Production Summary</h4>
+    <section id="product-summary">
+      <p>
+        Monthly Cost of Production <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_costs"></span>
+      </p>
+
+      <table id="product-tab">
         <thead>
           <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Revenue</th> <th>Cost</th> <th>Profit</th> <th>Action</th> </tr>
         </thead>
         <tbody>
         </tbody>
       </table>
-       <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
-      <hr>
-      <h4 id="product-title">Product Detail</h4>
+      <p>
+        <a href="" class="addAction scenario" data-list="product_lines">Create New Product Line</a>
+      </p>
+    </section>
 
-      <select class="showField updateField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
-
+    <h4>Product Detail</h4>
+    <section  id="product-detail">
+      <p>
+        Editing 
+        <select class="showField updateField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
+      </P>
       <span id="no_products">No Products</span>
       <div id="curr_product">
 
-        <table  border="1">
-          <thead>
-            <tr> <th colspan="3">Details</th> </tr>
-          </thead>
+        <table>
           <tbody>
-          <tr> <th>Name</th>
-            <td><div class="updateFieldControl product" data-classes="product" data-field="name" data-input-type="text"></div> </td></tr>
-          <tr> <th>Notes</th>
-            <td><div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div></td></tr>
-          <tr> <th colspan="3">Costs</th> </tr>
-          <tr> <th>Food Cost / batch</th> 
-            <td>
-              <div class="updateFieldControl product" data-classes="product" data-field="food_cost_per_batch" data-format="$"></div> <br>
-            </td>
-          </tr>
-          <tr> <th>Packaging Cost / item</th> 
-            <td>
-              <div class="updateFieldControl product" data-classes="product" data-field="packaing_cost_per_item" data-format="$"></div> 
-            </td>
-          </tr>
-          <tr> <th colspan="3">Production</th> </tr>
-    <tr> <th>Manually Set Batches Produced ? </th> <td><input class="showField updateField product" data-field="manually_set_batch_size" type="checkbox"></td> </tr>
-          <tr> <th>Batches Produced </th> <td>
-              <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batch_size"></div>
-              <span id="read_batches" class="showField product" data-format="$" data-field="batch_size_used"></span>
-          </td> </tr>
-          <tr> <th>Produced in Day </th> <td><span class="showField product" data-format="$" data-field="produced_in_day"></span></td> </tr>
-          <tr> <th>Produced in Month </th> <td><span class="showField product" data-format="$" data-field="produced_in_month"></span></td> </tr>
+            <tr> <th>Notes</th>
+              <td><div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div></td></tr>
 
-          <tr> <th colspan="3">Profit/Loss</th> </tr>
-          <tr> <th>Sale Price / unit</th>
-            <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td>
-          </tr>
-          <tr>
-            <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
-            <th>per</th> <td><select class="showField updateField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
-          </tr>
-          <tr><th> </th> <td><div></div></td> </tr>
+            <tr> <th>Sale Price / unit</th>
+              <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td>
+            </tr>
+            <tr>
+              <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
+              <th>per</th> <td><select class="showField updateField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
+            </tr>
+
+            <tr> <th>Scheduled Batches / Month </th> <td>
+                <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batch_size"></div>
+            </td> </tr>
+
+            <tr> <th>Est. Batches Needed / Month </th> <td>
+                <span id="read_batches" class="showField product" data-format="$" data-field="batch_size_used"></span>
+            </td> </tr>
+            <tr> <th>Packaging Cost / item</th> 
+              <td>
+                <div class="updateFieldControl product" data-classes="product" data-field="packaging_cost_per_item" data-format="$"></div> 
+              </td>
+            </tr>
+
+
+            <tr><th> </th> <td><div></div></td> </tr>
           </tbody>
         </table>
 
+        <h4>Raw Materials</h4>
+        <table border="1" id="ingredients_tab">
+          <thead>
+            <tr> <th>Item</th> <th>Cost/Unit</th><th>Units/Batch</th> <th>Notes</th> <th>Action</th> </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+        <a href="" class="addAction product" data-list="raw_materials">New Raw Material</a>
+        
+        
         <h4>Components</h4>
         <table border="1" id="ingredients_tab">
           <thead>
@@ -739,80 +759,86 @@
         </table>
         <a href="" class="addAction product" data-list="steps">New Step</a>
       </div>
-    </div>
-    <hr>
-
-
-    </body>
-
-    <section class="template" id="templates">
-      <table>
-
-        <tr id="employee-row"> 
-          <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="hourly_pay"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="hours_per_week"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
-          <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="employees">remove</a> </td>
-        </tr>
-
-
-        <tr id="expenses-row"> 
-          <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-          <td>
-            <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
-            <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
-          </td>
-          
-          <td>
-            <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
-          </td>
-          
-          <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
-        </tr>
-        
-        
-        <tr id="ingredient-row"> 
-          <td>
-            <span class="showField" data-id="PROD" data-field="name"></span>
-          </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="amount_per_run"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
-          <td> <a href="" class="delAction" data-parent="FROMID" data-id="ID" data-from="ingredients">delete</a> </td>
-        </tr>
-
-
-        <tr id="step-row"> 
-          <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="produced_in_run" data-input-type="number"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="run_minutes" data-input-type="number"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> </td>
-          
-          <td> <table></table> <select class="updateField showField" data-hide-on-empty="true" data-src-method="employees"></select></td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_run"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_hour"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
-          <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID" data-from="steps">delete</a> </td>
-        </tr>
-
-
-        <tr id="prod-row"> 
-          <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-          <td> <div class="updateFieldControl" data-id="ID" data-format="$" data-field="sale_price"></div> </td>
-          <td>
-            <div class="updateFieldControl" data-id="ID" data-field="expected_sales" data-format="$" data-input-type="number"></div>
-            <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
-          </td>
-
-          <td> <span class="showField" data-id="ID" data-field="batch_revenue"></span> </td>
-          
-          <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID" data-needs-confirmation="y" data-delete-message="Reallly delete this product?" data-from="product_lines">delete</a> </td>
-
-        </tr>
-
-      </table>
     </section>
+    
+  </body>
 
+  <section class="template" id="templates">
+    <table>
+
+      <tr id="employee-row"> 
+        <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="hourly_pay" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="hours_per_week" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
+        <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID"
+                data-needs-confirmation="true" data-delete-message="Really remove employee?"
+                data-from="employees">remove</a> </td>
+      </tr>
+
+
+      <tr id="expenses-row"> 
+        <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+        <td>
+          <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
+          <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
+        </td>
+        
+        <td>
+          <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
+        </td>
+        
+        <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
+      </tr>
+
+      <tr id="material-row">       
+        <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
+        <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
+      </tr>
+      
+      <tr id="ingredient-row"> 
+        <td>
+          <span class="showField" data-id="PROD" data-field="name"></span>
+        </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="amount_per_run"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
+        <td> <a href="" class="delAction" data-parent="FROMID" data-id="ID" data-from="ingredients">delete</a> </td>
+      </tr>
+
+
+      <tr id="step-row"> 
+        <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="produced_in_run" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="run_minutes" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> </td>
+        
+        <td>
+          Employees required <div class="updateFieldControl" data-id="ID" data-field="employees_required" data-input-type="number"></div><h5>Assigned Employees</h5><table></table><br> Add <select class="updateField showField" data-hide-on-empty="true" data-src-method="employees"></select></td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_run"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_hour"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
+        <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID" data-from="steps">delete</a> </td>
+      </tr>
+
+
+      <tr id="prod-row"> 
+        <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-format="$" data-field="sale_price"></div> </td>
+        <td>
+          <div class="updateFieldControl" data-id="ID" data-field="expected_sales" data-format="$" data-input-type="number"></div>
+          <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
+        </td>
+
+        <td> <span class="showField" data-id="ID" data-field="batch_revenue"></span> </td>
+        
+        <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID"
+                data-needs-confirmation="y" data-delete-message="Reallly delete this product?"
+                data-from="product_lines">delete</a> </td>
+
+      </tr>
+
+    </table>
+  </section>
 
 </html>

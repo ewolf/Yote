@@ -27,6 +27,7 @@ sub _when_added {
     if( $listName eq 'step_employees' ) {
         $self->add_to_steps( $toObj );
     }
+    print STDERR Data::Dumper->Dump([$self->get_steps(),"WHEN ADDED STEPS?"]);
 }
 sub _when_removed {
     my( $self, $fromObj, $listName, $moreArgs ) = @_;
@@ -34,10 +35,10 @@ sub _when_removed {
         $self->remove_from_steps( $fromObj );
     }
     if( $listName eq 'employees' ) {
-        # this is disallowed if this employee is in a step
-
-        #ugh, this can't work unless when_removed is executed before the removal
-        die "Cannot remove this employee. This employee performs a production step" if @{$self->get_steps([])} > 0;
+        print STDERR Data::Dumper->Dump([$self->get_steps(),"WHEN REMOVED STEPS?"]);
+        for my $step ( @{$self->get_steps([])} ) {
+            $step->remove_from_step_employees( $self );
+        }
     }
 }
 

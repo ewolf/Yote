@@ -17,7 +17,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.01';
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -701,15 +701,18 @@ sub _valid_token {
 
 
 sub _resetHasAndMay {
-    my( $self, $token ) = @_;
+    my( $self, $tokens ) = @_;
 
+    $self->{STORE}->lock( "_has_and_may_Token2objs" );
     for ( qw( doesHave mayHave ) ) {
         my $item = "_${_}_Token2objs";
-        $self->{STORE}->lock( $item );
         my $token2objs = $self->_get( $item );
-        delete $token2objs->{ $token };
-        $self->{STORE}->unlock( $item );
+        for my $token (@$tokens) {
+            delete $token2objs->{ $token };
+        }
     }
+    $self->{STORE}->unlock( "_has_and_may_Token2objs" );
+
 } #_resetHasAndMay
 
 sub _setHasAndMay {
@@ -771,6 +774,11 @@ sub _updates_needed {
 
 sub create_token {
     my $self = shift;
+    my $tries = shift;
+
+    if( $tries > 3 ) {
+        die "Error creating token. Got the same random number 4 times in a row";
+    }
 
     my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
     my $ip = $ENV{REMOTE_HOST};
@@ -779,49 +787,70 @@ sub create_token {
     # 10 minutes via time 10 min = 600 seconds = 600
     # or easy, so that 1000 seconds ( ~ 16 mins )
     # todo - make some sort of quantize function here
-    my $timechunk = int( time / 100 );
-    my $timeslot  = 7 + $timechunk;
+    my $current_time_chunk         = int( time / 100 );  
+    my $earliest_valid_time_chunk  = $current_time_chunk - 7;
 
     $self->{STORE}->lock( 'token_mutex' );
 
+
+    #
+    # A list of slot 'boats' which store token -> ip
+    #
     my $slots     = $self->get__token_timeslots();
+
+    #
+    # a list of times. the list index of these times corresponds
+    # to the slot 'boats'
+    #
     my $slot_data = $self->get__token_timeslots_metadata();
+    
     #
-    # check if the token is already used ( very unlikely ) and remove expired slots
+    # Check if the token is already used ( very unlikely ) and remove expired slots.
+    # If already used, try this again :/
     #
-    my $to_remove = 0;
     for( my $i=0; $i<@$slot_data; $i++ ) {
-        # remove slots that are too old
-        if( $slot_data->[ $i ] < $timechunk ) {
-            $to_remove++;
-        } elsif( $slots->[ $i ]{ $randpart } ) {
-            # if this produces the same rand number lots of times in a row
-            # something serious is wrong, so a stack overflow error is the least
-            # of worries
-            return $self->create_token;
-        }
-    }
-    for( my $i=0; $i<$to_remove; $i++ ) {
-        shift @$slots;
-        shift @$slot_data;
+        return $self->create_token( ++$tries ) if $slots->[ $i ]{ $randpart };
     }
 
     #
-    # Find out which boat this should be on. Create a new boat if necessary.
+    # See if this belongs on the most recent boat. If not, then
+    # create a new most recent boat.
     #
-    my $found = 0;
-    for( my $i=0; $i<@$slot_data; $i++ ) {
-        if( $slot_data->[ $i ] == $timeslot ) {
-            $slots->[ $i ]{ $randpart } = $ip;
-            $found = 1;
+    if( $slot_data->[ 0 ] == $current_time_chunk ) {
+        $slots->[ 0 ]{ $randpart } = $ip;
+    } else {
+        unshift @$slot_data, $current_time_chunk;
+        unshift @$slots, { $randpart => $ip };
+    }
+
+    #
+    # remove this token from old boats so it doesn't get purged
+    # when in a valid boat.
+    #
+    for( my $i=1; $i<@$slot_data; $i++ ) {
+        delete $slots->[$i]{ $randpart };
+    }
+
+    #
+    # Purge tokens in expired boats.
+    #
+    my @to_remove;
+    while( @$slot_data ) {
+        if( $slot_data->[$#$slot_data] < $earliest_valid_time_chunk ) {
+            print STDERR Data::Dumper->Dump(["POP!"]);
+            pop @$slot_data;
+            my $old = pop @$slots;
+            push @to_remove, keys %$old;
+        } else {
             last;
         }
     }
-    unless( $found ) {
-        push @$slot_data, $timeslot;
-        push @$slots, { $randpart => $ip };
-    }
 
+    if( @to_remove ) {
+                    print STDERR Data::Dumper->Dump([\@to_remove,"REMOOOOOOOOOOOV"]);
+        $self->_resetHasAndMay( \@to_remove );
+    }
+    
     $self->{STORE}->unlock( 'token_mutex' );
 
     return $randpart;

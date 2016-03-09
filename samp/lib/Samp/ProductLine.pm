@@ -8,6 +8,7 @@ use base 'Yote::Server::ListContainer';
 
 use Samp::Step;
 use Samp::Ingredient;
+use Samp::RawMaterial;
 
 sub _allowedUpdates {
     [ qw( name 
@@ -30,7 +31,8 @@ sub _allowedUpdates {
 
 sub _lists {
     { steps       => 'Samp::Step',
-      ingredients => 'Samp::Ingredient', #TODO - maybe this should be a hash?
+      ingredients => 'Samp::Ingredient',
+      raw_materials => 'Samp::RawMaterial', 
     };
 }
 
@@ -200,7 +202,13 @@ sub calculate {
     my $packaging_cost_per_batch = $self->get_packaging_cost_per_item * $batch_size;
     my $overhead_cost_per_batch  = 0;
     my $labor_cost_per_batch     = 0;
-    my $food_cost_per_batch      = $self->get_food_cost_per_batch + $self->get_packaging_cost_per_item * $batch_size;
+    
+    my $food_cost_per_batch      = 0;
+
+    my $raws = $self->get_raw_materials([]);
+    for my $raw (@$raws) {
+        $food_cost_per_batch += $raw->get_cost;
+    }
 
     # cost of the steps
     for my $step (@$steps) {
