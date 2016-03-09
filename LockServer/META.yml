@@ -17,12 +17,12 @@ name: Lock-Server
 provides:
   Lock::Server:
     file: lib/Lock/Server.pm
-    version: '1.4'
+    version: '1.5'
   Lock::Server::Client:
     file: lib/Lock/Server.pm
 requires:
   perl: v5.9.4
 resources:
   license: http://dev.perl.org/licenses/
-version: '1.4'
+version: '1.5'
 x_serialization_backend: 'CPAN::Meta::YAML version 0.012'

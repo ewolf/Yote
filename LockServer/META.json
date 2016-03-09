@@ -34,7 +34,7 @@
    "provides" : {
       "Lock::Server" : {
          "file" : "lib/Lock/Server.pm",
-         "version" : "1.4"
+         "version" : "1.5"
       },
       "Lock::Server::Client" : {
          "file" : "lib/Lock/Server.pm"
@@ -46,6 +46,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.4",
+   "version" : "1.5",
    "x_serialization_backend" : "JSON::PP version 2.27203"
 }
