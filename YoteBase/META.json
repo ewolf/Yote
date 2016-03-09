@@ -38,27 +38,27 @@
    "provides" : {
       "Yote" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       },
       "Yote::Array" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       },
       "Yote::Hash" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       },
       "Yote::Obj" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       },
       "Yote::ObjStore" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       },
       "Yote::YoteDB" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.3"
+         "version" : "1.31"
       }
    },
    "release_status" : "stable",
@@ -67,6 +67,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.3",
+   "version" : "1.31",
    "x_serialization_backend" : "JSON::PP version 2.27203"
 }

@@ -210,6 +210,7 @@ sub _create_listener_socket {
             Listen    => 10,
             LocalAddr => "$self->{host}:$self->{port}",
             );
+        last if $listener_socket;
         print STDERR "Unable to open the lock server socket. Retry $count of 10\n";
         sleep $count*$self->{time_between_attempts} unless $listener_socket;
     }

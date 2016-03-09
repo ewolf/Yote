@@ -9,6 +9,7 @@ no warnings 'numeric';
 use Lock::Server;
 use Yote;
 
+use IO::Socket::SSL;
 use JSON;
 use Time::HiRes qw(time);
 use URI::Escape;
@@ -45,11 +46,6 @@ sub start {
 
     $self->{STORE}{_locker} = $self->{_locker};
     $self->{_locker}->start;
-
-#    $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
-
-#    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
-    # child process
 
     my $listener_socket = $self->_create_listener_socket;
     die "Unable to open socket " unless $listener_socket;
@@ -94,29 +90,55 @@ sub run {
 sub _create_listener_socket {
     my $self = shift;
 
-    unless( $self->{STORE}{_locker} ) {
-        $self->{STORE}{_locker} = $self->{_locker};
-        $self->{_locker}->start;
-    }
-
     my $listener_socket;
     my $count = 0;
-    while( ! $listener_socket && ++$count < 10 ) { 
-        $listener_socket = new IO::Socket::INET(
-            Listen    => 10,
-            LocalAddr => "$self->{yote_host}:$self->{yote_port}",
-            );
+
+    if( $self->{use_ssl} && ( ! $self->{SSL_cert_file} || ! $self->{SSL_key_file} ) ) {
+        die "Cannot start server. SSL selected but is missing filename for SSL_cert_file and/or SSL_key_file";
+    }
+    while( ! $listener_socket && ++$count < 10 ) {
+        if( $self->{args}{use_ssl} ) {
+            my $cert_file = $self->{args}{SSL_cert_file};
+            my $key_file  = $self->{args}{SSL_key_file};
+            if( index( $cert_file, '/' ) != 0 ) {
+                $cert_file = "$self->{yote_root_dir}/$cert_file";
+            }
+            if( index( $key_file, '/' ) != 0 ) {
+                $key_file = "$self->{yote_root_dir}/$key_file";
+            }
+            print STDERR Data::Dumper->Dump([">$!<<"]);
+            $listener_socket = new IO::Socket::SSL(
+                Listen    => 10,
+                LocalAddr => "$self->{yote_host}:$self->{yote_port}",
+                SSL_cert_file => $cert_file,
+                SSL_key_file => $key_file,
+                );
+            print STDERR Data::Dumper->Dump([">>$@,$!,$?<<$listener_socket"]);
+        } else {
+            $listener_socket = new IO::Socket::INET(
+                Listen    => 10,
+                LocalAddr => "$self->{yote_host}:$self->{yote_port}",
+                );
+            print STDERR Data::Dumper->Dump(["NOR>>$@,$!,$?<<"]);
+        }
         last if $listener_socket;
         
         print STDERR "Unable to open the yote socket. Retry $count of 10\n";
         sleep 5 * $count;
     }
+
     unless( $listener_socket ) {
         $self->{error} = "Unable to open yote socket on port '$self->{yote_port}' : $! $@\n";
         $self->{_locker}->stop;
         _log( "unable to start yote server : $@ $!." );
         return 0;
     }
+
+    unless( $self->{STORE}{_locker} ) {
+        $self->{STORE}{_locker} = $self->{_locker};
+        $self->{_locker}->start;
+    }
+
     print STDERR "Starting yote server\n";
 
     unless( $self->{yote_root_dir} ) {
@@ -964,6 +986,17 @@ sub _can_access {
 1;
 
 __END__
+
+=head1 NAME
+
+Yote::Server - Serve up marshaled perl objects in javascript
+
+=head1 DESCRIPTION
+
+=cut
+
+
+
 
 
 okey, this is going to have something like

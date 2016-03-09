@@ -35,6 +35,9 @@ my %options = (
     lock_host            => '127.0.0.1',
     lock_attempt_timeout => 12,
     lock_timeout         => 10,
+    use_ssl              => 0,
+    SSL_cert_file        => '',
+    SSL_key_file         => '',
     );
 
 my %options_explanations = (
@@ -55,11 +58,16 @@ ng else",
 my $confile = "$yote_root_dir/yote.conf";
 if( -f $confile && -r $confile ) {
     # TODO - create conf with defaults and make it part of the install
-    open( IN, "<$confile" );
+    open( IN, "<$confile" ) or die "Unable to open config file $@ $!";
     while( <IN> ) {
+        chomp;
         s/\#.*//;
-        if( /^\s*([^=]+)\s*=\s*(.*)\s*$/ ) {
-            $options{$1} = $2 if defined $options{$1};
+        if( /^\s*([^=\s]+)\s*=\s*(.*)\s*$/ ) {
+            if( defined $options{$1} ) {
+                $options{$1} = $2 if defined $options{$1};
+            } else {
+                print STDERR "Warning: encountered '$1' in file. Ignoring";
+            }
         }
     }
     close IN;
@@ -90,7 +98,6 @@ while( @ARGV ) {
         print STDERR "Unknown argument '$_'\n";
     }
 }
-print STDERR Data::Dumper->Dump([\%options,"OPT"]);
 
 my $pidfile = "$options{yote_root_dir}/yote.pid";
 
