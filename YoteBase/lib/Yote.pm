@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 =head1 NAME
 
@@ -17,6 +17,25 @@ Yote - Persistant Perl container objects in a directed graph of lazilly loaded n
 This is for anyone who wants to store arbitrary structured state data and doesn't have 
 the time or inclination to write a schema or configure some framework. This can be used
 orthagonally to any other storage system.
+
+Yote only loads data as it needs too. It does not load all stored containers at once.
+Data is stored in a data directory and is stored using the DB::DataStore module. A Yote
+container is a key/value store where the values can be strings, numbers, arrays, hashes
+or other Yote containers.
+
+The entry point for all Yote data stores is the root node. All objects in the store are
+subject to recycling if they cannot trace a reference path back to this node. Recycling
+is called manually.
+
+There are lots of potential uses for Yote, and a few come to mind :
+
+ * configuration data
+ * data modeling
+ * user preference data
+ * user account data
+ * game data
+ * shopping carts
+ * product information
 
 =head1 SYNOPSIS
  
@@ -29,18 +48,38 @@ orthagonally to any other storage system.
  $root_node->add_to_myList( $store->newobj( { 
     someval  => 123.53,
     somehash => { A => 1 },
-    someobj  => $store->newobj( { foo => "Bar" } );
+    someobj  => $store->newobj( { foo => "Bar" }, 
+                'Optional-Yote-Subclass-Package' );
  } );
+
  # the root node now has a list 'myList' attached to it with the single 
  # value of a yote object that yote object has two fields, 
  # one of which is an other yote object.
  
  $root_node->add_to_myList( 42 );
 
+ #
+ # New Yote container objects are created with $store->newobj. Note that
+ # they must find a reference path to the root to be protected from
+ # recycling. 
+ #
+ my $newObj = $store->newobj;
+
  $root_node->set_field( "Value" );
 
  my $val = $root_node->get_value( "default" );
  # $val eq 'default'
+
+ $val = $root_node->get_value( "Somethign Else" );
+ # $val eq 'default' (old value not overridden by a new default value)
+
+
+ my $otherval = $root_node->get( 'ot3rv@l', 'other default' );
+ # $otherval eq 'other default'
+
+ $root_node->set( 'ot3rv@l', 'newy valuye' );
+ $otherval2 = $root_node->get( 'ot3rv@l', 'yet other default' );
+ # $otherval2 eq 'newy valuye'
 
  $root_node->set_value( "Something Else" );
 
@@ -53,10 +92,27 @@ orthagonally to any other storage system.
     print ">$example\n";
  }
 
+ #
+ # Each object gets a unique ID which can be used to fetch that
+ # object directly from the store.
+ #
  my $someid = $root_node->get_someobj->{ID};
 
  my $someref = $store->fetch( $someid );
 
+ #
+ # Even hashes and array have unique yote IDS. These can be
+ # determined by calling the _get_id method of the store.
+ #
+ my $hash = $root_node->set_ahash( { zoo => "Zar" } );
+ my $hash_id = $store->_get_id( $hash );
+ my $other_ref_to_hash = $store->fetch( $hash_id );
+
+ #
+ # Anything that cannot trace a reference path to the root
+ # is eligable for being recycled. A recycled object's ID
+ # will be reused for new objects.
+ #
  $myList->[0]->set_condition( "About to be recycled" );
  delete $myList->[0];
 
@@ -95,7 +151,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 =head1 NAME
 
@@ -517,7 +573,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -531,6 +587,12 @@ use overload
     '!='   => sub { ! ref($_[1]) || $_[1]->{ID} != $_[0]->{ID} },
     fallback => 1;
 
+=head2 set( $field, $value )
+
+    Assigns the given value to the field in this object and returns the 
+    assigned value.
+
+=cut
 sub set {
     my( $self, $fld, $val ) = @_;
 
@@ -539,12 +601,20 @@ sub set {
     $self->{DATA}{$fld} = $inval;
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
 }
+
+
+=head2 get( $field, $default-value )
+
+    Returns the value assigned to the field, assinging the default
+    value to it if the value is currently not defined.
+
+=cut
 sub get {
     my( $self, $fld, $default ) = @_;
     my $cur = $self->{DATA}{$fld};
     if( ! defined( $cur ) && defined( $default ) ) {
         if( ref( $default ) ) {
-            # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of tihngs to save
+            # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
             $self->{STORE}->_dirty( $default->{STORE}->_get_id( $default ) );
         }
                 $self->{STORE}->_dirty( $self, $self->{ID} );
@@ -655,7 +725,7 @@ sub AUTOLOAD {
             my( $self, $init_val ) = @_;
             if( ! defined( $self->{DATA}{$fld} ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
-                    # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of tihngs to save
+                    # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
                     $self->{STORE}->_dirty( $init_val, $self->{STORE}->_get_id( $init_val ) );
                 }
                 $self->{STORE}->_dirty( $self, $self->{ID} );
@@ -677,15 +747,21 @@ sub AUTOLOAD {
 #     Overridable Methods
 # -----------------------
 
-#
-# Called the very first time this object is created. It is not called
-# when object is loaded from storage.
-#
+=head2 _init
+  
+    This is called the first time an object is created. It is not 
+    called when the object is loaded from storage. This can be used
+    to set up defaults. This is meant to be overridden.
+
+=cut
 sub _init {}
 
-#
-# Called each time the object is loaded from the data store.
-#
+=head2 _init
+  
+    This is called each time the object is loaded from the data store.
+    This is meant to be overridden.
+
+=cut
 sub _load {}
 
 
@@ -748,7 +824,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -841,7 +917,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -914,7 +990,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.3';
+$VERSION = '1.31';
 
 #
 # This the main index and stores in which table and position
@@ -1094,10 +1170,10 @@ __END__
 
 =head1 COPYRIGHT AND LICENSE
 
-       Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       Copyright (c) 2016 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.3  (Mar 9, 2016))
+       Version 1.31  (Mar 9, 2016))
 
 =cut
