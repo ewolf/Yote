@@ -93,7 +93,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.4';
+$VERSION = '1.5';
 
 
 $Lock::Server::DEBUG = 0;
@@ -121,8 +121,8 @@ sub new {
         _id2pid              => {},
         _locks               => {},
         _locker_counts       => {},
-        attempts => $args->{reconnect_attemps} || 3,
-        time_between_attempts => $args->{time_between_attempts} || 3,
+        attempts => $args->{reconnect_attemps} || 10,
+        time_between_attempts => $args->{time_between_attempts} || 5,
 
     }, $class;
 } #new
@@ -170,15 +170,18 @@ sub stop {
 =cut
 sub start {
     my $self = shift;
+    my $sock = $self->_create_listener_socket;
+    die "Unable to open lockserver socket " unless $sock;
+
     if( my $pid = fork ) {
         # parent
         $self->{server_pid} = $pid;
         return $pid;
     }
-#    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
-    $0 = "LockServer";
+
     # child process
-    $self->run;
+    $0 = "LockServer";
+    $self->_run_loop( $sock );
 
 } #start
 
@@ -188,6 +191,13 @@ sub start {
 
 =cut
 sub run {
+    my $self = shift;
+    my $sock = $self->_create_listener_socket;
+    die "Unable to open lockserver socket " unless $sock;
+    $self->_run_loop( $sock );
+} #run
+
+sub _create_listener_socket {
     my $self = shift;
 
 
@@ -200,7 +210,8 @@ sub run {
             Listen    => 10,
             LocalAddr => "$self->{host}:$self->{port}",
             );
-        sleep $self->{time_between_attempts}*$count unless $listener_socket;
+        print STDERR "Unable to open the lock server socket. Retry $count of 10\n";
+        sleep $count*$self->{time_between_attempts} unless $listener_socket;
     }
     unless( $listener_socket ) {
 
@@ -217,7 +228,11 @@ sub run {
         exit;
     };
 
+    return $listener_socket;
+} #_create_listener_socket
 
+sub _run_loop {
+    my( $self, $listener_socket ) = @_;
     while( my $connection = $listener_socket->accept ) {
         my $req = <$connection>; 
         chomp $req;
@@ -245,7 +260,7 @@ sub run {
             $connection->close;
         }
     }
-} #run
+} #_run_loop
 
 sub _check {
     my( $self, $connection, $key_to_check ) = @_;

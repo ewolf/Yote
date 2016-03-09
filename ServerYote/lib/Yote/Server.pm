@@ -15,7 +15,7 @@ use URI::Escape;
 
 use vars qw($VERSION);
 
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 my $DEBUG = 0;
 
@@ -48,15 +48,21 @@ sub start {
 
 #    $self->{SERVER_ROOT} = $self->{STORE}->fetch_server_root;
 
+#    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+    # child process
+
+    my $listener_socket = $self->_create_listener_socket;
+    die "Unable to open socket " unless $listener_socket;
+
     if( my $pid = fork ) {
         # parent
         $self->{server_pid} = $pid;
         return $pid;
     }
-#    use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
+
+    # in child
     $0 = "YoteServer process";
-    # child process
-    $self->run;
+    $self->_run_loop( $listener_socket );
 
 } #start
 
@@ -71,12 +77,21 @@ sub stop {
     return 0;
 }
 
+
+
 =head2 run
 
     Runs the lock server.
 
 =cut
 sub run {
+    my $self = shift;
+    my $listener_socket = $self->_create_listener_socket;
+    die "Unable to open socket " unless $listener_socket;
+    $self->_run_loop( $listener_socket );
+}
+
+sub _create_listener_socket {
     my $self = shift;
 
     unless( $self->{STORE}{_locker} ) {
@@ -93,13 +108,13 @@ sub run {
             );
         last if $listener_socket;
         
-        print STDERR "Unable to open the socket. Retry $count of 10\n";
-        sleep 10;
+        print STDERR "Unable to open the yote socket. Retry $count of 10\n";
+        sleep 5 * $count;
     }
     unless( $listener_socket ) {
-        $self->{error} = "Unable to open socket on port '$self->{yote_port}' : $! $@\n";
+        $self->{error} = "Unable to open yote socket on port '$self->{yote_port}' : $! $@\n";
         $self->{_locker}->stop;
-        _log( "unable to start lock server : $@ $!." );
+        _log( "unable to start yote server : $@ $!." );
         return 0;
     }
     print STDERR "Starting yote server\n";
@@ -123,11 +138,15 @@ sub run {
 
     $SIG{CHLD} = 'IGNORE';
 
+    return $listener_socket;
+} #_create_listener_socket
+
+sub _run_loop {
+    my( $self, $listener_socket ) = @_;
     while( my $connection = $listener_socket->accept ) {
         $self->_process_request( $connection );
     }
-
-} #run
+}
 
 sub _log {
     my $msg = shift;
@@ -805,7 +824,7 @@ sub create_token {
     my $slot_data = $self->get__token_timeslots_metadata();
     
     #
-    # Check if the token is already used ( very unlikely ) and remove expired slots.
+    # Check if the token is already used ( very unlikely ).
     # If already used, try this again :/
     #
     for( my $i=0; $i<@$slot_data; $i++ ) {
@@ -837,7 +856,6 @@ sub create_token {
     my @to_remove;
     while( @$slot_data ) {
         if( $slot_data->[$#$slot_data] < $earliest_valid_time_chunk ) {
-            print STDERR Data::Dumper->Dump(["POP!"]);
             pop @$slot_data;
             my $old = pop @$slots;
             push @to_remove, keys %$old;
@@ -847,12 +865,23 @@ sub create_token {
     }
 
     if( @to_remove ) {
-                    print STDERR Data::Dumper->Dump([\@to_remove,"REMOOOOOOOOOOOV"]);
         $self->_resetHasAndMay( \@to_remove );
     }
     
     $self->{STORE}->unlock( 'token_mutex' );
-
+#    print STDERR Data::Dumper->Dump([$slot_data,$slots,"MADE TOKEN $randpart"]);
+#
+# $VAR1 = [
+#           '14575528'
+#         ];
+# $VAR2 = [
+#           {
+#             '913149795' => '127.0.0.1'
+#           }
+#         ];
+#
+#
+    
     return $randpart;
 
 } #create_token
