@@ -92,10 +92,10 @@ sub test_suite {
         waitpid $pid, 0;
 
         # XXX
-        fail("LOCKER4") if $?;
+        fail("LOCKER4 $?") if $?;
 
     }
-    cmp_ok( int(time -$t1),'>=',2, "second lock waited on the first" );
+    cmp_ok( int(time-$t1),'>=',2, "second lock waited on the first" );
 
     # deadlock timeouts
 

@@ -121,6 +121,9 @@ sub new {
         _id2pid              => {},
         _locks               => {},
         _locker_counts       => {},
+        attempts => $args->{reconnect_attemps} || 3,
+        time_between_attempts => $args->{time_between_attempts} || 3,
+
     }, $class;
 } #new
 
@@ -142,8 +145,15 @@ sub client {
 =cut
 sub stop {
     my $self = shift;
+
+    for my $pid (keys %{$self->{_id2pid}}) {
+        _log( "Killing child proc $pid" );
+        kill 'INT', $pid;
+    }
+    
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
+        _log( "Killing lock server proc $pid" );
         kill 'INT', $pid;
         return 1;
     }
@@ -181,11 +191,19 @@ sub run {
     my $self = shift;
 
 
-    my $listener_socket = new IO::Socket::INET(
-        Listen    => 10,
-        LocalAddr => "$self->{host}:$self->{port}",
-        );
+    my( $listener_socket, $count );
+
+    my $st = time;
+    
+    until( $listener_socket || $count++ > $self->{attempts} ) {
+        $listener_socket = new IO::Socket::INET(
+            Listen    => 10,
+            LocalAddr => "$self->{host}:$self->{port}",
+            );
+        sleep $self->{time_between_attempts}*$count unless $listener_socket;
+    }
     unless( $listener_socket ) {
+
         $self->{error} = "Unable to open socket on port '$self->{port}' : $! $@\n";
         _log( "unable to start lock server : $@ $!." );
         return 0;
@@ -428,7 +446,7 @@ sub new {
         port => $port,
         name => $lockerName,
         attempts => $args->{reconnect_attemps} || 3,
-        time_between_attempts => $args->{time_between_attempts} || 1,
+        time_between_attempts => $args->{time_between_attempts} || 3,
     }, $class;
 } #new 
 
@@ -439,7 +457,7 @@ sub _get_sock {
     my( $sock, $count );
     until( $sock || $count++ > $self->{attempts} ) {
         $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
-        sleep $self->{time_between_attempts} unless $sock;
+        sleep $self->{time_between_attempts}*($count) unless $sock;
     }
     die "Could not connect : $@" unless $sock;
     binmode $sock, ':utf8';
