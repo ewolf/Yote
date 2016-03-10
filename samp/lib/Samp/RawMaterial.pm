@@ -47,7 +47,6 @@ sub _init {
     $self->set_prod_units_per_pur_unit( 50 );
 
     $self->set_cost_per_month( 0 );        #calculated
-    $self->set_prod_units_per_month( 0 );  #calculated
     $self->set_cost_per_prod_unit( 0 );    #calculated
 } #_init
 
@@ -58,11 +57,10 @@ sub calculate {
     my $price = $self->get_pur_price;
     my $quan  = $self->get_pur_quan;
     $self->set_cost_per_month( $quan * $price );
+    my $prod_per_pur = $self->get_prod_units_per_pur_unit;
+    my $prod_units = $prod_per_pur * $quan;
 
-    my $prod_units = $self->get_prod_units_per_pur_unit * $quan;
-
-    $self->set_prod_units_per_month( $prod_units );
-    $self->set_cost_per_prod_unit( $price ? $prod_units / $price : undef );
+    $self->set_cost_per_prod_unit( $price ? $price / $prod_per_pur : undef );
     my $scene = $self->get_parent;
 
     my $lines = $scene->get_product_lines;

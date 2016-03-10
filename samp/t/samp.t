@@ -156,7 +156,7 @@ sub test_suite {
         is_used => 1,
         use_quantity => 4,
                         } );
-    # 25*(4/5) <---20<--- cost of frosting per batch
+    # 5*4  <---20<--- cost of frosting per batch
     #                x 4 batches --> 80 /month
 
     is( scalar(keys %{$line->get_comp2useage}), 3, "components to usage has values" );
