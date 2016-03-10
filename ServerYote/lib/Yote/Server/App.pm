@@ -41,7 +41,7 @@ sub login {
         # this and Yote::ServerRoot::fetch_app are the only ways to expose the account obj
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in
-        $self->{TOKEN}->set_acct( $self );
+        $self->{TOKEN}->set__acct( $self );
         return $acct;
     }
     die "Incorrect login";

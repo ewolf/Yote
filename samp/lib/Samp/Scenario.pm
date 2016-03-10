@@ -85,7 +85,6 @@ sub calculate {
         $self->set_current_product_line( $obj );
     }
 
-    
     my $hours_in_month = (365.0/12) * 8;
     
     #

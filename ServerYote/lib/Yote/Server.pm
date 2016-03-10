@@ -18,7 +18,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.03';
 
-my $DEBUG = 0;
+my $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -374,13 +374,6 @@ sub _process_request {
 
         my( @res );
         eval {
-            if ( ( $action eq 'fetch' || $action eq 'fetch_app' ) && $obj == $server_root ) {
-                # fetch is a special action that can return any 
-                # object in the system. It must check the token
-                # to see if that particular object is allowed/available
-                # to the caller
-                unshift( @$in_params, $token || '' );
-            }
             $obj->{TOKEN} = $server_root->_valid_token( $token || $cookies{token} );
             (@res) = ($obj->$action( @$in_params ));
         };
@@ -403,7 +396,7 @@ sub _process_request {
             # if there is a token, make it known that the token 
             # has received server root data
             $ids_to_update = [ $server_root_id ];
-            if ( $token > 1  ) {
+            if ( $token  ) {
                 unless( $store->_last_updated( $server_root_id ) ) {
                     $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ Time::HiRes::time ] );
                 }
@@ -816,6 +809,10 @@ sub _updates_needed {
 
 
 sub create_token {
+    shift->_create_token->get__randpart;
+}
+
+sub _create_token {
     my $self = shift;
     my $tries = shift;
 
@@ -824,7 +821,7 @@ sub create_token {
     }
 
     my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
-    my $token_node = $self->{STORE}->newobj( { randpart => $randpart } );
+    my $token_node = $self->{STORE}->newobj( { _randpart => $randpart } );
     
     # make the token boat. tokens last at least 10 mins, so quantize
     # 10 minutes via time 10 min = 600 seconds = 600
@@ -852,7 +849,7 @@ sub create_token {
     # If already used, try this again :/
     #
     for( my $i=0; $i<@$slot_data; $i++ ) {
-        return $self->create_token( $tries++ ) if $slots->[ $i ]{ $randpart };
+        return $self->_create_token( $tries++ ) if $slots->[ $i ]{ $randpart };
     }
 
     #
@@ -893,30 +890,14 @@ sub create_token {
     }
     
     $self->{STORE}->unlock( 'token_mutex' );
-#    print STDERR Data::Dumper->Dump([$slot_data,$slots,"MADE TOKEN $randpart"]);
-#
-# $VAR1 = [
-#           '14575528'
-#         ];
-# $VAR2 = [
-#           {
-#             '913149795' => '127.0.0.1'
-#           }
-#         ];
-#
-#
     
-    return $randpart;
+    return $token_node;
 
-} #create_token
+} #_create_token
 
 #
-# what things will the server root provide?
-# logins? apps?
+# Returns the app and possibly a logged in account
 #
-# fetch_app? It's just an object.
-#
-
 sub fetch_app {
     my( $self, $app_name, @args ) = @_;
     my $apps = $self->get__apps;
@@ -939,7 +920,10 @@ sub fetch_app {
         return undef;
     }
     if( $app->_can_access( @args ) ) {
-        return $app, $app->{TOKEN} ? $app->{TOKEN}->get_acct : undef;
+        my( @ret ) = ( $app );
+        my $acct = $app->{TOKEN} ? $app->{TOKEN}->get__acct : undef;
+        push @ret, $acct if $acct;
+        return @ret;
     }
 } #fetch_app
 
@@ -949,13 +933,14 @@ sub fetch_root {
 
 sub init_root {
     my $self = shift;
-    my $token = $self->{TOKEN} || $self->create_token;
+    my $token = $self->{TOKEN} || $self->_create_token;
     $self->_resetHasAndMay( [ $token ], 'hasOnly' );
-    return $self, $token->get_randpart;
+    return $self, $token->get__randpart;
 }
 
 sub fetch {
-    my( $self, $token, @ids ) = @_;
+    my( $self, @ids ) = @_;
+    my $token = $self->{TOKEN} ? $self->{TOKEN}->get__randpart : 0;
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};
     my $store = $self->{STORE};

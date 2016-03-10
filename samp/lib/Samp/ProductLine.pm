@@ -116,8 +116,12 @@ sub calculate {
                    grep { $_ != $self }  
                    @{$scenario->get_product_lines} ) {
         $seen{$comp} = 1; #  component, isUsed, amount needed per batch
-        my $c2u = $comp2useage{$comp} //= 
-            $self->{STORE}->newobj( { item => $comp, attached_to => $self }, 'Samp::Assign' );
+        my $c2u = $comp2useage{$comp};
+        unless( $c2u ) { 
+            $c2u = $self->{STORE}->newobj( { item => $comp, attached_to => $self }, 'Samp::Assign' );
+            $comp2useage{$comp} = $c2u;
+            push @$avail, $c2u; #<--- add the comp to the material
+        }
         if( $c2u->get_use_quantity ) {
             my $comp_costs = $comp->get_cost_per_prod_unit;
             my $quan       = $c2u->get_use_quantity; # units per batch
@@ -129,8 +133,8 @@ sub calculate {
     $self->set_cost_per_prod_unit( $batch_size ? $cost_per_batch / $batch_size : undef );
     for my $delme ( grep { ! $seen{$_} } keys %comp2useage ) {
         delete $comp2useage{$delme};
+        $self->remove_from_available_components( $delme ); #<--- remove the comp from the material
     }
-    $self->set_available_components( [ values %comp2useage ] );
     
     my $work_hours_in_month = 173; #rounded down
     my $work_days_in_month  = 21; #rounded down

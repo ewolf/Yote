@@ -18,6 +18,7 @@
                           ev.preventDefault();
                       }
                   } );
+
                   app.gather( [], function() {
                       setup_app( app );
                   } );
@@ -275,13 +276,13 @@
 
               modifyControl( '.delAction', 'delClick', function( $this ) {
                   $this.on( 'click', function(ev) {
+                      ev.preventDefault();
                       if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
                           return;
                       }
                       var par    = yote.fetch($this.data( 'parent' ));
                       var obj    = yote.fetch($this.data( 'id' ));
                       par.remove_entry( [obj,$this.data('from')] );
-                      ev.preventDefault();
                   } );
               } );
               modifyControl( '.addAction', 'addClick', function( $this ) {
@@ -500,7 +501,8 @@
               }
 
               var comps = prd.get( 'available_components' );
-              updateListener( comps, '_matslist', function() {
+              updateListener( comps, '_matslist_' + prd.id, function() {
+                  alert( 'update' );
                   setup_table( {
                       tabSel : '#components-tab',
                       rowSel : '#components-row',
