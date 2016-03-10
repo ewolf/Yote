@@ -19,7 +19,7 @@
                       }
                   } );
 
-                  app.gather_all( [], function() {
+                  app.gather( [], function() {
                       setup_app( app );
                   } );
               }
@@ -291,7 +291,7 @@
                       var create_action = $this.data('action');
                       var list  = $this.data('list');
                       var listOn = yote.fetch( $this.data('id') );
-                      listOn.add_entry( [{ listName: list }], function( newo ) {
+                      listOn.add_entry( [ list ], function( newo ) {
                           watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
                       ev.preventDefault();
                   } );
@@ -303,10 +303,12 @@
               $tab.empty();
               var items = args.list || args.listOn.get( args.listName );
               items.each( function( item, i ) {
-                  var row = fill_template( args.rowSel, args.replaceList || {
+                  var replaceList = typeof args.replaceList === 'function' ? args.replaceList( item, i ) : args.replaceList;
+                  var row = fill_template( args.rowSel, replaceList || {
                       ID     : item.id,
                       FROMID : args.listOn.id
                   }, args.fieldList || [ 'id', 'parent' ] );
+                  
                   $tab.append( row );
 
                   if( args.onEachRow ) {
@@ -328,6 +330,14 @@
               style : "decimal",
           } );
 
+          var _makeFormatter = function( decimals ) {
+              return new Intl.NumberFormat( "en-US", {
+                  minimumFractionDigits : decimals,
+                  maximumFractionDigits : decimals,
+                  style : "decimal",
+              } );
+          }
+          
           var _updater = function(o) {
               var id = o.id;
               $( ".showField" ).each( function() {
@@ -338,8 +348,14 @@
                   var fld = $this.data( 'field' );
                   var val = o.get( fld );
 
-                  if( $this.data( 'format' ) == '$' ) {
-                      val = _costForm.format( val );
+                  var form = $this.data( 'format' );
+                  if( form ) {
+                      if(  form == '$' ) {
+                          val = _costForm.format( val );
+                      }
+                      else if( form.startsWith('#') ) {
+                          val = _makeFormatter( $this.data('format').substr( 1 ) ).format( val );
+                      }
                   }
                   if( $this.is( 'input' ) ) {
                       var t = $this.attr('type');
@@ -394,8 +410,8 @@
 
               var curScene = undefined;
               updateListener( app, '_curSceneWatcher', function() {
-                  if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenarios' ) ) ) {
-                      curScene = app.get( 'current_scenarios' );
+                  if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenario' ) ) ) {
+                      curScene = app.get( 'current_scenario' );
                       var key = 'set-build-select-listener';
                       $( '#scene_sel' ).data( key, false );
                       setup_scenario( curScene );
@@ -407,7 +423,6 @@
 
           function setup_scenario(scenario) {
               var prods = scenario.get( 'product_lines' );
-              
               updateListener( prods, '_productCountWatched', function() {
                   if( prods.length() > 0 ) {
                       $( '#no_products' ).hide();
@@ -454,11 +469,21 @@
                       listOn : scenario
                   }  );
               }, true );
+
+              var raws = scenario.get( 'raw_materials' );
+              updateListener( raws, '_matslist', function() {
+                  setup_table( {
+                      tabSel : '#materials-tab',
+                      rowSel : '#material-row',
+                      list   : raws,
+                      listOn : scenario,
+                  } );
+              }, true );
               
               var curProd = undefined;
               updateListener( scenario, '_curProdWatcher', function() {
-                  if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_lines' ) ) ) {                  
-                      curProd = scenario.get( 'current_product_lines' );
+                  if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_line' ) ) ) {
+                      curProd = scenario.get( 'current_product_line' );
                       var key = 'set-build-select-listener';
                       $( '#prod_sel' ).data( key, false );
                       setup_product( curProd );
@@ -474,46 +499,26 @@
                   $( '#curr_products,#del_prod,#prod_sel' ).hide();
                   return false;
               }
-              $( '#new_ingredient' ).off('change').on( 'change', function() {
-                  var $this = $( this );
-                  var val = $this.val();
-                  if( val ) {
-                      var chosen = yote.fetch( val );
-                      if( chosen ) {
-                          prd.add_entry( [{ listName : 'ingredients',
-                                            itemArgs : chosen }], function( newi ) { 
-                                                var o = Array.isArray( newi ) ? newi[0] : newi;
-                                                watchForUpdates( o ); } );
-                      }
-                  }
-                  $this.val( undefined ); 
-              } );
 
-              // refresh ingredients table if the ingredients list changes
-              var ings = prd.get( 'ingredients' );
-              updateListener( ings, '_ingsChange', function() {
-                  $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
-                  setup_ingredients_table( prd );
-                  activateControls();
-              }, true );
-
-              //
-              // remove the flag on the 'new_gredient' select so that it refreshes. Do this when the
-              // product line changes
-              //
-              updateListener( prd, '_selectorListener', function() {
-                  $('#new_ingredient').data( 'set-build-select-listener', false ).data( 'id', prd.id );
-              } );
-
-              var raws = prd.get( 'raw_materials' );
-              updateListener( raws, '_matslist', function() {
+              var comps = prd.get( 'available_components' );
+              updateListener( comps, '_matslist', function() {
                   setup_table( {
-                      tabSel : '#materials-tab',
-                      rowSel : '#material-row',
-                      listName : 'raw_materials',
+                      tabSel : '#components-tab',
+                      rowSel : '#components-row',
+                      list   : comps,
                       listOn : prd,
+                      replaceList : function( comp, i ) {
+                          return {
+                              ID  : comp.id,
+                              RAW : comp.get( 'item' ).id
+                          }
+                      },
+                      onEachRow : function( row, comp, i ) {
+                          watchForUpdates(comp.get('item'));
+                      }
                   } );
               }, true );
+
               
               // set up steps table once, then every time the steps list changes
               var steps = prd.get( 'steps' );
@@ -542,7 +547,7 @@
                               if( val ) {
                                   var chosen = yote.fetch( val );
                                   if( chosen ) {
-                                      step.add_entry( [{ listName : 'step_employees', item : chosen }] );
+                                      step.add_entry( [ 'step_employees', chosen ] );
                                   }
                               }
                           } );
@@ -568,28 +573,6 @@
               energize( 'product', prd );
           } //setup_product
 
-          function setup_ingredients_table( prd ) {
-              var $tab = $( '#ingredients_tab' ).find( 'tbody' );
-              $tab.empty();
-
-              var ings = prd.get( 'ingredients' );
-              ings.each( function( ing, i ) {
-                  var prod = ing.get( 'product' );
-                  var row = fill_template( '#ingredient-row', {
-                      PARENTPROD : prd.id,
-                      PROD : prod.id,
-                      ING  : ing.id
-                  }, ['id','parent'] );
-                  $tab.append( row );
-              } );
-                                     
-              activateControls();
-              ings.each( function( ing, i ) {
-                  var prod = ing.get( 'product' );
-                  watchForUpdates( prod, ing );
-              } );
-          } //setup_ingredients_table
-
       } //init
 -->
     </script>
@@ -608,7 +591,7 @@
 
     section { margin-left: 2em; }
     #scenario th { text-align: right ; }
-    #employee-tab td { text-align: center; }
+    td { text-align: center; }
     </style>
 
 
@@ -623,7 +606,7 @@
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
     <p id="scenario_picker">
-      Selected Scenario <select class="showField updateField app" data-field="current_scenarios"
+      Selected Scenario <select class="showField updateField app" data-field="current_scenario"
                                 data-var-is="object" data-src-field="scenarios" id="scene_sel"></select>
       <a href="" class="delAction app-child scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
     </p>
@@ -648,10 +631,16 @@
       <p>
         Monthly Payroll <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_payroll"></span>
       </p>
+      <p>
+        Manhours Scheduled <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_assigned_manhours"></span>
+      </p>
+      <p>
+        Calculated Manhours Required  <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_manhours_required"></span>
+      </p>
       <div>
         <table id="employee-tab">
           <thead>
-            <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Weekly Hours</th> <th>Notes</th> <th>Action</th> </tr>
+            <tr> <th>Employee</th> <th>Hourly Rate</th> <th>Weekly Hours</th> <th>Manhours in month</th> <th>Notes</th> <th>Action</th> </tr>
           </thead>
           <tbody>
           </tbody>
@@ -662,10 +651,10 @@
       </div>
     </section>
     
-    <h3>Expenses</h3>
+    <h4>Expenses</h4>
     <section id="expenses">
       <p>
-        Monthly Expenses <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_overhead"></span>
+        Monthly Expenses <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_expenses"></span>
       </p>
       <table id="expenses-tab">
         <thead>
@@ -678,7 +667,23 @@
         <a href="" class="addAction scenario" data-list="expenses">Add Expense</a>
       </p>
     </section>        
-    
+
+    <h4>Raw Materials</h4>
+    <section id="materials">
+      <p>
+        Monthly Materials Cost <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_raw_materials_cost"></span>
+      </p>
+      <table id="materials-tab">
+        <thead>
+          <tr> <th>Item</th> <th>Purchases</th> <th>Amount</th> <th>Usage</th> <th>Notes</th> <th>Action</th> </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+      <a href="" class="addAction scenario" data-list="raw_materials">New Raw Material</a>
+    </section>
+
+
     <h4>Production Summary</h4>
     <section id="product-summary">
       <p>
@@ -686,13 +691,13 @@
       </p>
 
       <p>
-        Revenue <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_revenue"></span>
+        Monthly Revenue <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_revenue"></span>
       </p>
 
       
       <table id="product-tab">
         <thead>
-          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Batches/Month</th> <th>Action</th> </tr>
+          <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Batch Size</th> <th>Batches/Month</th> <th>Manhours</th> <th>Production Rate</th> <th>Notes</th> <th>Action</th> </tr>
         </thead>
         <tbody>
         </tbody>
@@ -706,67 +711,26 @@
     <section  id="product-detail">
       <p>
         Editing 
-        <select class="showField updateField scenario" data-field="current_product_lines" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
+        <select class="showField updateField scenario" data-field="current_product_line" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
       </P>
       <span id="no_products">No Products</span>
       <div id="curr_product">
 
-        <table>
-          <tbody>
-            <tr> <th>Notes</th>
-              <td><div class="updateFieldControl product" data-classes="product" data-field="notes" data-input-type="text"></div></td></tr>
-
-            <tr> <th>Sale Price / unit</th>
-              <td><div class="updateFieldControl product" data-classes="product" data-field="sale_price" data-input-type="number"></div></td>
-            </tr>
-            <tr>
-              <th>Expected Sales</th> <td><div class="updateFieldControl product" data-classes="product" data-field="expected_sales" data-input-type="number"></div></td>
-              <th>per</th> <td><select class="showField updateField product" data-field="expected_sales_per" data-src-method="expected_sales_per"></select></td>
-            </tr>
-
-            <tr> <th>Scheduled Batches / Month </th> <td>
-                <div id="set_batches" class="updateFieldControl product" data-input-type="number" data-field="batches_per_month"></div>
-            </td> </tr>
-
-            <tr> <th>Est. Batches Needed / Month </th> <td>
-                <span id="read_batches" class="showField product" data-format="$" data-field="batch_size_used"></span>
-            </td> </tr>
-            <tr> <th>Packaging Cost / item</th> 
-              <td>
-                <div class="updateFieldControl product" data-classes="product" data-field="packaging_cost_per_item" data-format="$"></div> 
-              </td>
-            </tr>
-
-
-            <tr><th> </th> <td><div></div></td> </tr>
-          </tbody>
-        </table>
-
-        <h4>Raw Materials</h4>
-        <table border="1" id="materials-tab">
-          <thead>
-            <tr> <th>Item</th> <th>Cost/Unit</th><th>Units/Batch</th> <th>Notes</th> <th>Action</th> </tr>
-          </thead>
-          <tbody>
-          </tbody>
-        </table>
-        <a href="" class="addAction product" data-list="raw_materials">New Raw Material</a>
         
         <h4>Components</h4>
-        <table border="1" id="ingredients_tab">
+        <table border="1" id="components-tab">
           <thead>
-            <tr> <th>Component</th> <th>Amount per Item</th> <th>Notes</th> <th>Action</th> </tr>
+            <tr> <th>Component</th> <th>Amount per Batch</th> <th>Notes</th> </tr>
           </thead>
           <tbody>
           </tbody>
         </table>
-        <select class="updateField showField product" id="new_ingredient" data-src-method="ingredients"></select>
-        
+    
         <h4>Steps</h4>
 
         <table border="1" id="steps-tab">
           <thead>
-            <tr> <th>Name</th> <th>Items per step</th>  <th>Duration of Step (minutes) </th> <th>Failure Rate</th> <th>Min time for step</th> <th>Employees</th> <th>Overhead per Run</th> <th>Overhead per Hour</th> <th>Notes</th> <th>Actions</th> </tr>
+            <tr> <th>Name</th> <th>Produces</th> <th>Failure Rate</th> <th>Min time for step</th> <th>Employees</th> <th>Notes</th> <th>Actions</th> </tr>
           </thead>
           <tbody>
           </tbody>
@@ -774,7 +738,6 @@
         <a href="" class="addAction product" data-list="steps">New Step</a>
       </div>
     </section>
-    
   </body>
 
   <section class="template" id="templates">
@@ -783,7 +746,8 @@
       <tr id="employee-row"> 
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
         <td> <div class="updateFieldControl" data-id="ID" data-field="hourly_pay" data-input-type="number"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="hours_per_week" data-input-type="number"></div> </td>
+    <td> <div class="updateFieldControl" data-id="ID" data-field="hours_per_week" data-input-type="number"></div> </td>
+        <td> <span class="showField" data-id="ID" data-field="manhours_month" data-format="#0"></span> </td>
         <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
         <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID"
                 data-needs-confirmation="true" data-delete-message="Really remove employee?"
@@ -795,7 +759,7 @@
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
         <td>
           <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
-          <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-method="cost_period_type"></select>
+          <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-field="cost_period_types"></select>
         </td>
         
         <td>
@@ -805,39 +769,57 @@
         <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
       </tr>
 
-    <tr id="material-row">
-      <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-      <td>
-        <div class="updateFieldControl" data-id="ID" data-field="cost_unit"></div>
-      </td>
-      <td>
-        <div class="updateFieldControl" data-id="ID" data-field="units_batch"></div>
-      </td>
-      <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
-      <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="raw_materials">delete</a> </td>
-      </tr>
-      
-      <tr id="ingredient-row"> 
+      <tr id="material-row">
+        <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
+
         <td>
-          <span class="showField" data-id="PROD" data-field="name"></span>
+          buy
+          <div class="updateFieldControl" data-id="ID" data-field="pur_quan"></div>
+          <div class="updateFieldControl" data-id="ID" data-field="pur_unit"></div> 
+          (s) every
+          <select class="showField updateField" data-id="ID" data-field="pur_time" data-src-field="cost_period_types"></select>
+          at a cost of
+          <div class="updateFieldControl" data-id="ID" data-field="pur_price"></div>
+          each
         </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="amount_per_run"></div> </td>
+        
+        <td>
+          each
+          <span class="showField" data-id="ID" data-field="pur_unit"></span>
+          contains
+          <div class="updateFieldControl" data-id="ID" data-field="prod_units_per_pur_unit"></div>
+          <div class="updateFieldControl" data-id="ID" data-field="prod_unit"></div> (s)
+        </td>
+
+        <td> Using <span class="showField" data-id="ID" data-field="units_used"></span>
+          <span class="showField" data-id="ID" data-field="prod_unit"></span> (s) per month </td>
+
         <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
-        <td> <a href="" class="delAction" data-parent="FROMID" data-id="ID" data-from="ingredients">delete</a> </td>
+        <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="raw_materials">delete</a> </td>
+        
+      </tr>
+    
+      <tr id="components-row">
+        <td>
+          <span class="showField" data-id="RAW" data-field="name"></span>
+        </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="use_quantity"></div>
+          <span class="showField" data-id="RAW" data-field="prod_unit"></span> (s)
+        </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
       </tr>
 
 
       <tr id="step-row"> 
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="produced_in_run" data-input-type="number"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="run_minutes" data-input-type="number"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="number_produced_in_timeslice" data-input-type="number"></div> items in 
+          <div class="updateFieldControl" data-id="ID" data-field="timeslice_mins" data-input-type="number"></div> minutes
+        </td>
         <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> </td>
-        
-        <td>
-          Employees required <div class="updateFieldControl" data-id="ID" data-field="employees_required" data-input-type="number"></div><h5>Assigned Employees</h5><table></table><br> Add <select class="updateField showField" data-hide-on-empty="true" data-src-method="employees"></select></td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_run"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="overhead_cost_per_hour"></div> </td>
+        <td> <div class="updateFieldControl" data-id="ID" data-field="min_run_time" data-input-type="number"></div> mins</td>
+
+        <td> <div class="updateFieldControl" data-id="ID" data-field="number_employees_required"></div> </td>
+
         <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
         <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID" data-from="steps">delete</a> </td>
       </tr>
@@ -848,11 +830,24 @@
         <td> <div class="updateFieldControl" data-id="ID" data-format="$" data-field="sale_price"></div> </td>
         <td>
           <div class="updateFieldControl" data-id="ID" data-field="expected_sales" data-format="$" data-input-type="number"></div>
-          <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-method="expected_sales_per"></select>
+          <select class="showField updateField" data-id="ID" data-field="expected_sales_per" data-src-field="sales_units"></select>
         </td>
 
         <td> <div class="updateFieldControl" data-id="ID" data-field="batch_size"></div> </td>
         
+        <td> <div class="updateFieldControl" data-id="ID" data-field="batches_per_month"></div> </td>
+
+        <td>
+          <span class="showField" data-id="ID" data-format="#2" data-field="manhours_per_batch"></span> / batch <br>
+          <span class="showField" data-id="ID" data-format="#0" data-field="manhours_per_month"></span> / month <br>          
+        </td>        
+
+        
+        <td>
+          <span class="showField" data-id="ID" data-field="items_per_hour"></span> hour
+        </td>        
+        
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>        
         <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID"
                 data-needs-confirmation="y" data-delete-message="Reallly delete this product?"
                 data-from="product_lines">delete</a> </td>

@@ -22,11 +22,11 @@ my %times = (  #normalize to month
 
 
 sub _allowedUpdates {
-    [qw( name 
+    qw( name 
          notes
          description 
-         current_product_lines
-    )]
+         current_product_line
+    )
 }
 sub _lists {
     {
@@ -42,15 +42,16 @@ sub _init {
     my $self = shift;
     $self->SUPER::_init();
     my $store = $self->{STORE};
-    if( 0 ) {
+
     $self->add_entry( 'raw_materials',
                       $store->newobj( {
                           name => 'chocolate',
-                          unit => 'pound',
-
-                          cost => 10,
-                          purchase_quantity => 2,
-                          units_month => 50,
+                          pur_quan  => 5,
+                          pur_time  => 'month',
+                          pur_price => 70,
+                          pur_unit  => '25 pound bag',
+                          prod_unit => 'pound',
+                          prod_units_per_pur_unit => 25,
                                       }, 'Samp::RawMaterial' ) );
     $self->add_entry( 'employees',
                       $store->newobj( {
@@ -73,23 +74,31 @@ sub _init {
                       $store->newobj( {
                           name => 'first product',
                                       }, 'Samp::ProductLine' ) );
-    }
+
     $self->calculate;
 } #_init
 
 sub calculate {
-    my( $self, $type, $other ) = @_;
+    my( $self, $type, $listName, $obj ) = @_;
 
+    if( $type eq 'new_entry' && $listName eq 'product_lines' ) {
+        $self->set_current_product_line( $obj );
+    }
+
+    
     my $hours_in_month = (365.0/12) * 8;
-
+    
     #
-    # payroll,
+    # payroll, manhours
     #
     my $payroll = 0;
+    my $hours   = 0;
     for my $emp (@{$self->get_employees([])}) {
         $payroll += $emp->get_monthly_pay;
+        $hours   += $emp->get_manhours_month;
     }
     $self->set_monthly_payroll( $payroll );
+    $self->set_monthly_assigned_manhours( $hours );
 
     #
     # periodic expenses
@@ -118,13 +127,16 @@ sub calculate {
     #
     my $prod_costs = 0;
     my $prod_revenue = 0;
+    my $manhours_required = 0;
     for my $prod (@{$self->get_product_lines([])}) {
         $prod_costs   += $prod->get_cost_per_month;
         $prod_revenue += $prod->get_revenue_month;
+        $manhours_required += $prod->get_manhours_per_month;
     }
 
     $self->set_monthly_product_costs( $prod_costs );
     $self->set_monthly_product_revenue( $prod_revenue );
+    $self->set_monthly_manhours_required( $manhours_required );
 
     $self->set_total_monthly_costs( $payroll + $periodic + $matcost );
 

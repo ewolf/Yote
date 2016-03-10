@@ -6,6 +6,8 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
+sub _gather { shift->get_cost_period_types }
+
 sub _init {
     my $self = shift;
     $self->SUPER::_init;

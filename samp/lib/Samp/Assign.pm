@@ -8,8 +8,9 @@ use base 'Yote::Server::ListContainer';
 
 sub _allowedUpdates {
     qw(
+        notes
+
         item
-        is_used
         use_quantity
       )
 } #allowedUpdates
@@ -17,6 +18,7 @@ sub _allowedUpdates {
 sub calculate {
     my $self = shift;
 
+    $self->get_attached_to->calculate( 'assign', $self );
     $self->get_item->calculate( 'assign', $self );
 }
 

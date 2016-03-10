@@ -72,7 +72,8 @@ sub add_entry {
     $obj->get_parent( $self );
 
     push @$list, $obj;
-    $self->calculate( 'new_entry', $listName );
+    $obj->calculate( 'added_to_list', $listName, $self );
+    $self->calculate( 'new_entry', $listName, $obj );
     $obj, $obj->gather;
 } #add_entry
 

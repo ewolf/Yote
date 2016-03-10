@@ -35,7 +35,15 @@ sub test_suite {
     my $root_node = $store->fetch_root;
 
     my $scene = $store->newobj( { name => "Test Scenario" }, 'Samp::Scenario' );
-
+    $scene->set_raw_materials([]);
+    $scene->set_employees([]);
+    $scene->set_equipment([]);
+    $scene->set_expenses([]);
+    $scene->set_product_lines([]);
+    $scene->calculate;
+    
+    is( $scene->get_total_monthly_costs, 0, 'zero expense - total cost' );
+    
     my( $exp ) = $scene->add_entry( 'expenses' );
     $exp->update( {
         name => 'rent',
@@ -106,7 +114,7 @@ sub test_suite {
         batch_unit => 'item',
         batches_per_month => 4,
                    } );
-    is( scalar(keys %{$line->get_comp2useage}), 2, "components to usage has values" );
+    is( scalar(keys %{$line->get__comp2useage}), 2, "components to usage has values" );
     is( $scene->get_total_monthly_costs, 7652, 'first line - total costs' );
     is( $scene->get_monthly_expenses, 4600, 'first line - monthly expenses' );
     is( $scene->get_monthly_payroll, 2600, 'first line - no payroll yet' );
@@ -143,6 +151,7 @@ sub test_suite {
     ( $raw ) = $scene->add_entry( 'raw_materials' );
     $raw->update( {
         pur_quan                => 3,
+        pur_time                => 'month',
         pur_price               => 25,
         pur_unit                => 'bucket o frosting',
         prod_unit               => 'gallon',
@@ -151,15 +160,14 @@ sub test_suite {
 
     $line->add_entry( 'raw_materials', $raw );
 
-    my $frost_use = $line->get_comp2useage->{$raw};
+    my $frost_use = $line->get__comp2useage->{$raw};
     $frost_use->update( {
-        is_used => 1,
         use_quantity => 4,
                         } );
     # 5*4  <---20<--- cost of frosting per batch
     #                x 4 batches --> 80 /month
 
-    is( scalar(keys %{$line->get_comp2useage}), 3, "components to usage has values" );
+    is( scalar(keys %{$line->get__comp2useage}), 3, "components to usage has values" );
     is( $scene->get_total_monthly_costs, 7727, 'first step - total costs' );
     is( $scene->get_monthly_expenses, 4600, 'first step - monthly expenses' );
     is( $scene->get_monthly_payroll, 2600, 'first step - no payroll yet' );

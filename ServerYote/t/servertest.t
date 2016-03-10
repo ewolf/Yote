@@ -104,7 +104,7 @@ sub msg {  #returns resp code, headers, response pased from json
 }
 
 sub l2a {
-    # converts a list to an array
+    # converts a list to a hash ref
     my $params = ref( $_[0] ) ? $_[0] : [ @_ ];
     return { map { $_ => 1 } @$params };
 }
@@ -198,9 +198,9 @@ sub test_suite {
 
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $fooObj->{ID} );
     is( $retcode, 200, "able to fetch allowed object" );
-    is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
+    is( scalar( keys %{$ret->{methods}} ), 1, "one  method set returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
-               l2a( qw( someMethod  ) ), 'correct methods for server object' );
+               l2a( qw( someMethod absorb ) ), 'correct methods for server object' );
     
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
 

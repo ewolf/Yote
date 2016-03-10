@@ -38,8 +38,8 @@ sub _init {
         is_bottleneck   => 0,  # calculated
 
         number_employees_required  => 1,
-        employee2assign     => {},
-        equip2assign       => {},
+        _employee2assign     => {},
+        _equip2assign       => {},
         messages => '',                # calculated
         valid    => 0,                 # valid
                    } );
@@ -47,7 +47,7 @@ sub _init {
 
 sub run_time {
     my( $self, $quan ) = @_;
-    my $min  = $self->get_min_run_time;
+    my $min  = $self->get_min_run_time / 60;
     my $rate = $self->get_production_rate;
     return $min unless $rate;
     my $time = $quan / $rate;
@@ -56,13 +56,13 @@ sub run_time {
 
 sub _max_batch_size {
     my $self = shift;
-    my $e2a = $self->get_equip2assign;    
+    my $e2a = $self->get__equip2assign;    
 
     #
     # calculates out how many batches can be done in parallel
     # and multiplies the max batch size of the equipment by how many times in parallel
     #
-    my $emps2a = $self->get_employee2assign;
+    my $emps2a = $self->get__employee2assign;
     my( $emps_avail ) = scalar( grep { $_->get_is_used } values %$emps2a );
 
     my $emps_reqd = $self->get_number_employees_required;
@@ -109,7 +109,7 @@ sub calculate {
     # any of which can be used
     #
     my $avail_emps  = $scene->get_employees;
-    my $emps2assign = $self->get_employee2assign;
+    my $emps2assign = $self->get__employee2assign;
 
     my $assigned_employees = 0;
     my %seen;
@@ -125,7 +125,7 @@ sub calculate {
     }
 
     my $avail_equip = $scene->get_equipment;
-    my $equip2assign = $self->get_equip2assign;
+    my $equip2assign = $self->get__equip2assign;
     %seen = ();
     for my $eq (@$avail_equip) {
         $seen{ $eq } = 1; # equipment, used

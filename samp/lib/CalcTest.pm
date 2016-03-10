@@ -13,11 +13,11 @@ use Samp::Scenario;
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
-    $self->set_current_scenarios( $self->add_entry( { listName => 'scenarios' } ) );
+    $self->add_entry( { listName => 'scenarios' } );
 }
 
 sub _allowedUpdates {
-    [ 'current_scenarios' ];
+    'current_scenario';
 }
 
 sub _lists {
@@ -26,19 +26,18 @@ sub _lists {
     };
 }
 
-sub _on_add {
-    my( $self, $listName, $obj ) = @_;
-    if( $listName eq 'scenarios' ) {
-        $self->set_current_scenarios( $obj );
+sub calculate {
+    my( $self, $type, $listName, $scen ) = @_;
+    if( $type eq 'new_entry' && $listName eq 'scenarios' ) {
+        $self->set_current_scenario( $scen );
     }
 }
-
 
 # handy RESET for testing
 sub reset {
     my $self = shift;
     $self->set_scenarios( [] );
-    $self->set_current_scenarios( $self->add_entry({ listName => 'scenarios' }) );
+    $self->add_entry( 'scenarios' );
 }
 
 1;

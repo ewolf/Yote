@@ -106,20 +106,17 @@ sub _create_listener_socket {
             if( index( $key_file, '/' ) != 0 ) {
                 $key_file = "$self->{yote_root_dir}/$key_file";
             }
-            print STDERR Data::Dumper->Dump([">$!<<"]);
             $listener_socket = new IO::Socket::SSL(
                 Listen    => 10,
                 LocalAddr => "$self->{yote_host}:$self->{yote_port}",
                 SSL_cert_file => $cert_file,
                 SSL_key_file => $key_file,
                 );
-            print STDERR Data::Dumper->Dump([">>$@,$!,$?<<$listener_socket"]);
         } else {
             $listener_socket = new IO::Socket::INET(
                 Listen    => 10,
                 LocalAddr => "$self->{yote_host}:$self->{yote_port}",
                 );
-            print STDERR Data::Dumper->Dump(["NOR>>$@,$!,$?<<"]);
         }
         last if $listener_socket;
         
@@ -240,13 +237,20 @@ sub _process_request {
         
         my $req = <$sock>;
         $ENV{REMOTE_HOST} = $sock->peerhost;
-        my %headers;
+        my( %headers, %cookies );
         while( my $hdr = <$sock> ) {
             $hdr =~ s/\s*$//s;
             last if $hdr !~ /[a-zA-Z]/;
             my( $key, $val ) = ( $hdr =~ /^([^:]+):(.*)/ );
             $headers{$key} = $val;
         }
+
+        for my $cookie ( split( /\s*;\s*/, $headers{Cookie} ) ) {
+            $cookie =~ s/^\s*|^\s*$//g;
+            my( $key, $val ) = split( /\s*=\s*/, $cookie, 2 );
+            $cookies{ $key } = $val;
+        }
+        
         my $store = $self->{STORE};
 
         _log( "\n--> : $req" );
@@ -323,10 +327,11 @@ sub _process_request {
 
         my $server_root = $self->{STORE}->fetch_server_root;
         my $server_root_id = $server_root->{ID};
+        my $token_node = $server_root->_valid_token( $token );
         unless( $obj_id eq '_' || 
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
-                      $server_root->_valid_token( $token, $ENV{REMOTE_HOST} ) && 
+                      $token_node && 
                       $server_root->_getMay( $obj_id, $token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
@@ -369,18 +374,15 @@ sub _process_request {
 
         my( @res );
         eval {
-            if ( $action eq 'fetch' && $obj == $server_root ) {
+            if ( ( $action eq 'fetch' || $action eq 'fetch_app' ) && $obj == $server_root ) {
                 # fetch is a special action that can return any 
                 # object in the system. It must check the token
                 # to see if that particular object is allowed/available
                 # to the caller
-                unshift( @$in_params, $token );
+                unshift( @$in_params, $token || '' );
             }
+            $obj->{TOKEN} = $server_root->_valid_token( $token || $cookies{token} );
             (@res) = ($obj->$action( @$in_params ));
-            if( $action eq 'init_root' ) {
-                my $token = $server_root->create_token;
-                push @res, $token;
-            }
         };
 
         if ( $@ ) {
@@ -461,7 +463,9 @@ sub _process_request {
             'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . length( $out_json ),
-        );
+            );
+        push @headers, "Set-Cookie: token=$token; Domain=$self->{yote_host}; Expires=Sun, 16 Jul 3567 06:23:41 GMT; Path=/; Version=1; HttpOnly" if $token && $token ne '_';
+
         _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
 
@@ -593,8 +597,6 @@ sub fetch_server_root {
     # or make it simple. if the webapp has an account, then pass that account
     # with the rest of the arguments
 
-    # verify the token - ip match in the server root object
-    
     # then verify if the command can run on the app object with those args
     # or even : $myapp->run( 'command', @args );
 
@@ -711,7 +713,6 @@ use base 'Yote::ServerObj';
 
 sub _init {
     my $self = shift;
-    $self->set__token2ip({});
     $self->set__doesHave_Token2objs({});
     $self->set__mayHave_Token2objs({});
     $self->set__apps({});
@@ -726,15 +727,15 @@ sub _log {
 }
 
 sub _valid_token {
-    my( $self, $token, $ip ) = @_;
+    my( $self, $token ) = @_;
     my $slots = $self->get__token_timeslots();
     for( my $i=0; $i<@$slots; $i++ ) {
-        if( $slots->[$i]{$token} eq $ip ) {
+        if( my $token_node = $slots->[$i]{$token} ) {
             if( $i < $#$slots ) {
                 # refresh its time
-                $slots->[0]{ $token } = $ip;
+                $slots->[0]{ $token } = $token_node;
             }
-            return 1;
+            return $token_node;
         }
     }
     0;
@@ -742,10 +743,11 @@ sub _valid_token {
 
 
 sub _resetHasAndMay {
-    my( $self, $tokens ) = @_;
+    my( $self, $tokens, $hasOnly ) = @_;
 
     $self->{STORE}->lock( "_has_and_may_Token2objs" );
-    for ( qw( doesHave mayHave ) ) {
+    my( @lists ) = $hasOnly ? qw( mayHave ) : qw( doesHave mayHave );
+    for ( @lists ) {
         my $item = "_${_}_Token2objs";
         my $token2objs = $self->_get( $item );
         for my $token (@$tokens) {
@@ -822,7 +824,7 @@ sub create_token {
     }
 
     my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
-    my $ip = $ENV{REMOTE_HOST};
+    my $token_node = $self->{STORE}->newobj( { randpart => $randpart } );
     
     # make the token boat. tokens last at least 10 mins, so quantize
     # 10 minutes via time 10 min = 600 seconds = 600
@@ -850,7 +852,7 @@ sub create_token {
     # If already used, try this again :/
     #
     for( my $i=0; $i<@$slot_data; $i++ ) {
-        return $self->create_token( ++$tries ) if $slots->[ $i ]{ $randpart };
+        return $self->create_token( $tries++ ) if $slots->[ $i ]{ $randpart };
     }
 
     #
@@ -858,10 +860,10 @@ sub create_token {
     # create a new most recent boat.
     #
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
-        $slots->[ 0 ]{ $randpart } = $ip;
+        $slots->[ 0 ]{ $randpart } = $token_node;
     } else {
         unshift @$slot_data, $current_time_chunk;
-        unshift @$slots, { $randpart => $ip };
+        unshift @$slots, { $randpart => $token_node };
     }
 
     #
@@ -936,7 +938,9 @@ sub fetch_app {
         _log( "App '$app_name' not found" );
         return undef;
     }
-    return $app->_can_access( @args ) ? $app : undef;
+    if( $app->_can_access( @args ) ) {
+        return $app, $app->{TOKEN} ? $app->{TOKEN}->get_acct : undef;
+    }
 } #fetch_app
 
 sub fetch_root {
@@ -944,7 +948,10 @@ sub fetch_root {
 }
 
 sub init_root {
-    return shift;
+    my $self = shift;
+    my $token = $self->{TOKEN} || $self->create_token;
+    $self->_resetHasAndMay( [ $token ], 'hasOnly' );
+    return $self, $token->get_randpart;
 }
 
 sub fetch {

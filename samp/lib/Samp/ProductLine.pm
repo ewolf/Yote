@@ -33,10 +33,19 @@ sub _lists {
     };
 }
 
+sub _gather { 
+    my $self = shift;
+    my $av = $self->get_available_components;
+    return $self->get_sales_units, $av, @$av;
+}
+
 sub _init {
     my $self = shift;
     $self->SUPER::_init;
     $self->absorb( {
+        sales_units => [qw( day week month year )],
+
+        
         # manually set
         is_for_sale        => 1,
         sale_price         => 0,
@@ -53,7 +62,7 @@ sub _init {
         cost_per_batch           => 0, 
         cost_per_month           => 0, 
         cost_per_prod_unit       => 0, 
-        comp2useage              => {}, #avail component useage (individually set though )
+        available_components     => [],
         revenue_month            => 0,
         batches_needed_per_month => 0,
         yield                    => 0,
@@ -95,27 +104,33 @@ sub calculate {
     #
     # avail components, component costs
     #
-    my %seen;
-    my $comp2useage = $self->get_comp2useage;
+    my( %seen, %comp2useage );
+
+    my $avail = $self->get_available_components;
+    for my $comp (@$avail) {
+       $comp2useage{$comp->get_item} = $comp;
+    }
+    
     my $cost_per_batch = 0;
     for my $comp ( @{$scenario->get_raw_materials}, 
                    grep { $_ != $self }  
                    @{$scenario->get_product_lines} ) {
         $seen{$comp} = 1; #  component, isUsed, amount needed per batch
-        my $c2u = $comp2useage->{$comp} //= 
-            $self->{STORE}->newobj( { item => $comp }, 'Samp::Assign' );
-        if( $c2u->get_is_used ) {
+        my $c2u = $comp2useage{$comp} //= 
+            $self->{STORE}->newobj( { item => $comp, attached_to => $self }, 'Samp::Assign' );
+        if( $c2u->get_use_quantity ) {
             my $comp_costs = $comp->get_cost_per_prod_unit;
             my $quan       = $c2u->get_use_quantity; # units per batch
-            $cost_per_batch += $quan * $comp_costs;
+            $cost_per_batch += $quan * $comp_costs;            
         }
     }
     $self->set_cost_per_batch( $cost_per_batch );
     $self->set_cost_per_month( $cost_per_batch * $self->get_batches_per_month );
     $self->set_cost_per_prod_unit( $batch_size ? $cost_per_batch / $batch_size : undef );
-    for my $delme ( grep { ! $seen{$_} } keys %$comp2useage ) {
-        delete $comp2useage->{$delme};
+    for my $delme ( grep { ! $seen{$_} } keys %comp2useage ) {
+        delete $comp2useage{$delme};
     }
+    $self->set_available_components( [ values %comp2useage ] );
     
     my $work_hours_in_month = 173; #rounded down
     my $work_days_in_month  = 21; #rounded down
@@ -165,10 +180,15 @@ sub calculate {
             $bottleneck = $step;
         }
     }
-
     $bottleneck->set_is_bottleneck(1) if $bottleneck;
     $self->set_hours_per_batch( $batch_time );
+
+    $self->set_items_per_hour( $batch_time ? $yield / $batch_time : undef );
+    
     $self->set_manhours_per_batch( $manhours );
+
+    $self->set_manhours_per_month( $manhours * $self->get_batches_per_month );
+    
     $self->set_yield( $yield );
 
     $scenario->calculate;

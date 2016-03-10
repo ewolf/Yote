@@ -24,7 +24,9 @@ sub _lists { #steps that this employee performs
 sub calculate {
     my $self = shift;
 
-    $self->set_monthly_pay( $self->get_hourly_pay * $self->get_hours_per_week * 52.0 / 12 );
+    my $manhours_month = $self->get_hours_per_week * 52.0 / 12;
+    $self->set_manhours_month( $manhours_month );
+    $self->set_monthly_pay( $self->get_hourly_pay * $manhours_month );
 
     $self->get_parent->calculate( 'employee', $self );
 }
