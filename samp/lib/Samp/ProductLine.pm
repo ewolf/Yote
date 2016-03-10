@@ -6,32 +6,29 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
-use Samp::Step;
-use Samp::Ingredient;
+use Samp::ProductionStep;
 use Samp::RawMaterial;
+use Samp::Assign;
 
 sub _allowedUpdates {
-    [ qw( name 
-          notes
+    qw( name 
+        notes
 
-          sale_price
-          expected_sales
-          expected_sales_per
+        is_for_sale
 
-          food_cost_per_batch
-          packaging_cost_per_item
+        sale_price
+        expected_sales
+        expected_sales_per
 
-          batch_size
-          batches_per_month
-
-          life_as_ingredient
-          shelf_life
-       ) ]
+        batch_size
+        batch_unit
+        batches_per_month
+       );
 }
 
 sub _lists {
-    { steps       => 'Samp::Step',
-      ingredients => 'Samp::Ingredient',
+    { steps         => 'Samp::ProductionStep',
+      components    => 'Yote::Obj',
       raw_materials => 'Samp::RawMaterial', 
     };
 }
@@ -39,244 +36,142 @@ sub _lists {
 sub _init {
     my $self = shift;
     $self->SUPER::_init;
-    $self->set_sale_price( 0 );
-    $self->set_expected_sales( 0 );
-    $self->set_expected_sales_per( 'day' );
+    $self->absorb( {
+        # manually set
+        is_for_sale        => 1,
+        sale_price         => 0,
+        expected_sales     => 0,
+        expected_sales_per => 'day',
+        
+        batch_size         => 0,
+        batch_unit         => 'item',
+        batches_per_month  => 0,
+        
+        # calculated
+        hours_per_batch          => 0,
+        manhours_per_batch       => 0,
+        cost_per_batch           => 0, 
+        cost_per_month           => 0, 
+        cost_per_prod_unit       => 0, 
+        comp2useage              => {}, #avail component useage (individually set though )
+        revenue_month            => 0,
+        batches_needed_per_month => 0,
+        yield                    => 0,
 
-    $self->set_food_cost_per_batch(0);
-    $self->set_packaging_cost_per_item(0);
+        messages => '',
+        valid    => 0,
+                   } );
 
-    $self->set_batch_size_used( 0 ); #*************
-    
 } #_init
-
-sub monthly_units_needed_for_ingredient {
-    my( $self, $prod ) = @_;
-    my $ings = $self->get_ingredients([]);
-    my $count = 0;
-    for my $ing ( @$ings ) {
-        if( $prod == $ing->get_product ) {
-            $count += $ing->amount_per_run;
-        }
-    }
-    return $count;
-}
-
-sub expected_sales_per {
-    qw( day week month year );
-} #expected_sales_per
-
-sub ingredients {
-    my $self = shift;
-    my $scene = $self->get_parent;
-    return ( ['', "choose ingredient"], grep { $_ ne $self } @{$scene->get_product_lines} );
-} #ingredients
-
-sub _valid_choice {
-    my( $self, $field, $val ) = @_;
-    if( $field eq 'expected_sales_per' ) {
-        my %c = map { $_ => 1 } (expected_sales_per());
-        return $c{$val};
-    } elsif( $field eq 'ingredients' ) {
-        my @ings = $self->ingredients();
-        shift @ings;
-
-        my %vals = map { $_->{ID} => 1 } grep { $_ != $self } @ings;
-        return defined $val ? $vals{$val} : 1;
-    }
-    return 1;
-} #_valid_choice
 
 sub calculate {
     # calculate redux
-    my $self = shift;
+    my( $self, $msg, $obj ) = @_;
 
-    my $work_hours_in_month = 173; #rounded down
-    my $work_days_in_month = 21; #rounded down
-
-    # find the following :
-    #    total cost per item/batch 
-    #      labor cost per item/batch ( includes cost to make ingredients )
-    #      food cost per item/batch  ( includes cost to make ingredients )
-    #      packaging cost per item/batch ( includes cost to make ingredients )
-    #
-    #    partial cost per item/batch 
-    #      labor cost per item/batch ( excludes cost to make ingredients )
-    #      food cost per item/batch  ( excludes cost to make ingredients )
-    #      packaging cost per item/batch ( excludes cost to make ingredients )
-    #
-    #
-    #    profit per item/batch
-    #      labor cost percentage
-    #      food cost percentage
-    #      packaging cost percentage
-    #
-    #    expected monthly revenue/cost/profit ... cost based on number of batches needed
-    #
-    #    batches required per month based on sales and inventory estimates and shelf life
-    #      (expected sales per month )
-    #      (items produced per month based on batch size and required batches)
-    #
-    #    time(hours) per batch  ( does not include cost to make ingredients?
-    #    batch size ( if not given )
-    #
-
-    my $steps = $self->get_steps([]);
-
-    my( $slowest_rate, $bottleneck, $scaled_run_time );
-    my $failure_rate = 0;
-    for my $step (@$steps) {
-        $step->set_is_bottleneck(0);
-        my $step_rate = $step->get_yield;
-        $slowest_rate //= $step_rate;
-        $slowest_rate //= $step_rate;
-        $bottleneck //= $step;
-        if( $step_rate < $slowest_rate ) {
-            $slowest_rate =  $step_rate;
-            $bottleneck = $step;
-        }
-    }
-    
-    #
-    # -------------------------- BATCH SIZE ----------------------------------
-    #
-
-    $bottleneck->set_is_bottleneck(1) if $bottleneck;                                             # ***** (step) VARSET *****
+    my $scenario = $self->get_parent;
 
     my $batch_size = $self->get_batch_size;
-    $self->set_calculated_batch_size($slowest_rate);
 
-    $self->set_batch_size_used( $batch_size || 0 ); #*************
+    my $valid = 1;
     
-    my $run_time = 0;
-    for my $step (@$steps) {
-        $run_time += $step->run_time( $batch_size );
+    #
+    # given
+    #   steps
+    #   batch size
+    #   components
+    #
+    # calculate 
+    #     avail components
+    #     component costs/unit
+    #
+    #     units needed to meet sales expectations
+    #     revenue/month
+    
+    #     batch_time
+    #     bottleneck step
+    #     manhours for batch
+    #     yield
+
+    #
+    # avail components, component costs
+    #
+    my %seen;
+    my $comp2useage = $self->get_comp2useage;
+    my $cost_per_batch = 0;
+    for my $comp ( @{$scenario->get_raw_materials}, 
+                   grep { $_ != $self }  
+                   @{$scenario->get_product_lines} ) {
+        $seen{$comp} = 1; #  component, isUsed, amount needed per batch
+        my $c2u = $comp2useage->{$comp} //= 
+            $self->{STORE}->newobj( { item => $comp }, 'Samp::Assign' );
+        if( $c2u->get_is_used ) {
+            my $comp_costs = $comp->get_cost_per_prod_unit;
+            my $quan       = $c2u->get_use_quantity; # units per batch
+            $cost_per_batch += $quan * $comp_costs;
+        }
+    }
+    $self->set_cost_per_batch( $cost_per_batch );
+    $self->set_cost_per_month( $cost_per_batch * $self->get_batches_per_month );
+    $self->set_cost_per_prod_unit( $batch_size ? $cost_per_batch / $batch_size : undef );
+    for my $delme ( grep { ! $seen{$_} } keys %$comp2useage ) {
+        delete $comp2useage->{$delme};
     }
     
+    my $work_hours_in_month = 173; #rounded down
+    my $work_days_in_month  = 21; #rounded down
+
     #
-    # -------------------------- BATCH TIME ----------------------------------
+    # units needed by sales expectations
+    # expected revenue
     #
-
-
-    $self->set_hours_per_batch( $run_time ); #*************
-
     my %times = (  #normalize to month
                    day => 21,
                    week => 52.0/12,
                    month => 1,
                    year  => 1.0/12,
         );
-
     my $units_needed_in_month = $self->get_expected_sales * $times{ $self->get_expected_sales_per };
-
-    
-    #
-    # -------------------------- BATCHES REQUIRED ----------------------------
-    #
-
+    $self->set_revenue_month( $units_needed_in_month * $self->get_sale_price );
 
     #
-    # Check to see how much products that this is an ingredient for need
     #
-    my $ingredsOf = $self->get_ingredient_of( [] );
-    for my $prod (@$ingredsOf) {
-        # see how many batches of it are needed
-        for my $ofIng (grep { $_->get_product == $self } @{$prod->get_ingredients([])}) {
-            $units_needed_in_month += $prod->get_required_monthly_batches * $prod->get_batch_size * $ofIng->get_units_per_unit;
-        }
-    }
-
-    if( $run_time ) {
-        my $units_needed_in_hour = $units_needed_in_month / $work_hours_in_month;
-        my $prod_hours_needed    = $units_needed_in_hour  / $run_time;
-        my $batches_needed       = $prod_hours_needed     / $run_time;
-        $batches_needed = sprintf( "%.1f", int($batches_needed) ) eq sprintf( "%.1f", $batches_needed ) ? $batches_needed : 1 + int($batches_needed);
-
-        $self->set_calculated_monthly_batches( $batches_needed ); #*************
-    }
-    
     #
-    #       ----------------------- COSTS ---------------------------
-    #
-    # Calculate the costs where total = labor + food + packaging + overhead
-    #
+    $self->set_batches_needed_per_month( $batch_size ? $units_needed_in_month / $batch_size : undef );
 
-    my $packaging_cost_per_batch = $self->get_packaging_cost_per_item * $batch_size;
-    my $overhead_cost_per_batch  = 0;
-    my $labor_cost_per_batch     = 0;
-    
-    my $food_cost_per_batch      = 0;
+    my $steps = $self->get_steps([]);
 
-    my $raws = $self->get_raw_materials([]);
-    for my $raw (@$raws) {
-        $food_cost_per_batch += $raw->get_cost;
-    }
-
-    # cost of the steps
+    my( $slowest_rate, $bottleneck, $scaled_run_time );
+    my $failure_rate = 0;
+    my $batch_time = 0;
+    my $manhours = 0;
+    my $yield = $batch_size;
     for my $step (@$steps) {
         $step->set_is_bottleneck(0);
-        my $run_time = $step->run_time( $batch_size );
-
-        for my $emp (@{$step->get_employees([])}) {
-            $labor_cost_per_batch += $emp->get_hourly_pay * $run_time;
+        $yield -= $yield * $step->get_failure_rate / 100;
+        if( $yield < 0 ) {
+            $self->set_valid( 0 );
+            $self->set_yield( 0 );
+            last;
         }
-
-        $overhead_cost_per_batch += $step->get_overhead_cost_per_run + $step->get_overhead_cost_per_hour * $run_time;
-    }
-    $self->set_partial_packaging_cost_per_batch( $packaging_cost_per_batch );  #***************
-    $self->set_partial_food_cost_per_batch( $food_cost_per_batch );            #***************
-    $self->set_partial_labor_cost_per_batch( $labor_cost_per_batch );          #***************
-    $self->set_partial_material_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $overhead_cost_per_batch );          #***************
-    $self->set_partial_cost_per_batch( $packaging_cost_per_batch + $food_cost_per_batch + $labor_cost_per_batch + $overhead_cost_per_batch );          #***************
-
-    for my $ing (@{$self->get_ingredients([])}) {
-        my $ingProd = $ing->get_product;
-        my $ingredient_count   = $batch_size * $ing->get_units_per_unit;
-        my $ingSize = $ingProd->get_batch_size;
-        if( $ingSize ) {
-            my $ingredient_batches = $ingredient_count / $ingSize;
-            $food_cost_per_batch += $ingredient_batches * $ingProd->get_food_cost_per_batch;
-            $labor_cost_per_batch += $ingredient_batches * $ingProd->get_labor_cost_per_batch;
-            $overhead_cost_per_batch += $ingredient_batches * $ingProd->get_overhead_cost_per_batch;
+        my $step_rate = $step->get_production_rate;
+        my $step_time = $step->run_time( $batch_size );
+        $manhours += $step_time * $step->get_number_employees_required;
+        $batch_time += $step_time;
+        $slowest_rate //= $step_rate;
+        $slowest_rate //= $step_rate;
+        $bottleneck   //= $step;
+        if( $step_rate < $slowest_rate ) {
+            $slowest_rate =  $step_rate;
+            $bottleneck = $step;
         }
-        $packaging_cost_per_batch += $ingredient_count * $ingProd->get_packaging_cost_per_item;
     }
 
-    $self->set_labor_cost_per_batch( $labor_cost_per_batch );         #*************
-    $self->set_overhead_cost_per_batch( $overhead_cost_per_batch );   #*************
-    $self->set_packaging_cost_per_batch( $packaging_cost_per_batch ); #*************
-    $self->set_food_cost_per_batch( $food_cost_per_batch );           #*************
+    $bottleneck->set_is_bottleneck(1) if $bottleneck;
+    $self->set_hours_per_batch( $batch_time );
+    $self->set_manhours_per_batch( $manhours );
+    $self->set_yield( $yield );
 
-    my $total_cost_per_batch = $labor_cost_per_batch + 
-        $food_cost_per_batch + 
-        $overhead_cost_per_batch + 
-        $packaging_cost_per_batch;
-    $self->set_total_material_cost_per_batch( $food_cost_per_batch + $overhead_cost_per_batch + $packaging_cost_per_batch );               #*************
-    $self->set_total_cost_per_batch( $total_cost_per_batch );               #*************
-    $self->set_total_cost_per_item( $total_cost_per_batch / $batch_size );  #*************
-    
-    #
-    #       ----------------------- PROFIT ---------------------------
-    #
-    
-    my $batch_revenue = $batch_size    * $self->get_sale_price;
-    my $batch_profit  = $batch_revenue - $total_cost_per_batch;
-    
-    if( $batch_revenue ) {
-        $self->set_batch_revenue( $batch_revenue );                                            #*************
-        $self->set_batch_profit( $batch_profit );                                              #*************
-        $self->set_labor_cost_percentage( 100*$labor_cost_per_batch/$batch_revenue );          #*************
-        $self->set_packaging_cost_percentage( 100*$packaging_cost_per_batch/$batch_revenue );  #*************
-        $self->set_food_cost_percentage( 100*$food_cost_per_batch/$batch_revenue );            #*************
-        $self->set_overhead_cost_percentage( 100*$overhead_cost_per_batch/$batch_revenue );    #*************
-    } else {
-        $self->set_labor_cost_percentage( undef );
-        $self->set_packaging_cost_percentage( undef );
-        $self->set_food_cost_percentage( undef );
-        $self->set_overhead_cost_percentage( undef );
-    }
-
-    $self->get_parent->calculate;
+    $scenario->calculate;
     
 } #calculate
 
@@ -284,3 +179,17 @@ sub calculate {
 1;
 
 __END__
+
+Given
+   batch units
+   batch size
+   batches per month
+   steps
+
+Calculate :
+   man hours per batch
+   production rate
+   cost per batch
+   cost per unit
+   cost per month
+   production step bottleneck

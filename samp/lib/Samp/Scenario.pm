@@ -9,8 +9,17 @@ use Samp::ProductLine;
 use Samp::PeriodicExpense;
 use Samp::Employee;
 use Samp::Equipment;
+use Samp::RawMaterial;
 
 my $avg_days_in_month = int(365.0 * (5.0 / 7.0) / 12 ); #round down
+
+my %times = (  #normalize to month
+               day => 21,
+               week => 52.0/12,
+               month => 1,
+               year  => 1.0/12,
+    );
+
 
 sub _allowedUpdates {
     [qw( name 
@@ -23,6 +32,7 @@ sub _lists {
     {
         product_lines => 'Samp::ProductLine',
         employees     => 'Samp::Employee',
+        raw_materials => 'Samp::RawMaterial',
         equipment     => 'Samp::Equipment',
         expenses      => 'Samp::PeriodicExpense'
     };
@@ -31,40 +41,45 @@ sub _lists {
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
-    $self->add_entry( {listName => 'product_lines',
-                       itemArgs => {
-                           name => 'first product',
-                       } } );
-    $self->add_entry( {listName => 'employees',
-                       itemArgs => {
-                           name       => 'PersonA',
-                           hourly_pay => 15,
-                           hours_per_week => 40,
-                       } } );
-    $self->add_entry( {listName => 'equipment',
-                       itemArgs => {
-                           name => 'mixer',
-                       } } );
-    $self->add_entry( {listName => 'expenses',
-                       itemArgs => {
-                           name => 'rent',
-                           cost => 4500,
-                           cost_period => 'month'
-                       } } );
+    my $store = $self->{STORE};
+    if( 0 ) {
+    $self->add_entry( 'raw_materials',
+                      $store->newobj( {
+                          name => 'chocolate',
+                          unit => 'pound',
 
+                          cost => 10,
+                          purchase_quantity => 2,
+                          units_month => 50,
+                                      }, 'Samp::RawMaterial' ) );
+    $self->add_entry( 'employees',
+                      $store->newobj( {
+                          name       => 'Person A',
+                          hourly_pay => 15,
+                          hours_per_week => 40,
+                                      }, 'Samp::Employee' ) );
+    $self->add_entry( 'equipment',
+                      $store->newobj( {
+                          name => 'mixer',
+                                      }, 'Samp::Equipment' ) );
+
+    $self->add_entry( 'expenses',
+                      $store->newobj( {
+                          name => 'rent',
+                          cost => 4500,
+                          cost_period => 'month'
+                                      }, 'Samp::PeriodicExpense' ) );
+    $self->add_entry( 'product_lines',
+                      $store->newobj( {
+                          name => 'first product',
+                                      }, 'Samp::ProductLine' ) );
+    }
     $self->calculate;
 } #_init
 
-sub _on_add {
-    my( $self, $listName, $obj ) = @_;
-    if( $listName eq 'product_lines' ) {
-        $self->set_current_product_lines( $obj );
-    }
-}
-
-
 sub calculate {
-    my $self = shift;
+    my( $self, $type, $other ) = @_;
+
     my $hours_in_month = (365.0/12) * 8;
 
     #
@@ -72,7 +87,7 @@ sub calculate {
     #
     my $payroll = 0;
     for my $emp (@{$self->get_employees([])}) {
-        $payroll += $emp->get_hourly_pay * $emp->get_hours_per_week * 52 / 12;
+        $payroll += $emp->get_monthly_pay;
     }
     $self->set_monthly_payroll( $payroll );
 
@@ -80,12 +95,23 @@ sub calculate {
     # periodic expenses
     #
     my $periodic = 0;
-    my( %factor ) = ( day => 1/21, month => 1, week => 12.0/52, quarter => 3, year => 12,  );
     for my $exp (@{$self->get_expenses([])}) {
-        my $fact = $factor{$exp->get_cost_period};
-        $periodic += $exp->get_cost / $fact if $fact;
+        $periodic += $exp->get_monthly_expense;
     }
-    $self->set_monthly_overhead( $periodic );
+    $self->set_monthly_expenses( $periodic );
+
+
+    #
+    # raw material costs
+    #
+    my $matcost = 0;
+    for my $rm (@{$self->get_raw_materials([])}) {
+        $matcost += $rm->get_cost_per_month;
+    }
+    $self->set_monthly_raw_materials_cost( $matcost );
+
+    # TODO - tally up raw materials used by production to see
+    #        if enough is bought
 
     #
     # production expenses and revenue
@@ -93,15 +119,14 @@ sub calculate {
     my $prod_costs = 0;
     my $prod_revenue = 0;
     for my $prod (@{$self->get_product_lines([])}) {
-        $prod_costs += $prod->get_partial_material_cost_per_batch * $prod->get_batches_per_month;
-        my $fact = $factor{$prod->get_expected_sales_per};
-        $prod_revenue += $prod->get_sale_price * $prod->get_expected_sales / $fact if $fact;
+        $prod_costs   += $prod->get_cost_per_month;
+        $prod_revenue += $prod->get_revenue_month;
     }
 
     $self->set_monthly_product_costs( $prod_costs );
     $self->set_monthly_product_revenue( $prod_revenue );
 
-    $self->set_monthly_expense( $prod_costs + $payroll + $periodic );
+    $self->set_total_monthly_costs( $payroll + $periodic + $matcost );
 
     $self->set_monthly_profit( $prod_revenue - $self->get_monthly_expense );
     
@@ -111,5 +136,18 @@ sub calculate {
 
 __END__
 
+Given
+   Employees
+   Expenses
+   RawMaterials
+   ProductLines
+
 Calculate :
-   Itemized periodic expenses, payroll
+   Payroll
+   Monthly Expenses
+   Raw Material costs
+   Total Monthly Costs
+   Manhours Required
+   Expected Revenue
+   Profit
+   Per sales item : cost breakdown, profit

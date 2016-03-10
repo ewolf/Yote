@@ -10,6 +10,8 @@ sub _allowedUpdates {
     [ qw(
         name 
         notes
+        unit_type
+        max_capacity
       ) ]
 } #allowedUpdates
 
