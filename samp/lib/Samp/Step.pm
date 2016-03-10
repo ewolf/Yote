@@ -6,6 +6,8 @@ no warnings 'uninitialized';
 
 use base 'Yote::Server::ListContainer';
 
+# calculated - avail_employees, production_rate, yield
+
 sub _allowedUpdates {
     [ qw(
         name 
@@ -64,7 +66,13 @@ sub calculate {
         $self->set_yield( 0 );
         $self->set_production_rate(0);
     }
-    $self->get_parent()->calculate();
+
+
+    # calculate avail employees
+    my $prodline = $self->get_parent;
+    my $scene    = $prodline->get_parent;
+
+    $prodline->calculate();
 } #calculate 
 
 1;
