@@ -45,7 +45,6 @@ yote.init = function( args ) {
 
     if( sessionStorage ) {
         token = sessionStorage.getItem( 'token' );
-        alert( "READ SSTAOR " +  token );
     }
     
     // cache storing objects and their meta-data
@@ -343,7 +342,6 @@ console.log( "UPDATE OR CREATE " + upd.id );
         root  = res[0];
         token = res[1];
         if( sessionStorage ) {
-            alert( "SSTORE " + token );
             sessionStorage.setItem( 'token', token );
         }
         if( handler ) {
