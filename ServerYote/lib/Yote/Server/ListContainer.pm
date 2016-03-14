@@ -86,7 +86,7 @@ sub gather {
         my $l = $self->get( $list, [] );
         push @res, $l, (map { $_, $_->gather($seen) } grep { ref($_) && ! $seen->{$_->{ID}}++ } @$l);
     }
-    @res, $self->_gather;
+    @res, $self->_gather( $seen );
 } #gather
 
 sub remove_entry {  #TODO - paramertize this like add_entry does

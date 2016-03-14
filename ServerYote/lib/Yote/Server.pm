@@ -120,7 +120,7 @@ sub _create_listener_socket {
         }
         last if $listener_socket;
         
-        print STDERR "Unable to open the yote socket. Retry $count of 10\n";
+        print STDERR "Unable to open the yote socket [$self->{yote_host}:$self->{yote_port}] ($!). Retry $count of 10\n";
         sleep 5 * $count;
     }
 

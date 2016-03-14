@@ -13,7 +13,7 @@ use Samp::Scenario;
 sub _init {
     my $self = shift;
     $self->SUPER::_init();
-    $self->add_entry( { listName => 'scenarios' } );
+    $self->add_entry( 'scenarios' );
 }
 
 sub _allowedUpdates {

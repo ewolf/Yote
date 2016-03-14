@@ -62,7 +62,7 @@ if( -f $confile && -r $confile ) {
     while( <IN> ) {
         chomp;
         s/\#.*//;
-        if( /^\s*([^=\s]+)\s*=\s*(.*)\s*$/ ) {
+        if( /^\s*([^=\s]+)\s*=\s*([^\s].*)\s*$/ ) {
             if( defined $options{$1} ) {
                 $options{$1} = $2 if defined $options{$1};
             } else {

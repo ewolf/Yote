@@ -128,6 +128,11 @@ sub calculate {
     my $prod_revenue = 0;
     my $manhours_required = 0;
     for my $prod (@{$self->get_product_lines([])}) {
+
+        if( ( $type eq 'removed_entry' || $type eq 'new_entry' ) && ( $listName eq 'raw_materials' || $listName eq 'product_lines' ) ) {
+            $prod->calculate( $type, $listName, $obj );
+        }
+
         $prod_costs   += $prod->get_cost_per_month;
         $prod_revenue += $prod->get_revenue_month;
         $manhours_required += $prod->get_manhours_per_month;

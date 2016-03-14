@@ -27,16 +27,17 @@ sub _allowedUpdates {
 }
 
 sub _lists {
-    { steps         => 'Samp::ProductionStep',
-      components    => 'Yote::Obj',
-      raw_materials => 'Samp::RawMaterial', 
+    { steps                => 'Samp::ProductionStep',
+      available_components => 'Yote::Obj',
+      raw_materials        => 'Samp::RawMaterial', 
     };
 }
 
 sub _gather { 
-    my $self = shift;
-    my $av = $self->get_available_components;
-    return $self->get_sales_units, $av, @$av;
+    shift->get_sales_units;
+#    my $self = shift;
+#    my $av = $self->get_available_components;
+#    return $self->get_sales_units, $av, map { $_, $_->get_item } @$av;
 }
 
 sub _init {
@@ -119,6 +120,7 @@ sub calculate {
         my $c2u = $comp2useage{$comp};
         unless( $c2u ) { 
             $c2u = $self->{STORE}->newobj( { item => $comp, attached_to => $self }, 'Samp::Assign' );
+            $comp->add_to_assignments( $c2u );
             $comp2useage{$comp} = $c2u;
             push @$avail, $c2u; #<--- add the comp to the material
         }

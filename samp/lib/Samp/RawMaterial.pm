@@ -54,7 +54,9 @@ sub _init {
     $self->set_cost_per_prod_unit( 0 );    #calculated
 } #_init
 
-sub _gather { shift->get_cost_period_types }
+sub _gather { 
+    shift->get_cost_period_types;
+}
 
 my %times = (  #normalize to month
                day => 21,

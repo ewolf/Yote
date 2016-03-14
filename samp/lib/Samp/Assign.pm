@@ -22,6 +22,11 @@ sub calculate {
     $self->get_item->calculate( 'assign', $self );
 }
 
+sub _gather {
+    my $self = shift;
+    $self->get_item, $self->get_attached_to;
+}
+
 1;
 
 __END__

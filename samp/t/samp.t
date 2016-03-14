@@ -114,7 +114,7 @@ sub test_suite {
         batch_unit => 'item',
         batches_per_month => 4,
                    } );
-    is( scalar(keys %{$line->get__comp2useage}), 2, "components to usage has values" );
+    is( scalar(@{$line->get_available_components}), 2, "components to usage has values" );
     is( $scene->get_total_monthly_costs, 7652, 'first line - total costs' );
     is( $scene->get_monthly_expenses, 4600, 'first line - monthly expenses' );
     is( $scene->get_monthly_payroll, 2600, 'first line - no payroll yet' );
@@ -160,14 +160,14 @@ sub test_suite {
 
     $line->add_entry( 'raw_materials', $raw );
 
-    my $frost_use = $line->get__comp2useage->{$raw};
+    my( $frost_use ) = $line->get_available_components->[2      ];
     $frost_use->update( {
         use_quantity => 4,
                         } );
     # 5*4  <---20<--- cost of frosting per batch
     #                x 4 batches --> 80 /month
 
-    is( scalar(keys %{$line->get__comp2useage}), 3, "components to usage has values" );
+    is( scalar(@{$line->get_available_components}), 3, "components to usage has values" );
     is( $scene->get_total_monthly_costs, 7727, 'first step - total costs' );
     is( $scene->get_monthly_expenses, 4600, 'first step - monthly expenses' );
     is( $scene->get_monthly_payroll, 2600, 'first step - no payroll yet' );
@@ -176,7 +176,7 @@ sub test_suite {
 
     is( sprintf( "%.2f", $line->get_manhours_per_batch ), 2.14, "step - now with manhours" );
     is( sprintf( "%.2f", $line->get_hours_per_batch ), 0.71, "step - no hours yet" );
-    is( $line->get_cost_per_batch, 20, "step - no cost per batch yet" );
+    is( $line->get_cost_per_batch, 20, "step - now cost per batch yet" );
     is( $line->get_cost_per_prod_unit, .20, "step - no cost per unit yet" );
     is( $line->get_cost_per_month, 80, "step - no cost per month yet" );
 

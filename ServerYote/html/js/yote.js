@@ -192,7 +192,7 @@ yote.init = function( args ) {
         if( res.updates ) {
             var makeFuns = [];
             res.updates.forEach( function( upd ) {
-console.log( "UPDATE " + upd.id );
+console.log( "UPDATE OR CREATE " + upd.id );
                 if( typeof upd !== 'object' || ! upd.id ) {
                     console.warn( "Update error, was expecting object, not : '" + upd + "'" );
                 } else {
