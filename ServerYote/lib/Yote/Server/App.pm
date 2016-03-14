@@ -1,12 +1,16 @@
 package Yote::Server::App;
 
+use strict;
+use warnings;
+
 use Yote::Server;
+use Yote::Server::Acct;
 
 use Digest::MD5 qw( md5_hex );
 
 use base 'Yote::ServerObj';
 
-sub _acct_class { "Yote::ServerObj" }
+sub _acct_class { "Yote::Server::Acct" }
 
 sub create_account {
     my( $self, $un, $pw ) = @_;
@@ -28,6 +32,12 @@ sub create_account {
     $acct;
 } #create_account
 
+sub logout {
+    my $self = shift;
+    my $server = $self->{SESSION}{SERVER};
+    $server->_destroy_session( $self->{SESSION}->get__token ) if $server;
+} #logout
+
 sub login {
     my( $self, $un, $pw ) = @_;
 
@@ -47,11 +57,5 @@ sub login {
     die "Incorrect login";
 } #login
 
-sub logout {
-    my( $self ) = @_;
-    if( $self->{SESSION}{acct} ) {
-        
-    }
-}
 
 1;

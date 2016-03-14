@@ -333,7 +333,7 @@ sub _process_request {
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
                       $session && 
-                      $server_root->_getMay( $obj_id, $session->{token} ) ) ) {
+                      $server_root->_getMay( $obj_id, $session->get__token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Path : '$path'" );
@@ -375,8 +375,12 @@ sub _process_request {
 
         my( @res );
         eval {
-            $obj->{SESSION} = $session;
+            if( $session ) {
+                $obj->{SESSION} = $session;
+                $obj->{SESSION}{SERVER} = $self;
+            }
             (@res) = ($obj->$action( @$in_params ));
+            delete $obj->{SESSION};
         };
 
         if ( $@ ) {
@@ -734,7 +738,7 @@ sub _fetch_session {
             return $session;
         }
     }
-    0;
+    
 } #_fetch_sesion
 
 
@@ -811,7 +815,7 @@ sub _updates_needed {
 } #_updates_needed
 
 sub create_token {
-    shift->_create_session->{token};
+    shift->_create_session->get__token;
 }
 
 sub _create_session {
@@ -857,7 +861,8 @@ sub _create_session {
     # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
     #
-    my $session = { token => $token };
+    my $session = $self->{STORE}->newobj( { 
+        _token => $token } );
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
         $slots->[ 0 ]{ $token } = $session;
     } else {
@@ -898,6 +903,15 @@ sub _create_session {
 
 } #_create_session
 
+sub _destroy_session {
+    my( $self, $token ) = @_;
+    my $slots = $self->get__token_timeslots();
+    for( my $i=1; $i<@$slots; $i++ ) {
+        delete $slots->[$i]{ $token };
+    }
+    $self->_resetHasAndMay( [$token] );    
+} #_destroy_session
+
 #
 # Returns the app and possibly a logged in account
 #
@@ -928,7 +942,7 @@ sub fetch_root {
 sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
-    my $token = $session->{token};
+    my $token = $session->get__token;
     $self->_resetHasAndMay( [ $token ], 'doesHaveOnly' );
     return $self, $token;
 }
@@ -936,7 +950,7 @@ sub init_root {
 sub fetch {
     my( $self, @ids ) = @_;
     
-    ( my $token = $self->{SESSION}{token} ) || return;
+    $self->{SESSION} && ( my $token = $self->{SESSION}->get__token ) || return;
     
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};

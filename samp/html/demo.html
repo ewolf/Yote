@@ -12,6 +12,7 @@ function init() {
               handler : function( root, app, acct ) {
                   if( ! acct ) {
                       window.location = 'index.html';
+                      return;
                   }
 //                  app.reset();return;
                   $( '#reset' ).on( 'click', function( ev ) {
@@ -614,6 +615,7 @@ function init() {
 
     <h3>Scenarios</h3>
     <a href="" id="reset">reset all</a>
+    
     <a href="" id="logout">log out</a>
     <p>
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
