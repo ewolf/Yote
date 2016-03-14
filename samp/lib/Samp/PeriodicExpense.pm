@@ -31,10 +31,10 @@ my %times = (  #normalize to month
                year  => 1.0/12,
     );
 
-sub calculate {
+sub _calculate {
     my $self = shift;
     $self->set_monthly_expense( $self->get_cost * $times{$self->get_cost_period} );
-    $self->get_parent->calculate( 'expense' );
+    $self->get_parent->_calculate( 'expense' );
 }
 
 1;

@@ -18,7 +18,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.03';
 
-my $DEBUG = 0;
+my $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -246,7 +246,7 @@ sub _process_request {
         }
 
         for my $cookie ( split( /\s*;\s*/, $headers{Cookie} ) ) {
-            $cookie =~ s/^\s*|^\s*$//g;
+           $cookie =~ s/^\s*|^\s*$//g;
             my( $key, $val ) = split( /\s*=\s*/, $cookie, 2 );
             $cookies{ $key } = $val;
         }
@@ -265,6 +265,8 @@ sub _process_request {
         }
         my( $verb, $path ) = split( /\s+/, $req );
 
+        my $server_root = $self->{STORE}->fetch_server_root;
+
         # escape for serving up web pages
         # the thought is that this should be able to be a stand alone webserver
         # for testing and to provide the javascript
@@ -280,7 +282,6 @@ sub _process_request {
                     'Server: Yote',
                     "Content-Length: $stat[7]",
                 );
-
 
                 open( IN, "<$filename" );
 
@@ -325,14 +326,13 @@ sub _process_request {
             exit;
         }
 
-        my $server_root = $self->{STORE}->fetch_server_root;
         my $server_root_id = $server_root->{ID};
-        my $token_node = $server_root->_valid_token( $token );
+        my $valid_token = $server_root->_valid_token( $token );
         unless( $obj_id eq '_' || 
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
-                      $token_node && 
-                      $server_root->_getMay( $obj_id, $token ) ) ) {
+                      $valid_token && 
+                      $server_root->_getMay( $obj_id, $valid_token ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Path : '$path'" );
@@ -374,7 +374,7 @@ sub _process_request {
 
         my( @res );
         eval {
-            $obj->{TOKEN} = $server_root->_valid_token( $token || $cookies{token} );
+            $obj->{TOKEN} = $token;
             (@res) = ($obj->$action( @$in_params ));
         };
 
@@ -457,7 +457,6 @@ sub _process_request {
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . length( $out_json ),
             );
-        push @headers, "Set-Cookie: token=$token; Domain=$self->{yote_host}; Expires=Sun, 16 Jul 3567 06:23:41 GMT; Path=/; Version=1; HttpOnly" if $token && $token ne '_';
 
         _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
@@ -734,7 +733,7 @@ sub _valid_token {
                 # refresh its time
                 $slots->[0]{ $token } = $token_node;
             }
-            return $token_node;
+            return $token;
         }
     }
     0;
@@ -827,7 +826,7 @@ sub _create_token {
     }
 
     my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
-    my $token_node = $self->{STORE}->newobj( { _randpart => $randpart } );
+    my $token = $randpart;
     
     # make the token boat. tokens last at least 10 mins, so quantize
     # 10 minutes via time 10 min = 600 seconds = 600
@@ -863,11 +862,12 @@ sub _create_token {
     # create a new most recent boat.
     #
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
-        $slots->[ 0 ]{ $randpart } = $token_node;
+        $slots->[ 0 ]{ $randpart } = $token;
     } else {
         unshift @$slot_data, $current_time_chunk;
-        unshift @$slots, { $randpart => $token_node };
+        unshift @$slots, { $randpart => $token };
     }
+    
 
     #
     # remove this token from old boats so it doesn't get purged
@@ -877,6 +877,8 @@ sub _create_token {
         delete $slots->[$i]{ $randpart };
     }
 
+    for my $sl (@$slots) { print STDERR Data::Dumper->Dump([[map { "$_ : $sl->{$_}" } keys %$sl],"AFTA ADD"]); }
+    
     #
     # Purge tokens in expired boats.
     #
@@ -897,7 +899,7 @@ sub _create_token {
     
     $self->{STORE}->unlock( 'token_mutex' );
     
-    return $token_node;
+    return $token;
 
 } #_create_token
 
@@ -927,8 +929,6 @@ sub fetch_app {
     }
     if( $app->_can_access( @args ) ) {
         my( @ret ) = ( $app );
-        my $acct = $app->{TOKEN} ? $app->{TOKEN}->get__acct : undef;
-        push @ret, $acct if $acct;
         return @ret;
     }
 } #fetch_app
@@ -941,12 +941,12 @@ sub init_root {
     my $self = shift;
     my $token = $self->{TOKEN} || $self->_create_token;
     $self->_resetHasAndMay( [ $token ], 'hasOnly' );
-    return $self, $token->get__randpart;
+    return $self, $token;
 }
 
 sub fetch {
     my( $self, @ids ) = @_;
-    my $token = $self->{TOKEN} ? $self->{TOKEN}->get__randpart : 0;
+    my $token = $self->{TOKEN};
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};
     my $store = $self->{STORE};

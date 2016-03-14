@@ -83,7 +83,7 @@ sub _max_batch_size {
     $max;
 } #_max_batch_size
 
-sub calculate {
+sub _calculate {
     my $self = shift;
     my $hours = $self->get_timeslice_mins() / 60;
     if( $hours > 0 ) {
@@ -147,8 +147,8 @@ sub calculate {
     $self->set_messages( $msg );  # VARSET *****
     $self->set_valid( $valid );   # VARSET *****
     
-    $prodline->calculate('from_ProductStep');
-} #calculate
+    $prodline->_calculate('from_ProductStep');
+} #_calculate
 
 1;
 

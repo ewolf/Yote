@@ -55,7 +55,7 @@ sub employees {
 
 } #employees
 
-sub calculate {
+sub _calculate {
     my $self = shift;
     my $hours = $self->get_run_minutes() / 60;
     if( $hours > 0 ) {
@@ -72,7 +72,7 @@ sub calculate {
     my $prodline = $self->get_parent;
     my $scene    = $prodline->get_parent;
 
-    $prodline->calculate();
-} #calculate 
+    $prodline->_calculate();
+} #_calculate 
 
 1;

@@ -9,8 +9,8 @@
           // THIS IS IT, THE WHOLE INIT ENCHILADA
           yote.init( {
               appName : 'CalcTest',
-              handler : function( root, app ) {
-//                  app.reset();return;
+              handler : function( root, app, acct ) {
+                  //                  app.reset();return;
                   $( '#reset' ).on( 'click', function( ev ) {
                       if( confirm( 'really reset everything?' ) ) {
                           app.reset();
@@ -19,7 +19,7 @@
                       }
                   } );
                   app.gather( [], function() {
-                      setup_app( app );
+                      setup_app( app, acct );
                   } );
               }
           } );
@@ -395,7 +395,30 @@
 // ---------------------------------------------------------------------------------------------------- //
 
           function setup_app(app) {
-              
+              $( '#login' ).off('click').on('click', function(ev) {
+                  ev.preventDefault();
+                  var un = $( '#un' ).val(), pw = $( '#pw' ).val();
+                  app.login( [ un, pw ],
+                             function( msg ) {
+                                 window.location = "demo.html";
+                             },
+                             function( msg ) {
+                                 $( '#message' ).text( "unable to log in with these credentials" );
+                             } );
+              } );
+
+              $( '#create' ).off('click').on('click', function(ev) {
+                  ev.preventDefault();
+                  var un = $( '#un' ).val(), pw = $( '#pw' ).val();
+                  app.create_account( [ un, pw ],
+                             function( msg ) {
+                                 window.location = "demo.html";
+                             },
+                             function( msg ) {
+                                 $( '#message' ).text( "unable to create account with these credentials" );
+                             } );
+              } );
+
           } //setup_app
 
 
@@ -425,8 +448,9 @@
   </head>
   <body onLoad="init()">
     <h1>Production Simulation</h1>
-    
-
+    <div id="message"></div>
+      Login : <input type="text" placeholder="username" id="un"> <input type="password" placeholder="password" id="pw">
+    <button type="button" id="login">Log In</button>     <button type="button" id="create">create account</button>
   </body>
 
   <section class="template" id="templates">

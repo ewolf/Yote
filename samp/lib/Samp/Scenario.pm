@@ -75,10 +75,10 @@ sub _init {
                           name => 'first product',
                                       }, 'Samp::ProductLine' ) );
 
-    $self->calculate;
+    $self->_calculate;
 } #_init
 
-sub calculate {
+sub _calculate {
     my( $self, $type, $listName, $obj, $idx ) = @_;
 
     if( $type eq 'new_entry' && $listName eq 'product_lines' ) {
@@ -138,7 +138,7 @@ sub calculate {
     for my $prod (@{$self->get_product_lines([])}) {
 
         if( ($type eq 'new_entry' || $type eq 'removed_entry') && ( $listName eq 'raw_materials' || $listName eq 'product_lines' ) ) {
-            $prod->calculate( $type, $listName, $obj );
+            $prod->_calculate( $type, $listName, $obj );
         }
 
         $prod_costs   += $prod->get_cost_per_month;
@@ -154,7 +154,7 @@ sub calculate {
 
     $self->set_monthly_profit( $prod_revenue - $self->get_monthly_expense );
     
-} #calculate
+} #_calculate
 
 1;
 

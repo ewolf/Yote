@@ -67,7 +67,7 @@ my %times = (  #normalize to month
     );
 
 
-sub calculate {
+sub _calculate {
     # calculate redux
     my $self = shift;
 
@@ -92,11 +92,11 @@ sub calculate {
     }
     $self->set_units_used( $usage );
     
-    map { $_->calculate( "RawMaterial", $self ) } @$lines;
+    map { $_->_calculate( "RawMaterial", $self ) } @$lines;
 
-    $scene->calculate( 'RawMaterial', $self );
+    $scene->_calculate( 'RawMaterial', $self );
     
-} #calculate
+} #_calculate
 
 
 1;

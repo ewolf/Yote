@@ -70,7 +70,7 @@ sub update {
             unless $self->_valid_choice($fld,$val);
         $self->set( $fld, $val )
     }
-    $self->calculate( 'update' );
+    $self->_calculate( 'update' );
 } #update
 
 sub add_entry {
@@ -90,8 +90,9 @@ sub add_entry {
     $obj->get_parent( $self );
 
     push @$list, $obj;
-    $obj->calculate( 'added_to_list', $listName, $self );
-    $self->calculate( 'new_entry', $listName, $obj, scalar(@$list) );
+    print STDERR Data::Dumper->Dump([ref $obj,"REFFY"]);
+    $obj->_calculate( 'added_to_list', $listName, $self );
+    $self->_calculate( 'new_entry', $listName, $obj, scalar(@$list) );
     $obj, $obj->gather;
 } #add_entry
 
@@ -120,7 +121,7 @@ sub remove_entry {  #TODO - paramertize this like add_entry does
             last;
         }
     }
-    $self->calculate( 'removed_entry', $from, $removed, $i );
+    $self->_calculate( 'removed_entry', $from, $removed, $i );
 
 } #remove_entry
 

@@ -15,11 +15,11 @@ sub _allowedUpdates {
       )
 } #allowedUpdates
 
-sub calculate {
+sub _calculate {
     my $self = shift;
 
-    $self->get_attached_to->calculate( 'assign', $self );
-    $self->get_item->calculate( 'assign', $self );
+    $self->get_attached_to->_calculate( 'assign', $self );
+    $self->get_item->_calculate( 'assign', $self );
 }
 
 sub _gather {

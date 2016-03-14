@@ -217,9 +217,13 @@ console.log( "UPDATE OR CREATE " + upd.id );
     function reqListener( succHandl, failHandl ) { 
         return function() {
             console.log( "GOT FROM SERVER : " + this.responseText );
-            var returnVal = processRaw( this.responseText );
-            if( succHandl ) {
-                succHandl( returnVal );
+            if( this.responseText ) {
+                var returnVal = processRaw( this.responseText );
+                if( succHandl ) {
+                    succHandl( returnVal );
+                }
+            } else if( failHandl ) {
+                failHandl( 'failed' );
             }
         };
     };
@@ -331,12 +335,12 @@ console.log( "UPDATE OR CREATE " + upd.id );
         console.warn( "Warning : yote.init called without handler" );
     }
     contact( '_', 'init_root', [], function(res) {
-        root = res[0];
+        root  = res[0];
         token = res[1];
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( app, acct ) {
-                    handler( root, app, acct );
+                root.fetch_app( [appname], function( app ) {
+                    handler( root, app );
                 } );
             } else {
                 handler( root );
