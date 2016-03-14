@@ -73,7 +73,7 @@ sub add_entry {
 
     push @$list, $obj;
     $obj->calculate( 'added_to_list', $listName, $self );
-    $self->calculate( 'new_entry', $listName, $obj );
+    $self->calculate( 'new_entry', $listName, $obj, scalar(@$list) );
     $obj, $obj->gather;
 } #add_entry
 
@@ -93,13 +93,16 @@ sub remove_entry {  #TODO - paramertize this like add_entry does
     my( $self, $item, $from, $moreArgs ) = @_;
     die "Unknown list '$from' in ".ref($self) unless $self->_lists->{$from};
     my $list = $self->get($from);
-    for( my $i=0; $i<@$list; $i++ ) {
+    my $i = 0;
+    my $removed;
+    for( $i=0; $i<@$list; $i++ ) {
         if( $list->[$i] == $item ) {
-            splice @$list, $i, 1;
+            $removed = splice @$list, $i, 1;
+            last;
         }
     }
-    $self->calculate( 'removed_entry', $from );
-    return $item;
+    $self->calculate( 'removed_entry', $from, $removed, $i );
+
 } #remove_entry
 
 # TODO - implement a copy?

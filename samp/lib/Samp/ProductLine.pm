@@ -34,10 +34,9 @@ sub _lists {
 }
 
 sub _gather { 
-    shift->get_sales_units;
-#    my $self = shift;
-#    my $av = $self->get_available_components;
-#    return $self->get_sales_units, $av, map { $_, $_->get_item } @$av;
+    my $self = shift;
+    my $av = $self->get_available_components;
+    return $self->get_sales_units, $av, @{$self->get__attached_to_components([])}, map { $_, $_->get_item } @$av;
 }
 
 sub _init {
@@ -120,6 +119,7 @@ sub calculate {
         my $c2u = $comp2useage{$comp};
         unless( $c2u ) { 
             $c2u = $self->{STORE}->newobj( { item => $comp, attached_to => $self }, 'Samp::Assign' );
+            $comp->add_to__attached_to_components( $c2u );
             $comp->add_to_assignments( $c2u );
             $comp2useage{$comp} = $c2u;
             push @$avail, $c2u; #<--- add the comp to the material
@@ -134,8 +134,10 @@ sub calculate {
     $self->set_cost_per_month( $cost_per_batch * $self->get_batches_per_month );
     $self->set_cost_per_prod_unit( $batch_size ? $cost_per_batch / $batch_size : undef );
     for my $delme ( grep { ! $seen{$_} } keys %comp2useage ) {
-        delete $comp2useage{$delme};
-        $self->remove_from_available_components( $delme ); #<--- remove the comp from the material
+        my $deld = delete $comp2useage{$delme};
+        $deld->get_item->remove_from__attached_to_components( $deld );
+        
+        $self->remove_from_available_components( $deld ); #<--- remove the comp from the material
     }
     
     my $work_hours_in_month = 173; #rounded down

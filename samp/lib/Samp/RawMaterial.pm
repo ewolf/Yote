@@ -55,7 +55,8 @@ sub _init {
 } #_init
 
 sub _gather { 
-    shift->get_cost_period_types;
+    my $self = shift;
+    $self->get_cost_period_types, @{$self->get__attached_to_components([])};
 }
 
 my %times = (  #normalize to month

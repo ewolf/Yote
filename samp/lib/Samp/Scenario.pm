@@ -79,10 +79,17 @@ sub _init {
 } #_init
 
 sub calculate {
-    my( $self, $type, $listName, $obj ) = @_;
+    my( $self, $type, $listName, $obj, $idx ) = @_;
 
     if( $type eq 'new_entry' && $listName eq 'product_lines' ) {
         $self->set_current_product_line( $obj );
+    } elsif( $type eq 'removed_entry' && $listName eq 'product_lines' ) {
+        my $pl = $self->get_product_lines;
+        if( @$pl ) {
+            $self->set_current_product_line( $idx > $#$pl ? $pl->[$#$pl] : $pl->[$idx] );
+        } else {
+            $self->set_current_product_line( undef );
+        }
     }
 
     my $hours_in_month = (365.0/12) * 8;
@@ -127,9 +134,11 @@ sub calculate {
     my $prod_costs = 0;
     my $prod_revenue = 0;
     my $manhours_required = 0;
+    print STDERR Data::Dumper->Dump(["HCEKC <$type,$listName>"]);
     for my $prod (@{$self->get_product_lines([])}) {
 
-        if( ( $type eq 'removed_entry' || $type eq 'new_entry' ) && ( $listName eq 'raw_materials' || $listName eq 'product_lines' ) ) {
+        if( ($type eq 'new_entry' || $type eq 'removed_entry') && ( $listName eq 'raw_materials' || $listName eq 'product_lines' ) ) {
+            print STDERR Data::Dumper->Dump([$type,$listName, "LISTCHANGE SO RECALC"]);
             $prod->calculate( $type, $listName, $obj );
         }
 

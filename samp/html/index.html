@@ -84,19 +84,17 @@
                   }
                   return;
               }
-              key = 'set-' + key + '-listener';
               $( selector ).each( function(idx,val) {
                   var $this = $( val );
-                  if( $this.data('imp') ) { try {asfd();}catch(e){} }
                   if( ! $.contains( $('#templates')[0], val ) ) {
-                      if( ! $this.data( key ) && $this.data('id') ) {
+                      if( (! $this.data( key ) || $this.data( 'redo' ) ) && $this.data('id') ) {
+                          $this.data( 'redo', false );
                           $this.data( key, true );
                           fun( $this );
                       }
                   }
               } );
           }
-
 
           function activateControls()  {
               modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
@@ -232,7 +230,7 @@
                           }
                           fillOptions();
                           updateListener( source_obj, 'select-chooser-build-select', function() {
-                              var key = 'set-build-select-listener';
+                              var key = 'build-select';
                               $ctrl.data( key, false );
                               activateControls();
                           }, false );
@@ -242,7 +240,7 @@
                       list = listO.toArray();
                       fillOptions();
                       updateListener( listO, 'select-chooser-build-select', function() {
-                          var key = 'set-build-select-listener';
+                          var key = 'build-select';
                           $ctrl.data( key, false );
                           activateControls();
                       }, false );
@@ -417,10 +415,16 @@
                   }
               }, true );
 
+              $( '#scene_sel' ).off( 'change' ).on( 'click', function() {
+                  $('#del_scene').removeClass( 'delClick' );
+                  activateControls();
+              } )
+
               energize( 'app', app );
           } //setup_app
 
           function setup_scenario(scenario) {
+              $( '.product' ).data( 'redo', true );
               var prods = scenario.get( 'product_lines' );
               updateListener( prods, '_productCountWatched', function() {
                   if( prods.length() > 0 ) {
@@ -501,6 +505,7 @@
 
               var comps = prd.get( 'available_components' );
               updateListener( comps, '_matslist', function() {
+                  alert( comps.id + " - " + comps.length() );
                   setup_table( {
                       tabSel : '#components-tab',
                       rowSel : '#components-row',
@@ -607,7 +612,7 @@
     <p id="scenario_picker">
       Selected Scenario <select class="showField updateField app" data-field="current_scenario"
                                 data-var-is="object" data-src-field="scenarios" id="scene_sel"></select>
-      <a href="" class="delAction app-child scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?">(Delete this Scenario)</a>
+      <a href="" class="delAction app-child scenario" data-needs-confirmation="y" data-from="scenarios" data-delete-message="Really delete this scenario?" id="del_scene">(Delete this Scenario)</a>
     </p>
 
     <h3>Scenario</h3>

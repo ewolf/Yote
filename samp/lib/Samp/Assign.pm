@@ -23,8 +23,9 @@ sub calculate {
 }
 
 sub _gather {
-    my $self = shift;
-    $self->get_item, $self->get_attached_to;
+    my( $self, $seen ) = @_;
+    my( $item, $attached ) = ( $self->get_item, $self->get_attached_to );
+    $item, $attached, $item->gather( $seen ), $attached->gather( $seen );
 }
 
 1;

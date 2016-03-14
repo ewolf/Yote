@@ -27,9 +27,18 @@ sub _lists {
 }
 
 sub calculate {
-    my( $self, $type, $listName, $scen ) = @_;
-    if( $type eq 'new_entry' && $listName eq 'scenarios' ) {
-        $self->set_current_scenario( $scen );
+    my( $self, $type, $listName, $scen, $idx ) = @_;
+    if( $listName eq 'scenarios' ) {
+        if( $type eq 'new_entry' ) {
+            $self->set_current_scenario( $scen );
+        } elsif( $type eq 'removed_entry' ) {
+            my $sc = $self->get_scenarios;
+            if( @$sc ) {
+                $self->set_current_scenario( $idx > $#$sc ? $sc->[$#$sc] : $sc->[$idx] );
+            } else {
+                $self->set_current_product_line( undef );
+            }
+        }
     }
 }
 
