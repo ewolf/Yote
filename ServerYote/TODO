@@ -4,6 +4,12 @@ Security Questions:
   * With restful, the URL could be snooped even with SSL.
     Maybe move the token and the path to the POST data
 
+  -- on cookies or local storage :
+       store some information in the account object, like login time, login ip, time of last use
+       have a maximum time the login is valid for (both inactive timeout and absolute timeout)
+       
+
+
 write POD
 
 write tests ( similar to Lock::Server )

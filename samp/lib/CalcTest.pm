@@ -26,7 +26,7 @@ sub _lists {
     };
 }
 
-sub calculate {
+sub _calculate {
     my( $self, $type, $listName, $scen, $idx ) = @_;
     if( $listName eq 'scenarios' ) {
         if( $type eq 'new_entry' ) {
@@ -40,7 +40,7 @@ sub calculate {
             }
         }
     }
-}
+} #_calculate
 
 # handy RESET for testing
 sub reset {

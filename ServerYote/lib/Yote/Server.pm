@@ -18,7 +18,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.03';
 
-my $DEBUG = 0;
+our $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -328,12 +328,12 @@ sub _process_request {
         }
 
         my $server_root_id = $server_root->{ID};
-        my $valid_token = $server_root->_valid_token( $token );
+        my $session = $server_root->_fetch_session( $token );
         unless( $obj_id eq '_' || 
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
-                      $valid_token && 
-                      $server_root->_getMay( $obj_id, $valid_token ) ) ) {
+                      $session && 
+                      $server_root->_getMay( $obj_id, $session->{token} ) ) ) {
 
             # tried to do an action on an object it wasn't handed. do a 404
             _log( "Bad Path : '$path'" );
@@ -375,7 +375,7 @@ sub _process_request {
 
         my( @res );
         eval {
-            $obj->{TOKEN} = $token eq '_' ? undef : $token;
+            $obj->{SESSION} = $session;
             (@res) = ($obj->$action( @$in_params ));
         };
 
@@ -398,9 +398,6 @@ sub _process_request {
             # has received server root data
             $ids_to_update = [ $server_root_id ];
             if ( $token  ) {
-                unless( $store->_last_updated( $server_root_id ) ) {
-                    $store->{OBJ_UPDATE_DB}->put_record( $server_root_id, [ Time::HiRes::time ] );
-                }
                 push @has, $server_root_id;
             }
         } else {
@@ -490,6 +487,7 @@ sub _new { #Yote::ServerStore
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
     $self->{OBJ_UPDATE_DB} = DB::DataStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
+    $self->{OBJ_UPDATE_DB}->put_record( $self->{ID}, [ Time::HiRes::time ] );
     $self;
 } #_new
 
@@ -725,20 +723,20 @@ sub _log {
     Yote::Server::_log(shift);
 }
 
-sub _valid_token {
+sub _fetch_session {
     my( $self, $token ) = @_;
     my $slots = $self->get__token_timeslots();
     for( my $i=0; $i<@$slots; $i++ ) {
-        if( my $token_node = $slots->[$i]{$token} ) {
+        if( my $session = $slots->[$i]{$token} ) {
             if( $i < $#$slots ) {
-                # refresh its time
-                $slots->[0]{ $token } = $token_node;
+                # make sure this is in the most current 'boat'
+                $slots->[0]{ $token } = $session;
             }
-            return $token;
+            return $session;
         }
     }
     0;
-}
+} #_fetch_sesion
 
 
 sub _resetHasAndMay {
@@ -813,12 +811,11 @@ sub _updates_needed {
     \@updates;
 } #_updates_needed
 
-
 sub create_token {
-    shift->_create_token;
+    shift->_create_session->{token};
 }
 
-sub _create_token {
+sub _create_session {
     my $self = shift;
     my $tries = shift;
 
@@ -854,18 +851,19 @@ sub _create_token {
     # If already used, try this again :/
     #
     for( my $i=0; $i<@$slot_data; $i++ ) {
-        return $self->_create_token( $tries++ ) if $slots->[ $i ]{ $token };
+        return $self->_create_session( $tries++ ) if $slots->[ $i ]{ $token };
     }
 
     #
-    # See if this belongs on the most recent boat. If not, then
+    # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
     #
+    my $session = { token => $token };
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
-        $slots->[ 0 ]{ $token } = $token;
+        $slots->[ 0 ]{ $token } = $session;
     } else {
         unshift @$slot_data, $current_time_chunk;
-        unshift @$slots, { $token => $token };
+        unshift @$slots, { $token => $session };
     }
     
 
@@ -897,9 +895,9 @@ sub _create_token {
     
     $self->{STORE}->unlock( 'token_mutex' );
     
-    return $token;
+    return $session;
 
-} #_create_token
+} #_create_session
 
 #
 # Returns the app and possibly a logged in account
@@ -937,14 +935,17 @@ sub fetch_root {
 
 sub init_root {
     my $self = shift;
-    my $token = $self->{TOKEN} || $self->_create_token;
+    my $session = $self->{SESSION} || $self->_create_session;
+    my $token = $session->{token};
     $self->_resetHasAndMay( [ $token ], 'hasOnly' );
     return $self, $token;
 }
 
 sub fetch {
     my( $self, @ids ) = @_;
-    my $token = $self->{TOKEN};
+    
+    ( my $token = $self->{SESSION}{token} ) || return;
+    
     my $mays = $self->get__mayHave_Token2objs;
     my $may = $self->get__mayHave_Token2objs()->{$token};
     my $store = $self->{STORE};

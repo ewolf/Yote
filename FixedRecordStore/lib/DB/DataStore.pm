@@ -302,6 +302,7 @@ package DB::DataStore::FixedStore;
 
 use strict;
 use warnings;
+no warnings 'uninitialized';
 
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Copy;

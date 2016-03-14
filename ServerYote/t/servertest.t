@@ -12,6 +12,7 @@ use Carp;
 
 BEGIN {
     use_ok( "Yote::Server" ) || BAIL_OUT( "Unable to load Yote::Server" );
+    $Yote::Server::DEBUG = -1;
     no strict 'refs';
     *Yote::ServerRoot::test = sub {
         my( $self, @args ) = @_;
