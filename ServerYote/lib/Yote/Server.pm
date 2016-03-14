@@ -18,7 +18,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.03';
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -472,9 +472,10 @@ sub _process_request {
 
 package Yote::ServerStore;
 
-use strict;
-use warnings;
-no warnings 'uninitialized';
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+
 
 use DB::DataStore;
 
@@ -615,6 +616,11 @@ sub unlock {
 
 package Yote::ServerObj;
 
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+
+
 use base 'Yote::Obj';
 
 sub _log {
@@ -632,7 +638,7 @@ sub __discover_methods {
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
+        return [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
     }
 
     my %hasm = map { $_ => 1 } @m;
@@ -644,7 +650,7 @@ sub __discover_methods {
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
-    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|AUTOLOAD|DESTROY|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
+    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
@@ -698,9 +704,9 @@ sub set {
 
 package Yote::ServerRoot;
 
-use strict;
-use warnings;
-no warnings 'uninitialized';
+use vars qw($VERSION);
+
+$VERSION = '1.00';
 
 use base 'Yote::ServerObj';
 
@@ -962,10 +968,9 @@ sub update {
 
 package Yote::ServerApp;
 
+use vars qw($VERSION);
 
-use strict;
-use warnings;
-no warnings 'uninitialized';
+$VERSION = '1.01';
 
 use base 'Yote::ServerObj';
 
