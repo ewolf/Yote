@@ -214,12 +214,12 @@ console.log( "UPDATE OR CREATE " + upd.id );
 
     // yote objects can be stored here, and interpreting
     // etc can be done here, the get & stuff
-    function reqListener( handl ) { 
+    function reqListener( succHandl, failHandl ) { 
         return function() {
             console.log( "GOT FROM SERVER : " + this.responseText );
             var returnVal = processRaw( this.responseText );
-            if( handl ) {
-                handl( returnVal );
+            if( succHandl ) {
+                succHandl( returnVal );
             }
         };
     };
@@ -250,7 +250,7 @@ console.log( "UPDATE OR CREATE " + upd.id );
 
     function contact(id,action,data,handl,errhandl) { 
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener( handl ) );
+        oReq.addEventListener("load", reqListener( handl, errhandl ) );
         oReq.addEventListener("error", errhandl );
 
         console.log( "CONTACTING SERVER ASYNC via url : " + yoteServerURL + 
@@ -335,8 +335,8 @@ console.log( "UPDATE OR CREATE " + upd.id );
         token = res[1];
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( app ) {
-                    handler( root, app );
+                root.fetch_app( [appname], function( app, acct ) {
+                    handler( root, app, acct );
                 } );
             } else {
                 handler( root );

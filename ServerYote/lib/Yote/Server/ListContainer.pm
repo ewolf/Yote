@@ -35,14 +35,28 @@ sub _init {
     }
 }
 
-sub calculate {}  #override
+sub _calculate {}  #override
 
 # --^^^ override -------
 
 sub _valid_choice { return 1; }
 
+sub _addEditAccess {
+    my( $self, $acct ) = @_;
+    my $acls = $self->get__acls({});
+    $acls->{$acct} = 1;
+    $self->set__has_acls( 0 < keys %$acls );
+}
+sub _removeEditAccess {
+    my( $self, $acct ) = @_;
+    my $acls = $self->get__acls({});
+    delete $acls->{$acct};
+    $self->set__has_acls( 0 < keys %$acls );
+}
+
 sub __allowedUpdates {
     my $self = shift;
+    die "Cant update" if $self->get__has_acls && ! $self->get__acls->{$self->{TOKEN}->get__acct};
     $self->{__ALLOWED} //= { map { $_ => 1 } ($self->_allowedUpdates) };
 }
 

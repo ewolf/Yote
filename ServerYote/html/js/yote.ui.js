@@ -1,1 +1,373 @@
- 
+if( yote ) {
+
+    var _costForm = new Intl.NumberFormat( "en-US", {
+        minimumFractionDigits : 2,
+        maximumFractionDigits : 2,              
+        style : "decimal",
+    } );
+
+    var _makeFormatter = function( decimals ) {
+        return new Intl.NumberFormat( "en-US", {
+            minimumFractionDigits : decimals,
+            maximumFractionDigits : decimals,
+            style : "decimal",
+        } );
+    }
+    
+    var _updater = function(o) {
+        var id = o.id;
+        $( ".showField" ).each( function() {
+            var $this = $(this);
+            if( $this.data('id') != id ) {
+                return;
+            }
+            var fld = $this.data( 'field' );
+            var val = o.get( fld );
+
+            var form = $this.data( 'format' );
+            if( form ) {
+                if(  form == '$' ) {
+                    val = _costForm.format( val );
+                }
+                else if( form.startsWith('#') ) {
+                    val = _makeFormatter( $this.data('format').substr( 1 ) ).format( val );
+                }
+            }
+            if( $this.is( 'input' ) ) {
+                var t = $this.attr('type');
+                if( $this.attr( 'type' ) === 'checkbox' ) {
+                    if( val === "1" ) {
+                        $this.prop( 'checked', true );
+                    } else {
+                        $this.prop( 'checked', false );
+                    }
+                } else {
+                    $this.val( val );
+                }
+            } else if( $this.is( 'select' ) ) {
+                if( typeof val === 'object' ) {
+                    $this.val( val.id );
+                } else {
+                    $this.val( val );
+                }
+            } else if( val ) {
+                $this.text( val );
+            } else {
+                $this.html( '&nbsp;' );
+            }
+        } );
+    };
+
+    yote.ui = {
+
+          energize : function( cls, obj ) {
+              setIds( cls, obj );
+              activateControls();
+              watchForUpdates( obj );
+          }, 
+
+          fill_template : function( sel, vars, fields ) {
+              var $template = $( sel );
+              if( $template.length != 1 ) {
+                  console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
+                  return undefined;
+              }
+              $template = $template.clone();
+              $template.attr( 'id', $template.attr('id') + '-clone' );
+              $template.find("*").each( function() {
+                  var $this = $(this);
+                  for( var i=0;i<fields.length; i++ ) {
+                      var fld = fields[i];
+                      if( vars[$this.data( fld )] ) {
+                          $this.data( fld, vars[$this.data( fld )] );
+                      }
+                  }
+              } );
+              return $template;
+          }, //fill_template
+
+          setIds : function( cls, obj ) {
+              $( '.' + cls + ',.'+cls+'-child' ).each( function() {
+                  var $this = $(this);
+
+                  $this.data( 'redo', true );
+                  if( $this.is( 'select' ) && $this.data( 'id' ) != obj.id ) {
+                      // special casey thing to regenerate select controls
+                      $this.removeClass( 'build-select' );
+                  }
+                  if( $this.hasClass( cls+'-child' ) ) {
+                      $this.data( 'parent', obj.id );
+                  }
+                  if( $this.hasClass( cls ) ) {
+                      $this.data( 'id', obj.id );
+                  }
+              } );
+          },
+
+          updateListener : function( obj, listenerName, listenerFunc, runOnStartup ) {
+              if( ! obj[ listenerName ] ) {
+                  obj[ listenerName ] = true;
+                  obj.addUpdateListener( listenerFunc );
+              }
+              if( runOnStartup ) {
+                  listenerFunc();
+              }
+          }, //updateListener
+
+          modifyControl : function( selector, key, fun ) {
+              if( typeof key === 'object' ) {
+                  for( var k in key ) {
+                      modifyControl( selector, k, key[k] );
+                  }
+                  return;
+              }
+              $( selector ).each( function(idx,val) {
+                  var $this = $( val );
+                  if( ! $.contains( $('#templates')[0], val ) ) {
+                      if( (! $this.data( key ) || $this.data( 'redo' ) ) && $this.data('id') ) {
+                          $this.data( 'redo', false );
+                          $this.data( key, true );
+                          fun( $this );
+                      }
+                  }
+              } );
+          }, //modifyControl
+
+          activateControls : function()  {
+              modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
+                  $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.data('classes') + '" ' + 
+                                        '       data-id="'    + $ctrl.data('id') + '"' + 
+                                        '       data-field="' + $ctrl.data( 'field' ) + '"' + 
+                                        '       type="'       + ( $ctrl.data('input-type') || 'text' )+ '">' +
+                                        '<span class="showField ' + $ctrl.data('classes') + '"' + 
+                                        '      data-id="' + $ctrl.data('id') + '"' + 
+                                        '      data-format="'+ $ctrl.data( 'format' ) + '"' + 
+                                        '      data-field="' + $ctrl.data('field') + '">' + 
+                                        '  &nbsp;</span>' );
+              } );
+              modifyControl( 'div.updateFieldControl>span', 'updateField-click', function( $ctrl ) {
+                  $ctrl.on( 'click',
+                            function() {
+                                var $this = $(this);
+                                $this.parent().addClass( 'editing' );
+                                var $inpt = $this.parent().find( 'input' );
+                                $inpt.data('original', $inpt.val() );
+                                $inpt.focus();
+                            } );
+              } );
+              modifyControl( 'div.updateFieldControl', 'updateField-click', function( $ctrl ) {
+                  $ctrl.on( 'click',
+                            function() {
+                                var $this = $(this);
+                                $this.addClass( 'editing' );
+                                var $inpt = $this.find( 'input' );
+                                $inpt.data('original', $inpt.val() );
+                                $inpt.focus();
+                            } );
+              } );
+              modifyControl( 'div.updateFieldControl>input', {
+                  'updateField-blur' : function( $ctrl ) {
+                      $ctrl.on( 'blur',
+                                function(ev) {
+                                    var $this = $(this);
+                                    if( $this.data( 'original' ) == $this.val() ) {
+                                        $this.parent().removeClass( 'editing' );
+                                    }
+                                } );
+                  },
+                  'updateField-keydown' : function( $ctrl ) {
+                      $ctrl.on( 'keydown',
+                                function(ev) {
+                                    var kk = ev.keyCode || ev.charCode;
+                                    var $this = $(this);
+                                    if( kk == 27 )  {
+                                        $this.val( $this.data( 'original' ) );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    } else if( kk == 13 || kk == 9 ) {
+                                        var p = $this.parent();
+                                        p.removeClass( 'editing' );
+                                        p.find('span').text( $this.val() );
+                                        $this.parent().removeClass( 'editing' );
+                                        $this.removeClass('edited' );
+                                    }
+                                    $this.toggleClass('edited', $this.data('original') == $this.val() );
+                                } );
+                  },
+                  'updateField-keyup' : function( $ctrl ) {
+                      $ctrl.toggleClass('edited', $ctrl.data('original') != $ctrl.val() );
+                  }
+              } );
+              modifyControl( 'select.updateField', 'build-select', function( $ctrl ) {
+                  // data : 
+                  //   field - field on object to modify
+                  //   id - object to modify
+                  //   data-src-id     - object where this list comes from
+                  //   data-src-field  - 
+                  //   data-src-method -
+
+                  var targ_obj = yote.fetch( $ctrl.data( 'id' ) );
+                  var targ_fld = $ctrl.data( 'field' );
+                  var cur_val    = targ_obj.get( targ_fld );
+                  if( $ctrl.data('var-is') === 'object' && cur_val ) {
+                      cur_val = cur_val.id;
+                  }
+
+                  var source_id  = $ctrl.data( 'src-id' );
+                  var list;
+                  var fillOptions = function() {
+                      var buf = '';
+                      for( var i=0; i<list.length; i++ ) {
+                          var el = list[i];
+                          var title, val;
+                          if( Array.isArray( el ) ) {
+                              val   = el[0];
+                              title = el[1];
+                          } else {
+                              val   = el;
+                              title = el;
+                          }
+                          var dataid = '';
+                          if( typeof val === 'object' ) {
+                              val = val.id;
+                              dataid = 'data-id="' + val + '" data-field="name" ';
+                          }
+                          if( typeof title === 'object' ) {
+                              title = title.get( 'name' );
+                          }
+                          buf += '<option class="showField" ' + dataid + ' value="' + val + '">' + title + '</option>';
+                      }
+                      $ctrl.empty().append( buf ).val( cur_val );
+                      if( ! buf && $ctrl.data( 'hide-on-empty' ) ) {
+                          $ctrl.hide();
+                      } else {
+                          $ctrl.show();
+                      }
+
+                      if( typeof targ_fld !== 'undefined' ) {
+                          $ctrl.on( 'change', function( ev ) {
+                              var val = $ctrl.val();
+                              if( $ctrl.data('var-is') === 'object' ) {
+                                  val = yote.fetch( val );
+                              }
+                              var up = {};
+                              up[ targ_fld ] = val;
+                              targ_obj.update( [up] );
+                          } );
+                      }  
+                  } //fillOptions
+
+                  var source_obj = source_id ? yote.fetch( source_id ) : targ_obj;
+                  var funName = $ctrl.data( 'src-method' );
+                  if( funName ) {
+                      source_obj[funName]([], function( l ) {
+                          list = l || [];
+                          if( ! Array.isArray( list ) ) {
+                              list = [ list ];
+                          }
+                          fillOptions();
+                          updateListener( source_obj, 'select-chooser-build-select', function() {
+                              var key = 'build-select';
+                              $ctrl.data( key, false );
+                              activateControls();
+                          }, false );
+                      } );
+                  } else {
+                      var listO = source_obj.get( $ctrl.data( 'src-field' ) );
+                      list = listO.toArray();
+                      fillOptions();
+                      updateListener( listO, 'select-chooser-build-select', function() {
+                          var key = 'build-select';
+                          $ctrl.data( key, false );
+                          activateControls();
+                      }, false );
+                  }
+
+              } );
+              modifyControl( 'input.updateField[type="checkbox"]', 'checked', function( $ctl ) {
+                  $ctl.on( 'change', function(ev) {
+                      var $this = $( this );
+                      var obj = yote.fetch( $this.data('id') );
+                      var fld = $this.data('field');
+                      var inpt = {};
+                      inpt[ fld ] = $this.is(':checked') ? 1 : 0;
+                      obj.update( [ inpt ] );
+                  } );
+              });
+              modifyControl( 'input.updateField', 'input-keydown', function( $ctl ) {
+                  $ctl.on( 'keydown', function(ev) {
+                      var kk = ev.keyCode || ev.charCode;
+                      if( kk == 13 || kk == 9 ) {
+                          var $this = $( this );
+                          var obj = yote.fetch( $this.data('id') );
+                          var fld = $this.data('field');
+                          var inpt = {};
+                          inpt[ fld ] = $this.val() ;
+                          obj.update( [ inpt ] );
+                      } 
+                  } );
+              } );
+
+              modifyControl( '.delAction', 'delClick', function( $this ) {
+                  $this.on( 'click', function(ev) {
+                      if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
+                          return;
+                      }
+                      var par    = yote.fetch($this.data( 'parent' ));
+                      var obj    = yote.fetch($this.data( 'id' ));
+                      par.remove_entry( [obj,$this.data('from')] );
+                      ev.preventDefault();
+                  } );
+              } );
+              modifyControl( '.addAction', 'addClick', function( $this ) {
+                  $this.on( 'click', function(ev) {
+                      var $this = $(this);
+                      var create_action = $this.data('action');
+                      var list  = $this.data('list');
+                      var listOn = yote.fetch( $this.data('id') );
+                      listOn.add_entry( [ list ], function( newo ) {
+                          watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
+                      ev.preventDefault();
+                  } );
+              } );
+          }, //activateControls
+
+          setup_table : function( args ) {
+              var $tab = $( args.tabSel ).find( 'tbody' );
+              $tab.empty();
+              var items = args.list || args.listOn.get( args.listName );
+              items.each( function( item, i ) {
+                  var replaceList = typeof args.replaceList === 'function' ? args.replaceList( item, i ) : args.replaceList;
+                  var row = fill_template( args.rowSel, replaceList || {
+                      ID     : item.id,
+                      FROMID : args.listOn.id
+                  }, args.fieldList || [ 'id', 'parent' ] );
+                  
+                  $tab.append( row );
+
+                  if( args.onEachRow ) {
+                      args.onEachRow( row, item, i );
+                  }
+                      
+                  watchForUpdates(item);
+              } );
+
+              activateControls();
+              items.each( function( item, i ) {
+                  watchForUpdates(item);
+              } );
+          }, //setup_table
+
+          function watchForUpdates() {
+              // if the object changes, all HTML controls displaying data from that object are updated
+              for( var i=0; i<arguments.length; i++ ) {
+                  var obj = arguments[ i ];
+                  if( ! obj._watched ) {
+                      obj.addUpdateListener( _updater );
+                      obj._watched = true;
+                  }
+                  _updater( obj );
+              }
+          } //watchForUpdates
+    };
+} 
