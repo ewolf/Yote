@@ -393,10 +393,10 @@ sub _process_request {
         my @mays = @has, $store->_find_ids_referenced( @has );
 
         my $ids_to_update;
-        if ( ( $action eq 'fetch_root' || $action eq 'init_root' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
             # if there is a token, make it known that the token 
             # has received server root data
-            $ids_to_update = [ $server_root_id ];
+            $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
             if ( $token  ) {
                 push @has, $server_root_id;
             }
@@ -713,7 +713,6 @@ sub _init {
     $self->set__doesHave_Token2objs({});
     $self->set__mayHave_Token2objs({});
     $self->set__apps({});
-    $self->set__appOnOff({});
     $self->set__token_timeslots([]);
     $self->set__token_timeslots_metadata([]);
     $self->set__token_mutex([]);
@@ -903,7 +902,7 @@ sub _create_session {
 # Returns the app and possibly a logged in account
 #
 sub fetch_app {
-    my( $self, $app_name, @args ) = @_;
+    my( $self, $app_name ) = @_;
     my $apps = $self->get__apps;
     my $app  = $apps->{$app_name};
     unless( $app ) {
@@ -918,15 +917,8 @@ sub fetch_app {
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
-    my $appIsOn = $self->get__appOnOff->{$app_name};
-    if( $appIsOn eq 'off' ) {
-        _log( "App '$app_name' not found" );
-        return undef;
-    }
-    if( $app->_can_access( @args ) ) {
-        my( @ret ) = ( $app );
-        return @ret;
-    }
+    
+    return $app, $self->{SESSION}{acct};
 } #fetch_app
 
 sub fetch_root {
@@ -938,7 +930,7 @@ sub init_root {
     my $session = $self->{SESSION} || $self->_create_session;
     my $token = $session->{token};
     $self->_resetHasAndMay( [ $token ], 'doesHaveOnly' );
-    return $self, $token, $session->{acct};
+    return $self, $token;
 }
 
 sub fetch {

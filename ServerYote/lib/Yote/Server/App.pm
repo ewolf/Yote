@@ -10,10 +10,6 @@ sub _init {
     my $self = shift;
 }
 
-sub _can_access {
-    1;
-}
-
 sub _acct_class { "Yote::ServerObj" }
 
 sub create_account {

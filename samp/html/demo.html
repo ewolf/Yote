@@ -9,7 +9,8 @@ function init() {
           // THIS IS IT, THE WHOLE INIT ENCHILADA
           yote.init( {
               appName : 'CalcTest',
-              handler : function( root, app ) {
+              handler : function( root, app, acct ) {
+                  alert( acct );
 //                  app.reset();return;
                   $( '#reset' ).on( 'click', function( ev ) {
                       if( confirm( 'really reset everything?' ) ) {
@@ -390,7 +391,6 @@ function init() {
 // ---------------------------------------------------------------------------------------------------- //
 
           function setup_app(app) {
-
               // show and hide scenario delete so that it does not show if there are less than 2 scenarios
               var scnz     = app.get('scenarios');
               updateListener( scnz, '_deleteListener', function() {

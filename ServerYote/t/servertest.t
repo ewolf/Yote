@@ -157,7 +157,7 @@ sub test_suite {
                                       fooObj  => $store->_get_id( $fooObj ),
                                       fooHash => $store->_get_id( $fooHash ),
                                       fooArr  => $store->_get_id( $fooArr ),
-                                  } } ], "updates for fetch_root by id, no token" );
+                                  } }], "updates for fetch_root by id, no token" );
 
     # now try with a token
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'create_token' );
