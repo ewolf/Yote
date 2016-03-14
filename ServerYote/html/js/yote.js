@@ -141,10 +141,12 @@ yote.init = function( args ) {
         } );
 
         // fire off an event for any update listeners
-        if( isUpdate ) {
-            for( var i in obj.listeners ) {
-                obj.listeners[i]( obj );
-            };
+        return function() {
+            if( isUpdate ) {
+                for( var i in obj.listeners ) {
+                    obj.listeners[i]( obj );
+                };
+            }
         }
 
     } //makeObj
@@ -188,14 +190,19 @@ yote.init = function( args ) {
         
         // updates
         if( res.updates ) {
+            var makeFuns = [];
             res.updates.forEach( function( upd ) {
+console.log( "UPDATE " + upd.id );
                 if( typeof upd !== 'object' || ! upd.id ) {
                     console.warn( "Update error, was expecting object, not : '" + upd + "'" );
                 } else {
                     // good place for an update listener
-                    makeObj( upd );
+                    makeFuns.push( makeObj( upd ) );
                 }
             } ); //updates section
+            makeFuns.map( function( fun ) {
+                fun();
+            } );
         }
         
         // results
