@@ -34,7 +34,7 @@ sub _lists {
 }
 
 sub _gather { 
-    my $self = shift;
+    my( $self, $seen ) = @_;
     my $av = $self->get_available_components;
     return $self->get_sales_units, $av, @{$self->get__attached_to_components([])}, map { $_, $_->get_item } @$av;
 }
@@ -75,7 +75,7 @@ sub _init {
 
 sub calculate {
     # calculate redux
-    my( $self, $msg, $obj ) = @_;
+    my( $self, $type, $listName ) = @_;
 
     my $scenario = $self->get_parent;
 
@@ -139,7 +139,7 @@ sub calculate {
         
         $self->remove_from_available_components( $deld ); #<--- remove the comp from the material
     }
-    
+
     my $work_hours_in_month = 173; #rounded down
     my $work_days_in_month  = 21; #rounded down
 

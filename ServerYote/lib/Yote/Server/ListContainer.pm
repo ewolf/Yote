@@ -80,11 +80,12 @@ sub add_entry {
 sub gather {
     my $self = shift;
     my $seen = shift || {};
+    return if $seen->{$self->{ID}}++;
     my $listhash = $self->_lists;
     my @res;
     for my $list (keys %$listhash) {
         my $l = $self->get( $list, [] );
-        push @res, $l, (map { $_, $_->gather($seen) } grep { ref($_) && ! $seen->{$_->{ID}}++ } @$l);
+        push @res, $l, (map { $_, $_->gather($seen) } grep { ref($_) } @$l);
     }
     @res, $self->_gather( $seen );
 } #gather

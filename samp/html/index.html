@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title> Calcy Testy</title>
+    <title>Production Simulator</title>
     <script src="/__/js/yote.js"></script>
     <script src="/__/js/jquery-1.12.0.min.js"></script>
     <script>
@@ -54,6 +54,7 @@
               $( '.' + cls + ',.'+cls+'-child' ).each( function() {
                   var $this = $(this);
 
+                  $this.data( 'redo', true );
                   if( $this.is( 'select' ) && $this.data( 'id' ) != obj.id ) {
                       // special casey thing to regenerate select controls
                       $this.removeClass( 'build-select' );
@@ -505,7 +506,6 @@
 
               var comps = prd.get( 'available_components' );
               updateListener( comps, '_matslist', function() {
-                  alert( comps.id + " - " + comps.length() );
                   setup_table( {
                       tabSel : '#components-tab',
                       rowSel : '#components-row',

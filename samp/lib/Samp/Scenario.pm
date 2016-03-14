@@ -134,11 +134,10 @@ sub calculate {
     my $prod_costs = 0;
     my $prod_revenue = 0;
     my $manhours_required = 0;
-    print STDERR Data::Dumper->Dump(["HCEKC <$type,$listName>"]);
+
     for my $prod (@{$self->get_product_lines([])}) {
 
         if( ($type eq 'new_entry' || $type eq 'removed_entry') && ( $listName eq 'raw_materials' || $listName eq 'product_lines' ) ) {
-            print STDERR Data::Dumper->Dump([$type,$listName, "LISTCHANGE SO RECALC"]);
             $prod->calculate( $type, $listName, $obj );
         }
 
