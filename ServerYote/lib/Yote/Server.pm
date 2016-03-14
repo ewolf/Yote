@@ -18,7 +18,7 @@ use vars qw($VERSION);
 
 $VERSION = '1.03';
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -168,8 +168,9 @@ sub _run_loop {
 }
 
 sub _log {
-    my $msg = shift;
-    print STDERR "Yote::Server : $msg\n" if $DEBUG;
+    my( $msg, $sev ) = @_;
+    $sev //= 1;
+    print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
 }
 
 sub __transform_params {
@@ -379,7 +380,7 @@ sub _process_request {
         };
 
         if ( $@ ) {
-            _log( "INTERNAL SERVER ERROR '$@'" );
+            _log( "INTERNAL SERVER ERROR '$@'", 0 );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
             $sock->close;
             exit; #end forked process
@@ -814,7 +815,7 @@ sub _updates_needed {
 
 
 sub create_token {
-    shift->_create_token->get__randpart;
+    shift->_create_token;
 }
 
 sub _create_token {
@@ -825,8 +826,7 @@ sub _create_token {
         die "Error creating token. Got the same random number 4 times in a row";
     }
 
-    my $randpart = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
-    my $token = $randpart;
+    my $token = int( rand( 1_000_000_000 ) ); #TODO - find max this can be for long int
     
     # make the token boat. tokens last at least 10 mins, so quantize
     # 10 minutes via time 10 min = 600 seconds = 600
@@ -854,7 +854,7 @@ sub _create_token {
     # If already used, try this again :/
     #
     for( my $i=0; $i<@$slot_data; $i++ ) {
-        return $self->_create_token( $tries++ ) if $slots->[ $i ]{ $randpart };
+        return $self->_create_token( $tries++ ) if $slots->[ $i ]{ $token };
     }
 
     #
@@ -862,10 +862,10 @@ sub _create_token {
     # create a new most recent boat.
     #
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
-        $slots->[ 0 ]{ $randpart } = $token;
+        $slots->[ 0 ]{ $token } = $token;
     } else {
         unshift @$slot_data, $current_time_chunk;
-        unshift @$slots, { $randpart => $token };
+        unshift @$slots, { $token => $token };
     }
     
 
@@ -874,11 +874,9 @@ sub _create_token {
     # when in a valid boat.
     #
     for( my $i=1; $i<@$slot_data; $i++ ) {
-        delete $slots->[$i]{ $randpart };
+        delete $slots->[$i]{ $token };
     }
 
-    for my $sl (@$slots) { print STDERR Data::Dumper->Dump([[map { "$_ : $sl->{$_}" } keys %$sl],"AFTA ADD"]); }
-    
     #
     # Purge tokens in expired boats.
     #
@@ -965,20 +963,6 @@ sub update {
 }
 
 # ------- END Yote::ServerRoot
-
-package Yote::ServerApp;
-
-use vars qw($VERSION);
-
-$VERSION = '1.01';
-
-use base 'Yote::ServerObj';
-
-sub _can_access {
-    1;
-}
-
-# ------- END Yote::ServerApp
 
 1;
 

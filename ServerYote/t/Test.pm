@@ -5,7 +5,7 @@ use warnings;
 
 use Yote::Server;
 
-use base 'Yote::ServerApp';
+use base 'Yote::Server::App';
 
 sub test {
     my( $self, @args ) = @_;

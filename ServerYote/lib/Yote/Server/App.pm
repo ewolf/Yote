@@ -4,10 +4,14 @@ use Yote::Server;
 
 use Digest::MD5 qw( md5_hex );
 
-use base qw( Yote::ServerApp Yote::Server::ListContainer );
+use base 'Yote::Server::ListContainer';
 
 sub _init {
     my $self = shift;
+}
+
+sub _can_access {
+    1;
 }
 
 sub _acct_class { "Yote::ServerObj" }
