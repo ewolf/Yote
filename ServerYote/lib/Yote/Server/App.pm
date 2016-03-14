@@ -26,7 +26,10 @@ sub create_account {
 
     my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
     $acct->set_password_hash( crypt( $pw, length( $pw ) . md5_hex($acct->{ID} ) )  );
-                                       
+
+    $self->{SESSION}{acct} = $acct;
+
+    
     # TODO - create an email infrastructure for account validation
     
     $accts->{$un} = $acct;
@@ -46,6 +49,7 @@ sub login {
         # this and Yote::ServerRoot::fetch_app are the only ways to expose the account obj
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in
+        $self->{SESSION}{acct} = $acct;
         return $acct;
     }
     die "Incorrect login";

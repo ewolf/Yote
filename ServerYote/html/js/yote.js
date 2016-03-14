@@ -43,6 +43,11 @@ yote.init = function( args ) {
 
     var token, root;
 
+    if( sessionStorage ) {
+        token = sessionStorage.getItem( 'token' );
+        alert( "READ SSTAOR " +  token );
+    }
+    
     // cache storing objects and their meta-data
     var class2meths = {};
     var id2obj = {};
@@ -337,6 +342,10 @@ console.log( "UPDATE OR CREATE " + upd.id );
     contact( '_', 'init_root', [], function(res) {
         root  = res[0];
         token = res[1];
+        if( sessionStorage ) {
+            alert( "SSTORE " + token );
+            sessionStorage.setItem( 'token', token );
+        }
         if( handler ) {
             if( appname ) {
                 root.fetch_app( [appname], function( app ) {

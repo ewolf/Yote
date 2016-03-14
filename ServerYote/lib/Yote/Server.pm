@@ -740,10 +740,10 @@ sub _fetch_session {
 
 
 sub _resetHasAndMay {
-    my( $self, $tokens, $hasOnly ) = @_;
+    my( $self, $tokens, $doesHaveOnly ) = @_;
 
     $self->{STORE}->lock( "_has_and_may_Token2objs" );
-    my( @lists ) = $hasOnly ? qw( mayHave ) : qw( doesHave mayHave );
+    my( @lists ) = $doesHaveOnly ? qw( doesHave ) : qw( doesHave mayHave );
     for ( @lists ) {
         my $item = "_${_}_Token2objs";
         my $token2objs = $self->_get( $item );
@@ -937,8 +937,8 @@ sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
     my $token = $session->{token};
-    $self->_resetHasAndMay( [ $token ], 'hasOnly' );
-    return $self, $token;
+    $self->_resetHasAndMay( [ $token ], 'doesHaveOnly' );
+    return $self, $token, $session->{acct};
 }
 
 sub fetch {

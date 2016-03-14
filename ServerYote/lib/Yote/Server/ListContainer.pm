@@ -56,7 +56,7 @@ sub _removeEditAccess {
 
 sub __allowedUpdates {
     my $self = shift;
-    die "Cant update" if $self->get__has_acls && ! $self->get__acls->{$self->{TOKEN}->get__acct};
+    die "Cant update" if $self->get__has_acls && ! $self->get__acls->{$self->{SESSION}{acct} };
     $self->{__ALLOWED} //= { map { $_ => 1 } ($self->_allowedUpdates) };
 }
 
