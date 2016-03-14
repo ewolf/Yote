@@ -375,7 +375,7 @@ sub _process_request {
 
         my( @res );
         eval {
-            $obj->{TOKEN} = $token;
+            $obj->{TOKEN} = $token eq '_' ? undef : $token;
             (@res) = ($obj->$action( @$in_params ));
         };
 
