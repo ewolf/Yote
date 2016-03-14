@@ -45,7 +45,7 @@ my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Yote-*' ],
     build_requires => {
         'Test::More' => 0,
-        'Test::Pod'  => 0,
+        'Module::Build' => 0.40,
     },
     create_makefile_pl => 'traditional',
     dist_author        => q{Eric Wolf (coyocanid@gmail.com)},
