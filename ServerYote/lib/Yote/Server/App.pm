@@ -4,11 +4,7 @@ use Yote::Server;
 
 use Digest::MD5 qw( md5_hex );
 
-use base 'Yote::Server::ListContainer';
-
-sub _init {
-    my $self = shift;
-}
+use base 'Yote::ServerObj';
 
 sub _acct_class { "Yote::ServerObj" }
 
@@ -50,5 +46,12 @@ sub login {
     }
     die "Incorrect login";
 } #login
+
+sub logout {
+    my( $self ) = @_;
+    if( $self->{SESSION}{acct} ) {
+        
+    }
+}
 
 1;

@@ -11,15 +11,15 @@
               appName : 'CalcTest',
               handler : function( root, app, acct ) {
                   //                  app.reset();return;
+                  if( acct ) {
+                      window.location = 'demo.html';
+                  }
                   $( '#reset' ).on( 'click', function( ev ) {
                       if( confirm( 'really reset everything?' ) ) {
                           app.reset();
                       } else {
                           ev.preventDefault();
                       }
-                  } );
-                  app.gather( [], function() {
-                      setup_app( app, acct );
                   } );
               }
           } );

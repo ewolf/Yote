@@ -10,7 +10,9 @@ function init() {
           yote.init( {
               appName : 'CalcTest',
               handler : function( root, app, acct ) {
-                  alert( acct );
+                  if( ! acct ) {
+                      window.location = 'index.html';
+                  }
 //                  app.reset();return;
                   $( '#reset' ).on( 'click', function( ev ) {
                       if( confirm( 'really reset everything?' ) ) {
@@ -19,8 +21,13 @@ function init() {
                           ev.preventDefault();
                       }
                   } );
-                  app.gather( [], function() {
-                      setup_app( app );
+                  $( '#logout' ).on( 'click', function( ev ) {
+                      app.logout( [], function() {
+                          window.location = 'index.html';
+                      } );
+                  } );
+                  acct.gather( [], function() {
+                      setup_session( acct );
                   } );
               }
           } );
@@ -95,14 +102,14 @@ function init() {
 
           function activateControls()  {
               modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
-                  $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.data('classes') + '" ' + 
-                                        '       data-id="'    + $ctrl.data('id') + '"' + 
-                                        '       data-field="' + $ctrl.data( 'field' ) + '"' + 
+                  $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.data('classes') + '" ' +
+                                        '       data-id="'    + $ctrl.data('id') + '"' +
+                                        '       data-field="' + $ctrl.data( 'field' ) + '"' +
                                         '       type="'       + ( $ctrl.data('input-type') || 'text' )+ '">' +
-                                        '<span class="showField ' + $ctrl.data('classes') + '"' + 
-                                        '      data-id="' + $ctrl.data('id') + '"' + 
-                                        '      data-format="'+ $ctrl.data( 'format' ) + '"' + 
-                                        '      data-field="' + $ctrl.data('field') + '">' + 
+                                        '<span class="showField ' + $ctrl.data('classes') + '"' +
+                                        '      data-id="' + $ctrl.data('id') + '"' +
+                                        '      data-format="'+ $ctrl.data( 'format' ) + '"' +
+                                        '      data-field="' + $ctrl.data('field') + '">' +
                                         '  &nbsp;</span>' );
               } );
               modifyControl( 'div.updateFieldControl>span', 'updateField-click', function( $ctrl ) {
@@ -159,11 +166,11 @@ function init() {
                   }
               } );
               modifyControl( 'select.updateField', 'build-select', function( $ctrl ) {
-                  // data : 
+                  // data :
                   //   field - field on object to modify
                   //   id - object to modify
                   //   data-src-id     - object where this list comes from
-                  //   data-src-field  - 
+                  //   data-src-field  -
                   //   data-src-method -
 
                   var targ_obj = yote.fetch( $ctrl.data( 'id' ) );
@@ -214,7 +221,7 @@ function init() {
                               up[ targ_fld ] = val;
                               targ_obj.update( [up] );
                           } );
-                      }  
+                      }
                   } //fillOptions
 
                   var source_obj = source_id ? yote.fetch( source_id ) : targ_obj;
@@ -264,7 +271,7 @@ function init() {
                           var inpt = {};
                           inpt[ fld ] = $this.val() ;
                           obj.update( [ inpt ] );
-                      } 
+                      }
                   } );
               } );
 
@@ -302,13 +309,13 @@ function init() {
                       ID     : item.id,
                       FROMID : args.listOn.id
                   }, args.fieldList || [ 'id', 'parent' ] );
-                  
+
                   $tab.append( row );
 
                   if( args.onEachRow ) {
                       args.onEachRow( row, item, i );
                   }
-                      
+
                   watchForUpdates(item);
               } );
 
@@ -320,7 +327,7 @@ function init() {
 
           var _costForm = new Intl.NumberFormat( "en-US", {
               minimumFractionDigits : 2,
-              maximumFractionDigits : 2,              
+              maximumFractionDigits : 2,
               style : "decimal",
           } );
 
@@ -331,7 +338,7 @@ function init() {
                   style : "decimal",
               } );
           }
-          
+
           var _updater = function(o) {
               var id = o.id;
               $( ".showField" ).each( function() {
@@ -374,7 +381,7 @@ function init() {
                       $this.html( '&nbsp;' );
                   }
               } );
-          }              
+          }
 
           function watchForUpdates() {
               // if the object changes, all HTML controls displaying data from that object are updated
@@ -390,9 +397,9 @@ function init() {
 
 // ---------------------------------------------------------------------------------------------------- //
 
-          function setup_app(app) {
+          function setup_session(acct) {
               // show and hide scenario delete so that it does not show if there are less than 2 scenarios
-              var scnz     = app.get('scenarios');
+              var scnz     = acct.get('scenarios');
               updateListener( scnz, '_deleteListener', function() {
                   if( scnz.length() > 1 ) {
                       $( '#scenario_picker').show();
@@ -402,9 +409,9 @@ function init() {
               }, true );
 
               var curScene = undefined;
-              updateListener( app, '_curSceneWatcher', function() {
-                  if( ! yote.sameYoteObjects( curScene, app.get( 'current_scenario' ) ) ) {
-                      curScene = app.get( 'current_scenario' );
+              updateListener( acct, '_curSceneWatcher', function() {
+                  if( ! yote.sameYoteObjects( curScene, acct.get( 'current_scenario' ) ) ) {
+                      curScene = acct.get( 'current_scenario' );
                       var key = 'set-build-select-listener';
                       $( '#scene_sel' ).data( key, false );
                       setup_scenario( curScene );
@@ -416,8 +423,8 @@ function init() {
                   activateControls();
               } )
 
-              energize( 'app', app );
-          } //setup_app
+              energize( 'app', acct );
+          } //setup_session
 
           function setup_scenario(scenario) {
               var prods = scenario.get( 'product_lines' );
@@ -477,7 +484,7 @@ function init() {
                       listOn : scenario,
                   } );
               }, true );
-              
+
               var curProd = undefined;
               updateListener( scenario, '_curProdWatcher', function() {
                   if( ! yote.sameYoteObjects( curProd, scenario.get( 'current_product_line' ) ) ) {
@@ -494,11 +501,11 @@ function init() {
               }, true );
 
               $( '.scenario' ).data('redo',true );
-              
+
               energize( 'scenario', scenario );
           } //setup_scenario
 
-          
+
           function setup_product(prd) {
               if( ! prd ) {
                   $( '#curr_products,#del_prod,#prod_sel' ).hide();
@@ -524,7 +531,7 @@ function init() {
                   } );
               }, true );
 
-              
+
               // set up steps table once, then every time the steps list changes
               var steps = prd.get( 'steps' );
               updateListener( steps, '_stepslistener', function() {
@@ -574,7 +581,7 @@ function init() {
                   }  );
               }, true );
 
-              
+
               energize( 'product', prd );
           } //setup_product
 
@@ -607,6 +614,7 @@ function init() {
 
     <h3>Scenarios</h3>
     <a href="" id="reset">reset all</a>
+    <a href="" id="logout">log out</a>
     <p>
       Scenarios allow you to do different sorts of speculations and configurations. <a href="" class="addAction app" data-list="scenarios">Create New Scenario</a>
     </p>
@@ -655,7 +663,7 @@ function init() {
         </p>
       </div>
     </section>
-    
+
     <h4>Expenses</h4>
     <section id="expenses">
       <p>
@@ -671,7 +679,7 @@ function init() {
       <p>
         <a href="" class="addAction scenario" data-list="expenses">Add Expense</a>
       </p>
-    </section>        
+    </section>
 
     <h4>Raw Materials</h4>
     <section id="materials">
@@ -699,7 +707,7 @@ function init() {
         Monthly Revenue <span class="showField scenario" data-format="$" data-classes="scenario" data-field="monthly_product_revenue"></span>
       </p>
 
-      
+
       <table id="product-tab">
         <thead>
           <tr> <th>Product</th> <th>Sale Price</th> <th>Estimated Sales</th> <th>Batch Size</th> <th>Batches/Month</th> <th>Manhours</th> <th>Production Rate</th> <th>Notes</th> <th>Action</th> </tr>
@@ -715,13 +723,13 @@ function init() {
     <h4>Product Detail</h4>
     <section  id="product-detail">
       <p>
-        Editing 
+        Editing
         <select class="showField updateField scenario" data-field="current_product_line" data-var-is="object" data-src-field="product_lines" id="prod_sel"></select>
       </P>
       <span id="no_products">No Products</span>
       <div id="curr_product">
 
-        
+
         <h4>Components</h4>
         <table border="1" id="components-tab">
           <thead>
@@ -730,7 +738,7 @@ function init() {
           <tbody>
           </tbody>
         </table>
-    
+
         <h4>Steps</h4>
 
         <table border="1" id="steps-tab">
@@ -748,7 +756,7 @@ function init() {
   <section class="template" id="templates">
     <table>
 
-      <tr id="employee-row"> 
+      <tr id="employee-row">
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
         <td> <div class="updateFieldControl" data-id="ID" data-field="hourly_pay" data-input-type="number"></div> </td>
     <td> <div class="updateFieldControl" data-id="ID" data-field="hours_per_week" data-input-type="number"></div> </td>
@@ -760,17 +768,17 @@ function init() {
       </tr>
 
 
-      <tr id="expenses-row"> 
+      <tr id="expenses-row">
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
         <td>
           <div class="updateFieldControl" data-id="ID" data-field="cost"></div>
           <select class="showField updateField" data-id="ID" data-field="cost_period" data-src-field="cost_period_types"></select>
         </td>
-        
+
         <td>
           <div class="updateFieldControl" data-id="ID" data-field="notes"></div>
         </td>
-        
+
         <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="expenses">delete</a> </td>
       </tr>
 
@@ -780,14 +788,14 @@ function init() {
         <td>
           buy
           <div class="updateFieldControl" data-id="ID" data-field="pur_quan"></div>
-          <div class="updateFieldControl" data-id="ID" data-field="pur_unit"></div> 
+          <div class="updateFieldControl" data-id="ID" data-field="pur_unit"></div>
           (s) every
           <select class="showField updateField" data-id="ID" data-field="pur_time" data-src-field="cost_period_types"></select>
           at a cost of
           <div class="updateFieldControl" data-id="ID" data-field="pur_price"></div>
           each
         </td>
-        
+
         <td>
           each
           <span class="showField" data-id="ID" data-field="pur_unit"></span>
@@ -801,9 +809,9 @@ function init() {
 
         <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
         <td> <a href="" class="delAction" data-id="ID" data-parent="FROMID" data-from="raw_materials">delete</a> </td>
-        
+
       </tr>
-    
+
       <tr id="components-row">
         <td>
           <span class="showField" data-id="RAW" data-field="name"></span>
@@ -815,9 +823,9 @@ function init() {
       </tr>
 
 
-      <tr id="step-row"> 
+      <tr id="step-row">
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
-        <td> <div class="updateFieldControl" data-id="ID" data-field="number_produced_in_timeslice" data-input-type="number"></div> items in 
+        <td> <div class="updateFieldControl" data-id="ID" data-field="number_produced_in_timeslice" data-input-type="number"></div> items in
           <div class="updateFieldControl" data-id="ID" data-field="timeslice_mins" data-input-type="number"></div> minutes
         </td>
         <td> <div class="updateFieldControl" data-id="ID" data-field="failure_rate" data-input-type="number"></div> </td>
@@ -830,7 +838,7 @@ function init() {
       </tr>
 
 
-      <tr id="prod-row"> 
+      <tr id="prod-row">
         <td> <div class="updateFieldControl" data-id="ID" data-field="name"></div> </td>
         <td> <div class="updateFieldControl" data-id="ID" data-format="$" data-field="sale_price"></div> </td>
         <td>
@@ -839,20 +847,20 @@ function init() {
         </td>
 
         <td> <div class="updateFieldControl" data-id="ID" data-field="batch_size"></div> </td>
-        
+
         <td> <div class="updateFieldControl" data-id="ID" data-field="batches_per_month"></div> </td>
 
         <td>
           <span class="showField" data-id="ID" data-format="#2" data-field="manhours_per_batch"></span> / batch <br>
-          <span class="showField" data-id="ID" data-format="#0" data-field="manhours_per_month"></span> / month <br>          
-        </td>        
+          <span class="showField" data-id="ID" data-format="#0" data-field="manhours_per_month"></span> / month <br>
+        </td>
 
-        
+
         <td>
           <span class="showField" data-id="ID" data-field="items_per_hour"></span> hour
-        </td>        
-        
-        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>        
+        </td>
+
+        <td> <div class="updateFieldControl" data-id="ID" data-field="notes"></div> </td>
         <td> <a href="" class="delAction"    data-id="ID" data-parent="FROMID"
                 data-needs-confirmation="y" data-delete-message="Reallly delete this product?"
                 data-from="product_lines">delete</a> </td>

@@ -9,44 +9,14 @@ use Yote::Server;
 use base 'Yote::Server::App';
 
 use Samp::Scenario;
+use Samp::Acct;
 
-sub _init {
-    my $self = shift;
-    $self->SUPER::_init();
-    $self->add_entry( 'scenarios' );
-}
-
-sub _allowedUpdates {
-    'current_scenario';
-}
-
-sub _lists {
-    {
-        scenarios => 'Samp::Scenario',
-    };
-}
-
-sub _calculate {
-    my( $self, $type, $listName, $scen, $idx ) = @_;
-    if( $listName eq 'scenarios' ) {
-        if( $type eq 'new_entry' ) {
-            $self->set_current_scenario( $scen );
-        } elsif( $type eq 'removed_entry' ) {
-            my $sc = $self->get_scenarios;
-            if( @$sc ) {
-                $self->set_current_scenario( $idx > $#$sc ? $sc->[$#$sc] : $sc->[$idx] );
-            } else {
-                $self->set_current_product_line( undef );
-            }
-        }
-    }
-} #_calculate
+sub _acct_class { "Samp::Acct" }
 
 # handy RESET for testing
 sub reset {
     my $self = shift;
-    $self->set_scenarios( [] );
-    $self->add_entry( 'scenarios' );
+    $self->set__accts( {} );
 }
 
 1;

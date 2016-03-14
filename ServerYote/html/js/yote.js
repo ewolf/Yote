@@ -196,7 +196,6 @@ yote.init = function( args ) {
         if( res.updates ) {
             var makeFuns = [];
             res.updates.forEach( function( upd ) {
-console.log( "UPDATE OR CREATE " + upd.id );
                 if( typeof upd !== 'object' || ! upd.id ) {
                     console.warn( "Update error, was expecting object, not : '" + upd + "'" );
                 } else {
@@ -346,8 +345,14 @@ console.log( "UPDATE OR CREATE " + upd.id );
         }
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( app ) {
-                    handler( root, app );
+                root.fetch_app( [appname], function( result ) {
+                    if( Array.isArray( result ) ) {
+                        var app = result[0];
+                        var acct = result[1];
+                    } else {
+                        app = result;
+                    }
+                    handler( root, app, acct );
                 } );
             } else {
                 handler( root );
