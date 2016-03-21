@@ -9,12 +9,12 @@ var yote_worker = { init : function() { throw new Error("yote_worker not yet loa
 yote_worker.init = function() {
     var root;
 
-    var _id2obj, _stamps, _callerDirties = {}, _stamp_methods, _maxid = 1;
+    var _id2obj, _stamps, _callerDirties = {}, _maxid = 1;
 
     var _stamp_methods = {
         _list_container : [ 'calculate', 'add_entry', 'remove_entry' ],
         _list : [ 'sort', 'push', 'splice', 'pop', 'shift', 'unshift' ],
-        _yote_root  : [ 'init', 'newlist', 'newobj' ],
+        _yote_root  : [ 'init', 'newlist', 'newobj' ]
     }; //_stamp_methods
     
 
@@ -57,22 +57,22 @@ yote_worker.init = function() {
     _id2obj = {};
 
     function syncFromServer() {
-//        var url = 'https://wolfaccounts.craigslist.org/login/yfrom';
         var url = '/login/yfrom';
-        var synctime = root.get( 'ysyn' );
+        var synctime = root ? root.get( 'ysyn' ) : 0;
         yote_worker.contact( url, 'POST', 'ysyn=' + synctime, function( data ) {
             if( data ) {
                 var json = JSON.parse( data );
-                loadHistory( json );
+                //TODO - include last update times
+                loadHistory( json, true );
             }
         } );
                           
     } //syncFromServer
 
-    function loadHistory( history ) {
+    function loadHistory( history, fromServer ) {
         if( history && Array.isArray( history ) ) {
             for( var i=0, len=history.length; i<len; i++ ) {
-                var h = JSON.parse(history[i]);
+                var h = fromServer ? history[i] : JSON.parse(history[i]);
                 var id = h[0];
                 if( id > _maxid ) {
                     _maxid = id;
@@ -80,12 +80,14 @@ yote_worker.init = function() {
                 var stamps = h[1];
                 var data = h[2];
 
-                var oldobj = _id2obj[ id ];
-                if( oldobj ) {
-                    oldobj._data = data;
+                var obj = _id2obj[ id ];
+                if( obj ) {
+                    obj._data = data;
+                    _dirty( id, obj, fromServer );
                 } else {
-                    _newobj(stamps,data,id );
+                    obj = _newobj(stamps,data,id,true );
                 }
+                obj._on_load();
             }
         }        
     }
@@ -97,12 +99,14 @@ yote_worker.init = function() {
         var syncList = [];
         for( var key in toSync ) {
             var ts = toSync[key];
-            syncList.push( [ ts.id, ts._stamps, ts._data ] );
+            if( ts._save_me_p() ) {
+                syncList.push( [ ts.id, ts._stamps, ts._save_data() ] );
+            }
         }
         var json = JSON.stringify( syncList );
-//        var url = 'https://wolfaccounts.craigslist.org/login/yto';
-
         var url = '/login/yto';
+
+        //TODO - include last update times
         yote_worker.contact( url, 'POST', 'y=' + encodeURIComponent(json), function( data ) {
             if( data ) {
                 var json = JSON.parse( data );
@@ -122,10 +126,10 @@ yote_worker.init = function() {
 
         // goofy logic to make it atomic
         clearTimeout( _synctime );
-        _synctime = setTimeout( syncToServer, 2000 ); 
+//        _synctime = setTimeout( syncToServer, 2000 ); 
     }
 
-    function _newobj(stamps,startdata,id) {
+    function _newobj(stamps,startdata,id,isFromStore) {
         var idx = id || ++_maxid;
         var newobj = _makeBaseObj(idx);
         stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
@@ -141,7 +145,7 @@ yote_worker.init = function() {
         }
         if( typeof startdata === 'object' ) {
             for( var key in startdata ) {
-                var val = _check( startdata[key] );
+                var val = isFromStore ? startdata[key] : _check( startdata[key] );
                 if( val !== undefined ) {
                     newobj._data[key] = val;
                 }
@@ -149,7 +153,7 @@ yote_worker.init = function() {
         }
         _dirty( idx, newobj );
         return newobj;
-    }; // _ newobj
+    } // _ newobj
 
     _stamps = {
         '_list_container' : function( obj ) {
@@ -205,7 +209,7 @@ yote_worker.init = function() {
                     fun( val, i );
                 }
                 return this;
-            }
+            };
 
             obj.length = function() {
                 return obj._data.length;
@@ -280,10 +284,10 @@ yote_worker.init = function() {
         '_yote_root' : function( obj ) {
             var that = obj;
 
-            obj.init = function( history ) {
-                importScripts( '/__/js/FOO.js' );
+            obj.init = function( history ) { //inits from the client, but it should honor timestamps to get the most recent stuff
                 // this is where things would be synced up and passed back
-                loadHistory( history );
+                loadHistory( history, false );
+                _dirty( 1, this, true );
                 return this;
             };
 
@@ -320,6 +324,9 @@ yote_worker.init = function() {
             id   : id,
             _data : {},
             _stamps : [],
+            _on_load : function() { }, //override me
+            _save_me_p : function() { return true; }, //override, should this be saved
+            _save_data : function() { return this._data; }, //override me
             add_to : function( listname, objs ) {
                 var list = this.get( listname );
                 if( list && ! list.push ) {
@@ -341,7 +348,7 @@ yote_worker.init = function() {
                 return list._data.length;
             },
             remove_from : function( listname, objs ) {
-                var list = this.get( listname ), i;
+                var list = this.get( listname );
                 if( list && ! list.splice ) {
 //                    console.warn( "Tried to remove from a non existant list" );
                     return;
@@ -447,7 +454,7 @@ yote_worker.init = function() {
 
     // returns an object, either the cache or server
     function _fetch( id ) {
-        var obj = _id2obj[ id + '' ], i, len;
+        var obj = _id2obj[ id + '' ];
         return obj;
     } //_fetch
 
@@ -456,7 +463,9 @@ yote_worker.init = function() {
     yote_worker.fetch = _fetch;
 
     yote_worker.fetch_root = function() {
-        return _fetch( 1 ) || _stamp( '_yote_root', _makeBaseObj(1) );
+        if( root ) { return root; }
+        root = _fetch( 1 ) || _stamp( '_yote_root', _makeBaseObj(1) );
+        return root;
     }; //yote_worker.fetch_root
 
     yote_worker.contact = function( url, proto, data, fun ) {
@@ -464,11 +473,14 @@ yote_worker.init = function() {
         oReq.addEventListener("loadend", function() {
             fun( oReq.responseText );
         } );
-//        oReq.addEventListener("error", function(e) { console.log( e ); if(true)alert('error : ' + e) } );
-//        oReq.addEventListener("abort", function(e) { console.log( e ); if(true)alert('abort : ' + e) } );
+        oReq.addEventListener("error", function(e) { 
+            fun( e );
+        } );
+        oReq.addEventListener("abort", function(e) { 
+            fun( e );
+        } );
         
-//        console.log( "CONTACTING SERVER ASYNC via url : " + url );
-        oReq.open( proto, url, true );
+        oReq.open( proto, url, false );
         oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         if( data ) {
             oReq.send( data );
@@ -477,13 +489,17 @@ yote_worker.init = function() {
         }
     }; //yote_worker.contact
 
+    importScripts( '/js/FOO.js' ); // stamp definitions
 
-    // where syncFromServer would be called
-    
+    syncFromServer();
+
     // ensure a root exists
     yote_worker.fetch_root();
     
-}; //yote.init
+    importScripts( '/js/BAR.js' ); // after sync, do this stuff, usually checking to see if data is there
+    
+    
+}; //yote_worker.init
 
 yote_worker.init();
 
@@ -509,20 +525,21 @@ onconnect = function(e) {
             // this was called in order to build update
             var dirties = {};
             yote_worker.callerDirties[ key ] = dirties;
-            var result = obj[ method ]( call_args );
+            call_args = Array.isArray( call_args ) ? call_args : call_args ? [ call_args ] : [];
+            var result = obj[ method ].apply( obj, call_args );
             delete yote_worker.callerDirties[ key ];
 
             var updates = [];
             var methods = {};
-            for( var id in dirties ) {
-                var upobj = dirties[id];
+            for( var did in dirties ) {
+                var upobj = dirties[did];
                 updates.push( [ upobj.id, upobj._stamps, upobj._data ] );
                 var stamps = upobj._stamps;
                 for( var i=0, len = stamps.length; i<len; i++ ) {
                     var stamp = stamps[i];
                     methods[ stamp ] = yote_worker.stamp_methods[ stamp ];
                 }
-            };
+            }
             try {
                 var ret = [ key, yote_worker.checklist(result), updates, methods ];
                 port.postMessage( ret );
@@ -530,12 +547,12 @@ onconnect = function(e) {
         } else {
             // TODO - error response
 //            console.warn( "ERROR: ERROR: object method requested not found" );
-            port.postMessage( "BDDY" );
+            port.postMessage( "ERROR: ERROR: object method '" + method + "' requested not found for " + obj );
         }
         }catch(err) { port.postMessage( "ER " + err + " <" + JSON.stringify( e.data ) + "><" +e.data + ">" ); }
     } );
-    root = yote_worker.fetch_root();
+    yote_worker.root = yote_worker.fetch_root();
 
     port.start();
-} 
+};
 //console.log( "yote_worker load" );

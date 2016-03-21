@@ -1,7 +1,7 @@
 yote = {};
 yote_worker_bridge = yote;
 yote_worker_bridge.init = function( initFun ) {
-    var myWorker = new SharedWorker("/__/js/yote_worker.js");
+    var myWorker = new SharedWorker("/js/yote_worker.js");
     var _callRegistry = {};
 
     var _stamp_methods = {};
@@ -131,7 +131,6 @@ yote_worker_bridge.init = function( initFun ) {
         
         while( _callRegistry[key] ) { key = key + "X"; }
         _callRegistry[key] = fun;
-        alert( "KEY " + key );
         myWorker.port.postMessage( [ key, args ] );
     }
 
@@ -152,8 +151,7 @@ yote_worker_bridge.init = function( initFun ) {
         }
     }
     console.log( ["BRIDGE CONTSACT W HIST ", history ] );
-    _contact( [ 1, 'init', history ], function( root ) {
-        alert( "ROO" + root );
+    _contact( [ 1, 'init', [history] ], function( root ) {
         console.log( "GOT CONTACT RESP");
         if( initFun ) {
             initFun( root );
