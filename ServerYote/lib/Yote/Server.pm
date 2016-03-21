@@ -255,7 +255,7 @@ sub _process_request {
         
         my $store = $self->{STORE};
 
-        _log( "\n--> : $req" );
+        _log( "\n[$$]--> : $req" );
 
         # 
         # read certain length from socket ( as many bytes as content length )
@@ -319,7 +319,7 @@ sub _process_request {
 
             $params = $data ? from_json( $data ) : []; # this has to be checked against is valid, yes
         }
-        _log( "\n   (params)--> : ".Data::Dumper->Dump([$params]) );
+        _log( "\n   (params [$$])--> : ".Data::Dumper->Dump([$params]) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {
             _log( "Bad action (underscore) : '$action'" );
@@ -330,6 +330,7 @@ sub _process_request {
 
         my $server_root_id = $server_root->{ID};
         my $session = $server_root->_fetch_session( $token );
+
         unless( $obj_id eq '_' || 
                     $obj_id eq $server_root_id || 
                     ( $obj_id > 0 && 
@@ -461,7 +462,7 @@ sub _process_request {
             'Content-Length: ' . bytes::length( $out_json ),
             );
 
-        _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
+        _log( "<-- 200 OK [$$] ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
 
         $sock->close;

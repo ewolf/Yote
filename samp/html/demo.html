@@ -301,7 +301,7 @@ function init() {
           } //activateControls
 
           function setup_table( args ) {
-              var $tab = $( args.tabSel ).find( 'tbody' );
+              var $tab = $( args.conSel ).find( 'tbody' );
               $tab.empty();
               var items = args.list || args.listOn.get( args.listName );
               items.each( function( item, i ) {
@@ -439,7 +439,7 @@ function init() {
                   }
 
                   setup_table( {
-                      tabSel : '#product-tab',
+                      conSel : '#product-tab',
                       rowSel : '#prod-row',
                       list   : prods,
                       listOn : scenario
@@ -449,7 +449,7 @@ function init() {
               var emps = scenario.get( 'employees' );
               updateListener( emps, '_empsWatched', function() {
                   setup_table( {
-                      tabSel : '#employee-tab',
+                      conSel : '#employee-tab',
                       rowSel : '#employee-row',
                       list   : emps,
                       listOn : scenario
@@ -459,7 +459,7 @@ function init() {
               var eq = scenario.get( 'equipment' );
               updateListener( eq, '_eqWatched', function() {
                   setup_table( {
-                      tabSel : '#equipment-tab',
+                      conSel : '#equipment-tab',
                       rowSel : '#equipment-row',
                       list   : eq,
                       listOn : scenario
@@ -469,7 +469,7 @@ function init() {
               var ex = scenario.get( 'expenses' );
               updateListener( ex, '_exWatched', function() {
                   setup_table( {
-                      tabSel : '#expenses-tab',
+                      conSel : '#expenses-tab',
                       rowSel : '#expenses-row',
                       list   : ex,
                       listOn : scenario
@@ -479,7 +479,7 @@ function init() {
               var raws = scenario.get( 'raw_materials' );
               updateListener( raws, '_matslist', function() {
                   setup_table( {
-                      tabSel : '#materials-tab',
+                      conSel : '#materials-tab',
                       rowSel : '#material-row',
                       list   : raws,
                       listOn : scenario,
@@ -516,7 +516,7 @@ function init() {
               var comps = prd.get( 'available_components' );
               updateListener( comps, '_matslist', function() {
                   setup_table( {
-                      tabSel : '#components-tab',
+                      conSel : '#components-tab',
                       rowSel : '#components-row',
                       list   : comps,
                       listOn : prd,
@@ -537,7 +537,7 @@ function init() {
               var steps = prd.get( 'steps' );
               updateListener( steps, '_stepslistener', function() {
                   setup_table( {
-                      tabSel : '#steps-tab',
+                      conSel : '#steps-tab',
                       rowSel : '#step-row',
                       listName : 'steps',
                       listOn : prd,

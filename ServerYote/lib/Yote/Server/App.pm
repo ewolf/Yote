@@ -6,7 +6,7 @@ use warnings;
 use Yote::Server;
 use Yote::Server::Acct;
 
-use Digest::MD5 qw( md5_hex );
+use Digest::MD5;
 
 use base 'Yote::ServerObj';
 
@@ -21,7 +21,7 @@ sub create_account {
     }
 
     my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
-    $acct->set_password_hash( crypt( $pw, length( $pw ) . md5_hex($acct->{ID} ) )  );
+    $acct->set_password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
 
     $self->{SESSION}{acct} = $acct;
 

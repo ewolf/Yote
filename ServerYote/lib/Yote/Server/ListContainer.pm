@@ -90,7 +90,6 @@ sub add_entry {
     $obj->get_parent( $self );
 
     push @$list, $obj;
-    print STDERR Data::Dumper->Dump([ref $obj,"REFFY"]);
     $obj->_calculate( 'added_to_list', $listName, $self );
     $self->_calculate( 'new_entry', $listName, $obj, scalar(@$list) );
     $obj, $obj->gather;
