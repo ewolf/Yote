@@ -16,13 +16,15 @@ function init() {
                   }
 //                  app.reset();return;
                   $( '#reset' ).on( 'click', function( ev ) {
+                      ev.preventDefault();
+
                       if( confirm( 'really reset everything?' ) ) {
                           app.reset();
                       } else {
-                          ev.preventDefault();
                       }
                   } );
                   $( '#logout' ).on( 'click', function( ev ) {
+                      ev.preventDefault();
                       app.logout( [], function() {
                           window.location = 'index.html';
                       } );
