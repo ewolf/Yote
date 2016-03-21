@@ -50,6 +50,18 @@ yote_local.init = function() {
                 this.remove_from( listName, entry );
                 this.calculate( 'removed_entry' );
             };
+            obj.old_add_to = obj.add_to;
+            obj.old_remove_from = obj.remove_from;
+            obj.add_to = function( listname, objs ) {
+                var res = this.old_add_to( listname, objs );
+                this.calculate();
+                return res;
+            };
+            obj.remove_from = function( listname, objs ) {
+                var res = this.old_remove_from( listname, objs );
+                this.calculate();
+                return res;
+            };
             obj.add_entry = function( args ) {
                 var listName = args[0], entry = args[1];
                 if( ! entry ) {
@@ -94,11 +106,34 @@ yote_local.init = function() {
                 _dirty( this.id, this );
                 return ret;
             };
-            obj.push = function( item ) {
-                var ret = obj._data.push( _check( item ) );
+            obj.push = function( /* items or single array of items */ ) {
+                var l = obj._data;
+                var items = arguments.length === 1 && Array.isArray( arguments[0] ) ? arguments[0] : arguments;
+                for( var i=0, len = items.length; i<len; i++ ) {
+                    l.push( _check( items[i] ) );
+                }
                 this.fireAllUpdateListeners("push");
                 _dirty( this.id, this );
-                return ret;
+                return l.length;
+            };
+            obj.splice = function( /* start, deletecount, items ... (or single array of items)  */  ) {
+                var start = arguments[0];
+                var delcount = arguments[1];
+                var args = [start,delcount];
+                if( arguments.length == 3 && Array.isArray( arguments[2] ) ) {
+                    var arry = arguments[2];
+                    for( var i=0,len=arry.length; i<len; i++ ) {
+                        args.push( arry[i] );
+                    }
+                } else {
+                    for( i=2,len=arguments.length; i<len; i++ ) {
+                        args.push( _check(arguments[i]) );
+                    }
+                }
+                var res = obj._data.splice.apply( obj._data, args );
+                this.fireAllUpdateListeners("splice");
+                _dirty( this.id, this );
+                return res;
             };
             obj.pop = function() {
                 var res = obj._data.pop();
@@ -112,11 +147,15 @@ yote_local.init = function() {
                 _dirty( this.id, this );
                 return ret;
             };
-            obj.unshift = function( item ) {
-                var ret = obj._data.unshift( _check(item) );
+            obj.unshift = function( /* items or single array of items */ ) {
+                var l = obj._data;
+                var items = arguments.length === 1 && Array.isArray( arguments[0] ) ? arguments[0] : arguments;
+                for( var i=0, len = items.length; i<len; i++ ) {
+                    l.unshift( _check( items[i] ) );
+                }
                 this.fireAllUpdateListeners("unshift");
                 _dirty( this.id, this );
-                return ret;
+                return l.length;
             };
             obj._oldset = obj.set;
             obj._oldget = obj.get;
@@ -138,7 +177,7 @@ yote_local.init = function() {
                 var idx;
                 (idx = (1 + (parseInt(localStorage.getItem( "yote_maxid" ))||0)) ) && localStorage.setItem( "yote_maxid", idx );
                 var newobj = _makeBaseObj(idx);
-                stamps = Array.isArray( stamps ) ? stamps : [ stamps ];
+                stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
                 for( var i=0, len=stamps.length; i<len; i++ ) {
                     var sname = stamps[i];
                     if( Array.isArray( sname ) ) {
@@ -183,7 +222,7 @@ yote_local.init = function() {
             id   : id,
             _data : {},
             _stamps : [],
-            add_to : function( listname, obj ) {
+            add_to : function( listname, objs ) {
                 var list = this.get( listname );
                 if( list && ! list.push ) {
                     throw new Error( "Tried to add to a non-array" );
@@ -192,19 +231,40 @@ yote_local.init = function() {
                     list = yote_local.newlist();
                     this.set( listname, list );
                 }
-                return list.push( obj );
+                objs = Array.isArray( objs ) ? objs : objs ? [ objs ] : [];
+
+                for( var j=0, jlen = objs.length; j<jlen; j++ ) {
+                    list._data.push( _check ( objs[j] ) );
+                }
+                if( objs.length > 0 ) {
+                    _dirty( list.id, list );
+                    list.fireAllUpdateListeners("add_to",this,listname,objs);
+               }
+                return list._data.length;
             },
-            remove_from : function( listname, obj ) {
+            remove_from : function( listname, objs ) {
                 var list = this.get( listname ), i;
-                if( ! list || ! Array.isArray( list ) ) {
+                if( list && ! list.splice ) {
                     console.warn( "Tried to remove from a non existant list" );
                     return;
                 }
-                for( i=0; i<list.length; i++ ) {
-                    if( list[ i ] === obj ) {
-                        list.splice( i, 1 );
+                var l = list._data;
+                var count = 0;
+                objs = Array.isArray( objs ) ? objs : objs ? [ objs ] : [];
+                for( var j=0, jlen = objs.length; j<jlen; j++ ) {
+                    var ostring = _check ( objs[j] );
+                    for( var i=0, len=l.length; i<len; i++ ) {
+                        if( l[i] === ostring ) {
+                            l.splice( i, 1 );
+                            count++;
+                        }
                     }
                 }
+                if( count > 0 ) {
+                    _dirty( list.id, list );
+                    list.fireAllUpdateListeners("remove_from",this,listname,objs);
+                }
+                return count;
             },
             get : function( key, initialVal ) {
                 var d = this._data[ key ];
