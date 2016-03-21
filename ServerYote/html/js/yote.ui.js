@@ -16,6 +16,19 @@ if( yote ) {
     
     var _updater = function(o) {
 
+        $( ".toggleField" ).each( function() {
+            var obj = o;
+            var $this = $(this);
+            if( $this.attr('data-id') != obj.id ) {
+                return;
+            }
+
+            var fld = $this.attr( 'data-field' );
+            var tClass = $this.attr( 'data-toggle-class' );
+            $this.toggleClass( tClass, o.get( fld ) ? true : false );
+            
+        } );
+
         $( ".showField" ).each( function() {
             var obj = o;
             var $this = $(this);
@@ -52,6 +65,8 @@ if( yote ) {
                 } else {
                     $this.val( val );
                 }
+            } else if( $this.is( 'img' ) ) {
+                $this.attr( 'src', val );
             } else if( val ) {
                 $this.text( val );
             } else {
@@ -148,11 +163,11 @@ if( yote ) {
 
           activateControls : function()  {
               yote.ui.modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
-                  $ctrl.empty().append( '<input class="updateField showField ' + $ctrl.attr( 'data-classes') + '" ' + 
+                  $ctrl.empty().append( '<input class="updateField showField ' + ($ctrl.attr( 'data-classes') ||'') + '" ' + 
                                         '       data-id="'    + $ctrl.attr( 'data-id') + '"' + 
                                         '       data-field="' + $ctrl.attr( 'data-field' ) + '"' + 
                                         '       type="'       + ( $ctrl.attr( 'data-input-type') || 'text' )+ '">' +
-                                        '<span class="showField ' + $ctrl.attr( 'data-classes') + '"' + 
+                                        '<span class="showField ' + ($ctrl.attr( 'data-classes')||'') + '"' + 
                                         '      data-id="' + $ctrl.attr( 'data-id') + '"' + 
                                         '      data-format="'+ $ctrl.attr( 'data-format' ) + '"' + 
                                         '      data-field="' + $ctrl.attr( 'data-field') + '">' + 
@@ -202,6 +217,7 @@ if( yote ) {
                                         $this.parent().removeClass( 'editing' );
                                         $this.removeClass('edited' );
                                     } else if( kk == 13 || kk == 9 ) {
+                                        ev.preventDeafult();
                                         var p = $this.parent();
                                         p.removeClass( 'editing' );
                                         p.find('span').text( $this.val() );
@@ -337,7 +353,8 @@ if( yote ) {
                   } );
               } ); //addAction
 
-              // TODO - carefully consider if this action thing is handy. Probably is
+              // TODO - BE ABLE TO HAVE MULTIPLE CLICK HANDLERS (*sigh*)
+
               yote.ui.modifyControl( '.action', 'addAction', function( $this ) {
                   $this.off( 'click' ).on( 'click', function(ev) {
                       ev.preventDefault();

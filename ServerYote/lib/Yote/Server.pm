@@ -279,8 +279,9 @@ sub _process_request {
                 _log( "'$filename' exists" );
                 my @stat = stat $filename;
 
+                my $content_type = $filename =~ /css$/ ? 'text/css' : 'text/html';
                 my @headers = (
-                    'Content-Type: text/html; charset=utf-8',
+                    "Content-Type: $content_type; charset=utf-8",
                     'Server: Yote',
                     "Content-Length: $stat[7]",
                 );
