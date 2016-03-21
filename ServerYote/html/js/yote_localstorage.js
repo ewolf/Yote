@@ -10,7 +10,11 @@ yote_local.init = function() {
 
     var _id2obj, _stamps;
 
+
     function _check( obj ) {
+        if( obj === null || obj === undefined ) {
+            return undefined;
+        }
         if( typeof obj === 'object' ) {
             if( _id2obj[ obj.id ] !== obj ) {
                 throw new Error( "Tried to set a non-yote object" );
@@ -34,11 +38,59 @@ yote_local.init = function() {
 
     _id2obj = {};
 
-    function _dirty( idx, obj ) {
+    function syncFromServer() {
+        var url = '/login/yfrom';
+        var synctime = root.get( 'ysyn' );
+        yote_local.contact( url, 'POST', 'ysyn=' + synctime, function( data ) {
+            var json = JSON.parse( data );
+            // list with the first as sync time
+            var line, id, stamps, data, obj;
+            for( var i=0,len=json.length; i<len; i++ ) {
+                line = json[i];
+                id     = line[0];
+                stamps = line[1];
+                data   = line[2];
+                obj = _makeBaseObj( id );
+                stamps = stamps || [];
+                for( var i=0, len=stamps.length; i<len; i++ ) {
+                    _stamp( stamps[i], obj );
+                }
+                _dirty( id, obj, true );
+            }
+            
+        } );
+                          
+    } //syncFromServer
+
+    function syncToServer() {
+        var toSync;
+        // goofy logic to make it atomic
+        ( toSync = _remoteDirty ) && ( _remoteDirty = {} );
+        var syncList = [];
+        for( var key in toSync ) {
+            var ts = toSync[key];
+            syncList.push( [ ts.id, ts._stamps, ts._data ] );
+        }
+        var json = JSON.stringify( syncList );
+        var url = '/login/yto';
+        yote_local.contact( url, 'POST', 'y=' + encodeURIComponent(json), function( data ) {
+            var json = JSON.parse( data );
+            root.set( 'ysyn', json[0] );
+        } );
+    }
+    
+    var _synctime, _remoteDirty = {};
+    function _dirty( idx, obj, fromRemote ) {
+        if( fromRemote !== true ) {
+            _remoteDirty[idx] = obj;
+        }
         localStorage.setItem( "yote_id_" + idx, JSON.stringify( {
             s : obj._stamps,
             d : obj._data
         } ) );
+
+        // goofy logic to make it atomic
+        ( window.clearTimeout( _synctime ) && false ) || _synctime = window.setTimeout( syncToServer, 60000 ); //sync every minute? 
     }
 
     _stamps = {
@@ -175,6 +227,7 @@ yote_local.init = function() {
             
             obj.newobj = function(stamps,startdata) {
                 var idx;
+                // goofy logic to make it atomic
                 (idx = (1 + (parseInt(localStorage.getItem( "yote_maxid" ))||0)) ) && localStorage.setItem( "yote_maxid", idx );
                 var newobj = _makeBaseObj(idx);
                 stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
@@ -190,7 +243,10 @@ yote_local.init = function() {
                 }
                 if( typeof startdata === 'object' ) {
                     for( var key in startdata ) {
-                        newobj._data[key] = _check( startdata[key] );
+                        var val = _check( startdata[key] );
+                        if( val !== undefined ) {
+                            newobj._data[key] = val;
+                        }
                     }
                 }
                 _dirty( idx, newobj );
@@ -374,6 +430,7 @@ yote_local.init = function() {
     yote_local.fetch = _fetch;
 
     yote_local.fetch_root = function() {
+        // goofy logic to make it atomic
         parseInt(localStorage.getItem( "yote_maxid" )) > 0 || localStorage.setItem( "yote_maxid", 1 );
 
         return _fetch( 1 ) || _stamp( '_yote_root', _makeBaseObj(1) );
@@ -382,6 +439,25 @@ yote_local.init = function() {
     yote_local.init = function() {
         return yote_local.fetch_root();
     };
+
+    yote_local.contact = function( url, proto, data, fun ) {
+        var oReq = new XMLHttpRequest();
+        oReq.addEventListener("loadend", function() {
+            fun( oReq.responseText );
+        } );
+        oReq.addEventListener("error", function(e) { console.log( e ); if(true)alert('error : ' + e) } );
+        oReq.addEventListener("abort", function(e) { console.log( e ); if(true)alert('abort : ' + e) } );
+        
+        console.log( "CONTACTING SERVER ASYNC via url : " + url );
+        
+        oReq.open( proto", url, true );
+        if( data ) {
+            oReq.send( data );
+        } else {
+            oReq.send();
+        }
+    }; //yote_local.contact
+
 
     // TODO - set up a timer to stow all periodically?
 

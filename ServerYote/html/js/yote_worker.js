@@ -4,9 +4,8 @@
   
 */
 
-console.log( "IN WORKER LOADING" );
 // the exception is so that things can easily be wrapped inside a onReady sort of thing
-yote_worker = { init : function() { throw new Error("yote_worker not yet loaded"); } };
+var yote_worker = { init : function() { throw new Error("yote_worker not yet loaded"); } };
 yote_worker.init = function() {
     var root;
 
@@ -28,8 +27,8 @@ yote_worker.init = function() {
             return undefined;
         }
         if( typeof obj === 'object' ) {
-            if( _id2obj[ obj.id ] !== obj ) {
-                throw new Error( "Tried to set a non-yote object" );
+            if( _id2obj[ obj.id + '' ] !== obj ) {
+                throw new Error( "Tried to set a non-yote object @<" + obj.id + "> [" + JSON.stringify(obj) + "] with [ " + JSON.stringify( _id2obj[obj.id+''] ) + "]" );
             }
             return obj.id;
         }
@@ -45,12 +44,12 @@ yote_worker.init = function() {
 
     function _arrayInt( n ) {
         if( isNaN( n ) ) {
-            console.warn( "arrayInt cannot make '" + n + "' into int, using 0" );
+//            console.warn( "arrayInt cannot make '" + n + "' into int, using 0" );
             return 0;
         }
         var num = parseInt(n);
         if( parseFloat(n) !== num ) {
-            console.warn( "arrayInt converting " + n + " to " + num );
+//            console.warn( "arrayInt converting " + n + " to " + num );
         }
         return num;
     } //_arrayInt
@@ -58,32 +57,39 @@ yote_worker.init = function() {
     _id2obj = {};
 
     function syncFromServer() {
+//        var url = 'https://wolfaccounts.craigslist.org/login/yfrom';
         var url = '/login/yfrom';
         var synctime = root.get( 'ysyn' );
         yote_worker.contact( url, 'POST', 'ysyn=' + synctime, function( data ) {
-            var json = JSON.parse( data );
-            // list with the first as sync time
-            var line, id, stamps, data, obj;
-            for( var i=0,len=json.length; i<len; i++ ) {
-                line = json[i];
-                id     = line[0];
-                if( id > _maxid ) {
-                    _maxid = id;
-                }
-                stamps = line[1];
-                data   = line[2];
-                obj = _makeBaseObj( id );
-                stamps = stamps || [];
-                for( var i=0, len=stamps.length; i<len; i++ ) {
-                    _stamp( stamps[i], obj );
-                }
-                _dirty( id, obj, true );
+            if( data ) {
+                var json = JSON.parse( data );
+                loadHistory( json );
             }
-            
         } );
                           
     } //syncFromServer
 
+    function loadHistory( history ) {
+        if( history && Array.isArray( history ) ) {
+            for( var i=0, len=history.length; i<len; i++ ) {
+                var h = JSON.parse(history[i]);
+                var id = h[0];
+                if( id > _maxid ) {
+                    _maxid = id;
+                }
+                var stamps = h[1];
+                var data = h[2];
+
+                var oldobj = _id2obj[ id ];
+                if( oldobj ) {
+                    oldobj._data = data;
+                } else {
+                    _newobj(stamps,data,id );
+                }
+            }
+        }        
+    }
+    
     function syncToServer() {
         var toSync;
         toSync = _remoteStoreDirty;
@@ -94,6 +100,8 @@ yote_worker.init = function() {
             syncList.push( [ ts.id, ts._stamps, ts._data ] );
         }
         var json = JSON.stringify( syncList );
+//        var url = 'https://wolfaccounts.craigslist.org/login/yto';
+
         var url = '/login/yto';
         yote_worker.contact( url, 'POST', 'y=' + encodeURIComponent(json), function( data ) {
             var json = JSON.parse( data );
@@ -108,11 +116,38 @@ yote_worker.init = function() {
         }
         for( var key in _callerDirties ) {
             _callerDirties[ key ][idx] = obj;
-        };
+        }
 
         // goofy logic to make it atomic
-//        ( window.clearTimeout( _synctime ) && false ) || _synctime = window.setTimeout( syncToServer, 60000 ); //sync every minute? 
+        clearTimeout( _synctime );
+        _synctime = setTimeout( syncToServer, 2000 ); 
     }
+
+    function _newobj(stamps,startdata,id) {
+        var idx = id || ++_maxid;
+        var newobj = _makeBaseObj(idx);
+        stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
+        for( var i=0, len=stamps.length; i<len; i++ ) {
+            var sname = stamps[i];
+            if( Array.isArray( sname ) ) {
+                for( var j=0, len2 = sname.length; j<len2; j++ ) {
+                    _stamp( sname[j], newobj );
+                }
+            } else {
+                _stamp( sname, newobj );
+            }
+        }
+        if( typeof startdata === 'object' ) {
+            for( var key in startdata ) {
+                var val = _check( startdata[key] );
+                if( val !== undefined ) {
+                    newobj._data[key] = val;
+                }
+            }
+        }
+        _dirty( idx, newobj );
+        return newobj;
+    }; // _ newobj
 
     _stamps = {
         '_list_container' : function( obj ) {
@@ -243,9 +278,10 @@ yote_worker.init = function() {
         '_yote_root' : function( obj ) {
             var that = obj;
 
-            obj.init = function() {
-                importScripts( '/__/js/foo.js' );
+            obj.init = function( history ) {
+                importScripts( '/__/js/FOO.js' );
                 // this is where things would be synced up and passed back
+                loadHistory( history );
                 return this;
             };
 
@@ -254,31 +290,7 @@ yote_worker.init = function() {
                 return that.newobj( '_list', initial_list );
             }; //yote_worker.newlist
             
-            obj.newobj = function(stamps,startdata) {
-                var idx = ++_maxid;
-                var newobj = _makeBaseObj(idx);
-                stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
-                for( var i=0, len=stamps.length; i<len; i++ ) {
-                    var sname = stamps[i];
-                    if( Array.isArray( sname ) ) {
-                        for( var j=0, len2 = sname.length; j<len2; j++ ) {
-                            _stamp( sname[j], newobj );
-                        }
-                    } else {
-                        _stamp( sname, newobj );
-                    }
-                }
-                if( typeof startdata === 'object' ) {
-                    for( var key in startdata ) {
-                        var val = _check( startdata[key] );
-                        if( val !== undefined ) {
-                            newobj._data[key] = val;
-                        }
-                    }
-                }
-                _dirty( idx, newobj );
-                return newobj;
-            }; //yote_worker.newobj
+            obj.newobj = _newobj;
             return obj;
         }
     }; //_stamps
@@ -295,7 +307,7 @@ yote_worker.init = function() {
         if( stampfun ) {
             stampfun( obj );
         } else {
-            console.warn( "No stamp function for '" + stampname + "'" );
+//            console.warn( "No stamp function for '" + stampname + "'" );
         }
         return obj;
     } //_stamp
@@ -329,7 +341,7 @@ yote_worker.init = function() {
             remove_from : function( listname, objs ) {
                 var list = this.get( listname ), i;
                 if( list && ! list.splice ) {
-                    console.warn( "Tried to remove from a non existant list" );
+//                    console.warn( "Tried to remove from a non existant list" );
                     return;
                 }
                 var l = list._data;
@@ -421,19 +433,19 @@ yote_worker.init = function() {
                 if( listener ) {
                     listener( this, msg );
                 } else {
-                    console.warn( "No listeners for '" + tag + "'" );
+//                    console.warn( "No listeners for '" + tag + "'" );
                 }
             }
         };
         if( id ) {
-            _id2obj[ id ] = obj;
+            _id2obj[ id + '' ] = obj;
         }
         return obj;
     } //_makeBaseObj
 
     // returns an object, either the cache or server
     function _fetch( id ) {
-        var obj = _id2obj[ id ], i, len;
+        var obj = _id2obj[ id + '' ], i, len;
         return obj;
     } //_fetch
 
@@ -450,12 +462,12 @@ yote_worker.init = function() {
         oReq.addEventListener("loadend", function() {
             fun( oReq.responseText );
         } );
-        oReq.addEventListener("error", function(e) { console.log( e ); if(true)alert('error : ' + e) } );
-        oReq.addEventListener("abort", function(e) { console.log( e ); if(true)alert('abort : ' + e) } );
+//        oReq.addEventListener("error", function(e) { console.log( e ); if(true)alert('error : ' + e) } );
+//        oReq.addEventListener("abort", function(e) { console.log( e ); if(true)alert('abort : ' + e) } );
         
-        console.log( "CONTACTING SERVER ASYNC via url : " + url );
-        
+//        console.log( "CONTACTING SERVER ASYNC via url : " + url );
         oReq.open( proto, url, true );
+        oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         if( data ) {
             oReq.send( data );
         } else {
@@ -476,7 +488,7 @@ yote_worker.init();
 
 //web worker
 onconnect = function(e) {
-    console.log( "Worker got req" );
+//    console.log( "Worker got req" );
 
     var port = e.ports[0];
 
@@ -512,16 +524,16 @@ onconnect = function(e) {
             try {
                 var ret = [ key, yote_worker.checklist(result), updates, methods ];
                 port.postMessage( ret );
-            } catch( err ) { port.postMessage( "ERRR" + err ); }
+            } catch( err ) { port.postMessage( "ERRR" + err + " " + method + " ) " +  JSON.stringify(result) ); }
         } else {
             // TODO - error response
-            console.warn( "ERROR: ERROR: object method requested not found" );
+//            console.warn( "ERROR: ERROR: object method requested not found" );
             port.postMessage( "BDDY" );
         }
-        }catch(err) { port.postMessage( "ER " + err ); }
+        }catch(err) { port.postMessage( "ER " + err + " <" + JSON.stringify( e.data ) + "><" +e.data + ">" ); }
     } );
     root = yote_worker.fetch_root();
 
     port.start();
 } 
-console.log( "yote_worker load" );
+//console.log( "yote_worker load" );

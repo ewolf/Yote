@@ -1,4 +1,4 @@
-if( window.yote ) {
+if( yote ) {
 
     var _costForm = new Intl.NumberFormat( "en-US", {
         minimumFractionDigits : 2,
@@ -25,7 +25,9 @@ if( window.yote ) {
 
             var fld = $this.data( 'field' );
             var tClass = $this.data( 'toggle-class' );
-            $this.toggleClass( tClass, o.get( fld ) ? true : false );
+            var state = o.get( fld );
+            var toggleState = state === undefined || state == 0 ?  false : true;
+            $this.toggleClass( tClass, toggleState );
             
         } );
 
