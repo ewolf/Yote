@@ -255,7 +255,30 @@ yote.init = function( args ) {
         return obj;
     }
 
-    function contact(id,action,data,handl,errhandl) { 
+    function contact_worker(id,action,data,handl,errhandl) {
+        worker = new SharedWorker( "/__/js/yote.worker.js" );
+        worker.port.start();
+
+        var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
+
+        // for a single parameter, wrap into a parameter list
+        var sendData = JSON.stringify(  readiedData );
+        worker.port.onmessage = function(e) {
+            if( e.data ) {
+alert( "E" + e.data );
+                var retVal = processRaw( e.data );
+                if( handl ) {
+                    handl( e.data );
+                }
+            } else if( errhandl ) {
+                errhandl( 'failed' );
+            }
+        }
+
+        worker.port.postMessage( [ id, action, readiedData ] );
+    }
+
+    function contact_server(id,action,data,handl,errhandl) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("loadend", reqListener( handl, errhandl ) );
         oReq.addEventListener("error", function(e) { alert('error : ' + e) } );
@@ -283,8 +306,17 @@ yote.init = function( args ) {
         // as vehicles for data
         oReq.send( sendData );
 
-    }; // contact
+    }; // contact_server
 
+    var contact, worker, init_root_args = [];
+    if( args.contact == 'worker'  ) {
+        contact = contact_worker;
+        if( args.appFile ) {
+            init_root_args.push( args.appFile );
+        }
+    } else {
+        contact = contact_server;
+    }
     
     // translates text to objects
     function xform_in( item ) {
@@ -338,16 +370,16 @@ yote.init = function( args ) {
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
     }
-    contact( '_', 'init_root', [], function(res) {
+    contact( '_', 'init_root', init_root_args, function(res) {
         root  = res[0];
         token = res[1];
-        if( sessionStorage ) {
-            sessionStorage.setItem( 'token', token );
+        if( sessionstorage ) {
+            sessionstorage.setitem( 'token', token );
         }
         if( handler ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
-                    if( Array.isArray( result ) ) {
+                    if( array.isarray( result ) ) {
                         var app = result[0];
                         var acct = result[1];
                     } else {
@@ -363,6 +395,6 @@ yote.init = function( args ) {
 
 }; //yote.init
 
-yote.sameYoteObjects = function( a, b ) {
+yote.sameyoteobjects = function( a, b ) {
     return typeof a === 'object' && typeof b === 'object' && a.id === b.id;
 };
