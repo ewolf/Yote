@@ -1,13 +1,16 @@
-/*jslint white: true */
-/*jslint nomen: true */
-/*jslint plusplus : true */
+/*
+  yote_worker.addToStamps
+  yote_worker.fetch
+  
+*/
 
+console.log( "IN WORKER LOADING" );
 // the exception is so that things can easily be wrapped inside a onReady sort of thing
 yote_worker = { init : function() { throw new Error("yote_worker not yet loaded"); } };
 yote_worker.init = function() {
     var root;
 
-    var _id2obj, _stamps;
+    var _id2obj, _stamps, _stamp_methods, _maxid = 0;
 
 
     function _check( obj ) {
@@ -47,6 +50,9 @@ yote_worker.init = function() {
             for( var i=0,len=json.length; i<len; i++ ) {
                 line = json[i];
                 id     = line[0];
+                if( id > _maxid ) {
+                    _maxid = id;
+                }
                 stamps = line[1];
                 data   = line[2];
                 obj = _makeBaseObj( id );
@@ -63,8 +69,8 @@ yote_worker.init = function() {
 
     function syncToServer() {
         var toSync;
-        // goofy logic to make it atomic
-        ( toSync = _remoteDirty ) && ( _remoteDirty = {} );
+        toSync = _remoteStoreDirty;
+        _remoteStoreDirty = {};
         var syncList = [];
         for( var key in toSync ) {
             var ts = toSync[key];
@@ -78,20 +84,24 @@ yote_worker.init = function() {
         } );
     }
     
-    var _synctime, _remoteDirty = {};
-    function _dirty( idx, obj, fromRemote ) {
-        if( fromRemote !== true ) {
-            _remoteDirty[idx] = obj;
+    var _synctime, _remoteStoreDirty = {};
+    function _dirty( idx, obj, fromRemoteStore ) {
+        if( fromRemoteStore !== true ) {
+            _remoteStoreDirty[idx] = obj;
         }
-        localStorage.setItem( "yote_id_" + idx, JSON.stringify( {
-            s : obj._stamps,
-            d : obj._data
-        } ) );
+        for( var key in _callerDirties ) {
+            _callerDirties[ key ][idx] = obj;
+        };
 
         // goofy logic to make it atomic
-        ( window.clearTimeout( _synctime ) && false ) || _synctime = window.setTimeout( syncToServer, 60000 ); //sync every minute? 
+//        ( window.clearTimeout( _synctime ) && false ) || _synctime = window.setTimeout( syncToServer, 60000 ); //sync every minute? 
     }
 
+    _stamp_methods = {
+        _list_container : [ 'calculate', 'add_entry', 'remove_entry' ],
+        _list : [ 'sort', 'push', 'splice', 'pop', 'shift', 'unshift' ],
+    }; //_stamp_methods
+    
     _stamps = {
         '_list_container' : function( obj ) {
             obj._list_container_stamp_names = {};
@@ -220,14 +230,18 @@ yote_worker.init = function() {
         },
         '_yote_root' : function( obj ) {
             var that = obj;
+
+            obj.init = function() {
+                return "XX";
+            };
+
+            
             obj.newlist = function( initial_list ) {
                 return that.newobj( '_list', initial_list );
             }; //yote_worker.newlist
             
             obj.newobj = function(stamps,startdata) {
-                var idx;
-                // goofy logic to make it atomic
-                (idx = (1 + (parseInt(localStorage.getItem( "yote_maxid" ))||0)) ) && localStorage.setItem( "yote_maxid", idx );
+                var idx = ++_maxid;
                 var newobj = _makeBaseObj(idx);
                 stamps = Array.isArray( stamps ) ? stamps : stamps ? [ stamps ] : [];
                 for( var i=0, len=stamps.length; i<len; i++ ) {
@@ -255,8 +269,9 @@ yote_worker.init = function() {
         }
     }; //_stamps
 
-    yote_worker.addToStampers = function( name, fun ) {
+    yote_worker.addToStamps = function( name, fun, methods ) {
         _stamps[ name ] = fun;
+        _stamp_methods[ name ] = methods;
     };
 
     function _stamp( stampname, obj ) {
@@ -405,39 +420,16 @@ yote_worker.init = function() {
     // returns an object, either the cache or server
     function _fetch( id ) {
         var obj = _id2obj[ id ], i, len;
-        if( ! obj ) {
-            var json = localStorage.getItem( "yote_id_" + id );
-            if( json ) {
-                json = JSON.parse( json );
-                obj  = _makeBaseObj( id );
-                len = json.s.length;
-                obj._data = json.d;
-                _id2obj[ id ] = obj;
-                for( i=0; i<len; i++ ) {
-                    _stamp( json.s[i], obj );
-                }
-                return obj;
-            }
-        }
         return obj;
     } //_fetch
 
     // ----------- PUBLIC FUN
 
-    yote_worker.stowAll = function() {}
-
     yote_worker.fetch = _fetch;
 
     yote_worker.fetch_root = function() {
-        // goofy logic to make it atomic
-        parseInt(localStorage.getItem( "yote_maxid" )) > 0 || localStorage.setItem( "yote_maxid", 1 );
-
         return _fetch( 1 ) || _stamp( '_yote_root', _makeBaseObj(1) );
     }; //yote_worker.fetch_root
-
-    yote_worker.init = function() {
-        return yote_worker.fetch_root();
-    };
 
     yote_worker.contact = function( url, proto, data, fun ) {
         var oReq = new XMLHttpRequest();
@@ -457,12 +449,66 @@ yote_worker.init = function() {
         }
     }; //yote_worker.contact
 
-    // TODO - recycle program
 
-    // stamps are added by loading in javascript files
-
-    // init was called, so should have a return value of the root
-    root = yote_worker.fetch_root();
-    return root;
-
+    // where syncFromServer would be called
+    
+    // ensure a root exists
+    yote_worker.fetch_root();
+    
 }; //yote.init
+
+yote_worker.init();
+
+
+//web worker
+onconnect = function(e) {
+    console.log( "Worker got req" );
+
+    var port = e.ports[0];
+
+    var _callerDirties = {};
+    
+    port.addEventListener('message', function( e ) {
+        try {
+        var key  = e.data[0];
+        var args = e.data[1];
+        
+        var id        = args[0];
+        var method    = args[1];
+        var call_args = args[2];
+        
+        var obj = yote_worker.fetch( id );
+        if( obj[ method ] ) {
+            // note everything that has changed since
+            // this was called in order to build update
+            var dirties = {};
+            _callerDirties[ key ] = dirties;
+            var result = obj[ method ]( call_args );
+            delete _callerDirties[ key ];
+
+            var updates = [];
+            var methods = {};
+            for( var id in dirties ) {
+                var upobj = dirties[id];
+                updates.push( [ upobj.id, upobj._stamps, upobj._data ] );
+                var stamps = upobj._stamps;
+                for( var i=0, len = stamps.length; i<len; i++ ) {
+                    var stamp = stamps[i];
+                    methods[ stamp ] = _stamp_methods[ stamp ];
+                }
+            };
+            
+            var ret = [ key, result, updates, methods ];
+            port.postMessage( ret );
+        } else {
+            // TODO - error response
+            console.warn( "ERROR: ERROR: object method requested not found" );
+            port.postMessage( "BDDY" );
+        }
+        }catch(err) { port.postMessage( "ER " + err ); }
+    } );
+    root = yote_worker.fetch_root();
+    importScripts( '/__/js/foo.js' );
+    port.start();
+} 
+console.log( "yote_worker load" );

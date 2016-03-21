@@ -1,4 +1,4 @@
-if( yote ) {
+if( window.yote ) {
 
     var _costForm = new Intl.NumberFormat( "en-US", {
         minimumFractionDigits : 2,

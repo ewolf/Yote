@@ -1,27 +1,7 @@
-/*jslint white: true */
-/*jslint nomen: true */
-/*jslint plusplus : true */
-
-// the exception is so that things can easily be wrapped inside a onReady sort of thing
-yote_worker_bridge = { init : function() { throw new Error("yote_worker_bridge not yet loaded"); } };
+yote = {};
+yote_worker_bridge = yote;
 yote_worker_bridge.init = function( initFun ) {
-
-
-    //  foo.barmethod = function( args, fun ) {
-    //    register key --> fun
-    //     myworker.port.postmessage( [ key, args ] );
-    //  }
-
-    //  onmessage = function(e) {
-    //    key = e.data[0]
-    //    result = e.data[1]
-    //    updates = e.data[2]
-    //    find fun registered to key
-    //    remove registration
-    //    activate fun
-    //  }
-    
-    var myWorker = new SharedWorker("yote_worker.js");
+    var myWorker = new SharedWorker("/__/js/yote_worker.js");
 
     var _callRegistry = {};
 
@@ -29,11 +9,12 @@ yote_worker_bridge.init = function( initFun ) {
 
     var _id2obj = {};
 
-    /*
-      One handler to handle them all. That is why all calls have
-      the exact same protocol.
-     */
+    //
+    //  One handler to handle them all. That is why all calls have
+    //  the exact same protocol.
+    //
     myWorker.port.onmessage = function(e) {
+        alert( e.data );
         var key     = e.data[0];
         var result  = e.data[1];
         var updates = e.data[2]; // [] 
@@ -59,6 +40,25 @@ yote_worker_bridge.init = function( initFun ) {
             if( ! obj ) {
                 obj = {
                     id  : id,
+                    _listeners : {},
+                    addUpdateListener : function( fun, tag ) {
+                        tag = tag || '_';
+                        this._listeners[ tag ] = fun;
+                    },
+                    fireAllUpdateListeners : function() {
+                        var tag;
+                        for( tag in this._listeners ) {
+                            this._listeners[tag]( this, arguments );
+                        }
+                    },
+                    fireUpdateListener : function( tag, msg ) {
+                        var listener = this._listeners[ tag ];
+                        if( listener ) {
+                            listener( this, msg );
+                        } else {
+                            console.warn( "No listeners for '" + tag + "'" );
+                        }
+                    },
                     get : function( key ) {
                         var val = this._d[key];
                         if( typeof val === 'string' && val.startsWith( 'v' ) )
@@ -68,23 +68,32 @@ yote_worker_bridge.init = function( initFun ) {
                             console.warn( "Requested item of id '" + val + "' but it was not present" );
                         }
                         return obj;
-                    }
-                };
+                    },
+                    add_to : _makeMethod( 'add_to' ),
+                    remove_from : _makeMethod( 'remove_from' ),
+                    set : _makeMethod( 'set' ),
+                    update : _makeMethod( 'update' )
+                }; //new obj
                 // set up RPC methods. The methods are defined by the stamps
                 for( var j=0,jlen=stamps.length; j<jlen; j++ ) {
                     var methods = _stamp_methods[ stamps[j] ];
                     if( methods ) {
                         for( var k=0,klen=methods.length; k<klen; k++ ) {
-                            obj[ methods[k] ] = function( args, fun ) {
-                                _contact( [ this.id, methods[k], args ], fun );
-                            }
+                            obj[ methods[k] ] = _makeMethod( methods[k] );
                         }
                     } else {
                         console.warn( "Warning : no methods found for stamp '" + stamps[j] + "'" );
                     }
-                }
-            }
+                } //each stamp
+            } //if new obj
+            obj._d = data;
         } //updates
+
+        function _makeMethod( name ) {
+            return function( args, fun ) {
+                _contact( [ this.id, name, args ], fun );
+            }
+        }
 
         // finally activate the callback.
         var method = _callRegistry[key];
@@ -92,23 +101,25 @@ yote_worker_bridge.init = function( initFun ) {
             delete _callRegistry[key];
             method( result );
         }
-    };
+    }; //myWorker.port.onmessage
 
     function _contact( args, fun ) {
+        console.log( "GOT CONTACT REQ");
+
         var key = new Date().getTime();
         
-        //goofy logic to make this atomic. Would be rare for this to trip and even rarer more than once.
-        //maybe once computers get an order of magnitude faster
-        while( _callRegistry[key] ) { ( key = key + "X" ) && (( ! _callRegistry[key] ) || _callRegistry[key] = fun ); }
-        
+        while( _callRegistry[key] ) { key = key + "X"; }
+        _callRegistry[key] = fun;
         myWorker.port.postMessage( [ key, args ] );
+        console.log( "POSTED MESG");
     }
 
     myWorker.port.start();
 
     // root object always has id 1 and has the init method, which sends
     // back the root object
-    contact( [ 1, 'init' ], function( root ) {
+    _contact( [ 1, 'init' ], function( root ) {
+                console.log( "GOT CONTACT RESP");
         if( initFun ) {
             initFun( root );
         } else {
@@ -116,13 +127,10 @@ yote_worker_bridge.init = function( initFun ) {
         }
     } );
 
-}; //yote.init
+}; //yote_worker_bridge.init
 
-/*
-THINK ABOUT HOW THIS WILL BE USED.
-   yote_worker_bridge.init( function( root ) {
-      root.get("name");
-      root.get("nos").isHidden( id ) ?
-   } );
+yote_worker_bridge.init();
 
-*/
+console.log( "yote_worker_bridge load" );
+
+
