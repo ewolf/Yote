@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 =head1 NAME
 
@@ -19,7 +19,7 @@ the time or inclination to write a schema or configure some framework. This can 
 orthagonally to any other storage system.
 
 Yote only loads data as it needs too. It does not load all stored containers at once.
-Data is stored in a data directory and is stored using the DB::DataStore module. A Yote
+Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote
 container is a key/value store where the values can be strings, numbers, arrays, hashes
 or other Yote containers.
 
@@ -151,7 +151,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 =head1 NAME
 
@@ -573,7 +573,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -842,7 +842,7 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
@@ -937,7 +937,7 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
@@ -1014,7 +1014,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.35';
+$VERSION = '1.37';
 
 #
 # This the main index and stores in which table and position
@@ -1027,7 +1027,7 @@ sub open {
   my $self = bless {
       args       => $args,
       OBJ_STORE  => $obj_store,
-      DATA_STORE => DB::DataStore->open( $args->{ store } ),
+      DATA_STORE => Data::RecordStore->open( $args->{ store } ),
   }, $class;
   $self->{DATA_STORE}->ensure_entry_count( 1 );
   $self;
@@ -1082,7 +1082,7 @@ sub _get_recycled_ids {
 sub _recycle_objects {
   my $self = shift;
 
-  my $mark_to_keep_store = DB::DataStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
+  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
   $mark_to_keep_store->empty();
   $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
   
@@ -1198,6 +1198,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.35  (May 5, 2016))
+       Version 1.37  (May 5, 2016))
 
 =cut

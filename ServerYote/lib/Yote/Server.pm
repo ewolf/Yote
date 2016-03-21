@@ -481,7 +481,7 @@ use vars qw($VERSION);
 $VERSION = '1.0';
 
 
-use DB::DataStore;
+use Data::RecordStore;
 
 use base 'Yote::ObjStore';
 
@@ -493,7 +493,7 @@ sub _new { #Yote::ServerStore
     # keeps track of when any object had been last updated.
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
-    $self->{OBJ_UPDATE_DB} = DB::DataStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
+    $self->{OBJ_UPDATE_DB} = Data::RecordStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
     $self->{OBJ_UPDATE_DB}->put_record( $self->{ID}, [ Time::HiRes::time ] );
     $self;
 } #_new

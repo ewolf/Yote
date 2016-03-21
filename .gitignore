@@ -12,7 +12,7 @@ blib
 pm_to_blib
 yote.pid
 Yote*gz
-DB-*gz
+Data-*gz
 Devel-SimpleProfiler-*gz
 Lock-*gz
 *.bak

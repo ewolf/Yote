@@ -4,7 +4,7 @@
       "Eric Wolf        coyocanid@gmail.com"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.4214",
+   "generated_by" : "Module::Build version 0.4218",
    "license" : [
       "perl_5"
    ],
@@ -27,7 +27,7 @@
       },
       "runtime" : {
          "requires" : {
-            "DB::DataStore" : "1",
+            "Data::RecordStore" : "1",
             "Devel::Refcount" : "0.1",
             "JSON" : "0",
             "WeakRef" : "0.01",
@@ -38,27 +38,27 @@
    "provides" : {
       "Yote" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       },
       "Yote::Array" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       },
       "Yote::Hash" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       },
       "Yote::Obj" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       },
       "Yote::ObjStore" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       },
       "Yote::YoteDB" : {
          "file" : "lib/Yote.pm",
-         "version" : "1.35"
+         "version" : "1.37"
       }
    },
    "release_status" : "stable",
@@ -67,6 +67,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.35",
-   "x_serialization_backend" : "JSON::PP version 2.27203"
+   "version" : "1.37",
+   "x_serialization_backend" : "JSON::PP version 2.27400"
 }

@@ -12,14 +12,14 @@ my $builder = Module::Build->new(
     license            => 'perl',
     module_name        => 'Yote',
     release_status     => 'stable',
-    version            => 1.35,
-    dist_version       => 1.35,
+    version            => 1.37,
+    dist_version       => 1.37,
     test_files         => [ 't/yotedb.t', ],
     requires => {
         'perl'                  => 'v5.12',
         'WeakRef'               => 0.01,
         'JSON'                  => 0,
-        'DB::DataStore'         => 1.0,
+        'Data::RecordStore'     => 1.0,
         'Devel::Refcount'       => 0.1,
     },
     );

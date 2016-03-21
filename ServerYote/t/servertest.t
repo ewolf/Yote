@@ -39,7 +39,7 @@ my $innerfoo = $fooObj->get_innerfoo;
 $store->stow_all;
 
 #use Devel::SimpleProfiler;
-#Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|DB|test_suite/ );
+#Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|Data|test_suite/ );
 #Devel::SimpleProfiler::start;
 
 my( $pid, $count );
