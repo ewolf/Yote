@@ -43,7 +43,7 @@ yote.init = function( args ) {
 
     var token, root;
 
-    if( sessionStorage ) {
+    if( typeof sessionStorage !== 'undefined' ) {
         token = sessionStorage.getItem( 'token' );
     }
     
@@ -373,13 +373,13 @@ alert( "E" + e.data );
     contact( '_', 'init_root', init_root_args, function(res) {
         root  = res[0];
         token = res[1];
-        if( sessionstorage ) {
-            sessionstorage.setitem( 'token', token );
+        if( typeof sessionStorage !== 'undefined' ) {
+            sessionStorage.setItem( 'token', token );
         }
         if( handler ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
-                    if( array.isarray( result ) ) {
+                    if( Array.isArray( result ) ) {
                         var app = result[0];
                         var acct = result[1];
                     } else {
