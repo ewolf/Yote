@@ -10,7 +10,17 @@ yote_worker = { init : function() { throw new Error("yote_worker not yet loaded"
 yote_worker.init = function() {
     var root;
 
-    var _id2obj, _stamps, _stamp_methods, _maxid = 0;
+    var _id2obj, _stamps, _callerDirties = {}, _stamp_methods, _maxid = 1;
+
+    var _stamp_methods = {
+        _list_container : [ 'calculate', 'add_entry', 'remove_entry' ],
+        _list : [ 'sort', 'push', 'splice', 'pop', 'shift', 'unshift' ],
+        _yote_root  : [ 'init', 'newlist', 'newobj' ],
+    }; //_stamp_methods
+    
+
+    yote_worker.callerDirties = _callerDirties;
+    yote_worker.stamp_methods = _stamp_methods;
 
 
     function _check( obj ) {
@@ -25,6 +35,13 @@ yote_worker.init = function() {
         }
         return 'v' + obj;
     } //_check
+
+    yote_worker.checklist = function( obj ) {
+        if( Array.isArray( obj ) ) {
+            return obj.map( yote_worker.checklist );
+        }
+        return _check( obj );
+    };
 
     function _arrayInt( n ) {
         if( isNaN( n ) ) {
@@ -97,11 +114,6 @@ yote_worker.init = function() {
 //        ( window.clearTimeout( _synctime ) && false ) || _synctime = window.setTimeout( syncToServer, 60000 ); //sync every minute? 
     }
 
-    _stamp_methods = {
-        _list_container : [ 'calculate', 'add_entry', 'remove_entry' ],
-        _list : [ 'sort', 'push', 'splice', 'pop', 'shift', 'unshift' ],
-    }; //_stamp_methods
-    
     _stamps = {
         '_list_container' : function( obj ) {
             obj._list_container_stamp_names = {};
@@ -232,7 +244,9 @@ yote_worker.init = function() {
             var that = obj;
 
             obj.init = function() {
-                return "XX";
+                importScripts( '/__/js/foo.js' );
+                // this is where things would be synced up and passed back
+                return this;
             };
 
             
@@ -466,8 +480,6 @@ onconnect = function(e) {
 
     var port = e.ports[0];
 
-    var _callerDirties = {};
-    
     port.addEventListener('message', function( e ) {
         try {
         var key  = e.data[0];
@@ -482,9 +494,9 @@ onconnect = function(e) {
             // note everything that has changed since
             // this was called in order to build update
             var dirties = {};
-            _callerDirties[ key ] = dirties;
+            yote_worker.callerDirties[ key ] = dirties;
             var result = obj[ method ]( call_args );
-            delete _callerDirties[ key ];
+            delete yote_worker.callerDirties[ key ];
 
             var updates = [];
             var methods = {};
@@ -494,12 +506,13 @@ onconnect = function(e) {
                 var stamps = upobj._stamps;
                 for( var i=0, len = stamps.length; i<len; i++ ) {
                     var stamp = stamps[i];
-                    methods[ stamp ] = _stamp_methods[ stamp ];
+                    methods[ stamp ] = yote_worker.stamp_methods[ stamp ];
                 }
             };
-            
-            var ret = [ key, result, updates, methods ];
-            port.postMessage( ret );
+            try {
+                var ret = [ key, yote_worker.checklist(result), updates, methods ];
+                port.postMessage( ret );
+            } catch( err ) { port.postMessage( "ERRR" + err ); }
         } else {
             // TODO - error response
             console.warn( "ERROR: ERROR: object method requested not found" );
@@ -508,7 +521,7 @@ onconnect = function(e) {
         }catch(err) { port.postMessage( "ER " + err ); }
     } );
     root = yote_worker.fetch_root();
-    importScripts( '/__/js/foo.js' );
+
     port.start();
 } 
 console.log( "yote_worker load" );

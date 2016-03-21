@@ -15,6 +15,7 @@ yote_worker_bridge.init = function( initFun ) {
     //
     myWorker.port.onmessage = function(e) {
         alert( e.data );
+        console.log( e.data );
         var key     = e.data[0];
         var result  = e.data[1];
         var updates = e.data[2]; // [] 
@@ -85,6 +86,7 @@ yote_worker_bridge.init = function( initFun ) {
                         console.warn( "Warning : no methods found for stamp '" + stamps[j] + "'" );
                     }
                 } //each stamp
+                _id2obj[ id ] = obj;
             } //if new obj
             obj._d = data;
         } //updates
@@ -99,10 +101,21 @@ yote_worker_bridge.init = function( initFun ) {
         var method = _callRegistry[key];
         if( method ) {
             delete _callRegistry[key];
-            method( result );
+            var res = _translate( result );
+            method( res );
         }
     }; //myWorker.port.onmessage
 
+    function _translate( res ) {
+        if( Array.isArray( res ) ) {
+            return res.map( _translate );
+        }
+        if( typeof res === 'string' && res.startsWith('v') ) {
+            return res.substring(1);
+        }
+        return _id2obj[ res ];
+    } //_translate
+    
     function _contact( args, fun ) {
         console.log( "GOT CONTACT REQ");
 
@@ -119,7 +132,8 @@ yote_worker_bridge.init = function( initFun ) {
     // root object always has id 1 and has the init method, which sends
     // back the root object
     _contact( [ 1, 'init' ], function( root ) {
-                console.log( "GOT CONTACT RESP");
+        alert( root );
+        console.log( "GOT CONTACT RESP");
         if( initFun ) {
             initFun( root );
         } else {
@@ -129,8 +143,4 @@ yote_worker_bridge.init = function( initFun ) {
 
 }; //yote_worker_bridge.init
 
-yote_worker_bridge.init();
-
 console.log( "yote_worker_bridge load" );
-
-
