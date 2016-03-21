@@ -70,7 +70,7 @@ sub update {
             unless $self->_valid_choice($fld,$val);
         $self->set( $fld, $val )
     }
-    $self->_calculate( 'update' );
+    $self->_calculate( 'update', $updates );
 } #update
 
 sub add_entry {
