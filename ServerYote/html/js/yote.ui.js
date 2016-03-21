@@ -19,12 +19,12 @@ if( yote ) {
         $( ".toggleField" ).each( function() {
             var obj = o;
             var $this = $(this);
-            if( $this.attr('data-id') != obj.id ) {
+            if( $this.data( 'id') != obj.id ) {
                 return;
             }
 
-            var fld = $this.attr( 'data-field' );
-            var tClass = $this.attr( 'data-toggle-class' );
+            var fld = $this.data( 'field' );
+            var tClass = $this.data( 'toggle-class' );
             $this.toggleClass( tClass, o.get( fld ) ? true : false );
             
         } );
@@ -32,20 +32,20 @@ if( yote ) {
         $( ".showField" ).each( function() {
             var obj = o;
             var $this = $(this);
-            if( $this.attr('data-id') != obj.id ) {
+            if( $this.data( 'id') != obj.id ) {
                 return;
             }
 
-            var fld = $this.attr( 'data-field' );
+            var fld = $this.data( 'field' );
             var val = o.get( fld );
 
-            var form = $this.attr( 'data-format' );
+            var form = $this.data( 'format' );
             if( form ) {
                 if(  form == '$' ) {
                     val = _costForm.format( val );
                 }
                 else if( form.startsWith('#') ) {
-                    val = _makeFormatter( $this.attr( 'data-format').substr( 1 ) ).format( val );
+                    val = _makeFormatter( $this.data( 'format').substr( 1 ) ).format( val );
                 }
             }
             if( $this.is( 'input' ) ) {
@@ -95,11 +95,8 @@ if( yote ) {
                   return undefined;
               }
               var $clone = $template.clone();
-              $clone.attr( 'data-cloned', 'true' );
+              $clone.data( 'cloned', 'true' );
               function filler( $this ) {
-                  if( $this.is( 'select' ) ) { 
-                      console.log( $this );
-                  }
                   for( var i=0;i<fields.length; i++ ) {
                       var fld = fields[i];
                       if( typeof vars[$this.attr( fld )] !== 'undefined' ) {
@@ -118,16 +115,17 @@ if( yote ) {
               $( '.' + cls + ',.'+cls+'-child' ).each( function() {
                   var $this = $(this);
 
-                  $this.attr( 'data-redo', true );
-                  if( $this.is( 'select' ) && $this.attr( 'data-id' ) != obj.id ) {
+                  $this.data( 'activated-listeners', false );
+                  $this.data( 'activated-controls', false );
+                  if( $this.is( 'select' ) && $this.data( 'id' ) != obj.id ) {
                       // special casey thing to regenerate select controls
                       $this.removeClass( 'build-select' );
                   }
                   if( $this.hasClass( cls+'-child' ) ) {
-                      $this.attr( 'data-parent', obj.id );
+                      $this.data( 'parent', obj.id );
                   }
                   if( $this.hasClass( cls ) ) {
-                      $this.attr( 'data-id', obj.id );
+                      $this.data( 'id', obj.id );
                   }
               } );
           },
@@ -142,97 +140,57 @@ if( yote ) {
               }
           }, //updateListener
 
-          modifyControl : function( selector, key, fun ) {
-              if( typeof key === 'object' ) {
-                  for( var k in key ) {
-                      yote.ui.modifyControl( selector, k, key[k] );
-                  }
-                  return;
-              }
+          onControl : function( selector, key, fun ) {
               $( selector ).each( function(idx,val) {
                   var $this = $( val );
                   if( ! $.contains( $('.templates')[0], val ) ) {
-                      if( (! $this.attr( 'data-' + key ) || $this.attr( 'data-redo' ) ) && $this.attr( 'data-id') ) {
-                          $this.attr( 'data-redo', false );
-                          $this.attr( 'data-' + key, true );
+                      if( !( $this.data( key ) || $this.data( 'activated-controls' ) ) && $this.data( 'id') ) {
+                          $this.data( key, true );
+                          $this.data( 'activated-controls', true );
                           fun( $this );
                       }
                   }
               } );
-          }, //modifyControl
+          }, //onControl
 
-          activateControls : function()  {
-              yote.ui.modifyControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
-                  $ctrl.empty().append( '<input class="updateField showField ' + ($ctrl.attr( 'data-classes') ||'') + '" ' + 
-                                        '       data-id="'    + $ctrl.attr( 'data-id') + '"' + 
-                                        '       data-field="' + $ctrl.attr( 'data-field' ) + '"' + 
-                                        '       type="'       + ( $ctrl.attr( 'data-input-type') || 'text' )+ '">' +
-                                        '<span class="showField ' + ($ctrl.attr( 'data-classes')||'') + '"' + 
-                                        '      data-id="' + $ctrl.attr( 'data-id') + '"' + 
-                                        '      data-format="'+ $ctrl.attr( 'data-format' ) + '"' + 
-                                        '      data-field="' + $ctrl.attr( 'data-field') + '">' + 
-                                        '  &nbsp;</span>' );
-              } );
-
-              yote.ui.modifyControl( 'div.updateFieldControl>span', 'updateField-click', function( $ctrl ) {
-                  $ctrl.off( 'click' ).on( 'click',
-                            function() {
-                                var $this = $(this);
-                                $this.parent().addClass( 'editing' );
-                                var $inpt = $this.parent().find( 'input' );
-                                $inpt.attr( 'data-original', $inpt.val() );
-                                $inpt.focus();
-                            } );
-              } );
-
-
-              yote.ui.modifyControl( 'div.updateFieldControl', 'updateField-click', function( $ctrl ) {
-                  $ctrl.off( 'click' ).on( 'click',
-                            function() {
-                                var $this = $(this);
-                                $this.addClass( 'editing' );
-                                var $inpt = $this.find( 'input' );
-                                $inpt.attr( 'data-original', $inpt.val() );
-                                $inpt.focus();
-                            } );
-              } );
-
-              yote.ui.modifyControl( 'div.updateFieldControl>input', {
-                  'updateField-blur' : function( $ctrl ) {
-                      $ctrl.off( 'blur' ).on( 'blur',
-                                function(ev) {
-                                    var $this = $(this);
-                                    if( $this.attr( 'data-original' ) == $this.val() ) {
-                                        $this.parent().removeClass( 'editing' );
-                                    }
-                                } );
-                  },
-                  'updateField-keydown' : function( $ctrl ) {
-                      $ctrl.off( 'keydown' ).on( 'keydown',
-                                function(ev) {
-                                    var kk = ev.keyCode || ev.charCode;
-                                    var $this = $(this);
-                                    if( kk == 27 )  {
-                                        $this.val( $this.attr( 'data-original' ) );
-                                        $this.parent().removeClass( 'editing' );
-                                        $this.removeClass('edited' );
-                                    } else if( kk == 13 || kk == 9 ) {
-                                        ev.preventDeafult();
-                                        var p = $this.parent();
-                                        p.removeClass( 'editing' );
-                                        p.find('span').text( $this.val() );
-                                        $this.parent().removeClass( 'editing' );
-                                        $this.removeClass('edited' );
-                                    }
-                                    $this.toggleClass('edited', $this.attr( 'data-original') == $this.val() );
-                                } );
-                  },
-                  'updateField-keyup' : function( $ctrl ) {
-                      $ctrl.toggleClass('edited', $ctrl.attr( 'data-original') != $ctrl.val() );
+          addListener : function( selector, key, eventFuns ) {
+              $( selector ).each( function(idx,val) {
+                  var $this = $( val );
+                  if( ! $.contains( $('.templates')[0], val ) ) {
+                      if( !( $this.data( key ) || $this.data( 'activated-listeners' ) ) && $this.data( 'id') ) {
+                          $this.data( key, true );
+                          $this.data( 'activated-listeners', true );
+                          for( var even in eventFuns ) {
+                              $this.off( even, eventFuns[even] ).on( even, eventFuns[even] );
+                          }
+                      }
                   }
               } );
+          }, //addListener
 
-              yote.ui.modifyControl( 'select.updateField', 'build-select', function( $ctrl ) {
+          activateControls : function()  {
+
+              yote.ui.onControl( 'div.updateFieldControl', 'updateField-setup', function( $ctrl ) {
+                  var did = 'data-id="' + $ctrl.data( 'id' ) + '"';
+                  $ctrl.empty().append( '<div class="editing-area"><textarea class="updateField showField ' + ($ctrl.data( 'classes') ||'') + '" ' + 
+                                        did +
+                                        '       data-field="' + $ctrl.data( 'field' ) + '"' + 
+//                                        '       type="'       + ( $ctrl.data( 'input-type') || 'text' )+ '">' +
+                                        '></textarea><br>' + 
+                                        '<button type="button" ' + did + ' class="cancel">cancel</button> ' + 
+                                        '<button type="button" ' + did + ' class="ok">ok</button>' + 
+                                        '</div>' + 
+                                        '<pre><span class="showField ' + ($ctrl.data( 'classes')||'') + '"' + 
+                                        did +
+                                        '      data-format="'+ $ctrl.data( 'format' ) + '"' + 
+                                        '      data-field="' + $ctrl.data( 'field') + '">' + 
+                                        '  &nbsp;</span></pre>' );
+                  var targ_obj = yote.fetch( $ctrl.data( 'id' ) );
+                  var targ_fld = $ctrl.data( 'field' );
+                  var cur_val    = targ_obj.get( targ_fld );
+                  $ctrl.data( 'original', cur_val );
+              } );
+              yote.ui.onControl( 'select.updateField', 'build-select', function( $ctrl ) {
                   // data : 
                   //   field - field on object to modify
                   //   id - object to modify
@@ -240,14 +198,15 @@ if( yote ) {
                   //   data-src-field  - 
                   //   data-src-method -
 
-                  var targ_obj = yote.fetch( $ctrl.attr( 'data-id' ) );
-                  var targ_fld = $ctrl.attr( 'data-field' );
+                  var targ_obj = yote.fetch( $ctrl.data( 'id' ) );
+                  var targ_fld = $ctrl.data( 'field' );
                   var cur_val    = targ_obj.get( targ_fld );
-                  if( $ctrl.attr( 'data-var-is') === 'object' && cur_val ) {
+                  if( $ctrl.data( 'var-is') === 'object' && cur_val ) {
                       cur_val = cur_val.id;
                   }
+                  $ctrl.data( 'original', cur_val );
 
-                  var source_id  = $ctrl.attr( 'data-src-id' );
+                  var source_id  = $ctrl.data( 'src-id' );
                   var list;
                   var fillOptions = function() {
                       var buf = '';
@@ -272,7 +231,7 @@ if( yote ) {
                           buf += '<option class="showField" ' + dataid + ' value="' + val + '">' + title + '</option>';
                       }
                       $ctrl.empty().append( buf ).val( cur_val );
-                      if( ! buf && $ctrl.attr( 'data-hide-on-empty' ) ) {
+                      if( ! buf && $ctrl.data( 'hide-on-empty' ) ) {
                           $ctrl.hide();
                       } else {
                           $ctrl.show();
@@ -281,22 +240,22 @@ if( yote ) {
                   } //fillOptions
 
                   var source_obj = source_id ? yote.fetch( source_id ) : targ_obj;
-                  if( $ctrl.attr( 'data-src-field' ) ) {
-                      var listO = source_obj.get( $ctrl.attr( 'data-src-field' ) );
+                  if( $ctrl.data( 'src-field' ) ) {
+                      var listO = source_obj.get( $ctrl.data( 'src-field' ) );
                       list = listO.toArray();
                       fillOptions();
                   
                       yote.ui.updateListener( listO, 'select-chooser-build-select', function() {
                           var key = 'build-select';
-                          $ctrl.attr( 'data-' + key, false );
-                          yote.ui.activateControls();
+                          $ctrl.data( key, false );
+//                          yote.ui.activateControls();
                       }, false );
                   }
                   if( typeof targ_fld !== 'undefined' ) {
                       $ctrl.off( 'change' ).on( 'change',
                                                 function( ev ) {
                                                     var val = $ctrl.val();
-                                                    if( $ctrl.attr( 'data-var-is') === 'object' ) {
+                                                    if( $ctrl.data( 'var-is') === 'object' ) {
                                                         val = yote.fetch( val );
                                                     }
                                                     var up = {};
@@ -306,70 +265,158 @@ if( yote ) {
                   }
 
               } );
-              yote.ui.modifyControl( 'input.updateField[type="checkbox"]', 'checked', function( $ctl ) {
-                  $ctl.off( 'change' ).on( 'change', function(ev) {
+
+/*
+              yote.ui.addListener( 'div.updateFieldControl>span', 'updateField-click', {
+                  click : function() {
+                      var $this = $(this);
+                      $this.parent().addClass( 'editing' );
+                      var $inpt = $this.parent().find( 'textarea' );
+                      $inpt.data( 'original', $inpt.val() );
+                      $inpt.focus();
+                  }
+              } ); //updateFieldControl span click
+*/
+              yote.ui.addListener( 'div.updateFieldControl', 'updateField-click', {
+                  click : function(ev) {
+                      ev.preventDefault();
+                      var $this = $(this);
+                      $this.addClass( 'editing' );
+                      var $inpt = $this.find( 'input' );
+                      $inpt.data( 'original', $inpt.val() );
+                      $inpt.focus();
+                  }
+              } ); //updateFieldControl click
+
+              yote.ui.addListener( 'div.updateFieldControl>.editing-area>textarea', 'keylisteners', {
+                  blur : function(ev) {
+                      var $this = $(this);
+                      if( $this.data( 'original' ) == $this.val() ) {
+                          $this.parent().parent().removeClass( 'editing' );
+                      }
+                  },
+
+                  keydown : function(ev) {
+                      var kk = ev.keyCode || ev.charCode;
+                      var $this = $(this);
+                      if( kk == 27 )  {
+                          var $p = $this.parent().parent();
+                          $this.val( $p.data( 'original' ) || '' );
+                          $p.removeClass( 'editing' );
+                          $this.removeClass('edited' );
+                      }
+                      $this.toggleClass('edited', $this.data( 'original') == $this.text() );
+                  },
+                  keyup : function( ev ) {
+                      var $ctrl = $( this );
+                      $ctrl.toggleClass('edited', $ctrl.data( 'original') != $ctrl.text() );
+                  }
+              } );
+
+              yote.ui.addListener( '.ok', 'okclick', {
+                  click : function( ev ) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      var $p = $(this).parent().parent();
+                      var $txt = $p.find( 'textarea' );
+                      $p.find('span').text( $txt.text() );
+                      $txt.removeClass('edited' );
+                      $p.removeClass( 'editing' );
+                      var obj = yote.fetch( $txt.data('id') );
+                      var fld = $txt.data('field');
+                      var inpt = {};
+                      inpt[ fld ] = $txt.val();
+                      $p.data( 'original', inpt[ fld ] );
+                      obj.update( [ inpt ] );
+                  }
+              } );
+              yote.ui.addListener('.cancel', 'cancelclick', {
+                  click : function( ev ) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      var $p = $(this).parent().parent();
+                      var $txt = $p.find( 'textarea' );
+                      $txt.val( $p.data( 'original' ) || '' );
+                      $p.removeClass( 'editing' );
+                      $txt.removeClass('edited' );
+                  }
+              } );
+
+
+              yote.ui.addListener( 'input.updateField[type="checkbox"]', 'checked', {
+                  change : function(ev) {
                       var $this = $( this );
-                      var obj = yote.fetch( $this.attr( 'data-id') );
-                      var fld = $this.attr( 'data-field');
+                      var obj = yote.fetch( $this.data( 'id') );
+                      var fld = $this.data( 'field');
                       var inpt = {};
                       inpt[ fld ] = $this.is(':checked') ? 1 : 0;
                       obj.update( [ inpt ] );
-                  } );
-              });
-              yote.ui.modifyControl( 'input.updateField', 'input-keydown', function( $ctl ) {
-                  $ctl.off( 'keydown' ).on( 'keydown', function(ev) {
+                  }
+              }); // input.updateField (checkbox )
+
+              yote.ui.addListener( 'input.updateField', 'input-keydown', {
+                  keydown : function(ev) {
                       var kk = ev.keyCode || ev.charCode;
                       if( kk == 13 || kk == 9 ) {
                           var $this = $( this );
-                          var obj = yote.fetch( $this.attr( 'data-id') );
-                          var fld = $this.attr( 'data-field');
+                          var obj = yote.fetch( $this.data( 'id') );
+                          var fld = $this.data( 'field');
                           var inpt = {};
-                          inpt[ fld ] = $this.val() ;
+                          inpt[ fld ] = $this.val();
                           obj.update( [ inpt ] );
                       } 
-                  } ); // input.updateField
-              } );
+                  }
+              } ); // input.updateField
+              yote.ui.addListener( '.updateField.autosubmit', 'input-blur', {
+                  blur : function(ev) {
+                      var $this = $(this);
+                      var obj = yote.fetch( $this.data( 'id') );
+                      var fld = $this.data( 'field');
+                      var inpt = {};
+                      inpt[ fld ] = $this.val();
+                      obj.update( [ inpt ] );
+                  }
+              } ); // .updateField.autosubmit blur
 
-              yote.ui.modifyControl( '.delAction', 'delAction', function( $this ) {
-                  $this.off( 'click' ).on( 'click', function(ev) {
+              yote.ui.addListener( '.delAction', 'delAction', {
+                  click : function(ev) {
                       ev.preventDefault();
-                      if( $this.attr( 'data-needs-confirmation' ) && ! confirm( $this.attr( 'data-delete-message' ) || 'really delete?' ) ) {
+                      var $this = $(this);
+                      if( $this.data( 'needs-confirmation' ) && ! confirm( $this.data( 'delete-message' ) || 'really delete?' ) ) {
                           return;
                       }
-                      var par    = yote.fetch($this.attr( 'data-parent' ));
-                      var obj    = yote.fetch($this.attr( 'data-id' ));
-                      par.remove_entry( [obj,$this.attr( 'data-from')] );
-                  } );
-              } ); //delAction
+                      var par    = yote.fetch($this.data( 'parent' ));
+                      var obj    = yote.fetch($this.data( 'id' ));
+                      par.remove_entry( [obj,$this.data( 'from')] );
+                  }
+              } ); // delAction click
 
-              yote.ui.modifyControl( '.addAction', 'addClick', function( $this ) {
-                  $this.off( 'click' ).on( 'click', function(ev) {
+              yote.ui.addListener( '.addAction', 'addClick', {
+                  click : function(ev) {
                       ev.preventDefault();
                       var $this = $(this);
-                      var list  = $this.attr( 'data-list');
-                      var listOn = yote.fetch( $this.attr( 'data-id') );
+                      var list  = $this.data( 'list');
+                      var listOn = yote.fetch( $this.data( 'id') );
                       listOn.add_entry( [ list ], function( newo ) {
                           yote.ui.watchForUpdates( Array.isArray( newo ) ? newo[0] : newo ); } );
-                  } );
-              } ); //addAction
+                  } 
+              } );  //addAction click
 
-              // TODO - BE ABLE TO HAVE MULTIPLE CLICK HANDLERS (*sigh*)
-
-              yote.ui.modifyControl( '.action', 'addAction', function( $this ) {
-                  $this.off( 'click' ).on( 'click', function(ev) {
+              yote.ui.addListener( '.action', 'addAction', {
+                  click : function(ev) {
                       ev.preventDefault();
                       var $this = $(this);
-                      var action  = $this.attr( 'data-action');
+                      var action  = $this.data( 'action');
                       var params  = [];
-                      if( $this.attr( 'data-param') ) {
+                      if( $this.data( 'param') ) {
                           // TODO - for multiple params, a data-number-of-params, then data-param_1, data-param_2 ...
-                          params.push( yote.fetch( $this.attr( 'data-param') ));
+                          params.push( yote.fetch( $this.data( 'param') ));
                       }
                       // TODO - error message for item not found
-                      var item = yote.fetch( $this.attr( 'data-id') );
+                      var item = yote.fetch( $this.data( 'id') );
                       item[ action ]( params );
-                  } );
-              } );
+                  }
+              } ); //action click
           }, //activateControls
 
           setup_table : function( args ) {
