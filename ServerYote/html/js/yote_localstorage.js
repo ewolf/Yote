@@ -64,7 +64,9 @@ yote_local.init = function() {
             };
         }, //_list_container
         '_list' : function( obj ) {
-            obj._data = [];
+            if( ! Array.isArray( obj._data ) ) {
+                obj._data = [];
+            }
 
             obj.toArray = function() {
                 var out = [];
