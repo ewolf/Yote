@@ -279,7 +279,6 @@ if( yote ) {
                   if( typeof targ_fld !== 'undefined' ) {
                       $ctrl.off( 'change' ).on( 'change',
                                                 function( ev ) {
-                                                    alert( 'hi' );
                                                     var val = $ctrl.val();
                                                     if( $ctrl.attr( 'data-var-is') === 'object' ) {
                                                         val = yote.fetch( val );
