@@ -13,15 +13,6 @@ yote_worker.addToStamps( 'postinglist', function( obj ) {
 
     // a postinglist only saves 'interesting' postings, 
     // namely those with annontations
-    obj._save_me_p = function() {
-        var ta = this.toArray();
-        for( var i=0,len=ta.length; i<len; i++ ) {
-            if( ta[i]._save_me_p() ) {
-                return true;
-            }
-        }
-        return false;
-    };
     obj._save_data = function() {
         var saves = [];
         var ta = this.toArray();
@@ -55,6 +46,11 @@ yote_worker.addToStamps( 'postinglist', function( obj ) {
 
 
 }, ['lookup'] ); //postinglist
+/*
+  So like, on 'lookup', have the callback method activate the retitle and annontate parts and also init the UI
+  for those editable fields.
 
+  Should there be some heartbeat that syncs with server?
+*/
 
 

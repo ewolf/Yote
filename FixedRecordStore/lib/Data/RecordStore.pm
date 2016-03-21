@@ -1,15 +1,15 @@
-package DB::DataStore;
+package Data::RecordStore;
 
 =head1 NAME
 
-DB::DataStore - Simple and fast record based data store
+Data::RecordStore - Simple and fast record based data store
 
 =head1 SYNPOSIS
 
-use DB::DataStore;
+use Data::RecordStore;
 
 
-my $store = DB::DataStore->open( $directory );
+my $store = Data::RecordStore->open( $directory );
 
 my $data = "TEXT DATA OR BYTES";
 my $id    = $store->stow( $data, $optionalID );
@@ -30,7 +30,7 @@ both easy to set up and easy to use.
 
 =head1 LIMITATIONS
 
-DB::DataStore is not meant to store huge amounts of data. 
+Data::RecordStore is not meant to store huge amounts of data. 
 It will fail if it tries to create a file size greater than the 
 max allowed by the filesystem. This limitation will be removed in 
 subsequent versions. This limitation is most important when working
@@ -38,7 +38,7 @@ with sets of data that approach the max file size of the system
 in question.
 
 This is not written with thread safety in mind, so unexpected behavior
-can occur when multiple DB::DataStore objects open the same directory.
+can occur when multiple Data::RecordStore objects open the same directory.
 
 =cut
 
@@ -50,14 +50,14 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.04';
+$VERSION = '1.06';
 
 =head1 METHODS
 
 =head2 open( directory )
 
 Takes a single argument - a directory, and constructs the data store in it. 
-The directory must be writeable or creatible. If a DataStore already exists
+The directory must be writeable or creatible. If a RecordStore already exists
 there, it opens it, otherwise it creates a new one.
 
 =cut
@@ -73,8 +73,8 @@ sub open {
 
     bless {
         DIRECTORY => $directory,
-        OBJ_INDEX => DB::DataStore::FixedRecycleStore->open( "IL", "$directory/OBJ_INDEX" ),
-        STORE_IDX => DB::DataStore::FixedStore->open( "I", $filename ),
+        OBJ_INDEX => Data::RecordStore::FixedRecycleStore->open( "IL", "$directory/OBJ_INDEX" ),
+        STORE_IDX => Data::RecordStore::FixedStore->open( "I", $filename ),
         STORES    => [],
     }, ref( $pkg ) || $pkg;
     
@@ -93,7 +93,7 @@ sub entry_count {
 =head2 ensure_entry_count( min_count )
 
 This makes sure there there are at least min_count
-entries in this datastore. This creates empty
+entries in this record store. This creates empty
 records if needed.
 
 =cut
@@ -114,10 +114,10 @@ sub next_id {
 
 =head2 stow( data, optionalID )
 
-This saves the text or byte data to the datastore.
+This saves the text or byte data to the record store.
 If an id is passed in, this saves the data to the record
 for that id, overwriting what was there. 
-If an id is not passed in, it creates a new datastore.
+If an id is not passed in, it creates a new record store.
 
 Returns the id of the record written to.
 
@@ -179,7 +179,7 @@ sub fetch {
 
 This marks that the record associated with the id may be reused.
 Calling this does not decrement the number of entries reported 
-by the datastore.
+by the record store.
 
 =cut
 sub recycle {
@@ -245,20 +245,20 @@ sub _get_store {
 
     # since we are not using a pack template with a definite size, the size comes from the record
 
-    my $store = DB::DataStore::FixedRecycleStore->open( "A*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+    my $store = Data::RecordStore::FixedRecycleStore->open( "A*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
     $self->{STORES}[ $store_index ] = $store;
     $store;
 } #_get_store
 
-# ----------- end DB::DataStore
+# ----------- end Data::RecordStore
 =head1 HELPER PACKAGES
 
-DB::DataStore relies on two helper packages that are useful in 
+Data::RecordStore relies on two helper packages that are useful in 
 their own right and are documented here.
 
 =head1 HELPER PACKAGE
 
-DB::DataStore::FixedStore
+Data::RecordStore::FixedStore
 
 =head1 DESCRIPTION
 
@@ -271,7 +271,7 @@ my $template = "LII"; # perl pack template. See perl pack/unpack.
 
 my $size;   #required if the template does not have a definite size, like A*
 
-my $store = DB::DataStore::FixedStore->open( $template, $filename, $size );
+my $store = Data::RecordStore::FixedStore->open( $template, $filename, $size );
 
 my $new_id = $store->next_id;
 
@@ -298,7 +298,7 @@ $store->unlink_store;
 =head1 METHODS
 
 =cut
-package DB::DataStore::FixedStore;
+package Data::RecordStore::FixedStore;
 
 use strict;
 use warnings;
@@ -563,20 +563,20 @@ sub _filehandle {
 }
 
 
-# ----------- end DB::DataStore::FixedStore
+# ----------- end Data::RecordStore::FixedStore
 
 
 
 =head1 HELPER PACKAGE
 
-DB::DataStore::FixedRecycleStore
+Data::RecordStore::FixedRecycleStore
 
 =head1 SYNOPSIS
 
-A subclass DB::DataStore::FixedRecycleStore. This allows
+A subclass Data::RecordStore::FixedRecycleStore. This allows
 indexes to be recycled and their record space reclaimed.
 
-my $store = DB::DataStore::FixedRecycleStore->open( $template, $filename, $size );
+my $store = Data::RecordStore::FixedRecycleStore->open( $template, $filename, $size );
 
 my $id = $store->next_id;
 
@@ -592,17 +592,17 @@ my $id3 = $store->next_id;
 $id3 == $id;
 
 =cut
-package DB::DataStore::FixedRecycleStore;
+package Data::RecordStore::FixedRecycleStore;
 
 use strict;
 use warnings;
 
-our @ISA='DB::DataStore::FixedStore';
+our @ISA='Data::RecordStore::FixedStore';
 
 sub open {
     my( $pkg, $template, $filename, $size ) = @_;
-    my $self = DB::DataStore::FixedStore->open( $template, $filename, $size );
-    $self->{RECYCLER} = DB::DataStore::FixedStore->open( "L", "${filename}.recycle" );
+    my $self = Data::RecordStore::FixedStore->open( $template, $filename, $size );
+    $self->{RECYCLER} = Data::RecordStore::FixedStore->open( "L", "${filename}.recycle" );
     bless $self, $pkg;
 } #open
 
@@ -642,7 +642,7 @@ sub next_id {
     $recycled_id = $recycled_id ? $recycled_id : $self->SUPER::next_id;
 } #next_id
 
-# ----------- end package DB::DataStore::FixedRecycleStore;
+# ----------- end package Data::RecordStore::FixedRecycleStore;
 
 1;
 
@@ -658,6 +658,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.04  (October 12, 2015))
+       Version 1.06  (May 6, 2016))
 
 =cut

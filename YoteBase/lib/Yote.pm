@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 =head1 NAME
 
@@ -151,7 +151,7 @@ use WeakRef;
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 =head1 NAME
 
@@ -573,7 +573,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 #
 # The string version of the yote object is simply its id. This allows
@@ -596,7 +596,8 @@ sub absorb {
     my( $self, $data ) = @_;
     my $obj_store = $self->{STORE};
     for my $key ( sort keys %$data ) {
-        $self->{DATA}{$key} = $obj_store->_xform_in( $data->{ $key } );
+        my $item = $data->{ $key };
+        $self->{DATA}{$key} = $obj_store->_xform_in( $item );
     }
     $obj_store->_dirty( $self, $self->{ID} );
 
@@ -613,7 +614,11 @@ sub set {
     my( $self, $fld, $val ) = @_;
 
     my $inval = $self->{STORE}->_xform_in( $val );
-    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+    if( $self->{DATA}{$fld} ne $inval ) {
+        $self->{STORE}->_dirty( $self, $self->{ID} );
+    }
+
+    
     $self->{DATA}{$fld} = $inval;
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
 } #set
@@ -633,7 +638,7 @@ sub get {
             # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
             $self->{STORE}->_dirty( $default->{STORE}->_get_id( $default ) );
         }
-                $self->{STORE}->_dirty( $self, $self->{ID} );
+        $self->{STORE}->_dirty( $self, $self->{ID} );
         $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
     }
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
@@ -818,7 +823,7 @@ sub _instantiate {
     bless { ID => $_[1], DATA => {}, STORE => $_[2] }, $_[0];
 } #_instantiate
 
-
+sub DESTROY {}
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -837,14 +842,14 @@ use Tie::Array;
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
     my $storage = [];
 
     # once the array is tied, an additional data field will be added
-    # so obj will be [ $id, $storage, $obj_store, $data ]
+    # so obj will be [ $id, $storage, $obj_store ]
     my $obj = bless [$id,$storage,$obj_store], $class;
     for my $item (@list) {
         push( @$storage, $item );
@@ -912,6 +917,8 @@ sub SPLICE {
 }
 sub EXTEND {}
 
+sub DESTROY {}
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 package Yote::Hash;
@@ -930,11 +937,13 @@ use Tie::Hash;
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
     my $storage = {};
+    # after $obj_store is a list reference of
+    #                 id, data, store
     my $obj = bless [ $id, $storage,$obj_store ], $class;
     for my $key (keys %hash) {
         $storage->{$key} = $hash{$key};
@@ -980,6 +989,8 @@ sub CLEAR {
     %{$self->[1]} = ();
 }
 
+sub DESTROY {}
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 package Yote::YoteDB;
@@ -989,7 +1000,7 @@ use warnings;
 
 no warnings 'uninitialized';
 
-use DB::DataStore;
+use Data::RecordStore;
 
 use WeakRef;
 use File::Path qw(make_path);
@@ -1003,7 +1014,7 @@ use constant {
 
 use vars qw($VERSION);
 
-$VERSION = '1.31';
+$VERSION = '1.35';
 
 #
 # This the main index and stores in which table and position
@@ -1187,6 +1198,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.31  (Mar 9, 2016))
+       Version 1.35  (May 5, 2016))
 
 =cut

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use DB::DataStore;
+use Data::RecordStore;
 
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
@@ -11,7 +11,7 @@ use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
 BEGIN {
-    use_ok( "DB::DataStore" ) || BAIL_OUT( "Unable to load DB::DataStore" );
+    use_ok( "Data::RecordStore" ) || BAIL_OUT( "Unable to load Data::RecordStore" );
 }
 
 # -----------------------------------------------------
@@ -28,7 +28,7 @@ exit( 0 );
 
 sub test_suite {
 
-    my $store = DB::DataStore->open( $dir );
+    my $store = Data::RecordStore->open( $dir );
     my $id  = $store->stow( "FOO FOO" );
     my $id2 = $store->stow( "BAR BAR" );
     
@@ -42,7 +42,7 @@ sub test_suite {
     my $id4 = $store->stow( "LA LA" );
     is( $id4, $id2 + 1, "Post recycled id" );
 
-    my $ds = DB::DataStore::FixedStore->open( "LLA4", "$dir2/filename" );
+    my $ds = Data::RecordStore::FixedStore->open( "LLA4", "$dir2/filename" );
     my( @r ) = (
         [],
         [ 12,44,"BOO" ],

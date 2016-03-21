@@ -4,7 +4,7 @@
       "Eric Wolf        coyocanid@gmail.com"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.4003, CPAN::Meta::Converter version 2.141520",
+   "generated_by" : "Module::Build version 0.4218",
    "license" : [
       "perl_5"
    ],
@@ -12,7 +12,7 @@
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
       "version" : "2"
    },
-   "name" : "DB-DataStore",
+   "name" : "Data-RecordStore",
    "prereqs" : {
       "build" : {
          "requires" : {
@@ -22,7 +22,7 @@
       },
       "configure" : {
          "requires" : {
-            "Module::Build" : "0.40"
+            "Module::Build" : "0.42"
          }
       },
       "runtime" : {
@@ -32,15 +32,15 @@
       }
    },
    "provides" : {
-      "DB::DataStore" : {
-         "file" : "lib/DB/DataStore.pm",
-         "version" : "1.04"
+      "Data::RecordStore" : {
+         "file" : "lib/Data/RecordStore.pm",
+         "version" : "1.06"
       },
-      "DB::DataStore::FixedRecycleStore" : {
-         "file" : "lib/DB/DataStore.pm"
+      "Data::RecordStore::FixedRecycleStore" : {
+         "file" : "lib/Data/RecordStore.pm"
       },
-      "DB::DataStore::FixedStore" : {
-         "file" : "lib/DB/DataStore.pm"
+      "Data::RecordStore::FixedStore" : {
+         "file" : "lib/Data/RecordStore.pm"
       }
    },
    "release_status" : "stable",
@@ -49,5 +49,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.04"
+   "version" : "1.06",
+   "x_serialization_backend" : "JSON::PP version 2.27400"
 }

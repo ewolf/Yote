@@ -126,8 +126,10 @@ yote_worker.init = function() {
 
         // goofy logic to make it atomic
         clearTimeout( _synctime );
-//        _synctime = setTimeout( syncToServer, 2000 ); 
+        _synctime = setTimeout( syncToServer, 2000 ); 
     }
+
+    setInterval( syncFromServer, 2000 );
 
     function _newobj(stamps,startdata,id,isFromStore) {
         var idx = id || ++_maxid;

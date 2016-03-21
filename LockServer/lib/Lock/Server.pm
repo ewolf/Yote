@@ -93,7 +93,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.6';
+$VERSION = '1.61';
 
 
 $Lock::Server::DEBUG = 0;
@@ -446,7 +446,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.6';
+$VERSION = '1.61';
 
 
 =head3 new( lockername, host, port )
@@ -567,6 +567,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.6  (Mar 9, 2016))
+       Version 1.61  (May 6, 2016))
 
 =cut
