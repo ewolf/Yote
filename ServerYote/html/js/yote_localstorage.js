@@ -130,22 +130,28 @@ yote_local.init = function() {
         },
         '_yote_root' : function( obj ) {
             var that = obj;
-            obj.newlist = function() {
-                return that.newobj( '_list' );
+            obj.newlist = function( initial_list ) {
+                return that.newobj( '_list', initial_list );
             }; //yote_local.newlist
             
-            obj.newobj = function(/* list of stamps, if the first is an array reference, everything in that */) {
+            obj.newobj = function(stamps,startdata) {
                 var idx;
                 (idx = (1 + (parseInt(localStorage.getItem( "yote_maxid" ))||0)) ) && localStorage.setItem( "yote_maxid", idx );
                 var newobj = _makeBaseObj(idx);
-                for( var i=0, len=arguments.length; i<len; i++ ) {
-                    var sname = arguments[i];
+                stamps = Array.isArray( stamps ) ? stamps : [ stamps ];
+                for( var i=0, len=stamps.length; i<len; i++ ) {
+                    var sname = stamps[i];
                     if( Array.isArray( sname ) ) {
                         for( var j=0, len2 = sname.length; j<len2; j++ ) {
                             _stamp( sname[j], newobj );
                         }
                     } else {
                         _stamp( sname, newobj );
+                    }
+                }
+                if( typeof startdata === 'object' ) {
+                    for( var key in startdata ) {
+                        newobj._data[key] = _check( startdata[key] );
                     }
                 }
                 _dirty( idx, newobj );
