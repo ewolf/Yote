@@ -40,7 +40,7 @@ function init() {
           }
 
           function fill_template( sel, vars, fields ) {
-              var $template = $( sel );
+              var $template = $( 'body > section.templates ' + sel );
               if( $template.length != 1 ) {
                   console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
                   return undefined;
@@ -91,7 +91,7 @@ function init() {
               }
               $( selector ).each( function(idx,val) {
                   var $this = $( val );
-                  if( ! $.contains( $('#templates')[0], val ) ) {
+                  if( ! $.contains( $('.templates')[0], val ) ) {
                       if( (! $this.data( key ) || $this.data( 'redo' ) ) && $this.data('id') ) {
                           $this.data( 'redo', false );
                           $this.data( key, true );

@@ -9,6 +9,7 @@ no warnings 'numeric';
 use Lock::Server;
 use Yote;
 
+use bytes;
 use IO::Socket::SSL;
 use JSON;
 use Time::HiRes qw(time);
@@ -457,7 +458,7 @@ sub _process_request {
             'Server: Yote',
             'Access-Control-Allow-Headers: accept, content-type, cookie, origin, connection, cache-control',
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
-            'Content-Length: ' . length( $out_json ),
+            'Content-Length: ' . bytes::length( $out_json ),
             );
 
         _log( "<-- 200 OK ( " . join( ",", @headers ) . " ) ( $out_json )\n" );

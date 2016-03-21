@@ -219,9 +219,9 @@ yote.init = function( args ) {
     // etc can be done here, the get & stuff
     function reqListener( succHandl, failHandl ) { 
         return function() {
-            console.log( "GOT FROM SERVER : " + this.responseText );
-            if( this.responseText ) {
-                var returnVal = processRaw( this.responseText );
+            console.log( "GOT FROM SERVER : " + this.response );
+            if( this.response ) {
+                var returnVal = processRaw( this.response );
                 if( succHandl ) {
                     succHandl( returnVal );
                 }
@@ -257,8 +257,9 @@ yote.init = function( args ) {
 
     function contact(id,action,data,handl,errhandl) { 
         var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", reqListener( handl, errhandl ) );
-        oReq.addEventListener("error", errhandl );
+        oReq.addEventListener("loadend", reqListener( handl, errhandl ) );
+        oReq.addEventListener("error", function(e) { alert('error : ' + e) } );
+        oReq.addEventListener("abort", function(e) { alert('abort : ' + e) } );
 
         console.log( "CONTACTING SERVER ASYNC via url : " + yoteServerURL + 
                      '/' + id +

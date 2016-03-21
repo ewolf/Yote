@@ -67,9 +67,14 @@ if( yote ) {
           }, 
 
           fill_template : function( sel, vars, fields ) {
-              var $template = $( sel );
-              if( $template.length != 1 ) {
+              if( ! fields ) { fields = []; }
+              if( ! vars )   { vars = []; }
+              var $template = $( 'body > section.templates ' + sel );
+              if( $template.length > 1 ) {
                   console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
+                  return undefined;
+              } else if( $template.length == 0 ) {
+                  console.warn( "error filling template '" + sel + "'. could not find template." );
                   return undefined;
               }
               $template = $template.clone();
@@ -123,7 +128,7 @@ if( yote ) {
               }
               $( selector ).each( function(idx,val) {
                   var $this = $( val );
-                  if( ! $.contains( $('#templates')[0], val ) ) {
+                  if( ! $.contains( $('.templates')[0], val ) ) {
                       if( (! $this.data( key ) || $this.data( 'redo' ) ) && $this.data('id') ) {
                           $this.data( 'redo', false );
                           $this.data( key, true );
@@ -322,7 +327,6 @@ if( yote ) {
               modifyControl( '.addAction', 'addClick', function( $this ) {
                   $this.on( 'click', function(ev) {
                       var $this = $(this);
-                      var create_action = $this.data('action');
                       var list  = $this.data('list');
                       var listOn = yote.fetch( $this.data('id') );
                       listOn.add_entry( [ list ], function( newo ) {
