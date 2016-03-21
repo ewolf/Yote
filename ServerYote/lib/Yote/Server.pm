@@ -379,12 +379,12 @@ sub _process_request {
         eval {
             if( $session ) {
                 $obj->{SESSION} = $session;
-                $obj->{SESSION}{SERVER} = $self;
+                $obj->{SESSION}{SERVER_ROOT} = $server_root;
             }
             (@res) = ($obj->$action( @$in_params ));
-            delete $obj->{SESSION};
         };
-
+        delete $obj->{SESSION};
+        
         if ( $@ ) {
             _log( "INTERNAL SERVER ERROR '$@'", 0 );
             $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
@@ -908,10 +908,13 @@ sub _create_session {
 sub _destroy_session {
     my( $self, $token ) = @_;
     my $slots = $self->get__token_timeslots();
-    for( my $i=1; $i<@$slots; $i++ ) {
+    for( my $i=0; $i<@$slots; $i++ ) {
         delete $slots->[$i]{ $token };
     }
-    $self->_resetHasAndMay( [$token] );    
+    print STDERR Data::Dumper->Dump(["DESTROY '$token'",$slots]);
+
+    $self->_resetHasAndMay( [$token] );
+    1;
 } #_destroy_session
 
 #
@@ -934,7 +937,7 @@ sub fetch_app {
         $apps->{$app_name} = $app;
     }
     
-    return $app, $self->{SESSION}{acct};
+    return $app, $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
 } #fetch_app
 
 sub fetch_root {

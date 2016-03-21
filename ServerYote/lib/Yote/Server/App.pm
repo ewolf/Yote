@@ -34,8 +34,9 @@ sub create_account {
 
 sub logout {
     my $self = shift;
-    my $server = $self->{SESSION}{SERVER};
-    $server->_destroy_session( $self->{SESSION}->get__token ) if $server;
+    my $root = $self->{SESSION}{SERVER_ROOT};
+    print STDERR Data::Dumper->Dump(["LOGOUT '$root'"]);
+    $root->_destroy_session( $self->{SESSION}->get__token ) if $root;
 } #logout
 
 sub login {
@@ -46,12 +47,13 @@ sub login {
 
     # doing it like this so a failed attempt has about the same amount of time
     # as an attempt against a nonexistant account. maybe random microsleep?
-    my $pwh = crypt( $pw, length( $pw ) . md5_hex($acct ? $acct->{ID} : $self->{ID} ) );
+    my $pwh = crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct ? $acct->{ID} : $self->{ID} ) );
     if( $acct && $pwh eq $acct->get_password_hash ) {
         # this and Yote::ServerRoot::fetch_app are the only ways to expose the account obj
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in
-        $self->{SESSION}{acct} = $acct;
+        $self->{SESSION}->set_acct( $acct );
+
         return $acct;
     }
     die "Incorrect login";
