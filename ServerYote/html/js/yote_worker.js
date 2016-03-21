@@ -104,8 +104,10 @@ yote_worker.init = function() {
 
         var url = '/login/yto';
         yote_worker.contact( url, 'POST', 'y=' + encodeURIComponent(json), function( data ) {
-            var json = JSON.parse( data );
-            root.set( 'ysyn', json[0] );
+            if( data ) {
+                var json = JSON.parse( data );
+                root.set( 'ysyn', json[0] );
+            }
         } );
     }
     
