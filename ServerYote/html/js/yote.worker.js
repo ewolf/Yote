@@ -29,10 +29,8 @@ yote_worker = {
         var json = localStorage.getItem( id + '' );
         if( json ) {
             json = JSON.parse( json );
-            var obj = this._newobj();
+            var obj = this._newobj( json.s );
             obj._data    = json.d;
-            obj._class   = json.c;
-            obj._methods = json.m;
             return obj;
         }
     }, //fetch
@@ -42,15 +40,21 @@ yote_worker = {
         }
         this._dirty = {};
     }, //stowAll
-    newobj : function( methods ) {
+    newobj : function( stamp ) {
         var obj = this._newobj();
         var idx;
         (idx = (1 + (localStorage.getItem( "maxid" )||0)) ) && localStorage.setItem( "maxid", idx );
         obj._id = idx;
-        obj._methods = methods; // a list of method names, used to toss to "client" side
         this.dirty( obj );
+        if( stamp ) {
+            obj._stamp = stamp;
+            yote_worker.stamp( stamp, obj );
+        }
         return obj;
     }, //newobj
+    _newlist : function() {
+        return this.stamp( '_list', this._newobj() );
+    }, //_newlist
     _newobj : function() {
         return {
             _yoteobj : true,
@@ -59,18 +63,27 @@ yote_worker = {
             _id    : undefined,
             _stow  : function() {
                 localStorage.setItem( this._id, JSON.stringify( {
-                    c : this._class,
-                    d : this._data,
-                    m : this._methods
+                    s : this._stamp,
+                    d : this._data
                 } ) );
             }, //stow
-            set    : function( key, val ) {
+            add_to : function( key, val ) {
+                var l = this.get( key );
+                if( l && ! Array.isArray( l ) ) {
+                    throw new Error( "Tried to add to a non-array" );
+                }
+                if( ! l ) {
+                    l = yote_worker._newlist();
+                    
+                }
+            },
+            set    : function( key, val ) { //TODO - injest val?
                 var oldval = this.get( key );
                 if( oldval != val ) {
                     this._store.dirty( this );
                 }
                 if( typeof val === 'object' ) {
-                    if( ! val._yoteobj ) {
+                    if( ! yote_worker.isYoteObj( item ) ) {
                         throw new Exception( "Error : tried to add non-yote object" );
                     }
                     this._data[ key ] = val._id;
@@ -93,6 +106,44 @@ yote_worker = {
             }
         };
     }, //_newobj
+    _stampers = {
+        _list : function( obj ) {
+            obj._data = [];
+            obj.push = function( item ) {
+            };
+            obj.pop = function() {
+            };
+            obj.shift = function() {
+            };
+            obj.unshift = function( item ) {
+                
+            };
+            obj.set = function( key, val ) {
+                if( ! isanumber(key ) ) {  //TODO - define this actually
+                    console.warn( "Warning, trying to set an array to index '" + key + "'" );
+                }
+                obj._data[ key ] = val; //TODO - injest here
+            };
+            obj.get = function( key, val ) {
+                
+            };
+        }
+    },
+    add_to_stampers : function( name, stampfun ) {
+        this._stampers[ name ] = stampfun;
+    },
+    stamp : function( name, obj ) {
+        if( ! this._stampers[ name ] ) {
+            console.warn( "Warning: stamp '" + name + "' is not registered" );
+            return;
+        }
+        if( obj.stamped && obj.stamped[name] ) {
+            console.warn( "Warning: object already is stamped. restamping" );
+        }
+        obj.stamped = obj.stamped || {};
+        obj.stamped[ name ] = true;
+        this._stampers[ name ]( obj );
+    }, //stamp
     init : function( initFun ) {
         var lyote = this;
         openDatabase('Yote', 'dbversion 1.0', 'javascript yote store', 64*1024, function() {
