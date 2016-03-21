@@ -6,7 +6,8 @@ yote_worker.addToStamps( 'some', function( obj ) {
     obj.howdy = function() { return "HOWDY"; };
 }, ['howdy'] );
 
-root.get( 'some', function() { return root.newobj( ['some']) } );
+var some = root.get( 'some', function() { return root.newobj( ['some']) } );
+some.set("FOO", "baar" );
 
 
 console.log( "FOOHERE" );
