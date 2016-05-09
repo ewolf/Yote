@@ -69,6 +69,10 @@ sub test_suite {
 
     # see if one process waits on the other
 
+    # L3 locks KEY1
+    #   while
+    # L4 checks if KEY1 is locked (after a micro sleep)
+
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
@@ -76,7 +80,7 @@ sub test_suite {
         my $res = $locker3->lock( "KEY1" ) > 1;
         $res = $res && $locker3->isLocked( "KEY1" ) == 1;
         $res = $res && $locker3->lockedByMe( "KEY1" ) == 1;
-        usleep 2;
+        usleep 2_010_000;
         $res = $res && $locker3->unlock( "KEY1" ) == 1;
         exit ! $res;
     }
@@ -84,6 +88,7 @@ sub test_suite {
         push @pids, $pid;
     } else {
         my $locker4 = $locks->client( "LOCKER4" );
+        usleep 4000; #wait for that to be locked
         my $res = $locker4->isLocked( "KEY1" ) == 1;
         # KEY1 is locked by locker3, so this doesn't return until it
         # is unlocked, a time of 2 seconds
@@ -105,23 +110,27 @@ sub test_suite {
 
     # deadlock timeouts
 
-    # 4 locks A
-    # 5 locks B
-    # 5 tries to lock A
-    # 2 seconds happen
-    
+    # L4 locks A 
+    #  while
+    # L5 locks B
+    #  then
+    # L4 sleeps 5
+    #  while
+    # L5 tries to lock A
+    # 
+    # L5 times out
+    # L4 is able to Lock
 
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->lock( "KEYA" ) > 1;
-        usleep 5;
+        usleep 5_000_000;
         $res = $res && $locker4->isLocked( "KEYB" ) == 0;
         $res = $res && $locker4->lock( "KEYB" ) > 1;
         $res = $res && $locker4->unlock( "KEYB" ) == 1;
         exit ! $res;
-
     }
     if( my $pid = fork ) {
         push @pids, $pid;

@@ -556,11 +556,21 @@ sub unlock {
 }
 
 sub ping {
-    my $self = shift;
-	my $sock = $self->_get_sock;
-    $sock->print( "GET /PING\n\n" );
-    my $resp = <$sock>;
-    $sock->close;
+    my( $self, $timeout ) = @_;
+
+    $timeout //= 3;
+
+    my $sock = $self->_get_sock;
+    
+    local $SIG{ALRM} = sub { die "ALARM\n" };
+    alarm $timeout;
+    my $resp = '0';
+    eval {
+        $sock->print( "GET /PING\n\n" );
+        $resp = <$sock>;
+        alarm 0;
+        $sock->close;
+    };
     chomp $resp;
     $resp;
 }
