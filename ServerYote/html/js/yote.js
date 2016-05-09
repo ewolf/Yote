@@ -299,10 +299,12 @@ yote.init = function( args ) {
                                                 a     : action
                                               } );
 
+        
         console.log( "About to send to server : " + sendData );
 
         // data must always be an array, though that array may have different data structures inside of it
         // as vehicles for data
+        oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded" );
         oReq.send( sendData );
 
     }; // contact_server
