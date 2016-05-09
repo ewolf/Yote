@@ -17,7 +17,7 @@ use URI::Escape;
 
 use vars qw($VERSION);
 
-$VERSION = '1.03';
+$VERSION = '1.04';
 
 our $DEBUG = 1;
 
