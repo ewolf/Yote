@@ -293,11 +293,11 @@ yote.init = function( args ) {
         var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
 
         // for a single parameter, wrap into a parameter list
-        var sendData = JSON.stringify( { pl    : readiedData, //payload
-                                         i     : id,                 
-                                         t     : token ? token : '_',
-                                         a     : action
-                                       } );
+        var sendData = 'p=' + JSON.stringify( { pl    : readiedData, //payload
+                                                i     : id,                 
+                                                t     : token ? token : '_',
+                                                a     : action
+                                              } );
 
         console.log( "About to send to server : " + sendData );
 

@@ -76,7 +76,7 @@ sub msg {  #returns resp code, headers, response pased from json
     my( $obj_id, $token, $action, @params ) = @_;
     
     my $socket = new IO::Socket::INET( "127.0.0.1:8881" ) or die "Error contacting server : $@";
-    my $payload = to_json( {
+    my $payload = 'p=' . to_json( {
         i => $obj_id,
         t => $token,
         a => $action,
@@ -198,7 +198,7 @@ sub test_suite {
     # directly fetch the innerfoo. should not
     # work as the innerfoo id had not been returned to the client
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $store->_get_id( $innerfoo ) );
-    is( $retcode, 500, "cannot fetch id not explicitly given to client" );
+    is( $retcode, 400, "cannot fetch id not explicitly given to client" );
 
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $fooObj->{ID} );
     is( $retcode, 200, "able to fetch allowed object" );

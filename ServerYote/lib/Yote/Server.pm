@@ -42,6 +42,56 @@ sub new {
     }, $class;
 } #new
 
+sub store {
+    shift->{STORE};
+}
+
+sub load_options {
+
+    my( $yote_root_dir ) = @_;
+
+    my $confile = "$yote_root_dir/yote.conf";
+
+    #
+    # set up default options
+    #
+    my $options = {
+        yote_root_dir        => $yote_root_dir,
+        yote_host            => '127.0.0.1',
+        yote_port            => 8881,
+        lock_port            => 8004,
+        lock_host            => '127.0.0.1',
+        lock_attempt_timeout => 12,
+        lock_timeout         => 10,
+        use_ssl              => 0,
+        SSL_cert_file        => '',
+        SSL_key_file         => '',
+    };
+
+    #
+    # override base defaults with those from conf file
+    #
+    if( -f $confile && -r $confile ) {
+        # TODO - create conf with defaults and make it part of the install
+        open( IN, "<$confile" ) or die "Unable to open config file $@ $!";
+        while( <IN> ) {
+            chomp;
+            s/\#.*//;
+            if( /^\s*([^=\s]+)\s*=\s*([^\s].*)\s*$/ ) {
+                if( defined $options->{$1} ) {
+                    $options->{$1} = $2 if defined $options->{$1};
+                } else {
+                    print STDERR "Warning: encountered '$1' in file. Ignoring";
+                }
+            }
+        }
+        close IN;
+    } #if config file is there
+
+    return $options;
+}
+
+
 sub start {
     my $self = shift;
 
@@ -172,6 +222,8 @@ sub _log {
     my( $msg, $sev ) = @_;
     $sev //= 1;
     print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
+
+    $msg =~ s/\s+/ /gs; $msg =~ s/['"]/^/g; `echo '$msg' >> /tmp/foo`;
 }
 
 sub __transform_params {
@@ -253,8 +305,6 @@ sub _process_request {
             $cookies{ $key } = $val;
         }
         
-        my $store = $self->{STORE};
-
         _log( "\n[$$]--> : $req" );
 
         # 
@@ -266,8 +316,6 @@ sub _process_request {
             read $sock, $data, $content_length;
         }
         my( $verb, $path ) = split( /\s+/, $req );
-
-        my $server_root = $self->{STORE}->fetch_server_root;
 
         # escape for serving up web pages
         # the thought is that this should be able to be a stand alone webserver
@@ -312,50 +360,10 @@ sub _process_request {
             $sock->close;
         }
 
-        my $req_data = from_json( $data );
-
-
-        my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
-
-        _log( "\n   (params [$$])--> : ".Data::Dumper->Dump([$params]) );
-
-        if ( substr( $action, 0, 1 ) eq '_' ) {
-            _log( "Bad action (underscore) : '$action'" );
-            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            $sock->close;
-            exit;
-        }
-
-        my $server_root_id = $server_root->{ID};
-        my $session = $server_root->_fetch_session( $token );
-
-        unless( $obj_id eq '_' || 
-                    $obj_id eq $server_root_id || 
-                    ( $obj_id > 0 && 
-                      $session && 
-                      $server_root->_getMay( $obj_id, $session->get__token ) ) ) {
-
-            # tried to do an action on an object it wasn't handed. do a 404
-            _log( "Bad Path : '$path'" );
-            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            $sock->close;
-            exit;
-        }
-
-        if ( $params && ref( $params ) ne 'ARRAY' ) {
-            _log( "Bad Req Param Not Array : $params" );
-            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            $sock->close;
-            exit;
-        }
-
-        # now things are getting a bit more complicated. The params passed in
-        # are always a list, but they may contain other containers that are not
-        # yote objects. So, transform the incomming parameter list and check all
-        # yote objects inside for may. Use a recursive helper function for this.
-        my $in_params;
+        $data =~ s/^p=//;
+        my $out_json;
         eval {
-            $in_params = $self->__transform_params( $params, $token, $server_root );
+            $out_json = $self->invoke_payload( $data );
         };
         if( $@ ) {
             _log( $@ );
@@ -363,95 +371,6 @@ sub _process_request {
             $sock->close;
             exit;
         }
-
-        my $obj = $obj_id eq '_' ? $server_root :
-            $store->fetch( $obj_id );
-        unless( $obj->can( $action ) ) {
-            _log( "Bad Req : invalid method :'$action'" );
-            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            $sock->close;
-            exit;
-        }
-
-        my( @res );
-        eval {
-            if( $session ) {
-                $obj->{SESSION} = $session;
-                $obj->{SESSION}{SERVER_ROOT} = $server_root;
-            }
-            (@res) = ($obj->$action( @$in_params ));
-        };
-        delete $obj->{SESSION};
-        
-        if ( $@ ) {
-            _log( "INTERNAL SERVER ERROR '$@'", 0 );
-            $sock->print( "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n" );
-            $sock->close;
-            exit; #end forked process
-        }
-
-        my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
-
-
-        my @has = _find_ids_in_data( $out_res );
-        my @mays = @has, $store->_find_ids_referenced( @has );
-
-        my $ids_to_update;
-        if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
-            # if there is a token, make it known that the token 
-            # has received server root data
-            $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
-            if ( $token  ) {
-                push @has, $server_root_id;
-            }
-        } else {
-            $ids_to_update = $server_root->_updates_needed( $token, \@has );
-        }
-        
-        my( @updates, %methods );
-        for my $obj_id (@$ids_to_update) {
-            my $obj = $store->fetch( $obj_id );
-            my $ref = ref( $obj );
-
-            my( $data );
-            if ( $ref eq 'ARRAY' ) {
-                $data = [ 
-                    map { my $d = $store->_xform_in( $_ );
-                          push @mays, $d;
-                          $d } 
-                        @$obj ];
-            } elsif ( $ref eq 'HASH' ) {
-                $data = {
-                    map { my $d = $store->_xform_in( $obj->{$_} );
-                          push @mays, $d;
-                          $_ => $d }
-                        keys %$obj };
-            } else {
-                my $obj_data = $obj->{DATA};
-
-                $data = {
-                    map { my $d = $obj_data->{$_};
-                          push @mays, $d;
-                          $_ => $d }
-                        grep { $_ !~ /^_/ }
-                        keys %$obj_data };
-                $methods{$ref} ||= $obj->_callable_methods;
-            }
-            push @has, $obj_id;
-            my $update = {
-                id    => $obj_id,
-                cls   => $ref,
-                data  => $data,
-            };
-            push @updates, $update;
-        } #each obj_id to update
-
-        $server_root->_setHasAndMay( \@has, \@mays, $token );
-
-        my $out_json = to_json( { result  => $out_res,
-                                 updates => \@updates,
-                                 methods => \%methods,
-                             } );
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
             'Server: Yote',
@@ -459,15 +378,138 @@ sub _process_request {
             'Access-Control-Allow-Origin: *', #TODO - have this configurable
             'Content-Length: ' . bytes::length( $out_json ),
             );
-
+        
         _log( "<-- 200 OK [$$] ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
-
+        
         $sock->close;
         $self->{STORE}->stow_all;
         exit;
+
     } #child
 } #_process_request
+
+sub invoke_payload {
+    my $self     = shift;
+
+    _log( "jsony $_[0]" );
+
+    my $req_data = from_json( shift );
+
+    my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
+
+    _log( "\n   (params [$$])--> : ".Data::Dumper->Dump([$params]) );
+    my $server_root = $self->{STORE}->fetch_server_root;
+    
+    my $server_root_id = $server_root->{ID};
+    my $session = $server_root->_fetch_session( $token );
+
+    unless( $obj_id eq '_' || 
+            $obj_id eq $server_root_id || 
+            ( $obj_id > 0 && 
+              $session && 
+              $server_root->_getMay( $obj_id, $session->get__token ) ) ) {
+        
+        # tried to do an action on an object it wasn't handed. do a 404
+        die( "Bad Path" );
+    }
+    if( substr( $action, 0, 1 ) eq '_' ) {
+        die( "Private method called" );
+    }
+
+    if ( $params && ref( $params ) ne 'ARRAY' ) {
+        die( "Bad Req Param Not Array : $params" );
+    }
+
+    # now things are getting a bit more complicated. The params passed in
+    # are always a list, but they may contain other containers that are not
+    # yote objects. So, transform the incomming parameter list and check all
+    # yote objects inside for may. Use a recursive helper function for this.
+
+    my $in_params = $self->__transform_params( $params, $token, $server_root );
+
+    my $store = $self->{STORE};
+
+    my $obj = $obj_id eq '_' ? $server_root :
+        $store->fetch( $obj_id );
+
+
+
+    unless( $obj->can( $action ) ) {
+        die( "Bad Req : invalid method :'$action'" );
+    }
+
+    if( $session ) {
+        $obj->{SESSION} = $session;
+        $obj->{SESSION}{SERVER_ROOT} = $server_root;
+    }
+
+    my(@res) = ($obj->$action( @$in_params ));
+    delete $obj->{SESSION};
+        
+    my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
+
+    my @has = _find_ids_in_data( $out_res );
+    my @mays = @has, $store->_find_ids_referenced( @has );
+
+    my $ids_to_update;
+    if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        # if there is a token, make it known that the token 
+        # has received server root data
+        $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
+        if ( $token  ) {
+            push @has, $server_root_id;
+        }
+    } else {
+        $ids_to_update = $server_root->_updates_needed( $token, \@has );
+    }
+    
+    my( @updates, %methods );
+    for my $obj_id (@$ids_to_update) {
+        my $obj = $store->fetch( $obj_id );
+        my $ref = ref( $obj );
+        
+        my( $data );
+        if ( $ref eq 'ARRAY' ) {
+            $data = [ 
+                map { my $d = $store->_xform_in( $_ );
+                      push @mays, $d;
+                      $d } 
+                @$obj ];
+        } elsif ( $ref eq 'HASH' ) {
+            $data = {
+                map { my $d = $store->_xform_in( $obj->{$_} );
+                      push @mays, $d;
+                      $_ => $d }
+                keys %$obj };
+        } else {
+            my $obj_data = $obj->{DATA};
+            
+            $data = {
+                map { my $d = $obj_data->{$_};
+                      push @mays, $d;
+                      $_ => $d }
+                grep { $_ !~ /^_/ }
+                keys %$obj_data };
+            $methods{$ref} ||= $obj->_callable_methods;
+        }
+        push @has, $obj_id;
+        my $update = {
+            id    => $obj_id,
+            cls   => $ref,
+            data  => $data,
+        };
+        push @updates, $update;
+    } #each obj_id to update
+
+    $server_root->_setHasAndMay( \@has, \@mays, $token );
+
+    my $out_json = to_json( { result  => $out_res,
+                              updates => \@updates,
+                              methods => \%methods,
+                            } );
+    return $out_json;
+} #invoke_payload
 
 # ------- END Yote::Server
 

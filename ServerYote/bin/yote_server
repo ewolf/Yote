@@ -24,21 +24,6 @@ $SIG{ __DIE__ } = sub {
 eval('use Yote::ConfigData');
 my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
 
-#
-# set up default options
-#
-my %options = (
-    yote_root_dir        => $yote_root_dir,
-    yote_host            => '127.0.0.1',
-    yote_port            => 8881,
-    lock_port            => 8004,
-    lock_host            => '127.0.0.1',
-    lock_attempt_timeout => 12,
-    lock_timeout         => 10,
-    use_ssl              => 0,
-    SSL_cert_file        => '',
-    SSL_key_file         => '',
-    );
 
 my %options_explanations = (
     '--help|-?|-help'                  => 'display this help',
@@ -52,26 +37,8 @@ ng else",
     '--lock_timeout=<seconds>'         => "amount of time a lock may be kept. default is 12",
     );
 
-#
-# override base defaults with those from conf file
-#
-my $confile = "$yote_root_dir/yote.conf";
-if( -f $confile && -r $confile ) {
-    # TODO - create conf with defaults and make it part of the install
-    open( IN, "<$confile" ) or die "Unable to open config file $@ $!";
-    while( <IN> ) {
-        chomp;
-        s/\#.*//;
-        if( /^\s*([^=\s]+)\s*=\s*([^\s].*)\s*$/ ) {
-            if( defined $options{$1} ) {
-                $options{$1} = $2 if defined $options{$1};
-            } else {
-                print STDERR "Warning: encountered '$1' in file. Ignoring";
-            }
-        }
-    }
-    close IN;
-} #if config file is there
+
+my $options = Yote::Server::load_options( $yote_root_dir );
 
 #
 # Override options and find command 
@@ -87,8 +54,8 @@ while( @ARGV ) {
         exit;
     }
     elsif( /^--([^=]+)(=(.*))?/ ) {
-        if( defined( $options{$1} ) ) {
-            $options{$1} = $3;
+        if( defined( $options->{$1} ) ) {
+            $options->{$1} = $3;
         } else {
             print STDERR "Unknown option '$_'\n";
         }
@@ -99,7 +66,7 @@ while( @ARGV ) {
     }
 }
 
-my $pidfile = "$options{yote_root_dir}/yote.pid";
+my $pidfile = "$options->{yote_root_dir}/yote.pid";
 
 if( $cmd eq 'stop' ) {
     if( my $pid = check_pidfile( $pidfile ) ) {
