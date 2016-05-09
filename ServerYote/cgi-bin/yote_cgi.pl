@@ -13,7 +13,7 @@ use DateTime;
 use Data::Dumper;
 use JSON;
 
-unless( $main::yote_server && 1) {
+unless( $main::yote_server ) {
     print STDERR Data::Dumper->Dump(["MAKING YOTE SERVER"]);
     eval('use Yote::ConfigData');
     my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
@@ -21,8 +21,12 @@ unless( $main::yote_server && 1) {
     my $options = Yote::Server::load_options( $yote_root_dir );
 
     $main::yote_server = new Yote::Server( $options );
-#    $main::yote_server->{_locker}->start;
-    $main::yote_server->{STORE}{_locker} = $main::yote_server->{_locker};
+    my $locker = $main::yote_server->{_locker};
+    my $lc = $locker->client;
+    unless( $lc->ping ) {
+        $locker->start;
+    }
+    $main::yote_server->{STORE}{_locker} = $locker;
 }
 
 my $cgi = CGI->new;

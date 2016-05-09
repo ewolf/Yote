@@ -39,6 +39,7 @@ sub copy_dir {
     }
 } #copy_dir
 copy_dir( 'html', $yote_root );
+copy_dir( 'cgi-bin', $yote_root );
 
 
 my $builder = Module::Build->new(

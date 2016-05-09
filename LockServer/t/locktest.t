@@ -2,6 +2,8 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use Time::HiRes qw( gettimeofday usleep tv_interval );
+
 use Lock::Server;
 
 use Data::Dumper;
@@ -71,7 +73,7 @@ sub test_suite {
         my $res = $locker3->lock( "KEY1" ) > 1;
         $res = $res && $locker3->isLocked( "KEY1" ) == 1;
         $res = $res && $locker3->lockedByMe( "KEY1" ) == 1;
-        sleep 2;
+        usleep 2;
         $res = $res && $locker3->unlock( "KEY1" ) == 1;
         exit ! $res;
     }
@@ -111,7 +113,7 @@ sub test_suite {
     } else {
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->lock( "KEYA" ) > 1;
-        sleep 5;
+        usleep 5;
         $res = $res && $locker4->isLocked( "KEYB" ) == 0;
         $res = $res && $locker4->lock( "KEYB" ) > 1;
         $res = $res && $locker4->unlock( "KEYB" ) == 1;
