@@ -32,6 +32,9 @@ test_suite();
 
 $locks->stop;
 
+my $locker1 = $locks->client( "LOCKER1" );
+ok( ! $locker1->ping, 'ping after things have closed' );
+
 done_testing;
 
 exit( 0 );
