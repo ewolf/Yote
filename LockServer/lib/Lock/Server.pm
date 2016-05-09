@@ -94,7 +94,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.63';
+$VERSION = '1.64';
 
 
 $Lock::Server::DEBUG = 0;
@@ -450,7 +450,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.63';
+$VERSION = '1.64';
 
 
 =head3 new( lockername, host, port )
@@ -560,12 +560,12 @@ sub ping {
 
     $timeout //= 3;
 
-    my $sock = $self->_get_sock;
     
     local $SIG{ALRM} = sub { die "ALARM\n" };
     alarm $timeout;
     my $resp = '0';
     eval {
+        my $sock = $self->_get_sock;
         $sock->print( "GET /PING\n\n" );
         $resp = <$sock>;
         alarm 0;
@@ -591,6 +591,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.63  (May 6, 2016))
+       Version 1.64  (May 6, 2016))
 
 =cut
