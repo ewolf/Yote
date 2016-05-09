@@ -265,7 +265,6 @@ yote.init = function( args ) {
         var sendData = JSON.stringify(  readiedData );
         worker.port.onmessage = function(e) {
             if( e.data ) {
-alert( "E" + e.data );
                 var retVal = processRaw( e.data );
                 if( handl ) {
                     handl( e.data );
@@ -289,16 +288,16 @@ alert( "E" + e.data );
                      '/' + ( token ? token : '_' ) + 
                      '/' + action )
         
-        oReq.open("POST", yoteServerURL + 
-                  '/' + id +
-                  '/' + ( token ? token : '_' ) + 
-                  '/' + action, 
-                  true ); // 
+        oReq.open("POST", yoteServerURL, true );
 
         var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
 
         // for a single parameter, wrap into a parameter list
-        var sendData = JSON.stringify(  readiedData );
+        var sendData = JSON.stringify( { pl    : readiedData, //payload
+                                         i     : id,                 
+                                         t     : token ? token : '_',
+                                         a     : action
+                                       } );
 
         console.log( "About to send to server : " + sendData );
 

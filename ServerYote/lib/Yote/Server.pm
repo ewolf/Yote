@@ -304,22 +304,19 @@ sub _process_request {
         
 
         # data has the input parmas in JSON format.
-        # GET /obj/action/params
-        # POST /obj/action  (params in POST data)
+        # POST /
 
-        # root is /_/
-        my( $obj_id, $token, $action, $params );
-
-        if ( $verb eq 'GET' ) {
-            ( $obj_id, $token, $action, my @params ) = split( '/', substr( $path, 1 ) );
-
-            $params = [ map { URI::Escape::uri_unescape($_) } @params ];
-            
-        } elsif ( $verb eq 'POST' ) {
-            ( $obj_id, $token, $action ) = split( '/', substr( $path, 1 ) );
-
-            $params = $data ? from_json( $data ) : []; # this has to be checked against is valid, yes
+        if ( $verb ne 'POST' ) {
+            _log( "Attempted not-suppored '$verb' request" );
+            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
+            $sock->close;
         }
+
+        my $req_data = from_json( $data );
+
+
+        my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
+
         _log( "\n   (params [$$])--> : ".Data::Dumper->Dump([$params]) );
 
         if ( substr( $action, 0, 1 ) eq '_' ) {

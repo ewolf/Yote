@@ -76,11 +76,14 @@ sub msg {  #returns resp code, headers, response pased from json
     my( $obj_id, $token, $action, @params ) = @_;
     
     my $socket = new IO::Socket::INET( "127.0.0.1:8881" ) or die "Error contacting server : $@";
-    $socket->print( "GET /" . join( '/',  $obj_id, 
-                                    $token, 
-                                    $action, 
-                                    map { $_ > 1 || substr($_,0,1) eq 'v' ? $_ : "v$_" } @params ) .
-                    " HTTP/1.1\n\n" );
+    my $payload = to_json( {
+        i => $obj_id,
+        t => $token,
+        a => $action,
+        pl => [map { $_ > 1 || substr($_,0,1) eq 'v' ? $_ : "v$_" } @params],
+                           } );
+    $socket->print( "POST / HTTP/1.1\nContent-Type: text/json\nContent-Length: " . length( $payload ) ."\n\n$payload" );
+    
     my $resp = <$socket>;
     
     my( $code ) = ( $resp =~ /^HTT[^ ]+ (\d+) / ) ;
