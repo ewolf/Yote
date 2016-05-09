@@ -4,7 +4,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use Yote;
+use Yote::Server;
 
 use CGI;
 use DateTime;
@@ -20,16 +20,15 @@ unless( $main::yote_server ) {
     $main::yote_server = new Yote::Server( $options );
 }
 
-
 my $cgi = CGI->new;
 
 my $json_payload = $cgi->param('p');
-
 my $out_json;
 eval {
     $out_json = $main::yote_server->invoke_payload( $json_payload );
 };
 if( $@ ) {
+    print STDERR Data::Dumper->Dump([$@]);
     print $cgi->header( -status => '400 BAD REQUEST' );
 } else {
     print $cgi->header( 'text/json' );

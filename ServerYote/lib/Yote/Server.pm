@@ -222,8 +222,6 @@ sub _log {
     my( $msg, $sev ) = @_;
     $sev //= 1;
     print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
-
-    $msg =~ s/\s+/ /gs; $msg =~ s/['"]/^/g; `echo '$msg' >> /tmp/foo`;
 }
 
 sub __transform_params {
