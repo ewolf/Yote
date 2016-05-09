@@ -38,6 +38,7 @@ exit( 0 );
 sub test_suite {
     
     my $locker1 = $locks->client( "LOCKER1" );
+    is( $locker1->ping, '1', 'ping for active connection' );
     is( $locker1->isLocked( "KEY1" ), '0', "KEY1 LOCKER1 not locked by anyone" );
     is( $locker1->lockedByMe( "KEY1" ), '0', "KEY1 LOCKER1 reported as not locked before any locking" );
     is( $locker1->unlock( "KEY1" ), '0', "can't unlock what is not locked KEY1 LOCKER1" );

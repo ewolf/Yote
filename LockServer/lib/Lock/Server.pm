@@ -26,6 +26,7 @@ package Lock::Server;
      * VERIFY/key/requester - returns 1 if the key is locked to the
                               requester and did not time out and 0 
                               otherwise.
+     * PING - returns 1 if the server is active
 
     This does not do deadlock detection, relying on the timeouts to 
     prevent the system from getting in a hopelessly tangled state.
@@ -93,7 +94,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.62';
+$VERSION = '1.63';
 
 
 $Lock::Server::DEBUG = 0;
@@ -245,7 +246,7 @@ sub _run_loop {
             last unless $data =~ /\S/;
         }
 
-        my( $cmd, $key, $locker_id ) = ( $req =~ m!^GET /([^/]+)/([^/]+)/?([^/]+)?! );
+        my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
 
         if( $cmd eq 'CHECK' ) {
             $self->_check( $connection, $key );
@@ -256,6 +257,9 @@ sub _run_loop {
             $self->_unlock( $connection, $key, $locker_id );
         } elsif( $cmd eq 'VERIFY' ) {
             $self->_verify( $connection, $key, $locker_id );
+        } elsif( $cmd eq 'PING' ) {
+            print $connection "1\n";
+            $connection->close;
         } else {
             _log( "lock server : did not understand command '$cmd'" );
             $connection->close;
@@ -446,7 +450,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.62';
+$VERSION = '1.63';
 
 
 =head3 new( lockername, host, port )
@@ -551,6 +555,16 @@ sub unlock {
     $resp;
 }
 
+sub ping {
+    my $self = shift;
+	my $sock = $self->_get_sock;
+    $sock->print( "GET /PING\n\n" );
+    my $resp = <$sock>;
+    $sock->close;
+    chomp $resp;
+    $resp;
+}
+
 1;
 
 
@@ -567,6 +581,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.62  (May 6, 2016))
+       Version 1.63  (May 6, 2016))
 
 =cut
