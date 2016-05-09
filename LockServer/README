@@ -22,6 +22,7 @@ DESCRIPTION
          * VERIFY/key/requester - returns 1 if the key is locked to the
                                   requester and did not time out and 0 
                                   otherwise.
+         * PING - returns 1 if the server is active
 
         This does not do deadlock detection, relying on the timeouts to 
         prevent the system from getting in a hopelessly tangled state.
@@ -129,7 +130,4 @@ AUTHOR
 COPYRIGHT AND LICENSE
            Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
            under the same terms as Perl itself.
-
-VERSION
-           Version 1.1  (October 12, 2015))
 

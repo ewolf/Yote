@@ -94,7 +94,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.64';
+$VERSION = '1.66';
 
 
 $Lock::Server::DEBUG = 0;
@@ -239,7 +239,6 @@ sub _run_loop {
         my $req = <$connection>; 
         chomp $req;
         _log( "lock server : incoming request : '$req'" );
-
         # could have headers, but ignore those. Find \n\n
         while( my $data = <$connection> ) {
             chomp $data;
@@ -247,11 +246,9 @@ sub _run_loop {
         }
 
         my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
-
         if( $cmd eq 'CHECK' ) {
             $self->_check( $connection, $key );
-        }
-        elsif( $cmd eq 'LOCK' ) {
+        } elsif( $cmd eq 'LOCK' ) {
             $self->_lock( $connection, $key, $locker_id );
         } elsif( $cmd eq 'UNLOCK' ) {
             $self->_unlock( $connection, $key, $locker_id );
@@ -450,7 +447,7 @@ use IO::Socket::INET;
 
 use vars qw($VERSION);
 
-$VERSION = '1.64';
+$VERSION = '1.66';
 
 
 =head3 new( lockername, host, port )
@@ -476,13 +473,14 @@ sub new {
 } #new 
 
 sub _get_sock {
-    my $self = shift;
-    
+    my $self     = shift;
+    my $attempts = shift || $self->{attempts};
+
     # try a few times, then give up
     my( $sock, $count );
-    until( $sock || $count++ > $self->{attempts} ) {
+    until( $sock || $count++ > $attempts ) {
         $sock = new IO::Socket::INET( "$self->{host}:$self->{port}" );
-        sleep $self->{time_between_attempts}*($count) unless $sock;
+        sleep $self->{time_between_attempts}*($count) unless $sock || $count > $attempts;
     }
     die "Could not connect : $@" unless $sock;
     binmode $sock, ':utf8';
@@ -565,7 +563,7 @@ sub ping {
     alarm $timeout;
     my $resp = '0';
     eval {
-        my $sock = $self->_get_sock;
+        my $sock = $self->_get_sock( 1 );
         $sock->print( "GET /PING\n\n" );
         $resp = <$sock>;
         alarm 0;
@@ -591,6 +589,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.64  (May 6, 2016))
+       Version 1.66  (May 6, 2016))
 
 =cut
