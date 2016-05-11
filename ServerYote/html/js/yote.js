@@ -226,7 +226,7 @@ yote.init = function( args ) {
     function reqListener( succHandl, failHandl ) { 
         return function() {
             console.log( "GOT FROM SERVER : " + this.response );
-            if( this.response ) {
+            if( typeof this === 'object' ) {
                 processRaw( this.response, succHandl, failHandl );
             } else if( failHandl ) {
                 failHandl( 'failed' );

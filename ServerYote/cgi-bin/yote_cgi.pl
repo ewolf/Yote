@@ -34,10 +34,11 @@ eval {
 };
 
 if( ref $@ eq 'HASH' ) {
-    print STDERR Data::Dumper->Dump(["GOTTY IN CGI",$@]);
     $out_json = to_json( $@ );
+    undef $@;
+    print STDERR Data::Dumper->Dump(["GOTTY IN CGI",$out_json,$@]);
 }
-elsif( $@ ) {
+if( $@ ) {
     print STDERR Data::Dumper->Dump([$@,"ERRORGOT"]);
     print $cgi->header( -status => '400 BAD REQUEST' );
 } else {
