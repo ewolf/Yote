@@ -236,32 +236,6 @@ sub _log {
     print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
 }
 
-sub __transform_params {
-    #
-    # Recursively transforms incoming parameters into values, yote objects, or non yote containers.
-    # This checks to make sure that the parameters are allowed by the given token.
-    # Throws execptions if the parametsr are not allowed, or if a reference that is not a hash or array
-    # is encountered.
-    #
-    my( $self, $param, $token, $server_root ) = @_;
-
-    if( ref( $param ) eq 'HASH' ) {
-        return { map { $_ => $self->__transform_params($param->{$_}, $token, $server_root) } keys %$param };
-    } 
-    elsif( ref( $param ) eq 'ARRAY' ) {
-        return [ map { $self->__transform_params($_, $token, $server_root) } @$param ];
-    } elsif( ref( $param ) ) {
-        die "Transforming Params: got weird ref '" . ref( $param ) . "'";
-    }
-    if( index( $param, 'v' ) == 0 ) {
-        if( $server_root->_getHas( $param, $token ) ) {
-            return $self->{STORE}->_xform_out( $param );
-        }
-        die( "Bad Req Param, server says no : $param" );
-    }
-    return $self->{STORE}->fetch($param); #oops!
-} #__transform_params
-
 sub _find_ids_in_data {
     my $data = shift;
     my $r = ref( $data );
@@ -449,11 +423,10 @@ sub invoke_payload {
     my $session = $token ? $server_root->_fetch_session( $token ) : undef;
 
     unless( $obj_id eq '_' || 
-            $obj_id eq $server_root_id || 
-            ( $session && $server_root->_getHas( $obj_id, $session->get__token ) ) ) {
-        
+            $obj_id eq $server_root_id ||
+            $session->{_has_ids2times}{$obj_id} ) {        
         # tried to do an action on an object it wasn't handed. do a 404
-        die( "Bad Path" );
+        die( "client tried to invoke on obj id '$obj_id' which it does not have" );
     }
     if( substr( $action, 0, 1 ) eq '_' ) {
         die( "Private method called" );
@@ -463,14 +436,13 @@ sub invoke_payload {
         die( "Bad Req Param Not Array : $params" );
     }
 
+    my $store = $self->{STORE};
+
     # now things are getting a bit more complicated. The params passed in
     # are always a list, but they may contain other containers that are not
     # yote objects. So, transform the incomming parameter list and check all
     # yote objects inside for may. Use a recursive helper function for this.
-    my $in_params = $self->__transform_params( $params, $token, $server_root );
-
-    
-    my $store = $self->{STORE};
+    my $in_params = $store->__transform_params( $params, $session );
 
     #
     # This obj is the object that the method call is on
@@ -621,6 +593,32 @@ sub _last_updated {
 sub _log {
     Yote::Server::_log(shift);
 }
+
+
+sub __transform_params {
+    #
+    # Recursively transforms incoming parameters into values, yote objects, or non yote containers.
+    # This checks to make sure that the parameters are allowed by the given token.
+    # Throws execptions if the parametsr are not allowed, or if a reference that is not a hash or array
+    # is encountered.
+    #
+    my( $self, $param, $session ) = @_;
+
+    if( ref( $param ) eq 'HASH' ) {
+        return { map { $_ => $self->__transform_params($param->{$_}, $session) } keys %$param };
+    } 
+    elsif( ref( $param ) eq 'ARRAY' ) {
+        return [ map { $self->__transform_params($_, $session) } @$param ];
+    } elsif( ref( $param ) ) {
+        die "Transforming Params: got weird ref '" . ref( $param ) . "'";
+    }
+    if( index( $param, 'v' ) != 0 && !$session->{_has_ids2times}{$param} ) {
+        # obj id given, but the client should not have that id
+        die "Client requested obj with id '$param' which it should not have.";
+    }
+    return $self->_xform_out( $param );
+} #__transform_params
+
 
 #
 # Unlike the superclass version of this, this provides an arguemnt to
@@ -923,7 +921,6 @@ sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
     my $token = $session->get__token;
-    $self->_resetHas( [ $token ] );
     return $self, $token;
 }
 
