@@ -177,11 +177,16 @@ yote.init = function( args ) {
         }
     } //processReturn
 
-    function processRaw(rawResponse) {
-        if( ! rawResponse ) {
+    function processRaw(rawResponse,succHandle,failHandle) {
+        var res = JSON.parse( rawResponse );
+
+        // check for errors
+        if( res.err ) {
+            if( failHandle ) {
+                failHandle( res.err );
+            }
             return;
         }
-        var res = JSON.parse( rawResponse );
         
         // ** 3 parts : methods, updates and result
         
@@ -209,9 +214,10 @@ yote.init = function( args ) {
         }
         
         // results
-        if( res.result ) {
+        if( res.result && succHandle ) {
             var resses = processReturn( res.result );
-            return resses.length > 1 ? resses : resses[0];
+            var finalRes = resses.length > 1 ? resses : resses[0];
+            succHandle( finalRes );
         }
     }; //processRaw
 
@@ -221,10 +227,7 @@ yote.init = function( args ) {
         return function() {
             console.log( "GOT FROM SERVER : " + this.response );
             if( this.response ) {
-                var returnVal = processRaw( this.response );
-                if( succHandl ) {
-                    succHandl( returnVal );
-                }
+                processRaw( this.response, succHandl, failHandl );
             } else if( failHandl ) {
                 failHandl( 'failed' );
             }
@@ -255,29 +258,7 @@ yote.init = function( args ) {
         return obj;
     }
 
-    function contact_worker(id,action,data,handl,errhandl) {
-        worker = new SharedWorker( "/__/js/yote.worker.js" );
-        worker.port.start();
-
-        var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
-
-        // for a single parameter, wrap into a parameter list
-        var sendData = JSON.stringify(  readiedData );
-        worker.port.onmessage = function(e) {
-            if( e.data ) {
-                var retVal = processRaw( e.data );
-                if( handl ) {
-                    handl( e.data );
-                }
-            } else if( errhandl ) {
-                errhandl( 'failed' );
-            }
-        }
-
-        worker.port.postMessage( [ id, action, readiedData ] );
-    }
-
-    function contact_server(id,action,data,handl,errhandl) { 
+    function contact(id,action,data,handl,errhandl) { 
         var oReq = new XMLHttpRequest();
         oReq.addEventListener("loadend", reqListener( handl, errhandl ) );
         oReq.addEventListener("error", function(e) { alert('error : ' + e) } );
@@ -307,19 +288,8 @@ yote.init = function( args ) {
         oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded" );
         oReq.send( sendData );
 
-    }; // contact_server
-
-    var contact, worker, init_root_args = [];
-    if( args.contact == 'worker'  ) {
-        contact = contact_worker;
-        if( args.appFile ) {
-            init_root_args.push( args.appFile );
-        }
-    } else {
-        contact = contact_server;
-    }
-    
-    // translates text to objects
+    }; // contact
+   // translates text to objects
     function xform_in( item ) {
         if( typeof item === 'object' ) {
             if( item === null ) {
@@ -371,7 +341,7 @@ yote.init = function( args ) {
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
     }
-    contact( '_', 'init_root', init_root_args, function(res) {
+    contact( '_', 'init_root', function(res) {
         root  = res[0];
         token = res[1];
         if( typeof sessionStorage !== 'undefined' ) {

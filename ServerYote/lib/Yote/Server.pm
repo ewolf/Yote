@@ -375,7 +375,10 @@ sub _process_request {
         eval {
             $out_json = $self->invoke_payload( $data );
         };
-        if( $@ ) {
+        if( ref $@ eq 'HASH' ) {
+            $out_json = to_json( $@ );
+        } 
+        elsif( $@ ) {
             _log( $@ );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
@@ -669,6 +672,11 @@ use base 'Yote::Obj';
 
 sub _log {
     Yote::Server::_log(shift);
+}
+
+sub _err {
+    print "ERRRY\n";
+    die { err => shift };
 }
 
 $Yote::ServerObj::PKG2METHS = {};

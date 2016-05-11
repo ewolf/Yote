@@ -17,7 +17,7 @@ sub create_account {
     my $accts = $self->get__accts({});
 
     if( $accts->{$un} ) {
-        die "Unable to create account";
+        $self->_err( "Unable to create account" );
     }
 
     my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
@@ -35,7 +35,6 @@ sub create_account {
 sub logout {
     my $self = shift;
     my $root = $self->{SESSION}{SERVER_ROOT};
-    print STDERR Data::Dumper->Dump(["LOGOUT '$root'"]);
     $root->_destroy_session( $self->{SESSION}->get__token ) if $root;
 } #logout
 
@@ -56,7 +55,7 @@ sub login {
 
         return $acct;
     }
-    die "Incorrect login";
+    $self->_err( "Incorrect login" );
 } #login
 
 

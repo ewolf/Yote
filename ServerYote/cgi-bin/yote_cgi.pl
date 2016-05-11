@@ -33,6 +33,9 @@ eval {
     $out_json = $main::yote_server->invoke_payload( $json_payload );
 };
 
+if( ref $@ eq 'HASH' ) {
+    $out_json = to_json( $@ );
+}
 if( $@ ) {
     print STDERR Data::Dumper->Dump([$@,"ERRORGOT"]);
     print $cgi->header( -status => '400 BAD REQUEST' );
