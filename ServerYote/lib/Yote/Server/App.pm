@@ -56,5 +56,4 @@ sub login {
     $self->_err( "Incorrect login" );
 } #login
 
-
 1;

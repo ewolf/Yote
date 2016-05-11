@@ -810,6 +810,9 @@ sub _new { #new Yote::Obj
     return $obj;
 } #_new
 
+sub _store {
+    return shift->{STORE};
+}
 
 #
 # Called by the object provider; returns a Yote::Obj the object

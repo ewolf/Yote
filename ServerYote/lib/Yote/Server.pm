@@ -469,12 +469,12 @@ sub invoke_payload {
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         # if there is a token, make it known that the token 
         # has received server root data
-        $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
+        $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has, @mays ];
         if ( $token  ) {
             push @has, $server_root_id;
         }
     } else {
-        $ids_to_update = $server_root->_updates_needed( $token, \@has );
+        $ids_to_update = $server_root->_updates_needed( $token, \@has, \@mays );
     }
     
     my( @updates, %methods );
