@@ -283,6 +283,7 @@ sub _find_ids_in_data {
 
 sub _unroll_ids {
     my( $store, $ids, $seen ) = @_;
+    my $first = ! $seen;
     $seen  //= {};
 
     my( @items ) = ( map { $store->fetch($_) } grep { ! $seen->{$_}++ } @$ids );
@@ -298,12 +299,11 @@ sub _unroll_ids {
         else {
             my $data = $item->{DATA};
             push @outids, map { $data->{$_} } grep { /^[^_]/ && $data->{$_} != /^v/ && ! $seen->{$data->{$_}}++ } keys %$data;
-            print STDERR Data::Dumper->Dump([$data,\@outids,"OOUNROLL $item->{ID}"]);
         }
     }
     _unroll_ids( $store, \@outids, $seen ) if @outids;
 
-    [ keys %$seen ];
+    return [ keys %$seen ] if $first;
 } #_unroll_ids
 
 sub _process_request {
@@ -405,6 +405,7 @@ sub _process_request {
         eval {
             $out_json = $self->invoke_payload( $data );
         };
+
         if( ref $@ eq 'HASH' ) {
             $out_json = to_json( $@ );
         } 
@@ -445,15 +446,11 @@ sub invoke_payload {
     my $server_root = $self->{STORE}->fetch_server_root;
     
     my $server_root_id = $server_root->{ID};
-    my $session = $server_root->_fetch_session( $token );
+    my $session = $token ? $server_root->_fetch_session( $token ) : undef;
 
-    print STDERR Data::Dumper->Dump([$obj_id,$session,$token] );
-    
     unless( $obj_id eq '_' || 
             $obj_id eq $server_root_id || 
-            ( $obj_id > 0 && 
-              $session && 
-              $server_root->_getHas( $obj_id, $session->get__token ) ) ) {
+            ( $session && $server_root->_getHas( $obj_id, $session->get__token ) ) ) {
         
         # tried to do an action on an object it wasn't handed. do a 404
         die( "Bad Path" );
@@ -470,15 +467,16 @@ sub invoke_payload {
     # are always a list, but they may contain other containers that are not
     # yote objects. So, transform the incomming parameter list and check all
     # yote objects inside for may. Use a recursive helper function for this.
-
     my $in_params = $self->__transform_params( $params, $token, $server_root );
 
+    
     my $store = $self->{STORE};
 
+    #
+    # This obj is the object that the method call is on
+    #
     my $obj = $obj_id eq '_' ? $server_root :
         $store->fetch( $obj_id );
-
-
 
     unless( $obj->can( $action ) ) {
         die( "Bad Req : invalid method :'$action'" );
@@ -489,91 +487,80 @@ sub invoke_payload {
         $obj->{SESSION}{SERVER_ROOT} = $server_root;
     }
 
+    # <<------------- the actual method call --------------->>
     my(@res) = ($obj->$action( @$in_params ));
+
+    
     delete $obj->{SESSION};
-        
+
+    # this is included in what is  returned to the client 
     my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
 
-#    my @has = _find_ids_in_data( $out_res );
-    
-    my @data_has = _find_ids_in_data( $out_res );
-    my @has;
-    eval {
-        ( @has ) = ( @{ _unroll_ids( $store, \@data_has ) } );
-        print STDERR Data::Dumper->Dump([\@data_has,\@has,"UNROLL"]);
-    };
-    if( $@ ) {
-        print STDERR Data::Dumper->Dump([$@,"ERRRRRR"]);
-    }
-    my $ids_to_update;
-    if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
-        # if there is a token, make it known that the token 
-        # has received server root data
-        if ( $token  ) {
-            push @has, $server_root_id;
-            $ids_to_update = $server_root->_updates_needed( $token, \@has );
-            unshift @$ids_to_update, $server_root_id;
-        } else {
-            $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
-        }
-    } else {
-        $ids_to_update = $server_root->_updates_needed( $token, \@has );
 
-        print STDERR Data::Dumper->Dump([\@has,$ids_to_update,"NEEDYWEEW"]);
-    }
+    # the ids that were referenced explicitly in the
+    # method call.
+    my @out_ids = _find_ids_in_data( $out_res );
     
+    #
+    # Based on the return value of the method call,
+    #   these ids are ones that the client should have.
+    #   We will check to see if these need updates
+    #
+    my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
+
     my( @updates, %methods );
-    for my $obj_id (@$ids_to_update) {
-        my $obj = $store->fetch( $obj_id );
-        my $ref = ref( $obj );
-        my( $data );
-        if ( $ref eq 'ARRAY' ) {
-            $data = [ 
-                map { my $d = $store->_xform_in( $_ );
-                      if( index( $d, 'v' ) != 0 ) {
-                          push @has, $d;
-                      }
-                      $d } 
-                @$obj ];
-        } elsif ( $ref eq 'HASH' ) {
-            $data = {
-                map { my $d = $store->_xform_in( $obj->{$_} );
-                      if( index( $d, 'v' ) != 0 ) {
-                          push @has, $d;
-                      }
-                      $_ => $d }
-                keys %$obj };
-        } else {
-            my $obj_data = $obj->{DATA};
-            
-            $data = {
-                map { my $d = $obj_data->{$_};
-                      if( index( $d, 'v' ) != 0 ) {
-                          push @has, $d;
-                      }
-                      $_ => $d }
-                grep { $_ !~ /^_/ }
-                keys %$obj_data };
-            $methods{$ref} ||= $obj->_callable_methods;
-        }
-        push @has, $obj_id;
-        my $update = {
-            id    => $obj_id,
-            cls   => $ref,
-            data  => $data,
+
+    #
+    # fetch root always sends the root back for an update
+    #
+    if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )
+         && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        push @should_have, $server_root_id;
+        my $cls = ref( $server_root );
+        my $d = $server_root->{DATA};
+        push @updates, {
+            id    => $server_root_id,
+            cls   => $cls,
+            data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
         };
-        push @updates, $update;
-    } #each obj_id to update
+        $methods{ $cls } = $server_root->_callable_methods;
+    } 
+    if( $session)  {
 
-    $server_root->_setHas( \@has, $token );
+        #
+        # check if existing are in the session
+        #
+        my $ids2times = $session->get__has_ids2times;
 
+        for my $should_have_id ( @should_have, keys %$ids2times ) {
+            # check if this needs an update
+            my $last_client_update_time = $ids2times->{$should_have_id};
+            my $last_server_update_time = $store->_last_updated( $should_have_id );
+            if( $last_server_update_time > $last_client_update_time ) {
+                my $should_have_obj = $store->fetch( $should_have_id );
+                my $ref = ref( $should_have_obj );
+                my $data;
+                if( $ref eq 'ARRAY' || $ref eq 'HASH' ) {
+                    $data = $ref;
+                } else {
+                    my $d = $should_have_obj->{DATA};
+                    $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+                    $methods{$ref} ||= $should_have_obj->_callable_methods;
+                }
+                my $update = {
+                    id    => $should_have_id,
+                    cls   => $ref,
+                    data  => $data,
+                };
+                push @updates, $update;
+            }
+            $ids2times->{$should_have_id} = Time::HiRes::time;
+        } #each object the client should have
+    }
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
                             } );
-
-    print STDERR Data::Dumper->Dump([$out_json,"SENTOUT"]);
-    
     return $out_json;
 } #invoke_payload
 
@@ -616,11 +603,13 @@ sub stow_all {
 } #stow_all
 
 sub _stow {
-    my( $self, $obj ) = @_;
+    my( $self, $obj, $no_timesave ) = @_;
     $self->SUPER::_stow( $obj );
 
-    my $obj_id = $self->_get_id( $obj );
-    $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
+    unless( $no_timesave ) {
+        my $obj_id = $self->_get_id( $obj );
+        $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
+    }
 }
 
 sub _last_updated {
@@ -818,69 +807,6 @@ sub _fetch_session {
     
 } #_fetch_sesion
 
-sub _getHas {
-    my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0;
-    return 0 if $token eq '_';
-    my $obj_data = $self->get__doesHave_Token2objs;
-    $obj_data->{$token} && $obj_data->{$token}{$id};
-}
-
-sub _resetHas {
-    my( $self, $tokens ) = @_;
-
-    $self->{STORE}->lock( "_has_Token2objs" );
-
-    my $token2objs = $self->get__doesHave_Token2objs;
-    for my $token (@$tokens) {
-        delete $token2objs->{ $token };
-    }
-    $self->{STORE}->unlock( "_has_Token2objs" );
-
-} #_resetHas
-
-sub _setHas {
-    my( $self, $has, $token ) = @_;
-
-    $self->{STORE}->lock( "_has_Token2objs" );
-
-    # has
-    my $obj_data = $self->get__doesHave_Token2objs;
-    for my $id (@$has) {
-        next if index( $id, 'v' ) == 0 || $token eq '_';
-        $obj_data->{$token}{$id} = Time::HiRes::time;
-        print STDERR Data::Dumper->Dump(["SETHAAAAAAAAAAAAAAAAAAA ($token)($id)"]);
-    }
-    $self->{STORE}->_stow( $obj_data );
-    
-    $self->{STORE}->unlock( "_has_Token2objs" );
-} #_setHas
-
-
-sub _updates_needed {
-    my( $self, $token, $outRes ) = @_;
-    return [] if $token eq '_';
-
-    my $obj_data = $self->get__doesHave_Token2objs()->{$token};
-    print STDERR Data::Dumper->Dump([$obj_data,"TOKCHK ($token)"]);
-    my $store = $self->{STORE};
-    my( @updates );
-    for my $obj_id (@$outRes, keys %$obj_data ) {
-        print STDERR Data::Dumper->Dump([">>>>$obj_id<<<<"]);
-        next if index( $obj_id, 'v' ) == 0;
-        my $last_update_sent = $obj_data->{$obj_id};
-        my $last_updated = $store->_last_updated( $obj_id );
-        print STDERR Data::Dumper->Dump(["($obj_id) LastupdateSent <$last_update_sent>, lastUpdated <$last_updated>"]);
-        if( $last_update_sent <= $last_updated || $last_updated == 0 ) {
-            unless( $last_updated ) {
-                $store->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
-            }
-            push @updates, $obj_id;
-        }
-    }
-    \@updates;
-} #_updates_needed
-
 sub create_token {
     shift->_create_session->get__token;
 }
@@ -903,7 +829,6 @@ sub _create_session {
     my $earliest_valid_time_chunk  = $current_time_chunk - 7;
 
     $self->{STORE}->lock( 'token_mutex' );
-
 
     #
     # A list of slot 'boats' which store token -> ip
@@ -928,7 +853,8 @@ sub _create_session {
     # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
     #
-    my $session = $self->{STORE}->newobj( { 
+    my $session = $self->{STORE}->newobj( {
+        _has_ids2times => {},
         _token => $token } );
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
         $slots->[ 0 ]{ $token } = $session;
@@ -937,7 +863,6 @@ sub _create_session {
         unshift @$slots, { $token => $session };
     }
     
-
     #
     # remove this token from old boats so it doesn't get purged
     # when in a valid boat.
@@ -946,24 +871,8 @@ sub _create_session {
         delete $slots->[$i]{ $token };
     }
 
-    #
-    # Purge tokens in expired boats.
-    #
-    my @to_remove;
-    while( @$slot_data ) {
-        if( $slot_data->[$#$slot_data] < $earliest_valid_time_chunk ) {
-            pop @$slot_data;
-            my $old = pop @$slots;
-            push @to_remove, keys %$old;
-        } else {
-            last;
-        }
-    }
-
-    if( @to_remove ) {
-        $self->_resetHas( \@to_remove );
-    }
-    
+    $self->{STORE}->_stow( $slots );
+    $self->{STORE}->_stow( $slot_data );
     $self->{STORE}->unlock( 'token_mutex' );
     
     return $session;
@@ -972,13 +881,14 @@ sub _create_session {
 
 sub _destroy_session {
     my( $self, $token ) = @_;
+    
+    $self->{STORE}->lock( 'token_mutex' );
     my $slots = $self->get__token_timeslots();
     for( my $i=0; $i<@$slots; $i++ ) {
         delete $slots->[$i]{ $token };
     }
-    print STDERR Data::Dumper->Dump(["DESTROY '$token'",$slots]);
-
-    $self->_resetHas( [$token] );
+    $self->{STORE}->_stow( $slots );
+    $self->{STORE}->unlock( 'token_mutex' );
     1;
 } #_destroy_session
 
