@@ -498,7 +498,6 @@ sub invoke_payload {
     eval {
         ( @has ) = ( @{ _unroll_ids( $store, \@data_has ) } );
     };
-    
     my $ids_to_update;
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         # if there is a token, make it known that the token 
@@ -518,16 +517,21 @@ sub invoke_payload {
     for my $obj_id (@$ids_to_update) {
         my $obj = $store->fetch( $obj_id );
         my $ref = ref( $obj );
-        
         my( $data );
         if ( $ref eq 'ARRAY' ) {
             $data = [ 
                 map { my $d = $store->_xform_in( $_ );
+                      if( index( $d, 'v' ) != 0 ) {
+                          push @has, $d;
+                      }
                       $d } 
                 @$obj ];
         } elsif ( $ref eq 'HASH' ) {
             $data = {
                 map { my $d = $store->_xform_in( $obj->{$_} );
+                      if( index( $d, 'v' ) != 0 ) {
+                          push @has, $d;
+                      }
                       $_ => $d }
                 keys %$obj };
         } else {
@@ -535,6 +539,9 @@ sub invoke_payload {
             
             $data = {
                 map { my $d = $obj_data->{$_};
+                      if( index( $d, 'v' ) != 0 ) {
+                          push @has, $d;
+                      }
                       $_ => $d }
                 grep { $_ !~ /^_/ }
                 keys %$obj_data };
@@ -800,6 +807,13 @@ sub _fetch_session {
     
 } #_fetch_sesion
 
+sub _getHas {
+    my( $self, $id, $token ) = @_;
+    return 1 if index( $id, 'v' ) == 0;
+    return 0 if $token eq '_';
+    my $obj_data = $self->get__doesHave_Token2objs;
+    $obj_data->{$token} && $obj_data->{$token}{$id};
+}
 
 sub _resetHas {
     my( $self, $tokens ) = @_;
