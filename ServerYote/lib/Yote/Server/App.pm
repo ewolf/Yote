@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use Yote::Server;
-use Yote::Server::Acct;
 
 use Digest::MD5;
 

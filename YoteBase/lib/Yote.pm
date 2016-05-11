@@ -3,7 +3,6 @@ package Yote;
 use strict;
 use warnings;
 no  warnings 'uninitialized';
-use Module::Loaded;
 
 use vars qw($VERSION);
 
@@ -250,9 +249,8 @@ sub fetch {
             my $obj;
             eval {
                 my $path = $class;
-                unless( is_loaded( $class ) ) {
-                    eval("require $class");
-                    mark_as_loaded( $class );
+                unless( $INC{ $class } ) {
+                    eval("use $class");
                 }
                 $obj = $class->_instantiate( $id, $self );
             };
@@ -322,7 +320,7 @@ sub _new { #Yote::ObjStore
 sub _init {
     my $self = shift;
     for my $pkg ( qw( Yote::Obj Yote::Array Yote::Hash ) ) {
-        is_loaded( $pkg ) or mark_as_loaded( $pkg );
+        $INC{ $pkg } or eval("use $pkg");
     }
     $self->fetch_root;
     $self->stow_all;

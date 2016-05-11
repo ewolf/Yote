@@ -341,7 +341,7 @@ yote.init = function( args ) {
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
     }
-    contact( '_', 'init_root', function(res) {
+    contact( '_', 'init_root', [], function(res) {
         root  = res[0];
         token = res[1];
         if( typeof sessionStorage !== 'undefined' ) {
