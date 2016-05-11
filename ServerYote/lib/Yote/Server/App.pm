@@ -22,8 +22,7 @@ sub create_account {
     my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
     $acct->set__password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
 
-    $self->{SESSION}{acct} = $acct;
-
+    $self->{SESSION}->set_acct( $acct );
     
     # TODO - create an email infrastructure for account validation
     
