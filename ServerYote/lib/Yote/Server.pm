@@ -676,7 +676,6 @@ sub _log {
 
 sub _err {
     shift; #self
-    print "ERRRY\n";
     die { err => shift };
 }
 
