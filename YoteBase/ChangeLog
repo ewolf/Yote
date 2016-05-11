@@ -1,3 +1,9 @@
+2016-05-11  eric wolf  <wolf@wolflab>
+
+	* Version 1.39 (woo, not been keeping up with the updates, sorry folks)
+	* Just minor improvements and speed fixes.
+	* Removed VERSION from all subpackages
+
 2015-11-02 Eric Wolf  <coyocanid@gmail.com>
 	* Version 1.01
 	* Yote::ObjStore::fetch fixed bug where it would barf for instantiating subpackages of a file

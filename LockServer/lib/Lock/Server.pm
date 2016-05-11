@@ -97,7 +97,7 @@ use POSIX ":sys_wait_h";
 
 use vars qw($VERSION);
 
-$VERSION = '1.7';
+$VERSION = '1.70';
 
 
 $Lock::Server::DEBUG = 0;
@@ -647,6 +647,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.7  (May 11, 2016))
+       Version 1.70  (May 11, 2016))
 
 =cut

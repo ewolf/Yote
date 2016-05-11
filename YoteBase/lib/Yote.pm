@@ -7,7 +7,7 @@ use Module::Loaded;
 
 use vars qw($VERSION);
 
-$VERSION = '1.38';
+$VERSION = '1.39';
 
 =head1 NAME
 
@@ -149,10 +149,6 @@ no warnings 'recursion';
 
 use WeakRef;
 use Module::Loaded;
-
-use vars qw($VERSION);
-
-$VERSION = '1.38';
 
 =head1 NAME
 
@@ -577,10 +573,6 @@ use strict;
 use warnings;
 no  warnings 'uninitialized';
 
-use vars qw($VERSION);
-
-$VERSION = '1.38';
-
 #
 # The string version of the yote object is simply its id. This allows
 # objet ids to easily be stored as hash keys.
@@ -846,10 +838,6 @@ use warnings;
 no warnings 'uninitialized';
 use Tie::Array;
 
-use vars qw($VERSION);
-
-$VERSION = '1.38';
-
 sub TIEARRAY {
     my( $class, $obj_store, $id, @list ) = @_;
     my $storage = [];
@@ -941,10 +929,6 @@ no warnings 'uninitialized';
 
 use Tie::Hash;
 
-use vars qw($VERSION);
-
-$VERSION = '1.38';
-
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
     my $storage = {};
@@ -1017,10 +1001,6 @@ use Devel::Refcount 'refcount';
 use constant {
   DATA => 2,
 };
-
-use vars qw($VERSION);
-
-$VERSION = '1.38';
 
 #
 # This the main index and stores in which table and position
@@ -1204,6 +1184,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.38  (May 9, 2016))
+       Version 1.39  (May 11, 2016))
 
 =cut
