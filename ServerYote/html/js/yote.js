@@ -41,7 +41,7 @@ yote.init = function( args ) {
 
     var yoteServerURL = args.yoteServerURL || '';
 
-    var token, root;
+    var token, root, app, appname, acct;
 
     if( typeof sessionStorage !== 'undefined' ) {
         token = sessionStorage.getItem( 'token' );
@@ -334,7 +334,7 @@ yote.init = function( args ) {
         return 'v' + res;
     }//xform_out
 
-    var appname = args.appName;
+    appname = args.appName;
     var handler = args.handler;
     var errhandler = args.errHandler;
 
@@ -351,8 +351,8 @@ yote.init = function( args ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
                     if( Array.isArray( result ) ) {
-                        var app = result[0];
-                        var acct = result[1];
+                        app = result[0];
+                        acct = result[1];
                     } else {
                         app = result;
                     }
@@ -364,6 +364,23 @@ yote.init = function( args ) {
         }
     }, errhandler );
 
+    yote.logout = function() {
+        if( app ) {
+            app.logout();
+        }
+        sessionStorage.removeItem( 'token' );
+        acct = undefined;
+        token = undefined;
+        app = undefined;
+        token = root.create_token( function( t ) {
+            token = t;
+            sessionStorage.setItem( 'token', t );
+            if( appname ) {
+                app = root.fetch_app( appname );
+            }
+        } );
+    }
+    
 }; //yote.init
 
 yote.sameyoteobjects = function( a, b ) {
