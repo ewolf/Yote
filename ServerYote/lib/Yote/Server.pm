@@ -254,7 +254,7 @@ sub __transform_params {
         die "Transforming Params: got weird ref '" . ref( $param ) . "'";
     }
     if( index( $param, 'v' ) == 0 ) {
-        if( $server_root->_getMay( $param, $token ) ) {
+        if( $server_root->_getHas( $param, $token ) ) {
             return $self->{STORE}->_xform_out( $param );
         }
         die( "Bad Req Param, server says no : $param" );
@@ -275,6 +275,35 @@ sub _find_ids_in_data {
         die "_find_ids_in_data encountered a non ARRAY or HASH reference";
     }
 } #_find_ids_in_data
+
+# EXPERIMETNAL - this will return the entire public tree. The idea is to program
+# without having to explicitly shove data across. This errs on the side of much
+# more data, so relies on private data and method calls (encapsulation) to
+# mitigate this
+
+sub _unroll_ids {
+    my( $store, $ids, $seen ) = @_;
+    $seen  //= {};
+
+    my( @items ) = ( map { $store->fetch($_) } grep { ! $seen->{$_}++ } @$ids );
+    my @outids;
+    for my $item( @items ) {
+        my $r = ref( $item );
+        if( $r eq 'ARRAY' ) {
+            push @outids, grep { ! $seen->{$_}++ } map { $store->_get_id($_)  } grep { ref($_) } @$item;
+        }
+        elsif( $r eq 'HASH' ) {
+            push @outids, grep { ! $seen->{$_}++ } map { $store->_get_id($_)  } grep { ref($_) } values %$item;
+        }
+        else {
+            my $data = $item->{DATA};
+            push @outids, map { $data->{$_} } grep { /^[^_]/ && $data->{$_} != /^v/ && ! $seen->{$data->{$_}}++ } keys %$data;
+        }
+    }
+    _unroll_ids( $store, \@outids, $seen ) if @outids;
+
+    [ keys %$seen ];
+} #_unroll_ids
 
 sub _process_request {
     #
@@ -421,7 +450,7 @@ sub invoke_payload {
             $obj_id eq $server_root_id || 
             ( $obj_id > 0 && 
               $session && 
-              $server_root->_getMay( $obj_id, $session->get__token ) ) ) {
+              $server_root->_getHas( $obj_id, $session->get__token ) ) ) {
         
         # tried to do an action on an object it wasn't handed. do a 404
         die( "Bad Path" );
@@ -462,19 +491,27 @@ sub invoke_payload {
         
     my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
 
-    my @has = _find_ids_in_data( $out_res );
-    my @mays = @has, $store->_find_ids_referenced( @has );
-
+#    my @has = _find_ids_in_data( $out_res );
+    
+    my @data_has = _find_ids_in_data( $out_res );
+    my @has;
+    eval {
+        ( @has ) = ( @{ _unroll_ids( $store, \@data_has ) } );
+    };
+    
     my $ids_to_update;
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         # if there is a token, make it known that the token 
         # has received server root data
-        $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has, @mays ];
         if ( $token  ) {
             push @has, $server_root_id;
+            $ids_to_update = $server_root->_updates_needed( $token, \@has );
+            unshift @$ids_to_update, $server_root_id;
+        } else {
+            $ids_to_update = [ $server_root_id, grep { $_ ne $server_root_id } @has ];
         }
     } else {
-        $ids_to_update = $server_root->_updates_needed( $token, \@has, \@mays );
+        $ids_to_update = $server_root->_updates_needed( $token, \@has );
     }
     
     my( @updates, %methods );
@@ -486,13 +523,11 @@ sub invoke_payload {
         if ( $ref eq 'ARRAY' ) {
             $data = [ 
                 map { my $d = $store->_xform_in( $_ );
-                      push @mays, $d;
                       $d } 
                 @$obj ];
         } elsif ( $ref eq 'HASH' ) {
             $data = {
                 map { my $d = $store->_xform_in( $obj->{$_} );
-                      push @mays, $d;
                       $_ => $d }
                 keys %$obj };
         } else {
@@ -500,7 +535,6 @@ sub invoke_payload {
             
             $data = {
                 map { my $d = $obj_data->{$_};
-                      push @mays, $d;
                       $_ => $d }
                 grep { $_ !~ /^_/ }
                 keys %$obj_data };
@@ -515,12 +549,13 @@ sub invoke_payload {
         push @updates, $update;
     } #each obj_id to update
 
-    $server_root->_setHasAndMay( \@has, \@mays, $token );
+    $server_root->_setHas( \@has, $token );
 
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
                             } );
+
     return $out_json;
 } #invoke_payload
 
@@ -717,14 +752,6 @@ sub _callable_methods {
     __discover_methods( $pkg );
 } # _callable_methods
 
-sub get {
-    my( $self, $fld, $default ) = @_;
-    if( index( $fld, '_' ) == 0 ) {
-        die "Cannot get private field $fld";
-    }
-    $self->_get( $fld, $default );
-} #get
-
 
 sub _get {
     my( $self, $fld, $default ) = @_;
@@ -739,19 +766,6 @@ sub _get {
 } #_get
 
 
-sub set {
-    my( $self, $fld, $val ) = @_;
-    if( index( $fld, '_' ) == 0 ) {
-        die "Cannot set private field";
-    }
-    my $inval = $self->{STORE}->_xform_in( $val );
-    $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
-    $self->{DATA}{$fld} = $inval;
-    
-    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
-} #set
-
-
 # ------- END Yote::ServerObj
 
 package Yote::ServerRoot;
@@ -761,7 +775,6 @@ use base 'Yote::ServerObj';
 sub _init {
     my $self = shift;
     $self->set__doesHave_Token2objs({});
-    $self->set__mayHave_Token2objs({});
     $self->set__apps({});
     $self->set__token_timeslots([]);
     $self->set__token_timeslots_metadata([]);
@@ -788,26 +801,23 @@ sub _fetch_session {
 } #_fetch_sesion
 
 
-sub _resetHasAndMay {
-    my( $self, $tokens, $doesHaveOnly ) = @_;
+sub _resetHas {
+    my( $self, $tokens ) = @_;
 
-    $self->{STORE}->lock( "_has_and_may_Token2objs" );
-    my( @lists ) = $doesHaveOnly ? qw( doesHave ) : qw( doesHave mayHave );
-    for ( @lists ) {
-        my $item = "_${_}_Token2objs";
-        my $token2objs = $self->_get( $item );
-        for my $token (@$tokens) {
-            delete $token2objs->{ $token };
-        }
+    $self->{STORE}->lock( "_has_Token2objs" );
+
+    my $token2objs = $self->get__doesHave_Token2objs;
+    for my $token (@$tokens) {
+        delete $token2objs->{ $token };
     }
-    $self->{STORE}->unlock( "_has_and_may_Token2objs" );
+    $self->{STORE}->unlock( "_has_Token2objs" );
 
-} #_resetHasAndMay
+} #_resetHas
 
-sub _setHasAndMay {
-    my( $self, $has, $may, $token ) = @_;
+sub _setHas {
+    my( $self, $has, $token ) = @_;
 
-    $self->{STORE}->lock( "_has_and_may_Token2objs" );
+    $self->{STORE}->lock( "_has_Token2objs" );
 
     # has
     my $obj_data = $self->get__doesHave_Token2objs;
@@ -817,26 +827,8 @@ sub _setHasAndMay {
     }
     $self->{STORE}->_stow( $obj_data );
     
-    # may
-    $obj_data = $self->get__mayHave_Token2objs;
-    for my $id (@$may) {
-        next if index( $id, 'v' ) == 0 || $token eq '_';
-        $obj_data->{$token}{$id} = Time::HiRes::time;
-    }
-    $self->{STORE}->_stow( $obj_data );
-    
-    $self->{STORE}->unlock( "_has_and_may_Token2objs" );
-} #_setHasAndMay
-
-
-sub _getMay {
-    my( $self, $id, $token ) = @_;
-    return 1 if index( $id, 'v' ) == 0;
-    return 0 if $token eq '_';
-    my $obj_data = $self->get__mayHave_Token2objs;
-    $obj_data->{$token} && $obj_data->{$token}{$id};
-}
-
+    $self->{STORE}->unlock( "_has_Token2objs" );
+} #_setHas
 
 
 sub _updates_needed {
@@ -940,7 +932,7 @@ sub _create_session {
     }
 
     if( @to_remove ) {
-        $self->_resetHasAndMay( \@to_remove );
+        $self->_resetHas( \@to_remove );
     }
     
     $self->{STORE}->unlock( 'token_mutex' );
@@ -957,7 +949,7 @@ sub _destroy_session {
     }
     print STDERR Data::Dumper->Dump(["DESTROY '$token'",$slots]);
 
-    $self->_resetHasAndMay( [$token] );
+    $self->_resetHas( [$token] );
     1;
 } #_destroy_session
 
@@ -992,25 +984,9 @@ sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
     my $token = $session->get__token;
-    $self->_resetHasAndMay( [ $token ], 'doesHaveOnly' );
+    $self->_resetHas( [ $token ] );
     return $self, $token;
 }
-
-sub fetch {
-    my( $self, @ids ) = @_;
-    
-    $self->{SESSION} && ( my $token = $self->{SESSION}->get__token ) || return;
-    
-    my $mays = $self->get__mayHave_Token2objs;
-    my $may = $self->get__mayHave_Token2objs()->{$token};
-    my $store = $self->{STORE};
-
-    my @ret = map { $store->fetch($_) }
-      grep { ! ref($_) && $may->{$_}  }
-    @ids;
-    die "Invalid id(s) ".join(",",grep { !ref($_) && !$may->{$_} } @ids) unless @ret == @ids;
-    @ret;
-} #fetch
 
 # while this is a non-op, it will cause any updated contents to be 
 # transfered to the caller automatically

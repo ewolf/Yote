@@ -146,13 +146,13 @@ sub test_suite {
 
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
                l2a( qw(  create_token
-                         fetch
                          fetch_app
                          fetch_root
                          init_root
                          test
                          update
                   ) ), 'correct methods for fetched server root' );
+
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
                                   data => {
@@ -174,10 +174,9 @@ sub test_suite {
     is( $retcode, 200, "able to return with token" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
-    is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
+    is( scalar( keys %{$ret->{methods}} ), 2, "root methods and serverobj methods methods returned" );
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
                l2a( qw( create_token
-                        fetch
                         fetch_app
                         fetch_root
                         init_root
@@ -195,18 +194,8 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'slurpyfoo' );
     is( $retcode, 400, "cannot call nonexistant method" );
 
-    # directly fetch the innerfoo. should not
-    # work as the innerfoo id had not been returned to the client
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $store->_get_id( $innerfoo ) );
-    is( $retcode, 400, "cannot fetch id not explicitly given to client" );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $fooObj->{ID} );
-    is( $retcode, 200, "able to fetch allowed object" );
-    is( scalar( keys %{$ret->{methods}} ), 1, "one  method set returned" );
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
-               l2a( qw( someMethod absorb ) ), 'correct methods for server object' );
-    
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'update' );
 
     $root->set_extra( "WOOF" );
 #
@@ -216,9 +205,8 @@ sub test_suite {
 # ok, server root wasn't reloaded because it doesn't do that. Maybe that is bad. set an other extra?
 
     # get the 'foo' object off of the root
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'update' );
     is( $retcode, 200, "able to fetch allowed object" );
-    is_deeply( $ret->{result}, [ $store->_get_id( $fooObj ) ], "returned fooObj after change and save" );
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
                                   id   => $root->{ID}, 
                                   data => {
@@ -230,7 +218,6 @@ sub test_suite {
                                   } } ], "updates for fetch_root by id token after change and save" );
 
 
-#    print STDERR Data::Dumper->Dump([$retcode,$hdrs,$ret,'get']);
 
     # try to call a method without a token
     

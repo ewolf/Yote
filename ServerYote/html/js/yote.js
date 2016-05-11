@@ -53,9 +53,8 @@ yote.init = function( args ) {
     // returns an object, either the cache or server
     yote.fetch = function( id ) {
         var r = id2obj[ id ];
-        if( typeof r === 'undefined' ) {
+        if( r === undefined ) {
             console.warn( "warning : fetching asynchronously" );
-            r = root.fetch( id );
         }
         return r;
     }

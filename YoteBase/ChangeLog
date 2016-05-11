@@ -1,3 +1,10 @@
+2016-05-15  eric wolf  <wolf@talisman>
+
+	* Version 1.40
+	* change was is passed by to client by default
+	* passes all in return list, plus all those directly reference
+	* assumes that some encapsulation will be done with private members
+
 2016-05-11  eric wolf  <wolf@wolflab>
 
 	* Version 1.39 (woo, not been keeping up with the updates, sorry folks)

@@ -1,5 +1,10 @@
 May 2016
 
+1.40 --------------------------
+  Changes how things are passed back to client. Previously, only things directly passed back
+  were passed back. Now it passes back all the things in the return list plus all the things
+  those directly reference.
+
 1.39 --------------------------
   No API changes, just removed sub-package versions
 
