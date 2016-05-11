@@ -34,6 +34,7 @@ eval {
 };
 
 if( $@ ) {
+    print STDERR Data::Dumper->Dump([$@,"ERRORGOT"]);
     print $cgi->header( -status => '400 BAD REQUEST' );
 } else {
     print $cgi->header(
