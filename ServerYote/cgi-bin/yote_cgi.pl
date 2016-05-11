@@ -4,6 +4,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use Yote;
 use Yote::Server;
 
 use CGI;
@@ -20,7 +21,7 @@ unless( $main::yote_server ) {
     my $options = Yote::Server::load_options( $yote_root_dir );
 
     $main::yote_server = new Yote::Server( $options );
-    $main::yote_server->ensure_locker;
+#    $main::yote_server->ensure_locker;
 
 }
 my $cgi = CGI->new;

@@ -21,7 +21,7 @@ sub create_account {
     }
 
     my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
-    $acct->set_password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
+    $acct->set__password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
 
     $self->{SESSION}{acct} = $acct;
 
@@ -48,7 +48,7 @@ sub login {
     # doing it like this so a failed attempt has about the same amount of time
     # as an attempt against a nonexistant account. maybe random microsleep?
     my $pwh = crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct ? $acct->{ID} : $self->{ID} ) );
-    if( $acct && $pwh eq $acct->get_password_hash ) {
+    if( $acct && $pwh eq $acct->get__password_hash ) {
         # this and Yote::ServerRoot::fetch_app are the only ways to expose the account obj
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in

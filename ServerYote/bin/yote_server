@@ -5,7 +5,6 @@
 ##########################################
 
 
-# note, use forks inside of the Yote package should be called before use strict or use warnings.
 use strict;
 use warnings;
 no  warnings 'uninitialized';

@@ -527,7 +527,6 @@ sub put_record {
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
 
     # allows the put_record to grow the data store by no more than one entry
-    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) if $idx > (1+$self->entry_count);
     die "Index out of bounds" if $idx > (1+$self->entry_count);
 
     my $to_write_length = do { use bytes; length( $to_write ); };

@@ -247,7 +247,7 @@ sub _create_listener_socket {
     }
 
     # if this is cancelled, make sure all child procs are killed too
-    $SIG{INT} = sub {
+    $SIG{TERM} = $SIG{INT} = sub {
         _log( "lock server  : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
 
@@ -268,7 +268,7 @@ sub _run_loop {
 
     while( my $connection = $listener_socket->accept ) {
         my $req = <$connection>; 
-        chomp $req;
+        $req =~ s/\s+$//s;
         _log( "lock server : incoming request : '$req'" );
         # could have headers, but ignore those. Find \n\n
         while( my $data = <$connection> ) {
