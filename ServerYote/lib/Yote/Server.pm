@@ -298,6 +298,7 @@ sub _unroll_ids {
         else {
             my $data = $item->{DATA};
             push @outids, map { $data->{$_} } grep { /^[^_]/ && $data->{$_} != /^v/ && ! $seen->{$data->{$_}}++ } keys %$data;
+            print STDERR Data::Dumper->Dump([$data,\@outids,"OOUNROLL $item->{ID}"]);
         }
     }
     _unroll_ids( $store, \@outids, $seen ) if @outids;
@@ -440,12 +441,14 @@ sub invoke_payload {
 
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
 
-    _log( "\n   (params [$$])--> : ".Data::Dumper->Dump([$params]) );
+    _log( "\n   (in params [$$])--> : ".Data::Dumper->Dump([$params]) );
     my $server_root = $self->{STORE}->fetch_server_root;
     
     my $server_root_id = $server_root->{ID};
     my $session = $server_root->_fetch_session( $token );
 
+    print STDERR Data::Dumper->Dump([$obj_id,$session,$token] );
+    
     unless( $obj_id eq '_' || 
             $obj_id eq $server_root_id || 
             ( $obj_id > 0 && 
@@ -497,7 +500,11 @@ sub invoke_payload {
     my @has;
     eval {
         ( @has ) = ( @{ _unroll_ids( $store, \@data_has ) } );
+        print STDERR Data::Dumper->Dump([\@data_has,\@has,"UNROLL"]);
     };
+    if( $@ ) {
+        print STDERR Data::Dumper->Dump([$@,"ERRRRRR"]);
+    }
     my $ids_to_update;
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )  && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         # if there is a token, make it known that the token 
@@ -511,6 +518,8 @@ sub invoke_payload {
         }
     } else {
         $ids_to_update = $server_root->_updates_needed( $token, \@has );
+
+        print STDERR Data::Dumper->Dump([\@has,$ids_to_update,"NEEDYWEEW"]);
     }
     
     my( @updates, %methods );
@@ -563,6 +572,8 @@ sub invoke_payload {
                               methods => \%methods,
                             } );
 
+    print STDERR Data::Dumper->Dump([$out_json,"SENTOUT"]);
+    
     return $out_json;
 } #invoke_payload
 
@@ -838,6 +849,7 @@ sub _setHas {
     for my $id (@$has) {
         next if index( $id, 'v' ) == 0 || $token eq '_';
         $obj_data->{$token}{$id} = Time::HiRes::time;
+        print STDERR Data::Dumper->Dump(["SETHAAAAAAAAAAAAAAAAAAA ($token)($id)"]);
     }
     $self->{STORE}->_stow( $obj_data );
     
@@ -850,12 +862,15 @@ sub _updates_needed {
     return [] if $token eq '_';
 
     my $obj_data = $self->get__doesHave_Token2objs()->{$token};
+    print STDERR Data::Dumper->Dump([$obj_data,"TOKCHK ($token)"]);
     my $store = $self->{STORE};
     my( @updates );
     for my $obj_id (@$outRes, keys %$obj_data ) {
+        print STDERR Data::Dumper->Dump([">>>>$obj_id<<<<"]);
         next if index( $obj_id, 'v' ) == 0;
         my $last_update_sent = $obj_data->{$obj_id};
         my $last_updated = $store->_last_updated( $obj_id );
+        print STDERR Data::Dumper->Dump(["($obj_id) LastupdateSent <$last_update_sent>, lastUpdated <$last_updated>"]);
         if( $last_update_sent <= $last_updated || $last_updated == 0 ) {
             unless( $last_updated ) {
                 $store->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );

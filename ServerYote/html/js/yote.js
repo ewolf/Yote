@@ -44,20 +44,28 @@ yote.init = function( args ) {
     var token, root, app, appname, acct;
     if( typeof sessionStorage !== 'undefined' ) {
         token = sessionStorage.getItem( 'token' );
+        if( token !== localStorage.getItem( 'token' ) ) {
+            localStorage.clear();
+        }
+                                          
     }
     
     // cache storing objects and their meta-data
     var class2meths = {};
-    var id2obj = {};
 
-    // returns an object, either the cache or server
-    yote.fetch = function( id ) {
-        var r = id2obj[ id ];
-        if( r === undefined ) {
-            console.warn( "warning : fetching asynchronously" );
-        }
-        return r;
+    var id2obj = {};
+    
+
+    var _register = function( id, obj ) {
+        id2obj[ id ] = obj;
+        localStorage.setItem( id, JSON.stringify( {
+            id    : obj.id,
+            _cls  : obj._cls,
+            _data : obj._data,
+            _meths : obj._meths
+        } ) );
     }
+
 
     // creates a proxy method that contacts the server and
     // returns data
@@ -71,7 +79,7 @@ yote.init = function( args ) {
                 failhandler = handler;
                 handler = data;
                 data = [];
-            } else if( typeof data !== 'object' && typeof data !== 'undefined' ) {
+            } else if( ! Array.isArray( data ) ) {
                 // TODO - maybe detect if there are non-functions in the arguments list? gather into array all non-function args
                 // like so
                 data = [data];
@@ -81,45 +89,35 @@ yote.init = function( args ) {
         };
     };
 
-
-    // method for translating and storing the objects
-    function makeObj( datastructure ) {
-        /* method that returns the value of the given field on the yote obj */
-        var obj = id2obj[ datastructure.id ];
-        var isUpdate = typeof obj === 'object';
-        // TODO : maybe include what was updated and pass that to the action listener?
-        if( ! isUpdate ) {
-            obj = {
-                id        : datastructure.id,
-                listeners : []
-            };
-            id2obj[ datastructure.id ] = obj;
-        }
-        obj._cls  = datastructure.cls;
-        obj._data = datastructure.data;
-
-        // takes a function that takes this object as a
-        // parameter
-        obj.addUpdateListener = function( listener ) {
-            obj.listeners.push( listener );
-            return this;
-        }
-        obj.removeUpdateListeners = function() {
-            obj.listeners = [];
-            return this;
-        }
-        obj.get = function( key ) {
-            var val = this._data[key];
-            if( typeof val === 'undefined' || val === null ) {
-                return undefined;
+    var makeObjSkell = function( cls ) {
+        var obj = {
+            _cls  : cls,
+            _data : {},
+            listeners : [],
+            
+            // takes a function that takes this object as a
+            // parameter
+            addUpdateListener : function( listener ) {
+                this.listeners.push( listener );
+                return this;
+            },
+            removeUpdateListeners : function() {
+                this.listeners = [];
+                return this;
+            },
+            get : function( key ) {
+                var val = this._data[key];
+                if( typeof val === 'undefined' || val === null ) {
+                    return undefined;
+                }
+                if( typeof val === 'string' && val.startsWith( 'v' ) ) {
+                    return val.substring( 1 );
+                } 
+                return yote.fetch( val );
             }
-            if( typeof val === 'string' && val.startsWith( 'v' ) ) {
-                return val.substring( 1 );
-            } 
-            return yote.fetch( val );
         };
 
-        if( datastructure.cls === 'ARRAY' ) {
+        if( cls === 'ARRAY' ) {
             obj.toArray = function() {
                 var a = [];
                 for( var k in obj._data ) {
@@ -136,12 +134,46 @@ yote.init = function( args ) {
                 return Object.keys( obj._data ).length;
             };
         }
-        
-        var mnames = class2meths[ datastructure.cls ] || [];
+        var mnames = class2meths[ cls ] || [];
+        obj._meths = mnames;
         mnames.forEach( function( mname ) {
             obj[ mname ] = makeMethod( mname );
         } );
+        return obj;
+    }; //makeObjSkell
+    
+    // returns an object, either the cache or server
+    var _fetch = function( id ) {
+        if( id2obj[id] ) {
+            return id2obj[id];
+        }
+        var objdata = JSON.parse( localStorage.getItem( id ) );
+        if( ! objdata ) {
+            return null;
+        }
+        var obj = makeObjSkell( objdata._cls );
+        id2obj[id] = obj;
+        
+        return obj;
+    }; //_fetch
 
+    yote.fetch = _fetch;
+    
+    // method for translating and storing the objects
+    // NOTE : returns a function used for updating
+    function makeObj( datastructure ) {
+        /* method that returns the value of the given field on the yote obj */
+        var obj = _fetch( datastructure.id );
+        var isUpdate = obj !== null && typeof obj === 'object';
+        // TODO : maybe include what was updated and pass that to the action listener?
+        if( ! isUpdate ) {
+            obj = makeObjSkell( datastructure.cls );
+            obj.id = datastructure.id;
+            obj._data = datastructure.data;
+            _register( datastructure.id, obj );
+        } 
+        obj._data = datastructure.data;
+        
         // fire off an event for any update listeners
         return function() {
             if( isUpdate ) {
@@ -150,7 +182,6 @@ yote.init = function( args ) {
                 };
             }
         }
-
     } //makeObj
     
     function processReturn( returnData ) {
@@ -236,14 +267,14 @@ yote.init = function( args ) {
         if( typeof obj !== 'object' ) {
             return typeof obj === 'undefined' || obj === null ? undefined : 'v' + obj;
         }
-        if( id2obj[ obj.id ] === obj ) {
+        if( _fetch( obj.id ) === obj ) {
             return obj.id;
         }
 
         for( var idx in obj ) {
             var v = obj[idx];
             if( typeof v === 'object' ) {
-                if( id2obj[ v.id ] === v ) {
+                if( _fetch( v.id ) === v ) {
                     v = v.id;
                 } else {
                     v = readyObjForContact( v );
@@ -307,7 +338,7 @@ yote.init = function( args ) {
             if( typeof item === 'string' && item.startsWith('v') ) {
                 return item.substring( 1 );
             } else {
-                return id2obj[ item ];
+                return _fetch( item );
             }
         }
     }
@@ -319,7 +350,7 @@ yote.init = function( args ) {
             if( Array.isArray( res ) ) {
                 return res.map( function( x ) { return xform_out( x ) } );
             }
-            var obj = id2obj[ res.id ];
+            var obj = _fetch( res.id );
             if( obj ) { return res.id }
             var ret = {};
             for( var key in res ) {
@@ -344,11 +375,13 @@ yote.init = function( args ) {
         token = res[1];
         if( typeof sessionStorage !== 'undefined' ) {
             sessionStorage.setItem( 'token', token );
+            localStorage.setItem( 'token', token );
         }
         if( handler ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
                     if( Array.isArray( result ) ) {
+                        console.log( [ result,"RESSY" ] );
                         app = result[0];
                         acct = result[1];
                     } else {
@@ -366,6 +399,7 @@ yote.init = function( args ) {
         if( app ) {
             app.logout();
         }
+        localStorage.clear();
         sessionStorage.removeItem( 'token' );
         acct = undefined;
         token = undefined;

@@ -461,7 +461,11 @@ sub get_record {
     my $fh = $self->_filehandle;
 
 # how about an ensure_entry_count right here?
-# also a has_record
+    # also a has_record
+    if( $idx < 1 ) {
+        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
+        die "get record must be a positive integer";
+    }
    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
