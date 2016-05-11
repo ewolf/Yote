@@ -17,14 +17,14 @@ use URI::Escape;
 
 use vars qw($VERSION);
 
-$VERSION = '1.04';
+$VERSION = '1.05';
 
 our $DEBUG = 1;
 
 sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    bless {
+    my $server = bless {
         args                 => $args || {},
 
         # the following are the args currently used
@@ -40,6 +40,8 @@ sub new {
                                                   } ),
         STORE                => Yote::ServerStore->_new( { root => $args->{yote_root_dir} } ),
     }, $class;
+    $server->{STORE}{_locker} = $server->{_locker};
+    $server;
 } #new
 
 sub store {
@@ -89,13 +91,28 @@ sub load_options {
     } #if config file is there
 
     return $options;
-}
+} #load_options
 
+sub ensure_locker {
+    my $self = shift;
+    # if running as the server, this will not be called. 
+    # if something else is managing forking ( like the CGI )
+    # this should be run to make sure the locker socket
+    # opens and closes
+    $SIG{INT} = sub {
+        _log( "$0 got INT signal. Shutting down." );
+        $self->{_locker}->stop if $self->{_locker};
+        exit;
+    };
+
+    if( ! $self->{_locker}->ping(1) ) {
+        $self->{_locker}->start;
+    }
+} #ensure_locker
 
 sub start {
     my $self = shift;
 
-    $self->{STORE}{_locker} = $self->{_locker};
     $self->{_locker}->start;
 
     my $listener_socket = $self->_create_listener_socket;
@@ -180,11 +197,6 @@ sub _create_listener_socket {
         $self->{_locker}->stop;
         _log( "unable to start yote server : $@ $!." );
         return 0;
-    }
-
-    unless( $self->{STORE}{_locker} ) {
-        $self->{STORE}{_locker} = $self->{_locker};
-        $self->{_locker}->start;
     }
 
     print STDERR "Starting yote server\n";
@@ -513,11 +525,6 @@ sub invoke_payload {
 
 package Yote::ServerStore;
 
-use vars qw($VERSION);
-
-$VERSION = '1.0';
-
-
 use Data::RecordStore;
 
 use base 'Yote::ObjStore';
@@ -658,11 +665,6 @@ sub unlock {
 
 package Yote::ServerObj;
 
-use vars qw($VERSION);
-
-$VERSION = '1.0';
-
-
 use base 'Yote::Obj';
 
 sub _log {
@@ -745,10 +747,6 @@ sub set {
 # ------- END Yote::ServerObj
 
 package Yote::ServerRoot;
-
-use vars qw($VERSION);
-
-$VERSION = '1.00';
 
 use base 'Yote::ServerObj';
 

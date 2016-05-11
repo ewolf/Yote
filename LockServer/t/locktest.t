@@ -9,6 +9,8 @@ use Lock::Server;
 use Data::Dumper;
 use Test::More;
 
+`echo '($$)000--------------------------------------------' >> /tmp/foo`;
+
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ); exit; };
 
 BEGIN {
@@ -26,14 +28,44 @@ unless( $locks->start ) {
     BAIL_OUT( "Unable to start server '$err'" );
     exit;
 } 
-
+sleep 1;
 
 test_suite();
 
+my $locker1 = $locks->client( "LOCKER1" );
+ok( $locker1->ping, 'ping before thing close' );
+ok( $locks->ping, 'lockserv itself ping before thing have close' );
+
+`echo '($$)--------------------------------------------' >> /tmp/foo`;
+
 $locks->stop;
 
-my $locker1 = $locks->client( "LOCKER1" );
+note ("Sleep a bit" );
+sleep 14;
+
 ok( ! $locker1->ping, 'ping after things have closed' );
+ok( ! $locks->ping, 'lockserv itself ping after things have closed' );
+
+$locks = new Lock::Server( { 
+    lock_timeout         => 4,  
+    lock_attempt_timeout => 5,  
+                              } );
+$locker1 = $locks->client( "LOCKER1" );
+
+note("Starting");
+$locks->start;
+sleep 1;
+
+ok( $locker1->ping, 'ping after restarting' );
+ok( $locks->ping, 'lockserv itself ping after restarting' );
+
+`echo '($$) 1--------------------------------------------' >> /tmp/foo`;
+$locker1->shutdown;
+
+`echo '($$) 2--------------------------------------------' >> /tmp/foo`;
+ok( ! $locker1->ping, 'no ping after shutdown client' );
+`echo '($$) 3--------------------------------------------' >> /tmp/foo`;
+ok( ! $locks->ping, 'no ping after shutdown lockserv' );
 
 done_testing;
 

@@ -6,30 +6,25 @@ no warnings 'uninitialized';
 
 use Yote::Server;
 
-use lib '/opt/yote/lib';
-
 use CGI;
 use DateTime;
 use Data::Dumper;
 use JSON;
+use URI::Escape;
 
 unless( $main::yote_server ) {
     eval('use Yote::ConfigData');
     my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
+    unshift @INC, "$yote_root_dir/lib";
 
     my $options = Yote::Server::load_options( $yote_root_dir );
 
     $main::yote_server = new Yote::Server( $options );
-    my $locker = $main::yote_server->{_locker};
-    my $lc = $locker->client("CGI");
-    unless( $lc->ping(1) ) {
-        $locker->start;
-    }
-    $main::yote_server->{STORE}{_locker} = $locker;
+    $main::yote_server->ensure_locker;
+
 }
 my $cgi = CGI->new;
 
-use URI::Escape;
 my $json_payload = uri_unescape(scalar($cgi->param('p')));
 
 my $out_json;

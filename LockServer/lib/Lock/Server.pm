@@ -28,6 +28,8 @@ package Lock::Server;
                               otherwise.
      * PING - returns 1 if the server is active
 
+     * SHUTDOWN - stops this LockServer
+
     This does not do deadlock detection, relying on the timeouts to 
     prevent the system from getting in a hopelessly tangled state.
     Care should be taken, as with any resource locking system, with
@@ -91,10 +93,11 @@ no warnings 'uninitialized';
 use Data::Dumper;
 
 use IO::Socket::INET;
+use POSIX ":sys_wait_h";
 
 use vars qw($VERSION);
 
-$VERSION = '1.67';
+$VERSION = '1.69';
 
 
 $Lock::Server::DEBUG = 0;
@@ -139,6 +142,15 @@ sub client {
     Lock::Server::Client->new( $name, $self->{host}, $self->{port}, $args );
 }
 
+=head2 ping
+
+    Returns '1' if this lock server is up and running
+
+=cut
+sub ping {
+    return shift->client("PING")->ping;
+}
+
 =head2 stop
 
     Kills the lock server, breaking off any connections that are waiting for a lock.
@@ -147,19 +159,36 @@ sub client {
 sub stop {
     my $self = shift;
 
-    for my $pid (keys %{$self->{_id2pid}}) {
-        _log( "Killing child proc $pid" );
-        kill 'INT', $pid;
-    }
-    
+    # for my $pid (keys %{$self->{_id2pid}}) {
+    #     _log( " Killing child proc $pid" );
+    #     kill 'INT', $pid;
+    # }
+    # while( (my $kidpid = waitpid( -1, WNOHANG ) ) > 0 ) {
+    #     _log( " Killed $kidpid" );
+    # }
+    _log( " with '$self->{listener_socket}' socket" );
+    $self->{listener_socket}->close if $self->{listener_socket};
+
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
-        _log( "Killing lock server proc $pid" );
-        kill 'INT', $pid;
-        return 1;
+        _log( " Killing lock server proc $pid" );
+        kill 'HUP', $pid;
+
+        my $res = waitpid( $pid, WEXITSTATUS(0) );
+
+        _log( " HUP kill res ($res)" );
+
+        while( ($res = waitpid( -1, WEXITSTATUS(0) ) ) > 0 ) {
+            _log( " Lock Server thread Killed $res" );
+        }
+
+        _log( " STOP DONE" );
+    } else {
+        $self->{error} = "No lock server running";
+        return 0;
     }
-    $self->{error} = "No lock server running";
-    return 0;
+
+    return 1;
 }
 
 =head2 start
@@ -172,7 +201,8 @@ sub stop {
 sub start {
     my $self = shift;
     my $sock = $self->_create_listener_socket;
-    die "Unable to open lockserver socket " unless $sock;
+    $self->{listener_socket} = $sock;
+    die "Unable to open lockserver socket $@,$! " unless $sock;
 
     if( my $pid = fork ) {
         # parent
@@ -183,7 +213,7 @@ sub start {
     # child process
     $0 = "LockServer";
     $self->_run_loop( $sock );
-
+    exit;
 } #start
 
 =head2 run
@@ -194,8 +224,10 @@ sub start {
 sub run {
     my $self = shift;
     my $sock = $self->_create_listener_socket;
-    die "Unable to open lockserver socket " unless $sock;
+    $self->{listener_socket} = $sock;
+    die "Unable to open lockserver socket $@,$! " unless $sock;
     $self->_run_loop( $sock );
+    exit;
 } #run
 
 sub _create_listener_socket {
@@ -212,8 +244,8 @@ sub _create_listener_socket {
             LocalAddr => "$self->{host}:$self->{port}",
             );
         last if $listener_socket;
-        print STDERR "Unable to open the lock server socket. Retry $count of 10\n";
-        sleep $count*$self->{time_between_attempts} unless $listener_socket;
+        print STDERR "Unable to open the lock server socket $@, $!. Retry $count of 10\n";
+        sleep $count*$self->{time_between_attempts} unless $listener_socket || $count > $self->{attempts};
     }
     unless( $listener_socket ) {
 
@@ -224,17 +256,36 @@ sub _create_listener_socket {
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{INT} = sub {
-        _log( "lock server : got INT signal. Shutting down." );
+        _log( "lock server  : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
-        kill 'HUP', keys %{ $self->{_pids} };
+
+        kill 'INT', keys %{ $self->{_pids} };
+
+        while( (my $kidpid = waitpid( -1, WNOHANG ) ) > 0 ) {
+            _log( " Killed $kidpid" );
+        }
+        _log( "lock server  : got INT signal. EXITING." );
         exit;
     };
+    $SIG{HUP} = sub {
+        _log( "lock server  : got HUP signal. Shutting down children." );
+        $listener_socket && $listener_socket->close;
 
+        kill 'INT', keys %{ $self->{_pids} };
+
+        while( (my $stat = waitpid( -1, WEXITSTATUS(0) ) ) > 0 ) {
+            _log( " Killed got status : $stat" );
+        }
+        $self->{_pids} = {};
+        _log( "HUP done" );
+        exit;
+    };
     return $listener_socket;
 } #_create_listener_socket
 
 sub _run_loop {
     my( $self, $listener_socket ) = @_;
+
     while( my $connection = $listener_socket->accept ) {
         my $req = <$connection>; 
         chomp $req;
@@ -257,6 +308,10 @@ sub _run_loop {
         } elsif( $cmd eq 'PING' ) {
             print $connection "1\n";
             $connection->close;
+        } elsif( $cmd eq 'SHUTDOWN' ) {
+            print $connection "1\n";
+            $connection->close;
+            $self->stop;
         } else {
             _log( "lock server : did not understand command '$cmd'" );
             $connection->close;
@@ -295,7 +350,11 @@ sub _check {
 
 sub _log {
     my $msg = shift;
+    $msg = "($$) $msg";
     print STDERR "Lock::Server : $msg\n" if $Lock::Server::DEBUG;
+    $msg =~ s/\s+/ /gs; 
+    $msg =~ s/['"]/-/g;
+    `echo '$msg' >> /tmp/foo`;
 }
 
 sub _lock {
@@ -339,15 +398,20 @@ sub _lock {
         } else {
 #            use Devel::SimpleProfiler;Devel::SimpleProfiler::start;
             $0 = "LockServer processing request";
-            $SIG{HUP} = $SIG{INT} = sub {
-                _log( "lock request : child $$ got HUP, so is now locked." );
+            $SIG{INT} = sub {
+                _log( "lock request : child got INT, exiting." );
+                $connection->close;
+                exit;
+            };
+            $SIG{HUP} = sub {
+                _log( "lock request : child got HUP, so is now locked." );
                 $connection->print( "$timeout_time\n" );
                 $connection->close;
                 exit;
             };
-            _log( "lock request : child $$ ready to wait" );
+            _log( "lock request : child ready to wait" );
             sleep $self->{lock_attempt_timeout};
-            _log( "lock request failed : child $$ timed out" );
+            _log( "lock request failed : child timed out" );
             print $connection "0\n";
             $connection->close;
             exit;
@@ -566,7 +630,24 @@ sub ping {
     };
     chomp $resp;
     $resp;
-}
+} #ping
+
+sub shutdown {
+    my( $self, $timeout ) = @_;
+
+    $timeout //= 3;
+
+    local $SIG{ALRM} = sub { die "ALARM\n" };
+    alarm $timeout;
+    eval {
+        my $sock = $self->_get_sock( 1 );
+        $sock->print( "GET /SHUTDOWN\n\n" );
+        alarm 0;
+        $sock->close;
+    };
+    $@;
+} #shutdown
+
 
 1;
 
@@ -584,6 +665,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.67  (May 6, 2016))
+       Version 1.68  (May 6, 2016))
 
 =cut
