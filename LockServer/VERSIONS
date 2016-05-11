@@ -1,5 +1,7 @@
 This file documents changes to any external interactions with the Lock::Server
 
+1.7 - added a SHUTDOWN method for a client to be able to shut down the lock server.
+      This is configurable.
 
 1.6 - added a PING method to test if the server is up. This can be used to
       check if the server needs relaunching.

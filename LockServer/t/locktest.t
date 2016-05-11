@@ -9,8 +9,6 @@ use Lock::Server;
 use Data::Dumper;
 use Test::More;
 
-`echo '($$)000--------------------------------------------' >> /tmp/foo`;
-
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ); exit; };
 
 BEGIN {
@@ -20,7 +18,7 @@ $Lock::Server::DEBUG = 0;
 
 my $locks = new Lock::Server( { 
     lock_timeout         => 4,  
-    lock_attempt_timeout => 5,  
+    lock_attempt_timeout => 5,
                               } );
 unless( $locks->start ) {
     my $err = $locks->{error};
@@ -36,12 +34,14 @@ my $locker1 = $locks->client( "LOCKER1" );
 ok( $locker1->ping, 'ping before thing close' );
 ok( $locks->ping, 'lockserv itself ping before thing have close' );
 
-`echo '($$)--------------------------------------------' >> /tmp/foo`;
+$locker1->shutdown;
+ok( $locker1->ping, 'shutdown dissallowed client ping' );
+ok( $locks->ping, 'shutdown dissallowed server ping' );
 
 $locks->stop;
 
-note ("Sleep a bit" );
-sleep 14;
+note ("Sleep about a half minute to let sockets clear" );
+sleep 31;
 
 ok( ! $locker1->ping, 'ping after things have closed' );
 ok( ! $locks->ping, 'lockserv itself ping after things have closed' );
@@ -49,22 +49,20 @@ ok( ! $locks->ping, 'lockserv itself ping after things have closed' );
 $locks = new Lock::Server( { 
     lock_timeout         => 4,  
     lock_attempt_timeout => 5,  
+    allow_shutdown       => 1,
                               } );
 $locker1 = $locks->client( "LOCKER1" );
 
-note("Starting");
+note("Restarting");
 $locks->start;
 sleep 1;
 
 ok( $locker1->ping, 'ping after restarting' );
 ok( $locks->ping, 'lockserv itself ping after restarting' );
 
-`echo '($$) 1--------------------------------------------' >> /tmp/foo`;
 $locker1->shutdown;
 
-`echo '($$) 2--------------------------------------------' >> /tmp/foo`;
 ok( ! $locker1->ping, 'no ping after shutdown client' );
-`echo '($$) 3--------------------------------------------' >> /tmp/foo`;
 ok( ! $locks->ping, 'no ping after shutdown lockserv' );
 
 done_testing;

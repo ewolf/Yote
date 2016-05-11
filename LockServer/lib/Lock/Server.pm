@@ -97,7 +97,7 @@ use POSIX ":sys_wait_h";
 
 use vars qw($VERSION);
 
-$VERSION = '1.69';
+$VERSION = '1.7';
 
 
 $Lock::Server::DEBUG = 0;
@@ -111,6 +111,10 @@ $Lock::Server::DEBUG = 0;
    * lock_timeout - low long should a lock last in seconds
    * lock_attempt_timeout - how long should a requester
                             wait for a lock in seconds
+   * allow_shutdown - allows a client to shut the server down
+   * reconnect_attempts - if port is busy when starting the server
+                          how many retries to connect before giving up and failing startup
+   * time_between_attempts - interval between reconnection attempts
 
 =cut
 sub new {
@@ -121,6 +125,7 @@ sub new {
         lock_attempt_timeout => $args->{lock_attempt_timeout} || 4,
         host                 => $args->{host} || '127.0.0.1',
         port                 => $args->{port} || 8004,
+        allow_shutdown       => $args->{allow_shutdown},
         _pids                => {},
         _id2pid              => {},
         _locks               => {},
@@ -159,28 +164,15 @@ sub ping {
 sub stop {
     my $self = shift;
 
-    # for my $pid (keys %{$self->{_id2pid}}) {
-    #     _log( " Killing child proc $pid" );
-    #     kill 'INT', $pid;
-    # }
-    # while( (my $kidpid = waitpid( -1, WNOHANG ) ) > 0 ) {
-    #     _log( " Killed $kidpid" );
-    # }
     _log( " with '$self->{listener_socket}' socket" );
     $self->{listener_socket}->close if $self->{listener_socket};
 
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
         _log( " Killing lock server proc $pid" );
-        kill 'HUP', $pid;
+        kill 'INT', $pid;
 
-        my $res = waitpid( $pid, WEXITSTATUS(0) );
-
-        _log( " HUP kill res ($res)" );
-
-        while( ($res = waitpid( -1, WEXITSTATUS(0) ) ) > 0 ) {
-            _log( " Lock Server thread Killed $res" );
-        }
+        my $res = waitpid( $pid, WNOHANG );
 
         _log( " STOP DONE" );
     } else {
@@ -264,20 +256,8 @@ sub _create_listener_socket {
         while( (my $kidpid = waitpid( -1, WNOHANG ) ) > 0 ) {
             _log( " Killed $kidpid" );
         }
-        _log( "lock server  : got INT signal. EXITING." );
-        exit;
-    };
-    $SIG{HUP} = sub {
-        _log( "lock server  : got HUP signal. Shutting down children." );
-        $listener_socket && $listener_socket->close;
-
-        kill 'INT', keys %{ $self->{_pids} };
-
-        while( (my $stat = waitpid( -1, WEXITSTATUS(0) ) ) > 0 ) {
-            _log( " Killed got status : $stat" );
-        }
         $self->{_pids} = {};
-        _log( "HUP done" );
+        _log( "lock server  : got INT signal. EXITING." );
         exit;
     };
     return $listener_socket;
@@ -308,10 +288,15 @@ sub _run_loop {
         } elsif( $cmd eq 'PING' ) {
             print $connection "1\n";
             $connection->close;
-        } elsif( $cmd eq 'SHUTDOWN' ) {
-            print $connection "1\n";
-            $connection->close;
-            $self->stop;
+        } elsif( $cmd eq 'SHUTDOWN') {
+            if( $self->{allow_shutdown}) {
+                print $connection "1\n";
+                $connection->close;
+                $self->stop;
+            } else {
+                _log( "lock server : got shutdown request but not configured to allow it" );
+                $connection->close;
+            }
         } else {
             _log( "lock server : did not understand command '$cmd'" );
             $connection->close;
@@ -352,9 +337,6 @@ sub _log {
     my $msg = shift;
     $msg = "($$) $msg";
     print STDERR "Lock::Server : $msg\n" if $Lock::Server::DEBUG;
-    $msg =~ s/\s+/ /gs; 
-    $msg =~ s/['"]/-/g;
-    `echo '$msg' >> /tmp/foo`;
 }
 
 sub _lock {
@@ -665,6 +647,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.68  (May 6, 2016))
+       Version 1.7  (May 11, 2016))
 
 =cut
