@@ -6,7 +6,7 @@ use warnings;
 
 use Yote::Server;
 
-use base 'Yote::ServerObj';
+use base 'Yote::Server::Obj';
 
 sub logout {
     my $self = shift;

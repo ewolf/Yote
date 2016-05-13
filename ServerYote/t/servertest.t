@@ -14,11 +14,11 @@ BEGIN {
     use_ok( "Yote::Server" ) || BAIL_OUT( "Unable to load Yote::Server" );
     $Yote::Server::DEBUG = -1;
     no strict 'refs';
-    *Yote::ServerRoot::test = sub {
+    *Yote::Server::Root::test = sub {
         my( $self, @args ) = @_;
         return ( "FOOBIE", "BLECH", @args );
     };
-    *Yote::ServerObj::someMethod = sub {
+    *Yote::Server::Obj::someMethod = sub {
         my( $self, @args ) = @_;
         return ( "FOOBIE", "BLECH", @args );
     };
@@ -142,9 +142,9 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'fetch_root' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
 
-    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
+    ok( $ret->{methods}{'Yote::Server::Root'}, "has methods for server root" );
 
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
+    is_deeply( l2a( $ret->{methods}{'Yote::Server::Root'} ),
                l2a( qw(  create_token
                          fetch
                          fetch_app
@@ -153,7 +153,7 @@ sub test_suite {
                          test
                          update
                   ) ), 'correct methods for fetched server root' );
-    is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
+    is_deeply( $ret->{updates}, [{cls  => 'Yote::Server::Root', 
                                   id   => $root->{ID}, 
                                   data => {
                                       txt     => 'vSOMETEXT',
@@ -173,9 +173,9 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_root' );
     is( $retcode, 200, "able to return with token" );
 
-    ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
+    ok( $ret->{methods}{'Yote::Server::Root'}, "has methods for server root" );
     is( scalar( keys %{$ret->{methods}} ), 1, "just one sest of methods returned" );
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
+    is_deeply( l2a( $ret->{methods}{'Yote::Server::Root'} ),
                l2a( qw( create_token
                         fetch
                         fetch_app
@@ -203,7 +203,7 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch', 'v' . $fooObj->{ID} );
     is( $retcode, 200, "able to fetch allowed object" );
     is( scalar( keys %{$ret->{methods}} ), 1, "one  method set returned" );
-    is_deeply( l2a( $ret->{methods}{'Yote::ServerObj'} ),
+    is_deeply( l2a( $ret->{methods}{'Yote::Server::Obj'} ),
                l2a( qw( someMethod absorb ) ), 'correct methods for server object' );
     
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
@@ -219,7 +219,7 @@ sub test_suite {
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'get', 'fooObj' );
     is( $retcode, 200, "able to fetch allowed object" );
     is_deeply( $ret->{result}, [ $store->_get_id( $fooObj ) ], "returned fooObj after change and save" );
-    is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
+    is_deeply( $ret->{updates}, [{cls  => 'Yote::Server::Root', 
                                   id   => $root->{ID}, 
                                   data => {
                                       extra   => 'vWOOF',

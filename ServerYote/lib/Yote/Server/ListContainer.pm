@@ -18,7 +18,7 @@ use vars qw($VERSION);
 $VERSION = '1.0';
 
 use Yote::Server;
-use base 'Yote::ServerObj';
+use base 'Yote::Server::Obj';
 
 # --vvv override -------
 sub _allowedUpdates { qw(name notes) } #override returning a list of allowed updates
