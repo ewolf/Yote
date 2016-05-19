@@ -1,3 +1,16 @@
+
+Clustered Yote Servers (Pack?)
+
+Configure ---> 
+   All Nodes :
+      list (order is important) of all node ips/ports
+   Single node :
+      node specific config
+      which node number this is!
+
+
+_________________________________________________________________________
+
 Better error returns, so that die can return something meaningful back to the client.
 
 Security Questions:

@@ -97,7 +97,7 @@ use POSIX ":sys_wait_h";
 
 use vars qw($VERSION);
 
-$VERSION = '1.70';
+$VERSION = '1.71';
 
 
 $Lock::Server::DEBUG = 0;
@@ -267,38 +267,47 @@ sub _run_loop {
     my( $self, $listener_socket ) = @_;
 
     while( my $connection = $listener_socket->accept ) {
-        my $req = <$connection>; 
-        $req =~ s/\s+$//s;
-        _log( "lock server : incoming request : '$req'" );
-        # could have headers, but ignore those. Find \n\n
-        while( my $data = <$connection> ) {
-            chomp $data;
-            last unless $data =~ /\S/;
-        }
+        local $SIG{ALRM} = sub {
+            die "ALARM\n";
+        };
+        alarm( $self->{lock_attempt_timeout} + 1 );
+        eval {
+            my $req = <$connection>; 
+            $req =~ s/\s+$//s;
+            _log( "lock server : incoming request : '$req'" );
+            # could have headers, but ignore those. Find \n\n
+            while( my $data = <$connection> ) {
+                chomp $data;
+                last unless $data =~ /\S/;
+            }
 
-        my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
-        if( $cmd eq 'CHECK' ) {
-            $self->_check( $connection, $key );
-        } elsif( $cmd eq 'LOCK' ) {
-            $self->_lock( $connection, $key, $locker_id );
-        } elsif( $cmd eq 'UNLOCK' ) {
-            $self->_unlock( $connection, $key, $locker_id );
-        } elsif( $cmd eq 'VERIFY' ) {
-            $self->_verify( $connection, $key, $locker_id );
-        } elsif( $cmd eq 'PING' ) {
-            print $connection "1\n";
-            $connection->close;
-        } elsif( $cmd eq 'SHUTDOWN') {
-            if( $self->{allow_shutdown}) {
+            my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
+            if( $cmd eq 'CHECK' ) {
+                $self->_check( $connection, $key );
+            } elsif( $cmd eq 'LOCK' ) {
+                $self->_lock( $connection, $key, $locker_id );
+            } elsif( $cmd eq 'UNLOCK' ) {
+                $self->_unlock( $connection, $key, $locker_id );
+            } elsif( $cmd eq 'VERIFY' ) {
+                $self->_verify( $connection, $key, $locker_id );
+            } elsif( $cmd eq 'PING' ) {
                 print $connection "1\n";
                 $connection->close;
-                $self->stop;
+            } elsif( $cmd eq 'SHUTDOWN') {
+                if( $self->{allow_shutdown}) {
+                    print $connection "1\n";
+                    $connection->close;
+                    $self->stop;
+                } else {
+                    _log( "lock server : got shutdown request but not configured to allow it" );
+                    $connection->close;
+                }
             } else {
-                _log( "lock server : got shutdown request but not configured to allow it" );
+                _log( "lock server : did not understand command '$cmd'" );
                 $connection->close;
             }
-        } else {
-            _log( "lock server : did not understand command '$cmd'" );
+        };
+        if( $@ ) {
             $connection->close;
         }
     }
@@ -647,6 +656,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.70  (May 11, 2016))
+       Version 1.71  (June 1, 2016))
 
 =cut
