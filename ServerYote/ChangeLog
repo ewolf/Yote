@@ -1,0 +1,8 @@
+2016-05-15  eric wolf  <wolf@talisman>
+
+	* CHANGELOG: Version 1.06 API change. Changes how things are passed back to client. Previously, only things directly passed back were passed back. Now it passes back all the things in the return list plus all the things those directly reference.
+	* change was is passed by to client by default
+	* passes all in return list, plus all those directly reference
+	* assumes that some encapsulation will be done with private members
+
+
