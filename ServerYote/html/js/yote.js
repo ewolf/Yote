@@ -416,7 +416,6 @@ yote.init = function( args ) {
     yote.logout = function( handler ) {
         if( app ) {
             app.logout(function() {
-                alert( 'clearning' );
                 localStorage.clear();
 
                 acct = undefined;

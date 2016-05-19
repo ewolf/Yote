@@ -1,3 +1,4 @@
+Better error returns, so that die can return something meaningful back to the client.
 
 Security Questions:
   * use SSL?
@@ -9,19 +10,18 @@ Security Questions:
        have a maximum time the login is valid for (both inactive timeout and absolute timeout)
        
 
-
 write POD
 
 write tests ( similar to Lock::Server )
 
-confiure options beyond root ( port for yote, port for lock server, timeout, etc )
 
-create yote_server script
 
-create useful objects like accounts or logins
 
 --done -- 
    serve the js file from yote itself
    add __ for web
    have this be its own backup html server as well. @wheee
    add token creation/verification
+   create yote_server script
+   create useful objects like accounts or logins
+   confiure options beyond root ( port for yote, port for lock server, timeout, etc )
