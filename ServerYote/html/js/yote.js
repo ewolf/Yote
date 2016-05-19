@@ -90,16 +90,30 @@ yote.init = function( args ) {
         var obj = {
             _cls  : cls,
             _data : {},
-            listeners : [],
+            listeners : {},
             
             // takes a function that takes this object as a
             // parameter
-            addUpdateListener : function( listener ) {
-                this.listeners.push( listener );
+            addUpdateListener : function( listener, key ) {
+                key = key || '_';
+                if( key === '_' ) {
+                    var defs = this.listeners[ key ];
+                    if( ! defs ) {
+                        defs = [];
+                        this.listeners[ key ] = defs;
+                    }
+                    defs.push( listener );
+                } else {
+                    this.listeners[ key ] = listener;
+                }
                 return this;
             },
-            removeUpdateListeners : function() {
-                this.listeners = [];
+            removeUpdateListeners : function( key ) {
+                if( key ) {
+                    delete this.listeners[ key ];
+                } else {
+                    this.listeners = {};
+                }
                 return this;
             },
             get : function( key ) {
@@ -177,8 +191,14 @@ yote.init = function( args ) {
         // fire off an event for any update listeners
         return function() {
             if( isUpdate ) {
-                for( var i in obj.listeners ) {
-                    obj.listeners[i]( obj );
+                for( var key in obj.listeners ) {
+                    if( key === '_' ) {
+                        obj.listeners[key].forEach( function( l ) {
+                            l( obj );
+                        } );
+                    } else {
+                        obj.listeners[key]( obj );
+                    }
                 };
             }
         }
@@ -393,21 +413,40 @@ yote.init = function( args ) {
         }
     }, errhandler );
 
-    yote.logout = function() {
+    yote.logout = function( handler ) {
         if( app ) {
-            app.logout(function() { 
+            app.logout(function() {
+                alert( 'clearning' );
                 localStorage.clear();
 
                 acct = undefined;
                 token = undefined;
                 app = undefined;
-                root.create_token( function( t ) {
-                    token = t;
+
+                contact( '_', 'init_root', [], function(res) {
+                    root  = res[0];
+                    token = res[1];
+                    localStorage.setItem( 'token', token );
+
                     if( appname ) {
-                        app = root.fetch_app( appname );
+                        root.fetch_app( [appname], function( result ) {
+                            if( Array.isArray( result ) ) {
+                                app = result[0];
+                            } else {
+                                app = result;                                
+                            }
+                            if( handler ) {
+                                handler( root, app );
+                            }
+                        } );
+                    } else if( handler ) {
+                        handler( root );
                     }
-                } );
-            } );
+                }, errhandler );
+
+            }, function(err) { localStorage.clear(); } );
+        } else {
+            localStorage.clear();
         }
     } //yote.logout
     
