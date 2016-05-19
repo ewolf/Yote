@@ -426,7 +426,7 @@ sub invoke_payload {
     my $req_data = from_json( shift );
 
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
-    print STDERR Data::Dumper->Dump(["'$action' on '$obj_id' with token [$token]) and params --> : ".join( ",", @$params )]);
+#    print STDERR Data::Dumper->Dump(["'$action' on '$obj_id' with token [$token]) and params --> : ".join( ",", @$params )]);
     my $server_root = $self->{STORE}->fetch_server_root;
     
     my $server_root_id = $server_root->{ID};
@@ -491,8 +491,8 @@ sub invoke_payload {
     # the ids that were referenced explicitly in the
     # method call.
     my @out_ids = _find_ids_in_data( $out_res );
-    print STDERR Data::Dumper->Dump(["RESULTS [$token] ($session) --> " . join(',',@res),"RESSU"]);
-    print STDERR Data::Dumper->Dump(["OUT IDS [$token] ($session) --> ". join(",",@out_ids)]);
+#    print STDERR Data::Dumper->Dump(["RESULTS [$token] ($session) --> " . join(',',@res),"RESSU"]);
+#    print STDERR Data::Dumper->Dump(["OUT IDS [$token] ($session) --> ". join(",",@out_ids)]);
 
     #
     # Based on the return value of the method call,
@@ -500,7 +500,7 @@ sub invoke_payload {
     #   We will check to see if these need updates
     #
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
-    print STDERR Data::Dumper->Dump(["SHOULDS [$token] ($session) --> " . join(",",@should_have)]);
+#    print STDERR Data::Dumper->Dump(["SHOULDS [$token] ($session) --> " . join(",",@should_have)]);
 
     my( @updates, %methods );
 
@@ -555,7 +555,7 @@ sub invoke_payload {
             # check if this needs an update
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
-            print STDERR Data::Dumper->Dump(["Check ($should_have_id) --> c($client_s,$client_ms) <=> s($server_s,$server_ms) ". ( ( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) ? " INCLUDE " : " DONT BOTHER ")]);
+#            print STDERR Data::Dumper->Dump(["Check ($should_have_id) --> c($client_s,$client_ms) <=> s($server_s,$server_ms) ". ( ( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) ? " INCLUDE " : " DONT BOTHER ")]);
             if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
                 my $should_have_obj = $store->fetch( $should_have_id );
                 my $ref = ref( $should_have_obj );
@@ -576,10 +576,10 @@ sub invoke_payload {
                 };
                 push @updates, $update;
                 $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
-                print STDERR Data::Dumper->Dump(["ADDING '$should_have_id' to ids2times"]);
+#                print STDERR Data::Dumper->Dump(["ADDING '$should_have_id' to ids2times"]);
             }
         } #each object the client should have
-        print STDERR Data::Dumper->Dump(["TOKEN [$token] SESSION ($session) NOW HAS --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
+#        print STDERR Data::Dumper->Dump(["TOKEN [$token] SESSION ($session) NOW HAS {".$self->{STORE}->_get_id($ids2times)."} --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
     }
     
     my $out_json = to_json( { result  => $out_res,
@@ -587,7 +587,7 @@ sub invoke_payload {
                               methods => \%methods,
                             } );
     delete $obj->{SESSION};
-    print STDERR Data::Dumper->Dump([$out_json,"OUTTTY"]);
+#    print STDERR Data::Dumper->Dump([$out_json,"OUTTTY"]);
     $self->{STORE}->stow_all;
 
     return $out_json;
@@ -852,20 +852,25 @@ sub _log {
 
 sub _fetch_session {
     my( $self, $token ) = @_;
+    
+    $self->{STORE}->lock( 'token_mutex' );
     my $slots = $self->get__token_timeslots();
-    print STDERR Data::Dumper->Dump(["FETCH SESSION GOT SLOTS (".$self->{STORE}->_get_id($slots).") for token [$token]"]);
+#    print STDERR Data::Dumper->Dump(["FETCH SESSION GOT SLOTS (".$self->{STORE}->_get_id($slots).") for token [$token]"]);
     for( my $i=0; $i<@$slots; $i++ ) {
-        print STDERR Data::Dumper->Dump(["   SLOT (".$self->{STORE}->_get_id($slots->[$i]).") has <".join(",",keys %{$slots->[$i]{$token}}).">"]);
+#        print STDERR Data::Dumper->Dump(["   SLOT (".$self->{STORE}->_get_id($slots->[$i]).") has <".join(",",keys %{$slots->[$i]{$token}}).">"]);
         if( my $session = $slots->[$i]{$token} ) {
             #if( $i < $#$slots ) {
             if( $i > 0 ) {
                 # make sure this is in the most current 'boat'
                 $slots->[0]{ $token } = $session;
             }
-            print STDERR Data::Dumper->Dump(["FOUND SESSION ($session)"]);
+#            print STDERR Data::Dumper->Dump(["FOUND SESSION ($session)"]);
+            $self->{STORE}->unlock( 'token_mutex' );
             return $session;
         }
     }
+    $self->{STORE}->unlock( 'token_mutex' );
+    0;
 } #_fetch_sesion
 
 sub _create_session {
@@ -905,7 +910,7 @@ sub _create_session {
     for( my $i=0; $i<@$slot_data; $i++ ) {
         return $self->_create_session( $tries++ ) if $slots->[ $i ]{ $token };
     }
-    print STDERR Data::Dumper->Dump(["NEW TOKEN {{{$token}}"]);
+#    print STDERR Data::Dumper->Dump(["NEW TOKEN {{{$token}}"]);
     #
     # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
