@@ -42,6 +42,9 @@ yote.init = function( args ) {
     var yoteServerURL = args.yoteServerURL || '';
 
     var token, root, app, appname, acct;
+
+
+    token = localStorage.getItem('token');
     
     // cache storing objects and their meta-data
     var class2meths = {};
