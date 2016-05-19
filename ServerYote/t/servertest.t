@@ -6,6 +6,7 @@ no warnings 'numeric';
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
 use JSON;
+use Testy;
 use Test::More;
 
 use Carp;
@@ -133,7 +134,6 @@ sub test_suite {
     is( $retcode, 400, "root node has no noMethod call" );
     ok( ! $ret, "nothing returned for error case noMethod" );
 
-
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'test' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
     is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with non fetch_root call (called test)' );
@@ -217,15 +217,43 @@ sub test_suite {
                                       fooArr  => $store->_get_id( $fooArr ),
                                   } } ], "updates for fetch_root by id token after change and save" );
 
+    # now try some objects that are more than just server root objects
+    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_app', 'Testy' );
+    is( $retcode, 200, "able to fetch allowed object" );
 
-
-    # try to call a method without a token
+    is_deeply( $ret->{methods}, {
+        'Yote::ServerObj' =>  [ qw( absorb someMethod ) ],
+        'Yote::ServerRoot' => [ qw( create_token fetch_app fetch_root init_root test update ) ],
+        Testy => [qw( create_account login logout test tickle )] },
+               "methods for testy app" );
+    my( $testyobjid, $testyLogin ) = @{$ret->{result}};
+    is( $testyLogin, 'v', "no login for testy obj " );
     
+    # hash of id -> update
+    my $id2up = { map { $_->{id} => $_ } @{$ret->{updates}}};
+    my $testobjup = $id2up->{$testyobjid};
+    my $attached_objid = $testobjup->{data}{obj};
+    ok( $attached_objid, "testyobj has its attached obj" );
+    is_deeply( $id2up->{$attached_objid}{data}, {}, "attached obj has no data yet" );
+
+    is( $id2up->{$root->{ID}}{cls}, 'Yote::ServerRoot', "Server Obj resturned as it always is for calls to fetch_app" );
+    is_deeply( [sort keys %{$id2up->{$root->{ID}}{data}}],
+               [qw( fooArr fooHash fooObj txt )], "Server obj has correct keys" );
+
+    # now call a method on testy that changes the attached obj
+    # but does not return it
+    ( $retcode, $hdrs, $ret ) = msg( $testyobjid, $token, 'tickle' );
+    is( $retcode, 200, "tickle worked" );
+    my $updates = { map { $_->{id} => $_ } @{$ret->{updates}} };
+    is_deeply( $updates->{$attached_objid}, {
+        id   => $attached_objid,
+        cls  => 'Yote::ServerObj',
+        data => { tickled => 'v1' },
+                                  }, "attached obj updated" );
     
-
-    # finally get a token
-
-
+    is_deeply( $ret->{methods}, {
+        'Yote::ServerObj' =>  [ qw( absorb someMethod ) ],
+               }, "methods returned" );
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
@@ -237,3 +265,4 @@ sub test_suite {
 } #test suite
 
 __END__
+

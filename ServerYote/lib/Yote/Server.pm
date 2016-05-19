@@ -401,7 +401,7 @@ sub _process_request {
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
         
         $sock->close;
-        $self->{STORE}->stow_all;
+
         exit;
 
     } #child
@@ -424,7 +424,7 @@ sub invoke_payload {
 
     unless( $obj_id eq '_' || 
             $obj_id eq $server_root_id ||
-            $session->{_has_ids2times}{$obj_id} ) {        
+            ( $session && $session->get__has_ids2times()->{$obj_id} ) ) {
         # tried to do an action on an object it wasn't handed. do a 404
         die( "client tried to invoke on obj id '$obj_id' which it does not have" );
     }
@@ -462,7 +462,6 @@ sub invoke_payload {
     # <<------------- the actual method call --------------->>
     my(@res) = ($obj->$action( @$in_params ));
 
-    
     delete $obj->{SESSION};
 
     # this is included in what is  returned to the client 
@@ -506,9 +505,9 @@ sub invoke_payload {
 
         for my $should_have_id ( @should_have, keys %$ids2times ) {
             # check if this needs an update
-            my $last_client_update_time = $ids2times->{$should_have_id};
-            my $last_server_update_time = $store->_last_updated( $should_have_id );
-            if( $last_server_update_time > $last_client_update_time ) {
+            my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
+            my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
+            if( $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
                 my $should_have_obj = $store->fetch( $should_have_id );
                 my $ref = ref( $should_have_obj );
                 my $data;
@@ -525,14 +524,16 @@ sub invoke_payload {
                     data  => $data,
                 };
                 push @updates, $update;
+                $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
             }
-            $ids2times->{$should_have_id} = Time::HiRes::time;
         } #each object the client should have
     }
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
                             } );
+    $self->{STORE}->stow_all;
+
     return $out_json;
 } #invoke_payload
 
@@ -552,8 +553,11 @@ sub _new { #Yote::ServerStore
     # keeps track of when any object had been last updated.
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
-    $self->{OBJ_UPDATE_DB} = Data::RecordStore::FixedStore->open( "L", "$args->{root}/OBJ_META" );
-    $self->{OBJ_UPDATE_DB}->put_record( $self->{ID}, [ Time::HiRes::time ] );
+    $self->{OBJ_UPDATE_DB} = Data::RecordStore::FixedStore->open( "LL", "$args->{root}/OBJ_META" );
+
+    my( $m, $ms ) = ( Time::HiRes::gettimeofday  );
+    $self->{OBJ_UPDATE_DB}->put_record( $self->{ID}, [ $m, $ms ] );
+
     $self;
 } #_new
 
@@ -561,7 +565,9 @@ sub _dirty {
     my( $self, $ref, $id ) = @_;
     $self->SUPER::_dirty( $ref, $id );
     $self->{OBJ_UPDATE_DB}->ensure_entry_count( $id );
-    $self->{OBJ_UPDATE_DB}->put_record( $id, [ Time::HiRes::time ] );
+
+    my( $m, $ms ) = ( Time::HiRes::gettimeofday  );
+    $self->{OBJ_UPDATE_DB}->put_record( $id, [ $m, $ms ] );
 }
 
 sub stow_all {
@@ -569,7 +575,6 @@ sub stow_all {
     for my $obj (values %{$self->{_DIRTY}} ) {
         my $obj_id = $self->_get_id( $obj );
         $self->{OBJ_UPDATE_DB}->ensure_entry_count( $obj_id );
-        $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
     }
     $self->SUPER::stow_all;
 } #stow_all
@@ -580,14 +585,13 @@ sub _stow {
 
     unless( $no_timesave ) {
         my $obj_id = $self->_get_id( $obj );
-        $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ Time::HiRes::time ] );
     }
 }
 
 sub _last_updated {
     my( $self, $obj_id ) = @_;
-    my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
-    $time;
+    my( $s, $ms ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
+    $s, $ms;
 }
 
 sub _log {
@@ -730,7 +734,7 @@ sub __discover_methods {
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|PKG2METHS|ISA)$)/ } @m ];
+        return [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|import|PKG2METHS|ISA)$)/ } @m ];
     }
 
     my %hasm = map { $_ => 1 } @m;
@@ -742,7 +746,7 @@ sub __discover_methods {
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
-    $meths = [ grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|BEGIN|isa|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
+    $meths = [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|BEGIN|isa|import|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
