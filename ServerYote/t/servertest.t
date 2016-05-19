@@ -3,6 +3,10 @@ use warnings;
 no warnings 'uninitialized';
 no warnings 'numeric';
 
+use lib '.';
+use lib './t';
+
+
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
 use JSON;
@@ -143,7 +147,6 @@ sub test_suite {
     is( $retcode, 200, "no access without token when calling by id for server root only" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
-
     is_deeply( l2a( $ret->{methods}{'Yote::ServerRoot'} ),
                l2a( qw(  create_token
                          fetch_app

@@ -955,6 +955,13 @@ sub _destroy_session {
 } #_destroy_session
 
 #
+# Needed for when no logins are going to happen
+#
+sub create_token {
+    shift->_create_session->get__token;
+}
+
+#
 # Returns the app and possibly a logged in account
 #
 sub fetch_app {

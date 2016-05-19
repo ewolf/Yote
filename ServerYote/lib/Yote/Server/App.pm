@@ -11,7 +11,14 @@ use base 'Yote::ServerObj';
 
 sub _acct_class { "Yote::Server::Acct" }
 
+#
+# Override and call _create_account
+#
 sub create_account {
+    die "May not create account via website";
+}
+
+sub _create_account {
     my( $self, $un, $pw ) = @_;
     my $accts = $self->get__accts({});
 
@@ -27,6 +34,7 @@ sub create_account {
     }
     
     # TODO - create an email infrastructure for account validation
+    $acct->set_app( $self );
     
     $accts->{$un} = $acct;
     $acct;
