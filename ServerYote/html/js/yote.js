@@ -42,13 +42,7 @@ yote.init = function( args ) {
     var yoteServerURL = args.yoteServerURL || '';
 
     var token, root, app, appname, acct;
-    if( typeof sessionStorage !== 'undefined' ) {
-        token = sessionStorage.getItem( 'token' );
-        if( token !== localStorage.getItem( 'token' ) ) {
-            localStorage.clear();
-        }
-                                          
-    }
+    token = localStorage.getItem( 'token' );
     
     // cache storing objects and their meta-data
     var class2meths = {};
@@ -58,6 +52,7 @@ yote.init = function( args ) {
 
     var _register = function( id, obj ) {
         id2obj[ id ] = obj;
+        console.log( [ "REGGY " + id, obj._data ] );
         localStorage.setItem( id, JSON.stringify( {
             id    : obj.id,
             _cls  : obj._cls,
@@ -172,9 +167,10 @@ yote.init = function( args ) {
             obj = makeObjSkell( datastructure.cls );
             obj.id = datastructure.id;
             obj._data = datastructure.data;
-            _register( datastructure.id, obj );
-        } 
+        }
+        console.log( [ "MAKE OBJ " + datastructure.id, obj, obj._data ] );
         obj._data = datastructure.data;
+        _register( datastructure.id, obj );
         
         // fire off an event for any update listeners
         return function() {
@@ -230,16 +226,16 @@ yote.init = function( args ) {
         
         // updates
         if( res.updates ) {
-            var makeFuns = [];
+            var makeOrUpdateFuns = [];
             res.updates.forEach( function( upd ) {
                 if( typeof upd !== 'object' || ! upd.id ) {
                     console.warn( "Update error, was expecting object, not : '" + upd + "'" );
                 } else {
                     // good place for an update listener
-                    makeFuns.push( makeObj( upd ) );
+                    makeOrUpdateFuns.push( makeObj( upd ) );
                 }
             } ); //updates section
-            makeFuns.map( function( fun ) {
+            makeOrUpdateFuns.map( function( fun ) {
                 fun();
             } );
         }
@@ -375,10 +371,8 @@ yote.init = function( args ) {
     contact( '_', 'init_root', [], function(res) {
         root  = res[0];
         token = res[1];
-        if( typeof sessionStorage !== 'undefined' ) {
-            sessionStorage.setItem( 'token', token );
-            localStorage.setItem( 'token', token );
-        }
+        localStorage.setItem( 'token', token );
+
         if( handler ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
@@ -401,14 +395,14 @@ yote.init = function( args ) {
         if( app ) {
             app.logout();
         }
+
         localStorage.clear();
-        sessionStorage.removeItem( 'token' );
+
         acct = undefined;
         token = undefined;
         app = undefined;
-        token = root.create_token( function( t ) {
+        root.create_token( function( t ) {
             token = t;
-            sessionStorage.setItem( 'token', t );
             if( appname ) {
                 app = root.fetch_app( appname );
             }
