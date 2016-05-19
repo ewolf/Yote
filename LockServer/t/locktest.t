@@ -17,8 +17,8 @@ BEGIN {
 $Lock::Server::DEBUG = 0;
 
 my $locks = new Lock::Server( { 
-    lock_timeout         => 4,  
-    lock_attempt_timeout => 5,
+    lock_timeout         => 4_000_000,  
+    lock_attempt_timeout => 5_000_000,
                               } );
 unless( $locks->start ) {
     my $err = $locks->{error};
@@ -108,10 +108,14 @@ sub test_suite {
     } else {
         my $locker3 = $locks->client( "LOCKER3" );
         my $res = $locker3->lock( "KEY1" ) > 1;
+print STDERR Data::Dumper->Dump(["L3 KEY1 locked? <$res>"]);
         $res = $res && $locker3->isLocked( "KEY1" ) == 1;
+print STDERR Data::Dumper->Dump(["L3 KEY1 still locked? <$res>"]);
         $res = $res && $locker3->lockedByMe( "KEY1" ) == 1;
+print STDERR Data::Dumper->Dump(["L3 KEY1 still locked by me? <$res>"]);
         usleep 2_010_000;
         $res = $res && $locker3->unlock( "KEY1" ) == 1;
+print STDERR Data::Dumper->Dump(["L3 KEY1 unlocked? <$res>"]);
         exit ! $res;
     }
     if( my $pid = fork ) {
@@ -120,10 +124,13 @@ sub test_suite {
         my $locker4 = $locks->client( "LOCKER4" );
         usleep 4000; #wait for that to be locked
         my $res = $locker4->isLocked( "KEY1" ) == 1;
+print STDERR Data::Dumper->Dump(["L4 KEY1 locked? <$res>"]);
         # KEY1 is locked by locker3, so this doesn't return until it
         # is unlocked, a time of 2 seconds
         $res = $res && $locker4->lock( "KEY1" ) > 1;
+print STDERR Data::Dumper->Dump(["L4 KEY1 timed out so can lock lock? <$res>"]);
         $res = $res && $locker4->unlock( "KEY1" ) == 1;
+print STDERR Data::Dumper->Dump(["L4 KEY1 can now unlock lock? <$res>"]);
         exit ! $res;
     }
 
@@ -131,7 +138,7 @@ sub test_suite {
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
-
+print STDERR Data::Dumper->Dump([">>$? FINE<<"]);
         # XXX
         fail("LOCKER4 $?") if $?;
 
@@ -150,16 +157,20 @@ sub test_suite {
     # 
     # L5 times out
     # L4 is able to Lock
-
+print STDERR Data::Dumper->Dump(["---------------------------_"]);
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
         my $locker4 = $locks->client( "LOCKER4" );
         my $res = $locker4->lock( "KEYA" ) > 1;
-        usleep 5_000_000;
+print STDERR Data::Dumper->Dump(["L4 KEYA locked? <$res>"]);
+        usleep 5_550_000;
         $res = $res && $locker4->isLocked( "KEYB" ) == 0;
+print STDERR Data::Dumper->Dump(["L4 woke and checked KEYB as not locked? <$res>"]);
         $res = $res && $locker4->lock( "KEYB" ) > 1;
+print STDERR Data::Dumper->Dump(["L4 locking KEYB? <$res>"]);
         $res = $res && $locker4->unlock( "KEYB" ) == 1;
+print STDERR Data::Dumper->Dump(["L4 unlocking KEYB? <$res>"]);
         exit ! $res;
     }
     if( my $pid = fork ) {
@@ -167,12 +178,18 @@ sub test_suite {
     } else {
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
         my $res = $locker5->lock( "KEYB" ) > 1;
+print STDERR Data::Dumper->Dump(["L5 locking KEYB? <$res>"]);
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;
+print STDERR Data::Dumper->Dump(["L5 did locked KEYB? <$res>"]);
         my $t = time;
         $res = $res && $locker5->lockedByMe( "KEYA" ) == 0;
+print STDERR Data::Dumper->Dump(["L5 did locked KEYA? <$res>"]);
         $res = $res && $locker5->lock( "KEYA" ) == 0;
+print STDERR Data::Dumper->Dump(["L5 try to lock KEYA? <$res>"]);
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 0;
+print STDERR Data::Dumper->Dump(["L5 checks if locked KEYB? <$res>"]);
         $res = $res && ( time-$t ) >= 5;
+print STDERR Data::Dumper->Dump(["L5 checks time <$res>",(time-$t)]);
         exit ! $res;
     }
 
@@ -181,6 +198,7 @@ sub test_suite {
         waitpid $pid, 0;
 
         # XXX
+print STDERR Data::Dumper->Dump([">>$? FINEY<<"]);
         fail("LOCKER4/LOCKER5") if $?;
     }
     

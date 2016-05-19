@@ -43,8 +43,8 @@ package Lock::Server;
     use Lock::Server::Client;
 
     my $lockServer = new Lock::Server( {
-       lock_timeout         => 10, #seconds. default is 3
-       lock_attempt_timeout => 12, #seconds. default is 4
+       lock_timeout         => 10, #microsecondsseconds. default is 3000
+       lock_attempt_timeout => 12, #microseconds. default is 4000
        port                 => 888, #default is 8004
        host                 => 'localhost', #default 127.0.0.1
     } );
@@ -92,15 +92,19 @@ no warnings 'uninitialized';
 
 use Data::Dumper;
 
+use IO::Select;
+use IO::Socket;
+
 use IO::Socket::INET;
 use POSIX ":sys_wait_h";
+use Time::HiRes qw(ualarm usleep);
 
 use vars qw($VERSION);
 
 $VERSION = '1.71';
 
 
-$Lock::Server::DEBUG = 0;
+$Lock::Server::DEBUG = 1;
 
 =head2 Lock::Server::new( $args )
 
@@ -121,17 +125,18 @@ sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     bless {
-        lock_timeout         => $args->{lock_timeout} || 3,
-        lock_attempt_timeout => $args->{lock_attempt_timeout} || 4,
+        lock_timeout         => $args->{lock_timeout} || 3000, #microseconds
+        lock_attempt_timeout => $args->{lock_attempt_timeout} || 4000, #microseconds
         host                 => $args->{host} || '127.0.0.1',
         port                 => $args->{port} || 8004,
         allow_shutdown       => $args->{allow_shutdown},
+        max_connections      => $args->{max_connections} || 10,
         _pids                => {},
         _id2pid              => {},
         _locks               => {},
         _locker_counts       => {},
         attempts => $args->{reconnect_attemps} || 10,
-        time_between_attempts => $args->{time_between_attempts} || 5,
+        time_between_attempts => $args->{time_between_attempts} || 5, #seconds
 
     }, $class;
 } #new
@@ -165,7 +170,9 @@ sub stop {
     my $self = shift;
 
     _log( " with '$self->{listener_socket}' socket" );
-    $self->{listener_socket}->close if $self->{listener_socket};
+    if( $self->{listener_socket} ) {
+        $self->{listener_socket}->close;
+    }
 
     if( my $pid = $self->{server_pid} ) {
         $self->{error} = "Sending INT signal to lock server of pid '$pid'";
@@ -225,15 +232,18 @@ sub run {
 sub _create_listener_socket {
     my $self = shift;
 
-
     my( $listener_socket, $count );
 
     my $st = time;
     
     until( $listener_socket || $count++ > $self->{attempts} ) {
         $listener_socket = new IO::Socket::INET(
-            Listen    => 10,
-            LocalAddr => "$self->{host}:$self->{port}",
+            Listen    => 1,
+            LocalPort => $self->{port},
+#            LocalAddr => "$self->{host}:$self->{port}",
+#            Proto     => 'tcp',
+#            ReuseAddr => 1,
+#            ReusePort => 1,
             );
         last if $listener_socket;
         print STDERR "Unable to open the lock server socket $@, $!. Retry $count of 10\n";
@@ -248,6 +258,7 @@ sub _create_listener_socket {
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{TERM} = $SIG{INT} = sub {
+        print STDERR Data::Dumper->Dump(["SHUT DOWN MAIN THREAD"]);
         _log( "lock server  : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
 
@@ -266,51 +277,49 @@ sub _create_listener_socket {
 sub _run_loop {
     my( $self, $listener_socket ) = @_;
 
-    while( my $connection = $listener_socket->accept ) {
-        local $SIG{ALRM} = sub {
-            die "ALARM\n";
-        };
-        alarm( $self->{lock_attempt_timeout} + 1 );
-        eval {
-            my $req = <$connection>; 
-            $req =~ s/\s+$//s;
-            _log( "lock server : incoming request : '$req'" );
-            # could have headers, but ignore those. Find \n\n
-            while( my $data = <$connection> ) {
-                chomp $data;
-                last unless $data =~ /\S/;
-            }
-
-            my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
-            if( $cmd eq 'CHECK' ) {
-                $self->_check( $connection, $key );
-            } elsif( $cmd eq 'LOCK' ) {
-                $self->_lock( $connection, $key, $locker_id );
-            } elsif( $cmd eq 'UNLOCK' ) {
-                $self->_unlock( $connection, $key, $locker_id );
-            } elsif( $cmd eq 'VERIFY' ) {
-                $self->_verify( $connection, $key, $locker_id );
-            } elsif( $cmd eq 'PING' ) {
-                print $connection "1\n";
-                $connection->close;
-            } elsif( $cmd eq 'SHUTDOWN') {
-                if( $self->{allow_shutdown}) {
-                    print $connection "1\n";
-                    $connection->close;
-                    $self->stop;
-                } else {
-                    _log( "lock server : got shutdown request but not configured to allow it" );
-                    $connection->close;
-                }
+    my $sel = IO::Select->new( $listener_socket );
+    my @ready;
+    while(@ready = $sel->can_read) {
+        for my $connection (@ready) {
+            if( $connection == $listener_socket ) {
+                $sel->add($listener_socket->accept );
             } else {
-                _log( "lock server : did not understand command '$cmd'" );
+                my $req = <$connection>; 
+                $req =~ s/\s+$//s;
+                _log( "lock server : incoming request : '$req'" );
+                # could have headers, but ignore those. Find \n\n
+                while( my $data = <$connection> ) {
+                    chomp $data;
+                    last unless $data =~ /\S/;
+                }
+
+                my( $cmd, $key, $locker_id ) = split( '/', substr( $req, 5 ) );
+                if( $cmd eq 'CHECK' ) {
+                    $self->_check( $connection, $key );
+                } elsif( $cmd eq 'LOCK' ) {
+                    $self->_lock( $connection, $key, $locker_id );
+                } elsif( $cmd eq 'UNLOCK' ) {
+                    $self->_unlock( $connection, $key, $locker_id );
+                } elsif( $cmd eq 'VERIFY' ) {
+                    $self->_verify( $connection, $key, $locker_id );
+                } elsif( $cmd eq 'PING' ) {
+                    print $connection "1\n";
+                } elsif( $cmd eq 'SHUTDOWN') {
+                    if( $self->{allow_shutdown}) {
+                        print $connection "1\n";
+                        $connection->close;
+                        $self->stop;
+                    } else {
+                        _log( "lock server : got shutdown request but not configured to allow it" );
+                    }
+                } else {
+                    _log( "lock server : did not understand command '$cmd'" );
+                }
+                $sel->remove($connection);
                 $connection->close;
             }
-        };
-        if( $@ ) {
-            $connection->close;
-        }
-    }
+        } #ready loop
+    } #can_read loop
 } #_run_loop
 
 sub _check {
@@ -339,7 +348,6 @@ sub _check {
     } else {
         print $connection "0\n";
     }
-    $connection->close;
 }
 
 sub _log {
@@ -401,7 +409,7 @@ sub _lock {
                 exit;
             };
             _log( "lock request : child ready to wait" );
-            sleep $self->{lock_attempt_timeout};
+            usleep $self->{lock_attempt_timeout};
             _log( "lock request failed : child timed out" );
             print $connection "0\n";
             $connection->close;
@@ -410,7 +418,6 @@ sub _lock {
     } else {
         _log( "lock request : no need to invoke more processes. locking" );
         print $connection "$timeout_time\n";
-        $connection->close;
     }
 } #_lock
 
@@ -440,12 +447,10 @@ sub _unlock {
         }
         _log( "unlock : done, informing connection" );
         print $connection "1\n";
-        $connection->close;
     } else {
         _log( "unlock error : Wrong locker_id to unlock for unlock for locker '$locker_id' and key '$key_to_unlock'. The locker_id must be the one at the front of the queue" );
         # "Wrong locker_id to unlock. The locker_id must be the one at the front of the queue";
         print $connection "0\n";
-        $connection->close;
     }
 } #_unlock
 
@@ -474,7 +479,6 @@ sub _verify {
     } else {
         print $connection "0\n";
     }
-    $connection->close;
 }
 
 
