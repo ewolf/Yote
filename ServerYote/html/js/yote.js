@@ -42,7 +42,6 @@ yote.init = function( args ) {
     var yoteServerURL = args.yoteServerURL || '';
 
     var token, root, app, appname, acct;
-    token = localStorage.getItem( 'token' );
     
     // cache storing objects and their meta-data
     var class2meths = {};
@@ -393,21 +392,21 @@ yote.init = function( args ) {
 
     yote.logout = function() {
         if( app ) {
-            app.logout();
+            app.logout(function() { 
+                localStorage.clear();
+
+                acct = undefined;
+                token = undefined;
+                app = undefined;
+                root.create_token( function( t ) {
+                    token = t;
+                    if( appname ) {
+                        app = root.fetch_app( appname );
+                    }
+                } );
+            } );
         }
-
-        localStorage.clear();
-
-        acct = undefined;
-        token = undefined;
-        app = undefined;
-        root.create_token( function( t ) {
-            token = t;
-            if( appname ) {
-                app = root.fetch_app( appname );
-            }
-        } );
-    }
+    } //yote.logout
     
 }; //yote.init
 

@@ -257,13 +257,18 @@ sub _find_ids_in_data {
 
 sub _unroll_ids {
     my( $store, $ids, $seen ) = @_;
-    my $first = ! $seen;
     $seen  //= {};
 
-    my( @items ) = ( map { $store->fetch($_) } grep { ! $seen->{$_}++ } @$ids );
+    my( @items ) = ( map { $store->fetch($_) } @$ids );
+
+#    print STDERR Data::Dumper->Dump(["INITIAL IDS -->" . join(",",@$ids),"IDS FROM THOSE -->" . join(",",map { $store->_get_id($_) } @items ),"SEEN --> " .join(",",keys %$seen),"UNROLL"]);
+    
     my @outids;
     for my $item( @items ) {
+        my $iid = $store->_get_id($item);
         my $r = ref( $item );
+#        print STDERR Data::Dumper->Dump(["  CHECKING ($iid) ($r)"]);
+        $seen->{$iid}++;
         if( $r eq 'ARRAY' ) {
             push @outids, grep { ! $seen->{$_}++ } map { $store->_get_id($_)  } grep { ref($_) } @$item;
         }
@@ -272,12 +277,18 @@ sub _unroll_ids {
         }
         else {
             my $data = $item->{DATA};
+#            print STDERR Data::Dumper->Dump([$data, "DATA for $item->{ID}"]);
             push @outids, map { $data->{$_} } grep { /^[^_]/ && $data->{$_} != /^v/ && ! $seen->{$data->{$_}}++ } keys %$data;
         }
     }
+#    print STDERR Data::Dumper->Dump(["SEEN --> " .join(",",keys %$seen),"OUTY --> " .join(",",@outids),"SEENY?"]);
+    
     _unroll_ids( $store, \@outids, $seen ) if @outids;
 
-    return [ keys %$seen ] if $first;
+
+#    print STDERR Data::Dumper->Dump(["SEEN --> " .join(",",keys %$seen),"SEEN NOWUNROLL!"]);
+    
+    [ keys %$seen ];
 } #_unroll_ids
 
 sub _process_request {
@@ -421,13 +432,13 @@ sub invoke_payload {
     my $server_root_id = $server_root->{ID};
     my $session = $token ? $server_root->_fetch_session( $token ) : undef;
 
-    print STDERR Data::Dumper->Dump(["TOKEN ($token) --> ($session)"]);
+#    print STDERR Data::Dumper->Dump(["TOKEN ($token) --> ($session)"]);
 
     
     my $ids2times;
     if( $session ) {
         $ids2times = $session->get__has_ids2times;
-        print STDERR Data::Dumper->Dump(["SESSION ($session->{ID}) HAS --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
+#        print STDERR Data::Dumper->Dump(["SESSION ($session->{ID}) HAS --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
     }
     
     unless( $obj_id eq '_' || 
@@ -479,8 +490,8 @@ sub invoke_payload {
     # the ids that were referenced explicitly in the
     # method call.
     my @out_ids = _find_ids_in_data( $out_res );
-    print STDERR Data::Dumper->Dump(["RESULTS --> " . join(',',@res),"RESSU"]);
-    print STDERR Data::Dumper->Dump(["OUT IDS --> ". join(",",@out_ids)]);
+#    print STDERR Data::Dumper->Dump(["RESULTS --> " . join(',',@res),"RESSU"]);
+#    print STDERR Data::Dumper->Dump(["OUT IDS --> ". join(",",@out_ids)]);
 
     #
     # Based on the return value of the method call,
@@ -488,7 +499,7 @@ sub invoke_payload {
     #   We will check to see if these need updates
     #
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
-    print STDERR Data::Dumper->Dump(["SHOULDS --> " . join(",",@should_have)]);
+#    print STDERR Data::Dumper->Dump(["SHOULDS --> " . join(",",@should_have)]);
 
     my( @updates, %methods );
 
@@ -543,7 +554,7 @@ sub invoke_payload {
             # check if this needs an update
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
-            print STDERR Data::Dumper->Dump(["Check ($should_have_id) --> c($client_s,$client_ms) <=> s($server_s,$server_ms) ". ( ( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) ? " INCLUDE " : " DONT BOTHER ")]);
+#            print STDERR Data::Dumper->Dump(["Check ($should_have_id) --> c($client_s,$client_ms) <=> s($server_s,$server_ms) ". ( ( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) ? " INCLUDE " : " DONT BOTHER ")]);
             if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
                 my $should_have_obj = $store->fetch( $should_have_id );
                 my $ref = ref( $should_have_obj );
@@ -564,10 +575,10 @@ sub invoke_payload {
                 };
                 push @updates, $update;
                 $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
-                print STDERR Data::Dumper->Dump(["ADDING '$should_have_id' to ids2times"]);
+#                print STDERR Data::Dumper->Dump(["ADDING '$should_have_id' to ids2times"]);
             }
         } #each object the client should have
-        print STDERR Data::Dumper->Dump(["SESSION ($session->{ID}) NOW HAS --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
+#        print STDERR Data::Dumper->Dump(["SESSION ($session->{ID}) NOW HAS --> " . join(',',sort {$a <=>$b }keys %$ids2times)]);
     }
     
     my $out_json = to_json( { result  => $out_res,
@@ -575,7 +586,7 @@ sub invoke_payload {
                               methods => \%methods,
                             } );
 
-    print STDERR Data::Dumper->Dump([$out_json,"OUTTTY"]);
+#    print STDERR Data::Dumper->Dump([$out_json,"OUTTTY"]);
     $self->{STORE}->stow_all;
 
     return $out_json;
@@ -894,7 +905,7 @@ sub _create_session {
     for( my $i=0; $i<@$slot_data; $i++ ) {
         return $self->_create_session( $tries++ ) if $slots->[ $i ]{ $token };
     }
-
+#    print STDERR Data::Dumper->Dump(["NEW TOKEN {{{$token}}"]);
     #
     # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
