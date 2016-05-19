@@ -1,3 +1,0 @@
-1.04 - added a cgi/modperl flavor. The API between client and server was updated for this.
-	Updating both yote.js and Yote::Server ( as part of a normal upgrade ) will make this
-	transparent
