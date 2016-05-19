@@ -152,6 +152,7 @@ yote.init = function( args ) {
             return null;
         }
         var obj = makeObjSkell( objdata._cls );
+        obj._data = objdata._data;
         obj.id = id;
         id2obj[id] = obj;
         

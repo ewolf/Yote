@@ -416,15 +416,20 @@ sub invoke_payload {
 
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
 
-    _log( "\n   (in params [$$])--> : ".Data::Dumper->Dump([$params]) );
+    _log( "\n   (in params [$$])--> : ".join( ",", @$params ) );
     my $server_root = $self->{STORE}->fetch_server_root;
     
     my $server_root_id = $server_root->{ID};
     my $session = $token ? $server_root->_fetch_session( $token ) : undef;
 
+    my $ids2times;
+    if( $session ) {
+        $ids2times = $session->get__has_ids2times;
+    }
+    
     unless( $obj_id eq '_' || 
             $obj_id eq $server_root_id ||
-            ( $session && $session->get__has_ids2times()->{$obj_id} ) ) {
+            ( $ids2times->{$obj_id} ) ) {
         # tried to do an action on an object it wasn't handed. do a 404
         die( "client tried to invoke on obj id '$obj_id' which it does not have" );
     }
@@ -471,7 +476,7 @@ sub invoke_payload {
     # the ids that were referenced explicitly in the
     # method call.
     my @out_ids = _find_ids_in_data( $out_res );
-    
+
     #
     # Based on the return value of the method call,
     #   these ids are ones that the client should have.
@@ -494,6 +499,33 @@ sub invoke_payload {
             cls   => $cls,
             data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
         };
+        if( $action eq 'fetch_app' ) {
+            my( $app, $login ) = @res;
+            $d = $app->{DATA};
+            my $ra = ref( $app );
+            push @updates, {
+                id    => $app->{ID},
+                cls   => $ra,
+                data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+            };
+            $methods{ $ra } = $app->_callable_methods;
+            if( $session ) {
+                $ids2times->{$app->{ID}} = [Time::HiRes::gettimeofday];
+            }
+            my $lr = ref $login;
+            if( $lr ) {
+                $d = $login->{DATA};
+                push @updates, {
+                    id    => $login->{ID},
+                    cls   => $lr,
+                    data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+                };
+                $methods{ $lr } = $login->_callable_methods;
+                if( $session ) {
+                    $ids2times->{$login->{ID}} = [Time::HiRes::gettimeofday];
+                }
+            }
+        }
         $methods{ $cls } = $server_root->_callable_methods;
     } 
     if( $session)  {
@@ -501,18 +533,19 @@ sub invoke_payload {
         #
         # check if existing are in the session
         #
-        my $ids2times = $session->get__has_ids2times;
-
         for my $should_have_id ( @should_have, keys %$ids2times ) {
             # check if this needs an update
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
-            if( $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
+
+            if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
                 my $should_have_obj = $store->fetch( $should_have_id );
                 my $ref = ref( $should_have_obj );
                 my $data;
-                if( $ref eq 'ARRAY' || $ref eq 'HASH' ) {
-                    $data = $ref;
+                if( $ref eq 'ARRAY' ) {
+                    $data = [ map { $store->_xform_in( $_ ) } @$should_have_obj ];
+                } elsif(  $ref eq 'HASH' ) {
+                    $data = { map { $_ =>  $store->_xform_in( $should_have_obj->{$_} ) } keys %$should_have_obj };
                 } else {
                     my $d = $should_have_obj->{DATA};
                     $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
@@ -528,6 +561,7 @@ sub invoke_payload {
             }
         } #each object the client should have
     }
+
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
@@ -616,7 +650,7 @@ sub __transform_params {
     } elsif( ref( $param ) ) {
         die "Transforming Params: got weird ref '" . ref( $param ) . "'";
     }
-    if( index( $param, 'v' ) != 0 && !$session->{_has_ids2times}{$param} ) {
+    if( index( $param, 'v' ) != 0 && !$session->get__has_ids2times({})->{$param} ) {
         # obj id given, but the client should not have that id
         die "Client requested obj with id '$param' which it should not have.";
     }

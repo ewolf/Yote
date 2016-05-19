@@ -254,6 +254,18 @@ sub test_suite {
     is_deeply( $ret->{methods}, {
         'Yote::ServerObj' =>  [ qw( absorb someMethod ) ],
                }, "methods returned" );
+
+
+    # test the following :
+    #   fetch_app returns app update and app methods
+    #   fetch_app returns loging update and login methods when there is a login in the return
+    #   fetch_app also retgisters the app with the user token
+    #   fetch_app also retgisters the login with the user token when there is a login
+    #
+
+    # make sure that when arrays and hashes are part of the return, they are returned properly
+
+    
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
