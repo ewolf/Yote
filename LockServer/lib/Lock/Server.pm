@@ -101,7 +101,7 @@ use Time::HiRes qw(ualarm usleep);
 
 use vars qw($VERSION);
 
-$VERSION = '1.71';
+$VERSION = '1.73';
 
 
 $Lock::Server::DEBUG = 1;
@@ -125,8 +125,8 @@ sub new {
     my( $pkg, $args ) = @_;
     my $class = ref( $pkg ) || $pkg;
     bless {
-        lock_timeout         => $args->{lock_timeout} || 3000, #microseconds
-        lock_attempt_timeout => $args->{lock_attempt_timeout} || 4000, #microseconds
+        lock_timeout         => $args->{lock_timeout} || 3,
+        lock_attempt_timeout => $args->{lock_attempt_timeout} || 4,
         host                 => $args->{host} || '127.0.0.1',
         port                 => $args->{port} || 8004,
         allow_shutdown       => $args->{allow_shutdown},
@@ -234,7 +234,7 @@ sub _create_listener_socket {
 
     my( $listener_socket, $count );
 
-    my $st = time;
+    my $st = Time::HiRes::time;
     
     until( $listener_socket || $count++ > $self->{attempts} ) {
         $listener_socket = new IO::Socket::INET(
@@ -331,7 +331,7 @@ sub _check {
 
     
     #check for timed out lockers
-    my $t = time;
+    my $t = Time::HiRes::time;
     while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_check} ) {
         _log( "lock server _check : '$key_to_check' timed out for locker '$lockers->[0]'" );
         if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
@@ -354,17 +354,17 @@ sub _log {
     my $msg = shift;
     $msg = "($$) $msg";
     print STDERR "Lock::Server : $msg\n" if $Lock::Server::DEBUG;
+    print STDERR Data::Dumper->Dump([$msg]);
 }
 
 sub _lock {
     my( $self, $connection, $key_to_lock, $locker_id ) = @_;
-
     _log( "lock request :  for '$locker_id' and key '$key_to_lock'" );
 
     $self->{_locks}{$key_to_lock} ||= [];
     my $lockers = $self->{_locks}{$key_to_lock};
     #check for timed out lockers
-    my $t = time;
+    my $t = Time::HiRes::time;
 
     while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_lock} ) {
         _log( "lock '$key_to_lock' timed out for locker '$lockers->[0]'" );
@@ -383,7 +383,7 @@ sub _lock {
     }
 
     # store when this times out 
-    my $timeout_time = time + $self->{lock_timeout};
+    my $timeout_time = Time::HiRes::time + $self->{lock_timeout};
     $self->{_locker_counts}{$locker_id}{$key_to_lock} = $timeout_time;
     push @$lockers, $locker_id;
 
@@ -409,7 +409,7 @@ sub _lock {
                 exit;
             };
             _log( "lock request : child ready to wait" );
-            usleep $self->{lock_attempt_timeout};
+            usleep 1_000_000 * $self->{lock_attempt_timeout};
             _log( "lock request failed : child timed out" );
             print $connection "0\n";
             $connection->close;
@@ -463,7 +463,8 @@ sub _verify {
     my $lockers = $self->{_locks}{$key_to_check};
 
     #check for timed out lockers
-    my $t = time;
+    my $t = Time::HiRes::time;
+    _log( "verify:  compare '$t' > '$self->{_locker_counts}{$lockers->[0]}{$key_to_check}' if the first is greater, there is a time out" );
     while( @$lockers && $t > $self->{_locker_counts}{$lockers->[0]}{$key_to_check} ) {
         _log( "verify:  '$key_to_check' timed out for locker '$lockers->[0]'" );
         if( 1 == keys %{ $self->{_locker_counts}{$lockers->[0]} } ) {
@@ -660,6 +661,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.71  (June 1, 2016))
+       Version 1.73  (June 1, 2016))
 
 =cut
