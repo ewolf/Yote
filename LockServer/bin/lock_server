@@ -27,9 +27,9 @@ while( @ARGV ) {
     $_ = shift @ARGV;
 
     if( /^-?-?(\?|help)/i ) {
-        print "lock_server <options> start|stop|restart\n";
+        print "lock_server <options> start|run|stop|restart\n";
         exit;
-    } elsif( /^(start|stop|restart|status)$/ ) {
+    } elsif( /^(start|run|stop|restart|status)$/ ) {
         $cmd = $_;
     } else {
         print STDERR "Unknown argument '$_'\n";
@@ -59,6 +59,11 @@ if( $cmd eq 'start' ) {
     exit;
 }
 
+if( $cmd eq 'run' ) {
+    run_lockserver();
+    print STDERR Data::Dumper->Dump(["RANRAN"]);
+}
+
 if( $cmd eq 'restart' ) {
     if( my $pid = check_pidfile( $pidfile ) ) {
         print "Stopping $0\n";
@@ -76,6 +81,11 @@ if( $cmd eq 'status' ) {
 }
 
 # ------------------------------------------------------------------
+
+sub run_lockserver {
+    my $serv = new Lock::Server;
+    $serv->run;
+}
 
 sub start_lockserver {
 

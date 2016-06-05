@@ -8,6 +8,8 @@ use Yote::Server;
 
 use base 'Yote::ServerObj';
 
+sub _onLogin {}
+
 sub logout {
     my $self = shift;
     my $server = $self->{SESSION}{SERVER};

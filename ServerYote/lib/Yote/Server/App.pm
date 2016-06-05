@@ -60,7 +60,7 @@ sub login {
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in
         $self->{SESSION}->set_acct( $acct );
-
+        $acct->_onLogin;
         return $acct;
     }
     $self->_err( "Incorrect login" );
