@@ -691,16 +691,23 @@ sub _xform_out {
             for( my $i=$offset_start; $i < $offset_end; $i++ ) {
                 my $file = $files->[$i];
                 my( $orig_filename ) = ( $file =~ /([^\/]*)$/ );
-                print STDERR Data::Dumper->Dump(["$file --> $orig_filename"]);
-                my $newname = "/tmp/fileo";
+                my( $extension ) = ( $orig_filename =~ /\.([^.\/]+)$/ );
+
+                # TODO - cleanup
+                use UUID::Tiny ':std';                
+                my $newname = "/tmp/".create_uuid_as_string;
                 open (FILE, ">$newname");
                 while (read ($file, my $Buffer, 1024)) {
                     print FILE $Buffer;
                 }
                 close FILE;
 
-                # create yote object here that wraps the file name and has a url and stuff
-                return "?";
+                # create yote object here that wraps the file name
+                return $self->newobj( {
+                    file_path => $newname,
+                    file_extension => $extension,
+                    file_name => $orig_filename,
+                                      } );
             }
         }
     }

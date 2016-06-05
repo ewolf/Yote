@@ -304,7 +304,6 @@ yote.init = function( args ) {
                     var start = files.length;
                     files.push.apply( files, morefiles ); //unroll files
                     v = 'f' + start + '_' + (start + morefiles.length);
-                    alert( v );
                 }
             } else {
                 v = 'v' + v;
