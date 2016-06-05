@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.40';
+$VERSION = '1.41';
 
 =head1 NAME
 
@@ -252,13 +252,13 @@ sub fetch {
                 unless( $INC{ $class } ) {
                     eval("use $class");
                 }
-                $obj = $class->_instantiate( $id, $self );
+                $obj = $self->{_WEAK_REFS}{$id} || $class->_instantiate( $id, $self );
             };
             die $@ if $@;
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
-            $obj->_load();
             $self->_store_weak( $id, \$obj );
+            $obj->_load();
             return $obj;
         }
     }
@@ -799,8 +799,8 @@ sub _new { #new Yote::Obj
         STORE    => $obj_store,
     }, $class;
     $obj->{ID} = $_id || $obj_store->_get_id( $obj );
-    $obj->_init(); #called the first time the object is created.
     $obj_store->_dirty( $obj, $obj->{ID} );
+    $obj->_init(); #called the first time the object is created.
 
     if( ref( $data ) eq 'HASH' ) {
         $obj->absorb( $data );
@@ -1185,6 +1185,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.40  (May 11, 2016))
+       Version 1.41  (August 28, 2016))
 
 =cut

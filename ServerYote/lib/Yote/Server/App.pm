@@ -38,7 +38,7 @@ sub _create_account {
     
     $accts->{$un} = $acct;
     $acct;
-} #create_account
+} #_create_account
 
 sub logout {
     my $self = shift;

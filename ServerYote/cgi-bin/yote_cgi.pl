@@ -9,6 +9,7 @@ use lib '/home/wolf/proj/Yote/FixedRecordStore/lib';
 use lib '/home/wolf/proj/Yote/ServerYote/lib';
 use lib '/home/wolf/proj/Yote/LockServer/lib';
 use lib '/home/wolf/proj/Yote/CCCC/lib';
+use lib '/opt/yote/lib';
 
 use Yote;
 use Yote::Server;
