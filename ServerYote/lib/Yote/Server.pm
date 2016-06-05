@@ -17,9 +17,9 @@ use URI::Escape;
 
 use vars qw($VERSION);
 
-$VERSION = '1.08';
+$VERSION = '1.10';
 
-our $DEBUG = 1;
+our $DEBUG = 0;
 
 sub new {
     my( $pkg, $args ) = @_;
@@ -395,7 +395,7 @@ sub _process_request {
             $out_json = to_json( $@ );
         } 
         elsif( $@ ) {
-            print STDERR Data::Dumper->Dump(["ERRY <$@>"]);
+            _log( "ERROR : $@>" );
             $out_json = to_json( {
                 err => 'ERROR',
                                  } );

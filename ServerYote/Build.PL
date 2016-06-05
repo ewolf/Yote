@@ -59,8 +59,9 @@ my $builder = Module::Build->new(
         'perl'                  => 'v5.12',
         'Yote'                  => 1.31,
         'IO::Socket::SSL'       => 2.024,
-        'Lock::Server'          => 1.6,
+        'Lock::Server'          => 1.73,
         'Test::More'            => 0,
+        'URI::Escape'           => 0,
     },
     );
 
