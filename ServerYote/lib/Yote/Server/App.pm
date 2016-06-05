@@ -19,14 +19,14 @@ sub create_account {
 }
 
 sub _create_account {
-    my( $self, $un, $pw ) = @_;
+    my( $self, $un, $pw, $class_override ) = @_;
     my $accts = $self->get__accts({});
 
     if( $accts->{$un} ) {
         $self->_err( "Unable to create account" );
     }
 
-    my $acct = $self->{STORE}->newobj( { user => $un }, $self->_acct_class );
+    my $acct = $self->{STORE}->newobj( { user => $un }, $class_override || $self->_acct_class );
     $acct->set__password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
 
     if( $self->{SESSION} ) {

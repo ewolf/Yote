@@ -1,4 +1,12 @@
+__________________________________________________________________
 
+Make sure to correctly copy :
+  * yote_server
+  * lock_server
+  * yote_cgi.pl (also, to write the use lib part of this)
+
+
+__________________________________________________________________
 Clustered Yote Servers (Pack?)
 
 Configure ---> 
