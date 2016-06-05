@@ -88,7 +88,7 @@ if( yote ) {
           fill_template : function( sel, vars, fields ) {
               if( ! fields ) { fields = []; }
               if( ! vars )   { vars = []; }
-              var $template = $( 'section.templates ' + sel + '[data-cloned!="true"]' );
+              var $template = $( 'section.templates ' + sel ).not( '[data-cloned="true"]' );
               if( $template.length > 1 ) {
                   console.warn( "error filling template '" + sel + "'. selector matches somethign other than one thing." );
                   return undefined;
@@ -362,10 +362,15 @@ if( yote ) {
                       if( kk == 13 || kk == 9 ) {
                           var $this = $( this );
                           var obj = yote.fetch( $this.data( 'id') );
+                          var proxy_obj = yote.fetch( $this.data( 'proxy') );
                           var fld = $this.data( 'field');
                           var inpt = {};
                           inpt[ fld ] = $this.val();
-                          obj.update( [ inpt ] );
+                          if( proxy_obj ) {
+                              proxy_obj.update( [ obj, inpt ] );
+                          } else {
+                              obj.update( [ inpt ] );
+                          }
                       } 
                   }
               } ); // input.updateField
@@ -429,8 +434,9 @@ if( yote ) {
                   var replaceList = typeof args.replaceList === 'function' ? args.replaceList( item, i ) : args.replaceList;
                   var row = yote.ui.fill_template( args.rowSel, replaceList || {
                       ID     : item.id,
-                      FROMID : args.listOn.id
-                  }, args.fieldList || [ 'id', 'parent' ] );
+                      FROMID : args.listOn.id,
+                      PROXY  : args.proxy ? args.proxy.id : 0
+                  }, args.fieldList || [ 'data-id', 'data-parent', 'data-proxy' ] );
                   
                   $tab.append( row );
 
@@ -461,8 +467,9 @@ if( yote ) {
                   var replaceList = typeof args.replaceList === 'function' ? args.replaceList( item, i ) : args.replaceList;
                   var row = yote.ui.fill_template( args.rowSel, replaceList || {
                       ID     : item.id,
-                      FROMID : args.listOn.id
-                  }, args.fieldList || [ 'id', 'parent' ] );
+                      FROMID : args.listOn.id,
+                      PROXY  : args.proxy ? args.proxy.id : 0
+                  }, args.fieldList || [ 'data-id', 'data-parent', 'data-proxy' ] );
                   
                   $con.append( row );
 

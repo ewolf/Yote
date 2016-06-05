@@ -135,8 +135,8 @@ sub test_suite {
 
 
     ( $retcode, $hdrs, $ret ) = msg( '_', '_', 'noMethod' );
-    is( $retcode, 400, "root node has no noMethod call" );
-    ok( ! $ret, "nothing returned for error case noMethod" );
+    is( $retcode, 200, "root node has no noMethod call" );
+    ok( $ret->{err}, "nothing returned for error case noMethod" );
 
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'test' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
@@ -191,11 +191,11 @@ sub test_suite {
 
     # make sure no prive _ method is called.
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, '_updates_needed' );
-    is( $retcode, 400, "cannot call underscore method" );
+    ok( $ret->{err}, "cannot call underscore method" );
 
     # make sure no nonexistant method is called.
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'slurpyfoo' );
-    is( $retcode, 400, "cannot call nonexistant method" );
+    ok( $ret->{err}, "cannot call nonexistant method" );
 
 
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'update' );

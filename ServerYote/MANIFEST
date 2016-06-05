@@ -2,13 +2,15 @@ bin/yote_server
 Build.PL
 cgi-bin/yote_cgi.pl
 ChangeLog
-html/css/ui.css
+CHANGELOG
 html/js/jquery-1.12.0.min.js
 html/js/yote.js
 html/js/yote.ui.js
 html/js/yote_localstorage.js
+html/js/yote_localstorage.min.js
 html/login.js
 html/README.txt
+html/wtest.js
 lib/Yote/Server.pm
 lib/Yote/Server/Acct.pm
 lib/Yote/Server/App.pm

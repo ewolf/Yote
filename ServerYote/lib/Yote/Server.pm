@@ -17,7 +17,7 @@ use URI::Escape;
 
 use vars qw($VERSION);
 
-$VERSION = '1.07';
+$VERSION = '1.08';
 
 our $DEBUG = 1;
 
@@ -395,10 +395,10 @@ sub _process_request {
             $out_json = to_json( $@ );
         } 
         elsif( $@ ) {
-            _log( $@ );
-            $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
-            $sock->close;
-            exit;
+            print STDERR Data::Dumper->Dump(["ERRY <$@>"]);
+            $out_json = to_json( {
+                err => 'ERROR',
+                                 } );
         }
         my @headers = (
             'Content-Type: text/json; charset=utf-8',
@@ -482,6 +482,7 @@ sub invoke_payload {
     }
 
     # <<------------- the actual method call --------------->>
+#    print STDERR "<".ref($obj)."><$action>\n";
     my(@res) = ($obj->$action( @$in_params ));
 #    print STDERR Data::Dumper->Dump([\@res,"MYREZ"]);
     # this is included in what is  returned to the client 

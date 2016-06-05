@@ -4,6 +4,11 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
+use lib '/home/wolf/proj/Yote/YoteBase/lib';
+use lib '/home/wolf/proj/Yote/ServerYote/lib';
+use lib '/home/wolf/proj/Yote/LockServer/lib';
+use lib '/home/wolf/proj/Yote/CCCC/lib';
+
 use Yote;
 use Yote::Server;
 
@@ -36,16 +41,18 @@ eval {
 if( ref $@ eq 'HASH' ) {
     $out_json = to_json( $@ );
     undef $@;
-    print STDERR Data::Dumper->Dump(["GOTTY IN CGI",$out_json,$@]);
+} elsif( $@ ) {
+    print STDERR Data::Dumper->Dump(["ERRY <$@>"]);
+    $out_json = to_json( {
+        err => 'ERROR',
+                         } );
 }
-if( $@ ) {
-    print STDERR Data::Dumper->Dump([$@,"ERRORGOT"]);
-    print $cgi->header( -status => '400 BAD REQUEST' );
-} else {
-    print $cgi->header(
-        -status => '200 OK',
-        -type => 'text/json'
-        );
-    print $out_json;
-    $main::yote_server->{STORE}->stow_all;
-}
+
+print $cgi->header(
+    -status => '200 OK',
+    -type => 'text/json'
+    );
+print STDERR Data::Dumper->Dump(["OUTY <$out_json>"]);
+print $out_json;
+$main::yote_server->{STORE}->stow_all;
+

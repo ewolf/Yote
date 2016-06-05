@@ -41,7 +41,7 @@ yote.init = function( args ) {
 
     var yoteServerURL = args.yoteServerURL || '';
 
-    var token, root, app, appname, acct;
+    var token, root, app, appname, acct, globalErrHandler;
 
 
     token = localStorage.getItem('token');
@@ -54,7 +54,6 @@ yote.init = function( args ) {
 
     var _register = function( id, obj ) {
         id2obj[ id ] = obj;
-        console.log( [ "REGGY " + id, obj._data ] );
         localStorage.setItem( id, JSON.stringify( {
             id    : obj.id,
             _cls  : obj._cls,
@@ -184,7 +183,6 @@ yote.init = function( args ) {
             obj.id = datastructure.id;
             obj._data = datastructure.data;
         }
-        console.log( [ "MAKE OBJ " + datastructure.id, obj, obj._data ] );
         obj._data = datastructure.data;
         _register( datastructure.id, obj );
         
@@ -249,6 +247,7 @@ yote.init = function( args ) {
         // updates
         if( res.updates ) {
             var makeOrUpdateFuns = [];
+            console.log( ["GOT UPDATES", res.updates ] );
             res.updates.forEach( function( upd ) {
                 if( typeof upd !== 'object' || ! upd.id ) {
                     console.warn( "Update error, was expecting object, not : '" + upd + "'" );
@@ -309,6 +308,7 @@ yote.init = function( args ) {
 
     function contact(id,action,data,handl,errhandl) { 
         var oReq = new XMLHttpRequest();
+        errhandl = errhandl || globalErrHandler;
         oReq.addEventListener("loadend", reqListener( handl, errhandl ) );
         oReq.addEventListener("error", function(e) { alert('error : ' + e) } );
         oReq.addEventListener("abort", function(e) { alert('abort : ' + e) } );
@@ -386,6 +386,8 @@ yote.init = function( args ) {
     appname = args.appName;
     var handler = args.handler;
     var errhandler = args.errHandler;
+
+    globalErrHandler = args.globalErrHandler;
 
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
