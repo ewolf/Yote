@@ -108,14 +108,10 @@ sub test_suite {
     } else {
         my $locker3 = $locks->client( "LOCKER3" );
         my $res = $locker3->lock( "KEY1" ) > 1;
-print STDERR Data::Dumper->Dump(["L3 KEY1 locked? <$res>"]);
         $res = $res && $locker3->isLocked( "KEY1" ) == 1;
-print STDERR Data::Dumper->Dump(["L3 KEY1 still locked? <$res>"]);
         $res = $res && $locker3->lockedByMe( "KEY1" ) == 1;
-print STDERR Data::Dumper->Dump(["L3 KEY1 still locked by me? <$res>"]);
         usleep 2_010_000;
         $res = $res && $locker3->unlock( "KEY1" ) == 1;
-print STDERR Data::Dumper->Dump(["L3 KEY1 unlocked? <$res>"]);
         exit ! $res;
     }
     if( my $pid = fork ) {
@@ -124,16 +120,12 @@ print STDERR Data::Dumper->Dump(["L3 KEY1 unlocked? <$res>"]);
         my $locker4 = $locks->client( "LOCKER4" );
         usleep 4000; #wait for that to be locked
         my $res = $locker4->isLocked( "KEY1" ) == 1;
-print STDERR Data::Dumper->Dump(["L4 KEY1 locked? <$res>"]);
         # KEY1 is locked by locker3, so this doesn't return until it
         # is unlocked, a time of 2 seconds
         my $locktry = $locker4->lock( "KEY1" );
-        print STDERR Data::Dumper->Dump(["OKOKKK ($locktry)",$locker4->isLocked( "KEY1" )]);
         
         $res = $res && $locktry > 1;
-print STDERR Data::Dumper->Dump(["L4 KEY1 timed out so can lock now? <$res>"]);
         $res = $res && $locker4->unlock( "KEY1" ) == 1;
-print STDERR Data::Dumper->Dump(["L4 KEY1 can now unlock lock? <$res>"]);
         exit ! $res;
     }
 
@@ -141,7 +133,6 @@ print STDERR Data::Dumper->Dump(["L4 KEY1 can now unlock lock? <$res>"]);
     while( @pids ) { 
         my $pid = shift @pids;
         waitpid $pid, 0;
-print STDERR Data::Dumper->Dump([">>$? FINE<<"]);
         # XXX
         fail("LOCKER4 $?") if $?;
 
@@ -160,7 +151,6 @@ print STDERR Data::Dumper->Dump([">>$? FINE<<"]);
     # 
     # L5 times out
     # L4 is able to Lock
-print STDERR Data::Dumper->Dump(["---------------------------_"]);
     if( my $pid = fork ) {
         push @pids, $pid;
     } else {
@@ -170,20 +160,15 @@ print STDERR Data::Dumper->Dump(["---------------------------_"]);
         my $res = $lockresp > 1; #this will try to unlock for 5 seconds
         #then, this will remain locked for 5 seconds
         
-print STDERR Data::Dumper->Dump(["L4 KEYA locked? <$res>($lockresp)"]);
         usleep 5_550_000;
 
         #at this point, KEYA had expired
         $res = $res && $locker4->isLocked( "KEYA" ) == 0;
-        print STDERR Data::Dumper->Dump(["L4 KEYA locked after sleep? <$res>"]);
 
         $res = $res && $locker4->isLocked( "KEYB" ) == 0;
 
-print STDERR Data::Dumper->Dump(["L4 woke and checked KEYB as not locked? <$res>"]);
-$res = $res && $locker4->lock( "KEYB" ) > 1;
-print STDERR Data::Dumper->Dump(["L4 locking KEYB? <$res>"]);
+        $res = $res && $locker4->lock( "KEYB" ) > 1;
         $res = $res && $locker4->unlock( "KEYB" ) == 1;
-print STDERR Data::Dumper->Dump(["L4 unlocking KEYB? <$res>"]);
         exit ! $res;
     }
     if( my $pid = fork ) {
@@ -191,20 +176,14 @@ print STDERR Data::Dumper->Dump(["L4 unlocking KEYB? <$res>"]);
     } else {
         my $locker5 = new Lock::Server::Client( "LOCKER5", '127.0.0.1', 8004 );
         my $res = $locker5->lock( "KEYB" ) > 1; #this will try to lock for 5 seconds. then it will remained locked for 4 seconds
-print STDERR Data::Dumper->Dump(["L5 locking KEYB? <$res>"]);
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 1;
-print STDERR Data::Dumper->Dump(["L5 did lock KEYB? <$res>"]);
         my $t = time;
         $res = $res && $locker5->lockedByMe( "KEYA" ) == 0;
-        print STDERR Data::Dumper->Dump(["L5 did locked KEYA? <$res>"]);
 
         #keya will be locked then frozen
         $res = $res && $locker5->lock( "KEYA" ) == 0; #this will try for 5 seconds then give up, 
-print STDERR Data::Dumper->Dump(["L5 try to lock KEYA? <$res>"]);
         $res = $res && $locker5->lockedByMe( "KEYB" ) == 0;
-print STDERR Data::Dumper->Dump(["L5 checks if locked KEYB? <$res>"]);
         $res = $res && ( time-$t ) >= 5;
-print STDERR Data::Dumper->Dump(["L5 checks time <$res>",(time-$t)]);
         exit ! $res;
     }
 
@@ -213,7 +192,6 @@ print STDERR Data::Dumper->Dump(["L5 checks time <$res>",(time-$t)]);
         waitpid $pid, 0;
 
         # XXX
-print STDERR Data::Dumper->Dump([">>$? FINEY<<"]);
         fail("LOCKER4/LOCKER5") if $?;
     }
     

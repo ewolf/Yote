@@ -104,7 +104,7 @@ use vars qw($VERSION);
 $VERSION = '1.73';
 
 
-$Lock::Server::DEBUG = 1;
+$Lock::Server::DEBUG = 0;
 
 =head2 Lock::Server::new( $args )
 
@@ -258,7 +258,6 @@ sub _create_listener_socket {
 
     # if this is cancelled, make sure all child procs are killed too
     $SIG{TERM} = $SIG{INT} = sub {
-        print STDERR Data::Dumper->Dump(["SHUT DOWN MAIN THREAD"]);
         _log( "lock server  : got INT signal. Shutting down." );
         $listener_socket && $listener_socket->close;
 
@@ -354,7 +353,6 @@ sub _log {
     my $msg = shift;
     $msg = "($$) $msg";
     print STDERR "Lock::Server : $msg\n" if $Lock::Server::DEBUG;
-    print STDERR Data::Dumper->Dump([$msg]);
 }
 
 sub _lock {
