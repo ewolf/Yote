@@ -33,11 +33,35 @@ unless( $main::yote_server ) {
 }
 my $cgi = CGI->new;
 
+# check if a file upload
 my $json_payload = uri_unescape(scalar($cgi->param('p')));
+
+my $uploads = $cgi->param('f');
+my( @uploads );
+if( $uploads ) {
+    for( my $i=0; $i<$uploads; $i++ ) {
+        my $file = $cgi->param("f$i");
+        push @uploads, $file;
+
+        next; # code below doesn't yet run
+
+        # to open (but maybe this should be elsewhere
+        # to download ----->
+        my( $original_name ) = ($file =~ /.*\."?(\w*)"?$/ );
+        
+        my $newname = "somethingnew";
+        open (FILE, ">./$newname");
+        while (read ($file, my $Buffer, 1024)) {
+            print FILE $Buffer;
+        }
+        close FILE;
+
+    }
+}
 
 my $out_json;
 eval {
-    $out_json = $main::yote_server->invoke_payload( $json_payload );
+    $out_json = $main::yote_server->invoke_payload( $json_payload, \@uploads );
 };
 
 if( ref $@ eq 'HASH' ) {

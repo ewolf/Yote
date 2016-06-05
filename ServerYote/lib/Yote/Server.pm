@@ -397,7 +397,7 @@ sub _process_request {
         elsif( $@ ) {
             _log( "ERROR : $@>" );
             $out_json = to_json( {
-                err => 'ERROR',
+                err => $@,
                                  } );
         }
         my @headers = (
@@ -424,7 +424,7 @@ sub invoke_payload {
     _log( "jsony $_[0]" );
 
     my $req_data = from_json( shift );
-
+    my( $file_uploads ) = shift;
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
 #    print STDERR Data::Dumper->Dump(["'$action' on '$obj_id' with token [$token]) and params --> : ".join( ",", @$params )]);
     my $server_root = $self->{STORE}->fetch_server_root;
@@ -450,7 +450,7 @@ sub invoke_payload {
         # tried to do an action on an object it wasn't handed. do a 404
         die( "client with token [$token] and session ($session) tried to invoke on obj id '$obj_id' which it does not have" );
     }
-    if( substr( $action, 0, 1 ) eq '_' ) {
+    if( substr( $action, 0, 1 ) eq '_' || $action =~ /^[gs]et$/ ) {
         die( "Private method called" );
     }
 
@@ -464,7 +464,7 @@ sub invoke_payload {
     # are always a list, but they may contain other containers that are not
     # yote objects. So, transform the incomming parameter list and check all
     # yote objects inside for may. Use a recursive helper function for this.
-    my $in_params = $store->__transform_params( $params, $session );
+    my $in_params = $store->__transform_params( $params, $session, $file_uploads );
 
     #
     # This obj is the object that the method call is on
@@ -663,22 +663,49 @@ sub __transform_params {
     # Throws execptions if the parametsr are not allowed, or if a reference that is not a hash or array
     # is encountered.
     #
-    my( $self, $param, $session ) = @_;
+    my( $self, $param, $session, $files ) = @_;
 
     if( ref( $param ) eq 'HASH' ) {
-        return { map { $_ => $self->__transform_params($param->{$_}, $session) } keys %$param };
+        return { map { $_ => $self->__transform_params($param->{$_}, $session, $files) } keys %$param };
     } 
     elsif( ref( $param ) eq 'ARRAY' ) {
-        return [ map { $self->__transform_params($_, $session) } @$param ];
+        return [ map { $self->__transform_params($_, $session, $files) } @$param ];
     } elsif( ref( $param ) ) {
         die "Transforming Params: got weird ref '" . ref( $param ) . "'";
     }
-    if( index( $param, 'v' ) != 0 && !$session->get__has_ids2times({})->{$param} ) {
+    if( ( index( $param, 'v' ) != 0 && index($param, 'f' ) != 0 ) && !$session->get__has_ids2times({})->{$param} ) {
         # obj id given, but the client should not have that id
         die "Client requested obj with id '$param' which it should not have.";
     }
-    return $self->_xform_out( $param );
+    return $self->_xform_out( $param, $files );
 } #__transform_params
+
+sub _xform_out {
+    my( $self, $val, $files ) = @_;
+    return undef unless defined( $val );
+    if( index($val,'f') == 0 ) {
+        print STDERR Data::Dumper->Dump([$files,"GOT XFORM OUT OF '$val'"]);
+        # convert to file object
+        if( $val =~ /^f(\d+)_(\d+)$/ ) {
+            my( $offset_start, $offset_end ) = ( $1, $2 );
+            for( my $i=$offset_start; $i < $offset_end; $i++ ) {
+                my $file = $files->[$i];
+                my( $orig_filename ) = ( $file =~ /([^\/]*)$/ );
+                print STDERR Data::Dumper->Dump(["$file --> $orig_filename"]);
+                my $newname = "/tmp/fileo";
+                open (FILE, ">$newname");
+                while (read ($file, my $Buffer, 1024)) {
+                    print FILE $Buffer;
+                }
+                close FILE;
+
+                # create yote object here that wraps the file name and has a url and stuff
+                return "?";
+            }
+        }
+    }
+    return $self->SUPER::_xform_out( $val );
+} #_xform_out
 
 
 #
@@ -705,21 +732,6 @@ sub _xform_in {
 
     return defined $val ? "v$val" : undef;
 } #_xform_in
-
-
-sub _find_ids_referenced {
-    my( $self, @ids ) = @_;
-    my( @refd );
-    for my $obj (map { $self->_xform_out( $_ ) } @ids ) {
-        if( ref $obj eq 'ARRAY' ) {
-            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } @$obj;
-        } elsif( ref $obj eq 'HASH' ) {
-            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } values %$obj;
-        } else {
-            push @refd, grep { index($_,'v')!=0 } map { $self->_xform_in( $_ ) } map { $obj->{DATA}{$_} } grep { index($_,'_') != 0 } keys %{$obj->{DATA}};
-        }
-    }
-}
 
 sub newobj {
     my( $self, $data, $class ) = @_;

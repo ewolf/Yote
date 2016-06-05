@@ -282,7 +282,7 @@ yote.init = function( args ) {
         };
     };
 
-    function readyObjForContact( obj ) {
+    function readyObjForContact( obj, files ) {
         if( typeof obj !== 'object' ) {
             return typeof obj === 'undefined' || obj === null ? undefined : 'v' + obj;
         }
@@ -296,7 +296,15 @@ yote.init = function( args ) {
                 if( _fetch( v.id ) === v ) {
                     v = v.id;
                 } else {
-                    v = readyObjForContact( v );
+                    v = readyObjForContact( v, files );
+                }
+            } else if( typeof v === 'function' ) {
+                var morefiles = v();
+                if( morefiles.length > 0 ) {
+                    var start = files.length;
+                    files.push.apply( files, morefiles ); //unroll files
+                    v = 'f' + start + '_' + (start + morefiles.length);
+                    alert( v );
                 }
             } else {
                 v = 'v' + v;
@@ -318,23 +326,38 @@ yote.init = function( args ) {
                      '/' + ( token ? token : '_' ) + 
                      '/' + action )
         
-        oReq.open("POST", yoteServerURL, true );
 
-        var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data );
+        var readiedData = undefined;
+        var files = [];
+        var readiedData = typeof data === 'undefined' || data === null ? undefined : readyObjForContact( data, files );
 
         // for a single parameter, wrap into a parameter list
+
+// *** TRY [var sendData = new FormData()] here and append the file uploads
+/*        
         var sendData = 'p=' + JSON.stringify( { pl    : readiedData, //payload
                                                 i     : id,                 
                                                 t     : token ? token : '_',
                                                 a     : action
                                               } );
-
-        
-        console.log( "About to send to server : " + sendData );
+*/
+        var sendData = new FormData();
+        sendData.set( 'p', JSON.stringify( { pl    : readiedData, //payload
+                                                i     : id,                 
+                                                t     : token ? token : '_',
+                                                a     : action
+                                              } ) );
+        sendData.set( 'f', files.length ); // number of files
+        for( var i=0; i<files.length; i++ ) {
+            sendData.set( 'f' + i, files[i], files[i].name );
+        }
+        sendData.set( "A", "B" );
+        console.log( "About to send to server : ", sendData, sendData.has("A") );
 
         // data must always be an array, though that array may have different data structures inside of it
         // as vehicles for data
-        oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded" );
+        oReq.open("POST", yoteServerURL, true );
+//        oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded" );
         oReq.send( sendData );
 
     }; // contact
@@ -452,6 +475,12 @@ yote.init = function( args ) {
     } //yote.logout
     
 }; //yote.init
+
+yote.prepUpload = function( files ) {
+    return function() {
+        return files;
+    }
+}
 
 yote.sameyoteobjects = function( a, b ) {
     return typeof a === 'object' && typeof b === 'object' && a.id === b.id;
