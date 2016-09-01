@@ -414,26 +414,27 @@ sub _process_request {
 } #_process_request
 
 sub invoke_payload {
-    my $self     = shift;
+    my( $self, $raw_req_data, $file_uploads ) = @_;
 
     _log( "jsony $_[0]" );
 
-    my $req_data = from_json( shift );
-    my( $file_uploads ) = shift;
+    my $req_data = from_json( $raw_req_data );
+
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
+    
     my $server_root = $self->{STORE}->fetch_server_root;
-
     my $server_root_id = $server_root->{ID};
-    my $session = $token && $token ne '_' ? $server_root->_fetch_session( $token ) : undef;
+    
 
-    my $ids2times;
+    my $id_to_last_update_time;
+    my $session = $token && $token ne '_' ? $server_root->_fetch_session( $token ) : undef;
     if( $session ) {
-        $ids2times = $session->get__has_ids2times;
+        $id_to_last_update_time = $session->get__has_ids2times;
     }
 
-    unless( $obj_id eq '_' || 
-            $obj_id eq $server_root_id ||
-            ( $ids2times->{$obj_id} ) ) {
+    unless( $obj_id eq '_' ||                    # either the object id that is acted upon is
+            $obj_id eq $server_root_id ||        # the server root or is known to the session
+            ( $id_to_last_update_time->{$obj_id} ) ) { 
         # tried to do an action on an object it wasn't handed. do a 404
         die( "client with token [$token] and session ($session) tried to invoke on obj id '$obj_id' which it does not have" );
     }
@@ -463,17 +464,30 @@ sub invoke_payload {
         die( "Bad Req : invalid method :'$action'" );
     }
 
+    # if there is a session, attach it to the object
     if( $session ) {
         $obj->{SESSION} = $session;
         $obj->{SESSION}{SERVER_ROOT} = $server_root;
     }
 
+    #
     # <<------------- the actual method call --------------->>
+    #
     my(@res) = ($obj->$action( @$in_params ));
-    # this is included in what is  returned to the client 
+
+    #
+    # this is included in what is  returned to the client
+    #
     my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
 
-
+    #
+    # in case the method generated a new session, (re)set that now
+    #
+    $session = $obj->{SESSION};
+    if( $session ) {
+        $id_to_last_update_time = $session->get__has_ids2times;
+    }
+    
     # the ids that were referenced explicitly in the
     # method call.
     my @out_ids = _find_ids_in_data( $out_res );
@@ -490,78 +504,69 @@ sub invoke_payload {
     #
     # fetch root always sends the root back for an update
     #
+    if(0){
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )
          && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         push @should_have, $server_root_id;
-        my $cls = ref( $server_root );
-        my $d = $server_root->{DATA};
-        push @updates, {
-            id    => $server_root_id,
-            cls   => $cls,
-            data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-        };
         if( $action eq 'fetch_app' ) {
             my( $app, $login ) = @res;
-            $d = $app->{DATA};
             my $ra = ref( $app );
-            push @updates, {
-                id    => $app->{ID},
-                cls   => $ra,
-                data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-            };
             $methods{ $ra } = $app->_callable_methods;
             if( $session ) {
-                $ids2times->{$app->{ID}} = [Time::HiRes::gettimeofday];
+                $id_to_last_update_time->{$app->{ID}} = [Time::HiRes::gettimeofday];
             }
             my $lr = ref $login;
             if( $lr ) {
-                $d = $login->{DATA};
-                push @updates, {
-                    id    => $login->{ID},
-                    cls   => $lr,
-                    data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-                };
                 $methods{ $lr } = $login->_callable_methods;
                 if( $session ) {
-                    $ids2times->{$login->{ID}} = [Time::HiRes::gettimeofday];
+                    $id_to_last_update_time->{$login->{ID}} = [Time::HiRes::gettimeofday];
                 }
             }
         }
-        $methods{ $cls } = $server_root->_callable_methods;
-    } 
-    if( $session)  {
+#        $methods{ $cls } = $server_root->_callable_methods;
+    } } 
 
-        #
-        # check if existing are in the session
-        #
-        for my $should_have_id ( @should_have, keys %$ids2times ) {
-            # check if this needs an update
-            my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
+    #
+    # check if existing are in the session
+    #
+    for my $should_have_id ( @should_have, keys %$id_to_last_update_time ) {
+        my $needs_update = 1;
+        
+        if( $session)  {
+            #
+            # check if the client of this session needs an update, otherwise assume that it does
+            #
+            my( $client_s, $client_ms )  = @{ $id_to_last_update_time->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
 
-            if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
-                my $should_have_obj = $store->fetch( $should_have_id );
-                my $ref = ref( $should_have_obj );
-                my $data;
-                if( $ref eq 'ARRAY' ) {
-                    $data = [ map { $store->_xform_in( $_ ) } @$should_have_obj ];
-                } elsif(  $ref eq 'HASH' ) {
-                    $data = { map { $_ =>  $store->_xform_in( $should_have_obj->{$_} ) } keys %$should_have_obj };
-                } else {
-                    my $d = $should_have_obj->{DATA};
-                    $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-                    $methods{$ref} ||= $should_have_obj->_callable_methods;
-                }
-                my $update = {
-                    id    => $should_have_id,
-                    cls   => $ref,
-                    data  => $data,
-                };
-                push @updates, $update;
-                $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
+            $needs_update = $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms );
+        }
+
+        if( $needs_update ) {
+            my $should_have_obj = $store->fetch( $should_have_id );
+            my $ref = ref( $should_have_obj );
+            my $data;
+            if( $ref eq 'ARRAY' ) {
+                $data = [ map { $store->_xform_in( $_ ) } @$should_have_obj ];
+            } elsif(  $ref eq 'HASH' ) {
+                $data = { map { $_ =>  $store->_xform_in( $should_have_obj->{$_} ) } keys %$should_have_obj };
+            } else {
+                my $d = $should_have_obj->{DATA};
+                $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+                $methods{$ref} ||= $should_have_obj->_callable_methods;
             }
-        } #each object the client should have
-    }
+            my $update = {
+                id    => $should_have_id,
+                cls   => $ref,
+                data  => $data,
+            };
+            push @updates, $update;
+            if( $session ) {
+                $id_to_last_update_time->{$should_have_id} = [Time::HiRes::gettimeofday];
+            }
+        } # if this needs an update
+        
+    } #each object the client should have
 
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
