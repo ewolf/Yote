@@ -672,7 +672,7 @@ sub _xform_out {
                 my( $extension ) = ( $orig_filename =~ /\.([^.\/]+)$/ );
 
                 # TODO - cleanup, maybe use File::Temp or something
-                my $newname = "/tmp/".create_uuid_as_string;
+                my $newname = "/tmp/".create_uuid_as_string();
                 open (FILE, ">$newname");
                 while (read ($file, my $Buffer, 1024)) {
                     print FILE $Buffer;
