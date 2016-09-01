@@ -14,12 +14,12 @@ use IO::Socket::SSL;
 use JSON;
 use Time::HiRes qw(time);
 use URI::Escape;
-use UUID::Tiny ':std';
+use UUID::Tiny;
 
 
 use vars qw($VERSION);
 
-$VERSION = '1.11';
+$VERSION = '1.12';
 
 our $DEBUG = 0;
 
@@ -672,7 +672,7 @@ sub _xform_out {
                 my( $extension ) = ( $orig_filename =~ /\.([^.\/]+)$/ );
 
                 # TODO - cleanup, maybe use File::Temp or something
-                my $newname = "/tmp/".create_uuid_as_string();
+                my $newname = "/tmp/".UUID::Tiny::create_uuid_as_string();
                 open (FILE, ">$newname");
                 while (read ($file, my $Buffer, 1024)) {
                     print FILE $Buffer;

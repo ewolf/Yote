@@ -22,6 +22,7 @@ mkdir $yote_root unless -d $yote_root;
 die "Unable to create root directory" unless -w $yote_root;
 
 mkdir "$yote_root/html";
+mkdir "$yote_root/lib";
 
 # fill the root directory
 sub copy_dir {

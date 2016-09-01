@@ -17,6 +17,7 @@ my $builder = Module::Build->new(
     test_files         => [ 't/locktest.t', ],
     requires => {
         'perl'                  => 'v5.9.4',
+        'Daemon::Daemonize'     => 0,
     },
  );
 

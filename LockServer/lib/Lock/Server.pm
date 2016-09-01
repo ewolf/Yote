@@ -101,7 +101,7 @@ use Time::HiRes qw(ualarm usleep);
 
 use vars qw($VERSION);
 
-$VERSION = '1.74';
+$VERSION = '1.75';
 
 
 $Lock::Server::DEBUG = 0;
@@ -659,6 +659,6 @@ __END__
 
 =head1 VERSION
 
-       Version 1.74  (June 1, 2016))
+       Version 1.75  (June 1, 2016))
 
 =cut
