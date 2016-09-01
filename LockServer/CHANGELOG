@@ -1,3 +1,4 @@
+1.74 - added bin/lock_server to manifest so it installs
 1.7  - added shtudown ability for lock client
 	
 1.6  - added ping ability for lock client

@@ -1,6 +1,7 @@
 2016-09-01 eric wolf  <coyocanid@gmail.com>
 	* Version 1.11
 	* added onLogin method for accounts
+	* added protocol for file uploads
 2016-06-06  eric wolf  <wolf@talisman>
 	* CHANGELOG: 1.08 : All errors return as JSON. Those not specific just have the message 'ERROR'
 
