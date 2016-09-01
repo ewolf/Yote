@@ -62,6 +62,7 @@ my $builder = Module::Build->new(
         'Lock::Server'          => 1.73,
         'Test::More'            => 0,
         'URI::Escape'           => 0,
+        'UUID::Tiny'            => 0,
     },
     );
 
