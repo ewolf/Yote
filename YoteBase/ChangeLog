@@ -1,5 +1,8 @@
-
-2016-05-11  eric wolf  <wolf@wolflab>
+2016-09-01 eric wolf  <coyocanid@gmail.com>
+	* Version 1.41
+	* fixed out of order bug in loading/initializing objects that could lead into recursion loop
+	
+2016-05-11  eric wolf   <coyocanid@gmail.com>
 
 	* Version 1.39 (woo, not been keeping up with the updates, sorry folks)
 	* Just minor improvements and speed fixes.
