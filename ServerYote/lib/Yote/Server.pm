@@ -484,7 +484,6 @@ sub invoke_payload {
     #   We will check to see if these need updates
     #
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
-
     my( @updates, %methods );
 
     #
@@ -530,11 +529,12 @@ sub invoke_payload {
         $methods{ $cls } = $server_root->_callable_methods;
     } 
     if( $session)  {
-
+        my %should_seen;
         #
         # check if existing are in the session
         #
         for my $should_have_id ( @should_have, keys %$ids2times ) {
+            next unless 0 == $should_seen{$should_have_id}++;
             # check if this needs an update
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
@@ -985,6 +985,7 @@ sub fetch_root {
 sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
+    $session->set__has_ids2times({});
     my $token = $session->get__token;
     return $self, $token;
 }
