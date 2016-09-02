@@ -787,7 +787,7 @@ sub __discover_methods {
     no strict 'refs';
     my @m = grep { $_ !~ /::/ } keys %{"${pkg}\::"};
     if( $pkg eq 'Yote::ServerObj' ) { #the base, presumably
-        return [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|import|PKG2METHS|ISA)$)/ } @m ];
+        return [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|CARP_TRACE|BEGIN|isa|import|PKG2METHS|ISA|add_to_|remove_from)$)/ } @m ];
     }
 
     my %hasm = map { $_ => 1 } @m;
@@ -799,7 +799,7 @@ sub __discover_methods {
     
     my $base_meths = __discover_methods( 'Yote::ServerObj' );
     my( %base ) = map { $_ => 1 } 'AUTOLOAD', @$base_meths;
-    $meths = [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|BEGIN|isa|import|PKG2METHS|ISA)$)/ && ! $base{$_} } @m ];
+    $meths = [ sort grep { $_ !~ /^(_|[gs]et_|(can|[sg]et|VERSION|AUTOLOAD|DESTROY|BEGIN|isa|import|PKG2METHS|ISA|add_to_|remove_from)$)/ && ! $base{$_} } @m ];
     $Yote::ServerObj::PKG2METHS->{$pkg} = $meths;
     
     $meths;
