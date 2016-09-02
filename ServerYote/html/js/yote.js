@@ -423,7 +423,6 @@ yote.init = function( args ) {
             if( appname ) {
                 root.fetch_app( [appname], function( result ) {
                     if( Array.isArray( result ) ) {
-                        console.log( [ result,"RESSY" ] );
                         app = result[0];
                         acct = result[1];
                     } else {
