@@ -490,7 +490,10 @@ sub invoke_payload {
     # fetch root always sends the root back for an update
     #
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )
-         && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+             && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
+        if( $action eq 'init_root' ) {
+            $session = $obj->{SESSION};
+        }
         push @should_have, $server_root_id;
         my $cls = ref( $server_root );
         my $d = $server_root->{DATA};
@@ -984,7 +987,9 @@ sub fetch_root {
 
 sub init_root {
     my $self = shift;
-    my $session = $self->{SESSION} || $self->_create_session;
+
+    $self->{SESSION} ||= $self->_create_session;
+    my $session = $self->{SESSION};
     $session->set__has_ids2times({});
     my $token = $session->get__token;
     return $self, $token;

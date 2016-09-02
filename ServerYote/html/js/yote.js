@@ -414,7 +414,9 @@ yote.init = function( args ) {
 
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( app, acct ) {
+                root.fetch_app( [appname], function( anapp, anacct ) {
+                    app  = anapp;
+                    acct = anacct;
                     handler( root, app, acct );
                 } );
             } else {
@@ -424,8 +426,9 @@ yote.init = function( args ) {
     }, errhandler );
 
     yote.logout = function( handler ) {
+        alert( app );
         if( app ) {
-            app.logout(function() {
+            app.logout([],function() {
                 localStorage.clear();
 
                 acct = undefined;
