@@ -140,7 +140,7 @@ yote.init = function( args ) {
                 return Object.keys( obj._data ).length;
             };
         }
-        var mnames = class2meths[ cls ] ? class2meths[ cls ] : objrecord ? objrecord._meths : {};
+        var mnames = class2meths[ cls ] ? class2meths[ cls ] : objrecord ? objrecord._meths : [];
         obj._meths = mnames;
         mnames.forEach( function( mname ) {
             obj[ mname ] = makeMethod( mname );
