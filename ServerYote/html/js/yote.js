@@ -54,12 +54,6 @@ yote.init = function( args ) {
 
     var _register = function( id, obj ) {
         id2obj[ id ] = obj;
-        localStorage.setItem( id, JSON.stringify( {
-            id    : obj.id,
-            _cls  : obj._cls,
-            _data : obj._data,
-            _meths : obj._meths
-        } ) );
     }
 
 
@@ -140,7 +134,7 @@ yote.init = function( args ) {
                 return Object.keys( obj._data ).length;
             };
         }
-        var mnames = class2meths[ cls ] ? class2meths[ cls ] : objrecord ? objrecord._meths : {};
+        var mnames = class2meths[ cls ] ? class2meths[ cls ] : objrecord ? objrecord._meths : [];
         obj._meths = mnames;
         mnames.forEach( function( mname ) {
             obj[ mname ] = makeMethod( mname );
@@ -150,19 +144,7 @@ yote.init = function( args ) {
     
     // returns an object, either the cache or server
     var _fetch = function( id ) {
-        if( id2obj[id] ) {
-            return id2obj[id];
-        }
-        var objdata = JSON.parse( localStorage.getItem( id ) );
-        if( ! objdata ) {
-            return null;
-        }
-        var obj = makeObjSkell( objdata._cls, objdata );
-        obj._data = objdata._data;
-        obj.id = id;
-        id2obj[id] = obj;
-        
-        return obj;
+        return id2obj[id];
     }; //_fetch
 
     yote.fetch = _fetch;
@@ -312,8 +294,8 @@ yote.init = function( args ) {
         var oReq = new XMLHttpRequest();
         errhandl = errhandl || globalErrHandler;
         oReq.addEventListener("loadend", reqListener( handl, errhandl ) );
-        oReq.addEventListener("error", function(e) { alert('error : ' + e) } );
-        oReq.addEventListener("abort", function(e) { alert('abort : ' + e) } );
+        oReq.addEventListener("error", function(e) { console.warn('error : ' + e) } );
+        oReq.addEventListener("abort", function(e) { console.warn('abort : ' + e) } );
 
         console.log( "CONTACTING SERVER ASYNC via url : " + yoteServerURL + 
                      '/' + id +
@@ -336,17 +318,18 @@ yote.init = function( args ) {
                                               } );
 */
         var sendData = new FormData();
-        sendData.set( 'p', JSON.stringify( { pl    : readiedData, //payload
-                                                i     : id,                 
-                                                t     : token ? token : '_',
-                                                a     : action
-                                              } ) );
+        var payload = JSON.stringify( { pl : readiedData, //payload
+                                        i  : id,                 
+                                        t  : token ? token : '_',
+                                        a  : action
+                                      } );
+        sendData.set( 'p', payload );
         sendData.set( 'f', files.length ); // number of files
         for( var i=0; i<files.length; i++ ) {
             sendData.set( 'f' + i, files[i], files[i].name );
         }
-        sendData.set( "A", "B" );
-        console.log( "About to send to server : ", sendData, sendData.has("A") );
+
+        console.log( "About to send to server : " + payload );
 
         // data must always be an array, though that array may have different data structures inside of it
         // as vehicles for data
@@ -409,12 +392,16 @@ yote.init = function( args ) {
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
     }
-    contact( '_', 'init_root', [], function(root,token) {
+    contact( '_', 'init_root', [], function(newroot,newtoken) {
+        token = newtoken;
+        root = newroot;
         localStorage.setItem( 'token', token );
 
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( app, acct ) {
+                root.fetch_app( [appname], function( newapp, newacct ) {
+                    app = newapp;
+                    acct = newacct;
                     handler( root, app, acct );
                 } );
             } else {
@@ -425,14 +412,16 @@ yote.init = function( args ) {
 
     yote.logout = function( handler ) {
         if( app ) {
-            app.logout(function() {
+            app.logout([],function() {
                 localStorage.clear();
 
                 acct = undefined;
                 token = undefined;
                 app = undefined;
 
-                contact( '_', 'init_root', [], function(root,token) {
+                contact( '_', 'init_root', [], function(newerroot,newertoken) {
+                    token = newertoken;
+                    root = newerroot;
                     localStorage.setItem( 'token', token );
 
                     if( appname ) {
@@ -448,6 +437,9 @@ yote.init = function( args ) {
 
             }, function(err) { localStorage.clear(); } );
         } else {
+            acct = undefined;
+            token = undefined;
+            
             localStorage.clear();
         }
     } //yote.logout

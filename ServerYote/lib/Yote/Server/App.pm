@@ -44,6 +44,8 @@ sub logout {
     my $self = shift;
     my $root = $self->{SESSION}{SERVER_ROOT};
     $root->_destroy_session( $self->{SESSION}->get__token ) if $root;
+    delete $self->{SESSION};
+    1;
 } #logout
 
 sub login {

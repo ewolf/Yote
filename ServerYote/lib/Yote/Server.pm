@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.12';
+$VERSION = '1.13';
 
 our $DEBUG = 0;
 
@@ -235,6 +235,8 @@ sub _run_loop {
 sub _log {
     my( $msg, $sev ) = @_;
     $sev //= 1;
+    open my $out, ">>/opt/yote/log/yote.log";
+    print $out "$msg\n";
     print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
 }
 
@@ -416,7 +418,7 @@ sub _process_request {
 sub invoke_payload {
     my $self     = shift;
 
-    _log( "jsony $_[0]" );
+    _log( "payload $_[0]" );
 
     my $req_data = from_json( shift );
     my( $file_uploads ) = shift;
@@ -466,13 +468,16 @@ sub invoke_payload {
     if( $session ) {
         $obj->{SESSION} = $session;
         $obj->{SESSION}{SERVER_ROOT} = $server_root;
+
     }
 
     # <<------------- the actual method call --------------->>
     my(@res) = ($obj->$action( @$in_params ));
+
+    $session = $obj->{SESSION};
+    
     # this is included in what is  returned to the client 
     my $out_res = $store->_xform_in( \@res, 'allow datastructures' );
-
 
     # the ids that were referenced explicitly in the
     # method call.
@@ -485,7 +490,10 @@ sub invoke_payload {
     #
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
     my( @updates, %methods );
-
+    
+    _log( "out ids ".join(', ',@out_ids) );
+    _log( "Should have ".join(', ',@should_have) );
+    
     #
     # fetch root always sends the root back for an update
     #
@@ -498,7 +506,7 @@ sub invoke_payload {
             id    => $server_root_id,
             cls   => $cls,
             data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-        };
+        } if $action eq 'init_root' || $action eq 'fetch_root';
         if( $action eq 'fetch_app' ) {
             my( $app, $login ) = @res;
             $d = $app->{DATA};
@@ -527,46 +535,55 @@ sub invoke_payload {
             }
         }
         $methods{ $cls } = $server_root->_callable_methods;
-    } 
-    if( $session)  {
-        my %should_seen;
-        #
-        # check if existing are in the session
-        #
-        for my $should_have_id ( @should_have, keys %$ids2times ) {
-            next unless 0 == $should_seen{$should_have_id}++;
-            # check if this needs an update
+    }
+
+    my %should_seen;
+    for my $should_have_id ( @should_have, keys %$ids2times ) {
+        _log( " ($session) check $should_have_id " . ( $should_seen{$should_have_id} > 0 ? " has seen " : " not yet seen" ) );
+        next unless 0 == $should_seen{$should_have_id}++;
+        my $add_to_updates = 1;
+        if( $session ) {
+            $add_to_updates = 0;
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
-
+            _log( " Checking <$should_have_id> update [ $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms ]" );
             if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
-                my $should_have_obj = $store->fetch( $should_have_id );
-                my $ref = ref( $should_have_obj );
-                my $data;
-                if( $ref eq 'ARRAY' ) {
-                    $data = [ map { $store->_xform_in( $_ ) } @$should_have_obj ];
-                } elsif(  $ref eq 'HASH' ) {
-                    $data = { map { $_ =>  $store->_xform_in( $should_have_obj->{$_} ) } keys %$should_have_obj };
-                } else {
-                    my $d = $should_have_obj->{DATA};
-                    $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-                    $methods{$ref} ||= $should_have_obj->_callable_methods;
-                }
-                my $update = {
-                    id    => $should_have_id,
-                    cls   => $ref,
-                    data  => $data,
-                };
-                push @updates, $update;
-                $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
+                _log( " <$should_have_id> needs update" );
+                $add_to_updates = 1;
             }
-        } #each object the client should have
-    }
+        }
+        next unless $add_to_updates;
+        my $should_have_obj = $store->fetch( $should_have_id );
+        my $ref = ref( $should_have_obj );
+        my $data;
+        if( $ref eq 'ARRAY' ) {
+            $data = [ map { $store->_xform_in( $_ ) } @$should_have_obj ];
+        } elsif(  $ref eq 'HASH' ) {
+            $data = { map { $_ =>  $store->_xform_in( $should_have_obj->{$_} ) } keys %$should_have_obj };
+        } else {
+            my $d = $should_have_obj->{DATA};
+            $data = { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+            $methods{$ref} ||= $should_have_obj->_callable_methods;
+        }
+        my $update = {
+            id    => $should_have_id,
+            cls   => $ref,
+            data  => $data,
+        };
+        push @updates, $update;
+        _log( "adding update ($should_have_id)" );
+        if( $session ) {
+            $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
+        }
+    } #each have seen id
 
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
                             } );
+
+    _log( "out > $out_json" );
+    
     delete $obj->{SESSION};
     $self->{STORE}->stow_all;
 
@@ -985,6 +1002,7 @@ sub fetch_root {
 sub init_root {
     my $self = shift;
     my $session = $self->{SESSION} || $self->_create_session;
+    $self->{SESSION} = $session;
     $session->set__has_ids2times({});
     my $token = $session->get__token;
     return $self, $token;
