@@ -20,6 +20,12 @@ use Data::Dumper;
 use JSON;
 use URI::Escape;
 
+sub _log {
+    my( $msg ) = @_;
+    open my $out, ">>/opt/yote/log/yote.log";
+    print $out "$msg\n";
+}
+
 unless( $main::yote_server ) {
     eval('use Yote::ConfigData');
     my $yote_root_dir = $@ ? '/opt/yote' : Yote::ConfigData->config( 'yote_root' );
@@ -68,7 +74,7 @@ if( ref $@ eq 'HASH' ) {
     $out_json = to_json( $@ );
     undef $@;
 } elsif( $@ ) {
-    print STDERR Data::Dumper->Dump(["ERRY <$@>"]);
+    _log( "ERRY <$@>" );
     $out_json = to_json( {
         err => 'ERROR',
                          } );
@@ -78,7 +84,7 @@ print $cgi->header(
     -status => '200 OK',
     -type => 'text/json'
     );
-print STDERR Data::Dumper->Dump(["OUTY <$out_json>"]);
+_log("OUTY <$out_json>");
 print $out_json;
 $main::yote_server->{STORE}->stow_all;
 

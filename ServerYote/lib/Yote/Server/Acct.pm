@@ -1,6 +1,5 @@
 package Yote::Server::Acct;
 
-
 use strict;
 use warnings;
 
