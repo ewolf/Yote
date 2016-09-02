@@ -1,5 +1,7 @@
 2016-09-01 eric wolf  <coyocanid@gmail.com>
 	* Version 1.12 : fixed nit in UUID call
+	*  on the javascript side, yote calls unroll the server results into arguments for the callback functions.
+	*  fixed a bug in yote.js where objects were not being reconsituted with their correct methods.
 	* Version 1.11
 	* added onLogin method for accounts
 	* added protocol for file uploads

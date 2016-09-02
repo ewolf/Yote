@@ -71,24 +71,20 @@ yote.init = function( args ) {
             var that = this;
             var id = this.id;
 
-            if( typeof data === 'function' ) {
-                failhandler = handler;
-                handler = data;
-                data = [];
-            } else if( ! Array.isArray( data ) ) {
-                // TODO - maybe detect if there are non-functions in the arguments list? gather into array all non-function args
-                // like so
-                data = [data];
+            if( ! Array.isArray( data ) ) {
+                var err = "Error, call without paramers (even empty ones), so not doing this";
+                console.warn( err );
+                failhandler( err );
             }
 
             var res = contact( id, nm, data, handler, failhandler );
         };
     };
 
-    var makeObjSkell = function( cls ) {
+    var makeObjSkell = function( cls, objrecord ) {
         var obj = {
             _cls  : cls,
-            _data : {},
+            _data : objrecord ? objrecord._data : {},
             listeners : {},
             
             // takes a function that takes this object as a
@@ -144,7 +140,7 @@ yote.init = function( args ) {
                 return Object.keys( obj._data ).length;
             };
         }
-        var mnames = class2meths[ cls ] || [];
+        var mnames = class2meths[ cls ] ? class2meths[ cls ] : objrecord ? objrecord._meths : {};
         obj._meths = mnames;
         mnames.forEach( function( mname ) {
             obj[ mname ] = makeMethod( mname );
@@ -161,7 +157,7 @@ yote.init = function( args ) {
         if( ! objdata ) {
             return null;
         }
-        var obj = makeObjSkell( objdata._cls );
+        var obj = makeObjSkell( objdata._cls, objdata );
         obj._data = objdata._data;
         obj.id = id;
         id2obj[id] = obj;
@@ -264,8 +260,7 @@ yote.init = function( args ) {
         // results
         if( res.result && succHandle ) {
             var resses = processReturn( res.result );
-            var finalRes = resses.length > 1 ? resses : resses[0];
-            succHandle( finalRes );
+            succHandle.apply( succHandle, resses );
         }
     }; //processRaw
 
@@ -414,20 +409,12 @@ yote.init = function( args ) {
     if( ! handler ) {
         console.warn( "Warning : yote.init called without handler" );
     }
-    contact( '_', 'init_root', [], function(res) {
-        root  = res[0];
-        token = res[1];
+    contact( '_', 'init_root', [], function(root,token) {
         localStorage.setItem( 'token', token );
 
         if( handler ) {
             if( appname ) {
-                root.fetch_app( [appname], function( result ) {
-                    if( Array.isArray( result ) ) {
-                        app = result[0];
-                        acct = result[1];
-                    } else {
-                        app = result;
-                    }
+                root.fetch_app( [appname], function( app, acct ) {
                     handler( root, app, acct );
                 } );
             } else {
@@ -445,18 +432,11 @@ yote.init = function( args ) {
                 token = undefined;
                 app = undefined;
 
-                contact( '_', 'init_root', [], function(res) {
-                    root  = res[0];
-                    token = res[1];
+                contact( '_', 'init_root', [], function(root,token) {
                     localStorage.setItem( 'token', token );
 
                     if( appname ) {
-                        root.fetch_app( [appname], function( result ) {
-                            if( Array.isArray( result ) ) {
-                                app = result[0];
-                            } else {
-                                app = result;                                
-                            }
+                        root.fetch_app( [appname], function( app ) {
                             if( handler ) {
                                 handler( root, app );
                             }
