@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.13';
+$VERSION = '1.14';
 
 our $DEBUG = 0;
 
@@ -725,7 +725,7 @@ sub _xform_in {
                 return [ map { ref $_ ? $self->_xform_in( $_, $allow_datastructures ) : "v$_" } @$val ];
             }
             elsif( ref( $val ) eq 'HASH' && ! tied %$val ) {
-                return { map { $_ => ( ref( $val->{$_} ) ? $self->_xform_in( $val->{$_}, $allow_datastructures ) : "v$_" ) } keys %$val };
+                return { map { $_ => ( ref( $val->{$_} ) ? $self->_xform_in( $val->{$_}, $allow_datastructures ) : "v$val->{$_}" ) } keys %$val };
             }
         }
         return $self->_get_id( $val );
