@@ -491,8 +491,8 @@ sub invoke_payload {
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
     my( @updates, %methods );
     
-    _log( "out ids ".join(', ',@out_ids) );
-    _log( "Should have ".join(', ',@should_have) );
+    # _log( "out ids ".join(', ',@out_ids) );
+    # _log( "Should have ".join(', ',@should_have) );
     
     #
     # fetch root always sends the root back for an update
@@ -539,16 +539,17 @@ sub invoke_payload {
 
     my %should_seen;
     for my $should_have_id ( @should_have, keys %$ids2times ) {
-        _log( " ($session) check $should_have_id " . ( $should_seen{$should_have_id} > 0 ? " has seen " : " not yet seen" ) );
+#        _log( " ($session) check $should_have_id " . ( $should_seen{$should_have_id} > 0 ? " has seen " : " not yet seen" ) );
         next unless 0 == $should_seen{$should_have_id}++;
         my $add_to_updates = 1;
         if( $session ) {
             $add_to_updates = 0;
+_log([$ids2times->{$should_have_id},"CHK"]);
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
-            _log( " Checking <$should_have_id> update [ $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms ]" );
+#            _log( " Checking <$should_have_id> update [ $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms ]" );
             if( $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms )) {
-                _log( " <$should_have_id> needs update" );
+#                _log( " <$should_have_id> needs update" );
                 $add_to_updates = 1;
             }
         }
@@ -571,7 +572,7 @@ sub invoke_payload {
             data  => $data,
         };
         push @updates, $update;
-        _log( "adding update ($should_have_id)" );
+#        _log( "adding update ($should_have_id)" );
         if( $session ) {
             $ids2times->{$should_have_id} = [Time::HiRes::gettimeofday];
         }

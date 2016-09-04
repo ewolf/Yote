@@ -441,6 +441,20 @@ yote.init = function( args ) {
             token = undefined;
             
             localStorage.clear();
+            contact( '_', 'init_root', [], function(newerroot,newertoken) {
+                root = newerroot;
+                token = newertoken;
+                localStorage.setItem( 'token', token );
+                if( appname ) {
+                    root.fetch_app( [appname], function( app ) {
+                        if( handler ) {
+                            handler( root, app );
+                        }
+                    } );
+                } else if( handler ) {
+                    handler( root );
+                }
+            } );
         }
     } //yote.logout
     
