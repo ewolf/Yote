@@ -418,7 +418,7 @@ sub _process_request {
 sub invoke_payload {
     my $self     = shift;
 
-    _log( "payload $_[0]" );
+    _log( "payload $_[0] " );
 
     my $req_data = from_json( shift );
     my( $file_uploads ) = shift;

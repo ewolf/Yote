@@ -413,7 +413,6 @@ yote.init = function( args ) {
     }, errhandler );
 
     yote.logout = function( handler ) {
-        alert( app );
         if( app ) {
             app.logout([],function() {
                 localStorage.clear();
