@@ -22,7 +22,7 @@ sub _create_account {
     my( $self, $un, $pw, $class_override ) = @_;
     my $accts = $self->get__accts({});
 
-    if( $accts->{$un} ) {
+    if( $accts->{lc($un)} ) {
         $self->_err( "Unable to create account" );
     }
 
@@ -36,7 +36,7 @@ sub _create_account {
     # TODO - create an email infrastructure for account validation
     $acct->set_app( $self );
     
-    $accts->{$un} = $acct;
+    $accts->{lc($un)} = $acct;
     $acct;
 } #_create_account
 
@@ -52,7 +52,7 @@ sub login {
     my( $self, $un, $pw ) = @_;
 
     # returns account, cookie. only way to get account object
-    my $acct = $self->get__accts({})->{$un};
+    my $acct = $self->get__accts({})->{lc($un)};
 
     # doing it like this so a failed attempt has about the same amount of time
     # as an attempt against a nonexistant account. maybe random microsleep?

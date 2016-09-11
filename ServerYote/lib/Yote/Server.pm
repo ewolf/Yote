@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.14';
+$VERSION = '1.16';
 
 our $DEBUG = 0;
 
@@ -418,7 +418,7 @@ sub _process_request {
 sub invoke_payload {
     my( $self, $raw_req_data, $file_uploads ) = @_;
 
-    _log( "payload $_[0] " );
+    _log( "payload $raw_req_data " );
 
     my $req_data = from_json( $raw_req_data );
 

@@ -68,7 +68,9 @@ yote.init = function( args ) {
             if( ! Array.isArray( data ) ) {
                 var err = "Error, call without paramers (even empty ones), so not doing this";
                 console.warn( err );
-                failhandler( err );
+                if( failhandler ) {
+                    failhandler( err );
+                }
             }
 
             var res = contact( id, nm, data, handler, failhandler );
