@@ -30,11 +30,15 @@ sub new {
     
 } #new
 
+sub path {
+    shift->{path};
+}
+
 sub req {
     shift->{r}
 }
 
-sub load_app {
+sub _load_app {
     my( $self, $appname ) = @_;
 
     eval('use Yote::ConfigData');
@@ -70,13 +74,13 @@ sub load_app {
         $login->{SESSION} = $session;
     }
     $app;
-} #load_app
+} #_load_app
 
 sub haslogin {
     defined shift->{login};
 }
 
-sub err {
+sub _err {
     my( $self, $err ) = @_;
     $err //= $@;
     if( ref $err ) {
@@ -85,11 +89,20 @@ sub err {
     } elsif( $err ) {
         die $err;
     }
-}
+} #_err
 
 sub lasterr {
     shift->{last_err};
 }
+
+sub logout {
+    my $self = shift;
+    my $token_cookie = Apache2::Cookie->new( $self->{r},
+                                             -name => "token",
+                                             -path => "/$self->{cookie_path}",
+                                             -value => 0 );
+    $token_cookie->bake( $self->{r} );
+} #logout
 
 sub login {
     my $self = shift;
@@ -108,17 +121,17 @@ sub login {
 sub tmpl {
     my( $self, $tname ) = @_;
     "$self->{template_path}/$tname.tx";
-}
+} #tmpl
 
 sub make_page {
     my $self = shift;
 
     my $tx = new Text::Xslate;
-    $self->load_app($self->{app_name});
+    $self->_load_app($self->{app_name});
     eval {
         $self->login;
     };
-    $self->err;
+    $self->_err;
     my( @path ) = @{$self->{path}};
     $self->{r}->print( $tx->render( $self->tmpl($self->{main_template}), { 
         op => $self, } ) );
