@@ -12,6 +12,7 @@ use Yote::Server;
 use CGI;
 use DateTime;
 use Data::Dumper;
+use Encode;
 use JSON;
 use URI::Escape;
 
@@ -36,7 +37,7 @@ my $cgi = CGI->new;
 
 # check if a file upload
 my $json_payload = uri_unescape(scalar($cgi->param('p')));
-
+_log( "IN : '$json_payload'" );
 my $uploads = $cgi->param('f');
 my( @uploads );
 if( $uploads ) {
@@ -66,20 +67,21 @@ eval {
 };
 
 if( ref $@ eq 'HASH' ) {
-    $out_json = to_json( $@ );
+    $out_json = encode_json( $@ );
     undef $@;
 } elsif( $@ ) {
     _log( "ERRY <$@>" );
-    $out_json = to_json( {
+    $out_json = encode_json( {
         err => 'ERROR',
                          } );
 }
 
 print $cgi->header(
     -status => '200 OK',
-    -type => 'text/json'
+    -type => 'text/json; charset=utf-8'
     );
-_log("OUTY <$out_json>");
+$out_json = Encode::decode('utf8',$out_json);
+_log( "CGI OUT <$out_json>" );
 print $out_json;
 $main::yote_server->{STORE}->stow_all;
 

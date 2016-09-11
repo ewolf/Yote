@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.17';
+$VERSION = '1.18';
 
 our $DEBUG = 0;
 
@@ -389,11 +389,11 @@ sub _process_request {
         };
 
         if( ref $@ eq 'HASH' ) {
-            $out_json = to_json( $@ );
+            $out_json = encode_json( $@ );
         } 
         elsif( $@ ) {
             _log( "ERROR : $@>" );
-            $out_json = to_json( {
+            $out_json = encode_json( {
                 err => $@,
                                  } );
         }
@@ -414,14 +414,13 @@ sub _process_request {
 
     } #child
 } #_process_request
-
 sub invoke_payload {
     my( $self, $raw_req_data, $file_uploads ) = @_;
 
     _log( "payload $raw_req_data " );
 
-    my $req_data = from_json( $raw_req_data );
-
+    my $req_data = decode_json( $raw_req_data );
+    
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
     
     my $server_root = $self->{STORE}->fetch_server_root;
@@ -477,7 +476,7 @@ sub invoke_payload {
     # <<------------- the actual method call --------------->>
     #
     my(@res) = ($obj->$action( @$in_params ));
-
+    
     #
     # this is included in what is  returned to the client
     #

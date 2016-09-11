@@ -6,6 +6,7 @@ use Data::RecordStore;
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
 use Test::More;
+use JSON;
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
@@ -31,16 +32,24 @@ sub test_suite {
     my $store = Data::RecordStore->open( $dir );
     my $id  = $store->stow( "FOO FOO" );
     my $id2 = $store->stow( "BAR BAR" );
-    
+    my $json_data = encode_json( {
+        todo => [ "Käse essen"  ],
+                             } );
+    my $id3 = $store->stow( $json_data );
+
+    $store = Data::RecordStore->open( $dir );    
     is( $id2, $id + 1, "Incremental object ids" );
     is( $store->fetch( $id ), "FOO FOO", "first item saved" );
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
-
-    $store->recycle( 1 );
-    my $id3 = $store->stow( "BUZ BUZ" );
-    is( $id3, $id, "Got back recycled id" );
-    my $id4 = $store->stow( "LA LA" );
-    is( $id4, $id2 + 1, "Post recycled id" );
+    is( $store->fetch( $id3 ), encode_json( {
+        todo => [ "Käse essen"  ],
+                                        } ), "third item saved" );
+    
+    $store->recycle( $id );
+    my $id4 = $store->stow( "BUZ BUZ" );
+    is( $id4, $id, "Got back recycled id" );
+    my $id5 = $store->stow( "LA LA" );
+    is( $id5, $id3 + 1, "Post recycled id" );
 
     my $ds = Data::RecordStore::FixedStore->open( "LLA4", "$dir2/filename" );
     my( @r ) = (
