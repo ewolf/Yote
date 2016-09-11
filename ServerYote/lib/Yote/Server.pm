@@ -547,7 +547,6 @@ sub invoke_payload {
         my $add_to_updates = 1;
         if( $session ) {
             $add_to_updates = 0;
-_log([$ids2times->{$should_have_id},"CHK"]);
             my( $client_s, $client_ms )  = @{ $ids2times->{$should_have_id} || [] };
             my( $server_s, $server_ms )  = $store->_last_updated( $should_have_id );
 #            _log( " Checking <$should_have_id> update [ $client_s == 0 || $server_s > $client_s || ($server_s == $client_s && $server_ms > $client_ms ]" );
@@ -675,7 +674,10 @@ sub __transform_params {
     }
     if( ( index( $param, 'v' ) != 0 && index($param, 'f' ) != 0 ) && !$session->get__has_ids2times({})->{$param} ) {
         # obj id given, but the client should not have that id
-        die "Client requested obj with id '$param' which it should not have.";
+        if( $param ) {
+            die "Client requested obj with id '$param' which it should not have.";
+        }
+        return undef;
     }
     return $self->_xform_out( $param, $files );
 } #__transform_params

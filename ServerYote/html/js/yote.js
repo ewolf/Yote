@@ -282,8 +282,10 @@ yote.init = function( args ) {
                     files.push.apply( files, morefiles ); //unroll files
                     v = 'f' + start + '_' + (start + morefiles.length);
                 }
-            } else {
+            } else if( v !== undefined ) {
                 v = 'v' + v;
+            } else {
+                v = undefined;
             }
             obj[idx] = v;
         }
@@ -455,7 +457,7 @@ yote.init = function( args ) {
                 } else if( handler ) {
                     handler( root );
                 }
-            } );
+            }, function( err ) { if( handler ) handler(); } );
         }
     } //yote.logout
     
