@@ -209,6 +209,10 @@ yote.init = function( args ) {
 
         // check for errors
         if( res.err ) {
+            if( res.needs_resync && resyncHander ) {
+                resyncHander();
+                return;
+            }
             if( failHandle ) {
                 failHandle( res.err );
             }
@@ -390,6 +394,7 @@ yote.init = function( args ) {
     appname = args.appName;
     var handler = args.handler;
     var errhandler = args.errHandler;
+    var resyncHander = args.resyncHander;
 
     globalErrHandler = args.globalErrHandler;
 

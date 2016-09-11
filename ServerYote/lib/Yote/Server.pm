@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.16';
+$VERSION = '1.17';
 
 our $DEBUG = 0;
 
@@ -644,7 +644,8 @@ sub __transform_params {
     if( ( index( $param, 'v' ) != 0 && index($param, 'f' ) != 0 ) && !$session->get__has_ids2times({})->{$param} ) {
         # obj id given, but the client should not have that id
         if( $param ) {
-            die "Client requested obj with id '$param' which it should not have.";
+            _log( "Client requested obj with id '$param' which it should not have." );
+            die { err => 'Sync Error', needs_resync => 1 };
         }
         return undef;
     }

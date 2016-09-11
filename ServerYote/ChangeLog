@@ -1,4 +1,5 @@
 2016-09-01 eric wolf  <coyocanid@gmail.com>
+        * Version 1.17 : added a needs resync error case to send back to the client
         * Version 1.16 : logins are case insensitive now
         * Version 1.14 : correctly handle undefined values being passed in
 	*                simplified update protocol
