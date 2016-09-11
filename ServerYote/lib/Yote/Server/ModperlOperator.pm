@@ -49,32 +49,38 @@ sub _load_app {
     my $server  = new Yote::Server( $options );
     my $store   = $server->store;
     my $root    = $store->fetch_server_root;
-    my $session = $root->_fetch_session( $self->{token} );
-    $root->{SESSION} = $session;
-    unless( $session ) {
-        ($root,my $token) = $root->init_root;
-        $self->{token} = $token;
-        my $token_cookie = Apache2::Cookie->new( $self->{r},
-                                                 -name => "token",
-                                                 -path => "/$self->{cookie_path}",
-                                                 -value => $self->{token} );
-        $token_cookie->bake( $self->{r} );
-    }
-
-
-    $self->{root}    = $root;
+    
+    my $session = $root->_fetch_session( $self->{token} ) || $self->_init_session;
     $self->{session} = $session;
+    $root->{SESSION} = $session; # _fetch_session doens't attach the session to the root oddly. TODO - look into this.
+    
+    $self->{root}    = $root;
     $self->{store}   = $store;
     
     my( $app, $login ) = $root->fetch_app( $appname );
-    $app->{SESSION} = $session;
-    $self->{app}   = $app;
-    $self->{login} = $login;
-    if( $login ) {
-        $login->{SESSION} = $session;
+    if( $app ) {
+        $app->{SESSION} = $session;
+        $self->{app}   = $app;
+        $self->{login} = $login;
+        if( $login ) {
+            $login->{SESSION} = $session;
+        }
+        return $app;
     }
-    $app;
+    # oh, no app here. That's not good. TODO - figure out what to do.
 } #_load_app
+
+sub _init_session {
+    my $self = shift;
+    my($root, $token) = $self->{root}->init_root;
+    $self->{token} = $token;
+    my $token_cookie = Apache2::Cookie->new( $self->{r},
+                                             -name => "token",
+                                             -path => "/$self->{cookie_path}",
+                                             -value => $self->{token} );
+    $token_cookie->bake( $self->{r} );
+    $root->{SESSION};
+}
 
 sub haslogin {
     defined shift->{login};
@@ -102,6 +108,12 @@ sub logout {
                                              -path => "/$self->{cookie_path}",
                                              -value => 0 );
     $token_cookie->bake( $self->{r} );
+    delete $self->{token};
+    delete $self->{login};
+
+    #re-establish a new session
+    $self->_init_session;
+    '';
 } #logout
 
 sub login {
