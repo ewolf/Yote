@@ -5,10 +5,6 @@ use warnings;
 no warnings 'uninitialized';
 
 use lib '/opt/yote/lib';
-use lib '/home/wolf/proj/Yote/ServerYote/lib';
-use lib '/home/wolf/proj/Yote/LockServer/lib';
-use lib '/home/wolf/proj/Yote/FixedRecordStore/lib';
-use lib '/home/wolf/proj/Yote/YoteBase/lib';
 
 use Yote;
 use Yote::Server;
@@ -84,9 +80,7 @@ print $cgi->header(
     -status => '200 OK',
     -type => 'text/json; charset=utf-8'
     );
-print STDERR Data::Dumper->Dump([$out_json,"AFOR"]);
 $out_json = Encode::decode('utf8',$out_json);
-print STDERR Data::Dumper->Dump([$out_json,"AR"]);
 _log( "CGI OUT <$out_json>" );
 print $out_json;
 $main::yote_server->{STORE}->stow_all;
