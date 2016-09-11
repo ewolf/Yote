@@ -30,6 +30,9 @@ BEGIN {
     use strict 'refs';    
 }
 
+#
+# Set up the root with some data
+#
 my $dir = tempdir( CLEANUP => 1 );
 my $server = new Yote::Server( { yote_root_dir => $dir, yote_port => 8881 } );
 my $store = $server->{STORE};
@@ -124,6 +127,7 @@ sub test_suite {
 
     # try no token, and with token
     my( $retcode, $hdrs, $ret ) = msg( '_', '_', 'test' );
+
     is( $retcode, 200, "root node can call test" );
     is_deeply( $hdrs, {
         'Content-Length' => '57',
@@ -156,10 +160,8 @@ sub test_suite {
                          update
                   ) ), 'correct methods for fetched server root' );
 
-    # all the things root can return are returned and since there is no token
-    # all would have to be stored
-    is_deeply( [ sort { $a->{id} <=> $b->{id} } @{$ret->{updates}} ], 
-               [ sort { $a->{id} <=> $b->{id} } ( 
+    is_deeply( [sort { $a->{id} <=> $b->{id} } @{$ret->{updates}}], 
+               [ sort { $a->{id} <=> $b->{id} } (
                      {
                          cls  => 'Yote::ServerRoot', 
                          id   => $root->{ID}, 
@@ -170,45 +172,51 @@ sub test_suite {
                              fooArr  => $store->_get_id( $fooArr ),
                          } 
                      },
+
                      {
-                         cls => 'Yote::ServerObj',
-                         id  => $store->_get_id( $fooObj ),
+                         cls  => 'Yote::ServerObj', 
+                         id   => $store->_get_id( $fooObj ),
                          data => {
                              innerfoo => $store->_get_id( $fooObj->get_innerfoo ),
                          }
                      },
+
                      {
-                         cls => 'HASH',
-                         id  => $store->_get_id( $fooHash ),
+                         cls  => 'HASH', 
+                         id   => $store->_get_id( $fooHash ),
                          data => {
-                             innerFooHash => $store->_get_id( $fooHash->{innerFooHash} ),
-                             someTxt => 'vvvtxtyTxt'
+                             innerFooHash => $store->_get_id( $otherO ),
+                             someTxt      => 'vvvtxtyTxt',
                          }
-                         
                      },
+
                      {
-                         cls => 'ARRAY',
-                         id  => $store->_get_id( $fooArr ),
+                         cls  => 'ARRAY', 
+                         id   => $store->_get_id( $fooArr ),
                          data => [
                              $store->_get_id( $otherO ),
                              'vvinner',
                              'vwinnyo',
-                             ]
+                         ]
                      },
+
                      {
-                         cls => 'ARRAY',
-                         id  => $store->_get_id( $innerfoo ),
+                         cls  => 'ARRAY', 
+                         id   => $store->_get_id( $fooObj->get_innerfoo ),
                          data => [
                              'vinnerbar',
                              'vvinnercar',
                              $store->_get_id( $otherO ),
-                             ]
+                         ]
                      },
+
                      {
-                         cls => 'Yote::ServerObj',
-                         id  => $store->_get_id( $otherO ),
-                         data => {},
+                         cls  => 'Yote::ServerObj', 
+                         id   => $store->_get_id( $otherO ),
+                         data => {
+                         }
                      },
+
                  ) ], "updates for fetch_root by id, no token" );
 
     # now try with a token
@@ -272,7 +280,6 @@ sub test_suite {
 
     is_deeply( $ret->{methods}, {
         'Yote::ServerObj' =>  [ qw( absorb someMethod ) ],
-        'Yote::ServerRoot' => [ qw( create_token fetch_app fetch_root init_root test update ) ],
         Testy => [qw( create_account login logout test tickle )] },
                "methods for testy app" );
     my( $testyobjid, $testyLogin ) = @{$ret->{result}};
@@ -285,9 +292,7 @@ sub test_suite {
     ok( $attached_objid, "testyobj has its attached obj" );
     is_deeply( $id2up->{$attached_objid}{data}, {}, "attached obj has no data yet" );
 
-    is( $id2up->{$root->{ID}}{cls}, 'Yote::ServerRoot', "Server Obj resturned as it always is for calls to fetch_app" );
-    is_deeply( [sort keys %{$id2up->{$root->{ID}}{data}}],
-               [qw( fooArr fooHash fooObj txt )], "Server obj has correct keys" );
+    ok( ! $id2up->{$root->{ID}}, "Server Obj not returned as it was in the session" );
 
     # now call a method on testy that changes the attached obj
     # but does not return it
