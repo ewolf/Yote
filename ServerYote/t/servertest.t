@@ -156,14 +156,60 @@ sub test_suite {
                          update
                   ) ), 'correct methods for fetched server root' );
 
-    is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
-                                  id   => $root->{ID}, 
-                                  data => {
-                                      txt     => 'vSOMETEXT',
-                                      fooObj  => $store->_get_id( $fooObj ),
-                                      fooHash => $store->_get_id( $fooHash ),
-                                      fooArr  => $store->_get_id( $fooArr ),
-                                  } }], "updates for fetch_root by id, no token" );
+    # all the things root can return are returned and since there is no token
+    # all would have to be stored
+    is_deeply( [ sort { $a->{id} <=> $b->{id} } @{$ret->{updates}} ], 
+               [ sort { $a->{id} <=> $b->{id} } ( 
+                     {
+                         cls  => 'Yote::ServerRoot', 
+                         id   => $root->{ID}, 
+                         data => {
+                             txt     => 'vSOMETEXT',
+                             fooObj  => $store->_get_id( $fooObj ),
+                             fooHash => $store->_get_id( $fooHash ),
+                             fooArr  => $store->_get_id( $fooArr ),
+                         } 
+                     },
+                     {
+                         cls => 'Yote::ServerObj',
+                         id  => $store->_get_id( $fooObj ),
+                         data => {
+                             innerfoo => $store->_get_id( $fooObj->get_innerfoo ),
+                         }
+                     },
+                     {
+                         cls => 'HASH',
+                         id  => $store->_get_id( $fooHash ),
+                         data => {
+                             innerFooHash => $store->_get_id( $fooHash->{innerFooHash} ),
+                             someTxt => 'vvvtxtyTxt'
+                         }
+                         
+                     },
+                     {
+                         cls => 'ARRAY',
+                         id  => $store->_get_id( $fooArr ),
+                         data => [
+                             $store->_get_id( $otherO ),
+                             'vvinner',
+                             'vwinnyo',
+                             ]
+                     },
+                     {
+                         cls => 'ARRAY',
+                         id  => $store->_get_id( $innerfoo ),
+                         data => [
+                             'vinnerbar',
+                             'vvinnercar',
+                             $store->_get_id( $otherO ),
+                             ]
+                     },
+                     {
+                         cls => 'Yote::ServerObj',
+                         id  => $store->_get_id( $otherO ),
+                         data => {},
+                     },
+                 ) ], "updates for fetch_root by id, no token" );
 
     # now try with a token
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'create_token' );

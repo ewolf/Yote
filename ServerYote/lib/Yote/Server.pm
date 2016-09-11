@@ -497,19 +497,15 @@ sub invoke_payload {
     #
     # fetch root always sends the root back for an update
     #
+    my $cls = ref( $server_root );
+    my $d = $server_root->{DATA};
     if ( ( $action eq 'fetch_root' || $action eq 'init_root' || $action eq 'fetch_app' )
              && ( $obj_id eq '_' || $obj_id eq $server_root_id ) ) {
         if( $action eq 'init_root' ) {
             $session = $obj->{SESSION};
         }
         push @should_have, $server_root_id;
-        my $cls = ref( $server_root );
-        my $d = $server_root->{DATA};
-        push @updates, {
-            id    => $server_root_id,
-            cls   => $cls,
-            data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
-        } if $action eq 'init_root' || $action eq 'fetch_root';
+
         if( $action eq 'fetch_app' ) {
             my( $app, $login ) = @res;
             $d = $app->{DATA};
@@ -538,7 +534,7 @@ sub invoke_payload {
             }
         }
         $methods{ $cls } = $server_root->_callable_methods;
-    }
+    } #if init root
 
     my %should_seen;
     for my $should_have_id ( @should_have, keys %$ids2times ) {
@@ -580,6 +576,15 @@ sub invoke_payload {
         }
     } #each have seen id
 
+    if( ( $action eq 'init_root' || $action eq 'fetch_root' ) && ( 0 == grep { $_->{id} == $server_root_id } @updates ) ) {
+        push @updates, {
+            id    => $server_root_id,
+            cls   => $cls,
+            data  => { map { $_ => $d->{$_} } grep { index($_,"_") != 0 } keys %$d },
+        };
+    }
+
+    
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,
