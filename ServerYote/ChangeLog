@@ -1,5 +1,6 @@
 	2016-09-01 eric wolf  <coyocanid@gmail.com>
         * Version 1.14 : correctly handle undefined values being passed in
+	*                simplified update protocol
 	* Version 1.13 : dumb javascript error
 	* Version 1.12 : fixed nit in UUID call
 	*  on the javascript side, yote calls unroll the server results into arguments for the callback functions.
