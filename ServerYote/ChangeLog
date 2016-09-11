@@ -1,4 +1,8 @@
-	2016-09-01 eric wolf  <coyocanid@gmail.com>
+2016-09-01 eric wolf  <coyocanid@gmail.com>
+	* Version 1.19 : Added Yote::Server::ModperlOperator
+	* This thing needs documentation *sigh*
+	
+2016-09-01 eric wolf  <coyocanid@gmail.com>
         * Version 1.18 : unicode support for input/output
         * Version 1.17 : added a needs resync error case to send back to the client
         * Version 1.16 : logins are case insensitive now

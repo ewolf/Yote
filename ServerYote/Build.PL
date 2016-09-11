@@ -59,6 +59,7 @@ my $builder = Module::Build->new(
     requires => {
         'perl'                  => 'v5.12',
         'Yote'                  => 1.31,
+        'JSON'                  => 0,
         'IO::Socket::SSL'       => 2.024,
         'Lock::Server'          => 1.73,
         'Test::More'            => 0,
