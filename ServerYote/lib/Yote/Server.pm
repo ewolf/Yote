@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.14';
+$VERSION = '1.16';
 
 our $DEBUG = 0;
 

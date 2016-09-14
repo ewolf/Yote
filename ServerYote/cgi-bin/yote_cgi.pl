@@ -4,11 +4,6 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use lib '/home/wolf/proj/Yote/YoteBase/lib';
-use lib '/home/wolf/proj/Yote/FixedRecordStore/lib';
-use lib '/home/wolf/proj/Yote/ServerYote/lib';
-use lib '/home/wolf/proj/Yote/LockServer/lib';
-use lib '/home/wolf/proj/Yote/CCCC/lib';
 use lib '/opt/yote/lib';
 
 use Yote;
