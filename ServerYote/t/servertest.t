@@ -84,7 +84,7 @@ sub msg {  #returns resp code, headers, response pased from json
     my( $obj_id, $token, $action, @params ) = @_;
     
     my $socket = new IO::Socket::INET( "127.0.0.1:8881" ) or die "Error contacting server : $@";
-    my $payload = 'p=' . to_json( {
+    my $payload = 'p=' . encode_json( {
         i => $obj_id,
         t => $token,
         a => $action,
@@ -110,7 +110,7 @@ sub msg {  #returns resp code, headers, response pased from json
         while( $resp = <$socket> ) {
             $rtxt .= $resp;
         }
-        $ret = from_json( $rtxt );
+        $ret = decode_json( $rtxt );
     }
     return ( $code, \%hdr, $ret );
 }

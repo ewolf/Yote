@@ -1,4 +1,5 @@
-
+1.07 - updated test to include unicode characters
+	
 1.06 - added version to Make.PL
 
 1.05 - added version to Build.PL. changed name from DB::DataStore to Data::RecordStore
