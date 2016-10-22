@@ -5,6 +5,7 @@ no strict 'refs';
 
 use Apache2::Cookie;
 use Apache2::Const qw(:common);
+
 use Data::Dumper;
 use Text::Xslate qw(mark_raw);
 use Encode;
@@ -20,8 +21,8 @@ sub new {
     #
     my $yote_root_dir = '/opt/yote';
     eval {
-        require Yote::ConfigData;
-        $yote_root_dir = Yote::ConfigData->config( 'yote_root' );
+        require Yote::Server::ConfigData;
+        $yote_root_dir = Yote::Server::ConfigData->config( 'yote_root' );
     };
     unshift @INC, "$yote_root_dir/lib";
     my $yote_options = Yote::Server::load_options( $yote_root_dir );
@@ -31,7 +32,7 @@ sub new {
 
 
     bless {
-        apps          => $options{apps},
+        apps          => $options{apps}, # hash of app -> app info
         template_path => $options{template_path},
         root          => $root,
         tx            => new Text::Xslate(
@@ -50,31 +51,12 @@ sub new {
 
 } #new
 
-
-sub logout {
-    my( $self, $state ) = @_;
-
-    my $req = $state->{req};
-    my $app = $state->{app};
-    if( $app ) {
-        $app->logout();
-    }
-    my $appinfo = $state->{app_info};
-    my $cookie_path = '/';
-    my $token_cookie = Apache2::Cookie->new( $req,
-                                             -name => "yoken",
-                                             -path => $cookie_path,
-                                             -value => 0 );
-    $token_cookie->bake( $req );
-}
-
 sub handle_request {
     my( $self, $req ) = @_;
 
     my $ruri = $req->uri;
     $ruri =~ s!^/!!;
     my( $app_path, @path  ) = split '/', $ruri;
-    print STDERR Data::Dumper->Dump([$req->uri,$app_path,\@path,"UR"]);
 
     my $jar = Apache2::Cookie::Jar->new($req);
     my $token_cookie = $jar->cookies("yoken");
@@ -91,7 +73,7 @@ sub handle_request {
                                               -value => $session->get__token );
        $token_cookie->bake( $req );
     }
-    my $template = 'main';
+    my $template = $appinfo->{main_template} || 'main';
     if( $appinfo && $root ) {
         $root->{SESSION} = $session;
         ( $app, $login ) = $root->fetch_app( $appinfo->{app_name} );
@@ -99,28 +81,37 @@ sub handle_request {
         if( $login ) {
             $login->{SESSION} = $session;
         }
-        $template = "$app_path/main";
+        $template = "$app_path/$template";
     }
 
-    my $state = {
-        app_info => $appinfo,
-        app_path => $app_path,
-        app      => $app,
-        login    => $login,
-        op       => $self,
-        req      => $req,
-        session  => $session,
-        path     => \@path,
-        template => $template,
-    };
+    my( $path_args );
+    my $path = [ @path ];
+    while( @path ) {
+        my $k = shift @path;
+        my $v = shift @path;
+        $path_args->{$k} = $v;
+    }
 
-    bless $state, 'Yote::Server::ModperlOperatorState';
-    $state->{state} = $state;
+    my $state_manager_class = $appinfo->{state_manager_class} || 'Yote::Server::ModperlOperatorStateManager';
+    my $state_manager = "$state_manager_class"->new( {
+        app_info  => $appinfo,
+        app_path  => $app_path,
+        path_args => $path_args,
+        app       => $app,
+        login     => $login,
+        op        => $self,
+        req       => $req,
+        session   => $session,
+        path      => $path,
+        path_args => $path_args,
+        template  => $template,
+	uri       => $ruri,
+    } );
 
     my $res;
     eval {
-        $self->_check_actions( $state );
-        $res = $self->make_page( $state );
+        $state_manager->_check_actions();
+        $res = $self->make_page( $state_manager );
         $root->{STORE}->stow_all;
     };
     if( $@ ) {
@@ -130,42 +121,96 @@ sub handle_request {
 
 } #handle_request
 
+sub setStateVar {
+    my( $self, $state, $key, $val ) = @_;
+    $state->{$key} = $val;
+    return;
+}
+
 sub tmpl {
     my( $self, @path ) = @_;
     join( '/', $self->{template_path}, @path ).'.tx';
 }
 
-sub _check_actions {
-    my( $self, $state );
-    # login check, et al go here
-}
-
 sub make_page {
-    my( $self, $state ) = @_;
+    my( $self, $state_manager ) = @_;
 
-    my $req = $state->{req};
-    if( $state->{redirect} ) {
-        $req->headers_out->set(Location => $state->{redirect});
+    my $req = $state_manager->{req};
+    if( $state_manager->{redirect} ) {
+        $req->headers_out->set(Location => $state_manager->{redirect});
         return REDIRECT;
     }
     
-    my $template = $state->{template};
+    my $template = $state_manager->{template};
 
-    my $html = $self->{tx}->render( $self->tmpl( $template ), {%$state} );
+    my $html = $self->{tx}->render( $self->tmpl( $template ), {%$state_manager} );
 
     $req->print( mark_raw($html) );
 
     return OK;
 } #make_page
 
-package Yote::Server::ModperlOperatorState;
+package Yote::Server::ModperlOperatorStateManager;
 
-sub fetch {
+sub new {
+    my( $pkg, $args ) = @_;
+    my $self = {};
+    for my $arg (qw[ app_info app_path app login op req session path template uri state ]) {
+        $self->{$arg}= $args->{$arg};
+    }
+
+    bless $self, $pkg;
+}
+
+sub logout {
+    my( $self ) = @_;
+
+    my $req = $self->{req};
+    my $app = $self->{app};
+    if( $app ) {
+        $app->logout();
+    }
+    my $appinfo = $self->{app_info};
+    my $cookie_path = '/';
+    my $token_cookie = Apache2::Cookie->new( $req,
+                                             -name => "yoken",
+                                             -path => $cookie_path,
+                                             -value => 0 );
+    $token_cookie->bake( $req );
+}
+
+sub tmpl {
+    my( $self, @path ) = @_;
+    $self->{op}->tmpl( $self->{app_info}{template_path}, @path);
+}
+
+sub upload {
+    my( $self, $name ) = @_;
+
+    my $upload = $self->{req}->upload( $name );
+    
+    if( $upload ) {
+        my $fn = $upload->filename;
+        my( $original_name, $extension )  = ( $fn =~ m!([^/]+\.([^/\.]+))$! );
+
+        my $tmprand = "/tmp/".UUID::Tiny::create_uuid_as_string();
+        $upload->link( $tmprand );
+
+        my $img = $self->{session}->{STORE}->newobj( {
+            file_name      => $original_name,
+            file_extension => $extension,
+            file_path      => $tmprand,
+                                          } );
+        return $img;
+    }
+} #upload
+
+sub fetch {  # fetch scrambled id
     my( $self, $in_sess_id ) = @_;
     $self->{session}->get_ids([])->[$in_sess_id-1];
 }
 
-sub id {
+sub id { #scramble id for object
     my( $self, $obj ) = @_;
     my $o2i = $self->{session}->get_obj2id({});
     if( $o2i->{$obj} ) {
@@ -178,6 +223,10 @@ sub id {
     $id;
 } #id
 
+sub _check_actions {
+    my( $self );
+    # login check, et al go here
+}
 
 
 

@@ -599,6 +599,9 @@ sub absorb {
 
 } #absorb
 
+sub id {
+    shift->{ID};
+}
 
 =head2 set( $field, $value )
 
