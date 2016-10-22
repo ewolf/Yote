@@ -121,12 +121,6 @@ sub handle_request {
 
 } #handle_request
 
-sub setStateVar {
-    my( $self, $state, $key, $val ) = @_;
-    $state->{$key} = $val;
-    return;
-}
-
 sub tmpl {
     my( $self, @path ) = @_;
     join( '/', $self->{template_path}, @path ).'.tx';
@@ -154,11 +148,7 @@ package Yote::Server::ModperlOperatorStateManager;
 
 sub new {
     my( $pkg, $args ) = @_;
-    my $self = {};
-    for my $arg (qw[ app_info app_path app login op req session path template uri state ]) {
-        $self->{$arg}= $args->{$arg};
-    }
-
+    my $self = {%$args};
     bless $self, $pkg;
 }
 

@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.42';
+$VERSION = '1.43';
 
 =head1 NAME
 
@@ -257,7 +257,7 @@ sub fetch {
             die $@ if $@;
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
-            $self->_store_weak( $id, \$obj );
+            $self->_store_weak( $id, $obj );
             $obj->_load();
             return $obj;
         }
@@ -358,7 +358,7 @@ sub __get_id {
         my $tied = tied @$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
-            $self->_store_weak( $tied->[0], \$ref );
+            $self->_store_weak( $tied->[0], $ref );
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -367,7 +367,7 @@ sub __get_id {
         $tied = tied @$ref; $tied->[3] = $ref;
         push( @$ref, @data );
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, \$ref );
+        $self->_store_weak( $id, $ref );
         return $id;
     }
     elsif( $class eq 'Yote::Hash' ) {
@@ -378,7 +378,7 @@ sub __get_id {
         my $tied = tied %$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "HASH" );
-            $self->_store_weak( $tied->[0], \$ref );
+            $self->_store_weak( $tied->[0], $ref );
             return $tied->[0];
         }
         my $id = $self->{_DATASTORE}->_get_id( $class );
@@ -390,7 +390,7 @@ sub __get_id {
             $ref->{$key} = $vals{$key};
         }
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, \$ref );
+        $self->_store_weak( $id, $ref );
         return $id;
     }
     else {
@@ -400,7 +400,7 @@ sub __get_id {
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
         }
-        $self->_store_weak( $ref->{ID}, \$ref );
+        $self->_store_weak( $ref->{ID}, $ref );
 
         return $ref->{ID};
     }
@@ -536,6 +536,7 @@ sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die unless $ref;
     $self->{_WEAK_REFS}{$id} = $ref;
+    
     weaken( $self->{_WEAK_REFS}{$id} );
 } #_store_weak
 
