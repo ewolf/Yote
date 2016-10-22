@@ -71,7 +71,10 @@ sub logout {
 sub handle_request {
     my( $self, $req ) = @_;
 
-    my( $app_path, @path  ) = grep { $_ } split '/', $req->uri;
+    my $ruri = $req->uri;
+    $ruri =~ s!^/!!;
+    my( $app_path, @path  ) = split '/', $ruri;
+    print STDERR Data::Dumper->Dump([$req->uri,$app_path,\@path,"UR"]);
 
     my $jar = Apache2::Cookie::Jar->new($req);
     my $token_cookie = $jar->cookies("yoken");
