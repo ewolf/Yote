@@ -70,6 +70,7 @@ sub load_options {
         use_ssl              => 0,
         SSL_cert_file        => '',
         SSL_key_file         => '',
+        session_class        => 'Yote::Server::Session',
     };
 
     #
@@ -839,6 +840,16 @@ sub _log {
     Yote::Server::_log(shift);
 }
 
+#
+# fetches or creates session which has a _token field
+#
+sub fetch_session {
+    my( $self, $token ) = @_;
+    my $session = $self->_fetch_session( $token ) || $self->_create_session;
+    $self->{SESSION} = $session;
+    $session;
+}
+
 sub _fetch_session {
     my( $self, $token ) = @_;
     
@@ -903,7 +914,7 @@ sub _create_session {
     #
     my $session = $self->{STORE}->newobj( {
         _has_ids2times => {},
-        _token => $token } );
+        _token => $token }, $self->{session_class} );
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
         $slots->[ 0 ]{ $token } = $session;
     } else {
@@ -922,7 +933,6 @@ sub _create_session {
     $self->{STORE}->_stow( $slots );
     $self->{STORE}->_stow( $slot_data );
     $self->{STORE}->unlock( 'token_mutex' );
-    
     return $session;
 
 } #_create_session
@@ -966,7 +976,6 @@ sub fetch_app {
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
-    
     return $app, $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
 } #fetch_app
 
