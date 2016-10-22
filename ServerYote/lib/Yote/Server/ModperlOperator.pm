@@ -37,6 +37,25 @@ sub new {
 
 } #new
 
+
+sub logout {
+    my( $self, $state ) = @_;
+
+    my $req = $state->{req};
+    my $app = $state->{app};
+    if( $app ) {
+        $app->logout();
+    }
+    my $appinfo = $state->{app_info};
+    my $cookie_path = $appinfo ? $appinfo->{cookie_path} : '/';
+    my $token_cookie = Apache2::Cookie->new( $req,
+                                             -name => "token",
+                                             -path => $cookie_path,
+                                             -value => 0 );
+    
+    $token_cookie->bake( $req );
+}
+
 sub handle_request {
     my( $self, $req ) = @_;
 
@@ -80,15 +99,18 @@ sub handle_request {
         path     => \@path,
         template => $template,
     };
+    bless $state, 'Yote::Server::ModperlOperatorState';
 
+    my $res;
     eval {
         $self->_check_actions( $state );
-        $self->make_page( $state );
+        $res = $self->make_page( $state );
         $root->{STORE}->stow_all;
     };
     if( $@ ) {
         print STDERR Data::Dumper->Dump([$@,"ERRY"]);
     }
+    return $res;
 
 } #handle_request
 
@@ -105,15 +127,42 @@ sub _check_actions {
 sub make_page {
     my( $self, $state ) = @_;
 
-    my $req      = $state->{req};
+    my $req = $state->{req};
+    if( $state->{redirect} ) {
+        $req->headers_out->set(Location => $state->{redirect});
+        return REDIRECT;
+    }
+    
     my $template = $state->{template};
 
-    my $html = $self->{tx}->render( $self->tmpl( $template ), $state );
+    my $html = $self->{tx}->render( $self->tmpl( $template ), {%$state} );
 
     $req->print( mark_raw($html) );
 
     return OK;
 } #make_page
+
+package Yote::Server::ModperlOperatorState;
+
+sub fetch {
+    my( $self, $in_sess_id ) = @_;
+    $self->{session}->get_ids([])->[$in_sess_id-1];
+}
+
+sub id {
+    my( $self, $obj ) = @_;
+    my $o2i = $self->{session}->get_obj2id({});
+    if( $o2i->{$obj} ) {
+        return $o2i->{$obj};
+    }
+    my $ids = $self->{session}->get_ids([]);
+    push( @$ids, $obj );
+    my $id = @$ids;
+    $o2i->{$obj} = $id;
+    $id;
+}
+
+
 
 
 1;
