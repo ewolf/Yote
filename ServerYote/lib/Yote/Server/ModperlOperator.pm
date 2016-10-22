@@ -47,7 +47,7 @@ sub logout {
         $app->logout();
     }
     my $appinfo = $state->{app_info};
-    my $cookie_path = $appinfo ? $appinfo->{cookie_path} : '/';
+    my $cookie_path = $appinfo ? '/' . $appinfo->{cookie_path} : '/';
     my $token_cookie = Apache2::Cookie->new( $req,
                                              -name => "token",
                                              -path => $cookie_path,
@@ -69,12 +69,11 @@ sub handle_request {
     my( $app, $login, $session );
     $session = $root ? $root->fetch_session( $token_cookie ? $token_cookie->value : 0 ) : undef;
     unless( $token_cookie && $token_cookie->value eq $session->get__token ) {
-        my $cookie_path = $appinfo ? $appinfo->{cookie_path} : '/';
+        my $cookie_path = $appinfo ? '/' . $appinfo->{cookie_path} : '/';
         $token_cookie = Apache2::Cookie->new( $req,
                                               -name => "token",
                                               -path => $cookie_path,
                                               -value => $session->get__token );
-        
        $token_cookie->bake( $req );
     }
     my $template = 'main';
@@ -100,6 +99,7 @@ sub handle_request {
         template => $template,
     };
     bless $state, 'Yote::Server::ModperlOperatorState';
+    $state->{state} = $state;
 
     my $res;
     eval {
@@ -160,7 +160,7 @@ sub id {
     my $id = @$ids;
     $o2i->{$obj} = $id;
     $id;
-}
+} #id
 
 
 
