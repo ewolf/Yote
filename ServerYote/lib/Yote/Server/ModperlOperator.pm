@@ -103,7 +103,6 @@ sub handle_request {
         req       => $req,
         session   => $session,
         path      => $path,
-        path_args => $path_args,
         template  => $template,
 	uri       => $ruri,
     } );

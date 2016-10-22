@@ -358,7 +358,6 @@ sub __get_id {
         my $tied = tied @$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
-            $self->_store_weak( $tied->[0], $ref );
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -378,7 +377,6 @@ sub __get_id {
         my $tied = tied %$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "HASH" );
-            $self->_store_weak( $tied->[0], $ref );
             return $tied->[0];
         }
         my $id = $self->{_DATASTORE}->_get_id( $class );
@@ -400,7 +398,6 @@ sub __get_id {
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
         }
-        $self->_store_weak( $ref->{ID}, $ref );
 
         return $ref->{ID};
     }
@@ -1187,11 +1184,10 @@ sub _recycle_objects {
   # This ignores the possibility of circular references, but that uncommon case
   # is not worth the complexity.
   #
-  for my $referenced_id ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+  for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
       # make sure that these are actually referenced. They may be 
       # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
       # have an extra reference due to the tie.
-
       my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
       my $min_ref_count = 1;
       if( $self->{OBJ_STORE}->_is_dirty( $referenced_id ) ) {
