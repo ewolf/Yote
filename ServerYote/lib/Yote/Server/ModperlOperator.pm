@@ -7,6 +7,8 @@ use Apache2::Cookie;
 use Apache2::Const qw(:common);
 use Data::Dumper;
 use Text::Xslate qw(mark_raw);
+use Encode;
+use HTML::Entities;
 
 use Yote::Server;
 
@@ -32,7 +34,18 @@ sub new {
         apps          => $options{apps},
         template_path => $options{template_path},
         root          => $root,
-        tx            => new Text::Xslate,
+        tx            => new Text::Xslate(
+            function => {
+                html_encode => sub {
+                    # have to convert the text from perl interlal to octets
+                    my $txt = shift;
+                    if( length($txt) != length( Encode::decode('utf8', $txt ) ) ) {
+                        $txt = Encode::decode( 'utf8', $txt );
+                    }
+                    mark_raw( encode_entities($txt));
+                },
+            }
+            ),
     }, $pkg;
 
 } #new
