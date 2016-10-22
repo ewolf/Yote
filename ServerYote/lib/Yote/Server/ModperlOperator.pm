@@ -47,12 +47,11 @@ sub logout {
         $app->logout();
     }
     my $appinfo = $state->{app_info};
-    my $cookie_path = $appinfo ? '/' . $appinfo->{cookie_path} : '/';
+    my $cookie_path = '/';
     my $token_cookie = Apache2::Cookie->new( $req,
-                                             -name => "token",
+                                             -name => "yoken",
                                              -path => $cookie_path,
                                              -value => 0 );
-    
     $token_cookie->bake( $req );
 }
 
@@ -62,16 +61,16 @@ sub handle_request {
     my( $app_path, @path  ) = grep { $_ } split '/', $req->uri;
 
     my $jar = Apache2::Cookie::Jar->new($req);
-    my $token_cookie = $jar->cookies("token");
+    my $token_cookie = $jar->cookies("yoken");
     my $root = $self->{root};
     my $appinfo = $self->{apps}{$app_path};
 
     my( $app, $login, $session );
     $session = $root ? $root->fetch_session( $token_cookie ? $token_cookie->value : 0 ) : undef;
     unless( $token_cookie && $token_cookie->value eq $session->get__token ) {
-        my $cookie_path = $appinfo ? '/' . $appinfo->{cookie_path} : '/';
+        my $cookie_path = '/';
         $token_cookie = Apache2::Cookie->new( $req,
-                                              -name => "token",
+                                              -name => "yoken",
                                               -path => $cookie_path,
                                               -value => $session->get__token );
        $token_cookie->bake( $req );
@@ -98,6 +97,7 @@ sub handle_request {
         path     => \@path,
         template => $template,
     };
+
     bless $state, 'Yote::Server::ModperlOperatorState';
     $state->{state} = $state;
 
