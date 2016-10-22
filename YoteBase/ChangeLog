@@ -1,3 +1,7 @@
+2016-10-30 eric wolf  <coyocanid@gmail.com>
+	* Version 1.42
+	* added _DUMP and _DUMP_ALL methods for Yote::Obj
+
 2016-09-01 eric wolf  <coyocanid@gmail.com>
 	* Version 1.41
 	* fixed out of order bug in loading/initializing objects that could lead into recursion loop

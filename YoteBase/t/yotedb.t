@@ -34,13 +34,18 @@ sub test_suite {
     $root_node->add_to_myList( { objy => 
         $store->newobj( { 
             someval => 124.42,
+            somename => 'Käse',
             someobj => $store->newobj( {
-                innerval => "This is an inner val",
+                innerval => "This is an inner val with Käse essen ",
                                       } ),
                         } ),
                                } );
 
+    is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
+
     $store->stow_all;
+
+    is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
 
     # objects created : root, myList, a hash in myslist, a newobj
     #                   in the hash, a newobj in the obj
@@ -63,8 +68,10 @@ sub test_suite {
 
     is( $dup_root->{ID}, $root_node->{ID} );
     is_deeply( $dup_root->{DATA}, $root_node->{DATA} );
+    is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in yote object" );
+        is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );   
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_innerval, 
-        "This is an inner val" );
+        "This is an inner val with Käse essen " );
     
     # filesize of $dir/1_OBJSTORE should be 360
 
