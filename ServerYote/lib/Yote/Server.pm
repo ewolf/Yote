@@ -327,8 +327,6 @@ sub _process_request {
             $cookies{ $key } = $val;
         }
         
-        _log( "\n[$$]--> : $req" );
-
         # 
         # read certain length from socket ( as many bytes as content length )
         #
@@ -346,7 +344,6 @@ sub _process_request {
             # TODO - make sure install script makes the directories properly
             my $filename = "$self->{yote_root_dir}/html/" . substr( $path, 4 );
             if ( -e $filename ) {
-                _log( "'$filename' exists" );
                 my @stat = stat $filename;
 
                 my $content_type = $filename =~ /css$/ ? 'text/css' : 'text/html';
@@ -365,7 +362,6 @@ sub _process_request {
                 }
                 close IN;
             } else {
-                _log( "404 file '$filename' not found" );
                 $sock->print( "HTTP/1.1 404 FILE NOT FOUND\n\n" );
             }
             $sock->close;
@@ -377,7 +373,6 @@ sub _process_request {
         # POST /
 
         if ( $verb ne 'POST' ) {
-            _log( "Attempted not-suppored '$verb' request" );
             $sock->print( "HTTP/1.1 400 BAD REQUEST\n\n" );
             $sock->close;
         }
@@ -392,7 +387,6 @@ sub _process_request {
             $out_json = encode_json( $@ );
         } 
         elsif( $@ ) {
-            _log( "ERROR : $@>" );
             $out_json = encode_json( {
                 err => $@,
                                  } );
@@ -405,7 +399,6 @@ sub _process_request {
             'Content-Length: ' . bytes::length( $out_json ),
             );
         
-        _log( "<-- 200 OK [$$] ( " . join( ",", @headers ) . " ) ( $out_json )\n" );
         $sock->print( "HTTP/1.1 200 OK\n" . join ("\n", @headers). "\n\n$out_json\n" );
         
         $sock->close;
@@ -417,8 +410,6 @@ sub _process_request {
 sub invoke_payload {
     my( $self, $raw_req_data, $file_uploads ) = @_;
 
-    _log( "payload $raw_req_data " );
-
     my $req_data = decode_json( $raw_req_data );
     
     my( $obj_id, $token, $action, $params ) = @$req_data{ 'i', 't', 'a', 'pl' };
@@ -429,6 +420,7 @@ sub invoke_payload {
 
     my $id_to_last_update_time;
     my $session = $token && $token ne '_' ? $server_root->_fetch_session( $token ) : undef;
+
     if( $session ) {
         $id_to_last_update_time = $session->get__has_ids2times;
     }
@@ -502,9 +494,6 @@ sub invoke_payload {
     my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
     my( @updates, %methods );
     
-    # _log( "out ids ".join(', ',@out_ids) );
-    # _log( "Should have ".join(', ',@should_have) );
-
     #
     # check if existing are in the session
     #
@@ -553,11 +542,9 @@ sub invoke_payload {
                               methods => \%methods,
                             } );
 
-    _log( "out > $out_json" );
-    
     delete $obj->{SESSION};
     $self->{STORE}->stow_all;
-
+    
     return $out_json;
 } #invoke_payload
 
@@ -603,15 +590,6 @@ sub stow_all {
     $self->SUPER::stow_all;
 } #stow_all
 
-sub _stow {
-    my( $self, $obj, $no_timesave ) = @_;
-    $self->SUPER::_stow( $obj );
-
-    unless( $no_timesave ) {
-        my $obj_id = $self->_get_id( $obj );
-    }
-}
-
 sub _last_updated {
     my( $self, $obj_id ) = @_;
     my( $s, $ms ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
@@ -643,7 +621,6 @@ sub __transform_params {
     if( ( index( $param, 'v' ) != 0 && index($param, 'f' ) != 0 ) && !$session->get__has_ids2times({})->{$param} ) {
         # obj id given, but the client should not have that id
         if( $param ) {
-            _log( "Client requested obj with id '$param' which it should not have." );
             die { err => 'Sync Error', needs_resync => 1 };
         }
         return undef;
@@ -854,9 +831,9 @@ sub _fetch_session {
     
     $self->{STORE}->lock( 'token_mutex' );
     my $slots = $self->get__token_timeslots();
+
     for( my $i=0; $i<@$slots; $i++ ) {
         if( my $session = $slots->[$i]{$token} ) {
-            #if( $i < $#$slots ) {
             if( $i > 0 ) {
                 # make sure this is in the most current 'boat'
                 $slots->[0]{ $token } = $session;
@@ -892,7 +869,6 @@ sub _create_session {
     # A list of slot 'boats' which store token -> ip
     #
     my $slots     = $self->get__token_timeslots();
-
     #
     # a list of times. the list index of these times corresponds
     # to the slot 'boats'
@@ -934,6 +910,7 @@ sub _create_session {
     $self->{STORE}->_stow( $slot_data );
     $self->{STORE}->unlock( 'token_mutex' );
 
+
     $session;
 
 } #_create_session
@@ -970,10 +947,8 @@ sub fetch_app {
         if( $@ ) {
             # TODO - have/use a good logging system with clarity and stuff
             # warnings, errors, etc
-            _log( "App '$app_name' not found $@" );
             return undef;
         }
-        _log( "Loading app '$app_name'" );
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
@@ -1007,16 +982,16 @@ use base 'Yote::ServerObj';
 
 sub fetch {  # fetch scrambled id
     my( $self, $in_sess_id ) = @_;
-    $self->get_ids([])->[$in_sess_id];
+    $self->get__ids([])->[$in_sess_id];
 }
 
 sub id { #scramble id for object
     my( $self, $obj ) = @_;
-    my $o2i = $self->get_obj2id({});
+    my $o2i = $self->get__obj2id({});
     if( $o2i->{$obj} ) {
         return $o2i->{$obj};
     }
-    my $ids = $self->get_ids([]);
+    my $ids = $self->get__ids([]);
     push @$ids, $obj;
     my $id = $#$ids;
     $o2i->{$obj} = $id;

@@ -45,6 +45,7 @@ $root->set_txt( "SOMETEXT" );
 my $fooObj   = $root->get_fooObj;
 my $innerfoo = $fooObj->get_innerfoo;
 $store->stow_all;
+$store->_purge; # this is threaded and WEAK_REFS made before the servers starts and hanging out break the tests
 
 #use Devel::SimpleProfiler;
 #Devel::SimpleProfiler::init( '/tmp/foobar', qr/Yote::[^O]|Lock|Data|test_suite/ );
@@ -155,6 +156,7 @@ sub test_suite {
                l2a( qw(  create_token
                          fetch_app
                          fetch_root
+                         fetch_session
                          init_root
                          test
                          update
@@ -236,6 +238,7 @@ sub test_suite {
                l2a( qw( create_token
                         fetch_app
                         fetch_root
+                        fetch_session
                         init_root
                         test
                         update
@@ -276,6 +279,7 @@ sub test_suite {
 
     # now try some objects that are more than just server root objects
     ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_app', 'Testy' );
+
     is( $retcode, 200, "able to fetch allowed object" );
 
     is_deeply( $ret->{methods}, {
@@ -297,6 +301,7 @@ sub test_suite {
     # now call a method on testy that changes the attached obj
     # but does not return it
     ( $retcode, $hdrs, $ret ) = msg( $testyobjid, $token, 'tickle' );
+
     is( $retcode, 200, "tickle worked" );
     my $updates = { map { $_->{id} => $_ } @{$ret->{updates}} };
     is_deeply( $updates->{$attached_objid}, {
