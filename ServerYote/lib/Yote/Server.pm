@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.19';
+$VERSION = '1.20';
 
 our $DEBUG = 0;
 
@@ -70,7 +70,6 @@ sub load_options {
         use_ssl              => 0,
         SSL_cert_file        => '',
         SSL_key_file         => '',
-        session_class        => 'Yote::Server::Session',
     };
 
     #
@@ -914,7 +913,8 @@ sub _create_session {
     #
     my $session = $self->{STORE}->newobj( {
         _has_ids2times => {},
-        _token => $token }, $self->{session_class} );
+        _token => $token }, 'Yote::ServerSession' );
+    
     if( $slot_data->[ 0 ] == $current_time_chunk ) {
         $slots->[ 0 ]{ $token } = $session;
     } else {
@@ -933,7 +933,8 @@ sub _create_session {
     $self->{STORE}->_stow( $slots );
     $self->{STORE}->_stow( $slot_data );
     $self->{STORE}->unlock( 'token_mutex' );
-    return $session;
+
+    $session;
 
 } #_create_session
 
@@ -999,6 +1000,30 @@ sub update {
 }
 
 # ------- END Yote::ServerRoot
+
+package Yote::ServerSession;
+
+use base 'Yote::ServerObj';
+
+sub fetch {  # fetch scrambled id
+    my( $self, $in_sess_id ) = @_;
+    $self->get_ids([])->[$in_sess_id];
+}
+
+sub id { #scramble id for object
+    my( $self, $obj ) = @_;
+    my $o2i = $self->get_obj2id({});
+    if( $o2i->{$obj} ) {
+        return $o2i->{$obj};
+    }
+    my $ids = $self->get_ids([]);
+    push @$ids, $obj;
+    my $id = $#$ids;
+    $o2i->{$obj} = $id;
+    $id;
+} #id
+
+# ------- END Yote::ServerSession
 
 1;
 

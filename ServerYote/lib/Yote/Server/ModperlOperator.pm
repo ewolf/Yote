@@ -194,30 +194,10 @@ sub upload {
     }
 } #upload
 
-sub fetch {  # fetch scrambled id
-    my( $self, $in_sess_id ) = @_;
-    $self->{session}->get_ids([])->[$in_sess_id-1];
-}
-
-sub id { #scramble id for object
-    my( $self, $obj ) = @_;
-    my $o2i = $self->{session}->get_obj2id({});
-    if( $o2i->{$obj} ) {
-        return $o2i->{$obj};
-    }
-    my $ids = $self->{session}->get_ids([]);
-    push( @$ids, $obj );
-    my $id = @$ids;
-    $o2i->{$obj} = $id;
-    $id;
-} #id
-
 sub _check_actions {
     my( $self );
     # login check, et al go here
 }
-
-
 
 1;
 
