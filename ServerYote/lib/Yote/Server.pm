@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.21';
+$VERSION = '1.22';
 
 our $DEBUG = 0;
 
@@ -952,7 +952,9 @@ sub fetch_app {
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
-    return $app, $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
+    my $acct = $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
+
+    return $app, $acct;
 } #fetch_app
 
 sub fetch_root {
