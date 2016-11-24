@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.41';
+$VERSION = '1.43';
 
 =head1 NAME
 
@@ -257,7 +257,7 @@ sub fetch {
             die $@ if $@;
             $obj->{DATA} = $data;
             $obj->{ID} = $id;
-            $self->_store_weak( $id, \$obj );
+            $self->_store_weak( $id, $obj );
             $obj->_load();
             return $obj;
         }
@@ -358,7 +358,6 @@ sub __get_id {
         my $tied = tied @$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
-            $self->_store_weak( $tied->[0], \$ref );
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -367,7 +366,7 @@ sub __get_id {
         $tied = tied @$ref; $tied->[3] = $ref;
         push( @$ref, @data );
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, \$ref );
+        $self->_store_weak( $id, $ref );
         return $id;
     }
     elsif( $class eq 'Yote::Hash' ) {
@@ -378,7 +377,6 @@ sub __get_id {
         my $tied = tied %$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "HASH" );
-            $self->_store_weak( $tied->[0], \$ref );
             return $tied->[0];
         }
         my $id = $self->{_DATASTORE}->_get_id( $class );
@@ -390,7 +388,7 @@ sub __get_id {
             $ref->{$key} = $vals{$key};
         }
         $self->_dirty( $ref, $id );
-        $self->_store_weak( $id, \$ref );
+        $self->_store_weak( $id, $ref );
         return $id;
     }
     else {
@@ -400,7 +398,6 @@ sub __get_id {
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
         }
-        $self->_store_weak( $ref->{ID}, \$ref );
 
         return $ref->{ID};
     }
@@ -536,6 +533,7 @@ sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die unless $ref;
     $self->{_WEAK_REFS}{$id} = $ref;
+    
     weaken( $self->{_WEAK_REFS}{$id} );
 } #_store_weak
 
@@ -599,6 +597,9 @@ sub absorb {
 
 } #absorb
 
+sub id {
+    shift->{ID};
+}
 
 =head2 set( $field, $value )
 
@@ -823,6 +824,77 @@ sub _instantiate {
 } #_instantiate
 
 sub DESTROY {}
+
+sub _DUMP_ALL {
+    my( $self, $seen, $show ) = @_;
+    $seen //= {};
+    $show //= {};
+
+    delete $show->{$self->{ID}};
+    $seen->{$self->{ID}} = 1;
+    my $buf = $self->_DUMP;
+    
+    for my $obj_id (sort { $a <=> $b } grep { index($_,'v') != 0 && 0 == $seen->{$_}++ } values %{$self->{DATA}}) {
+        $show->{$obj_id} = 1;
+    }
+
+    while(1) {
+        my( $obj_id ) = keys %$show;
+        last unless $obj_id;
+        $buf .= "-------------------------\n";
+
+        my $obj = $self->{STORE}->fetch( $obj_id );
+        my $r = ref( $obj );
+        
+        if( $r eq 'ARRAY' ) {
+            $buf .= "$obj_id (ARRAY)\n";
+            my $tied = tied @$obj;
+            delete $show->{$obj_id};
+            for my $item (@{$tied->[1]}) {
+                if( $item > 0 ) {
+                    $show->{$item} = 1;
+                    $buf .= "\t* $item\n";
+                } else {
+                    $buf .= "\t".substr($item,1)."\n";
+                }
+            }
+        }
+        elsif( $r eq 'HASH' ) {
+            $buf .= "$obj_id (HASH)\n";
+            delete $show->{$obj_id};
+            my $tied = tied %$obj;
+            my $th = $tied->[1];
+            for my $key (keys %$th) {
+                my $item = $th->{$key};
+
+                if( $item > 0 ) {
+                    $show->{$item} = 1;
+                    $buf .= "\t$key -> * $item\n";
+                } else {
+                    $buf .= "\t$key -> ".substr($item,1)."\n";
+                }
+            }
+        }
+        else {
+            $buf .= $obj->_DUMP_ALL( $seen, $show );
+        }
+    }
+    $buf;
+} #_DUMP_ALL
+
+sub _DUMP {
+    my $self = shift;
+    my $buf = "$self->{ID} (".ref($self).")\n";
+    for my $key (sort keys %{$self->{DATA}}) {
+        my $val = $self->{DATA}{$key};
+        if( index( $val, 'v' ) != 0 ) {
+            $buf .= "\t$key -> * $val \n";
+        } else {
+            $buf .= "\t$key -> ".substr($val,1)."\n";
+        }
+    }
+    $buf;
+} #_DUMP
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -1112,11 +1184,10 @@ sub _recycle_objects {
   # This ignores the possibility of circular references, but that uncommon case
   # is not worth the complexity.
   #
-  for my $referenced_id ( keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+  for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
       # make sure that these are actually referenced. They may be 
       # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
       # have an extra reference due to the tie.
-
       my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
       my $min_ref_count = 1;
       if( $self->{OBJ_STORE}->_is_dirty( $referenced_id ) ) {

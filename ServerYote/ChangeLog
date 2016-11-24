@@ -1,4 +1,12 @@
-	2016-09-01 eric wolf  <coyocanid@gmail.com>
+2016-09-01 eric wolf  <coyocanid@gmail.com>
+	* Version 1.20 : added Yote::ServerSession class which can do a (probably too simple)
+	replacement of object id with a session specific id for that object.
+	The point of this is to not leak object ids.
+2016-09-01 eric wolf  <coyocanid@gmail.com>
+	* Version 1.19 : Added Yote::Server::ModperlOperator
+	* This thing needs documentation *sigh*
+	
+2016-09-01 eric wolf  <coyocanid@gmail.com>
         * Version 1.18 : unicode support for input/output
         * Version 1.17 : added a needs resync error case to send back to the client
         * Version 1.16 : logins are case insensitive now
