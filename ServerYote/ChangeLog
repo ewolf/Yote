@@ -1,3 +1,7 @@
+2016-11-29 eric wolf  <coyocanid@gmail.com>
+	* Version 1.22 : added a handler for yote json requests for the remote proc'y interface in the ModperlHandler
+	* upload file bug in yote.js
+	* yote.js added a way to run functions only when the yote system is ready. onReady
 2016-09-01 eric wolf  <coyocanid@gmail.com>
 	* Version 1.20 : added Yote::ServerSession class which can do a (probably too simple)
 	replacement of object id with a session specific id for that object.
