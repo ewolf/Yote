@@ -468,7 +468,7 @@ sub invoke_payload {
     # <<------------- the actual method call --------------->>
     #
     my(@res) = ($obj->$action( @$in_params ));
-    
+
     #
     # this is included in what is  returned to the client
     #
@@ -637,24 +637,27 @@ sub _xform_out {
             my( $offset_start, $offset_end ) = ( $1, $2 );
             for( my $i=$offset_start; $i < $offset_end; $i++ ) {
                 my $file = $files->[$i];
-                my( $orig_filename ) = ( $file =~ /([^\/]*)$/ );
-                my( $extension ) = ( $orig_filename =~ /\.([^.\/]+)$/ );
-
-                # TODO - cleanup, maybe use File::Temp or something
-                my $newname = "/tmp/".UUID::Tiny::create_uuid_as_string();
-                open (FILE, ">$newname");
-                while (read ($file, my $Buffer, 1024)) {
-                    print FILE $Buffer;
+                if( $file ) {
+                    my( $orig_filename ) = ( $file =~ /([^\/]*)$/ );
+                    my( $extension ) = ( $orig_filename =~ /\.([^.\/]+)$/ );
+                    
+                    # TODO - cleanup, maybe use File::Temp or something
+                    my $newname = "/tmp/".UUID::Tiny::create_uuid_as_string();
+                    open (FILE, ">$newname");
+                    my $fh = $file->fh;
+                    while (read ($fh, my $Buffer, 1024)) {
+                        print FILE $Buffer;
+                    }
+                    close FILE;
+                    # create yote object here that wraps the file name
+                    return $self->newobj( {
+                        file_path => $newname,
+                        file_extension => $extension,
+                        file_name => $orig_filename,
+                                          } );
                 }
-                close FILE;
-
-                # create yote object here that wraps the file name
-                return $self->newobj( {
-                    file_path => $newname,
-                    file_extension => $extension,
-                    file_name => $orig_filename,
-                                      } );
-            }
+            } #finding the file
+            return undef;
         }
     }
     return $self->SUPER::_xform_out( $val );
@@ -942,6 +945,7 @@ sub fetch_app {
     my( $self, $app_name ) = @_;
     my $apps = $self->get__apps;
     my $app  = $apps->{$app_name};
+
     unless( $app ) {
         eval("require $app_name");
         if( $@ ) {
@@ -954,7 +958,7 @@ sub fetch_app {
     }
     my $acct = $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
 
-    return $app, $acct;
+    return $app, $acct, $self->{SESSION};
 } #fetch_app
 
 sub fetch_root {
@@ -987,7 +991,7 @@ sub fetch {  # fetch scrambled id
     $self->get__ids([])->[$in_sess_id];
 }
 
-sub id { #scramble id for object
+sub getid { #scramble id for object
     my( $self, $obj ) = @_;
     my $o2i = $self->get__obj2id({});
     if( $o2i->{$obj} ) {

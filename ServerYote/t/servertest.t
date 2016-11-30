@@ -284,7 +284,9 @@ sub test_suite {
 
     is_deeply( $ret->{methods}, {
         'Yote::ServerObj' =>  [ qw( absorb someMethod ) ],
+        'Yote::ServerSession' => [ qw( fetch getid ) ],
         Testy => [qw( create_account login logout test tickle )] },
+               
                "methods for testy app" );
     my( $testyobjid, $testyLogin ) = @{$ret->{result}};
     is( $testyLogin, 'v', "no login for testy obj " );

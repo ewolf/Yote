@@ -5,6 +5,8 @@ use warnings;
 no warnings 'uninitialized';
 
 use lib '/opt/yote/lib';
+use lib '/home/wolf/proj/Yote/ServerYote/lib';
+use lib '/home/wolf/proj/Yote/YoteBase/lib';
 
 use Yote;
 use Yote::Server;

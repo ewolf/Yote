@@ -37,6 +37,14 @@ var yote = {}; // yote var
 
 
 */
+yote._readyFuns = [];
+
+// when the yote initialization is completed, run this function, passing it
+// root, app, acct, and session ( if avail )
+yote.onReady = function( fun ) {
+    yote._readyFuns.push( fun );
+}
+
 yote.init = function( args ) {
 
     var yoteServerURL = args.yoteServerURL || '';
@@ -44,7 +52,7 @@ yote.init = function( args ) {
     var token, root, app, appname, acct, globalErrHandler;
 
 
-    token = localStorage.getItem('token');
+    token = args.token;
     
     // cache storing objects and their meta-data
     var class2meths = {};
@@ -286,6 +294,7 @@ yote.init = function( args ) {
                 if( morefiles.length > 0 ) {
                     var start = files.length;
                     files.push.apply( files, morefiles ); //unroll files
+                    // f0_1 would be the first group of files 
                     v = 'f' + start + '_' + (start + morefiles.length);
                 }
             } else if( v !== undefined ) {
@@ -404,18 +413,20 @@ yote.init = function( args ) {
     contact( '_', 'init_root', [], function(newroot,newtoken) {
         token = newtoken;
         root = newroot;
-        localStorage.setItem( 'token', token );
-
-        if( handler ) {
-            if( appname ) {
-                root.fetch_app( [appname], function( newapp, newacct ) {
-                    app = newapp;
-                    acct = newacct;
-                    handler( root, app, acct );
-                } );
-            } else {
+        if( appname ) {
+            root.fetch_app( [appname], function( newapp, newacct, session ) {
+                app = newapp;
+                acct = newacct;
+                if( handler ) {
+                    handler( root, app, acct, session );
+                }
+                yote.readyFuns(root, app, acct, session );
+            } );
+        } else {
+            if( handler ) {
                 handler( root );
             }
+            yote.readyFuns(root );
         }
     }, errhandler );
 
@@ -431,7 +442,6 @@ yote.init = function( args ) {
                 contact( '_', 'init_root', [], function(newerroot,newertoken) {
                     token = newertoken;
                     root = newerroot;
-                    localStorage.setItem( 'token', token );
 
                     if( appname ) {
                         root.fetch_app( [appname], function( app ) {
@@ -453,7 +463,6 @@ yote.init = function( args ) {
             contact( '_', 'init_root', [], function(newerroot,newertoken) {
                 root = newerroot;
                 token = newertoken;
-                localStorage.setItem( 'token', token );
                 if( appname ) {
                     root.fetch_app( [appname], function( app ) {
                         if( handler ) {
@@ -468,6 +477,23 @@ yote.init = function( args ) {
     } //yote.logout
     
 }; //yote.init
+
+// invoked when yote is ready and runs all the on ready functions
+// that were defined prior to yote being finished with its initialized.
+yote.readyFuns = function(root,app,acct,session) {
+    
+    yote.onReady = function( fun ) {
+        fun(root,app,acct,session);
+    };
+
+    while( yote._readyFuns.length > 0 ) {
+        var fun = yote._readyFuns.shift();
+        if( fun ) {
+            fun(root,app,acct,session);
+        }
+    }
+
+}
 
 yote.prepUpload = function( files ) {
     return function() {
