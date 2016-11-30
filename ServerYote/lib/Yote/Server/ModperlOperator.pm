@@ -143,7 +143,6 @@ sub handle_json_request {
         $out_json = $self->{server}->invoke_payload( $json_payload, \@uploads );
         $self->{root}->{STORE}->stow_all;
     };
-    print STDERR Data::Dumper->Dump(["PAY",$json_payload,\@uploads,$@]);
     $req->headers_out->set(Type => 'text/json; charset=utf-8' );
     $out_json = Encode::decode('utf8',$out_json);
     $req->print( mark_raw($out_json) );
