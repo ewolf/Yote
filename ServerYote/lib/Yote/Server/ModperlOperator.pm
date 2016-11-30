@@ -10,6 +10,8 @@ use Data::Dumper;
 use Text::Xslate qw(mark_raw);
 use Encode;
 use HTML::Entities;
+use JSON;
+use URI::Escape;
 
 use Yote::Server;
 
@@ -35,6 +37,7 @@ sub new {
         apps          => $options{apps}, # hash of app -> app info
         template_path => $options{template_path},
         root          => $root,
+        server        => $server,
         tx            => new Text::Xslate(
             function => {
                 html_encode => sub {
@@ -119,6 +122,34 @@ sub handle_request {
     return $res;
 
 } #handle_request
+
+sub handle_json_request {
+    my( $self, $req ) = @_;
+
+    my $json_payload = uri_unescape(scalar($req->param('p')));
+    my $in_json = decode_json( $json_payload );
+
+    my( $out_json, @uploads );
+
+    #
+    # scan the payload for files
+    #
+    my $filecount = $req->param('f');
+    for (0..($filecount-1)) {
+        my $f = $req->upload( "f$_" );
+        push @uploads, $f;
+    }
+    eval {
+        $out_json = $self->{server}->invoke_payload( $json_payload, \@uploads );
+        $self->{root}->{STORE}->stow_all;
+    };
+    print STDERR Data::Dumper->Dump(["PAY",$json_payload,\@uploads,$@]);
+    $req->headers_out->set(Type => 'text/json; charset=utf-8' );
+    $out_json = Encode::decode('utf8',$out_json);
+    $req->print( mark_raw($out_json) );
+    return OK;
+} #handle_json_request
+
 
 sub tmpl {
     my( $self, @path ) = @_;
