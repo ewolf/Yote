@@ -34,7 +34,7 @@
    "provides" : {
       "Data::RecordStore" : {
          "file" : "lib/Data/RecordStore.pm",
-         "version" : "1.06"
+         "version" : "1.08"
       },
       "Data::RecordStore::FixedRecycleStore" : {
          "file" : "lib/Data/RecordStore.pm"
@@ -49,5 +49,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.06"
+   "version" : "1.08"
 }

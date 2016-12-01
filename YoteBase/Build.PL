@@ -8,6 +8,7 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
         'Module::Build' => 0.40,
     },
+    dist_abstract      => 'fixed record store',
     create_makefile_pl => 'traditional',
     license            => 'perl',
     module_name        => 'Yote',
