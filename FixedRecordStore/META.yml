@@ -3,6 +3,7 @@ abstract: 'Simple and fast record based data store'
 author:
   - 'Eric Wolf        coyocanid@gmail.com'
 build_requires:
+  JSON: '0'
   Module::Build: '0'
   Test::More: '0'
 configure_requires:

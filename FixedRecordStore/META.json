@@ -16,6 +16,7 @@
    "prereqs" : {
       "build" : {
          "requires" : {
+            "JSON" : "0",
             "Module::Build" : "0",
             "Test::More" : "0"
          }

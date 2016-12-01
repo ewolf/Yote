@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.22';
+$VERSION = '1.23';
 
 our $DEBUG = 0;
 
@@ -235,9 +235,12 @@ sub _run_loop {
 sub _log {
     my( $msg, $sev ) = @_;
     $sev //= 1;
-    open my $out, ">>/opt/yote/log/yote.log";
-    print $out "$msg\n";
-    print STDERR "Yote::Server : $msg\n" if $sev <= $DEBUG;
+    if( $sev <= $DEBUG ) {
+        print STDERR "Yote::Server : $msg\n";
+        open my $out, ">>/opt/yote/log/yote.log" or return;
+        print $out "$msg\n";
+        close $out;
+    }
 }
 
 sub _find_ids_in_data {
