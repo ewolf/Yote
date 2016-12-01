@@ -1,0 +1,1 @@
+be able to open a record store read only
