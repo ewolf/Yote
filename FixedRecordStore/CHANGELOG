@@ -1,3 +1,6 @@
+
+1.08 - added JSON requirement for tests
+	
 1.07 - updated test to include unicode characters
 	
 1.06 - added version to Make.PL

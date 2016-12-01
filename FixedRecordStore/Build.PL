@@ -8,6 +8,7 @@ my $builder = Module::Build->new(
     build_requires => {
         'Test::More'            => 0,
         'Module::Build'         => 0,
+        'JSON'                  => 0,
     },
     dist_abstract      => 'Simple and fast record based data store',
     create_makefile_pl => 'traditional',

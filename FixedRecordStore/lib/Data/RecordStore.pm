@@ -50,7 +50,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.07';
+$VERSION = '1.08';
 
 =head1 METHODS
 

@@ -127,6 +127,7 @@ sub handle_json_request {
     my( $self, $req ) = @_;
 
     my $json_payload = uri_unescape(scalar($req->param('p')));
+
     my $in_json = decode_json( $json_payload );
 
     my( $out_json, @uploads );
