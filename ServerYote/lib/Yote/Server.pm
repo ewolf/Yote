@@ -19,7 +19,7 @@ use UUID::Tiny;
 
 use vars qw($VERSION);
 
-$VERSION = '1.23';
+$VERSION = '1.24';
 
 our $DEBUG = 0;
 
@@ -494,9 +494,9 @@ sub invoke_payload {
     #   these ids are ones that the client should have.
     #   We will check to see if these need updates
     #
-    my @should_have = ( @{ _unroll_ids( $store, \@out_ids ) } );
+    my @should_have = ( @{ _unroll_ids( $store, [@out_ids, keys %$id_to_last_update_time] ) } );
     my( @updates, %methods );
-    
+
     #
     # check if existing are in the session
     #

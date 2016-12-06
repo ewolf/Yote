@@ -1,4 +1,7 @@
- 2016-11-30 eric wolf  <coyocanid@gmail.com>
+2016-12-05 eric wolf  <coyocanid@gmail.com>
+	* Version 1.24 - certain updated objects were not being returned by the server. Fixed that.
+	
+2016-11-30 eric wolf  <coyocanid@gmail.com>
 	* Version 1.23 : quick fix for log foulup
 2016-11-29 eric wolf  <coyocanid@gmail.com>
 	* Version 1.22 : added a handler for yote json requests for the remote proc'y interface in the ModperlHandler
