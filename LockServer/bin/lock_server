@@ -61,7 +61,6 @@ if( $cmd eq 'start' ) {
 
 if( $cmd eq 'run' ) {
     run_lockserver();
-    print STDERR Data::Dumper->Dump(["RANRAN"]);
 }
 
 if( $cmd eq 'restart' ) {

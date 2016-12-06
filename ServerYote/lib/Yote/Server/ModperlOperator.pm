@@ -146,7 +146,7 @@ sub handle_json_request {
     };
     if( $@ ) {
         my $err = ref $@ ? $@ : { err => "INTERNAL ERROR" };
-        $out_json = to_json( $@ );
+        $out_json = to_json( $err );
     }
     $req->headers_out->set(Type => 'text/json; charset=utf-8' );
     $out_json = Encode::decode('utf8',$out_json);

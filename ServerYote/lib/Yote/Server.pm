@@ -539,7 +539,7 @@ sub invoke_payload {
         
     } #each object the client should have
 
-    
+
     my $out_json = to_json( { result  => $out_res,
                               updates => \@updates,
                               methods => \%methods,

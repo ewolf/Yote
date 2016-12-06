@@ -463,7 +463,6 @@ sub get_record {
 # how about an ensure_entry_count right here?
     # also a has_record
     if( $idx < 1 ) {
-        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
         die "get record must be a positive integer";
     }
    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
