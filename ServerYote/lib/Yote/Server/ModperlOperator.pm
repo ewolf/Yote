@@ -69,9 +69,10 @@ sub handle_request {
     my( $app, $login, $session );
     $session = $root ? $root->fetch_session( $token_cookie ? $token_cookie->value : 0 ) : undef;
     unless( $token_cookie && $token_cookie->value eq $session->get__token ) {
-        my $cookie_path = '/';
+        my $cookie_path = "/$appinfo->{cookie_path}";
         $token_cookie = Apache2::Cookie->new( $req,
                                               -name => "yoken",
+                                              -expires => '+1D',
                                               -path => $cookie_path,
                                               -value => $session->get__token );
        $token_cookie->bake( $req );
@@ -195,7 +196,7 @@ sub logout {
         $app->logout();
     }
     my $appinfo = $self->{app_info};
-    my $cookie_path = '/';
+    my $cookie_path = "/$appinfo->{cookie_path}";
     my $token_cookie = Apache2::Cookie->new( $req,
                                              -name => "yoken",
                                              -path => $cookie_path,
