@@ -80,6 +80,7 @@ sub open {
     if( -e $version_file ) {
         CORE::open $FH, "<", $version_file;
         $version = <$FH>;
+        chomp $version;
     } else {
         #
         # a version file needs to be created. if the database
