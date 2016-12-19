@@ -18,7 +18,7 @@ name: Data-RecordStore
 provides:
   Data::RecordStore:
     file: lib/Data/RecordStore.pm
-    version: '1.08'
+    version: '1.09'
   Data::RecordStore::FixedRecycleStore:
     file: lib/Data/RecordStore.pm
   Data::RecordStore::FixedStore:
@@ -27,4 +27,4 @@ requires:
   perl: v5.9.4
 resources:
   license: http://dev.perl.org/licenses/
-version: '1.08'
+version: '1.09'

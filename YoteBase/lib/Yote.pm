@@ -277,13 +277,12 @@ sub fetch {
 
 =cut
 sub run_purger {
-    my $self = shift;
+    my( $self, $make_tally ) = @_;
     $self->stow_all();
     if( $self->_has_weak_refs ) {
 #        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
-
-    "
+"
     OKEY maaaybe we do want to recycle objects because the object index can get pretty big
         at least make it an option?
         
@@ -300,22 +299,19 @@ sub run_purger {
         my( $has_keep ) = $keep_db->get_record( $tid )->[0];
         $keep++ if $has_keep;
     }
-    print STDERR Data::Dumper->Dump(["KEEP $keep of $total"]);
+
     #
     # If there are more things to keep than not, do a db purge, 
     # otherwise, rebuild the db.
     #
     my $do_purge = $keep > ( $total/2 );
-    my $purge_count;
+    my $purged;
     if( $do_purge ) {
-        print STDERR "PURGE objs\n";
-        $purge_count = $self->{_DATASTORE}->_purge_objects( $keep_db );
+        $purged = $self->{_DATASTORE}->_purge_objects( $keep_db, $make_tally );
     } else {
-        print STDERR "COPY sactive\n";
-        $purge_count = $self->_copy_active_ids( $keep_db );
+        $purged = $self->_copy_active_ids( $keep_db, $make_tally );
     }
-    print STDERR Data::Dumper->Dump([$purge_count]);
-    $purge_count;
+    $purged;
 } #run_purger
 
 sub _copy_active_ids {
@@ -340,26 +336,25 @@ sub _copy_active_ids {
     }
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
 
-    my $purge_count;
+    my( @purges );
     for my $keep_id ( 1..$copy_db->entry_count ) {
         
         my( $has_keep ) = $copy_db->get_record( $keep_id )->[0];
-#        print STDERR "$keep_id : $has_keep\n";
         if( $has_keep ) {
             my $obj = $self->fetch( $keep_id );
 
             $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $keep_id - 1 );
             $newstore->_dirty( $obj, $keep_id );
             $newstore->_stow( $obj, $keep_id );
-        } else {
-            $purge_count++;
+        } elsif( $self->{_DATASTORE}{DATA_STORE}->has_entry( $keep_id ) ) {
+            push @purges, $keep_id;
         }
     } #each entry id
 
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
 
-    $purge_count;
+    \@purges;
     
 } #_copy_active_ids
 
@@ -1233,11 +1228,10 @@ sub _max_id {
 
 sub _generate_keep_db {
     my $self = shift;
-
     my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/PURGE_KEEP' );
     $mark_to_keep_store->empty();
     $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
-    
+
     my $check_store = Data::RecordStore::FixedStore->open( "L", $self->{args}{store} . '/CHECK' );
     $check_store->empty();
     
@@ -1295,24 +1289,55 @@ sub _generate_keep_db {
     
 } #_generate_keep_db
 
-sub _purge_objects {
-  my( $self, $mark_to_keep_store ) = @_;
+#
+# Checks to see if the last entries of the stores can be popped off, making the purging quicker
+#
+sub _truncate_dbs {
+    my( $self, $mark_to_keep_store, $keep_tally ) = @_;
+    #loop through each database
+    my $stores = $self->{DATA_STORE}->all_stores;
+    my( @purged );
+    for my $store (@$stores) {
+        my $fn = $store->{FILENAME}; $fn =~ s!/[^/]+$!!;
+        my $keep;
+        while( ! $keep && $store->entry_count ) {
+            my( $check_id ) = @{ $store->get_record($store->entry_count) };
+            ( $keep ) = $mark_to_keep_store->get_record( $check_id )->[0];
+            if( ! $keep ) {
+                if( $self->{DATA_STORE}->delete( $check_id ) ) {
+                    if( $keep_tally ) {
+                        push @purged, $check_id;
+                    }
+                    $mark_to_keep_store->put_record( $check_id, [ 2 ] ); #mark as already removed by truncate
+                }
+            }
+        }
+    }
+    \@purged;
+}
 
-  my $purge_count = 0;
-  
+sub _purge_objects {
+  my( $self, $mark_to_keep_store, $keep_tally ) = @_;
+
+  my $purged = $self->_truncate_dbs( $mark_to_keep_store );
+
   for my $cand ( 1..$mark_to_keep_store->entry_count) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
 
     die "Tried to purge root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {
-        $self->{DATA_STORE}->delete( $cand );
-        $purge_count++;
+        if( $self->{DATA_STORE}->delete( $cand ) ) {
+            $mark_to_keep_store->put_record( $cand, [ 3 ] ); #mark as already removed by purge
+            if( $keep_tally ) {
+                push @$purged, $cand;
+            }
+        }
     }
   }
 
   $mark_to_keep_store->unlink_store;
 
-  $purge_count;
+  $purged;
   
 } #_purge_objects
 

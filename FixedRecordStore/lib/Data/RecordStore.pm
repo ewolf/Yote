@@ -176,7 +176,6 @@ sub stow {
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
         if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
-            print STDERR "keep me in store $current_store_id at index $current_idx_in_store\n";
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
@@ -185,7 +184,6 @@ sub stow {
         # the old store was not big enough (or missing), so remove its record from 
         # there, compacting it if possible
         #
-        print STDERR "Swap me out of store $current_store_id at index $current_idx_in_store\n";
         $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
         
     } #if this already had been saved before
@@ -200,8 +198,6 @@ sub stow {
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
 
-    print STDERR "add me to store $store_id <with $entry_count entries> at index $index_in_store\n";
-    
     $store->put_record( $index_in_store, [ $id, $data ] );
 
     $id;
@@ -210,18 +206,24 @@ sub stow {
 sub delete {
     my( $self, $del_id ) = @_;
     my( $from_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $del_id ) };
-    print STDERR "Delete $del_id ($from_store_id/$current_idx_in_store)\n";
+
     return unless $from_store_id;
+    
     my $from_store = $self->_get_store( $from_store_id );
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->{OBJ_INDEX}->put_record( $del_id, [ 0, 0 ] );
+    1;
+}
+
+sub has_entry {
+    my( $self, $entry_id ) = @_;
+    my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $entry_id ) };
+    return $store_id > 0;
 }
 
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
-    print STDERR "vacate $vacated_store_idx in store $store_id\n";
-    
     my $last_idx = $store->entry_count;
     my $fh = $store->_filehandle;
 
@@ -229,7 +231,6 @@ sub _swapout {
         #
         # if this is the last record in the store, merely truncate the store
         #
-        print STDERR "Last index is $last_idx, so truncating to ".($store->{RECORD_SIZE} * ($last_idx-1))."\n";
         truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
         return;
     }
@@ -291,6 +292,17 @@ sub fetch {
 
     $data;
 } #fetch
+
+=head2 all_stores
+
+Returns a list of all the stores created in this Data::RecordStore
+
+=cut
+sub all_stores {
+    my $self = shift;
+    opendir my $DIR, "$self->{DIRECTORY}/stores";
+    [ map { /(\d+)_OBJSTORE/; $self->_get_store($1) } grep { /_OBJSTORE/ } readdir($DIR) ];
+} #all_stores
 
 sub _get_store {
     my( $self, $store_index ) = @_;
@@ -502,6 +514,20 @@ sub pop {
     $ret;
 } #pop
 
+=head2 last_entry
+
+Return the last record.
+
+=cut
+sub last_entry {
+    my( $self ) = @_;
+
+    my $entries = $self->entry_count;
+    return undef unless $entries;
+    $self->get_record( $entries );
+} #last_entry
+
+
 =head2 push( data )
 
 Add a record to the end of this store. Returns the id assigned
@@ -530,7 +556,6 @@ sub put_record {
     my( $self, $idx, $data ) = @_;
     my $fh = $self->_filehandle;
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
-
     # allows the put_record to grow the data store by no more than one entry
     die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
 
@@ -583,6 +608,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.06  (May 6, 2016))
+       Version 2.0  (Feb 23, 2017))
 
 =cut
