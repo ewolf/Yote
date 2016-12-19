@@ -1140,10 +1140,21 @@ sub open {
   my( $pkg, $obj_store, $args ) = @_;
   my $class = ref( $pkg ) || $pkg;
 
+  my $DATA_STORE;
+  eval {
+      $DATA_STORE = Data::RecordStore->open( $args->{ store } );
+      
+  };
+  if( $@ ) {
+      if( $@ =~ /old format/ ) {
+          die "This yote store is of an older format. It can be converted using the yote_explorer";
+      }
+      die $@;
+  }
   my $self = bless {
       args       => $args,
       OBJ_STORE  => $obj_store,
-      DATA_STORE => Data::RecordStore->open( $args->{ store } ),
+      DATA_STORE => $DATA_STORE,
   }, $class;
   $self->{DATA_STORE}->ensure_entry_count( 1 );
   $self;
