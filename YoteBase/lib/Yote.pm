@@ -209,6 +209,77 @@ sub _newroot {
     Yote::Obj->_new( $self, {}, $self->_first_id );
 }
 
+=head2 copy_from_remote_store( $obj )
+
+ This takes an object that belongs to a seperate store and makes
+ a deep copy of it.
+
+=cut
+sub copy_from_remote_store {
+    my( $self, $obj ) = @_;
+    my $r = ref( $obj );
+    return $obj unless $r;
+    if( $r eq 'ARRAY' ) {
+        return [ map { $self->copy_from_remote_store($_) } @$obj ];
+    } elsif( $r eq 'HASH' ) {
+        return { map { $_ => $self->copy_from_remote_store($obj->{$_}) } keys %$obj };
+    } else {
+        my $data = { map { $_ => $self->copy_from_remote_store($obj->{DATA}{$_}) } keys %{$obj->{DATA}} };
+        return $self->newobj( $data, $r );
+    }
+}
+
+=head2 cache_all()
+
+ This turns on caching for the store. Any objects loaded will
+ remain cached until clear_cache is called. Normally, they
+ would be DESTROYed once their last reference was removed unless
+ they are in a state that needs stowing.
+
+=cut
+sub cache_all {
+    my $self = shift;
+    $self->{CACHE_ALL} = 1;
+}
+
+=head2 uncache( obj )
+
+  This removes the object from the cache if it was in the cache
+
+=cut
+sub uncache {
+    my( $self, $obj ) = @_;
+    if( ref( $obj ) ) {
+        delete $self->{CACHE}{$self->_get_id( $obj )};
+    }
+}
+
+
+
+=head2 pause_cache()
+
+ When called, no new objects will be added to the cache until
+ cache_all is called.
+
+=cut
+sub pause_cache {
+    my $self = shift;
+    $self->{CACHE_ALL} = 0;
+}
+
+=head2 clear_cache()
+
+ When called, this dumps the object cache. Objects that
+ references or have changes that need to be stowed will
+ not be cleared.
+
+=cut
+sub clear_cache {
+    my $self = shift;
+    $self->{_CACHE} = {};
+}
+
+
 
 =head2 fetch( $id )
 
