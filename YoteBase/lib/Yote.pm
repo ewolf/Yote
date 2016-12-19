@@ -141,6 +141,7 @@ no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
 
+use Devel::Refcount 'refcount';
 use File::Copy;
 use WeakRef;
 use Module::Loaded;
@@ -301,13 +302,17 @@ sub compress_store {
     $newdir  //= $original_dir . '_NEW_RECYC';
 
     if( -x $backdir ) {
-        die "Unable to run recycler, backup directory '$newdir' already exists.";
+        die "Unable to run compress store, backup directory '$newdir' already exists.";
     }
 
     if( -x $newdir ) {
-        die "Unable to run recycler, temp directory '$newdir' already exists.";
+        die "Unable to run compress store, temp directory '$newdir' already exists.";
     }
 
+    if( $self->_has_weak_refs ) {
+        die "Unable to run compress store. There are still outstanding references to yote objects that would be deleted during the compress.";
+    }
+    
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
 
     $self->_copy_over( $self->fetch_root, $newstore );
@@ -417,8 +422,10 @@ sub _get_id {
 
 sub __get_id {
     my( $self, $ref ) = @_;
+
     my $class = ref( $ref );
     die "__get_id requires reference. got '$ref'" unless $class;
+    
     if( $class eq 'Yote::Array') {
         return $ref->[0];
     }
@@ -553,6 +560,14 @@ sub _is_dirty {
     my $ans = $self->{_DIRTY}{$id};
     $ans;
 } #_is_dirty
+
+sub _has_weak_refs {
+    my $self = shift;
+
+    # if there is an ARRAY or HASH, since it is tied, it has a reference to itself
+    0 < grep { $_ && refcount($_) > (ref($_) =~ /^(ARRAY|HASH)$/ ? 1 : 0 ) }
+        values %{$self->{_WEAK_REFS}};
+}
 
 sub _purge {
     my $self = shift;

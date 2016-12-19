@@ -75,16 +75,25 @@ sub test_suite {
     # filesize of $dir/1_OBJSTORE should be 360
 
     # recycle test. This should eliminate the following :
-    # the old myList, the objy, the someobj of objy, so 3 items
+    # the old myList, the hash first element of myList, the objy in the hash, the someobj of objy, so 4 items
 
     my $list_to_remove = $root_node->get_myList();
     my $hash_in_list = $list_to_remove->[0];
 
-    $root_node->set_myList( [ ] );
+    my $list_to_remove_id = $store->_get_id( $list_to_remove );
+    my $hash_in_list_id   = $store->_get_id( $hash_in_list );
+    my $objy              = $hash_in_list->{objy};
+    my $objy_id           = $store->_get_id( $objy );
+    my $someobj_id        = $store->_get_id( $objy->get_someobj );
+    undef $objy;
+    
+    $root_node->set_myList( [] );
+    
     $store->stow_all;
 
     is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
+    
     undef $hash_in_list;
 
     is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
@@ -94,11 +103,26 @@ sub test_suite {
     undef $list_to_remove;
 
     is( $store->run_recycler, 1, "just list is removed. it is not referenced by other removed items that still have references." );
-use Scalar::Util qw( refaddr );
-   
+
+    eval {
+        $store->compress_store;
+    };
+    like( $@, qr/outstanding references/, "could not run compress_store due to outstanding references" );
+    
     undef $hash_in_list;
     
     is( $store->run_recycler, 3, "all 3 remaining things that can't trace to the root are removed" );
+    undef $dup_root;
+
+    use Devel::Refcount 'refcount';
+
+    undef $root_node;
+
+    $store->compress_store;
+    ok( ! $store->fetch( $list_to_remove_id ), "removed list still removed" );
+    ok( ! $store->fetch( $hash_in_list_id ), "removed hash id still removed" );
+    ok( ! $store->fetch( $objy_id ), "removed objy still removed" );
+    ok( ! $store->fetch( $someobj_id ), "removed someobj still removed" );
 
 } #test suite
 
