@@ -358,6 +358,15 @@ sub _copy_active_ids {
     
 } #_copy_active_ids
 
+=head2 has_id 
+
+ Returns true if there is a valid reference linked to the id
+
+=cut
+sub has_id {
+    my( $self, $id ) = @_;
+    return $self->{_DATASTORE}{DATA_STORE}->has_entry( $id );
+}
 
 =head2 stow_all
 
@@ -409,6 +418,11 @@ sub _init {
 }
 
 
+sub dirty_count {
+    my $self = shift;
+    return scalar( keys %{$self->{_DIRTY}} );
+}
+
 #
 # Markes given object as dirty.
 #
@@ -425,6 +439,7 @@ sub _first_id {
 } #_first_id
 
 sub _get_id {
+    # for debugging I think?
     shift->__get_id( shift );
 }
 
