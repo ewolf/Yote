@@ -329,8 +329,8 @@ sub _copy_over {
         }
     }
     else {
-        for my $oid (grep { $_ > 0 } values %{$self->{DATA}}) {
-            $from_store->_copy_over( $self->_fetch( $oid ), $to_store );
+        for my $oid (grep { $_ > 0 } values %{$obj->{DATA}}) {
+            $from_store->_copy_over( $from_store->_fetch( $oid ), $to_store );
         }
     }
 
