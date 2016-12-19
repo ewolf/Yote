@@ -1180,31 +1180,35 @@ sub _fetch {
 
   # so foo` or foo\\` but not foo\\\`
   # also this will never start with a `
-  my( @parts );
+  my $parts = [ split /\`/, $val ];
 
-  my $next = index( $val, '`' );
-  while( $next >= 0 ) {
-      my $ss = substr( $val, 0, $next );
-      if( $ss =~ /(^|[^\\](([\\][\\])+)?)$/s ) {
-          $ss =~ s/\\`/`/gs;
-          $ss =~ s/\\\\/\\/gs;
-          push @parts, $ss;
-          $val = substr( $val, $next+1 );
-          $next = index( $val, '`' );
-      } else {
-          $next = index( $val, '`', $next+1 );
+  # check to see if any of the parts were split on escapes
+  if( 0 < grep { /\\$/ } @$parts ) {
+      my $newparts = [];
+      my $shim = '';
+      for my $part (@$parts) {
+          if( $part =~ /(^|[^\\]((\\\\)+)?)$/ ) {
+              my $newpart = $shim ? "$shim\`$part" : $part;
+              $newpart =~ s/\\`/`/gs;
+              $newpart =~ s/\\\\/\\/gs;
+              push @$newparts, $newpart;
+              $shim = '';
+          } else {
+              $shim = $shim ? "$shim\`$part" : $part;
+          }
       }
-  }
-  if( length( $val ) ) {
-      $val =~ s/\\`/`/gs;
-      $val =~ s/\\\\/\\/gs;
-      push @parts, $val;
+      if( $shim ) {
+          $shim =~ s/\\`/`/gs;
+          $shim =~ s/\\\\/\\/gs;
+          push @$newparts, $shim;
+      }
+      $parts = $newparts;
   }
 
   if( $class eq 'ARRAY' ) {
-      $ret->[DATA] = \@parts;
+      $ret->[DATA] = $parts;
   } else {
-      $ret->[DATA] = { @parts };
+      $ret->[DATA] = { @$parts };
   }
 
   $ret;
