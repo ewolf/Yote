@@ -34,11 +34,11 @@ sub interpret {
 
     elsif( $cmd =~ /^\s*PURGE/i ) {
         print "\nrunning purger\n";
-        print `du -hcs $db_dir`;
+        print `du $db_dir`;
         print "\n";
         $store->run_purger;
         print "\ndone running purger\n";
-        print `du -hcs $db_dir`;
+        print `du $db_dir`;
         print "\n";
     } #PURGE
 
@@ -79,7 +79,8 @@ sub interpret {
             delete $obj->{$from_field};
             print "Removed field '$from_field' from hash at $from_id.\n";
         } else {
-            $obj->set($from_field);
+            delete $obj->{DATA}{$from_field};
+            $store->_dirty( $obj, $from_id );
             print "Removed field '$from_field' from object at $from_id.\n";
         }
     } #DELETE

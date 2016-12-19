@@ -110,7 +110,7 @@ There are lots of potential uses for Yote, and a few come to mind :
 
  #
  # Anything that cannot trace a reference path to the root
- # is eligable for being removed upon compression. 
+ # is eligable for being removed upon compression.
  #
 
 =head1 PUBLIC METHODS
@@ -282,14 +282,15 @@ sub run_purger {
     if( $self->_has_weak_refs ) {
 #        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
+
 "
     OKEY maaaybe we do want to recycle objects because the object index can get pretty big
         at least make it an option?
-        
+
         the argument against this is if an ID is stored anywhere outside the store. Could argue that these
         ids are private to the store and nothing else should use them
 ";
-    
+
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
 
     # analyze to see what percentage would be kept
@@ -301,7 +302,7 @@ sub run_purger {
     }
 
     #
-    # If there are more things to keep than not, do a db purge, 
+    # If there are more things to keep than not, do a db purge,
     # otherwise, rebuild the db.
     #
     my $do_purge = $keep > ( $total/2 );
@@ -311,6 +312,12 @@ sub run_purger {
     } else {
         $purged = $self->_copy_active_ids( $keep_db, $make_tally );
     }
+
+    $self->{_DATASTORE}->_update_recycle_ids( $keep_db );
+
+    # commenting out for a test
+    $keep_db->unlink_store;
+
     $purged;
 } #run_purger
 
@@ -338,7 +345,7 @@ sub _copy_active_ids {
 
     my( @purges );
     for my $keep_id ( 1..$copy_db->entry_count ) {
-        
+
         my( $has_keep ) = $copy_db->get_record( $keep_id )->[0];
         if( $has_keep ) {
             my $obj = $self->fetch( $keep_id );
@@ -346,7 +353,7 @@ sub _copy_active_ids {
             $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $keep_id - 1 );
             $newstore->_dirty( $obj, $keep_id );
             $newstore->_stow( $obj, $keep_id );
-        } elsif( $self->{_DATASTORE}{DATA_STORE}->has_entry( $keep_id ) ) {
+        } elsif( $self->{_DATASTORE}{DATA_STORE}->has_id( $keep_id ) ) {
             push @purges, $keep_id;
         }
     } #each entry id
@@ -355,17 +362,17 @@ sub _copy_active_ids {
     move( $newdir, $original_dir ) or die $!;
 
     \@purges;
-    
+
 } #_copy_active_ids
 
-=head2 has_id 
+=head2 has_id
 
  Returns true if there is a valid reference linked to the id
 
 =cut
 sub has_id {
     my( $self, $id ) = @_;
-    return $self->{_DATASTORE}{DATA_STORE}->has_entry( $id );
+    return $self->{_DATASTORE}{DATA_STORE}->has_id( $id );
 }
 
 =head2 stow_all
@@ -448,7 +455,7 @@ sub __get_id {
 
     my $class = ref( $ref );
     die "__get_id requires reference. got '$ref'" unless $class;
-    
+
     if( $class eq 'Yote::Array') {
         return $ref->[0];
     }
@@ -1244,19 +1251,20 @@ sub _max_id {
 sub _generate_keep_db {
     my $self = shift;
     my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/PURGE_KEEP' );
+
     $mark_to_keep_store->empty();
     $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
 
     my $check_store = Data::RecordStore::FixedStore->open( "L", $self->{args}{store} . '/CHECK' );
     $check_store->empty();
-    
+
     $mark_to_keep_store->put_record( 1, [ 1 ] );
 
     my( %seen );
     my( @checks ) = ( 1 );
 
     for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
-        # make sure that these are actually referenced. They may be 
+        # make sure that these are actually referenced. They may be
         # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
         # have an extra reference due to the tie.
         my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
@@ -1268,14 +1276,14 @@ sub _generate_keep_db {
         }
     }
 
-    
+
     #
     # While there are items to check, check them.
     #
     while( @checks || $check_store->entry_count > 0 ) {
         my $check_id = shift( @checks ) || $check_store->pop->[0];
         $mark_to_keep_store->put_record( $check_id, [ 1 ] );
-        
+
         my $item = $self->_fetch( $check_id );
         $seen{$check_id} = 1;
         my( @additions );
@@ -1292,7 +1300,7 @@ sub _generate_keep_db {
                 }
             }
             splice @checks;
-        } 
+        }
         if( scalar( keys(%seen) ) > 1_000_000 ) {
             %seen = ();
         }
@@ -1301,7 +1309,7 @@ sub _generate_keep_db {
     $check_store->unlink_store;
 
     $mark_to_keep_store;
-    
+
 } #_generate_keep_db
 
 #
@@ -1331,6 +1339,39 @@ sub _truncate_dbs {
     \@purged;
 }
 
+
+sub _update_recycle_ids {
+    my( $self, $mark_to_keep_store ) = @_;
+
+    return unless $mark_to_keep_store->entry_count > 0;
+
+    my $store = $self->{DATA_STORE};
+
+
+    # find the higest still existing ID and cap the index to this
+    my $highest_keep_id;
+    for my $cand (reverse ( 1..$mark_to_keep_store->entry_count )) {
+        my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+        if( $keep ) {
+            $store->set_entry_count( $cand );
+            $highest_keep_id = $cand;
+            last;
+        }
+    }
+
+    $store->empty_recycler;
+
+    # iterate each id in the entire object store and add those
+    # not marked for keeping into the recycling
+    for my $cand (reverse( 1.. $highest_keep_id) ) {
+        my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+        unless( $keep ) {
+            $store->recycle( $cand );
+        }
+    }
+} #_update_recycle_ids
+
+
 sub _purge_objects {
   my( $self, $mark_to_keep_store, $keep_tally ) = @_;
 
@@ -1350,10 +1391,8 @@ sub _purge_objects {
     }
   }
 
-  $mark_to_keep_store->unlink_store;
-
   $purged;
-  
+
 } #_purge_objects
 
 

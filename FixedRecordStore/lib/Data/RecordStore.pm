@@ -16,9 +16,15 @@ my $id    = $store->stow( $data, $optionalID );
 
 my $val   = $store->fetch( $id );
 
-my $new_id = $store->next_id; # $new_id == $id
+my $new_or_recycled_id = $store->next_id;
 
-$store->stow( "MORE DATA", $new_id );
+$store->stow( "MORE DATA", $new_or_recycled_id );
+
+my $has = $store->has_id( $someid );
+
+$store->empty_recycler;
+$store->recycle( $dead_id );
+
 
 =head1 DESCRIPTION
 
@@ -99,6 +105,7 @@ sub open {
     my $self = {
         DIRECTORY => $directory,
         OBJ_INDEX => Data::RecordStore::FixedStore->open( "IL", $obj_db_filename ),
+        RECYC_STORE => Data::RecordStore::FixedStore->open( "L", "$directory/RECYC" ),
         STORES    => [],
         VERSION   => $version,
     };
@@ -129,7 +136,20 @@ records if needed.
 =cut
 sub ensure_entry_count {
     shift->{OBJ_INDEX}->ensure_entry_count( shift );
-}
+} #ensure_entry_count
+
+=head2 set_entry_count( min_count )
+
+This makes sure there there are exactly
+entries in this record store. This creates empty
+records or removes existing ones as needed.
+Use with caution.
+
+=cut
+sub set_entry_count {
+    shift->{OBJ_INDEX}->set_entry_count( shift );
+} #set_entry_count
+
 
 =head2 next_id
 
@@ -139,6 +159,8 @@ id for it.
 =cut
 sub next_id {
     my $self = shift;
+    my $next = $self->{RECYC_STORE}->pop;
+    return $next->[0] if $next && $next->[0];
     $self->{OBJ_INDEX}->next_id;
 }
 
@@ -215,12 +237,6 @@ sub delete {
     1;
 }
 
-sub has_entry {
-    my( $self, $entry_id ) = @_;
-    my( $store_id, $store_idx ) = @{ $self->{OBJ_INDEX}->get_record( $entry_id ) };
-    return $store_id > 0;
-}
-
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
@@ -263,7 +279,7 @@ sub _swapout {
 
 =head2 has_id( id )
 
-Returns true if an object with this db exists in the record store.
+  Returns true if an object with this db exists in the record store.
 
 =cut
 sub has_id {
@@ -274,6 +290,25 @@ sub has_id {
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     $store_id > 0;
 }
+
+=head2 empty_recycler()
+
+  Clears out all data from the recycler
+
+=cut
+sub empty_recycler {
+    shift->{RECYC_STORE}->empty;
+} #empty_recycler
+
+=head2 recycle( $id )
+
+  Ads the id to the recycler, so it will be returned when next_id is called.
+
+=cut
+sub recycle {
+    shift->{RECYC_STORE}->push( [shift] );
+} #empty_recycler
+
 
 =head2 fetch( id )
 
@@ -424,7 +459,6 @@ to rearch the target record count.
 =cut
 sub ensure_entry_count {
     my( $self, $count ) = @_;
-    my $fh = $self->_filehandle;
 
     my $needed = $count - $self->entry_count;
 
@@ -434,6 +468,21 @@ sub ensure_entry_count {
     }
 
 } #ensure_entry_count
+
+=head2 set_entry_count( count )
+
+Sets the number of entries in this record store,
+growing or shrinking as necessary.
+
+=cut
+sub set_entry_count {
+    my( $self, $count ) = @_;
+    my $fh = $self->_filehandle;
+
+    truncate $fh, $count * $self->{RECORD_SIZE};
+
+} #set_entry_count
+
 
 =head2
 
@@ -464,6 +513,7 @@ sub get_record {
 # how about an ensure_entry_count right here?
     # also a has_record
     if( $idx < 1 ) {
+        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
         die "get record must be a positive integer";
     }
 
