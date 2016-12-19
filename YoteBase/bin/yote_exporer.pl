@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
+use strict;
+
 use Yote;
-use Yote::Server;
 use Data::Dumper;
 
 my $db_dir = shift @ARGV || '/opt/yote/DATA_STORE';
@@ -31,14 +32,36 @@ sub show {
     my $r = ref( $obj );
     if( $r eq 'HASH' ) {
         print "$id is hash with ".scalar(keys %$obj)." keys\n";
+        my $count = 0;
         for my $key (sort keys %$obj) {
-            print "\t$key => ".$store->_xform_out( $obj->{$key} )."\n";
+            print "\t$key => ".$store->_xform_in( $obj->{$key} )."\n";
+            if( ++$count > 100 ) {
+                $count = 0;
+                print " .... more ..\n>";
+                my $in = <STDIN>;
+                chomp $in;
+                if( $in > 0 ) {
+                    show( $id );
+                    return;
+                }
+            }
         }
     }
     elsif( $r eq 'ARRAY' ) {
         print "$id is array with ".scalar(@$obj)." elements\n";
+        my $count = 0;
         for( my $i=0; $i<@$obj; $i++ ) {
-            print "\t$i) ".$store->_xform_out( $obj->[$i] )."\n";
+            print "\t$i) ".$store->_xform_in( $obj->[$i] )."\n";
+            if( ++$count > 100 ) {
+                $count = 0;
+                print " .... more ..\n>";
+                my $in = <STDIN>;
+                chomp $in;
+                if( $in > 0 ) {
+                    show( $id );
+                    return;
+                }
+            }
         }
     }
     else {

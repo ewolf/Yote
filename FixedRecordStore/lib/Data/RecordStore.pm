@@ -168,8 +168,9 @@ sub has_id {
     my( $self, $id ) = @_;
     my $ec = $self->entry_count;
     return 0 if $ec < $id;
-    my $at_id = $self->fetch( $id );
-    1;
+
+    my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    $store_id > 0;
 }
 
 =head2 fetch( id )
@@ -224,13 +225,13 @@ sub _best_store_for_size {
         }
     } #each store
     
-    if( $best_store ) {
+    if( $best_store && $best_size < $record_size * 2) {
         return $best_idx, $best_store;
-    } 
+    }
 
     # Have to create a new store. 
-    # Make one that is thrice the size of the record
-    my $store_size = 3 * $record_size;
+    # Make one that is the  size of the record
+    my $store_size = $record_size;
     my $store_id = $self->{STORE_IDX}->next_id;
 
     # first, make an entry in the store index, giving it that size, then

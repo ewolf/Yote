@@ -302,7 +302,7 @@ sub compress_store {
     $newdir  //= $original_dir . '_NEW_RECYC';
 
     if( -x $backdir ) {
-        die "Unable to run compress store, backup directory '$newdir' already exists.";
+        die "Unable to run compress store, backup directory '$backdir' already exists.";
     }
 
     if( -x $newdir ) {
@@ -312,47 +312,44 @@ sub compress_store {
     if( $self->_has_weak_refs ) {
         die "Unable to run compress store. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
-    my $root = $self->fetch_root;
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
 
-    $self->_copy_over( $root, $newstore );
+    my( @copy_ids ) = ( $self->_first_id );
 
+    my $count = 0;
+    while( @copy_ids ) {
+        my $id = shift @copy_ids;
+
+        next if $newstore->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $self->_first_id;
+        print STDERR "\t$id";
+        if( ++$count > 80 ) {
+            print STDERR "\n";
+            $count = 0;
+        }
+        
+        my $obj = $self->fetch( $id );
+        $obj->{STORE} = $newstore;
+
+        $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $id - 1 );
+        $newstore->_dirty( $obj, $id );
+        $newstore->_stow( $obj, $id );
+
+        my $r = ref( $obj );
+        if ( $r eq 'ARRAY' ) {
+            my $tied = tied @$obj;
+            push @copy_ids, grep { $_ > 0 } @{$tied->[1]};
+        } elsif ( $r eq 'HASH' ) {
+            my $tied = tied %$obj;
+            push @copy_ids, grep { $_ > 0 } values %{$tied->[1]};
+        } else {
+            push @copy_ids, grep { $_ > 0 } values %{$obj->{DATA}};
+        }
+    }
+    
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
 
 } #compress_store
-
-#
-# Recursive helper function for the compress_store method.
-#
-sub _copy_over {
-    my( $from_store, $obj, $to_store ) = @_;
-    my $id = $from_store->_get_id( $obj );
-
-    return if $to_store->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $from_store->_first_id;
-    $to_store->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $id-1 );
-    $to_store->_stow( $obj, $id );
-
-    my $r = ref( $obj );
-    if( $r eq 'ARRAY' ) {
-        for my $o (grep { ref($_) } @$obj) {
-            $from_store->_copy_over( $o, $to_store );
-        }
-    }
-    elsif( $r eq 'HASH' ) {
-        for my $o (grep { ref($_) } values %$obj) {
-            $from_store->_copy_over( $o, $to_store );
-        }
-    }
-    else {
-        for my $oid (grep { $_ > 0 } values %{$obj->{DATA}}) {
-            $from_store->_copy_over( $from_store->fetch( $oid ), $to_store );
-        }
-    }
-
-} #_copy_over
-
-
 =head2 stow_all
 
  Saves all newly created or dirty objects.
@@ -490,6 +487,7 @@ sub _stow {
     die unless $id;
 
     my $data = $self->_raw_data( $obj );
+
     if( $class eq 'ARRAY' ) {
         $self->{_DATASTORE}->_stow( $id,'ARRAY', $data );
         $self->_clean( $id );
@@ -1305,7 +1303,7 @@ sub _recycle_objects {
 #
 # Saves the object data for object $id to the data store.
 #
-sub _stow {
+sub _stow { #Yote::YoteDB::_stow
   my( $self, $id, $class, $data ) = @_;
   my $save_data = "$class " . to_json($data);
   $self->{DATA_STORE}->stow( $save_data, $id );
