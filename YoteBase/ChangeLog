@@ -1,3 +1,7 @@
+2016-12-19 eric wolf  <coyocanid@gmail.com>
+	* Version 1.45
+	* added Yote::ObjStore::compress_store method
+	
 2016-11-20 eric wolf  <coyocanid@gmail.com>
 	* Version 1.43
 	* fixed stupid weak major subtle reference bug. was referencing weakly references rather than thingies in some cases.
