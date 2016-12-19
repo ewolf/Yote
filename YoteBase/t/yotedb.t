@@ -97,28 +97,28 @@ sub test_suite {
     undef $hash_in_list;
 
     is( $store->run_purger, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
-
     $hash_in_list = $list_to_remove->[0];
 
     undef $list_to_remove;
 
     is( $store->run_purger, 1, "just list is removed. it is not referenced by other removed items that still have references." );
 
-    eval {
-        $store->compress_store;
-    };
-    like( $@, qr/outstanding references/, "could not run compress_store due to outstanding references" );
+    # eval {
+    #     $store->compress_store;
+    # };
+    # like( $@, qr/outstanding references/, "could not run compress_store due to outstanding references" );
     
     undef $hash_in_list;
 
     is( $store->run_purger, 4, "all remaining things that can't trace to the root are removed" );
-    undef $dup_root;
 
-    use Devel::Refcount 'refcount';
+    undef $dup_root;
 
     undef $root_node;
 
-    $store->compress_store;
+    #    $store->compress_store;
+    $store->run_purger;
+
     ok( ! $store->fetch( $list_to_remove_id ), "removed list still removed" );
     ok( ! $store->fetch( $hash_in_list_id ), "removed hash id still removed" );
     ok( ! $store->fetch( $objy_id ), "removed objy still removed" );

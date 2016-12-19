@@ -143,7 +143,7 @@ no warnings 'recursion';
 
 use Devel::Refcount 'refcount';
 use File::Copy;
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 use WeakRef;
 use Module::Loaded;
 
@@ -221,9 +221,19 @@ sub fetch {
     #
     # Return the object if we have a reference to its dirty state.
     #
-    my $ref = $self->{_DIRTY}{$id} || $self->{_WEAK_REFS}{$id};
+    my $ref = $self->{_DIRTY}{$id};
     if( defined $ref ) {
         return $ref;
+    } else {
+        $ref = $self->{_WEAK_REFS}{$id};
+        if( $ref ) {
+            my $min_ref_count = 1;
+            $min_ref_count++ if ref($ref) =~ /^(ARRAY|HASH)$/;
+            if( refcount($ref) > $min_ref_count ) {
+                return $ref;
+            }
+        }
+        undef $ref;
     }
     my $obj_arry = $self->{_DATASTORE}->_fetch( $id );
 
@@ -270,7 +280,7 @@ sub run_purger {
     my $self = shift;
     $self->stow_all();
     if( $self->_has_weak_refs ) {
-        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
+#        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
 
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
@@ -278,119 +288,27 @@ sub run_purger {
     # analyze to see what percentage would be kept
     my $total = $keep_db->entry_count;
     my $keep = 0;
-    for my $tid (2..$total) {
+    for my $tid (1..$total) {
         my( $has_keep ) = $keep_db->get_record( $tid )->[0];
         $keep++ if $has_keep;
     }
-    print STDERR Data::Dumper->Dump(["KEEP $keep of $total"]);
+#    print STDERR Data::Dumper->Dump(["KEEP $keep of $total"]);
     #
     # If there are more things to keep than not, do a db purge, 
     # otherwise, rebuild the db.
     #
-    if( $keep > ( $total/2 ) ) {
-        print STDERR "PURGE objs\n";
-                
-        $self->{_DATASTORE}->_purge_objects();
+    my $do_purge = $keep > ( $total/2 );
+    my $purge_count;
+    if( $do_purge ) {
+#        print STDERR "PURGE objs\n";
+        $purge_count = $self->{_DATASTORE}->_purge_objects( $keep_db );
     } else {
-        print STDERR "COPY sactive\n";
-        $self->_copy_active_ids( $keep_db );
+#        print STDERR "COPY sactive\n";
+        $purge_count = $self->_copy_active_ids( $keep_db );
     }
+#    print STDERR Data::Dumper->Dump([$purge_count]);
+    $purge_count;
 } #run_purger
-
-=head2 compress_store
-
-This creates a new data store with all objects
-removed that cannot be traced back to the root.
-
-This will fail if the following directories 
-exist :
-  ${ROOT-DIRECOTRY-FOR-OBJECT-STORE}_COMPRESS_BAK
-  ${ROOT-DIRECOTRY-FOR-OBJECT-STORE}_NEW_RECYC
-
-The first directory is where the original object
-store gets backed up after the compression. If 
-the compression is a success, it should be removed.
-
-The second is a temporary working directory for the
-new copied over database.
-
-This requires enough room on the file system
-to potentially double the size of the database
-temporarily as it is copied to a new one.
-
-=cut
-sub compress_store {
-    my( $self, $newdir, $backdir ) = @_;
-    $self->stow_all();
-
-    my $original_dir = $self->{args}{store};
-    $backdir //= $original_dir . '_COMPRESS_BACK_RECENT';
-    $newdir  //= $original_dir . '_NEW_RECYC';
-
-    if( -e $backdir ) {
-        my $oldback = $original_dir . '_COMPRESS_BACK_OLD';
-        if( -d $oldback ) {
-            warn "Removing old compression backup directory";
-            remove_tree( $oldback );
-        }
-        move( $backdir, $oldback ) or die $!;
-        make_path( $backdir );
-    }
-    unless( -d $backdir ) {
-        die "Unable to run compress store. '$backdir' is not a directory.";
-    }
-
-    if( -x $newdir ) {
-        die "Unable to run compress store, temp directory '$newdir' already exists.";
-    }
-
-    if( $self->_has_weak_refs ) {
-        die "Unable to run compress store. There are still outstanding references to yote objects that would be deleted during the compress.";
-    }
-    my $newstore = Yote::ObjStore->_new( { store => $newdir } );
-
-    my( @copy_ids ) = ( $self->_first_id );
-
-    my $count = 0;
-    my( %seen );
-    my $copy_store = Data::RecordStore::FixedStore->open( "L", $self->{args}{store} . '/COPYCHECK' );
-    while( @copy_ids || $copy_store->entry_count ) {
-        my $id = shift @copy_ids || $copy_store->pop->[0];
-#        next if $seen{$id}++;
-        next if $newstore->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $self->_first_id;
-        next if $id == $self->_first_id && $count > 0;
-        
-        my $obj = $self->fetch( $id );
-#        $obj->{STORE} = $newstore;
-
-        $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $id - 1 );
-        $newstore->_dirty( $obj, $id );
-        $newstore->_stow( $obj, $id );
-
-        my $r = ref( $obj );
-        if ( $r eq 'ARRAY' ) {
-            my $tied = tied @$obj;
-            push @copy_ids, grep { $_ > 0 } @{$tied->[1]};
-        } elsif ( $r eq 'HASH' ) {
-            my $tied = tied %$obj;
-            push @copy_ids, grep { $_ > 0 } values %{$tied->[1]};
-        } else {
-            push @copy_ids, grep { $_ > 0 } values %{$obj->{DATA}};
-        }
-
-        if( @copy_ids > 1_000_000 ) {
-            map {
-                $copy_store->push( $_, [ 1 ] );
-            } @copy_ids;
-            splice @copy_ids;
-        }
-    } #while
-
-    move( $original_dir, $backdir ) or die $!;
-    move( $newdir, $original_dir ) or die $!;
-
-} #compress_store
-
 
 sub _copy_active_ids {
     my( $self, $copy_db ) = @_;
@@ -413,22 +331,28 @@ sub _copy_active_ids {
         die "Unable to run compress store, temp directory '$newdir' already exists.";
     }
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
-    
+
+    my $purge_count;
     for my $keep_id ( 1..$copy_db->entry_count ) {
         
         my( $has_keep ) = $copy_db->get_record( $keep_id )->[0];
+#        print STDERR "$keep_id : $has_keep\n";
         if( $has_keep ) {
             my $obj = $self->fetch( $keep_id );
 
             $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $keep_id - 1 );
             $newstore->_dirty( $obj, $keep_id );
             $newstore->_stow( $obj, $keep_id );
+        } else {
+            $purge_count++;
         }
     } #each entry id
 
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
 
+    $purge_count;
+    
 } #_copy_active_ids
 
 
@@ -650,12 +574,6 @@ sub _has_weak_refs {
     # if there is an ARRAY or HASH, since it is tied, it has a reference to itself
     0 < grep { $_ && refcount($_) > (ref($_) =~ /^(ARRAY|HASH)$/ ? 1 : 0 ) }
         values %{$self->{_WEAK_REFS}};
-}
-
-sub _purge {
-    my $self = shift;
-    $self->{_DIRTY} = {};
-    $self->{_WEAK_REFS} = {};
 }
 
 #
@@ -1232,7 +1150,7 @@ no warnings 'uninitialized';
 use Data::RecordStore;
 
 use WeakRef;
-use File::Path qw(make_path remove_tree);
+use File::Path qw(make_path);
 use JSON;
 
 use Devel::Refcount 'refcount';
@@ -1310,12 +1228,27 @@ sub _generate_keep_db {
     $check_store->empty();
     
     $mark_to_keep_store->put_record( 1, [ 1 ] );
+
+    my( %seen );
+    my( @checks ) = ( 1 );
+
+    for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+        # make sure that these are actually referenced. They may be 
+        # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
+        # have an extra reference due to the tie.
+        my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
+        my $min_ref_count = 1;
+        $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
+
+        if( $obj && refcount($obj) > $min_ref_count ) {
+            push @checks, $referenced_id;
+        }
+    }
+
     
     #
     # While there are items to check, check them.
     #
-    my( %seen );
-    my( @checks ) = ( 1 );
     while( @checks || $check_store->entry_count > 0 ) {
         my $check_id = shift( @checks ) || $check_store->pop->[0];
         $mark_to_keep_store->put_record( $check_id, [ 1 ] );
@@ -1349,61 +1282,23 @@ sub _generate_keep_db {
 } #_generate_keep_db
 
 sub _purge_objects {
-  my $self = shift;
+  my( $self, $mark_to_keep_store ) = @_;
 
-  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/PURGE_KEEP' );
-  $mark_to_keep_store->empty();
-  $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
-
-  my $check_store = Data::RecordStore::FixedStore->open( "L", $self->{args}{store} . '/CHECK' );
-  $check_store->empty();
-
-  $mark_to_keep_store->put_record( 1, [ 1 ] );
-
-  #
-  # While there are items to check, check them.
-  #
-  my( @checks ) = ( 1 );
-  while( @checks || $check_store->entry_count > 0 ) {
-      my $check_id = shift( @checks ) || $check_store->pop->[0];
-      my $item = $self->_fetch( $check_id );
-      my( @additions );
-      if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-          ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
-      } else {
-          ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
-      }
-      if( @checks > 100_000 ) {
-          my $lastid;
-          for my $cid (sort @checks) {
-              if( $cid != $lastid ) {
-                  $check_store->push( [ $cid ] );
-                  $mark_to_keep_store->put_record( $cid, [ 1 ] );
-                  $lastid = $cid;
-              }
-          }
-          splice @checks;
-      } 
-      push @checks, @additions;
-  }
-  $check_store->unlink_store;
-
-  # the purge begins here
-  my $cands = $self->{DATA_STORE}->entry_count;
-  my $count = 0;
-  for my $cand ( 1..$cands) { #iterate each id in the entire object store
+  my $purge_count = 0;
+  
+  for my $cand ( 1..$mark_to_keep_store->entry_count) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
 
     die "Tried to purge root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {
         $self->{DATA_STORE}->delete( $cand );
-        $count++;
+        $purge_count++;
     }
   }
 
   $mark_to_keep_store->unlink_store;
 
-  $count;
+  $purge_count;
   
 } #_purge_objects
 

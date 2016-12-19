@@ -259,7 +259,6 @@ record associated with it, undef is returned.
 sub fetch {
     my( $self, $id ) = @_;
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-
     return undef unless $store_id;
 
     my $store = $self->_get_store( $store_id );
