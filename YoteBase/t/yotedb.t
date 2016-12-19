@@ -41,9 +41,7 @@ sub test_suite {
                                } );
     
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
-
     $store->stow_all;
-
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
 
     # objects created : root, myList, a hash in myslist, a newobj
