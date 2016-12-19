@@ -21,6 +21,7 @@ BEGIN {
 
 my $dir = tempdir( CLEANUP => 1 );
 my $dir2 = tempdir( CLEANUP => 1 );
+my $dir3 = tempdir( CLEANUP => 1 );
 test_suite();
 done_testing;
 
@@ -76,15 +77,33 @@ sub test_suite {
     is_deeply( $ds->get_record( 1 ), $r[1], "First record" );
     is_deeply( $ds->get_record( 3 ), $r[3], "Third record" );
 
-# splice and get_records is deprecated for now until needed
-#    is_deeply( $ds->get_records( 2, 2 ), [ $r[2], $r[3] ], "get_records multiple" );
-#    is_deeply( $ds->get_records( 1, 1 ), [ $r[1] ], "get_records first" );
-#    is_deeply( $ds->get_records( 3, 1 ), [ $r[3] ], "get_records last" );
-#
-#    $ds->splice_records( 2, 1, $r[4], $r[5] );
-#    is( $ds->entry_count, 4, "four records after splice" );
-#    is_deeply( $ds->get_records( 1, 4 ), [ $r[1], $r[4], $r[5], $r[3] ], "correct records after splice" );
+    #
+    # Try testing the moving of a record
+    #
+    $store = Data::RecordStore->open( $dir3 );
+    $id = $store->stow( "x" x 2900 );
+    my $cur_store = $store->_get_store( 8 );
 
+    is( $cur_store->entry_count, 1, "One entry in store #8" );
+
+    my $yid = $store->stow( "y" x 2900 );
+    is( $cur_store->entry_count, 2, "Two entry in store #8" );
+    
+    $store->stow( "x" x 3000, $id );
+
+    is( $cur_store->entry_count, 1, "Entry relocated from store #8" );
+    my $new_store = $store->_get_store( 9 );
+    is( $new_store->entry_count, 1, "One entry relocated to store #9" );
+
+    is( $store->fetch( $yid ), "y" x 2900, "correctly relocated data" );
+
+    # try for a much smaller relocation
+
+    $store->stow( "x" x 90, $id );
+    
+    is( $new_store->entry_count, 0, "One entry relocated from store #9" );
+    $new_store = $store->_get_store( 5 );
+    is( $new_store->entry_count, 1, "One entry relocated to store #5" );
     # test for record too large. idx out of bounds
     
 

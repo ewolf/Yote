@@ -1,3 +1,10 @@
+2.00 - the databases for Data::RecordStore now automatically
+	hold e^n bytes, where n is the id of the database.
+
+	When items are moved from a database, the file is
+	automatically vaccuumed. The last id is moved to
+	this location and the file truncated.
+
 1.09 - added Data::RecordStore::has_id method
 	
 1.08 - added JSON requirement for tests

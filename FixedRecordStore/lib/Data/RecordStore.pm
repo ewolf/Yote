@@ -45,12 +45,13 @@ can occur when multiple Data::RecordStore objects open the same directory.
 use strict;
 use warnings;
 
+use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Path qw(make_path);
 use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.09';
+$VERSION = '2.0';
 
 =head1 METHODS
 
@@ -69,14 +70,46 @@ sub open {
         my( $err ) = values %{ $err->[0] };
         die $err;
     }
-    my $filename = "$directory/STORE_INDEX";
+    my $obj_db_filename = "$directory/OBJ_INDEX";
 
-    bless {
+    #
+    # Find the version of the database.
+    #
+    my $version;
+    my $version_file = "$directory/VERSION";
+    my $FH;
+    if( -e $version_file ) {
+        CORE::open $FH, "<", $version_file;
+        $version = <$FH>;
+    } else {
+        #
+        # a version file needs to be created. if the database
+        # had been created and no version exists, assume it is
+        # version 1.
+        #
+        if( -e $obj_db_filename ) {
+            warn "opening $directory. A database was found with no version information. Assuming version 1";
+            $version = 1;
+        } else {
+            $version = $VERSION;
+        }
+        CORE::open $FH, ">", $version_file;
+        print $FH "$version\n";
+    }
+    close $FH;
+
+    my $self = {
         DIRECTORY => $directory,
-        OBJ_INDEX => Data::RecordStore::FixedRecycleStore->open( "IL", "$directory/OBJ_INDEX" ),
-        STORE_IDX => Data::RecordStore::FixedStore->open( "I", $filename ),
+        OBJ_INDEX => Data::RecordStore::FixedRecycleStore->open( "IL", $obj_db_filename ),
         STORES    => [],
-    }, ref( $pkg ) || $pkg;
+        VERSION   => $version,
+    };
+
+    if( $version < 2 ) {
+        $self->{STORE_IDX} = Data::RecordStore::FixedStore->open( "I", "$directory/STORE_INDEX" );
+    }
+    
+    bless $self, ref( $pkg ) || $pkg;
     
 } #open
 
@@ -129,6 +162,11 @@ sub stow {
 
     my $save_size = do { use bytes; length( $data ); };
 
+    unless( $self->{VERSION} < 2 ) {
+        # tack on the size of the id (a long or 8 bytes) and a space to the byte count
+        $save_size += 9;
+    }
+
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
 
     #
@@ -140,21 +178,61 @@ sub stow {
 
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
-        if( $old_store->{RECORD_SIZE} >= $save_size ) {
-            $old_store->put_record( $current_idx_in_store, [$data] );
+        if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
+            if( $self->{VERSION} < 2 ) {
+                $old_store->put_record( $current_idx_in_store, [$data] );
+            } else {
+                $old_store->put_record( $current_idx_in_store, [$id,$data] );
+            }
             return $id;
         }
+
+
+        if( $self->{VERSION} < 2 ) {
+            $old_store->recycle( $current_idx_in_store, 1 ) if $old_store;
+        } else {
+            #
+            # the old store was not big enough (or missing), so remove its record from 
+            # there, compacting it if possible
+            #
+            my $last_idx = $old_store->entry_count - 1;
+            my $fh = $old_store->_filehandle;
+
+            if( $last_idx > 0 ) {
+                
+                sysseek $fh, $old_store->{RECORD_SIZE} * $last_idx, SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * $last_idx) : $@ $!";
+                my $srv = sysread $fh, my $data, $old_store->{RECORD_SIZE};
+                defined( $srv ) or die "Could not read : $@ $!";
+                sysseek( $fh, $old_store->{RECORD_SIZE} * ( $current_idx_in_store - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
+                defined( $srv ) or die "Could not read : $@ $!";
+
+                #
+                # update the object db with the new store index for the moved object id
+                #
+                my( $moving_id ) = unpack( $old_store->{TMPL}, $data );
+
+                $self->{OBJ_INDEX}->put_record( $moving_id, [ $current_store_id, $current_idx_in_store ] );
+
+                #
+                # truncate the object file
+                #
+            }
+            truncate $fh, $old_store->{RECORD_SIZE} * $last_idx;
+        }
         
-        # the old store was not big enough (or missing), so remove its record from 
-        # there.
-        $old_store->recycle( $current_idx_in_store, 1 ) if $old_store;
-    }
+    } #if this already had been saved before
 
     my( $store_id, $store ) = $self->_best_store_for_size( $save_size );
+
     my $index_in_store = $store->next_id;
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
-    $store->put_record( $index_in_store, [ $data ] );
+
+    if( $self->{VERSION} < 2 ) {
+        $store->put_record( $index_in_store, [ $data ] );
+    } else {
+        $store->put_record( $index_in_store, [ $id, $data ] );
+    }
 
     $id;
 } #stow
@@ -182,10 +260,17 @@ record associated with it, undef is returned.
 sub fetch {
     my( $self, $id ) = @_;
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+
     return undef unless $store_id;
 
     my $store = $self->_get_store( $store_id );
-    my( $data ) = @{ $store->get_record( $id_in_store ) };
+    my( $data );
+    
+    if( $self->{VERSION} < 2 ) {
+        ( $data ) = @{ $store->get_record( $id_in_store ) };
+    } else {
+        ( my $dummy, $data ) = @{ $store->get_record( $id_in_store ) };
+    }
     $data;
 } #fetch
 
@@ -209,6 +294,23 @@ sub recycle {
 
 sub _best_store_for_size {
     my( $self, $record_size ) = @_;
+
+    if( $self->{VERSION} < 2 ) {
+        return $self->_best_store_for_size_version_one( $record_size );
+    }
+
+    #
+    # The record size for the store is int( e^store_id ). If the
+    # item would exactly fit the size, still give the size one store
+    # up
+    #
+    my $store_id = 1 + int( log( $record_size ) );
+    $store_id, $self->_get_store( $store_id );
+    
+} #_best_store_for_size
+
+sub _best_store_for_size_version_one {
+    my( $self, $record_size ) = @_;    
     my( $best_idx, $best_size, $best_store ); #without going over.
 
     # using the written record rather than the array of stores to 
@@ -242,7 +344,7 @@ sub _best_store_for_size {
 
     $store_id, $store;
 
-} #_best_store_for_size
+} #_best_store_for_size_version_one
 
 sub _get_recycled_ids {
     shift->{OBJ_INDEX}->get_recycled_ids;
@@ -255,11 +357,20 @@ sub _get_store {
         return $self->{STORES}[ $store_index ];
     }
 
-    my( $store_size ) = @{ $self->{ STORE_IDX }->get_record( $store_index ) };
+    my $store_size;
+    if( $self->{VERSION} < 2 ) {
+        ( $store_size ) = @{ $self->{ STORE_IDX }->get_record( $store_index ) };
+    } else {
+        $store_size = int( exp $store_index );
+    }
 
     # since we are not using a pack template with a definite size, the size comes from the record
-
-    my $store = Data::RecordStore::FixedRecycleStore->open( "A*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+    my $store;
+    if( $self->{VERSION} < 2 ) {
+        $store = Data::RecordStore::FixedRecycleStore->open( "A*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+    } else {
+        $store = Data::RecordStore::FixedRecycleStore->open( "IA*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+    }
     $self->{STORES}[ $store_index ] = $store;
     $store;
 } #_get_store
@@ -393,76 +504,6 @@ sub entry_count {
     int( $filesize / $self->{RECORD_SIZE} );
 }
 
-
-#
-# _ _ The subs below are commented out pending a need _ _
-#  v                                                   v
-#
-# Why wait for a need? Because the need might not be quite
-# what you were expecting; once you have a need, you are much
-# more familiar with it.
-
-# =head2 get_records( startIDX, number )
-# =cut
-# sub get_records {
-#     my( $self, $startIDX, $number ) = @_;
-
-#     my $fh = $self->_filehandle;
-#     my $size = $self->{RECORD_SIZE};
-#     my $tmpl = $self->{TMPL};
-#     sysseek $fh, $size * ($startIDX-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($startIDX-1)) : $@ $!";
-#     my $srv = sysread $fh, my $data, $number * $size;
-#     # TODO : check $srv response
-#     my( @res );
-#     for( 0..($number-1) ) {
-#         my $part = substr( $data, $_ * $size, ($_ + 1 ) * ($size) );
-#         push @res, [ unpack( $tmpl, $part )];
-#     }
-#     \@res;
-# } #get_records
-
-# sub splice_records {
-#     my( $self, $start, $numberToRemove, @listToAdd ) = @_;
-
-#     # TODO - check for maximum chunk size
-#     CORE::open( my $fh, "+<$self->{FILENAME}.splicer" );
-#     my $size = $self->{RECORD_SIZE};
-
-#     my $orig_fh = $self->_filehandle;
-
-#     my $splice_action = sub {
-#         # put the first part of this file to the new file
-#         if( $start > 1 ) {
-#             sysread $orig_fh, my $data, $start * $size;
-#             syswrite( $fh, $data );
-#         }
-
-#         # add the list of things
-#         my $to_write = '';
-#         for my $adder (@listToAdd) {
-#             my $part = pack( $self->{TMPL}, @$adder );
-#             my $part_length = do { use bytes; length( $part ); };
-#             if( $part_length < $size ) {
-#                 my $delt = $size - $part_length;
-#                 $part .= "\0" x $delt;
-#             }
-#             $to_write .= $part;
-#         }
-
-#         my $to_write_length = do { use bytes; length( $to_write ); };
-#         sysseek( $fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-#         # then add the last part
-#         my $endRecords = $self->entry_count - ( $start + $numberToRemove );
-#         if( $endRecords > 0 ) {
-#             sysseek( $orig_fh, $self->{RECORD_SIZE} * ($start+$numberToRemove-1), SEEK_SET );
-#             my $srv = sysread $orig_fh, my $data, $size * $endRecords;
-#         }
-#         1;
-#     }; #splice_action
-#     &$splice_action() && move( $self->{FILENAME}, "$self->{FILENAME}.bak" ) && move( "$self->{FILENAME}.splicer", $self->{FILENAME} );
-    
-# } #splice_records
-
 =head2 get_record( idx )
 
 Returns an arrayref representing the record with the given id.
@@ -479,7 +520,7 @@ sub get_record {
     if( $idx < 1 ) {
         die "get record must be a positive integer";
     }
-   sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];
