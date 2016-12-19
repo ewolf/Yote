@@ -1001,8 +1001,8 @@ sub getid { #scramble id for object
         return $o2i->{$obj};
     }
     my $ids = $self->get__ids([]);
-    my $id = scalar @$ids;
     push @$ids, $obj;
+    my $id = scalar @$ids;
     $o2i->{$obj} = $id;
     $id;
 } #id
