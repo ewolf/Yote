@@ -16,8 +16,6 @@ my $id    = $store->stow( $data, $optionalID );
 
 my $val   = $store->fetch( $id );
 
-$store->recycle( $id );
-
 my $new_id = $store->next_id; # $new_id == $id
 
 $store->stow( "MORE DATA", $new_id );
@@ -32,13 +30,14 @@ both easy to set up and easy to use.
 
 Data::RecordStore is not meant to store huge amounts of data. 
 It will fail if it tries to create a file size greater than the 
-max allowed by the filesystem. This limitation will be removed in 
-vsubsequent versions. This limitation is most important when working
+max allowed by the filesystem. This limitation may be removed in 
+subsequent versions. This limitation is most important when working
 with sets of data that approach the max file size of the system 
 in question.
 
 This is not written with thread safety in mind, so unexpected behavior
 can occur when multiple Data::RecordStore objects open the same directory.
+Locking coordination is currently the responsibility of the implementation.
 
 =cut
 
@@ -88,11 +87,9 @@ sub open {
         # version 1.
         #
         if( -e $obj_db_filename ) {
-            warn "opening $directory. A database was found with no version information. Assuming version 1";
-            $version = 1;
-        } else {
-            $version = $VERSION;
-        }
+            die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the conversion program.";
+        } 
+        $version = $VERSION;
         CORE::open $FH, ">", $version_file;
         print $FH "$version\n";
     }
@@ -100,7 +97,7 @@ sub open {
 
     my $self = {
         DIRECTORY => $directory,
-        OBJ_INDEX => Data::RecordStore::FixedRecycleStore->open( "IL", $obj_db_filename ),
+        OBJ_INDEX => Data::RecordStore::FixedStore->open( "IL", $obj_db_filename ),
         STORES    => [],
         VERSION   => $version,
     };
@@ -115,8 +112,7 @@ sub open {
 
 =head2 entry_count
 
-Returns how many entries are in this store. Recycling ids does
-_not_ decrement this entry_count.
+Returns how many entries are in this store. 
 
 =cut
 sub entry_count {
@@ -162,10 +158,8 @@ sub stow {
 
     my $save_size = do { use bytes; length( $data ); };
 
-    unless( $self->{VERSION} < 2 ) {
-        # tack on the size of the id (a long or 8 bytes) and a space to the byte count
-        $save_size += 9;
-    }
+    # tack on the size of the id (a long or 8 bytes) and a space to the byte count
+    $save_size += 9;
 
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
 
@@ -179,24 +173,15 @@ sub stow {
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
         if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
-            if( $self->{VERSION} < 2 ) {
-                $old_store->put_record( $current_idx_in_store, [$data] );
-            } else {
-                $old_store->put_record( $current_idx_in_store, [$id,$data] );
-            }
+            $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
 
-
-        if( $self->{VERSION} < 2 ) {
-            $old_store->recycle( $current_idx_in_store, 1 ) if $old_store;
-        } else {
-            #
-            # the old store was not big enough (or missing), so remove its record from 
-            # there, compacting it if possible
-            #
-            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-        }
+        #
+        # the old store was not big enough (or missing), so remove its record from 
+        # there, compacting it if possible
+        #
+        $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
         
     } #if this already had been saved before
 
@@ -206,14 +191,18 @@ sub stow {
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
 
-    if( $self->{VERSION} < 2 ) {
-        $store->put_record( $index_in_store, [ $data ] );
-    } else {
-        $store->put_record( $index_in_store, [ $id, $data ] );
-    }
+    $store->put_record( $index_in_store, [ $id, $data ] );
 
     $id;
 } #stow
+
+sub delete {
+    my( $self, $del_id ) = @_;
+    my( $from_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $del_id ) };
+    my $from_store = $self->_get_store( $from_store_id );
+    $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
+    $self->{OBJ_INDEX}->put_record( $del_id, [ 0, 0 ] );
+}
 
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
@@ -271,45 +260,14 @@ sub fetch {
     return undef unless $store_id;
 
     my $store = $self->_get_store( $store_id );
-    my( $data );
-    
-    if( $self->{VERSION} < 2 ) {
-        ( $data ) = @{ $store->get_record( $id_in_store ) };
-    } else {
-        ( my $dummy, $data ) = @{ $store->get_record( $id_in_store ) };
-    }
+
+    ( undef, my $data ) = @{ $store->get_record( $id_in_store ) };
+
     $data;
 } #fetch
 
-=head2 recycle( $id )
-
-This marks that the record associated with the id may be reused.
-Calling this does not decrement the number of entries reported 
-by the record store.
-
-=cut
-sub recycle {
-    my( $self, $id ) = @_;
-    my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
-    return undef unless defined $store_id;
-    
-    my $store = $self->_get_store( $store_id );
-
-    if( $self->{VERSION} < 2 ) {
-        $store->recycle( $id_in_store );
-    } else {
-        $self->_swapout( $store, $store_id, $id_in_store );
-    }
-    $self->{OBJ_INDEX}->recycle( $id );
-
-} #recycle
-
 sub _best_store_for_size {
     my( $self, $record_size ) = @_;
-
-    if( $self->{VERSION} < 2 ) {
-        return $self->_best_store_for_size_version_one( $record_size );
-    }
 
     #
     # The record size for the store is int( e^store_id ). If the
@@ -321,46 +279,6 @@ sub _best_store_for_size {
     
 } #_best_store_for_size
 
-sub _best_store_for_size_version_one {
-    my( $self, $record_size ) = @_;    
-    my( $best_idx, $best_size, $best_store ); #without going over.
-
-    # using the written record rather than the array of stores to 
-    # determine how many there are.
-    for my $idx ( 1 .. $self->{STORE_IDX}->entry_count ) {
-        my $store = $self->_get_store( $idx );
-        my $store_size = $store->{RECORD_SIZE};
-        if( $store_size >= $record_size ) {
-            if( ! defined( $best_size ) || $store_size < $best_size ) {
-                $best_idx   = $idx;
-                $best_size  = $store_size;
-                $best_store = $store;
-            }
-        }
-    } #each store
-    
-    if( $best_store && $best_size < $record_size * 2) {
-        return $best_idx, $best_store;
-    }
-
-    # Have to create a new store. 
-    # Make one that is the  size of the record
-    my $store_size = $record_size;
-    my $store_id = $self->{STORE_IDX}->next_id;
-
-    # first, make an entry in the store index, giving it that size, then
-    # fetch it?
-    $self->{STORE_IDX}->put_record( $store_id, [$store_size] );
-
-    my $store = $self->_get_store( $store_id );
-
-    $store_id, $store;
-
-} #_best_store_for_size_version_one
-
-sub _get_recycled_ids {
-    shift->{OBJ_INDEX}->get_recycled_ids;
-}
 
 sub _get_store {
     my( $self, $store_index ) = @_;
@@ -369,20 +287,11 @@ sub _get_store {
         return $self->{STORES}[ $store_index ];
     }
 
-    my $store_size;
-    if( $self->{VERSION} < 2 ) {
-        ( $store_size ) = @{ $self->{ STORE_IDX }->get_record( $store_index ) };
-    } else {
-        $store_size = int( exp $store_index );
-    }
+    my $store_size = int( exp $store_index );
 
     # since we are not using a pack template with a definite size, the size comes from the record
-    my $store;
-    if( $self->{VERSION} < 2 ) {
-        $store = Data::RecordStore::FixedRecycleStore->open( "A*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
-    } else {
-        $store = Data::RecordStore::FixedRecycleStore->open( "IA*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
-    }
+    my $store = Data::RecordStore::FixedStore->open( "IA*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+
     $self->{STORES}[ $store_index ] = $store;
     $store;
 } #_get_store
@@ -643,85 +552,6 @@ sub _filehandle {
 
 
 # ----------- end Data::RecordStore::FixedStore
-
-
-
-=head1 HELPER PACKAGE
-
-Data::RecordStore::FixedRecycleStore
-
-=head1 SYNOPSIS
-
-A subclass Data::RecordStore::FixedRecycleStore. This allows
-indexes to be recycled and their record space reclaimed.
-
-my $store = Data::RecordStore::FixedRecycleStore->open( $template, $filename, $size );
-
-my $id = $store->next_id;
-
-$store->put_record( $id, ["SOMEDATA","FOR","PACK" ] );
-
-my $id2 = $store->next_id; # == 2 
-
-$store->recycle( $id );
-
-my $avail_ids = $store->get_recycled_ids; # [ 1 ]
-
-my $id3 = $store->next_id;
-$id3 == $id;
-
-=cut
-package Data::RecordStore::FixedRecycleStore;
-
-use strict;
-use warnings;
-
-our @ISA='Data::RecordStore::FixedStore';
-
-sub open {
-    my( $pkg, $template, $filename, $size ) = @_;
-    my $self = Data::RecordStore::FixedStore->open( $template, $filename, $size );
-    $self->{RECYCLER} = Data::RecordStore::FixedStore->open( "L", "${filename}.recycle" );
-    bless $self, $pkg;
-} #open
-
-=head1 METHODS
-
-=head2 recycle( $idx )
-
-Recycles the given id and reclaims its space.
-
-=cut
-sub recycle {
-    my( $self, $idx ) = @_;
-    $self->{RECYCLER}->push( [$idx] );
-} #recycle
-
-=head2 get_recycled_ids
-
-Returns a list reference of ids that are available
-to be reused.
-
-=cut
-sub get_recycled_ids {
-    my $self = shift;
-    my $R = $self->{RECYCLER};
-    my $max = $R->entry_count;
-    my @ids;
-    for( 1 .. $max ) {
-        push @ids, @{ $R->get_record( $_ ) };
-    }
-    \@ids;
-} #get_recycled_ids
-
-sub next_id {
-    my $self = shift;
-
-    my( $recycled_id ) = @{ $self->{RECYCLER}->pop || []};
-    $recycled_id = $recycled_id ? $recycled_id : $self->SUPER::next_id;
-} #next_id
-
-# ----------- end package Data::RecordStore::FixedRecycleStore;
 
 1;
 

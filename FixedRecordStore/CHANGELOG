@@ -5,6 +5,10 @@
 	automatically vaccuumed. The last id is moved to
 	this location and the file truncated.
 
+	Removed recycling. We are using long ids and if those
+	are not enough, the implementer can implement some sort
+	of recycling.
+
 1.09 - added Data::RecordStore::has_id method
 	
 1.08 - added JSON requirement for tests

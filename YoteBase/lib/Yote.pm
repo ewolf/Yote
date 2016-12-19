@@ -262,14 +262,14 @@ sub fetch {
     return undef;
 } #fetch
 
-=head2 run_recycler
+=head2 run_purger
 
 =cut
-sub run_recycler {
+sub run_purger {
     my $self = shift;
      $self->stow_all();
-    $self->{_DATASTORE}->_recycle_objects();
-} #run_recycler
+    $self->{_DATASTORE}->_purge_objects();
+} #run_purger
 
 =head2 compress_store
 
@@ -324,7 +324,6 @@ sub compress_store {
         next if $newstore->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $self->_first_id;
         next if$id == $self->_first_id && $count > 0;
         
-        print STDERR "\t$id";
         if( ++$count > 80 ) {
             print STDERR "\n";
             $count = 0;
@@ -1219,49 +1218,21 @@ sub _max_id {
   shift->{DATA_STORE}->entry_count;
 }
 
-sub _recycle_objects {
+sub _purge_objects {
   my $self = shift;
 
-  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
+  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/PURGE_KEEP' );
   $mark_to_keep_store->empty();
   $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
-  
-  # the already deleted cannot be re-recycled
-  my $ri = $self->{DATA_STORE}->_get_recycled_ids;
-  for ( @$ri ) {
-    $mark_to_keep_store->put_record( $_, [ 1 ] );
-  }
 
-  my $trace_to_root = sub {
-      my( $keep_id, $mark_to_keep_store ) = @_;
-      my( @queue ) = ( $keep_id );
+  my $check_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/CHECK' );
+  $check_store->empty();
 
-      $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
-
-      # get the object ids referenced by this keeper object
-      while( @queue ) {
-          $keep_id = shift @queue;
-
-          my $item = $self->_fetch( $keep_id );
-          my( @additions );
-          if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-              ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
-          } else {
-              ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
-          }
-
-          for my $keeper ( @additions ) {
-              next if $mark_to_keep_store->get_record( $keeper )->[0];
-              $mark_to_keep_store->put_record( $keeper, [ 1 ] );
-              push @queue, $keeper;
-          }
-      } #while there is a queue
-  };
-
-  &$trace_to_root( $self->_first_id, $mark_to_keep_store );
+  $mark_to_keep_store->put_record( 1, [ 1 ] );
+  $check_store->put_record( 1, [ 1 ] );
 
   #
-  # If there are any entries in the weak references, do not recycle these.
+  # If there are any entries in the weak references, do not purge these.
   # This ignores the possibility of circular references, but that uncommon case
   # is not worth the complexity.
   #
@@ -1275,11 +1246,34 @@ sub _recycle_objects {
           $min_ref_count++;
       }
       $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
-
+      
       if( refcount($obj) > $min_ref_count ) {
-          &$trace_to_root( $referenced_id, $mark_to_keep_store );
+          $check_store->push( [ $referenced_id ] );
+          $mark_to_keep_store->put_record( $referenced_id, [ 1 ] );
       }
   }
+
+  #
+  # While there are items to check, check them.
+  #
+  while( $check_store->entry_count > 0 ) {
+      my( $check_id ) = $check_store->pop->[0];
+      my $item = $self->_fetch( $check_id );
+      my( @additions );
+      if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
+          ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
+      } else {
+          ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
+      }
+      for my $add_id ( @additions ) {
+          my( $state ) = $mark_to_keep_store->get_record( $add_id )->[0];
+          if( $state == 0 ) {
+              $check_store->push( [ $add_id ] );
+              $mark_to_keep_store->put_record( $add_id, [ 1 ] );
+          }
+      }
+  }
+  $check_store->unlink_store;
 
   # the purge begins here
   my $cands = $self->{DATA_STORE}->entry_count;
@@ -1287,20 +1281,19 @@ sub _recycle_objects {
   for my $cand ( 1..$cands) { #iterate each id in the entire object store
     my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
 
-    die "Tried to recycle root entry" if $cand == 1 && ! $keep;
+    die "Tried to purge root entry" if $cand == 1 && ! $keep;
     if ( ! $keep ) {
-        $self->{DATA_STORE}->recycle( $cand );
+        $self->{DATA_STORE}->delete( $cand );
         delete $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
         $count++;
     }
   }
 
-  # remove temporary recycle datastore
   $mark_to_keep_store->unlink_store;
 
-  $self->{DATA_STORE}->_get_recycled_ids;
+  $count;
   
-} #_recycle_objects
+} #_purge_objects
 
 
 #

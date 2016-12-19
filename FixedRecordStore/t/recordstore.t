@@ -53,12 +53,6 @@ sub test_suite {
         todo => [ "Käse essen"  ],
                                         } ), "third item saved" );
     
-    $store->recycle( $id );
-    my $id4 = $store->stow( "BUZ BUZ" );
-    is( $id4, $id, "Got back recycled id" );
-    my $id5 = $store->stow( "LA LA" );
-    is( $id5, $id3 + 1, "Post recycled id" );
-
     my $ds = Data::RecordStore::FixedStore->open( "LLA4", "$dir2/filename" );
     my( @r ) = (
         [],
@@ -108,8 +102,8 @@ sub test_suite {
 
     my $xid = $store->stow( "x" x 90 );
     is( $new_store->entry_count, 2, "Two entries now in store #5" );
-    $store->recycle( $id );
-    is( $new_store->entry_count, 1, "one entries now in store #5 after recycle" );
+    $store->delete( $id );
+    is( $new_store->entry_count, 1, "one entries now in store #5 after delete" );
     
 } #test suite
 

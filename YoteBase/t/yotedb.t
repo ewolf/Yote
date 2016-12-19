@@ -74,7 +74,7 @@ sub test_suite {
     
     # filesize of $dir/1_OBJSTORE should be 360
 
-    # recycle test. This should eliminate the following :
+    # purge test. This should eliminate the following :
     # the old myList, the hash first element of myList, the objy in the hash, the someobj of objy, so 4 items
 
     my $list_to_remove = $root_node->get_myList();
@@ -86,23 +86,23 @@ sub test_suite {
     my $objy_id           = $store->_get_id( $objy );
     my $someobj_id        = $store->_get_id( $objy->get_someobj );
     undef $objy;
-    
+
     $root_node->set_myList( [] );
     
     $store->stow_all;
 
-    is( @{$store->run_recycler}, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
+    is( $store->run_purger, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
     
     undef $hash_in_list;
 
-    is( @{$store->run_recycler}, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
+    is( $store->run_purger, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
     $hash_in_list = $list_to_remove->[0];
 
     undef $list_to_remove;
 
-    is_deeply( $store->run_recycler, [$list_to_remove_id], "just list is removed. it is not referenced by other removed items that still have references." );
+    is( $store->run_purger, 1, "just list is removed. it is not referenced by other removed items that still have references." );
 
     eval {
         $store->compress_store;
@@ -111,7 +111,7 @@ sub test_suite {
     
     undef $hash_in_list;
 
-    is_deeply( [sort @{$store->run_recycler}],[ sort ($list_to_remove_id, $hash_in_list_id, $objy_id, $someobj_id) ], "all remaining things that can't trace to the root are removed" );
+    is( $store->run_purger, 4, "all remaining things that can't trace to the root are removed" );
     undef $dup_root;
 
     use Devel::Refcount 'refcount';
