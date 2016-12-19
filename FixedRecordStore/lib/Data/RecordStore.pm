@@ -34,11 +34,11 @@ both easy to set up and easy to use.
 
 =head1 LIMITATIONS
 
-Data::RecordStore is not meant to store huge amounts of data. 
-It will fail if it tries to create a file size greater than the 
-max allowed by the filesystem. This limitation may be removed in 
+Data::RecordStore is not meant to store huge amounts of data.
+It will fail if it tries to create a file size greater than the
+max allowed by the filesystem. This limitation may be removed in
 subsequent versions. This limitation is most important when working
-with sets of data that approach the max file size of the system 
+with sets of data that approach the max file size of the system
 in question.
 
 This is not written with thread safety in mind, so unexpected behavior
@@ -62,7 +62,7 @@ $VERSION = '2.0';
 
 =head2 open( directory )
 
-Takes a single argument - a directory, and constructs the data store in it. 
+Takes a single argument - a directory, and constructs the data store in it.
 The directory must be writeable or creatible. If a RecordStore already exists
 there, it opens it, otherwise it creates a new one.
 
@@ -95,7 +95,7 @@ sub open {
         #
         if( -e $obj_db_filename ) {
             die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the conversion program.";
-        } 
+        }
         $version = $VERSION;
         CORE::open $FH, ">", $version_file;
         print $FH "$version\n";
@@ -113,14 +113,14 @@ sub open {
     if( $version < 2 ) {
         $self->{STORE_IDX} = Data::RecordStore::FixedStore->open( "I", "$directory/STORE_INDEX" );
     }
-    
+
     bless $self, ref( $pkg ) || $pkg;
-    
+
 } #open
 
 =head2 entry_count
 
-Returns how many entries are in this store. 
+Returns how many entries are in this store.
 
 =cut
 sub entry_count {
@@ -153,7 +153,7 @@ sub set_entry_count {
 
 =head2 next_id
 
-This sets up a new empty record and returns the 
+This sets up a new empty record and returns the
 id for it.
 
 =cut
@@ -168,7 +168,7 @@ sub next_id {
 
 This saves the text or byte data to the record store.
 If an id is passed in, this saves the data to the record
-for that id, overwriting what was there. 
+for that id, overwriting what was there.
 If an id is not passed in, it creates a new record store.
 
 Returns the id of the record written to.
@@ -177,7 +177,7 @@ Returns the id of the record written to.
 sub stow {
     my( $self, $data, $id ) = @_;
 
-    
+
     $id //= $self->{OBJ_INDEX}->next_id;
 
 
@@ -203,11 +203,11 @@ sub stow {
         }
 
         #
-        # the old store was not big enough (or missing), so remove its record from 
+        # the old store was not big enough (or missing), so remove its record from
         # there, compacting it if possible
         #
         $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-        
+
     } #if this already had been saved before
 
     my $store_id = 1 + int( log( $save_size ) );
@@ -230,12 +230,12 @@ sub delete {
     my( $from_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $del_id ) };
 
     return unless $from_store_id;
-    
+
     my $from_store = $self->_get_store( $from_store_id );
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->{OBJ_INDEX}->put_record( $del_id, [ 0, 0 ] );
     1;
-}
+} #delete
 
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
@@ -251,7 +251,7 @@ sub _swapout {
         return;
     }
     if( $last_idx > 1 ) {
-                
+
         sysseek $fh, $store->{RECORD_SIZE} * ($last_idx-1), SEEK_SET or die "Could not seek ($store->{RECORD_SIZE} * ($last_idx-1)) : $@ $!";
         my $srv = sysread $fh, my $data, $store->{RECORD_SIZE};
         defined( $srv ) or die "Could not read : $@ $!";
@@ -262,9 +262,9 @@ sub _swapout {
         # update the object db with the new store index for the moved object id
         #
         my( $moving_id ) = unpack( $store->{TMPL}, $data );
-        
+
         $self->{OBJ_INDEX}->put_record( $moving_id, [ $store_id, $vacated_store_idx ] );
-        
+
         #
         # truncate the object file
         #
@@ -274,7 +274,7 @@ sub _swapout {
     # truncate now that the store is one record shorter
     #
     truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
-    
+
 } #_swapout
 
 =head2 has_id( id )
@@ -312,7 +312,7 @@ sub recycle {
 
 =head2 fetch( id )
 
-Returns the record associated with the ID. If the ID has no 
+Returns the record associated with the ID. If the ID has no
 record associated with it, undef is returned.
 
 =cut
@@ -358,7 +358,7 @@ sub _get_store {
 # ----------- end Data::RecordStore
 =head1 HELPER PACKAGES
 
-Data::RecordStore relies on two helper packages that are useful in 
+Data::RecordStore relies on two helper packages that are useful in
 their own right and are documented here.
 
 =head1 HELPER PACKAGE
@@ -414,7 +414,7 @@ use File::Copy;
 
 =head2 open( template, filename, size )
 
-Opens or creates the file given as a fixed record 
+Opens or creates the file given as a fixed record
 length data store. If a size is not given,
 it calculates the size from the template, if it can.
 This will die if a zero byte record size is determined.
@@ -432,7 +432,7 @@ sub open {
         close $FH;
     }
     CORE::open $FH, "+<$filename" or die "$@ $!";
-    bless { TMPL => $template, 
+    bless { TMPL => $template,
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
     }, $class;
@@ -453,7 +453,7 @@ sub empty {
 =head2 ensure_entry_count( count )
 
 Makes sure the data store has at least as many entries
-as the count given. This creates empty records if needed 
+as the count given. This creates empty records if needed
 to rearch the target record count.
 
 =cut
@@ -517,7 +517,7 @@ sub get_record {
         die "get record must be a positive integer";
     }
 
-    
+
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
 
@@ -551,7 +551,7 @@ sub next_id {
 
 =head2 pop
 
-Remove the last record and return it. 
+Remove the last record and return it.
 
 =cut
 sub pop {

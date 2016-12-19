@@ -381,7 +381,7 @@ sub has_id {
 
 =cut
 sub stow_all {
-    my $self = $_[0];
+    my $self = shift;
     my @odata;
     for my $obj (values %{$self->{_DIRTY}} ) {
         my $cls;
@@ -398,6 +398,29 @@ sub stow_all {
     $self->{_DATASTORE}->_stow_all( \@odata );
     $self->{_DIRTY} = {};
 } #stow_all
+
+
+=head2 stow( $obj )
+
+ Saves that object to the database
+
+=cut
+sub stow {
+    my( $self, $obj ) = @_;
+    my $cls;
+    my $ref = ref( $obj );
+    if( $ref eq 'ARRAY' || $ref eq 'Yote::Array' ) {
+        $cls = 'ARRAY';
+    } elsif( $ref eq 'HASH' || $ref eq 'Yote::Hash' ) {
+        $cls = 'HASH';
+    } else {
+        $cls = $ref;
+    }
+    my $id = $self->_get_id( $obj );
+    $self->{_DATASTORE}->_stow( $id, $cls, $self->_raw_data( $obj ) );
+    delete $self->{_DIRTY}{$id};
+} #stow
+
 
 
 # -------------------------------
