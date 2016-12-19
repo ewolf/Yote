@@ -33,7 +33,7 @@ both easy to set up and easy to use.
 Data::RecordStore is not meant to store huge amounts of data. 
 It will fail if it tries to create a file size greater than the 
 max allowed by the filesystem. This limitation will be removed in 
-subsequent versions. This limitation is most important when working
+vsubsequent versions. This limitation is most important when working
 with sets of data that approach the max file size of the system 
 in question.
 
@@ -195,29 +195,7 @@ sub stow {
             # the old store was not big enough (or missing), so remove its record from 
             # there, compacting it if possible
             #
-            my $last_idx = $old_store->entry_count - 1;
-            my $fh = $old_store->_filehandle;
-
-            if( $last_idx > 0 ) {
-                
-                sysseek $fh, $old_store->{RECORD_SIZE} * $last_idx, SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * $last_idx) : $@ $!";
-                my $srv = sysread $fh, my $data, $old_store->{RECORD_SIZE};
-                defined( $srv ) or die "Could not read : $@ $!";
-                sysseek( $fh, $old_store->{RECORD_SIZE} * ( $current_idx_in_store - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
-                defined( $srv ) or die "Could not read : $@ $!";
-
-                #
-                # update the object db with the new store index for the moved object id
-                #
-                my( $moving_id ) = unpack( $old_store->{TMPL}, $data );
-
-                $self->{OBJ_INDEX}->put_record( $moving_id, [ $current_store_id, $current_idx_in_store ] );
-
-                #
-                # truncate the object file
-                #
-            }
-            truncate $fh, $old_store->{RECORD_SIZE} * $last_idx;
+            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
         }
         
     } #if this already had been saved before
@@ -236,6 +214,35 @@ sub stow {
 
     $id;
 } #stow
+
+sub _swapout {
+    my( $self, $store, $store_id, $vacated_store_idx ) = @_;
+
+    my $last_idx = $store->entry_count - 1;
+    my $fh = $store->_filehandle;
+
+    if( $last_idx > 0 ) {
+                
+        sysseek $fh, $store->{RECORD_SIZE} * $last_idx, SEEK_SET or die "Could not seek ($store->{RECORD_SIZE} * $last_idx) : $@ $!";
+        my $srv = sysread $fh, my $data, $store->{RECORD_SIZE};
+        defined( $srv ) or die "Could not read : $@ $!";
+        sysseek( $fh, $store->{RECORD_SIZE} * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
+        defined( $srv ) or die "Could not read : $@ $!";
+
+        #
+        # update the object db with the new store index for the moved object id
+        #
+        my( $moving_id ) = unpack( $store->{TMPL}, $data );
+        
+        $self->{OBJ_INDEX}->put_record( $moving_id, [ $store_id, $vacated_store_idx ] );
+        
+        #
+        # truncate the object file
+        #
+    }
+    truncate $fh, $store->{RECORD_SIZE} * $last_idx;
+    
+} #_swapout
 
 =head2 has_id( id )
 
