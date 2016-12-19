@@ -50,7 +50,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '1.08';
+$VERSION = '1.09';
 
 =head1 METHODS
 
@@ -158,6 +158,19 @@ sub stow {
 
     $id;
 } #stow
+
+=head2 has_id( id )
+
+Returns true if an object with this db exists in the record store.
+
+=cut
+sub has_id {
+    my( $self, $id ) = @_;
+    my $ec = $self->entry_count;
+    return 0 if $ec < $id;
+    my $at_id = $self->fetch( $id );
+    1;
+}
 
 =head2 fetch( id )
 
@@ -470,6 +483,16 @@ sub get_record {
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];
 } #get_record
+
+=head2 has_id( id )
+
+Returns true if an object with this db exists in the record store.
+
+=cut
+sub has_id {
+    my( $self, $id ) = @_;
+    $self->{OBJ_INDEX}->has_id( $id );
+}
 
 =head2 next_id
 

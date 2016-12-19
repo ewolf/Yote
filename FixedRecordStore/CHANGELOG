@@ -1,4 +1,5 @@
-
+1.09 - added Data::RecordStore::has_id method
+	
 1.08 - added JSON requirement for tests
 	
 1.07 - updated test to include unicode characters

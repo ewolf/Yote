@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '1.44';
+$VERSION = '1.45';
 
 =head1 NAME
 
@@ -14,7 +14,7 @@ Yote - Persistant Perl container objects in a directed graph of lazilly loaded n
 
 =head1 DESCRIPTION
 
-This is for anyone who wants to store arbitrary structured state data and doesn't have 
+This is for anyone who wants to store arbitrary structured state data and doesn't have
 the time or inclination to write a schema or configure some framework. This can be used
 orthagonally to any other storage system.
 
@@ -24,8 +24,8 @@ container is a key/value store where the values can be strings, numbers, arrays,
 or other Yote containers.
 
 The entry point for all Yote data stores is the root node. All objects in the store are
-subject to recycling if they cannot trace a reference path back to this node. Recycling
-is called manually.
+unreachable if they cannot trace a reference path back to this node. If they cannot, running
+compress_store will remove them.
 
 There are lots of potential uses for Yote, and a few come to mind :
 
@@ -38,30 +38,30 @@ There are lots of potential uses for Yote, and a few come to mind :
  * product information
 
 =head1 SYNOPSIS
- 
+
  use Yote;
 
  my $store = Yote::open_store( '/path/to/data-directory' );
 
  my $root_node = $store->fetch_root;
 
- $root_node->add_to_myList( $store->newobj( { 
+ $root_node->add_to_myList( $store->newobj( {
     someval  => 123.53,
     somehash => { A => 1 },
-    someobj  => $store->newobj( { foo => "Bar" }, 
+    someobj  => $store->newobj( { foo => "Bar" },
                 'Optional-Yote-Subclass-Package' );
  } );
 
- # the root node now has a list 'myList' attached to it with the single 
- # value of a yote object that yote object has two fields, 
+ # the root node now has a list 'myList' attached to it with the single
+ # value of a yote object that yote object has two fields,
  # one of which is an other yote object.
- 
+
  $root_node->add_to_myList( 42 );
 
  #
  # New Yote container objects are created with $store->newobj. Note that
  # they must find a reference path to the root to be protected from
- # recycling. 
+ # being deleted from the record store upon compression.
  #
  my $newObj = $store->newobj;
 
@@ -110,14 +110,8 @@ There are lots of potential uses for Yote, and a few come to mind :
 
  #
  # Anything that cannot trace a reference path to the root
- # is eligable for being recycled. A recycled object's ID
- # will be reused for new objects.
+ # is eligable for being removed upon compression. 
  #
- $myList->[0]->set_condition( "About to be recycled" );
- delete $myList->[0];
-
- $store->stow_all;
- $store->run_recycler;
 
 =head1 PUBLIC METHODS
 
@@ -127,8 +121,9 @@ There are lots of potential uses for Yote, and a few come to mind :
 =head2 open_store( '/path/to/directory' )
 
 Starts up a persistance engine and returns it.
-   
+
 =cut
+
 sub open_store {
     my $path = pop;
     my $store = Yote::ObjStore->_new( { store => $path } );
@@ -146,6 +141,7 @@ no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
 
+use File::Copy;
 use WeakRef;
 use Module::Loaded;
 
@@ -161,7 +157,7 @@ The Yote::ObjStore does the following things :
  * creates new objects
  * fetches existing objects by id
  * saves all new or changed objects
- * finds objects that cannot connect to the root node and recycles them
+ * finds objects that cannot connect to the root node and removes them
 
 =cut
 
@@ -170,10 +166,10 @@ The Yote::ObjStore does the following things :
 # ------------------------------------------------------------------------------------------
 
 =head2 fetch_root
-    
- Returns the root node of the graph. All things that can be 
+
+ Returns the root node of the graph. All things that can be
 trace a reference path back to the root node are considered active
-and are not recycled when the recyler run.
+and are not removed when the object store is compressed.
 
 =cut
 sub fetch_root {
@@ -190,14 +186,14 @@ sub fetch_root {
 
 =head2 newobj( { ... data .... }, optionalClass )
 
- Creates a container object initialized with the 
+ Creates a container object initialized with the
  incoming hash ref data. The class of the object must be either
  Yote::Obj or a subclass of it. Yote::Obj is the default.
 
- Once created, the object will be saved in the data store when 
- $store->stow_all has been called.  If the object is not attached 
- to the root or an object that can be reached by the root, it will be 
- recycled when Yote::Obj::recycle_objects is called.
+ Once created, the object will be saved in the data store when
+ $store->stow_all has been called.  If the object is not attached
+ to the root or an object that can be reached by the root, it will be
+ remove when Yote::ObjStore::Compress is called.
 
 =cut
 sub newobj {
@@ -206,7 +202,7 @@ sub newobj {
     $class->_new( $self, $data );
 }
 
-sub _newroot { 
+sub _newroot {
     my $self = shift;
     Yote::Obj->_new( $self, {}, $self->_first_id );
 }
@@ -265,18 +261,81 @@ sub fetch {
     return undef;
 } #fetch
 
-=head2 run_recycler
+=head2 compress_store
 
-Does a mark and sweep and recycles all objects that
-do not currently have an active reference or can 
-trace a reference path back to the root object.
+This creates a new data store with all objects
+removed that cannot be traced back to the root.
+
+This will fail if the following directories 
+exist :
+  ${ROOT-DIRECOTRY-FOR-OBJECT-STORE}_COMPRESS_BAK
+  ${ROOT-DIRECOTRY-FOR-OBJECT-STORE}_NEW_RECYC
+
+The first directory is where the original object
+store gets backed up after the compression. If 
+the compression is a success, it should be removed.
+
+The second is a temporary working directory for the
+new copied over database.
+
+This requires enough room on the file system
+to potentially double the size of the database
+temporarily as it is copied to a new one.
 
 =cut
-sub run_recycler {
+sub compress_store {
     my $self = shift;
     $self->stow_all();
-    $self->{_DATASTORE}->_recycle_objects();
-} #run_recycler
+
+    my $original_dir = $self->{args}{store};
+    my $backdir = $original_dir . '_COMPRESS_BAK';
+    my $newdir  = $original_dir . '_NEW_RECYC';
+
+    if( -x $backdir ) {
+        die "Unable to run recycler, backup directory '$newdir' already exists.";
+    }
+
+    if( -x $newdir ) {
+        die "Unable to run recycler, temp directory '$newdir' already exists.";
+    }
+
+    my $newstore = Yote::ObjStore->_new( { store => $newdir } );
+
+    $self->_copy_over( $self->fetch_root, $newstore );
+
+    move( $original_dir, $backdir ) or die $!;
+    move( $newdir, $original_dir ) or die $!;
+
+} #compress_store
+
+#
+# Recursive helper function for the compress_store method.
+#
+sub _copy_over {
+    my( $from_store, $obj, $to_store ) = @_;
+    my $id = $from_store->_get_id( $obj );
+    return if $to_store->{_DATASTORE}{DATA_STORE}->has_id( $id );
+    $to_store->_stow( $obj, $id );
+
+    my $r = ref( $obj );
+    if( $r eq 'ARRAY' ) {
+        for my $o (grep { ref($_) } @$obj) {
+            $from_store->_copy_over( $o, $to_store );
+        }
+    }
+    elsif( $r eq 'HASH' ) {
+        for my $o (grep { ref($_) } values %$obj) {
+            $from_store->_copy_over( $o, $to_store );
+        }
+    }
+    else {
+        for my $oid (grep { $_ > 0 } values %{$self->{DATA}}) {
+            $from_store->_copy_over( $self->_fetch( $oid ), $to_store );
+        }
+    }
+
+} #_copy_over
+
 
 =head2 stow_all
 
@@ -405,11 +464,11 @@ sub __get_id {
 } #_get_id
 
 sub _stow {
-    my( $self, $obj ) = @_;
+    my( $self, $obj, $id ) = @_;
 
     my $class = ref( $obj );
     return unless $class;
-    my $id = $self->_get_id( $obj );
+    $id //= $self->_get_id( $obj );
     die unless $id;
 
     my $data = $self->_raw_data( $obj );
@@ -526,14 +585,14 @@ sub _raw_data {
     else {
         return $obj->{DATA};
     }
-    
+
 } #_raw_data
 
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die unless $ref;
     $self->{_WEAK_REFS}{$id} = $ref;
-    
+
     weaken( $self->{_WEAK_REFS}{$id} );
 } #_store_weak
 
@@ -603,7 +662,7 @@ sub id {
 
 =head2 set( $field, $value )
 
-    Assigns the given value to the field in this object and returns the 
+    Assigns the given value to the field in this object and returns the
     assigned value.
 
 =cut
@@ -615,7 +674,7 @@ sub set {
         $self->{STORE}->_dirty( $self, $self->{ID} );
     }
 
-    
+
     $self->{DATA}{$fld} = $inval;
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
 } #set
@@ -766,8 +825,8 @@ sub AUTOLOAD {
 # -----------------------
 
 =head2 _init
-  
-    This is called the first time an object is created. It is not 
+
+    This is called the first time an object is created. It is not
     called when the object is loaded from storage. This can be used
     to set up defaults. This is meant to be overridden.
 
@@ -775,7 +834,7 @@ sub AUTOLOAD {
 sub _init {}
 
 =head2 _init
-  
+
     This is called each time the object is loaded from the data store.
     This is meant to be overridden.
 
@@ -833,7 +892,7 @@ sub _DUMP_ALL {
     delete $show->{$self->{ID}};
     $seen->{$self->{ID}} = 1;
     my $buf = $self->_DUMP;
-    
+
     for my $obj_id (sort { $a <=> $b } grep { index($_,'v') != 0 && 0 == $seen->{$_}++ } values %{$self->{DATA}}) {
         $show->{$obj_id} = 1;
     }
@@ -845,7 +904,7 @@ sub _DUMP_ALL {
 
         my $obj = $self->{STORE}->fetch( $obj_id );
         my $r = ref( $obj );
-        
+
         if( $r eq 'ARRAY' ) {
             $buf .= "$obj_id (ARRAY)\n";
             my $tied = tied @$obj;
@@ -1020,13 +1079,13 @@ sub STORE {
     $self->[1]{$key} = $self->[2]->_xform_in( $val );
 }
 
-sub FIRSTKEY { 
+sub FIRSTKEY {
     my $self = shift;
     my $a = scalar keys %{$self->[1]};
     my( $k, $val ) = each %{$self->[1]};
     return wantarray ? ( $k => $val ) : $k;
 }
-sub NEXTKEY  { 
+sub NEXTKEY  {
     my $self = shift;
     my( $k, $val ) = each %{$self->[1]};
     return wantarray ? ( $k => $val ) : $k;
@@ -1120,7 +1179,7 @@ sub _first_id {
 } #_first_id
 
 #
-# Create a new object id and return it. 
+# Create a new object id and return it.
 #
 sub _get_id {
   my $self = shift;
@@ -1132,94 +1191,6 @@ sub _get_id {
 sub _max_id {
   shift->{DATA_STORE}->entry_count;
 }
-
-# used for debugging and testing
-sub _get_recycled_ids {
-  shift->{DATA_STORE}->_get_recycled_ids;
-}
-
-sub _recycle_objects {
-  my $self = shift;
-
-  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
-  $mark_to_keep_store->empty();
-  $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
-  
-  # the already deleted cannot be re-recycled
-  my $ri = $self->{DATA_STORE}->_get_recycled_ids;
-  for ( @$ri ) {
-    $mark_to_keep_store->put_record( $_, [ 1 ] );
-  }
-
-  my $trace_to_root = sub {
-      my( $keep_id, $mark_to_keep_store ) = @_;
-      my( @queue ) = ( $keep_id );
-
-      $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
-
-      # get the object ids referenced by this keeper object
-      while( @queue ) {
-          $keep_id = shift @queue;
-
-          my $item = $self->_fetch( $keep_id );
-          my( @additions );
-          if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-              ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
-          } else {
-              ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
-          }
-
-          for my $keeper ( @additions ) {
-              next if $mark_to_keep_store->get_record( $keeper )->[0];
-              $mark_to_keep_store->put_record( $keeper, [ 1 ] );
-              push @queue, $keeper;
-          }
-      } #while there is a queue
-  };
-
-  &$trace_to_root( $self->_first_id, $mark_to_keep_store );
-
-  #
-  # If there are any entries in the weak references, do not recycle these.
-  # This ignores the possibility of circular references, but that uncommon case
-  # is not worth the complexity.
-  #
-  for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
-      # make sure that these are actually referenced. They may be 
-      # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
-      # have an extra reference due to the tie.
-      my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
-      my $min_ref_count = 1;
-      if( $self->{OBJ_STORE}->_is_dirty( $referenced_id ) ) {
-          $min_ref_count++;
-      }
-      $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
-
-      if( refcount($obj) > $min_ref_count ) {
-          &$trace_to_root( $referenced_id, $mark_to_keep_store );
-      }
-  }
-
-  # the purge begins here
-  my $cands = $self->{DATA_STORE}->entry_count;
-  my $count = 0;
-  for my $cand ( 1..$cands) { #iterate each id in the entire object store
-    my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
-
-    die "Tried to recycle root entry" if $cand == 1 && ! $keep;
-    if ( ! $keep ) {
-        $self->{DATA_STORE}->recycle( $cand );
-        delete $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
-        $count++;
-    }
-  }
-
-  # remove temporary recycle datastore
-  $mark_to_keep_store->unlink_store;
-  
-  return $count;
-  
-} #_recycle_objects
 
 #
 # Saves the object data for object $id to the data store.

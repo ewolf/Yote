@@ -30,8 +30,15 @@ exit( 0 );
 sub test_suite {
 
     my $store = Data::RecordStore->open( $dir );
+
+    ok( ! $store->has_id( 1 ), "no first id yet" );
+    ok( ! $store->has_id( 2 ), "no second id yet" );
+    
     my $id  = $store->stow( "FOO FOO" );
+    ok( $store->has_id( 1 ), "now has first id" );
+    ok( ! $store->has_id( 2 ), "still no second id yet" );
     my $id2 = $store->stow( "BAR BAR" );
+    ok( $store->has_id( 2 ), "now has second id" );
     my $json_data = encode_json( {
         todo => [ "Käse essen"  ],
                              } );
