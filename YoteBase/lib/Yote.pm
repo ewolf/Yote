@@ -271,7 +271,7 @@ sub fetch {
 
 =cut
 sub run_purger {
-    my( $self, $make_tally ) = @_;
+    my( $self, $make_tally, $copy_only ) = @_;
     $self->stow_all();
 
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
@@ -288,7 +288,7 @@ sub run_purger {
     # If there are more things to keep than not, do a db purge,
     # otherwise, rebuild the db.
     #
-    my $do_purge = $keep > ( $total/2 );
+    my $do_purge = $keep > ( $total/2 ) && ! $copy_only;
     my $purged;
     if( $do_purge ) {
         $purged = $self->{_DATASTORE}->_purge_objects( $keep_db, $make_tally );
@@ -376,7 +376,8 @@ sub stow_all {
         } else {
             $cls = $ref;
         }
-        push( @odata, [ $self->_get_id( $obj ), $cls, $self->_raw_data( $obj ) ] );
+        my( $text_rep ) = $self->_raw_data( $obj );
+        push( @odata, [ $self->_get_id( $obj ), $cls, $text_rep ] );
     }
     $self->{_DATASTORE}->_stow_all( \@odata );
     $self->{_DIRTY} = {};
@@ -400,7 +401,8 @@ sub stow {
         $cls = $ref;
     }
     my $id = $self->_get_id( $obj );
-    $self->{_DATASTORE}->_stow( $id, $cls, $self->_raw_data( $obj ) );
+    my $text_rep = $self->_raw_data( $obj );
+    $self->{_DATASTORE}->_stow( $id, $cls, $text_rep );
     delete $self->{_DIRTY}{$id};
 } #stow
 
@@ -522,19 +524,19 @@ sub _stow {
     $id //= $self->_get_id( $obj );
     die unless $id;
 
-    my $data = $self->_raw_data( $obj );
+    my( $text_rep, $data ) = $self->_raw_data( $obj );
 
     if( $class eq 'ARRAY' ) {
-        $self->{_DATASTORE}->_stow( $id,'ARRAY', $data );
+        $self->{_DATASTORE}->_stow( $id,'ARRAY', $text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'HASH' ) {
-        $self->{_DATASTORE}->_stow( $id,'HASH',$data );
+        $self->{_DATASTORE}->_stow( $id,'HASH',$text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'Yote::Array' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id,'ARRAY',$data );
+            $self->{_DATASTORE}->_stow( $id,'ARRAY',$text_rep );
             $self->_clean( $id );
         }
         for my $child (@$data) {
@@ -545,7 +547,7 @@ sub _stow {
     }
     elsif( $class eq 'Yote::Hash' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id, 'HASH', $data );
+            $self->{_DATASTORE}->_stow( $id, 'HASH', $text_rep );
         }
         $self->_clean( $id );
         for my $child (values %$data) {
@@ -556,7 +558,7 @@ sub _stow {
     }
     else {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id, $class, $data );
+            $self->{_DATASTORE}->_stow( $id, $class, $text_rep );
             $self->_clean( $id );
         }
         for my $val (values %$data) {
@@ -606,10 +608,12 @@ sub _raw_data {
     return unless $class;
     my $id = $self->_get_id( $obj );
     die unless $id;
+    my( $r, $is_array );
     if( $class eq 'ARRAY' ) {
         my $tied = tied @$obj;
         if( $tied ) {
-            return $tied->[1];
+            $r = $tied->[1];
+            $is_array = 1;
         } else {
             die;
         }
@@ -617,22 +621,29 @@ sub _raw_data {
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$obj;
         if( $tied ) {
-            return $tied->[1];
+            $r = $tied->[1];
         } else {
             die;
         }
     }
     elsif( $class eq 'Yote::Array' ) {
-        return $obj->[1];
+        $r = $obj->[1];
+        $is_array = 1;
     }
     elsif( $class eq 'Yote::Hash' ) {
-        return $obj->[1];
+        $r = $obj->[1];
     }
     else {
-        return $obj->{DATA};
+        $r = $obj->{DATA};
     }
 
+    if( $is_array ) {
+        return join( "`", map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$r ), $r;
+    }
+    return join( "`", map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$r ), $r;
+
 } #_raw_data
+
 
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
@@ -1116,7 +1127,6 @@ no warnings 'uninitialized';
 use Data::RecordStore;
 
 use File::Path qw(make_path);
-use JSON;
 
 use constant {
   DATA => 2,
@@ -1147,14 +1157,45 @@ sub open {
 sub _fetch {
   my( $self, $id ) = @_;
   my $data = $self->{DATA_STORE}->fetch( $id );
+
   return undef unless $data;
 
   my $pos = index( $data, ' ' ); #there is a always a space after the class.
+  $pos = ( length( $data ) ) if $pos == -1;
   die "Malformed record '$data'" if $pos == -1;
   my $class = substr $data, 0, $pos;
   my $val   = substr $data, $pos + 1;
   my $ret = [$id,$class,$val];
-  $ret->[DATA] = from_json( $ret->[DATA] );
+
+  # so foo` or foo\\` but not foo\\\`
+  # also this will never start with a `
+  my( @parts );
+
+  my $next = index( $val, '`' );
+  while( $next >= 0 ) {
+      my $ss = substr( $val, 0, $next );
+      if( $ss =~ /(^|[^\\](([\\][\\])+)?)$/s ) {
+          $ss =~ s/\\`/`/gs;
+          $ss =~ s/\\\\/\\/gs;
+          push @parts, $ss;
+          $val = substr( $val, $next+1 );
+          $next = index( $val, '`' );
+      } else {
+          $next = index( $val, '`', $next+1 );
+      }
+  }
+  if( length( $val ) ) {
+      $val =~ s/\\`/`/gs;
+      $val =~ s/\\\\/\\/gs;
+      push @parts, $val;
+  }
+
+  if( $class eq 'ARRAY' ) {
+      $ret->[DATA] = \@parts;
+  } else {
+      $ret->[DATA] = { @parts };
+  }
+
   $ret;
 } #_fetch
 
@@ -1324,7 +1365,7 @@ sub _purge_objects {
 #
 sub _stow { #Yote::YoteDB::_stow
   my( $self, $id, $class, $data ) = @_;
-  my $save_data = "$class " . to_json($data);
+  my $save_data = "$class $data";
   $self->{DATA_STORE}->stow( $save_data, $id );
 } #_stow
 

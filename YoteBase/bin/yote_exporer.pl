@@ -42,6 +42,17 @@ sub interpret {
         print "\n";
     } #PURGE
 
+    elsif( $cmd =~ /^\s*PURGEREFORMAT/i ) {
+        print "\nrunning purger\n";
+        print `du $db_dir`;
+        print "\n";
+        $store->run_purger( 0, 1 );
+        print "\ndone running purger\n";
+        print `du $db_dir`;
+        print "\n";
+    } #PURGE
+
+    
     elsif( $cmd =~ /^\s*STOW/i ) {
         print "Stowing all\n";
         $store->stow_all;

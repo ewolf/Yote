@@ -84,7 +84,7 @@ for my $id (1..$source_obj_db->entry_count) {
 
     my $dest_db = $dest_dbs->[$dest_store_id];
     unless( $dest_db ) {
-        $dest_db = Data::RecordStore::FixedStore->open( "IA*", "$dest_dir/stores/${dest_store_id}_OBJSTORE", $dest_store_size );
+        $dest_db = Data::RecordStore::FixedStore->open( "LZ*", "$dest_dir/stores/${dest_store_id}_OBJSTORE", $dest_store_size );
         $dest_dbs->[$dest_store_id] = $dest_db;
     }
     my $idx_in_dest_store = $dest_db->next_id;

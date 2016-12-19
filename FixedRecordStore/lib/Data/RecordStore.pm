@@ -197,6 +197,7 @@ sub stow {
 
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
+        # if the data isn't too big or too small for the table, keep it where it is and return
         if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
@@ -243,14 +244,7 @@ sub _swapout {
     my $last_idx = $store->entry_count;
     my $fh = $store->_filehandle;
 
-    if( $last_idx == $vacated_store_idx ) {
-        #
-        # if this is the last record in the store, merely truncate the store
-        #
-        truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
-        return;
-    }
-    if( $last_idx > 1 ) {
+    if( $vacated_store_idx < $last_idx ) {
 
         sysseek $fh, $store->{RECORD_SIZE} * ($last_idx-1), SEEK_SET or die "Could not seek ($store->{RECORD_SIZE} * ($last_idx-1)) : $@ $!";
         my $srv = sysread $fh, my $data, $store->{RECORD_SIZE};
@@ -287,7 +281,7 @@ sub has_id {
     my $ec = $self->entry_count;
     return 0 if $ec < $id;
 
-    my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    my( $store_id ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     $store_id > 0;
 }
 
@@ -323,6 +317,7 @@ sub fetch {
 
     my $store = $self->_get_store( $store_id );
 
+    # skip the included id, just get the data
     ( undef, my $data ) = @{ $store->get_record( $id_in_store ) };
 
     $data;
@@ -348,8 +343,8 @@ sub _get_store {
 
     my $store_size = int( exp $store_index );
 
-    # since we are not using a pack template with a definite size, the size comes from the record
-    my $store = Data::RecordStore::FixedStore->open( "IA*", "$self->{DIRECTORY}/stores/${store_index}_OBJSTORE", $store_size );
+    # storing first the size of the record, then the bytes of the record
+    my $store = Data::RecordStore::FixedStore->open( "LZ*", "$self->{DIRECTORY}/stores/${store_index}_OBJSTORE", $store_size );
 
     $self->{STORES}[ $store_index ] = $store;
     $store;
@@ -427,11 +422,11 @@ sub open {
     my $useSize = $size || do { use bytes; length( pack( $template ) ) };
     die "Cannot open a zero record sized fixed store" unless $useSize;
     unless( -e $filename ) {
-        CORE::open $FH, ">$filename";
+        CORE::open $FH, ">", $filename;
         print $FH "";
         close $FH;
     }
-    CORE::open $FH, "+<$filename" or die "$@ $!";
+    CORE::open $FH, "+<", $filename or die "$@ $!";
     bless { TMPL => $template,
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
@@ -513,14 +508,14 @@ sub get_record {
 # how about an ensure_entry_count right here?
     # also a has_record
     if( $idx < 1 ) {
-        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
         die "get record must be a positive integer";
     }
 
 
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
-    my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
 
+    my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
+    
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];
 } #get_record
@@ -544,7 +539,7 @@ sub next_id {
     my( $self ) = @_;
     my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
-    $self->put_record( $next_id, [] );
+    $self->ensure_entry_count( $next_id );
     $next_id;
 } #next_id
 
@@ -604,20 +599,13 @@ assigned to this store.
 =cut
 sub put_record {
     my( $self, $idx, $data ) = @_;
+
     my $fh = $self->_filehandle;
+
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
     # allows the put_record to grow the data store by no more than one entry
+
     die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
-
-    my $to_write_length = do { use bytes; length( $to_write ); };
-    if( $to_write_length < $self->{RECORD_SIZE} ) {
-        my $del = $self->{RECORD_SIZE} - $to_write_length;
-        $to_write .= "\0" x $del;
-        $to_write_length = do { use bytes; length( $to_write ); };
-    }
-    die "Length mismatch in put record : $to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
-
-# how about an ensure_entry_count right here?
 
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     1;
@@ -637,7 +625,7 @@ sub unlink_store {
 
 sub _filehandle {
     my $self = shift;
-    CORE::open( my $fh, "+<$self->{FILENAME}" );
+    CORE::open( my $fh, "+<", $self->{FILENAME} );
     $fh;
 }
 
