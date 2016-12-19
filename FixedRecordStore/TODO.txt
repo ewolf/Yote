@@ -1,6 +1,5 @@
 be able to open a record store read only
 
- * update recycling
  * conversion of old to new database ( command line maybe? )
 
 
