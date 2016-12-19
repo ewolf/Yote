@@ -41,7 +41,7 @@ sub show {
                 my $in = <STDIN>;
                 chomp $in;
                 if( $in > 0 ) {
-                    show( $id );
+                    show( $in );
                     return;
                 }
             }
@@ -58,7 +58,7 @@ sub show {
                 my $in = <STDIN>;
                 chomp $in;
                 if( $in > 0 ) {
-                    show( $id );
+                    show( $in );
                     return;
                 }
             }

@@ -155,7 +155,11 @@ Returns the id of the record written to.
 sub stow {
     my( $self, $data, $id ) = @_;
 
+    
     $id //= $self->{OBJ_INDEX}->next_id;
+
+
+print STDERR "Stow $id : $data\n";
 
     my $save_size = do { use bytes; length( $data ); };
 
@@ -174,6 +178,7 @@ sub stow {
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
         if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
+            print STDERR "keep me in store $current_store_id at index $current_idx_in_store\n";
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
@@ -182,6 +187,7 @@ sub stow {
         # the old store was not big enough (or missing), so remove its record from 
         # there, compacting it if possible
         #
+        print STDERR "Swap me out of store $current_store_id at index $current_idx_in_store\n";
         $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
         
     } #if this already had been saved before
@@ -190,10 +196,14 @@ sub stow {
 
     my $store = $self->_get_store( $store_id );
 
+    my $entry_count = $store->entry_count;
+
     my $index_in_store = $store->next_id;
 
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
 
+    print STDERR "add me to store $store_id <with $entry_count entries> at index $index_in_store\n";
+    
     $store->put_record( $index_in_store, [ $id, $data ] );
 
     $id;
@@ -202,6 +212,8 @@ sub stow {
 sub delete {
     my( $self, $del_id ) = @_;
     my( $from_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $del_id ) };
+    print STDERR "Delete $del_id ($from_store_id/$current_idx_in_store)\n";
+    return unless $from_store_id;
     my $from_store = $self->_get_store( $from_store_id );
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->{OBJ_INDEX}->put_record( $del_id, [ 0, 0 ] );
@@ -210,12 +222,22 @@ sub delete {
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
-    my $last_idx = $store->entry_count - 1;
+    print STDERR "vacate $vacated_store_idx in store $store_id\n";
+    
+    my $last_idx = $store->entry_count;
     my $fh = $store->_filehandle;
 
-    if( $last_idx > 0 ) {
+    if( $last_idx == $vacated_store_idx ) {
+        #
+        # if this is the last record in the store, merely truncate the store
+        #
+        print STDERR "Last index is $last_idx, so truncating to ".($store->{RECORD_SIZE} * ($last_idx-1))."\n";
+        truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
+        return;
+    }
+    if( $last_idx > 1 ) {
                 
-        sysseek $fh, $store->{RECORD_SIZE} * $last_idx, SEEK_SET or die "Could not seek ($store->{RECORD_SIZE} * $last_idx) : $@ $!";
+        sysseek $fh, $store->{RECORD_SIZE} * ($last_idx-1), SEEK_SET or die "Could not seek ($store->{RECORD_SIZE} * ($last_idx-1)) : $@ $!";
         my $srv = sysread $fh, my $data, $store->{RECORD_SIZE};
         defined( $srv ) or die "Could not read : $@ $!";
         sysseek( $fh, $store->{RECORD_SIZE} * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
@@ -232,7 +254,11 @@ sub _swapout {
         # truncate the object file
         #
     }
-    truncate $fh, $store->{RECORD_SIZE} * $last_idx;
+
+    #
+    # truncate now that the store is one record shorter
+    #
+    truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
     
 } #_swapout
 
@@ -390,12 +416,13 @@ sub ensure_entry_count {
     my( $self, $count ) = @_;
     my $fh = $self->_filehandle;
 
-    my $entries = $self->entry_count;
-    if( $count > $entries ) {
-        for( (1+$entries)..$count ) {
-            $self->put_record( $_, [] );
-        }
-    } 
+    my $needed = $count - $self->entry_count;
+
+    if( $needed > 0 ) {
+        my $fh = $self->_filehandle;
+        truncate $fh, $count * $self->{RECORD_SIZE};
+    }
+
 } #ensure_entry_count
 
 =head2
@@ -429,8 +456,11 @@ sub get_record {
     if( $idx < 1 ) {
         die "get record must be a positive integer";
     }
+
+    
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
+
     defined( $srv ) or die "Could not read : $@ $!";
     [unpack( $self->{TMPL}, $data )];
 } #get_record
@@ -504,7 +534,7 @@ sub put_record {
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
 
     # allows the put_record to grow the data store by no more than one entry
-    die "Index out of bounds" if $idx > (1+$self->entry_count);
+    die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
 
     my $to_write_length = do { use bytes; length( $to_write ); };
     if( $to_write_length < $self->{RECORD_SIZE} ) {
