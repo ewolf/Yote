@@ -1,0 +1,29 @@
+#!/usr/bin/perl
+
+use strict;
+#use warnings;
+
+use Data::RecordStore;
+use JSON;
+
+my $db_dir = shift @ARGV;
+
+die "Usage: $0 <recordstore directory>" unless $db_dir;
+
+my $store = Data::RecordStore->open( $db_dir );
+
+for my $id ( 1..($store->entry_count-1) ) {
+    my $val = $store->fetch( $id );
+    if( $val =~ /^(\S+) ([\{\[].*)/s ) {
+        my( $class, $json ) = ( $1, $2 );
+        my $data = from_json( $json );
+        my $converted;
+        if( $class eq 'ARRAY' ) {
+            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
+        } else {
+            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
+        }
+        $store->stow( "$class $converted", $id );
+        print STDERR "$id\n";
+    }
+} #each id
