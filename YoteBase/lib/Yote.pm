@@ -1180,7 +1180,7 @@ sub _fetch {
 
   # so foo` or foo\\` but not foo\\\`
   # also this will never start with a `
-  my $parts = [ split /\`/, $val ];
+  my $parts = [ split /\`/, $val, -1 ];
 
   # check to see if any of the parts were split on escapes
   if( 0 < grep { /\\$/ } @$parts ) {

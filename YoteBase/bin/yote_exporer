@@ -12,9 +12,6 @@ my $store = Yote::open_store( $db_dir );
 
 show( $store->fetch_root->{ID} );
 
-"how about delete, move, add, purge?";
-
-
 print ">";
 
 while( my $in = <STDIN> ) {
