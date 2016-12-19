@@ -315,13 +315,15 @@ sub compress_store {
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
 
     my( @copy_ids ) = ( $self->_first_id );
-    print STDERR Data::Dumper->Dump(["COMPRESS ".@copy_ids]);
+
     my $count = 0;
     my( %seen );
     while( @copy_ids ) {
         my $id = shift @copy_ids;
-        next if $seen{$id}++;
-#        next if $newstore->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $self->_first_id;
+#        next if $seen{$id}++;
+        next if $newstore->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $self->_first_id;
+        next if$id == $self->_first_id && $count > 0;
+        
         print STDERR "\t$id";
         if( ++$count > 80 ) {
             print STDERR "\n";
@@ -347,8 +349,8 @@ sub compress_store {
         }
     }
     
-#    move( $original_dir, $backdir ) or die $!;
-#    move( $newdir, $original_dir ) or die $!;
+    move( $original_dir, $backdir ) or die $!;
+    move( $newdir, $original_dir ) or die $!;
 
 } #compress_store
 =head2 stow_all
@@ -1295,8 +1297,8 @@ sub _recycle_objects {
 
   # remove temporary recycle datastore
   $mark_to_keep_store->unlink_store;
-  
-  return $count;
+
+  $self->{DATA_STORE}->_get_recycled_ids;
   
 } #_recycle_objects
 

@@ -91,18 +91,18 @@ sub test_suite {
     
     $store->stow_all;
 
-    is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
+    is( @{$store->run_recycler}, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
     
     undef $hash_in_list;
 
-    is( $store->run_recycler, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
+    is( @{$store->run_recycler}, 0, "none 4 deleted things recyled because the top non-weak reference is kept." );
 
     $hash_in_list = $list_to_remove->[0];
 
     undef $list_to_remove;
 
-    is( $store->run_recycler, 1, "just list is removed. it is not referenced by other removed items that still have references." );
+    is_deeply( $store->run_recycler, [$list_to_remove_id], "just list is removed. it is not referenced by other removed items that still have references." );
 
     eval {
         $store->compress_store;
@@ -110,8 +110,8 @@ sub test_suite {
     like( $@, qr/outstanding references/, "could not run compress_store due to outstanding references" );
     
     undef $hash_in_list;
-    
-    is( $store->run_recycler, 3, "all 3 remaining things that can't trace to the root are removed" );
+
+    is_deeply( [sort @{$store->run_recycler}],[ sort ($list_to_remove_id, $hash_in_list_id, $objy_id, $someobj_id) ], "all remaining things that can't trace to the root are removed" );
     undef $dup_root;
 
     use Devel::Refcount 'refcount';

@@ -991,7 +991,7 @@ use base 'Yote::ServerObj';
 
 sub fetch {  # fetch scrambled id
     my( $self, $in_sess_id ) = @_;
-    $self->get__ids([])->[$in_sess_id];
+    $self->get__ids([])->[$in_sess_id-1];
 }
 
 sub getid { #scramble id for object
@@ -1001,8 +1001,8 @@ sub getid { #scramble id for object
         return $o2i->{$obj};
     }
     my $ids = $self->get__ids([]);
+    my $id = scalar @$ids;
     push @$ids, $obj;
-    my $id = $#$ids;
     $o2i->{$obj} = $id;
     $id;
 } #id

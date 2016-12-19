@@ -203,7 +203,7 @@ sub recycle {
     
     my $store = $self->_get_store( $store_id );
     $store->recycle( $id_in_store );
-    $self->{OBJ_INDEX}->recycle( $id_in_store );
+    $self->{OBJ_INDEX}->recycle( $id );
 
 } #recycle
 
