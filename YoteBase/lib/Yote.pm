@@ -401,7 +401,7 @@ sub stow {
         $cls = $ref;
     }
     my $id = $self->_get_id( $obj );
-    my $text_rep = $self->_raw_data( $obj );
+    my( $text_rep ) = $self->_raw_data( $obj );
     $self->{_DATASTORE}->_stow( $id, $cls, $text_rep );
     delete $self->{_DIRTY}{$id};
 } #stow
@@ -638,9 +638,9 @@ sub _raw_data {
     }
 
     if( $is_array ) {
-        return join( "`", map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$r ), $r;
+        return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
     }
-    return join( "`", map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$r ), $r;
+    return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
 
 } #_raw_data
 

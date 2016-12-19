@@ -76,6 +76,13 @@ sub test_suite {
 
     my $list_to_remove = $root_node->get_myList();
 
+    $list_to_remove->[9] = "NINE";
+
+    $store->stow_all;
+
+    undef $list_to_remove;
+    $list_to_remove = $root_node->get_myList();
+
     my $hash_in_list = $list_to_remove->[0];
 
     my $list_to_remove_id = $store->_get_id( $list_to_remove );
@@ -100,8 +107,11 @@ sub test_suite {
     my $quickly_removed_obj = $store->newobj( { soon => 'gone' } );
     my $quickly_removed_id = $quickly_removed_obj->{ID};
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
+    $list_to_remove->[88] = "EIGHTYEIGHT";
 
     $store->stow_all;
+
+    
 
     undef $list_to_remove;
     undef $quickly_removed_obj;

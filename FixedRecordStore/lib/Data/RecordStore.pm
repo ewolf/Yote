@@ -451,7 +451,7 @@ sub convert {
 
     print STDERR "Adding version information\n";
 
-    Core::open( my $FH, ">", "$dest_dir/VERSION");
+    CORE::open( my $FH, ">", "$dest_dir/VERSION");
     print $FH "$Data::RecordStore::VERSION\n";
     close $FH;
 

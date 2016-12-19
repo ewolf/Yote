@@ -7,6 +7,15 @@ no warnings 'numeric';
 use Yote;
 use Data::Dumper;
 
+#
+# In case this database has yote::server objects.
+# the Yote::Server package has subpackages. For example,
+# loading Yote::ServerObj cannot be done by 'use Yote::ServerObj',
+# only 'use Yote::Server'
+# If this is not available, that's okey.
+#
+eval("use Yote::Server");
+
 my $db_dir = shift @ARGV || '/opt/yote/DATA_STORE';
 my $store = Yote::open_store( $db_dir );
 
