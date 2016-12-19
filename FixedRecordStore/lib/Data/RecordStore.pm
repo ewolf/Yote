@@ -279,7 +279,7 @@ sub _get_store {
     my $store_size = int( exp $store_index );
 
     # since we are not using a pack template with a definite size, the size comes from the record
-    my $store = Data::RecordStore::FixedStore->open( "IA*", "$self->{DIRECTORY}/${store_index}_OBJSTORE", $store_size );
+    my $store = Data::RecordStore::FixedStore->open( "IA*", "$self->{DIRECTORY}/stores/${store_index}_OBJSTORE", $store_size );
 
     $self->{STORES}[ $store_index ] = $store;
     $store;
@@ -513,7 +513,7 @@ sub put_record {
         $to_write .= "\0" x $del;
         $to_write_length = do { use bytes; length( $to_write ); };
     }
-    die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
+    die "Length mismatch in put record : $to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
 
 # how about an ensure_entry_count right here?
 

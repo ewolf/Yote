@@ -28,7 +28,10 @@ print STDERR "Convert from $from_version to $Data::RecordStore::VERSION\n";
 mkdir "$dir/old_db";
 
 my $store_db = Data::RecordStore::FixedStore->open( "I", "$dir/STORE_INDEX" );
+my @old_sizes;
 for my $id (1..$store_db->entry_count) {
+    my( $size ) = @{ $store_db->get_record( $id ) };
+    $old_sizes[$id] = $size;
     rename "$dir/${id}_OBJSTORE", "$dir/old_db/${id}_OBJSTORE";
     rename "$dir/${id}_OBJSTORE.recycle", "$dir/old_db/${id}_OBJSTORE.recycle";
 }
@@ -42,24 +45,32 @@ for my $id (1..$obj_db->entry_count) {
     # grab data
     my $old_db = $old_dbs->[$old_store_id];
     unless( $old_db ) {
-        $old_db = Data::RecordStore::FixedStore->open( "IA*", "$dir/old_db/${old_store_id}_OBJ_STORE" );
+        $old_db = Data::RecordStore::FixedStore->open( "A*", "$dir/old_db/${old_store_id}_OBJSTORE", $old_sizes[$old_store_id] );
         $old_dbs->[$old_store_id] = $old_db;
     }
     my( $data ) = @{ $old_db->get_record( $id_in_old_store ) };
-    
+
     # store in new database
     my $save_size = do { use bytes; length( $data ); };
     $save_size += 8; #for the id
     my $new_store_id = 1 + int( log( $save_size ) );
+    my $new_store_size = int( exp $new_store_id );
 
     my $new_db = $new_dbs->[$new_store_id];
     unless( $new_db ) {
-        $new_db = Data::RecordStore::FixedStore->open( "IA*", "$dir/old_db/${new_store_id}_OBJ_STORE" );
+        $new_db = Data::RecordStore::FixedStore->open( "IA*", "$dir/stores/${new_store_id}_OBJSTORE", $new_store_size );
         $new_dbs->[$new_store_id] = $new_db;
     }
     my $idx_in_new_store = $new_db->next_id;
-    $new_db->put_record( $id, [ $new_store_id, $idx_in_new_store ] );
+    $new_db->put_record( $idx_in_new_store, [ $id, $data ] );
+
+    $obj_db->put_record( $id, [ $new_store_id, $idx_in_new_store ] );
 }
+
+open my $FH, ">", $ver_file;
+print $FH "$Data::RecordStore::VERSION\n";
+close $FH;
+
 
 # test to make sure it works
 unlink "$dir/old_db";
