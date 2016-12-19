@@ -6,6 +6,8 @@ use warnings;
 use Data::Dumper;
 use Data::RecordStore;
 
+die "Converter requires Data::RecordStore version of at least 2.0" unless $Data::RecordStore::VERSION >= 2;
+
 my( $dir ) = @ARGV;
 die "Usage : converter.pl <directory with db>" unless $dir;
 
@@ -20,6 +22,12 @@ if( -e $ver_file ) {
     chomp $from_version;
     close $FH;
 }
+
+if( $from_version >= 2 ) {
+    print STDERR "Database at '$dir' already at version $from_version\n";
+    exit;
+}
+
 print STDERR "Convert from $from_version to $Data::RecordStore::VERSION\n";
 
 #
@@ -41,7 +49,8 @@ my $new_dbs = [];
 my $obj_db = Data::RecordStore::FixedStore->open( "IL", $obj_idx_file );
 for my $id (1..$obj_db->entry_count) {
     my( $old_store_id, $id_in_old_store ) = @{ $obj_db->get_record( $id ) };
-
+    next unless $id_in_old_store;
+    
     # grab data
     my $old_db = $old_dbs->[$old_store_id];
     unless( $old_db ) {

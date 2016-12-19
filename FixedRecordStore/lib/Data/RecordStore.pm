@@ -555,6 +555,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.06  (May 6, 2016))
+       Version 2.0  (Feb 23, 2017))
 
 =cut
