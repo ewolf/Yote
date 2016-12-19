@@ -141,10 +141,10 @@ no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
 
-use Devel::Refcount 'refcount';
 use File::Copy;
 use File::Path qw(make_path remove_tree);
-use WeakRef;
+use Scalar::Util qw(weaken);
+
 use Module::Loaded;
 
 =head1 NAME
@@ -227,11 +227,7 @@ sub fetch {
     } else {
         $ref = $self->{_WEAK_REFS}{$id};
         if( $ref ) {
-            my $min_ref_count = 1;
-            $min_ref_count++ if ref($ref) =~ /^(ARRAY|HASH)$/;
-            if( refcount($ref) > $min_ref_count ) {
-                return $ref;
-            }
+            return $ref;
         }
         undef $ref;
     }
@@ -242,14 +238,12 @@ sub fetch {
         if( $class eq 'ARRAY' ) {
             my( @arry );
             tie @arry, 'Yote::Array', $self, $id, @$data;
-            my $tied = tied @arry; $tied->[3] = \@arry;
             $self->_store_weak( $id, \@arry );
             return \@arry;
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
             tie %hash, 'Yote::Hash', $self, $id, map { $_ => $data->{$_} } keys %$data;
-            my $tied = tied %hash; $tied->[3] = \%hash;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -279,17 +273,6 @@ sub fetch {
 sub run_purger {
     my( $self, $make_tally ) = @_;
     $self->stow_all();
-    if( $self->_has_weak_refs ) {
-#        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
-    }
-
-"
-    OKEY maaaybe we do want to recycle objects because the object index can get pretty big
-        at least make it an option?
-
-        the argument against this is if an ID is stored anywhere outside the store. Could argue that these
-        ids are private to the store and nothing else should use them
-";
 
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
 
@@ -491,7 +474,6 @@ sub __get_id {
         my( @data ) = @$ref;
         my $id = $self->{_DATASTORE}->_get_id( $class );
         tie @$ref, 'Yote::Array', $self, $id;
-        $tied = tied @$ref; $tied->[3] = $ref;
         push( @$ref, @data );
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
@@ -512,7 +494,6 @@ sub __get_id {
         my( %vals ) = %$ref;
 
         tie %$ref, 'Yote::Hash', $self, $id;
-        $tied = tied %$ref; $tied->[3] = $ref;
         for my $key (keys %vals) {
             $ref->{$key} = $vals{$key};
         }
@@ -615,14 +596,6 @@ sub _is_dirty {
     my $ans = $self->{_DIRTY}{$id};
     $ans;
 } #_is_dirty
-
-sub _has_weak_refs {
-    my $self = shift;
-
-    # if there is an ARRAY or HASH, since it is tied, it has a reference to itself
-    0 < grep { $_ && refcount($_) > (ref($_) =~ /^(ARRAY|HASH)$/ ? 1 : 0 ) }
-        values %{$self->{_WEAK_REFS}};
-}
 
 #
 # Returns data structure representing object. References are integers. Values start with 'v'.
@@ -961,78 +934,11 @@ sub _instantiate {
     bless { ID => $_[1], DATA => {}, STORE => $_[2] }, $_[0];
 } #_instantiate
 
-sub DESTROY {}
-
-sub _DUMP_ALL {
-    my( $self, $seen, $show ) = @_;
-    $seen //= {};
-    $show //= {};
-
-    delete $show->{$self->{ID}};
-    $seen->{$self->{ID}} = 1;
-    my $buf = $self->_DUMP;
-
-    for my $obj_id (sort { $a <=> $b } grep { index($_,'v') != 0 && 0 == $seen->{$_}++ } values %{$self->{DATA}}) {
-        $show->{$obj_id} = 1;
-    }
-
-    while(1) {
-        my( $obj_id ) = keys %$show;
-        last unless $obj_id;
-        $buf .= "-------------------------\n";
-
-        my $obj = $self->{STORE}->fetch( $obj_id );
-        my $r = ref( $obj );
-
-        if( $r eq 'ARRAY' ) {
-            $buf .= "$obj_id (ARRAY)\n";
-            my $tied = tied @$obj;
-            delete $show->{$obj_id};
-            for my $item (@{$tied->[1]}) {
-                if( $item > 0 ) {
-                    $show->{$item} = 1;
-                    $buf .= "\t* $item\n";
-                } else {
-                    $buf .= "\t".substr($item,1)."\n";
-                }
-            }
-        }
-        elsif( $r eq 'HASH' ) {
-            $buf .= "$obj_id (HASH)\n";
-            delete $show->{$obj_id};
-            my $tied = tied %$obj;
-            my $th = $tied->[1];
-            for my $key (keys %$th) {
-                my $item = $th->{$key};
-
-                if( $item > 0 ) {
-                    $show->{$item} = 1;
-                    $buf .= "\t$key -> * $item\n";
-                } else {
-                    $buf .= "\t$key -> ".substr($item,1)."\n";
-                }
-            }
-        }
-        else {
-            $buf .= $obj->_DUMP_ALL( $seen, $show );
-        }
-    }
-    $buf;
-} #_DUMP_ALL
-
-sub _DUMP {
+sub DESTROY {
     my $self = shift;
-    my $buf = "$self->{ID} (".ref($self).")\n";
-    for my $key (sort keys %{$self->{DATA}}) {
-        my $val = $self->{DATA}{$key};
-        if( index( $val, 'v' ) != 0 ) {
-            $buf .= "\t$key -> * $val \n";
-        } else {
-            $buf .= "\t$key -> ".substr($val,1)."\n";
-        }
-    }
-    $buf;
-} #_DUMP
+    delete $self->{STORE}{_WEAK_REFS}{$self->{ID}};
+}
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -1074,7 +980,7 @@ sub FETCHSIZE {
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     $self->[1][$idx] = $self->[2]->_xform_in( $val );
 }
 sub STORESIZE {}  #stub for array
@@ -1085,53 +991,56 @@ sub EXISTS {
 }
 sub DELETE {
     my( $self, $idx ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     delete $self->[1][$idx];
 }
 
 sub CLEAR {
     my $self = shift;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     @{$self->[1]} = ();
 }
 sub PUSH {
     my( $self, @vals ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     push( @{$self->[1]}, map { $self->[2]->_xform_in($_) } @vals );
 }
 sub POP {
     my $self = shift;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     return $self->[2]->_xform_out( pop @{$self->[1]} );
 }
 sub SHIFT {
     my( $self ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     my $val = splice @{$self->[1]}, 0, 1;
     return $self->[2]->_xform_out( $val );
 }
 sub UNSHIFT {
     my( $self, @vals ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     unshift @{$self->[1]}, map {$self->[2]->_xform_in($_)} @vals;
 }
 sub SPLICE {
     my( $self, $offset, $length, @vals ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     return map { $self->[2]->_xform_out($_) } splice @{$self->[1]}, $offset, $length, map {$self->[2]->_xform_in($_)} @vals;
 }
 sub EXTEND {}
 
-sub DESTROY {}
+sub DESTROY {
+    my $self = shift;
+    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
+}
 
-# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 
 package Yote::Hash;
 
-############################################################################################################
-# This module is used transparently by Yote to link hashes into its graph structure. This is not meant to  #
-# be called explicitly or modified.									   #
-############################################################################################################
+######################################################################################
+# This module is used transparently by Yote to link hashes into its graph structure. #
+# This is not meant to  be called explicitly or modified.                            #
+######################################################################################
 
 use strict;
 use warnings;
@@ -1154,7 +1063,7 @@ sub TIEHASH {
 
 sub STORE {
     my( $self, $key, $val ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     $self->[1]{$key} = $self->[2]->_xform_in( $val );
 }
 
@@ -1181,18 +1090,21 @@ sub EXISTS {
 }
 sub DELETE {
     my( $self, $key ) = @_;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     return delete $self->[1]{$key};
 }
 sub CLEAR {
     my $self = shift;
-    $self->[2]->_dirty( $self->[3], $self->[0] );
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     %{$self->[1]} = ();
 }
 
-sub DESTROY {}
+sub DESTROY {
+    my $self = shift;
+    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
+}
 
-# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 
 package Yote::YoteDB;
 
@@ -1203,11 +1115,8 @@ no warnings 'uninitialized';
 
 use Data::RecordStore;
 
-use WeakRef;
 use File::Path qw(make_path);
 use JSON;
-
-use Devel::Refcount 'refcount';
 
 use constant {
   DATA => 2,
@@ -1287,16 +1196,7 @@ sub _generate_keep_db {
     my( @checks ) = ( 1 );
 
     for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
-        # make sure that these are actually referenced. They may be
-        # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
-        # have an extra reference due to the tie.
-        my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
-        my $min_ref_count = 1;
-        $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
-
-        if( $obj && refcount($obj) > $min_ref_count ) {
-            push @checks, $referenced_id;
-        }
+        push @checks, $referenced_id;
     }
 
 
