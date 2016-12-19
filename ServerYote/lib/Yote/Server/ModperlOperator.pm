@@ -143,13 +143,12 @@ sub handle_json_request {
     }
     eval {
         $out_json = $self->{server}->invoke_payload( $json_payload, \@uploads );
-        $self->{root}->{STORE}->stow_all;
     };
     if( $@ ) {
         my $err = ref $@ ? $@ : { err => "INTERNAL ERROR" };
         $out_json = to_json( $err );
     }
-    $req->headers_out->set(Type => 'text/json; charset=utf-8' );
+    $req->content_type('text/json; charset=utf-8');
     $out_json = Encode::decode('utf8',$out_json);
     $req->print( mark_raw($out_json) );
     return OK;
@@ -169,7 +168,7 @@ sub make_page {
         $req->headers_out->set(Location => $state_manager->{redirect});
         return REDIRECT;
     }
-    
+    $req->content_type('text/html');
     my $template = $state_manager->{template};
 
     my $html = $self->{tx}->render( $self->tmpl( $template ), {%$state_manager} );
