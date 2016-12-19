@@ -40,14 +40,21 @@ print STDERR "Copying object index database\n";
 print STDERR "Starting Convert from $from_version to $Data::RecordStore::VERSION\n";
 
 my $store_db = Data::RecordStore::FixedStore->open( "I", "$from_dir/STORE_INDEX" );
-my @old_sizes;
-for my $id (1..$store_db->entry_count) {
-    my( $size ) = @{ $store_db->get_record( $id ) };
-    $old_sizes[$id] = $size;
-}
 
+#my @old_sizes;
 my $old_dbs = [];
 my $new_dbs = [];
+
+for my $id (1..$store_db->entry_count) {
+    my( $size ) = @{ $store_db->get_record( $id ) };
+#    $old_sizes[$id] = $size;
+
+    $old_dbs->[$id] = Data::RecordStore::FixedStore->open( "A*", "$from_dir/${id}_OBJSTORE", $size );
+    
+#    my( $data ) = @{ $old_dbs->[$id]->get_record( 1 ) };
+#    print STDERR "$id:0) $data\n";
+}
+
 
 my $obj_db = Data::RecordStore::FixedStore->open( "IL", $old_obj_idx_file );
 
@@ -57,18 +64,23 @@ my $count = 0;
 for my $id (1..$obj_db->entry_count) {
     my( $old_store_id, $id_in_old_store ) = @{ $obj_db->get_record( $id ) };
 
+    print STDERR "id ($id) in $old_store_id/$id_in_old_store\n";next;
+
+    
     next unless $id_in_old_store;
 
     # grab data
     my $old_db = $old_dbs->[$old_store_id];
-    unless( $old_db ) {
-        $old_db = Data::RecordStore::FixedStore->open( "A*", "$from_dir/${old_store_id}_OBJSTORE", $old_sizes[$old_store_id] );
-        $old_dbs->[$old_store_id] = $old_db;
-    }
+    # unless( $old_db ) {
+    #     $old_db = Data::RecordStore::FixedStore->open( "A*", "$from_dir/${old_store_id}_OBJSTORE", $old_sizes[$old_store_id] );
+    #     $old_dbs->[$old_store_id] = $old_db;
+    # }
     my( $data ) = @{ $old_db->get_record( $id_in_old_store ) };
 
 
-    print STDERR Data::Dumper->Dump([$data,"WOOUT ($old_store_id,$old_sizes[$old_store_id])"]);exit;
+    print STDERR substr( $data, 0, 100 ) if index($data,"HASH") != 0;
+    
+    next;
     
 
     # store in new database
@@ -90,7 +102,7 @@ for my $id (1..$obj_db->entry_count) {
         print STDERR ".";
         $count = 0;
     }
-    exit;
+
 }
 print STDERR "\n";
 

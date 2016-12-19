@@ -435,9 +435,8 @@ sub get_record {
     
     sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
     my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
-    print STDERR Data::Dumper->Dump(["GET ($idx)",$data]);
+
     defined( $srv ) or die "Could not read : $@ $!";
-    print STDERR Data::Dumper->Dump(["GETRE($idx)$self->{TMPL}($data)"]);
     [unpack( $self->{TMPL}, $data )];
 } #get_record
 
