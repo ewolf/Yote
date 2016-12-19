@@ -261,6 +261,15 @@ sub fetch {
     return undef;
 } #fetch
 
+=head2 run_recycler
+
+=cut
+sub run_recycler {
+    my $self = shift;
+     $self->stow_all();
+    $self->{_DATASTORE}->_recycle_objects();
+} #run_recycler
+
 =head2 compress_store
 
 This creates a new data store with all objects
@@ -284,12 +293,12 @@ temporarily as it is copied to a new one.
 
 =cut
 sub compress_store {
-    my $self = shift;
+    my( $self, $newdir, $backdir ) = @_;
     $self->stow_all();
 
     my $original_dir = $self->{args}{store};
-    my $backdir = $original_dir . '_COMPRESS_BAK';
-    my $newdir  = $original_dir . '_NEW_RECYC';
+    $backdir //= $original_dir . '_COMPRESS_BAK';
+    $newdir  //= $original_dir . '_NEW_RECYC';
 
     if( -x $backdir ) {
         die "Unable to run recycler, backup directory '$newdir' already exists.";
@@ -1191,6 +1200,90 @@ sub _get_id {
 sub _max_id {
   shift->{DATA_STORE}->entry_count;
 }
+
+sub _recycle_objects {
+  my $self = shift;
+
+  my $mark_to_keep_store = Data::RecordStore::FixedStore->open( "I", $self->{args}{store} . '/RECYCLE' );
+  $mark_to_keep_store->empty();
+  $mark_to_keep_store->ensure_entry_count( $self->{DATA_STORE}->entry_count );
+  
+  # the already deleted cannot be re-recycled
+  my $ri = $self->{DATA_STORE}->_get_recycled_ids;
+  for ( @$ri ) {
+    $mark_to_keep_store->put_record( $_, [ 1 ] );
+  }
+
+  my $trace_to_root = sub {
+      my( $keep_id, $mark_to_keep_store ) = @_;
+      my( @queue ) = ( $keep_id );
+
+      $mark_to_keep_store->put_record( $keep_id, [ 1 ] );
+
+      # get the object ids referenced by this keeper object
+      while( @queue ) {
+          $keep_id = shift @queue;
+
+          my $item = $self->_fetch( $keep_id );
+          my( @additions );
+          if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
+              ( @additions ) = grep { /^[^v]/ } @{$item->[DATA]};
+          } else {
+              ( @additions ) = grep { /^[^v]/ } values %{$item->[DATA]};
+          }
+
+          for my $keeper ( @additions ) {
+              next if $mark_to_keep_store->get_record( $keeper )->[0];
+              $mark_to_keep_store->put_record( $keeper, [ 1 ] );
+              push @queue, $keeper;
+          }
+      } #while there is a queue
+  };
+
+  &$trace_to_root( $self->_first_id, $mark_to_keep_store );
+
+  #
+  # If there are any entries in the weak references, do not recycle these.
+  # This ignores the possibility of circular references, but that uncommon case
+  # is not worth the complexity.
+  #
+  for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+      # make sure that these are actually referenced. They may be 
+      # in DIRTY, and, if they are Yote::Array or Yote::Hash, they
+      # have an extra reference due to the tie.
+      my $obj = $self->{OBJ_STORE}->fetch( $referenced_id );
+      my $min_ref_count = 1;
+      if( $self->{OBJ_STORE}->_is_dirty( $referenced_id ) ) {
+          $min_ref_count++;
+      }
+      $min_ref_count++ if ref($obj) =~ /^(ARRAY|HASH)$/;
+
+      if( refcount($obj) > $min_ref_count ) {
+          &$trace_to_root( $referenced_id, $mark_to_keep_store );
+      }
+  }
+
+  # the purge begins here
+  my $cands = $self->{DATA_STORE}->entry_count;
+  my $count = 0;
+  for my $cand ( 1..$cands) { #iterate each id in the entire object store
+    my( $keep ) = $mark_to_keep_store->get_record( $cand )->[0];
+
+    die "Tried to recycle root entry" if $cand == 1 && ! $keep;
+    if ( ! $keep ) {
+        $self->{DATA_STORE}->recycle( $cand );
+        delete $self->{OBJ_STORE}{_WEAK_REFS}{$cand};
+        $count++;
+    }
+  }
+
+  # remove temporary recycle datastore
+  $mark_to_keep_store->unlink_store;
+  
+  return $count;
+  
+} #_recycle_objects
+
 
 #
 # Saves the object data for object $id to the data store.
