@@ -4,7 +4,7 @@
       "Eric Wolf        coyocanid@gmail.com"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.422",
+   "generated_by" : "Module::Build version 0.4216",
    "license" : [
       "perl_5"
    ],
@@ -35,10 +35,7 @@
    "provides" : {
       "Data::RecordStore" : {
          "file" : "lib/Data/RecordStore.pm",
-         "version" : "1.09"
-      },
-      "Data::RecordStore::FixedRecycleStore" : {
-         "file" : "lib/Data/RecordStore.pm"
+         "version" : "2.0"
       },
       "Data::RecordStore::FixedStore" : {
          "file" : "lib/Data/RecordStore.pm"
@@ -50,5 +47,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.09"
+   "version" : "2.0",
+   "x_serialization_backend" : "JSON::PP version 2.27300"
 }
