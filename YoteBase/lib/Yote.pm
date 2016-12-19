@@ -283,6 +283,13 @@ sub run_purger {
 #        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
 
+    OKEY maaaybe we do want to recycle objects because the object index can get pretty big
+        at least make it an option?
+        
+        the argument against this is if an ID is stored anywhere outside the store. Could argue that these
+        ids are private to the store and nothing else should use them
+
+    
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
 
     # analyze to see what percentage would be kept
