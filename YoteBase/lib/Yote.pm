@@ -312,10 +312,10 @@ sub compress_store {
     if( $self->_has_weak_refs ) {
         die "Unable to run compress store. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
-    
+    my $root = $self->fetch_root;
     my $newstore = Yote::ObjStore->_new( { store => $newdir } );
 
-    $self->_copy_over( $self->fetch_root, $newstore );
+    $self->_copy_over( $root, $newstore );
 
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
@@ -328,7 +328,9 @@ sub compress_store {
 sub _copy_over {
     my( $from_store, $obj, $to_store ) = @_;
     my $id = $from_store->_get_id( $obj );
-    return if $to_store->{_DATASTORE}{DATA_STORE}->has_id( $id );
+
+    return if $to_store->{_DATASTORE}{DATA_STORE}->has_id( $id ) && $id != $from_store->_first_id;
+    $to_store->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $id-1 );
     $to_store->_stow( $obj, $id );
 
     my $r = ref( $obj );
@@ -344,7 +346,7 @@ sub _copy_over {
     }
     else {
         for my $oid (grep { $_ > 0 } values %{$obj->{DATA}}) {
-            $from_store->_copy_over( $from_store->_fetch( $oid ), $to_store );
+            $from_store->_copy_over( $from_store->fetch( $oid ), $to_store );
         }
     }
 
