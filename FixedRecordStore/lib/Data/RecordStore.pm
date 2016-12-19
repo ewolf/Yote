@@ -159,8 +159,8 @@ sub stow {
 
     my $save_size = do { use bytes; length( $data ); };
 
-    # tack on the size of the id (a long or 8 bytes) and a space to the byte count
-    $save_size += 9;
+    # tack on the size of the id (a long or 8 bytes) to the byte count
+    $save_size += 8;
 
     my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
 
@@ -186,7 +186,9 @@ sub stow {
         
     } #if this already had been saved before
 
-    my( $store_id, $store ) = $self->_best_store_for_size( $save_size );
+    my $store_id = 1 + int( log( $save_size ) );
+
+    my $store = $self->_get_store( $store_id );
 
     my $index_in_store = $store->next_id;
 
@@ -266,20 +268,6 @@ sub fetch {
 
     $data;
 } #fetch
-
-sub _best_store_for_size {
-    my( $self, $record_size ) = @_;
-
-    #
-    # The record size for the store is int( e^store_id ). If the
-    # item would exactly fit the size, still give the size one store
-    # up
-    #
-    my $store_id = 1 + int( log( $record_size ) );
-    $store_id, $self->_get_store( $store_id );
-    
-} #_best_store_for_size
-
 
 sub _get_store {
     my( $self, $store_index ) = @_;

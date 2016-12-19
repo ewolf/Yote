@@ -75,12 +75,12 @@ sub test_suite {
     # Try testing the moving of a record
     #
     $store = Data::RecordStore->open( $dir3 );
-    $id = $store->stow( "x" x 2900 );
+    $id = $store->stow( "x" x 2972 );
     my $cur_store = $store->_get_store( 8 );
 
     is( $cur_store->entry_count, 1, "One entry in store #8" );
 
-    my $yid = $store->stow( "y" x 2900 );
+    my $yid = $store->stow( "y" x 2972 );
     is( $cur_store->entry_count, 2, "Two entry in store #8" );
     
     $store->stow( "x" x 3000, $id );
@@ -89,7 +89,7 @@ sub test_suite {
     my $new_store = $store->_get_store( 9 );
     is( $new_store->entry_count, 1, "One entry relocated to store #9" );
 
-    is( $store->fetch( $yid ), "y" x 2900, "correctly relocated data" );
+    is( $store->fetch( $yid ), "y" x 2972, "correctly relocated data" );
 
     # try for a much smaller relocation
 
