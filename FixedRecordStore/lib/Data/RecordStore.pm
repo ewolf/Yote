@@ -294,7 +294,12 @@ sub recycle {
     return undef unless defined $store_id;
     
     my $store = $self->_get_store( $store_id );
-    $store->recycle( $id_in_store );
+
+    if( $self->{VERSION} < 2 ) {
+        $store->recycle( $id_in_store );
+    } else {
+        $self->_swapout( $store, $store_id, $id_in_store );
+    }
     $self->{OBJ_INDEX}->recycle( $id );
 
 } #recycle

@@ -105,8 +105,12 @@ sub test_suite {
     $new_store = $store->_get_store( 5 );
     is( $new_store->entry_count, 1, "One entry relocated to store #5" );
     # test for record too large. idx out of bounds
-    
 
+    my $xid = $store->stow( "x" x 90 );
+    is( $new_store->entry_count, 2, "Two entries now in store #5" );
+    $store->recycle( $id );
+    is( $new_store->entry_count, 1, "one entries now in store #5 after recycle" );
+    
 } #test suite
 
 
