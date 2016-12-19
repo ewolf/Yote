@@ -283,12 +283,13 @@ sub run_purger {
 #        die "Unable to purge objects. There are still outstanding references to yote objects that would be deleted during the compress.";
     }
 
+    "
     OKEY maaaybe we do want to recycle objects because the object index can get pretty big
         at least make it an option?
         
         the argument against this is if an ID is stored anywhere outside the store. Could argue that these
         ids are private to the store and nothing else should use them
-
+";
     
     my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
 
@@ -706,7 +707,10 @@ sub set {
         $self->{STORE}->_dirty( $self, $self->{ID} );
     }
 
-
+    unless( defined $inval ) {
+        delete $self->{DATA}{$fld};
+        return;
+    }
     $self->{DATA}{$fld} = $inval;
     return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
 } #set
@@ -821,8 +825,11 @@ sub AUTOLOAD {
             my( $self, $val ) = @_;
             my $inval = $self->{STORE}->_xform_in( $val );
             $self->{STORE}->_dirty( $self, $self->{ID} ) if $self->{DATA}{$fld} ne $inval;
+            unless( defined $inval ) {
+                delete $self->{DATA}{$fld};
+                return;
+            }
             $self->{DATA}{$fld} = $inval;
-
             return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
         };
         goto &$AUTOLOAD;
