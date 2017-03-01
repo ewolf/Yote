@@ -991,6 +991,7 @@ use base 'Yote::ServerObj';
 
 sub fetch {  # fetch scrambled id
     my( $self, $in_sess_id ) = @_;
+    return unless $in_sess_id > 0;
     $self->get__ids([])->[$in_sess_id-1];
 }
 
