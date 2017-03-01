@@ -24,17 +24,13 @@ if( -e $ver_file ) {
     close $FH;
 }
 
-if( $from_version >= 2 ) {
-    print STDERR "Database at '$dir' already at version $from_version\n";
-    exit;
-}
-
-print STDERR "Convert from $from_version to $Data::RecordStore::VERSION\n";
-
 if( $source_version >= 2 ) {
-    print STDERR "Database already at version '$source_version'. Doing nothing\n";
+    print STDERR "Database at '$source_dir' already at version $source_version. Doing nothing\n";
     exit;
 }
+
+print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
+
 
 die "Directory '$dest_dir' already exists" if -d $dest_dir;
 

@@ -159,7 +159,7 @@ sub stow {
     $id //= $self->{OBJ_INDEX}->next_id;
 
 
-print STDERR "Stow $id : $data\n";
+#print STDERR "Stow $id : $data\n";
 
     my $save_size = do { use bytes; length( $data ); };
 
