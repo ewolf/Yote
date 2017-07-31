@@ -29,84 +29,6 @@ sub test_suite {
     my $yote_db = $store->{_DATASTORE};
     my $root_node = $store->fetch_root;
 
-    # listy test because
-    print STDERR Data::Dumper->Dump(["------------------------------------"]);
-
-    $Yote::ArrayGatekeeper::BLOCK_SIZE  = 4;
-    $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
-
-    my $l = $root_node->get_listy( [] );
-
-    push @$l, "ONE", "TWO";
-    is_deeply( $l, ["ONE", "TWO"], "first push" );
-    is( @$l, 2, "Size two" );
-
-    push @$l, "THREE", "FOUR", "FIVE";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE"], "push 1" );
-    is( @$l, 5, "Size five" );
-
-    push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
-    is( @$l, 9, "Size nine" );
-
-
-    push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN"], "push 3" );
-    is( @$l, 16, "Size sixteen" );
-
-    push @$l, "SEVENTEEN", "EIGHTTEEN";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN"], "push 4" );
-    is( @$l, 18, "Size eighteen" );
-    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN",undef],[@$l[15..18]], "nice is slice" );
-
-    push @$l, "NINETEEN";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN"], "push 5" );
-    is( @$l, 19, "Size nineteen" );
-    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN","NINETEEN"],[@$l[15..18]], "nice is slice" );
-
-    push @$l, "TWENTY","TWENTYONE";
-    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "push 6" );
-    is( @$l, 21, "Size twentyone" );
-
-    my $v = shift @$l;
-    is( $v, "ONE" );
-    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first shift" );
-    is( @$l, 20, "Size twenty" );
-
-    push @$l, $v;
-    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "push 7" );
-    is( @$l, 21, "Size twentyone again" );
-
-    unshift @$l, 'ZERO';
-
-    is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
-    is( @$l, 22, "Size twentytwo again" );
-
-    # test push, unshift, fetch, fetchsize, store, storesize, delete, exists, clear, pop, shift, splice
-
-    my $pop = pop @$l;
-    is( $pop, "ONE", "FIRST POP" );
-    is( @$l, 21, "Size after pop" );
-
-    is( $l->[2], "THREE", "fetch early" );
-    is( $l->[10], "ELEVEN", "fetch middle" );
-    is( $l->[20], "TWENTYONE", "fetch end" );
-
-    print STDERR Data::Dumper->Dump([$l,"ZASFODF"]);
-
-    my @spliced = splice @$l, 3, 5, "NEENER", "BOINK", "NEENER";
-    print STDERR Data::Dumper->Dump([\@spliced,$l,"WOO"]);
-    is_deeply( \@spliced, ["FOUR","FIVE","SIX","SEVEN","EIGHT"], "splice return val" );
-    is_deeply( $l, ["ZERO", "TWO", "THREE", "NEENER", "BOINK", "NEENER",
-                    "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first splice" );
-    
-#    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
-
-#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
-
-    print STDERR Data::Dumper->Dump(["------------------------------------"]);
-    return;
-
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
             someval => 124.42,
@@ -120,28 +42,31 @@ sub test_suite {
                         } ),
                                } );
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
+
+    print STDERR Data::Dumper->Dump([$store,"ALLIZ"]);
+    
     $store->stow_all;
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
 
-    # objects created : root, myList, a hash in myslist + its 1 inner list, a newobj
+    # objects created : root, myList, array block in mylist, a hash in myslist + its 1 inner list, a newobj
     #                   in the hash, a newobj in the obj
-    # so 5 things
+    # so 6 things
 
     my $max_id = $yote_db->_max_id();
-    is( $max_id, 5, "Number of things created" );
+    is( $max_id, 6, "Number of things created" );
 
     my $dup_store = Yote::open_store( $dir );
 
     my $dup_db = $dup_store->{_DATASTORE};
 
     $max_id = $dup_db->_max_id();
-    is( $max_id, 5, "Number of things created in newly opened store" );
+    is( $max_id, 6, "Number of things created in newly opened store" );
 
     my $dup_root = $dup_store->fetch_root;
 
     $max_id = $dup_db->_max_id();
-    is( $max_id, 5, "Number of things created in newly opened store" );
+    is( $max_id, 6, "Number of things created in newly opened store" );
 
     is( $dup_root->{ID}, $root_node->{ID} );
     is_deeply( $dup_root->{DATA}, $root_node->{DATA} );
@@ -272,7 +197,104 @@ sub test_suite {
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
 
     # array tests
+    # listy test because
+    print STDERR Data::Dumper->Dump(["------------------------------------"]);
 
+    $Yote::ArrayGatekeeper::BLOCK_SIZE  = 4;
+    $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
+
+    my $l = $root_node->get_listy( [] );
+
+    push @$l, "ONE", "TWO";
+    is_deeply( $l, ["ONE", "TWO"], "first push" );
+    is( @$l, 2, "Size two" );
+
+    push @$l, "THREE", "FOUR", "FIVE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE"], "push 1" );
+    is( @$l, 5, "Size five" );
+
+    push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
+    is( @$l, 9, "Size nine" );
+
+
+    push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN"], "push 3" );
+    is( @$l, 16, "Size sixteen" );
+
+    push @$l, "SEVENTEEN", "EIGHTTEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN"], "push 4" );
+    is( @$l, 18, "Size eighteen" );
+    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN",undef],[@$l[15..18]], "nice is slice" );
+
+    push @$l, "NINETEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN"], "push 5" );
+    is( @$l, 19, "Size nineteen" );
+    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN","NINETEEN"],[@$l[15..18]], "nice is slice" );
+
+    push @$l, "TWENTY","TWENTYONE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "push 6" );
+    is( @$l, 21, "Size twentyone" );
+
+    my $v = shift @$l;
+    is( $v, "ONE" );
+    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first shift" );
+    is( @$l, 20, "Size twenty" );
+
+    push @$l, $v;
+    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "push 7" );
+    is( @$l, 21, "Size twentyone again" );
+
+    unshift @$l, 'ZERO';
+
+    is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
+    is( @$l, 22, "Size twentytwo again" );
+
+    # test push, unshift, fetch, fetchsize, store, storesize, delete, exists, clear, pop, shift, splice
+
+    my $pop = pop @$l;
+    is( $pop, "ONE", "FIRST POP" );
+    is( @$l, 21, "Size after pop" );
+
+    is( $l->[2], "THREE", "fetch early" );
+    is( $l->[10], "ELEVEN", "fetch middle" );
+    is( $l->[20], "TWENTYONE", "fetch end" );
+
+
+
+    my @spliced = splice @$l, 3, 5, "NEENER", "BOINK", "NEENER";
+
+    is_deeply( \@spliced, ["FOUR","FIVE","SIX","SEVEN","EIGHT"], "splice return val" );
+    is_deeply( $l, ["ZERO", "TWO", "THREE", "NEENER", "BOINK", "NEENER",
+                    "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first splice" );
+
+    $l->[1] = "TWONE";
+    is( $l->[1], "TWONE", "STORE" );
+
+    delete $l->[1];
+
+    is_deeply( $l, ["ZERO", undef, "THREE", "NEENER", "BOINK", "NEENER",
+                    "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first delete" );
+    ok( exists( $l->[0] ), "exists" );
+    ok( !exists( $l->[1] ), "doesnt exist" );
+    ok( !exists( $l->[$#$l+1] ), "doesnt exist beyond" );
+    ok( exists( $l->[$#$l] ), "exists at end" );
+
+    my $last = pop @$l;
+    is( $last, "TWENTYONE", 'POP' );
+    is_deeply( $l, ["ZERO", undef, "THREE", "NEENER", "BOINK", "NEENER",
+                    "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY"], "more pop" );
+    is( scalar(@$l), 18, "pop size" );
+    is( $#$l, 17, "pop end" );
+
+    @{$l} = ();
+    is( $#$l, -1, "last after clear" );
+    is( scalar(@$l), 0, "size after clear" );
+#    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
+
+#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
+
+    print STDERR Data::Dumper->Dump(["------------------------------------"]);
 
 } #test suite
 

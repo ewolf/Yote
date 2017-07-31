@@ -453,10 +453,9 @@ sub stow_all {
         my $cls;
         my $ref = ref( $obj );
         if( $ref eq 'ARRAY' ) {
-            $cls = ref(tied %$ref) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
-            $cls = 'ARRAY';
+            $cls = ref(tied @$obj) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
         } elsif( $ref eq 'HASH' ) {
-            $cls = ref(tied %$ref) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
+            $cls = ref(tied %$obj) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
         } else {
             $cls = $ref;
         }
@@ -549,12 +548,14 @@ sub __get_id {
     die "__get_id requires reference. got '$ref'" unless $class;
 
     if( $class eq 'Yote::Array') {
+        print STDERR " GET ID FOR (Yote::Array) $ref --> $ref->[0]\n";
         return $ref->[0];
     }
     elsif( $class eq 'ARRAY' ) {
         my $tied = tied @$ref;
         if( $tied ) {
-             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
+            $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
+            print STDERR " GET ID FOR (ARRAY) $ref --> $tied->[0]\n";
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -563,10 +564,11 @@ sub __get_id {
         push( @$ref, @data ) if @data;
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
+        print STDERR " GET ID FOR gatekeeper $ref --> $id\n";
         return $id;
     }
     elsif( $class eq 'Yote::Hash' || $class eq 'Yote::BigHash' ) {
-        my $wref = $ref;
+        print STDERR " RETURN ID FOR $class $ref --> $ref->[0]\n";
         return $ref->[0];
     }
     elsif( $class eq 'HASH' ) {
@@ -574,7 +576,10 @@ sub __get_id {
         if( $tied ) {
             my $useclass = ref($tied) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( $useclass );
+            print STDERR " GET ID FOR $useclass $ref --> $tied->[0]\n";
             return $tied->[0];
+        } else {
+            $class = 'Yote::BigHash';
         }
         my $id = $self->{_DATASTORE}->_get_id( $class );
 
@@ -586,16 +591,19 @@ sub __get_id {
         }
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
+        print STDERR " GET ID FOR $class $ref --> $id\n";
         return $id;
     }
     else {
+        print STDERR " already RETURNING ID --> $ref->{ID}\n"if $ref->{ID};
         return $ref->{ID} if $ref->{ID};
         if( $class eq 'Yote::Root' ) {
             $ref->{ID} = $self->{_DATASTORE}->_first_id( $class );
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
+            print STDERR " GET ID FOR $class $ref --> $ref->{ID}\n";
         }
-
+        print STDERR " RETURNING ID --> $ref->{ID}\n";
         return $ref->{ID};
     }
 
@@ -728,10 +736,12 @@ sub _raw_data {
     }
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$obj;
-        if( $tied ) {
+        if( ref( $tied ) eq 'Yote::BigHash' ) {
             $r = $tied->[1];
             $is_hash = $tied->[6];
             $hash_type = $tied->[8];
+        } elsif( ref( $tied ) eq 'Yote::Hash' ) {
+            # is okey, the old hash is around for backwards compatability
         } else {
             die;
         }
@@ -1235,6 +1245,7 @@ sub _ensure_capacity {
         # one into the new gatekeeper
         #
         my $new_id = $store->{_DATASTORE}->_get_id( 'Yote::ArrayGatekeeper' );
+        print STDERR " NEW GATEKEEPER WITH ID --> $new_id\n";
         my $newkeeper = [];
         tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], $self->[LEVEL], @{$self->[BLOCKS]};
 
@@ -1273,6 +1284,7 @@ sub _block {
     } elsif( $self->[LEVEL] == 1 ) {
         $block = [];
         my $block_id = $store->{_DATASTORE}->_get_id( "ARRAY" );
+        print STDERR " NEW ARRAY BLOCK WITH ID --> $block_id\n";
         tie @$block, 'Yote::Array', $store, $block_id;
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
@@ -1284,6 +1296,7 @@ sub _block {
 
         $block = [];
         my $block_id = $store->{_DATASTORE}->_get_id( "Yote::ArrayGatekeeper" );
+        print STDERR " NEW ARRAY Gatekeeper BLOCK WITH ID --> $block_id\n";
         tie @$block, 'Yote::ArrayGatekeeper', $store, $block_id, 0, $firstblock->[BLOCK_COUNT], $firstblock->[BLOCK_SIZE], $firstblock->[LEVEL];
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
@@ -1356,7 +1369,8 @@ sub DELETE {
 sub CLEAR {
     my $self = shift;
     $self->_dirty;
-    @{$self->[1]} = ();
+    $self->[ITEM_COUNT] = 0;
+    @{$self->[BLOCKS]} = ();
 }
 sub PUSH {
     my( $self, @vals ) = @_;
@@ -1427,8 +1441,6 @@ sub UNSHIFT {
 sub _unshift {
     my( $self, $offset, @vals ) = @_;
 
-    print STDERR " _unshift ($self) $offset (".join(",",@vals).")\n";
-    
     return unless @vals;
 
     my $newcount = $self->[ITEM_COUNT] + @vals;
@@ -1438,21 +1450,16 @@ sub _unshift {
 
     if( $self->[LEVEL] == 1 ) {
         while( @vals ) {
-            print STDERR "UNSHIFT ($self) ($offset vs $block_start_idx)\n";
-            print STDERR " About to splice ($tied_block) to $offset adding (".join(',',@vals).") to ".join(',',@$block).")\n";
             $tied_block->SPLICE( $offset , 0, @vals );
-            print STDERR "   block ($tied_block) spliced to (".join(",",@$block)."\n";
             $offset = 0;
-            print STDERR "   block ($tied_block) last idx is $#$block and size is $self->[BLOCK_SIZE]\n";
+
             if( $#$block >= $self->[BLOCK_SIZE] ) {
                 (@vals) = @$block[$self->[BLOCK_SIZE]..$#$block];
                 $#$block = $self->[BLOCK_SIZE] - 1;
-                print STDERR "   vals blocked to [$block_idx] (".join(",",@vals)." ) and block ($tied_block) $#$block (size $self->[BLOCK_SIZE]) at (".join(',',@$block).")\n";
+
                 ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
-                print STDERR "   now on block ($tied_block) $block_idx : (".join(',',@$block).")\n";
+
             } else {
-                print STDERR "   block ($tied_block) done, no more vals\n";
-                print STDERR "     block ($tied_block) : " .join(',',@$block)."\n";
                 @vals = ();
             }
         }
@@ -1466,18 +1473,16 @@ sub _unshift {
                 $tied_block->STORESIZE( $cut_index );
 
                 my @additions = splice @vals, 0, (1+$cut_index);
-                print STDERR "   vals splice to additions (".join(",",@vals)."\n";
+
                 $tied_block->_unshift( $offset, @additions ); #offset is only on the first block
                 $offset = 0;
                 push @vals, @backlog;
-                print STDERR "   vals added backlog (".join(",",@vals)."\n";
+
                 if( @vals ) {
                     ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
                 }
             } else {
-                print STDERR " About to splice ($tied_block) to $offset adding (".join(',',@vals).") to ".join(',',@$block).")\n";
                 $tied_block->SPLICE( $offset, 0, @vals );
-                print STDERR "   block ($tied_block) now ".join(',',@$block)."\n";
                 @vals = ();
             }
         }
@@ -1499,17 +1504,9 @@ sub SPLICE {
     my $new_size = $self->[ITEM_COUNT] + $delta;
 
 
-    print STDERR "SPLICE delta ($self) : $delta, new size : $new_size\n";
-    
     if( $delta > 0 ) {
         $self->_ensure_capacity( $new_size );
     }
-
-    my $blocks = $self->[BLOCKS];
-    my( $xx ) = $self->_block( $offset - 1  );
-    my( $yy ) = $self->_block( $#$blocks * $self->[BLOCK_SIZE]  );
-    print STDERR Data::Dumper->Dump([$xx,$yy,"CHEW ($self)"]);
-
 
     #
     # add things
@@ -1518,39 +1515,28 @@ sub SPLICE {
     if( @vals ) {
         # this adjusts the item count
         $self->_unshift( $offset, @vals );
-        my( $xx ) = $self->_block( $offset - 1  );
-        my( $yy ) = $self->_block( $offset  );
-        print STDERR Data::Dumper->Dump([$xx,$yy,"OOGB ($self $xx/$yy) ($offset) ($self->[ITEM_COUNT])"]);
     }
 
     if( $remove_length > 0 ) {
-    #
-    # remove things
-    #
+        #
+        # remove things by shifting things down over the removed items
+        #
         my $remove_start_idx = $offset + @vals;
         my $remove_end_idx   = $remove_start_idx + $remove_length;
         my $new_last_idx     = $new_size - 1;
 
-        print STDERR " ($self) rem start idx $remove_start_idx, end idx $remove_end_idx, new last idx $new_last_idx\n";
         while ( $remove_start_idx <= $new_last_idx ) {
         
             my( $remstart ) = $self->_block( $remove_start_idx );
             my( $remend ) = $self->_block( $remove_end_idx + 1 );
-            print STDERR Data::Dumper->Dump([$remstart,$remend,"WSDF"]);
-        
-        
+
             my $removed = $self->FETCH( $remove_start_idx );
-            print STDERR "  Removign ($self) '$removed' at idx $remove_start_idx\n";
-            print STDERR "  Gonna replace with '".$self->FETCH($remove_end_idx)."'\n";
             if( @removed < $remove_length ) {
                 push @removed, $removed;
             }
-            print STDERR "  Moving '".$self->FETCH($remove_end_idx)." at idx $remove_end_idx to $remove_start_idx\n";
             $self->STORE( $remove_start_idx, $self->FETCH( $remove_end_idx ) );
-            print STDERR "  Nowish ".$self->FETCH($remove_start_idx)." and ".$self->FETCH($remove_end_idx)."\n";
             $remove_start_idx++;
             $remove_end_idx++;
-            print STDERR "  Thenish ".$self->FETCH($remove_start_idx)." and ".$self->FETCH($remove_end_idx)."\n";
         }
     }
     #
@@ -1558,8 +1544,6 @@ sub SPLICE {
     #
     $self->STORESIZE( $new_size );
 
-    print STDERR "Returning ($self) removed (".join(',',@removed).")\n";
-    
     return @removed;
 
 } #SPLICE
@@ -1590,6 +1574,7 @@ use Tie::Hash;
 
 sub TIEHASH {
     my( $class, $obj_store, $id, %hash ) = @_;
+
     my $storage = {};
     # after $obj_store is a list reference of
     #                 id, data, store
@@ -1721,6 +1706,7 @@ sub TIEHASH {
 
 sub STORE {
     my( $self, $key, $val ) = @_;
+
     my $store = $self->[DSTORE];
     $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
 
@@ -1737,7 +1723,6 @@ sub STORE {
                 $self->STORE( $key, $store->_xform_out($data->{$key}) );
             }
         }
-
         return;
     }
 
@@ -1766,7 +1751,6 @@ sub STORE {
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
             if( $bucket->[$i] eq $key ) {
                 $bucket->[$i+1] = $val;
-
                 return;
             }
         }
@@ -1833,6 +1817,7 @@ sub NEXTKEY  {
 sub FETCH {
     my( $self, $key ) = @_;
     if( $self->[TYPE] eq 'S' ) {
+        my $x = $self->[DSTORE]->_xform_out($self->[DATA]{$key});
         return $self->[DSTORE]->_xform_out( $self->[DATA]{$key} );
     }
     my( $bid, $bucket ) = $self->_bucket( $key );
@@ -2035,7 +2020,7 @@ sub _fetch {
       $parts = $newparts;
   }
 
-  if( $class eq 'ARRAY' || $class eq 'HASH' ) {
+  if( $class eq 'ARRAY' || $class eq 'Yote::BigHash' || $class eq 'Yote::ArrayGatekeeper' ) {
       $ret->[DATA] = $parts;
   } else {
       $ret->[DATA] = { @$parts };
@@ -2095,7 +2080,8 @@ sub _generate_keep_db {
         my $obj_arry = $self->_fetch( $check_id );
         $seen{$check_id} = 1;
         my( @additions );
-        if( $obj_arry->[CLS] eq 'HASH' ) {
+        print STDERR Data::Dumper->Dump([ref($obj_arry->[DATA]),$obj_arry->[CLS],"FSDFO"]);
+        if( $obj_arry->[CLS] eq 'HASH' || $obj_arry->[CLS] eq 'Yote::BigHash' ) {
             my $type = shift @{$obj_arry->[DATA]};
             shift @{$obj_arry->[DATA]}; #remove the size
             if( $type eq 'S' ) {
