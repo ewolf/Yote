@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '2.0';
+$VERSION = '2.01';
 
 =head1 NAME
 
@@ -1493,6 +1493,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.0  (Nov 23, 2016))
+       Version 2.01  (July, 2017))
 
 =cut
