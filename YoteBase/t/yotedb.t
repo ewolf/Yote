@@ -18,7 +18,8 @@ BEGIN {
 # -----------------------------------------------------
 
 my $dir = tempdir( CLEANUP => 1 );
-test_suite();
+#test_suite();
+test_arry();
 done_testing;
 
 exit( 0 );
@@ -277,6 +278,20 @@ sub test_suite {
     }
 } #test suite
 
+sub test_arry {
+    $Yote::Array::MAX_BLOCKS  = 4;
+    my $store = Yote::open_store( $dir );
+    my $root_node = $store->fetch_root;
+    my $arry = $root_node->get_arry( [ 1 .. 9 ] );
+    my $match = [ 1 .. 9 ];
+    is_deeply( $arry, $match, "INITIAL" );
+
+    my $a = shift @$arry;
+    my $m = shift @$match;
+    is( $a, $m, "SHIFT" );
+    print STDERR Data::Dumper->Dump([$arry,$match]);
+    is_deeply( $arry, $match, "AFTER SHIFT" );
+}
 
 __END__
 
