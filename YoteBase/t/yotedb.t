@@ -280,8 +280,8 @@ sub test_suite {
 sub test_arry {
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
-#    for my $SZ (3..9) {
-    for my $SZ (3..3) {
+    for my $SZ (2..9) {
+#    for my $SZ (3..3) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
         my $arry = $root_node->set_arry( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
@@ -293,7 +293,7 @@ sub test_arry {
         my $a = shift @$arry;
         my $m = shift @$match;
         is( $a, $m, "SHIFT $SZ" );
-        print STDERR Data::Dumper->Dump([$a,$m,$arry,$match]);
+
         is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
         is( @$arry, 18, "18 items" );
         is( $#$arry, 17, "last idx is 17" );
@@ -305,12 +305,9 @@ sub test_arry {
         is( @$arry, 17, "17 items" );
         is( $#$arry, 16, "last idx is 16" );
 
-        print STDERR "x"x100;
-        print STDERR "\n";
-
         my( @a ) = splice @$arry, 3, 4, ("A".."N");
         my( @m ) = splice @$match, 3, 4, ("A".."N");
-        print STDERR "\n\tA [".join(' ',map { $_ || '.' } @a)."]\n\tM [".join(' ',map { $_ || '.' } @m)."]\n\tARRY  [".join(" ",map { $_ || '.' } @$arry)."]\n\tMATCH [".join(' ',map { $_ || '.' } @$match)."]\n";
+
         is_deeply( $arry, $match, "AFTER SPLICE $SZ" );
         is_deeply( \@a, \@m, "SPLICE return $SZ" );
     }

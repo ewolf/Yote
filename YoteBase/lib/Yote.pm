@@ -506,6 +506,7 @@ sub UNSHIFT {
 }
 
 sub db {
+    return;
     my( $self, $title, $block, $vals, $offset, $remove_length, $removed ) = @_;
     my $LVL = ' * ' x $self->[LEVEL];
     my $buff = "$LVL $title\n\t$LVL BLOCK_SIZE : $self->[BLOCK_SIZE], ID : $self->[ID], LEVEL : $self->[LEVEL], ITEMS : $self->[ITEM_COUNT], BLOCK_COUNT : $self->[BLOCK_COUNT], CAPA : ".($self->[BLOCK_SIZE]*$self->[BLOCK_COUNT]).")\n\t";
@@ -591,8 +592,7 @@ sub SPLICE {
         my $block_off = $offset % $BLOCK_SIZE;
         my $block     = $self->_getblock( $block_idx, 'C' );
 
-        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) if $self->[ID] == 5;
-        $self->db( "REMOVE (first) $remove_length", $block, \@vals, $offset, $remove_length, \@removed );        
+        $self->db( "REMOVE (first) $remove_length", $block, \@vals, $offset, $remove_length, \@removed );
 
         my $can_remove = @$block - $block_off;
         if( $can_remove > $remove_length ) {
@@ -619,14 +619,17 @@ sub SPLICE {
                 my $block = $self->_getblock( $block_idx );
                 if( $block ) {
                     my $remove = $remove_length > @$block ? @$block : $remove_length;
-                    push @removed, splice @$block, 0, $remove;
-                    $self->_setcount( $self->[ITEM_COUNT] - $remove );
+                    if( $remove > 0 ) {
+                        push @removed, splice @$block, 0, $remove;
+                        $self->_setcount( $self->[ITEM_COUNT] - $remove );
+                    }
                 }
                 if( $vacuum ) {
-                    splice @$last_block, scalar(@$last_block), 0, splice( @$block, 0, $vacuum );
+                    my @fill = splice( @$block, 0, $vacuum );
+                    splice @$last_block, scalar(@$last_block), 0, @fill;
                     $self->_setcount( $self->[ITEM_COUNT] - $vacuum );
                 }
-die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
+                die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
                 #                $self->_setcount( $new_size );
                 $self->db( "REMOVE (LAST) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
                 return @removed;
@@ -661,8 +664,8 @@ die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
                 }
 
                 if( $vacuum ) {
-                    print STDERR Data::Dumper->Dump(["$last_block is getting too much vaccuum"]);
-                    splice @$last_block, scalar( @$last_block ), 0, splice( @$block, 0, $vacuum );
+                    my @fill = splice( @$block, 0, $vacuum );
+                    splice @$last_block, scalar( @$last_block ), 0, @fill;
                     $last_block = $block;
                 }
                 $self->db( "REMOVE (AFTERD) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
@@ -675,11 +678,13 @@ die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
             if( $block ) {
                 $self->db( "REMOVE (ATLAST) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
                 my $remove = $remove_length > @$block ? @$block : $remove_length;
-                push @removed, splice @$block, 0, $remove;
+                if( $remove ) {
+                    push @removed, splice @$block, 0, $remove;
+                }
                 if( $vacuum ) {
                     splice @$last_block, scalar(@$last_block), 0, splice( @$block, 0, $vacuum );
                 }
-                $self->db( "REMOVE (mustlast) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
+                $self->db( "REMOVE (mustlast) $remove_length <$remove>, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
             } else {
                 $block = $self->_getblock( $block_idx, "C" );
             }
@@ -740,10 +745,9 @@ die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
 
         }
 
-        my $LAST_BLK_IDX = int( ($new_size - 1) / $BLOCK_SIZE );
-        
         # now have partial blocks to push the bubble upwards
         while( @vals ) {
+            my $LAST_BLK_IDX = int( ($new_size - 1) / $BLOCK_SIZE );
             $block = $self->_getblock( $block_idx, 'C' );
 
             if( @$block ) {
@@ -759,11 +763,11 @@ die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
             push @$block, splice @vals, 0, $can_insert;
             $self->_setcount( $self->[ITEM_COUNT] + $can_insert ) if $LAST_BLK_IDX == $block_idx;
 
-            $self->db("PARTIAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
+            $self->db("PARTIAL <$can_insert>  $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
 
             $block_idx++;
         } #while vals
-        die "OHNSAKT" if $self->[ITEM_COUNT] != $new_size;
+#        die "OHNSAKT ($self->[ITEM_COUNT] vs $new_size)" if $self->[ITEM_COUNT] != $new_size;
         #            $self->db("BEFOREFINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
 
         # final block to push into
