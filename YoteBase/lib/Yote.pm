@@ -686,9 +686,9 @@ sub _raw_data {
     my $id = $self->_get_id( $obj );
     die unless $id;
     # TODO : clean this up nice
-    my( $r, $is_array, $is_hash, $hash_type );
+    my( $r, $is_array, $is_hash, $hash_type, $tied );
     if( $class eq 'ARRAY' ) {
-        my $tied = tied @$obj;
+        $tied = tied @$obj;
         if( $tied ) {
             $r = $tied->[1];
             $is_array = ref( $tied );
@@ -711,6 +711,7 @@ sub _raw_data {
         $is_array = 'Yote::Array';
     }
     elsif( $class eq 'Yote::ArrayGatekeeper' ) {
+        $tied = $obj;
         $r = $obj->[1];
         $is_array = 'Yote::ArrayGatekeeper';
     }
@@ -729,7 +730,9 @@ sub _raw_data {
         }
         return join( "`", $hash_type, $is_hash, map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
     }
-    if( $is_array ) {
+    if( $is_array eq 'Yote::ArrayGatekeeper' ) {
+        return join( "`", $tied->[6],$tied->[4],$tied->[5],$tied->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
+    } elsif( $is_array ) {
         return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
     }
     return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
@@ -1164,21 +1167,23 @@ use constant {
     BLOCK_COUNT => 4,
     BLOCK_SIZE  => 5,
     ITEM_COUNT  => 6,
+    LEVEL       => 7,
 };
 
 sub TIEARRAY {
-    my( $class, $obj_store, $id, $item_count, $block_count, $block_size, @list ) = @_;
+    my( $class, $obj_store, $id, $item_count, $block_count, $block_size, $level, @list ) = @_;
 
     $block_size  ||= $Yote::ArrayGatekeeper::BLOCK_SIZE;
     $block_count ||= $Yote::ArrayGatekeeper::BLOCK_COUNT;
     $item_count  ||= 0;
+    $level       ||= 1;
     my $capacity = $block_size * $block_count;
 
     my $blocks = [@list];
 
     # once the array is tied, an additional data field will be added
     # so obj will be [ $id, $storage, $obj_store ]
-    my $obj = bless [$id,$blocks,$obj_store,$capacity,$block_count,$block_size, $item_count], $class;
+    my $obj = bless [$id,$blocks,$obj_store,$capacity,$block_count,$block_size, $item_count, $level], $class;
     return $obj;
 } #TIEARRAY
 
@@ -1193,19 +1198,18 @@ sub _ensure_capacity {
         #
         my $new_id = $store->{_DATASTORE}->_get_id( 'Yote::ArrayGatekeeper' );
         my $newkeeper = [];
-        tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], @{$self->[BLOCKS]};
+        tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], $self->[LEVEL], @{$self->[BLOCKS]};
 
         $store->_store_weak( $new_id, $newkeeper );
         $store->_dirty( $store->{_WEAK_REFS}{$new_id}, $new_id );
 
+        $self->[LEVEL]++; 
         $self->[BLOCKS] = [ $new_id ];
-        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
-        print STDERR " ($self)UPPING CAPA\n";
-        $self->[BLOCK_SIZE] = $self->[CAPACITY] * $self->[BLOCK_COUNT];
+        $self->[BLOCK_SIZE] = $self->[CAPACITY];
         $self->[CAPACITY] = $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT];
         $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
     }
-    
+
 } #_ensure_capacity
 
 sub _dirty {
@@ -1218,7 +1222,8 @@ sub _dirty {
 sub _block {
     my( $self, $idx ) = @_;
     $self->_ensure_capacity( $idx + 1 );
-    
+
+
     my $block_idx = int($idx / $self->[BLOCK_SIZE]); #block size
 
     my $store = $self->[DSTORE];
@@ -1227,23 +1232,34 @@ sub _block {
     my $block;
     if( $block_id ) {
         $block = $store->fetch($block_id);
-    } else {
+    } elsif( $self->[LEVEL] == 1 ) {
         $block = [];
         my $block_id = $store->{_DATASTORE}->_get_id( "ARRAY" );
         tie @$block, 'Yote::Array', $store, $block_id;
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
-        
+
+        $self->[BLOCKS][$block_idx] = $block_id;
+        $self->_dirty;
+    } else {
+        my $firstblock = tied( @{$store->fetch($self->[BLOCKS][0])} );
+
+        $block = [];
+        my $block_id = $store->{_DATASTORE}->_get_id( "Yote::ArrayGatekeeper" );
+        tie @$block, 'Yote::ArrayGatekeeper', $store, $block_id, 0, $firstblock->[BLOCK_COUNT], $firstblock->[BLOCK_SIZE], $firstblock->[LEVEL];
+        $store->_store_weak( $block_id, $block );
+        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
+
         $self->[BLOCKS][$block_idx] = $block_id;
         $self->_dirty;
     }
-    return ( tied( @$block), $block_idx * $self->[BLOCK_SIZE] );
+    return ( $block, tied( @$block), $block_idx, $block_idx * $self->[BLOCK_SIZE] );
 }
 
 sub FETCH {
     my( $self, $idx ) = @_;
-    my( $block, $block_start_idx ) = $self->_block( $idx );
-    return $block->FETCH( $idx - $block_start_idx );
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
+    return $tied_block->FETCH( $idx - $block_start_idx );
 }
 
 sub FETCHSIZE {
@@ -1252,34 +1268,34 @@ sub FETCHSIZE {
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
-    my( $block, $block_idx, $block_start_idx ) = $self->_block( $idx );
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
     my $last_block_idx = $#$block + $block_idx * $self->[BLOCK_SIZE];
     if( $idx > $last_block_idx ) {
         $self->[ITEM_COUNT] = $block_idx * $self->[BLOCK_SIZE] + (1+$idx);
     }
-    $block->STORE( $idx - $block_start_idx, $val );
+    $tied_block->STORE( $idx - $block_start_idx, $val );
 }
 sub STORESIZE {
     my( $self, $size ) = @_;
     # fixes the size of the array
     if( $size < $self->[ITEM_COUNT] ) {
-        my( $block, $block_idx, $block_start_idx ) = $self->_block( int($size/$self->[BLOCK_SIZE]) );
+        my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $self->[BLOCK_SIZE] * int($size/$self->[BLOCK_SIZE]) );
         my $blocks = $self->[BLOCKS];
         $#$blocks = $block_idx; #removes further blocks
-        $block->STORESIZE( $size - $block_start_idx );
+        $tied_block->STORESIZE( $size - $block_start_idx );
         $self->_dirty;
         $self->[ITEM_COUNT] = $size;
     }
-}  
+}
 
 sub EXISTS {
     my( $self, $idx ) = @_;
-    my( $block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-    return $block->EXISTS( $idx - $block_start_idx );
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
+    return $tied_block->EXISTS( $idx - $block_start_idx );
 }
 sub DELETE {
     my( $self, $idx ) = @_;
-    my( $block, $block_idx, $block_start_idx ) = $self->_block( $idx );
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
 
     if( (1+$idx) == $self->[ITEM_COUNT] ) {
         # in this case, it is removing the last item here. so shorten the
@@ -1296,7 +1312,7 @@ sub DELETE {
         }
         $self->_dirty;
     }
-    return $block->DELETE( $idx - $block_start_idx );
+    return $tied_block->DELETE( $idx - $block_start_idx );
 }
 
 sub CLEAR {
@@ -1309,27 +1325,21 @@ sub PUSH {
 
     return unless @vals;
 
-    print STDERR "PUSH ($self) : pushing [".join(',',@vals)."]\n";
-    
-    print STDERR "PUSH ($self) : capacity at $self->[CAPACITY]\n";
-    
     $self->_ensure_capacity( $self->[ITEM_COUNT] + @vals );
 
-    print STDERR "PUSH ($self) : capacity now at $self->[CAPACITY]\n";
-    
-    my( $block, $block_idx, $block_start_idx ) = $self->_block( $self->[ITEM_COUNT] );
-    
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $self->[ITEM_COUNT] );
+
     $self->[ITEM_COUNT] += @vals;
     $self->_dirty;
     my $idx_at = 0;
     while( @vals ) {
-        
+
         $idx_at += $self->[BLOCK_SIZE];
-        my $room = $self->[BLOCK_SIZE] - ($block->FETCHSIZE);
+        my $room = $self->[BLOCK_SIZE] - ($tied_block->FETCHSIZE);
         my( @part ) = splice @vals, 0, $room;
-        $block->PUSH( @part );
+        $tied_block->PUSH( @part );
         if( @vals ) {
-            ($block,undef,undef) = $self->_block( $idx_at );
+            ($block,$tied_block,undef,undef) = $self->_block( $idx_at );
         }
     }
 }
@@ -1372,87 +1382,93 @@ sub SHIFT {
     return;
 }
 
-sub _unshift {
-    # todo - reference vals rather than copy? Not sure
-    my( $self, $block_idx, $offset, @vals ) = @_;
-    my $blocks = $self->[BLOCKS];
-    my $block_size = $self->[BLOCK_SIZE];
-    my $store = $self->[DSTORE];
-    while( @vals ) {
-        my( $block, $block_id, $block_start_idx ) = $self->_block( $block_idx * $block_size );
-        if( @vals > $block_size ) {
-            my @chunk = splice @vals, $offset, $block_size;
-            $offset = 0;
-            # move the last block (it must be empty) to the front, filled with the vals
-            # it must be empty because the vals are larger than the chunk size and
-            # the size of this has been ensured
-            my $last_id = pop @$blocks;
-            my $lastblock = tied @{$store->fetch($last_id)};
-            $lastblock->PUSH( @chunk );
-            splice @$blocks, $block_idx, 0, $last_id;
-        } else {
-            my $overflow = ($block->[ITEM_COUNT] + @vals) - $block_size;
-            if( $overflow > 0 ) {
-                my( @old ) = $block->SPLICE( scalar(@vals), $block->[ITEM_COUNT], @vals );
-                @vals = @old;
-            } else {
-                $block->UNSHIFT( @vals ); #and we're done here
-            }
-        }
-        $block_idx++;
-    }
-}
-
 sub UNSHIFT {
     my( $self, @vals ) = @_;
 
     return unless @vals;
-    
-    $self->_ensure_capacity( $self->[ITEM_COUNT] + @vals );
-    $self->_unshift( 0, 0, @vals );
-    $self->[ITEM_COUNT] += @vals;
+
+    my $newcount = $self->[ITEM_COUNT] + @vals;
+    $self->_ensure_capacity( $newcount );
+
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( 0 );
+
+    if( $self->[LEVEL] == 1 ) {
+        while( @vals ) {
+            $tied_block->UNSHIFT( @vals );
+            if( $#$block >= $self->[BLOCK_SIZE] ) {
+                (@vals) = @$block[$self->[BLOCK_SIZE]..$#$block];
+                ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
+            } else {
+                @vals = ();
+            }
+        }
+    } else {
+        while( @vals ) {
+            my $overflow = (@vals + $tied_block->[ITEM_COUNT]) - $self->[BLOCK_SIZE];
+            if( $overflow > 0 ) {
+                my $cut_index = $self->[BLOCK_SIZE] - @vals;
+                my( @backlog ) = @$block[$cut_index..$#$block];
+
+                $tied_block->STORESIZE( $cut_index );
+
+                my @additions = splice @vals, 0, (1+$cut_index);
+                $tied_block->UNSHIFT( @additions );
+                push @vals, @backlog;
+                if( @vals ) {
+                    ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
+                }
+            } else {
+                $tied_block->UNSHIFT( @vals );
+                @vals = ();
+            }
+        }
+    }
+
+    $self->[ITEM_COUNT] = $newcount;
     $self->_dirty;
+
 } #UNSHIFT
 
 sub SPLICE {
-    my( $self, $offset, $remove_length, @vals ) = @_;
-    my $delta = @vals + $remove_length;
-    return if $delta == 0;
+    # my( $self, $offset, $remove_length, @vals ) = @_;
+    # my $delta = @vals + $remove_length;
+    # return if $delta == 0;
 
-    # going to unshift it on to the offset, then remove and reshift
-    $self->_ensure_capacity( $delta + $self->[ITEM_COUNT] );
-    
-    my( $start_block, $start_block_idx, $start_block_start_idx ) = $self->_block( $offset );
-    if( @vals ) {
-        my $in_block_offset = $offset - $start_block_idx * $self->[BLOCK_SIZE];
-        $self->_unshift( $start_block_idx, $in_block_offset, @vals );
-        $offset += @vals; #offset now where to axe the remove length
-    }
-    
-    if( $remove_length ) {
-        my( $remove_start_block, $remove_start_block_idx, $remove_start_block_start_idx ) = $self->_block( $offset );
+    # # going to unshift it on to the offset, then remove and reshift
+    # $self->_ensure_capacity( $delta + $self->[ITEM_COUNT] );
 
-        # do nothing if already at end
-        return if $remove_start_block_idx * $self->[BLOCK_SIZE] + $remove_start_block->FETCHSIZE < $offset;
+    # my( $start_block, $start_block_idx, $start_block_start_idx ) = $self->_block( $offset );
+    # if( @vals ) {
+    #     my $in_block_offset = $offset - $start_block_idx * $self->[BLOCK_SIZE];
+    #     $self->_unshift( $start_block_idx, $in_block_offset, @vals );
+    #     $offset += @vals; #offset now where to axe the remove length
+    # }
 
-        my( $remove_end_block, $remove_end_block_idx, $remove_end_block_start_idx ) = $self->_block( $offset + $remove_length );
-        
-        # collapse and adjust 
-        # if( ($end_block_idx - $start_block_idx) > 1 ) {
-        #     my $blocks = $self->[BLOCKS];
-        #     splice @$blocks, 1+$start_block_idx, ($end_block_idx - $start_block_idx) - 1;
-        #     $remove_length -= $self->[BLOCK_SIZE];
-        # }
+    # if( $remove_length ) {
+    #     my( $remove_start_block, $remove_start_block_idx, $remove_start_block_start_idx ) = $self->_block( $offset );
 
-        
-        # my $items_after = $end_block->FETCHSIZE - ( 1 + $in_block_start_offset );
-        
-        # my $in_block_end_offset = $end_block->FETCH_SIZE - $
-        
-    }
+    #     # do nothing if already at end
+    #     return if $remove_start_block_idx * $self->[BLOCK_SIZE] + $remove_start_block->FETCHSIZE < $offset;
+
+    #     my( $remove_end_block, $remove_end_block_idx, $remove_end_block_start_idx ) = $self->_block( $offset + $remove_length );
+
+    #     # collapse and adjust
+    #     # if( ($end_block_idx - $start_block_idx) > 1 ) {
+    #     #     my $blocks = $self->[BLOCKS];
+    #     #     splice @$blocks, 1+$start_block_idx, ($end_block_idx - $start_block_idx) - 1;
+    #     #     $remove_length -= $self->[BLOCK_SIZE];
+    #     # }
+
+
+    #     # my $items_after = $end_block->FETCHSIZE - ( 1 + $in_block_start_offset );
+
+    #     # my $in_block_end_offset = $end_block->FETCH_SIZE - $
+
+    # }
 }
 
-sub EXTEND {}
+sub EXTEND {
+}
 
 sub DESTROY {
     my $self = shift;
@@ -1553,10 +1569,10 @@ sub STORE {
                 $self->STORE( $key, $store->_xform_out($data->{$key}) );
             }
         }
-        
+
         return;
     }
-    
+
     my( $bid, $bucket ) = $self->_bucket( $key );
 
     if( $self->[DEEP][$bid] ) {
@@ -1726,7 +1742,7 @@ sub CLEAR {
     if( $self->[TYPE] eq 'S' ) {
         $self->[DATA] = {};
     }
-    
+
     my $buckets = $self->[DATA];
     for( my $bid=0; $bid<@$buckets; $bid++ ) {
         if( $self->[DEEP][$bid] ) {

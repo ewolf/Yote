@@ -36,22 +36,60 @@ sub test_suite {
     $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
 
     my $l = $root_node->get_listy( [] );
-    push @$l, "ONE", "TWO";
-#    print STDERR Data::Dumper->Dump([$l,"push 1 ($l)"]);
-    push @$l, "THREE", "FOUR", "FIVE";
-#    print STDERR Data::Dumper->Dump([$l,"push 2 ($l)"]);
-    push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
-#    print STDERR Data::Dumper->Dump([$l,"push 3 ($l)"]);
-    push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
 
-#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL push 4 ($l)"]);
+    push @$l, "ONE", "TWO";
+    is_deeply( $l, ["ONE", "TWO"], "first push" );
+    is( @$l, 2, "Size two" );
+
+    push @$l, "THREE", "FOUR", "FIVE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE"], "push 1" );
+    is( @$l, 5, "Size five" );
+
+    push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
+    is( @$l, 9, "Size nine" );
+    
+
+    push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN"], "push 3" );
+    is( @$l, 16, "Size sixteen" );
     
     push @$l, "SEVENTEEN", "EIGHTTEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN"], "push 4" );
+    is( @$l, 18, "Size eighteen" );
+    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN",undef],[@$l[15..18]], "nice is slice" );
+
+    push @$l, "NINETEEN";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN"], "push 5" );
+    is( @$l, 19, "Size nineteen" );
+    is_deeply( ["SIXTEEN","SEVENTEEN","EIGHTTEEN","NINETEEN"],[@$l[15..18]], "nice is slice" );
+
+    push @$l, "TWENTY","TWENTYONE";
+    is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "push 6" );
+    is( @$l, 21, "Size twentyone" );
+
+    my $v = shift @$l;
+    is( $v, "ONE" );
+    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first shift" );
+    is( @$l, 20, "Size twenty" );
+
+    push @$l, $v;
+    is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "push 7" );
+    is( @$l, 21, "Size twentyone again" );
+
+    unshift @$l, 'ZERO';
+    print STDERR Data::Dumper->Dump([$l,"ZASFODF"]);
+    is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
+    is( @$l, 22, "Size twentytwo again" );
+
+    
+    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
     
 #    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
 
     print STDERR Data::Dumper->Dump(["------------------------------------"]);
     return;
+    
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
             someval => 124.42,
