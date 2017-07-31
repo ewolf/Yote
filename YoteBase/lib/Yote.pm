@@ -1041,7 +1041,7 @@ package Yote::Array;
 
 ############################################################################################################
 # This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
-# be called explicitly or modified.									   #
+# be called explicitly or modified.                                                                        #
 ############################################################################################################
 
 use strict;

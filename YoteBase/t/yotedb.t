@@ -168,7 +168,7 @@ sub test_suite {
     delete $thash->{A};
     ok( ! exists($thash->{A}), "deleting hash value works" );
     $thash->{G} = "GG";
-    
+
     is_deeply( [sort keys %$thash], ["B".."G"], "hash keys works for the simpler hashes" );
 
     # now stuff enough there so that the hashes must overflow
@@ -177,7 +177,14 @@ sub test_suite {
         $thash->{$letter} = $val++;
     }
 
-    is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
+    $store->stow_all;
+
+#    my $sup_store = Yote::open_store( $dir );
+#    $thash = $sup_store->fetch_root->get_test_hash;
+
+
+    
+#    is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
     
 } #test suite
 

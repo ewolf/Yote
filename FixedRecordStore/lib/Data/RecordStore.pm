@@ -537,10 +537,12 @@ sub open {
         close $FH;
     }
     CORE::open $FH, "+<", $filename or die "$@ $!";
-    bless { TMPL => $template,
+    my $self = bless { TMPL => $template,
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
     }, $class;
+    print STDERR Data::Dumper->Dump(["OPEN <$filename> ($self)"]);
+    $self;
 } #open
 
 =head2 empty
@@ -710,13 +712,14 @@ assigned to this store.
 sub put_record {
     my( $self, $idx, $data ) = @_;
 
-    my $fh = $self->_filehandle;
-
     my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
     # allows the put_record to grow the data store by no more than one entry
 
     die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
 
+    my $fh = $self->_filehandle;
+
+    print STDERR Data::Dumper->Dump([$idx,$data,$fh,"PUT RECORD"]);
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     1;
 } #put_record
@@ -735,7 +738,7 @@ sub unlink_store {
 
 sub _filehandle {
     my $self = shift;
-    CORE::open( my $fh, "+<", $self->{FILENAME} );
+    CORE::open( my $fh, "+<", $self->{FILENAME} ) or die "Unable to open ($self) $self->{FILENAME} : $!";
     $fh;
 }
 
