@@ -19,15 +19,18 @@ BEGIN {
 
 my $dir = tempdir( CLEANUP => 1 );
 #test_suite();
+my $store = Yote::open_store( $dir );
+my $root_node = $store->fetch_root;
+
 test_arry();
+test_hash();
+test_suite();
 done_testing;
 
 exit( 0 );
 
 sub test_suite {
-
-    my $store = Yote::open_store( $dir );
-    my $root_node = $store->fetch_root;
+    my $root_node = shift;
 
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
@@ -59,7 +62,9 @@ sub test_suite {
 
     is( $dup_root->[Yote::Obj::ID], $root_node->[Yote::Obj::ID] );
     is_deeply( $dup_root->[Yote::Obj::DATA], $root_node->[Yote::Obj::DATA] );
+    print STDERR Data::Dumper->Dump([$dup_root->get_myList->[0],'GRR']);
     is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in yote object" );
+    
     is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );
 
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_innerval,
@@ -292,11 +297,53 @@ sub _cmpa {
     }
 }
 
+sub _cmph {
+    my( $title, @pairs ) = @_;
+    while( @pairs ) {
+        my $actual = shift @pairs;
+        my $expected = shift @pairs;
+        if( ref( $expected ) ) {
+            is_deeply( $actual, $expected, $title );
+            is_deeply( [sort keys( %$actual )], [sort  keys( %$expected ) ], "$title keys" );
+            is( scalar( values( %$actual )), scalar(  values( %$expected ) ), "$title value counts" );
+        } else {
+            is( $actual, $expected, $title );
+        }
+    }
+}
+
+
+sub test_hash {
+    for my $SZ (2..100) {
+        $Yote::Hash::SIZE = $SZ;
+        my $hash = $root_node->set_hash({});
+        my $match = {};
+        $hash->{FOO} = "BAR";
+        $match->{FOO} = "BAR";
+
+        _cmph( "FIRSTFROO", $hash, $match );
+        $hash->{FOO} = "BAF";
+        $match->{FOO} = "BAF";
+        _cmph( "SecondFOO", $hash, $match );
+
+        my( @keys ) = ("A".."Z");
+        my( @vals ) = (1..26);
+        while( @keys ) {
+            my $k = shift @keys;
+            my $v = shift @vals;
+            $hash->{$k} = $v;
+            $match->{$k} = $v;
+        }
+        _cmph( "alphawet", $hash, $match );
+
+        
+
+    } #each size
+}
+
 sub test_arry {
-    my $store = Yote::open_store( $dir );
-    my $root_node = $store->fetch_root;
-    for my $SZ (2..9) {
-#    for my $SZ (4..4) {
+#    for my $SZ (2..9) {
+    for my $SZ (7..7) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
 
         my $arry = $root_node->set_arry( [] );
@@ -317,6 +364,14 @@ sub test_arry {
         $arry->[81] = "EI2";
         $match->[81] = "EI2";
         _cmpa( "oneel $SZ", $arry, $match );
+
+        $store->stow_all;
+        
+        my $other_store = Yote::open_store( $dir );
+        print STDERR Data::Dumper->Dump([$other_store->fetch_root,"FETCDH"]);
+        my $aloaded = $other_store->fetch_root->get_arry;
+        print STDERR Data::Dumper->Dump([$other_store->_fetch( 25202 ), $aloaded, $other_store->fetch_root,"DSFSDF"]);
+        _cmpa( "SAVED LOADED", $aloaded, $match );
 
         my $a = $arry->[82];
         my $m = $match->[82];
@@ -356,12 +411,12 @@ sub test_arry {
 
         $arry = $root_node->set_arry_more( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
-        my $match = [ 1 .. 19 ];
+        $match = [ 1 .. 19 ];
         is_deeply( $arry, $match, "INITIAL $SZ" );
         is( @$arry, 19, "19 items" );
         is( $#$arry, 18, "last idx is 18" );
-        my $a = shift @$arry;
-        my $m = shift @$match;
+        $a = shift @$arry;
+        $m = shift @$match;
         is( $a, $m, "SHIFT $SZ" );
         is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
         is( @$arry, 18, "18 items" );
@@ -394,8 +449,8 @@ sub test_arry {
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
 
-    }
-}
+    } #each bucketsize
+} #test_arry
 
 __END__
 

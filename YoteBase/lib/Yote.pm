@@ -210,8 +210,8 @@ sub _get_id {
         if( ! $thingy ) {
             my $id = $self->_new_id;
             tie @$ref, 'Yote::Array', $self, $id, 0, $Yote::Array::MAX_BLOCKS, map { $self->_xform_in($_) } @$ref;
-            $self->_dirty( $ref, $id );
             $self->_store_weak( $id, $ref );
+            $self->_dirty( $self->[WEAK]{$id}, $id );
             return $id;
         }
         $ref = $thingy;
@@ -223,8 +223,8 @@ sub _get_id {
             my $id = $self->_new_id;
             my( @keys ) = keys %$ref;
             tie %$ref, 'Yote::Hash', $self, $id, undef, undef, scalar(@keys), map { $_ => $self->_xform_in($ref->{$_}) } @keys;
-            $self->_dirty( $ref, $id );
             $self->_store_weak( $id, $ref );
+            $self->_dirty( $self->[WEAK]{$id}, $id );
             return $id;
         }
         $ref = $thingy;
@@ -381,6 +381,8 @@ sub _getblock {
 
     if( $block_id ) {
         my $block = $store->_fetch( $block_id );
+        
+        return tied(@$block)||$block;
         return wantarray ? ($block, tied( @$block )) : tied( @$block );
     }
 
@@ -399,9 +401,8 @@ sub _getblock {
     $store->_dirty( $store->[WEAK]{$block_id}, $block_id );
     $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
     $self->[DATA][$block_idx] = $block_id;
-
-    return wantarray ? ($block, $tied) : $tied;
     return $tied;
+    return wantarray ? ($block, $tied) : $tied;
 
 } #_getblock
 
@@ -631,7 +632,7 @@ sub SPLICE {
         my $block_off = $offset % $BLOCK_SIZE;
 
         while( @vals && ($self->[ITEM_COUNT] > $block_idx*$BLOCK_SIZE+$block_off) ) {
-            my( $bl, $block ) = $self->_getblock( $block_idx );
+            my $block = $self->_getblock( $block_idx );
             my $bubble_size = $block->FETCHSIZE - $block_off;
             if( $bubble_size > 0 ) {
                 my @bubble = $block->SPLICE( $block_off, $bubble_size );
@@ -645,7 +646,7 @@ sub SPLICE {
             $block_off = 0;
         }
         while( @vals ) {
-            my( $bl, $block ) = $self->_getblock( $block_idx );
+            my $block = $self->_getblock( $block_idx );
             my $remmy = $BLOCK_SIZE - $block_off;
             if( $remmy > @vals ) { $remmy = @vals; }
 
@@ -1113,7 +1114,8 @@ sub AUTOLOAD {
             if( ! defined( $self->[DATA]{$fld} ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
                     # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
-                    $store->_dirty( $init_val, $store->_get_id( $init_val ) );
+                    my $ref_id = $store->_get_id( $init_val );
+                    $store->_dirty( $init_val, $ref_id );
                 }
                 $store->_dirty( $self, $self->[ID] );
                 $self->[DATA]{$fld} = $store->_xform_in( $init_val );
