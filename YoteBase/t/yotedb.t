@@ -277,20 +277,85 @@ sub test_suite {
     }
 } #test suite
 
+sub _cmpa {
+    my( $title, @pairs ) = @_;
+    while( @pairs ) {
+        my $actual = shift @pairs;
+        my $expected = shift @pairs;
+        if( ref( $expected ) ) {
+            is_deeply( $actual, $expected, $title );
+            is( scalar( @$actual ), scalar( @$expected ), "$title size" );
+            is( $#$actual, $#$expected, "$title index" );
+        } else {
+            is( $actual, $expected, $title );
+        }
+    }
+}
+
 sub test_arry {
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
     for my $SZ (2..9) {
-#    for my $SZ (9..9) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
 
+        my $arry = $root_node->set_arry( [] );
+        my $match = [];
+
+        _cmpa( "empty start $SZ", $arry, $match );
+
+        _cmpa( "fifth el $SZ", $arry->[4], $match->[4] );
+
+        $arry->[8] = "EI";
+        $match->[8] = "EI";
+        _cmpa( "oneel $SZ", $arry, $match );
+
+        _cmpa( "exists nothing $SZ", exists $arry->[9], exists $match->[9] );
+        _cmpa( "exists yada $SZ", exists $arry->[8], exists $match->[8] );
+        _cmpa( "exists bevore $SZ", exists $arry->[4], exists $match->[4] );
+        
+        $arry->[81] = "EI2";
+        $match->[81] = "EI2";
+        _cmpa( "oneel $SZ", $arry, $match );
+
+        my $a = $arry->[82];
+        my $m = $match->[82];
+        _cmpa( "delnow $SZ", $arry, $match, $a, $m );
+
+        $a = delete $arry->[81];
+        $m = delete $match->[81];
+        _cmpa( "delnow $SZ", $arry, $match, $a, $m );
+        $a = delete $arry->[81];
+        $m = delete $match->[81];
+        _cmpa( "delnowagain $SZ", $arry, $match, $a, $m );
+        
+        $a = pop @$arry;
+        $m = pop @$match;
+        _cmpa( "pops $SZ", $arry, $match, $a, $m );
+
+        @{$arry} = ();
+        @{$match} = ();
+        _cmpa( "clear $SZ", $arry, $match );
+
+        $#$arry = 17;
+        $#$match = 17;
+        _cmpa( "setsize $SZ", $arry, $match );
+
+        unshift @$arry, "HERE ARE SOME THINGS", "AND AGAIN";
+        unshift @$match, "HERE ARE SOME THINGS", "AND AGAIN";
+        _cmpa( "unshift $SZ", $arry, $match );
+
+        $a = shift @$arry;
+        $m = shift @$match;
+        _cmpa( "shift $SZ", $arry, $match, $a, $m );
+
+        
+if(0){
         my $arry = $root_node->set_arry( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
         my $match = [ 1 .. 19 ];
         is_deeply( $arry, $match, "INITIAL $SZ" );
         is( @$arry, 19, "19 items" );
         is( $#$arry, 18, "last idx is 18" );
-
         my $a = shift @$arry;
         my $m = shift @$match;
         is( $a, $m, "SHIFT $SZ" );
@@ -326,7 +391,7 @@ sub test_arry {
         is( $#$a2, $#$m2, "empty splice last idx $SZ" );
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
-        
+}        
     }
 }
 

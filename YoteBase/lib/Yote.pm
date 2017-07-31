@@ -274,6 +274,7 @@ sub _freezedry {
     join( "`",
           $self->[LEVEL],
           $self->[BLOCK_COUNT],
+          $self->[UNDERNEATH],
           map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @{$self->[DATA]}
       );
 }
@@ -292,10 +293,12 @@ sub TIEARRAY {
     my $block_size  = $block_count ** $level;
 
     die "DSFSOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" if $block_size == 1&&$level > 0;
+    die "NOO" if $block_count < 1;
 
     my $use_push = @list > $block_count;
 
     my $blocks = $use_push ? [] : [@list];
+    $#$blocks = $block_count - 1;
 
     # once the array is tied, an additional data field will be added
     # so obj will be [ $id, $storage, $obj_store ]
@@ -328,7 +331,7 @@ sub FETCH {
     }
     my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
     if( $block ) {
-        return $block->[$idx % $self->[BLOCK_SIZE]];
+        return $block->FETCH( $idx % $self->[BLOCK_SIZE] );
     }
 
     return undef;
@@ -342,7 +345,7 @@ sub _embiggen {
     my( $self, $size ) = @_;
     my $store = $self->[DSTORE];
     while( $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT] ) {
-        die "UNDERNATH" if $self->[UNDERNEATH];
+        die "UNDERNATH $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT]" if $self->[UNDERNEATH];
         #
         # need to tie a new block, not use _getblock
         # becaues we do squirrely things with its tied guts
@@ -371,47 +374,47 @@ sub _embiggen {
 # one if passed do create
 #
 sub _getblock {
-    my( $self, $block_idx, $do_create ) = @_;
+    my( $self, $block_idx ) = @_;
 
     my $block_id = $self->[DATA][$block_idx];
     my $store = $self->[DSTORE];
 
     if( $block_id ) {
-        return $store->_fetch( $block_id );
+        my $block = $store->_fetch( $block_id );
+        return tied( @$block );
     }
 
-    if( $do_create ) {
-        $block_id = $store->_new_id;
-        my $block = [];
-        my $level = $self->[LEVEL] - 1;
-        tie @$block, 'Yote::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
+    $block_id = $store->_new_id;
+    my $block = [];
+    my $level = $self->[LEVEL] - 1;
+    tie @$block, 'Yote::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
 
-
-        if( $block_idx < int( $self->[ITEM_COUNT] /$self->[BLOCK_SIZE] ) ) {
-            $#$block = $self->[BLOCK_SIZE] - 1;
-        }
-        
-        tied( @$block )->[UNDERNEATH] = 1;
-
-        $store->_store_weak( $block_id, $block );
-        $store->_dirty( $store->[WEAK]{$block_id}, $block_id );
-        $self->[DATA][$block_idx] = $block_id;
-        return $block;
+    my $tied = tied( @$block );
+    $tied->[UNDERNEATH] = 1;
+    if( $block_idx >= ($self->[BLOCK_COUNT] - 1 ) ) {
+        $tied->[ITEM_COUNT] = $self->[BLOCK_SIZE];
     }
-    return undef;
+
+    $store->_store_weak( $block_id, $block );
+    $store->_dirty( $store->[WEAK]{$block_id}, $block_id );
+    $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
+    $self->[DATA][$block_idx] = $block_id;
+
+    return $tied;
+
 } #_getblock
 
 sub STORE {
     my( $self, $idx, $val ) = @_;
 
-    if( $idx > $self->[BLOCK_COUNT]*$self->[BLOCK_SIZE] ) {
-        $self->_embiggen( $idx );
+    if( $idx >= $self->[BLOCK_COUNT]*$self->[BLOCK_SIZE] ) {
+        $self->_embiggen( $idx + 1 );
         $self->STORE( $idx, $val );
         return;
     }
 
     if( $idx >= $self->[ITEM_COUNT] ) {
-        $self->STORESIZE( $idx + 1 );
+        $self->_storesize( $idx + 1 );
         my $store = $self->[DSTORE];
         $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
     }
@@ -423,31 +426,30 @@ sub STORE {
         return;
     }
 
-    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ), 'CREATE' );
-    $block->[$idx % $self->[BLOCK_SIZE]] = $val;
+    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
+    $block->STORE( $idx % $self->[BLOCK_SIZE], $val );
 
 } #STORE
+
+sub _storesize {
+    my( $self, $size ) = @_;
+    die "BADSET in ID $self->[ID] $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
+    $self->[ITEM_COUNT] = $size;
+}
 
 sub STORESIZE {
     my( $self, $size ) = @_;
 
-
     $size = 0 if $size < 0;
 
-    my $data = $self->[DATA];
-    if( $self->[LEVEL] == 0 && $size > @$data ) {
-        $#$data = $size - 1;
-    }
-    
+
     # fixes the size of the array if the array were to shrink
     my $current_oversize = $self->[ITEM_COUNT] - $size;
     if( $current_oversize > 0 ) {
         $self->SPLICE( $size, $current_oversize );
     } #if the array shrinks
-
-    die "BADSET in ID $self->[ID] $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
     
-    $self->[ITEM_COUNT] = $size;
+    $self->_storesize( $size );
 
 } #STORESIZE
 
@@ -459,41 +461,38 @@ sub EXISTS {
     if( $self->[LEVEL] == 0 ) {
         return exists $self->[DATA][$idx];
     }
-    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
-    return $block && exists $block->[$idx % $self->[BLOCK_SIZE]];
+    return $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) )->EXISTS( $idx % $self->[BLOCK_SIZE] );
+
 } #EXISTS
 
 sub DELETE {
     my( $self, $idx ) = @_;
-    if( $idx >= $self->[ITEM_COUNT] ) {
-        return undef;
-    }
 
     # if the last one was removed, shrink until there is a
     # defined value
+    my $del = $self->FETCH( $idx );
+    $self->STORE( $idx, undef );
+
     if( $idx == $self->[ITEM_COUNT] - 1 ) {
-        $self->[ITEM_COUNT]--;
-        while( ! $self->EXISTS( $self->[ITEM_COUNT] - 1 ) ) {
+        $self->[ITEM_COUNT]--; 
+        while( $self->[ITEM_COUNT] > 0 && ! $self->EXISTS( $self->[ITEM_COUNT] - 1 ) ) {
             $self->[ITEM_COUNT]--;
         }
-        $self->[DSTORE]->_dirty( $self->[DSTORE]->[WEAK]{$self->[ID]}, $self->[ID] );
-    }
 
-    if( $self->[LEVEL] == 0 ) {
-        return $self->[DSTORE]->_xform_out( delete $self->[DATA][$idx] );
     }
+    $self->[DSTORE]->_dirty( $self->[DSTORE]->[WEAK]{$self->[ID]}, $self->[ID] );
+    
+    return $del;
 
-    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
-    if( $block ) {
-        return delete $block->[ $idx % $self->[BLOCK_SIZE] ];
-    }
 } #DELETE
 
 sub CLEAR {
     my $self = shift;
-    $self->[ITEM_COUNT] = 0;
-    $self->[DATA] = [];
-    $self->[DSTORE]->_dirty( $self->[DSTORE]->[WEAK]{$self->[ID]}, $self->[ID] );
+    if( $self->[ITEM_COUNT] > 0 ) {
+        $self->[ITEM_COUNT] = 0;
+        $self->[DATA] = [];
+        $self->[DSTORE]->_dirty( $self->[DSTORE]->[WEAK]{$self->[ID]}, $self->[ID] );
+    }
 }
 sub PUSH {
     my( $self, @vals ) = @_;
@@ -502,8 +501,11 @@ sub PUSH {
 }
 sub POP {
     my $self = shift;
-    return undef unless $self->[ITEM_COUNT];
-    return $self->DELETE( $self->[ITEM_COUNT] - 1 );
+    my $idx = $self->[ITEM_COUNT] - 1;
+    my $pop = $self->FETCH( $idx );
+    $self->STORE( $idx, undef );
+    $self->[ITEM_COUNT]--;
+    return $pop;
 }
 sub SHIFT {
     my( $self ) = @_;
@@ -558,10 +560,9 @@ sub SPLICE {
     }
 
     #
-    # embiggen to delta size if this would grow
+    # embiggen to delta size if this would grow. Also use the
+    # calculated size as a check for correctness.
     #
-
-    
     my $new_size = $self->[ITEM_COUNT];
     $new_size -= $remove_length;
     if( $new_size < 0 ) {
@@ -576,240 +577,80 @@ sub SPLICE {
     my $BLOCK_COUNT = $self->[BLOCK_COUNT];
     my $store       = $self->[DSTORE];
     my $blocks      = $self->[DATA];
-    my $BLOCK_SIZE  = $self->[BLOCK_SIZE];
-
-    $Yote::DEBUG = 1; #$self->[LEVEL] == 2;
+    my $BLOCK_SIZE  = $self->[BLOCK_SIZE]; # embiggen may have changed this, so dont set this before the embiggen call
 
     if( $self->[LEVEL] == 0 ) {
-        print STDERR Data::Dumper->Dump(["LVLS $#$blocks"]);
-        my @r1 = splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
-        my @ret = map { $store->_xform_out($_) } @r1;
-        print STDERR Data::Dumper->Dump([\@vals,\@ret,\@r1,"ZEROSPL $self->[ID] $offset, $remove_length (was $self->[ITEM_COUNT])"]);
-        $self->STORESIZE( $new_size );
+        # lowest level, must fit in the size. The end recursion and easy case.
+        my @raw_return = splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
+        my @ret = map { $store->_xform_out($_) } @raw_return;
+        $self->_storesize( $new_size );
+        $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
         return @ret;
     }
 
-    $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
-
     my( @removed );
     while( @vals && $remove_length ) {
+        #
+        # harmony case. doesn't change the size. eats up vals and remove length
+        # until one is zero
+        #
         push @removed, $self->FETCH( $offset );
         $self->STORE( $offset++, shift @vals );
         $remove_length--;
     }
 
     if( $remove_length ) {
-        # can leave a vacuum
-        my $block_idx = int( $offset / $BLOCK_SIZE );
-        my $block_off = $offset % $BLOCK_SIZE;
-        my $block     = $self->_getblock( $block_idx, 'C' );
 
-        $self->db( "REMOVE (first) $remove_length", $block, \@vals, $offset, $remove_length, [] );
-        
-        my $can_remove = @$block - $block_off;
-        if( $can_remove > $remove_length ) {
-            $can_remove = $remove_length;
+        my $avail_after_remove = $self->[ITEM_COUNT] - ( $offset + $remove_length );
+
+        my $move_idx;
+        for my $i ( 1..$avail_after_remove ) {
+            my $del_idx  = $offset + ($i-1);
+            $move_idx = $del_idx + $remove_length;
+            push @removed, $self->FETCH( $del_idx );
+            $self->STORE( $del_idx, $self->FETCH( $move_idx ) );
         }
 
-        $self->db( "REMOVE (first) $remove_length. Can remove $can_remove from offset $block_off", $block, \@vals, $offset, $remove_length, \@removed );
-
-                print STDERR Data::Dumper->Dump([$block,"FORU splice $block_off, $can_remove"]);
-        if( $can_remove ) {
-            my @move = splice @$block, $block_off, $can_remove;
-            print STDERR Data::Dumper->Dump([\@move,$block,"AR"]);
-            push @removed, @move;
-            $remove_length -= $can_remove;
-            $self->STORESIZE( $self->[ITEM_COUNT] - $can_remove );
-        }
-
-        die "SARDY REMMY (ID $self->[ID], LEVEL $self->[LEVEL]) $self->[ITEM_COUNT] vs $new_size" if $self->[ITEM_COUNT] != $new_size;
+        my $last_idx = int( ($move_idx + 1 ) / $BLOCK_SIZE );
+        my $last_off = ( $move_idx + 1 ) % $BLOCK_SIZE;
         
-        $self->db( "REMOVE (AF) $remove_length blockidx $block_idx < ".int(($self->[ITEM_COUNT]-1)/$BLOCK_SIZE)."", $block, \@vals, $offset, $remove_length, \@removed );
-        #
-        # If this is the last block, then things are done.
-        # Otherwise we have to clean up the vacuum and remove
-        # more things
-        #
-        if( $block_idx < int(($self->[ITEM_COUNT] - 1)/$BLOCK_SIZE) ) {
+        my $last_block = $self->_getblock( $last_idx );
 
-            my $vacuum = $BLOCK_SIZE - @$block;
-            my $last_block = $block;
-
-            $block_idx++;
-
-            # got to last block? deal with the vacuum and you're done
-            if( $block_idx == int(($self->[ITEM_COUNT] - 1)/$BLOCK_SIZE) ) {
-                print STDERR Data::Dumper->Dump([$block_idx,$self->[BLOCK_COUNT],"SAFU" ]);
-                my $block = $self->_getblock( $block_idx );
-                if( $block ) {
-                    my $remove = $remove_length > @$block ? @$block : $remove_length;
-                    print STDERR Data::Dumper->Dump([$block,"B1"]);
-                    if( $remove > 0 ) {
-                        push @removed, splice @$block, 0, $remove;
-                        $self->STORESIZE( $self->[ITEM_COUNT] - $remove );
-                        print STDERR Data::Dumper->Dump([$block,\@removed,"B2"]);
-                    }
-                    if( $vacuum ) {
-                        print STDERR Data::Dumper->Dump([$block,\@removed,"B2.5 ($vacuum)"]);
-                        my @fill = splice( @$block, 0, $vacuum );
-                        print STDERR Data::Dumper->Dump([$block,\@removed,\@fill,"B3 ($vacuum)"]);
-                        splice @$last_block, scalar(@$last_block), 0, @fill;
-                        print STDERR Data::Dumper->Dump([$last_block,"B4"]);
-                    }
-                }
-                die "OHNSAKT REMMY (ID $self->[ID], LEVEL $self->[LEVEL]) $self->[ITEM_COUNT] vs $new_size" if $self->[ITEM_COUNT] != $new_size;
-                #                $self->STORESIZE( $new_size );
-                $self->db( "REMOVE (LAST) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-                return @removed;
-            }
-
-            # deleting whole blocks
-            while( $remove_length >= $BLOCK_SIZE ) {
-                my $block = $self->_getblock( $block_idx );
-                if( $block ) {
-                    push @removed, @$block;
-                }
-                else {
-                    push @removed, (undef) x $BLOCK_SIZE;
-                }
-                splice @$blocks, $block_idx, 1;
-                $remove_length -= $BLOCK_SIZE;
-                $self->STORESIZE( $self->[ITEM_COUNT] - $BLOCK_SIZE );
-                $self->db( "REMOVE (WHOLB) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-            }
-
-            # not yet at last block? apply the vacuum to it until
-            # you are
-            while( $block_idx < int( ($self->[ITEM_COUNT]-1)/$BLOCK_SIZE) ) {
-                my $block = $self->_getblock( $block_idx, 'C' );
-                $self->db( "REMOVE (FUUR) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-
-                # oh, yeah, do the deleting here, too
-                # forgot that for some dumb reason
-                if( $remove_length ) {
-                    push @removed, splice @$block, 0, $remove_length;
-                    $remove_length = 0;
-                }
-
-                if( $vacuum ) {
-                    my @fill = splice( @$block, 0, $vacuum );
-                    splice @$last_block, scalar( @$last_block ), 0, @fill;
-                    $last_block = $block;
-                }
-                $self->db( "REMOVE (AFTERD) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-                $block_idx++;
-            }
-
-            # must be the last block
-            my $block = $self->_getblock( $block_idx );
-
-            if( $block ) {
-                $self->db( "REMOVE (ATLAST) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-                my $remove = $remove_length > @$block ? @$block : $remove_length;
-                if( $remove ) {
-                    push @removed, splice @$block, 0, $remove;
-                }
-                if( $vacuum ) {
-                    splice @$last_block, scalar(@$last_block), 0, splice( @$block, 0, $vacuum );
-                }
-                $self->db( "REMOVE (mustlast) $remove_length <$remove>, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
-            } else {
-                $block = $self->_getblock( $block_idx, "C" );
-            }
-        } #not at end
-        $self->STORESIZE( $new_size );
+        $last_block->SPLICE( $last_off, $BLOCK_SIZE );
+        $last_idx++;
+        while( $last_idx <= ($self->[BLOCK_COUNT]-1) ) {
+            $self->_getblock( $last_idx++ )->CLEAR;
+        }
+            
     } # has things to remove
 
     if( @vals ) {
+        #
+        # while there are any in the insert list, grab all the items in the next block if any
+        #    and append to the insert list, then splice in the insert list to the beginning of
+        #    the block. There still may be items in the insert list, so repeat until it is done
+        # 
 
-        # can create a bubble pushing stuff to the end
         my $block_idx = int( $offset / $BLOCK_SIZE );
         my $block_off = $offset % $BLOCK_SIZE;
-        my $block     = $self->_getblock( $block_idx, 'C' );
 
-        $self->db("IN VALS at off $block_off", $block, \@vals, $offset, $remove_length );
-        # insert into a partial block
-        if( $block_off > 0 ) {
-            my $insert_span = $BLOCK_SIZE - $block_off;
-            if( $insert_span > @vals ) {
-                $insert_span = @vals;
-            }
-            my $avail_span = @$block - $block_off;
-            if( $avail_span > $insert_span ) {
-                $avail_span = $insert_span;
-            }
-
-            if( $avail_span > 0 ) {
-# HOW??? the sub block somehow has the same level
-#                die "ARGS" if $self->[LEVEL] == tied( @$block )->[LEVEL];
-                push @vals, splice @$block, $block_off, $avail_span;
-                $self->STORESIZE( $self->[ITEM_COUNT] - $avail_span );
-                $insert_span = $BLOCK_SIZE - $block_off;
-                if( $insert_span > @vals ) {
-                    $insert_span = @vals;
-                }
-                $self->db("BLOCKOFF>--1 <$insert_span>", $block, \@vals, $offset, $remove_length );
-            }
-            push @$block, splice @vals, 0, $insert_span;
-            $self->STORESIZE( $self->[ITEM_COUNT] + $insert_span );
-
-            $self->db("BLOCKOFF>0", $block, \@vals, $offset, $remove_length );
-            $block_idx++;
-        } #partial block
-
-        # can insert whole blocks now
-        while( @vals >= $BLOCK_SIZE ) {
-            splice @$blocks, $block_idx, 0, undef;
-            $block = $self->_getblock( $block_idx, 'C' );
-
-            my @from_vals = splice @vals, 0, $BLOCK_SIZE;
-            push @vals, @$block;
-            splice @$block, 0, 0, @from_vals;
-            $self->STORESIZE( $self->[ITEM_COUNT] + $BLOCK_SIZE );
-
-            $self->db("WHOLE BLOCK $block_idx (NEWSIZE $new_size)", $block, \@vals, $offset, $remove_length );
-
-            $block_idx++;
-
-        }
-
-        # now have partial blocks to push the bubble upwards
         while( @vals ) {
-            my $LAST_BLK_IDX = int( ($new_size - 1) / $BLOCK_SIZE );
-            $block = $self->_getblock( $block_idx, 'C' );
-
-            if( @$block ) {
-                $self->STORESIZE( $self->[ITEM_COUNT] - @$block ) if $LAST_BLK_IDX == $block_idx;
-                push @vals, splice @$block, 0, scalar(@$block);
-
+            my $block = $self->_getblock( $block_idx );
+            my $bubble_size = $block->FETCHSIZE - $block_off;
+            if( $bubble_size > 0 ) {
+                my @bubble = $block->SPLICE( $block_off, $bubble_size );
+                push @vals, @bubble;
             }
-            my $can_insert = $BLOCK_SIZE;
-            if( $can_insert > @vals ) {
-                $can_insert = @vals;
+            my $can_insert = @vals > ($BLOCK_SIZE-$block_off) ? ($BLOCK_SIZE-$block_off) : @vals;
+            if( $can_insert > 0 ) {
+                $block->SPLICE( $block_off, 0, splice( @vals, 0, $can_insert ) );
             }
-
-            push @$block, splice @vals, 0, $can_insert;
-            $self->STORESIZE( $self->[ITEM_COUNT] + $can_insert ) if $LAST_BLK_IDX == $block_idx;
-
-            $self->db("PARTIAL <$can_insert>  $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
-
             $block_idx++;
-        } #while vals
-#        die "OHNSAKT ($self->[ITEM_COUNT] vs $new_size)" if $self->[ITEM_COUNT] != $new_size;
-        #            $self->db("BEFOREFINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
-
-        # final block to push into
-        #  $block = $self->_getblock( $block_idx, 'C' );
-        #  splice @$block, 0, 0, @vals;
-        #  $self->[ITEM_COUNT] += @vals;
-        
-        
-        # $self->db("FINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
-
-        #                        $Yote::DEBUG2 = 0;
+            $block_off = 0;
+        }
     } # has vals
 
-    $self->STORESIZE( $new_size );
+    $self->_storesize( $new_size );
     
     return @removed;
 
