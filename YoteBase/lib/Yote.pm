@@ -302,7 +302,7 @@ sub fetch {
         }
         undef $ref;
     }
-    my $obj_arry = $self->{_DATASTORE}->_fetch( $id );
+    my $obj_arry = $self->{_YOTEDB}->_fetch( $id );
 
     if( $obj_arry ) {
         my( $id, $class, $data ) = @$obj_arry;
@@ -320,7 +320,7 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
-            tie %hash, 'Yote::Hash', $self, $id, @$data;
+            tie %hash, 'Yote::Hash', $self, $id, %$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -357,7 +357,7 @@ sub run_purger {
     my( $self, $make_tally, $copy_only ) = @_;
     $self->stow_all();
 
-    my $keep_db = $self->{_DATASTORE}->_generate_keep_db();
+    my $keep_db = $self->{_YOTEDB}->_generate_keep_db();
 
     # analyze to see what percentage would be kept
     my $total = $keep_db->entry_count;
@@ -374,8 +374,8 @@ sub run_purger {
     my $do_purge = $keep > ( $total/2 ) && ! $copy_only;
     my $purged;
     if( $do_purge ) {
-        $purged = $self->{_DATASTORE}->_purge_objects( $keep_db, $make_tally );
-        $self->{_DATASTORE}->_update_recycle_ids( $keep_db );
+        $purged = $self->{_YOTEDB}->_purge_objects( $keep_db, $make_tally );
+        $self->{_YOTEDB}->_update_recycle_ids( $keep_db );
         $keep_db->unlink_store;
     } else {
         $purged = $self->_copy_active_ids( $keep_db );
@@ -414,16 +414,16 @@ sub _copy_active_ids {
         if( $has_keep ) {
             my $obj = $self->fetch( $keep_id );
 
-            $newstore->{_DATASTORE}{DATA_STORE}->ensure_entry_count( $keep_id - 1 );
+            $newstore->{_YOTEDB}{DATA_STORE}->ensure_entry_count( $keep_id - 1 );
             $newstore->_dirty( $obj, $keep_id );
             $newstore->_stow( $obj, $keep_id );
-        } elsif( $self->{_DATASTORE}{DATA_STORE}->has_id( $keep_id ) ) {
+        } elsif( $self->{_YOTEDB}{DATA_STORE}->has_id( $keep_id ) ) {
             push @purges, $keep_id;
         }
     } #each entry id
 
     # reopen data store
-    $self->{_DATASTORE} = Yote::YoteDB->open( $self, $self->{args} );
+    $self->{_YOTEDB} = Yote::YoteDB->open( $self, $self->{args} );
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
 
@@ -438,7 +438,7 @@ sub _copy_active_ids {
 =cut
 sub has_id {
     my( $self, $id ) = @_;
-    return $self->{_DATASTORE}{DATA_STORE}->has_id( $id );
+    return $self->{_YOTEDB}{DATA_STORE}->has_id( $id );
 }
 
 =head2 stow_all
@@ -462,7 +462,7 @@ sub stow_all {
         my( $text_rep ) = $self->_raw_data( $obj );
         push( @odata, [ $self->_get_id( $obj ), $cls, $text_rep ] );
     }
-    $self->{_DATASTORE}->_stow_all( \@odata );
+    $self->{_YOTEDB}->_stow_all( \@odata );
     $self->{_DIRTY} = {};
 } #stow_all
 
@@ -485,7 +485,7 @@ sub stow {
     }
     my $id = $self->_get_id( $obj );
     my( $text_rep ) = $self->_raw_data( $obj );
-    $self->{_DATASTORE}->_stow( $id, $cls, $text_rep );
+    $self->{_YOTEDB}->_stow( $id, $cls, $text_rep );
     delete $self->{_DIRTY}{$id};
 } #stow
 
@@ -501,7 +501,7 @@ sub _new { #Yote::ObjStore
         _WEAK_REFS => {},
         args       => $args,
     }, $pkg;
-    $self->{_DATASTORE} = Yote::YoteDB->open( $self, $args );
+    $self->{_YOTEDB} = Yote::YoteDB->open( $self, $args );
     $self;
 } #_new
 
@@ -533,7 +533,7 @@ sub _dirty {
 # Returns the first ID that is associated with the root Root object
 #
 sub _first_id {
-    shift->{_DATASTORE}->_first_id();
+    shift->{_YOTEDB}->_first_id();
 } #_first_id
 
 sub _get_id {
@@ -553,11 +553,11 @@ sub __get_id {
     elsif( $class eq 'ARRAY' ) {
         my $tied = tied @$ref;
         if( $tied ) {
-            $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
+            $tied->[0] ||= $self->{_YOTEDB}->_get_id( "ARRAY" );
             return $tied->[0];
         }
         my( @data ) = @$ref;
-        my $id = $self->{_DATASTORE}->_get_id( $class );
+        my $id = $self->{_YOTEDB}->_get_id( $class );
         tie @$ref, 'Yote::ArrayGatekeeper', $self, $id;
         push( @$ref, @data ) if @data;
         $self->_dirty( $ref, $id );
@@ -571,16 +571,16 @@ sub __get_id {
         my $tied = tied %$ref;
         if( $tied ) {
             my $useclass = ref($tied) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
-            $tied->[0] ||= $self->{_DATASTORE}->_get_id( $useclass );
+            $tied->[0] ||= $self->{_YOTEDB}->_get_id( $useclass );
             return $tied->[0];
         } else {
-            $class = 'Yote::BigHash';
+#            $class = 'Yote::BigHash';
         }
-        my $id = $self->{_DATASTORE}->_get_id( $class );
+        my $id = $self->{_YOTEDB}->_get_id( $class );
 
         my( %vals ) = %$ref;
 
-        tie %$ref, 'Yote::BigHash', $self, $id;
+        tie %$ref, 'Yote::Hash', $self, $id;
         for my $key (keys %vals) {
             $ref->{$key} = $vals{$key};
         }
@@ -591,9 +591,9 @@ sub __get_id {
     else {
         return $ref->{ID} if $ref->{ID};
         if( $class eq 'Yote::Root' ) {
-            $ref->{ID} = $self->{_DATASTORE}->_first_id( $class );
+            $ref->{ID} = $self->{_YOTEDB}->_first_id( $class );
         } else {
-            $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
+            $ref->{ID} ||= $self->{_YOTEDB}->_get_id( $class );
         }
         return $ref->{ID};
     }
@@ -612,17 +612,17 @@ sub _stow {
 
     if( $class eq 'ARRAY' ) {
         my $useClass = ref( tied( @$obj ) ) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
-        $self->{_DATASTORE}->_stow( $id,$useClass, $text_rep );
+        $self->{_YOTEDB}->_stow( $id,$useClass, $text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'HASH' ) {
         my $useClass = ref( tied( %$obj ) ) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
-        $self->{_DATASTORE}->_stow( $id,$useClass,$text_rep );
+        $self->{_YOTEDB}->_stow( $id,$useClass,$text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'Yote::Array' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id,'ARRAY',$text_rep );
+            $self->{_YOTEDB}->_stow( $id,'ARRAY',$text_rep );
             $self->_clean( $id );
         }
         for my $child (@$data) {
@@ -633,7 +633,7 @@ sub _stow {
     }
     elsif( $class eq 'Yote::ArrayGatekeeper' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id,'Yote::ArrayGatekeeper',$text_rep );
+            $self->{_YOTEDB}->_stow( $id,'Yote::ArrayGatekeeper',$text_rep );
             $self->_clean( $id );
         }
         for my $child (@$data) {
@@ -644,7 +644,7 @@ sub _stow {
     }
     elsif( $class eq 'Yote::Hash' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id, 'HASH', $text_rep );
+            $self->{_YOTEDB}->_stow( $id, 'HASH', $text_rep );
         }
         $self->_clean( $id );
         for my $child (values %$data) {
@@ -655,7 +655,7 @@ sub _stow {
     }
     elsif( $class eq 'Yote::BigHash' ) {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id, 'Yote::BigHash', $text_rep );
+            $self->{_YOTEDB}->_stow( $id, 'Yote::BigHash', $text_rep );
         }
         $self->_clean( $id );
         for my $child (values %$data) {
@@ -666,7 +666,7 @@ sub _stow {
     }
     else {
         if( $self->_is_dirty( $id ) ) {
-            $self->{_DATASTORE}->_stow( $id, $class, $text_rep );
+            $self->{_YOTEDB}->_stow( $id, $class, $text_rep );
             $self->_clean( $id );
         }
         for my $val (values %$data) {
@@ -1237,7 +1237,7 @@ sub _ensure_capacity {
         # make a new gatekeeper and moves the buckets of this
         # one into the new gatekeeper
         #
-        my $new_id = $store->{_DATASTORE}->_get_id( 'Yote::ArrayGatekeeper' );
+        my $new_id = $store->{_YOTEDB}->_get_id( 'Yote::ArrayGatekeeper' );
 
         my $newkeeper = [];
         tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], $self->[LEVEL], @{$self->[BLOCKS]};
@@ -1276,7 +1276,7 @@ sub _block {
         $block = $store->fetch($block_id);
     } elsif( $self->[LEVEL] == 1 ) {
         $block = [];
-        my $block_id = $store->{_DATASTORE}->_get_id( "ARRAY" );
+        my $block_id = $store->{_YOTEDB}->_get_id( "ARRAY" );
         tie @$block, 'Yote::Array', $store, $block_id;
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
@@ -1287,7 +1287,7 @@ sub _block {
         my $firstblock = tied( @{$store->fetch($self->[BLOCKS][0])} );
 
         $block = [];
-        my $block_id = $store->{_DATASTORE}->_get_id( "Yote::ArrayGatekeeper" );
+        my $block_id = $store->{_YOTEDB}->_get_id( "Yote::ArrayGatekeeper" );
         tie @$block, 'Yote::ArrayGatekeeper', $store, $block_id, 0, $firstblock->[BLOCK_COUNT], $firstblock->[BLOCK_SIZE], $firstblock->[LEVEL];
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
