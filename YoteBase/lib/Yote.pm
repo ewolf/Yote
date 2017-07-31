@@ -1254,24 +1254,36 @@ sub _fetch {
   my $parts = [ split /\`/, $val, -1 ];
 
   # check to see if any of the parts were split on escapes
+  # like  mypart`foo`oo (should be translated to mypart\`foo\`oo
   if( 0 < grep { /\\$/ } @$parts ) {
       my $newparts = [];
-      my $shim = '';
+
+      my $is_hanging = 0;
+      my $working_part = '';
+      
       for my $part (@$parts) {
-          if( $part =~ /(^|[^\\]((\\\\)+)?)$/ ) {
-              my $newpart = $shim ? "$shim\`$part" : $part;
+
+          # if the part ends in a hanging escape
+          if( $part =~ /(^|[^\\])((\\\\)+)?[\\]$/ ) {
+              if( $is_hanging ) {
+                  $working_part .= "`$part";
+              } else {
+                  $working_part = $part;
+              }
+              $is_hanging = 1;
+          } elsif( $is_hanging ) {
+              my $newpart = "$working_part`$part";
               $newpart =~ s/\\`/`/gs;
               $newpart =~ s/\\\\/\\/gs;
               push @$newparts, $newpart;
-              $shim = '';
+              $is_hanging = 0;
           } else {
-              $shim = $shim ? "$shim\`$part" : $part;
+              # normal part
+              push @$newparts, $part;
           }
       }
-      if( $shim ) {
-          $shim =~ s/\\`/`/gs;
-          $shim =~ s/\\\\/\\/gs;
-          push @$newparts, $shim;
+      if( $is_hanging ) {
+          die "Error in parsing parts\n";
       }
       $parts = $newparts;
   }
