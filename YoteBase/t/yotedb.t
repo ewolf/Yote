@@ -296,6 +296,7 @@ sub test_arry {
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
     for my $SZ (2..9) {
+#    for my $SZ (4..4) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
 
         my $arry = $root_node->set_arry( [] );
@@ -348,9 +349,13 @@ sub test_arry {
         $m = shift @$match;
         _cmpa( "shift $SZ", $arry, $match, $a, $m );
 
+        unshift @$arry, 'A'..'L';
+        unshift @$match, 'A'..'L';
+
+        _cmpa( "unshift more $SZ", $arry, $match, $a, $m );
         
-if(0){
-        my $arry = $root_node->set_arry( [ 1 .. 19 ] );
+        if(0){
+        $arry = $root_node->set_arry_more( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
         my $match = [ 1 .. 19 ];
         is_deeply( $arry, $match, "INITIAL $SZ" );
@@ -363,7 +368,6 @@ if(0){
         is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
         is( @$arry, 18, "18 items" );
         is( $#$arry, 17, "last idx is 17" );
-        
         $a = pop @$arry;
         $m = pop @$match;
         is( $a, $m, "POP $SZ" );
@@ -391,7 +395,7 @@ if(0){
         is( $#$a2, $#$m2, "empty splice last idx $SZ" );
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
-}        
+        }
     }
 }
 

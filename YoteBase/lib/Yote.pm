@@ -381,7 +381,7 @@ sub _getblock {
 
     if( $block_id ) {
         my $block = $store->_fetch( $block_id );
-        return tied( @$block );
+        return wantarray ? ($block, tied( @$block )) : tied( @$block );
     }
 
     $block_id = $store->_new_id;
@@ -400,6 +400,7 @@ sub _getblock {
     $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
     $self->[DATA][$block_idx] = $block_id;
 
+    return wantarray ? ($block, $tied) : $tied;
     return $tied;
 
 } #_getblock
@@ -470,6 +471,9 @@ sub DELETE {
 
     # if the last one was removed, shrink until there is a
     # defined value
+    if( $idx < 0 ) {
+        $idx = $self->[ITEM_COUNT] + $idx;
+    }
     my $del = $self->FETCH( $idx );
     $self->STORE( $idx, undef );
 
@@ -600,26 +604,11 @@ sub SPLICE {
     }
 
     if( $remove_length ) {
-
-        my $avail_after_remove = $self->[ITEM_COUNT] - ( $offset + $remove_length );
-
-        my $move_idx;
-        for my $i ( 1..$avail_after_remove ) {
-            my $del_idx  = $offset + ($i-1);
-            $move_idx = $del_idx + $remove_length;
-            push @removed, $self->FETCH( $del_idx );
-            $self->STORE( $del_idx, $self->FETCH( $move_idx ) );
-        }
-
-        my $last_idx = int( ($move_idx + 1 ) / $BLOCK_SIZE );
-        my $last_off = ( $move_idx + 1 ) % $BLOCK_SIZE;
-        
-        my $last_block = $self->_getblock( $last_idx );
-
-        $last_block->SPLICE( $last_off, $BLOCK_SIZE );
-        $last_idx++;
-        while( $last_idx <= ($self->[BLOCK_COUNT]-1) ) {
-            $self->_getblock( $last_idx++ )->CLEAR;
+        my $last_idx = $self->[ITEM_COUNT] - 1;
+        $last_idx = $last_idx < $offset+$remove_length ? $last_idx : $offset+$remove_length;
+        for my $idx ($offset..$last_idx) {
+            push @removed, $self->FETCH( $idx );
+            $self->STORE( $idx, $self->FETCH( $idx + $remove_length ) );
         }
             
     } # has things to remove
@@ -634,8 +623,8 @@ sub SPLICE {
         my $block_idx = int( $offset / $BLOCK_SIZE );
         my $block_off = $offset % $BLOCK_SIZE;
 
-        while( @vals ) {
-            my $block = $self->_getblock( $block_idx );
+        while( @vals && ($self->[ITEM_COUNT] > $block_idx*$BLOCK_SIZE+$block_off) ) {
+            my( $bl, $block ) = $self->_getblock( $block_idx );
             my $bubble_size = $block->FETCHSIZE - $block_off;
             if( $bubble_size > 0 ) {
                 my @bubble = $block->SPLICE( $block_off, $bubble_size );
@@ -648,6 +637,14 @@ sub SPLICE {
             $block_idx++;
             $block_off = 0;
         }
+        while( @vals ) {
+            my( $bl, $block ) = $self->_getblock( $block_idx );
+            my $remmy = $BLOCK_SIZE - $block_off;
+            $block->SPLICE( $block_off, scalar(@$block), splice( @vals, 0, $remmy) ); 
+            $block_idx++;
+            $block_off = 0;
+        }
+
     } # has vals
 
     $self->_storesize( $new_size );
