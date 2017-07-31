@@ -289,8 +289,18 @@ sub test_arry {
     my $a = shift @$arry;
     my $m = shift @$match;
     is( $a, $m, "SHIFT" );
-    print STDERR Data::Dumper->Dump([$arry,$match]);
     is_deeply( $arry, $match, "AFTER SHIFT" );
+
+    $a = pop @$arry;
+    $m = pop @$match;
+    is( $a, $m, "POP" );
+    is_deeply( $arry, $match, "AFTER POP" );
+
+    my( @a ) = splice @$arry, 3, 4, ("A".."N");
+    my( @m ) = splice @$match, 3, 4, ("A".."N");
+    is_deeply( $arry, $match, "AFTER SPLICE" );
+    is_deeply( \@a, \@m, "SPLICE return" );
+    
 }
 
 __END__

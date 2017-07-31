@@ -380,7 +380,7 @@ sub _getblock {
         my $level = $self->[LEVEL] - 1;
         tie @$block, 'Yote::Array', $store, $block_id, $level, 0, $self->[BLOCK_COUNT];
         if( $block_idx < ($self->[BLOCK_COUNT] - 1) ) {
-            $#$block = $self->[BLOCK_SIZE];
+            $#$block = $self->[BLOCK_SIZE] - 1;
         }
         $store->_store_weak( $block_id, $block );
         $store->_dirty( $store->[WEAK]{$block_id}, $block_id );
@@ -539,30 +539,27 @@ sub SPLICE {
         $self->_embiggen( $new_size );
     }
 
-    my $BLOCK_SIZE = $self->[BLOCK_SIZE];
-    my $blocks     = $self->[DATA];
-    my $store      = $self->[DSTORE];
+    my $BLOCK_SIZE  = $self->[BLOCK_SIZE];
+    my $BLOCK_COUNT = $self->[BLOCK_COUNT];
+    my $blocks      = $self->[DATA];
+    my $store       = $self->[DSTORE];
 
     if( $self->[LEVEL] == 0 ) {
         $self->[ITEM_COUNT] = $new_size;
         return map { $store->_xform_out($_) } splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
     }
-
-    my $NEW_LAST_IDX = $new_size - 1;
-
+    
     $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
 
     my( @removed );
 
     while( @vals && $remove_length ) {
-        print STDERR Data::Dumper->Dump([\@vals,$remove_length,'HARMONY']);
         push @removed, $self->FETCH( $offset );
         $self->STORE( $offset++, shift @vals );
         $remove_length--;
     }
 
     if( $remove_length ) {
-        print STDERR Data::Dumper->Dump(["REMOVE $remove_length"]);
         # can leave a vacuum
         my $block_idx = int( $offset / $BLOCK_SIZE );
         my $block_off = $offset % $BLOCK_SIZE;
@@ -616,7 +613,7 @@ sub SPLICE {
 
             # not yet at last block? apply the vacuum to it until
             # you are
-            while( $block_idx < $NEW_LAST_IDX ) {
+            while( $block_idx < $BLOCK_COUNT ) {
                 my $block = $self->_getblock( $block_idx, 'C' );
                 if( $vacuum ) {
                     splice @$last_block, scalar( @$last_block ), 0, splice( @$block, 0, $vacuum );
@@ -630,9 +627,12 @@ sub SPLICE {
             if( $block ) {
                 my $remove = $remove_length > @$block ? @$block : $remove_length;
                 push @removed, splice @$block, 0, $remove;
-            }
-            if( $vacuum ) {
-                splice @$last_block, scalar(@$block), 0, splice( @$block, 0, $vacuum );
+                if( $vacuum ) {
+                    splice @$last_block, scalar(@$block), 0, splice( @$block, 0, $vacuum );
+                }
+            } else {
+                $block = $self->_getblock( $block_idx, "C" );
+                
             }
         } #not at end
     } # has things to remove
@@ -643,45 +643,43 @@ sub SPLICE {
         my $block_off = $offset % $BLOCK_SIZE;
         my $block     = $self->_getblock( $block_idx, 'C' );
 
-        print STDERR Data::Dumper->Dump([$block_idx,$block_off,$block,\@vals,"BLBLBL <$BLOCK_SIZE>"]);
-        
         # insert into a partial block
         if( $block_off > 0 ) {
-            my $span = @$block - $block_off;
-            if( $span > @vals ) {
-                $span = @vals;
+            my $insert_span = $BLOCK_SIZE - $block_off;
+            if( $insert_span > @vals ) {
+                $insert_span = @vals;
             }
-            push @vals, splice @$block, $block_off, $span;
-            push @$block, splice @vals, 0, $span;
+            my $avail_span = @$block - $block_off;
+            if( $avail_span > $insert_span ) {
+                $avail_span = $insert_span;
+            }
+            if( $avail_span > 0 ) {
+                push @vals, splice @$block, $block_off, $avail_span;
+            }
+            push @$block, splice @vals, 0, $insert_span;
             $block_idx++;
         }
 
         # can insert whole blocks now
         while( @vals > $BLOCK_SIZE ) {
-            print STDERR Data::Dumper->Dump([$blocks,"A"]);
             splice @$blocks, $block_idx, 0, undef;
-            print STDERR Data::Dumper->Dump([$blocks,"B"]);
             $block = $self->_getblock( $block_idx, 'C' );
             my @from_vals = splice @vals, 0, $BLOCK_SIZE;
-            print STDERR Data::Dumper->Dump([$blocks,$block,\@from_vals,\@vals,"C <$BLOCK_SIZE>"]);
             push @$block, @from_vals;
             $block_idx++;
         }
 
         # now have partial blocks to push the bubble upwards
         if( @vals ) {
-            print STDERR Data::Dumper->Dump([\@vals,"REMVA $block_idx < $NEW_LAST_IDX"]);
-            while( $block_idx < $NEW_LAST_IDX ) {
+            while( $block_idx < $BLOCK_COUNT ) {
                 $block = $self->_getblock( $block_idx, 'C' );
                 my $span = $BLOCK_SIZE;
                 if( $span > @vals ) {
                     $span = @vals;
                 }
-                print STDERR Data::Dumper->Dump([\@vals,$block,"SNORK $block_idx ($span)"]);
                 
                 push @vals, splice @$block, $block_off, $span;
                 push @$block, splice @vals, 0, $span;
-                print STDERR Data::Dumper->Dump([\@vals,$block,"UMSNORK $block_idx"]);
                 $block_idx++;
             }
             # final block to push into
