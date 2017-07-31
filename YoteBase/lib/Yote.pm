@@ -1142,6 +1142,17 @@ use Tie::Hash;
 
 $Yote::Hash::SIZE = 977;
 
+use constant {
+    ID     => 0,
+    DATA   => 1,
+    DSTORE  => 2,
+    NEXT   => 3,
+    KEYS   => 4,
+    DEEP   => 5,
+    SIZE   => 6,
+    THRESH => 7,
+};
+
 sub _bucket {
     my( $self, $key, $return_undef ) = @_;
     my $hval = 0;
@@ -1149,14 +1160,14 @@ sub _bucket {
         $hval = $hval*33 - ord($_);
     }
 
-    $hval = $hval % $self->[6];
-    my $obj_id = $self->[1][$hval];
-    my $store = $self->[2];
+    $hval = $hval % $self->[SIZE];
+    my $obj_id = $self->[DATA][$hval];
+    my $store = $self->[DSTORE];
     unless( $obj_id ) {
         return ($hval, undef) if $return_undef;
         my $bucket = [];
         my $id = $store->_get_id( $bucket );
-        $self->[1][$hval] = $id;
+        $self->[DATA][$hval] = $id;
         return $hval, $bucket;
     }
     $hval, $store->_xform_out( $obj_id );
@@ -1178,29 +1189,28 @@ sub TIEHASH {
 
 sub STORE {
     my( $self, $key, $val ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+    my $store = $self->[DSTORE];
+    $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
     my( $bid, $bucket ) = $self->_bucket( $key );
 
-    
-    if( $self->[5][$bid] ) {
-        $self->[4]++ unless exists $bucket->{$key}; #obj count
+    if( $self->[DEEP][$bid] ) {
+        $self->[KEYS]++ unless exists $bucket->{$key}; #obj count
         $bucket->{$key} = $val;
     } else {
-        if( @$bucket > $self->[7] ) {
-            my $store = $self->[2];
+        if( @$bucket > $self->[THRESH] ) {
             my $newbuck = {};
-            my $id = $self->[2]->_get_id( $newbuck );
+            my $id = $store->_get_id( $newbuck );
 
             my $tied = tied %$newbuck;
-            $tied->[6] = $self->[6] * 2;
-            $tied->[7] = $self->[7] * 3;
+            $tied->[SIZE]   = $self->[SIZE] * 2;
+            $tied->[THRESH] = $tied->[SIZE] * 2;
             for( my $i=0; $i<$#$bucket; $i+=2 ) {
                 $newbuck->{$bucket->[$i]} = $bucket->[$i+1];
             }
-            $self->[4]++ unless exists $newbuck->{$key};
+            $self->[KEYS]++ unless exists $newbuck->{$key};
             $newbuck->{$key} = $val;
-            $self->[1][$bid] = $id;
-            $self->[5][$bid] = 1;
+            $self->[DATA][$bid] = $id;
+            $self->[DEEP][$bid] = 1;
             return;
         }
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
@@ -1210,29 +1220,29 @@ sub STORE {
                 return;
             }
         }
-        $self->[4]++; #obj count
+        $self->[KEYS]++; #obj count
         push @$bucket, $key, $val;
     }
 } #STORE
 
 sub FIRSTKEY {
     my $self = shift;
-    @{ $self->[3] } = ( 0, undef );
+    @{ $self->[NEXT] } = ( 0, undef );
     return $self->NEXTKEY;
 }
 
 sub NEXTKEY  {
     my $self = shift;
-    my $buckets = $self->[1];
-    my $store   = $self->[2];
-    my $current = $self->[3];
+    my $buckets = $self->[DATA];
+    my $store   = $self->[DSTORE];
+    my $current = $self->[NEXT];
 
     my( $bucket_idx, $idx_in_bucket ) = @$current;
 
     for( my $bid = $bucket_idx; $bid < @$buckets; $bid++ ) {
         my $bucket = defined( $bid ) ? $store->_xform_out($buckets->[$bid]) : undef;
         if( $bucket ) {
-            if( $self->[5][$bid] ) {
+            if( $self->[DEEP][$bid] ) {
                 my $tied = tied %$bucket;
                 my $key = defined( $idx_in_bucket) ? $tied->NEXTKEY : $tied->FIRSTKEY;
                 if( defined($key) ) {
@@ -1257,7 +1267,7 @@ sub NEXTKEY  {
 sub FETCH {
     my( $self, $key ) = @_;
     my( $bid, $bucket ) = $self->_bucket( $key );
-    if( $self->[5][$bid] ) {
+    if( $self->[DEEP][$bid] ) {
         return $bucket->{$key};
     } else {
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
@@ -1272,7 +1282,7 @@ sub EXISTS {
     my( $self, $key ) = @_;
 
     my( $bid, $bucket ) = $self->_bucket( $key );
-    if( $self->[5][$bid] ) {
+    if( $self->[DEEP][$bid] ) {
         return exists $bucket->{$key};
     } else {
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
@@ -1290,17 +1300,17 @@ sub DELETE {
     return 0 unless $bucket;
 
     # TODO - see if the buckets revert back to arrays
-
-    if( $self->[5][$bid] ) {
-        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-        $self->[4]-- if exists $bucket->{$key}; #obj count
+    my $store = $self->[DSTORE];
+    if( $self->[DEEP][$bid] ) {
+        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+        $self->[KEYS]-- if exists $bucket->{$key}; #obj count
         return delete $bucket->{$key};
     } else {
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
             if( $bucket->[$i] eq $key ) {
                 splice @$bucket, $i, 2;
-                $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-                $self->[4]--; #obj count
+                $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+                $self->[KEYS]--; #obj count
                 return 1;
             }
         }
@@ -1310,12 +1320,13 @@ sub DELETE {
 
 sub CLEAR {
     my $self = shift;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    my $buckets = $self->[1];
-    $self->[4] = 0; #obj count
+    my $store = $self->[DSTORE];
+    $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+    my $buckets = $self->[DATA];
+    $self->[KEYS] = 0;
     for( my $bid=0; $bid<@$buckets; $bid++ ) {
         my $buck = $buckets->[$bid];
-        if( $self->[5][$bid] ) {
+        if( $self->[DEEP][$bid] ) {
             %$buck = ();
         } else {
             splice @$buck, 0, scalar( @$buck );
@@ -1328,9 +1339,9 @@ sub DESTROY {
     my $self = shift;
 
     #remove all WEAK_REFS to the buckets
-    undef $self->[1];
+    undef $self->[DATA];
 
-    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
+    delete $self->[DSTORE]->{_WEAK_REFS}{$self->[ID]};
 }
 
 # ---------------------------------------------------------------------------------------
