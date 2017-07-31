@@ -91,6 +91,7 @@ sub stow_all {
 
         my $thingy = $cls eq 'HASH' ? tied( %$obj ) : $cls eq 'ARRAY' ?  tied( @$obj ) : $obj;
         my $text_rep = $thingy->_freezedry;
+        print STDERR Data::Dumper->Dump([$text_rep,"SAVA"]) if $id == 539;
         my $class = ref( $thingy );
 
 
@@ -274,19 +275,36 @@ use constant {
 
 sub _freezedry {
     my $self = shift;
-    join( "`",
+    my @items;
+    if( $self->[ITEM_COUNT] > 0 ) {
+        @items = map { if( defined($_) && $_=~ /[\\\`]/ ) { $_ =~ s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } map { $self->[DATA][$_] } (0..($self->[ITEM_COUNT]-1));
+    }
+    die "LEV" unless defined($self->[LEVEL]);
+    my $val = join( "`",
           $self->[LEVEL] || 0,
           $self->[BLOCK_COUNT] || 0,
           $self->[ITEM_COUNT] || 0,
           $self->[UNDERNEATH] || 0,
-          map { if( defined($_) && $_=~ /[\\\`]/ ) { $_ =~ s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } @{$self->[DATA]}
-      );
+          @items,
+        );
+    print STDERR "FREEZE $self->[ID] : $val\n";
+    $val;
 }
 
 sub _reconstitute {
     my( $cls, $store, $id, $data ) = @_;
     my $arry = [];
+    print STDERR "RECON ID $id LEVEL $data->[0] BLOCKCOUNT $data->[1] ITEMCOUNT $data->[2] UNDERNEATH $data->[3] (". join(",",@$data).")\n";
     tie @$arry, $cls, $store, $id, @$data;
+
+    if( $id == 2 ) {
+        $Yote::FOO = 1;
+        print STDERR Data::Dumper->Dump(["-------------------"]);
+        my $a = $arry->[1];
+        print STDERR Data::Dumper->Dump([$a,"A"]);
+        $Yote::FOO = 0;
+#        print STDERR Data::Dumper->Dump([$arry,$a,$data,tied(@$arry),"FOOH"]);exit;
+    }
     
     return $arry;
 }
@@ -331,7 +349,9 @@ sub FETCH {
     if( $idx >= $self->[ITEM_COUNT] ) {
         return undef;
     }
+#    print STDERR "FETCH idx $idx, ID $self->[ID], LVL $self->[LEVEL] : ".join(',',@{$self->[DATA]})."\n";
     if( $self->[LEVEL] == 0 ) {
+        print STDERR "RETURN idx ($idx), ID $self->[ID] VAL : $self->[DATA][$idx]\n";
         return $self->[DSTORE]->_xform_out( $self->[DATA][$idx] );
     }
 

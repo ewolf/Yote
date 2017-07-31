@@ -30,8 +30,6 @@ done_testing;
 exit( 0 );
 
 sub test_suite {
-    my $root_node = shift;
-
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
             someval => 124.42,
@@ -364,6 +362,7 @@ sub test_arry {
         
         my $other_store = Yote::open_store( $dir );
         my $aloaded = $other_store->fetch_root->get_arry;
+        print STDERR Data::Dumper->Dump([$aloaded,$match,$other_store->fetch_root,"FR"]);
         _cmpa( "SAVED LOADED", $aloaded, $match );
 
         my $a = $arry->[82];
