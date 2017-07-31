@@ -541,7 +541,7 @@ sub __get_id {
     elsif( $class eq 'ARRAY' ) {
         my $tied = tied @$ref;
         if( $tied ) {
-            $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
+             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -1115,6 +1115,204 @@ sub UNSHIFT {
     my( $self, @vals ) = @_;
     $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     unshift @{$self->[1]}, map {$self->[2]->_xform_in($_)} @vals;
+}
+sub SPLICE {
+    my( $self, $offset, $length, @vals ) = @_;
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+    return map { $self->[2]->_xform_out($_) } splice @{$self->[1]}, $offset, $length, map {$self->[2]->_xform_in($_)} @vals;
+}
+sub EXTEND {}
+
+sub DESTROY {
+    my $self = shift;
+    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+
+package Yote::ArrayGatekeeper;
+
+############################################################################################################
+# This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
+# be called explicitly or modified.                                                                        #
+############################################################################################################
+
+use strict;
+use warnings;
+
+no warnings 'uninitialized';
+use Tie::Array;
+
+$Yote::ArrayGatekeeper::BLOCK_SIZE  = 1024;
+$Yote::ArrayGatekeeper::BLOCK_COUNT = 1024;
+
+sub TIEARRAY {
+    my( $class, $obj_store, $id, $block_count, $block_size, @list ) = @_;
+
+    $block_size  ||= $Yote::ArrayGatekeeper::BLOCK_SIZE;
+    $block_count ||= $Yote::ArrayGatekeeper::BLOCK_COUNT;
+
+    my $blocks = [@list];
+
+    # once the array is tied, an additional data field will be added
+    # so obj will be [ $id, $storage, $obj_store ]
+    my $obj = bless [$id,$blocks,$obj_store,$block_count,$block_size], $class;
+    return $obj;
+}
+
+sub _block {
+    my( $self, $idx ) = @_;
+    my $block_id = int($idx / $self->[4]); #block size
+    my $blocks = $self->[1];
+
+    if( $#$blocks > $block_id ) {
+        # at this point, we either need to add a block, or
+        # if we have the maxinum number of blocks, collapse
+        # the buckets a new Yote::ArrayGatekeeper
+
+        if( $#$blocks >= $self->[3] ) { #block count
+            # too many blocks, this means we collapse the blocks
+            # into the first one and up the block size
+        } else {
+            my $bucket = [];
+            my $bucket_id = $obj_store->{_DATASTORE}->_get_id( "ARRAY" );
+            tie @$bucket, 'Yote::Array', $obj_store, $bucket_id;
+        }
+        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+    }
+    my $block = tied @{$blocks->[$block_id]};
+    return ( $block, $self->[4] * $block_id );
+}
+
+sub FETCH {
+    my( $self, $idx ) = @_;
+    my( $block, $block_start_idx ) = $self->_block( $idx );
+    return $block->FETCH( $idx - $block_start_idx );
+}
+
+sub FETCHSIZE {
+    # how many things are in this 'array'
+    my $self = shift;
+    my $blocks = $self->[1];
+    my $block = tied @{$blocks->[$#$blocks]};
+    if( $block ) {
+        return ( $blocks - 1 ) * $self->[4] + $block->FETCHSIZE;
+    }
+    return 0;
+}
+
+sub STORE {
+    my( $self, $idx, $val ) = @_;
+    my( $block, $block_start_idx ) = $self->_block( $idx );
+    $block->STORE( $idx - $block_start_idx, $val );
+}
+sub STORESIZE {}  # fixes the size of the array
+
+sub EXISTS {
+    my( $self, $idx ) = @_;
+    my( $block, $block_start_idx ) = $self->_block( $idx );
+    return $block->EXISTS( $idx - $block_start_idx );
+}
+sub DELETE {
+    my( $self, $idx ) = @_;
+    my( $block, $block_start_idx ) = $self->_block( $idx );
+    return $block->DELETE( $idx - $block_start_idx );
+}
+
+sub CLEAR {
+    my $self = shift;
+    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+    @{$self->[1]} = ();
+}
+sub PUSH {
+    my( $self, @vals ) = @_;
+
+    # gets interesting. See if this push will affect a block boundary
+    my $blocks = $self->[1];
+    my $lastblock;
+    if( @$blocks == 0 ) {
+        # new block here
+        ($lastblock,undef) = $self->_block(0);
+    } else {
+        $lastblock = tied @{$blocks->[$#$blocks]};
+    }
+    my $remaining = $self->[4] - @$lastblock; #blocksize
+
+    if( $remaining >= @vals ) {
+        $lastblock->PUSH( @vals );
+        return;
+    }
+
+    if( $remaining > 0 ) {
+        my( @rem ) = splice @vals, 0, $remaining;
+        $lastblock->PUSH( @rem );
+    }
+    if( @vals ) {
+        # need a new block!
+        my $newblockidx = @$blocks * $self->[4];
+        my( $newblock, undef ) = $self->_block( $newblockidx );
+        $newblock->PUSH( @vals );
+    }
+}
+sub POP {
+    my $self = shift;
+    my $blocks = @$self->[1];
+    if( @$blocks ) {
+        my $lastblock = tied @{$blocks->[$#$blocks]};
+        return $lastblock->POP;
+    }
+    return;
+}
+sub SHIFT {
+    my( $self ) = @_;
+    my $blocks = $self->[1];
+    if( @$blocks ) {
+        my $val = $blocks->[0]->SHIFT;
+        for( my $i=1; $i<@$blocks; $i++ ) {
+            $blocks->[$i-1]->PUSH( $blocks->[$i]->SHIFT );
+        }
+        return $val;
+    }
+    return;
+}
+sub UNSHIFT {
+    my( $self, @vals ) = @_;
+
+    # calculate if this will collapse the gatekeeper
+    my $avail_capacity = $self->[3]*$self->[4] - $self->FETCHSIZE;
+
+    if( $avail_capacity < @vals ) {
+        # collapse happens here
+        return;
+    }
+
+    my $datastore = $self->[2];
+    my $blocks    = $self->[1];
+
+    ( my $working, undef ) = $self->block(0);
+    
+    # no collapse case
+    while( @vals > $self->[4] ) {
+        my( @next ) = splice @vals, 0, $self->[4];
+        my $newblock = [];
+        my $newblock_id = $datastore->{_DATASTORE}->_get_id( "ARRAY" );
+        tie @$newblock, 'Yote::Array', $obj_store, $newblock_id, map { $datastore->_xform_in($_) } @next;
+        unshift @$blocks, $newblock;
+    }
+    return unless @vals;
+    
+    while( @vals ) {
+        my $fsize = $working->FETCHSIZE;
+        my $overlap = $fsize + @vals - $self->[4];
+        if( $overlap > 0 ) { #things can fit in this working block
+            $working->UNSHIFT( @vals );
+            return;
+        }
+        my $splitpoint = $fsize - $overlap;
+        my( @newvals ) = $working->SPLICE( $splitpoint, @vals - $splitpoint );
+        $working->UNSHIFT( @vals );
+        @vals = @newvals;
+    }
 }
 sub SPLICE {
     my( $self, $offset, $length, @vals ) = @_;
