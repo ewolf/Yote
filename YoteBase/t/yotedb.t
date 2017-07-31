@@ -294,6 +294,14 @@ sub test_suite {
     is( $#$l, -1, "last after clear" );
     is( scalar(@$l), 0, "size after clear" );
 
+    push @$l, 0..10000;
+    $store->stow_all;
+    my $other_store = Yote::open_store( $dir );
+    $root_node = $store->fetch_root;
+    my $ol = $root_node->get_listy( [] );
+
+    is_deeply( $l, $ol, "lists compare" );
+    
 } #test suite
 
 
