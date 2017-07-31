@@ -353,8 +353,7 @@ sub test_arry {
         unshift @$match, 'A'..'L';
 
         _cmpa( "unshift more $SZ", $arry, $match, $a, $m );
-        
-        if(0){
+
         $arry = $root_node->set_arry_more( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
         my $match = [ 1 .. 19 ];
@@ -364,7 +363,6 @@ sub test_arry {
         my $a = shift @$arry;
         my $m = shift @$match;
         is( $a, $m, "SHIFT $SZ" );
-
         is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
         is( @$arry, 18, "18 items" );
         is( $#$arry, 17, "last idx is 17" );
@@ -395,7 +393,7 @@ sub test_arry {
         is( $#$a2, $#$m2, "empty splice last idx $SZ" );
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
-        }
+
     }
 }
 

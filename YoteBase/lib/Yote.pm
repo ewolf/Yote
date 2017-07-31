@@ -605,12 +605,19 @@ sub SPLICE {
 
     if( $remove_length ) {
         my $last_idx = $self->[ITEM_COUNT] - 1;
-        $last_idx = $last_idx < $offset+$remove_length ? $last_idx : $offset+$remove_length;
-        for my $idx ($offset..$last_idx) {
+
+        for( my $idx=$offset; $idx<($offset+$remove_length); $idx++ ) {
             push @removed, $self->FETCH( $idx );
-            $self->STORE( $idx, $self->FETCH( $idx + $remove_length ) );
         }
-            
+        
+        my $things_to_move = $self->[ITEM_COUNT] - ($offset+$remove_length);
+        my $to_idx = $offset;
+        my $from_idx = $to_idx + $remove_length;
+        for( 1..$things_to_move ) {
+            $self->STORE( $to_idx, $self->FETCH( $from_idx ) );
+            $to_idx++;
+            $from_idx++;
+        }   
     } # has things to remove
 
     if( @vals ) {
@@ -640,7 +647,9 @@ sub SPLICE {
         while( @vals ) {
             my( $bl, $block ) = $self->_getblock( $block_idx );
             my $remmy = $BLOCK_SIZE - $block_off;
-            $block->SPLICE( $block_off, scalar(@$block), splice( @vals, 0, $remmy) ); 
+            if( $remmy > @vals ) { $remmy = @vals; }
+
+            $block->SPLICE( $block_off, $block->[ITEM_COUNT], splice( @vals, 0, $remmy) ); 
             $block_idx++;
             $block_off = 0;
         }
