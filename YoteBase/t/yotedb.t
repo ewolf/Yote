@@ -192,17 +192,13 @@ sub test_suite {
         $confirm_hash{$letter} = $val;
         $val++;
     }
-    print STDERR Data::Dumper->Dump(["ZA"]);
     $store->stow_all;
-    print STDERR Data::Dumper->Dump(["ZAasfd"]);
 
     my $sup_store = Yote::open_store( $dir );
     $thash = $sup_store->fetch_root->get_test_hash;
-    print STDERR Data::Dumper->Dump(["FOSDF"]);
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
-    print STDERR Data::Dumper->Dump(["sdfasdf"]);
+
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
-    print STDERR Data::Dumper->Dump(["fasdf  sdfasdf"]);
 
     # array tests
     # listy test because

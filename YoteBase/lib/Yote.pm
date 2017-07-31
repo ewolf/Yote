@@ -722,7 +722,7 @@ sub _raw_data {
         my $r = $tied->[1];
         if( ref( $tied ) eq 'Yote::Array' ) {
             return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
-        } 
+        }
         elsif( ref( $tied ) eq 'Yote::ArrayGatekeeper' ) {
             return join( "`", $tied->[6], $tied->[4], $tied->[5], $tied->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
         }
@@ -737,13 +737,13 @@ sub _raw_data {
             if( $tied->[3] ) {
                 # has an array rather than hash
                 return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
-            } 
+            }
             return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
-        } 
+        }
 
         elsif( ref( $tied ) eq 'Yote::Hash' ) {
             return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
-        } 
+        }
         else {
             die;
         }
@@ -1650,7 +1650,7 @@ sub TIEHASH {
     $level ||= 0;
     $size  ||= 0;
     $buckets ||= $Yote::BigHash::SIZE;
-    bless [ $id, $level ? \@fetch_buckets : {@fetch_buckets}, $obj_store, $level, $buckets, $size, 0 ], $class;
+    bless [ $id, $level ? \@fetch_buckets : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef,undef] ], $class;
 }
 
 sub CLEAR {
@@ -1742,11 +1742,18 @@ sub STORE {
     #
     # EMBIGGEN TEST
     #
-    if( ! $self->EXISTS( $key ) ) {
-        if( $self->[SIZE]++ > $self->[BUCKETS] && $self->[LEVEL] == 0 ) {
+    my $newkey = ! $self->EXISTS( $key );
+    if( $newkey ) {
+        $self->[SIZE]++;
+    }
+
+    if( $self->[LEVEL] == 0 ) {
+        $data->{$key} = $self->[DSTORE]->_xform_in( $val );
+
+        if( $self->[SIZE] > $self->[BUCKETS] ) {
 
             # do the thing converting this to a deeper level
-            $self->[LEVEL]++;
+            $self->[LEVEL] = 1;
             my $store = $self->[DSTORE];
             my $yotedb = $store->{_YOTEDB};
             my( @newhash, @newids );
@@ -1757,14 +1764,16 @@ sub STORE {
                     $hval = $hval*33 - ord($_);
                 }
                 $hval = $hval % $self->[BUCKETS];
+
                 my $hash = $newhash[$hval];
                 if( $hash ) {
                     my $tied = tied %$hash;
-                    $tied->STORE( $key, $data->{$key} );
+                    $tied->STORE( $key, $store->_xform_out($data->{$key}) );
                 } else {
                     $hash = {};
                     my $hash_id = $yotedb->_get_id( 'Yote::BigHash' );
-                    tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
+                    tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
+
                     $store->_store_weak( $hash_id, $hash );
                     $store->_dirty( $store->{_WEAK_REFS}{$hash_id}, $hash_id );
 
@@ -1775,14 +1784,12 @@ sub STORE {
             }
             $self->[DATA] = \@newids;
             $data = $self->[DATA];
-            
-            $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-        }
-    } # EMBIGGEN CHECK
 
-    if( $self->[LEVEL] == 0 ) {
-        $data->{$key} = $self->[DSTORE]->_xform_in( $val );
-    } else {
+            $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+            
+        } # EMBIGGEN CHECK
+        
+    } else {        
         my $store = $self->[DSTORE];
         my $hval = 0;
         foreach (split //,$key) {
@@ -1798,7 +1805,7 @@ sub STORE {
         } else {
             $hash = {};
             $hash_id = $store->{_YOTEDB}->_get_id( 'Yote::BigHash' );
-            tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $val;
+            tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
             $store->_store_weak( $hash_id, $hash );
             $store->_dirty( $store->{_WEAK_REFS}{$hash_id}, $hash_id );
             $data->[$hval] = $hash_id;
@@ -1814,40 +1821,39 @@ sub FIRSTKEY {
     if( $self->[LEVEL] == 0 ) {
         my $a = scalar keys %$data; #reset
         my( $k, $val ) = each %$data;
-        print STDERR "FIRSTY $self->[ID] $self --> $k, $val\n";
-        return wantarray ? ( $k => $self->[DSTORE]->fetch( $val ) ) : $k;
+        return wantarray ? ( $k => $self->[DSTORE]->_xform_out( $val ) ) : $k;
     }
-    print STDERR "FIRTYLEV $self->[ID] $self\n";
-    $self->[NEXT] = 0;
+    $self->[NEXT] = [undef,undef,undef];
     return $self->NEXTKEY;
 }
 
 sub NEXTKEY  {
     my $self = shift;
-
     my $data = $self->[DATA];
     if( $self->[LEVEL] == 0 ) {
         my( $k, $val ) = each %$data;
-        print STDERR "NEXZT $self --> $k, $val\n";
-        return wantarray ? ( $k => $val ) : $k;
+        return wantarray ? ( $k => $self->[DSTORE]->_xform_out($val) ) : $k;
     } else {
         my $store = $self->[DSTORE];
-        for( ; $self->[NEXT] < @$data; $self->[NEXT]++ ) {
-            my $nexthashid = $data->[$self->[NEXT]];
-            print STDERR "$self $self->[ID] CHECK $self->[NEXT] -> $nexthashid\n";
-            next unless $nexthashid;
-            my $hash = $store->fetch( $nexthashid );
-            my $tied = tied %$hash;
-            print STDERR " *** DIVE $self $self->[ID] $nexthashid $tied->[0]\n";
-            my( $k, $v ) = $tied->NEXTKEY;
-            print STDERR "$self $self->[ID] RET $k, $v\n";
-            if( defined( $k ) ) {
-                return wantarray ? ( $k => $v ) : $k;
+        do {
+            my $nexthashid = $data->[$self->[NEXT][0]||0];
+            if( $nexthashid ) {
+                my $hash = $self->[NEXT][2] || $store->fetch( $nexthashid );
+                my $tied = tied %$hash;
+
+                my( $k, $v ) = $self->[NEXT][1] ? $tied->NEXTKEY : $tied->FIRSTKEY;
+                if( defined( $k ) ) {
+                    $self->[NEXT][1] = 1;
+                    $self->[NEXT][2] = $hash;
+                    return wantarray ? ( $k => $v ) : $k;
+                }
             }
-        }
+            $self->[NEXT][0]++;
+            $self->[NEXT][1] = 0;
+            $self->[NEXT][2] = undef;
+        } while( $self->[NEXT][0] < @$data );
     }
-    print STDERR "RESETTTY $self->[ID] $self\n";
-    $self->[NEXT] = 0;
+    $self->[NEXT] = [undef,undef,undef];
     return undef;
 
 } #NEXTKEY
@@ -1970,7 +1976,7 @@ sub _fetch {
   }
   elsif( $class eq 'ARRAY' || $class eq 'Yote::ArrayGatekeeper' ) {
       $ret->[DATA] = $parts;
-  } 
+  }
   else {
       $ret->[DATA] = { @$parts };
   }
@@ -2036,7 +2042,7 @@ sub _generate_keep_db {
             shift @{$obj_arry->[DATA]}; #remove the size
             if( $level ) {
                 ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$obj_arry->[DATA]};
-            } 
+            }
             else {
                 my $d = { @{$obj_arry->[DATA]} };
                 ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } values %$d;
