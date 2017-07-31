@@ -155,6 +155,38 @@ sub test_suite {
     ok( ! $store->fetch( $objy_id ), "removed objy still removed" );
     ok( ! $store->fetch( $someobj_id ), "removed someobj still removed" );
 
+    my $thash = $store->fetch_root->get_test_hash({});
+    # test for hashes large enough that subhashes are inside
+    $Yote::Hash::SIZE = 7;
+    $Yote::Hash::THRESH = $Yote::Hash::SIZE * 2;
+
+    my( @alpha ) = ("A".."G");
+    my $val = 1;
+    for my $letter (@alpha) {
+        $thash->{$letter} = $val++;
+    }
+    $val = 1;
+    for my $letter (@alpha) {
+        is( $thash->{$letter}, $val++, "Hash value works" );
+    }
+    $thash->{A} = 100;
+    is( $thash->{A}, 100, "overriding hash value works" );
+    delete $thash->{A};
+    ok( ! exists($thash->{A}), "deleting hash value works" );
+    $thash->{G} = "GG";
+    
+    print STDERR Data::Dumper->Dump([keys %$thash,"ARF"]);
+    is_deeply( [sort keys %$thash], ["B".."G"], "hash keys works for the simpler hashes" );
+
+    print STDERR ("-"x77)."\n";
+    
+    # now stuff enough there so that the hashes must overflow
+    ( @alpha ) = ("AA".."ZZ");
+    for my $letter (@alpha) {
+        $thash->{$letter} = $val++;
+    }
+    
+    
 } #test suite
 
 
