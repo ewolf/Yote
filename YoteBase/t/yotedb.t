@@ -118,7 +118,7 @@ sub test_suite {
     is_deeply( $store->run_purger('keep_tally'), [], "none 4 deleted things recyled because the top non-weak reference is kept." );
     $hash_in_list = $list_to_remove->[0];
 
-    my $quickly_removed_obj = $store->newobj( { soon => 'gone' } );
+    my $quickly_removed_obj = $store->newobj( { soon => 'gone', bigstuff => ('x'x10000) } );
     my $quickly_removed_id = $quickly_removed_obj->{ID};
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
     $list_to_remove->[87] = "EIGHTYSEVEN";
@@ -133,9 +133,12 @@ sub test_suite {
     my $keep_db = $store->{_DATASTORE}->_generate_keep_db('keep_tally');
 
     my $truncated_things = [sort @{$store->{_DATASTORE}->_truncate_dbs( $keep_db, 'keep tally' ) }];
+
     my $purged_things = $store->{_DATASTORE}->_purge_objects( $keep_db, 'keep tally' );
 
-    is_deeply( [sort @$purged_things, @$truncated_things], [ sort $list_to_remove_id, $list_block_id, $quickly_removed_id ], "the list had been purged by the pop" );    
+    is_deeply( [sort @$truncated_things], [ sort $list_block_id, $quickly_removed_id ], "the list had been purged by the pop" );
+    
+    is_deeply( [sort @$purged_things], [ sort $list_to_remove_id ], "the list had been purged by the pop" );    
 
     is_deeply( $store->run_purger('keep_tally'), [], "list and last list contents had been removed removed. it is not referenced by other removed items that still have references." );
 
