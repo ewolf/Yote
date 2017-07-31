@@ -88,7 +88,7 @@ sub stow_all {
         my $obj = $self->[DIRTY]{$id};
         next unless $obj;
         my $cls = ref( $obj );
-        
+
         my $thingy = $cls eq 'HASH' ? tied( %$obj ) : $cls eq 'ARRAY' ?  tied( @$obj ) : $obj;
         my $text_rep = $thingy->_freezedry;
         my $class = ref( $thingy );
@@ -183,7 +183,7 @@ sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die "Store weak called without ref" unless $ref;
     $self->[WEAK]{$id} = $ref;
-    
+
     weaken( $self->[WEAK]{$id} );
 } #_store_weak
 
@@ -200,11 +200,11 @@ sub _new_id {
 
 sub _get_id {
     my( $self, $ref ) = @_;
-    
+
     my $class = ref( $ref );
 
     die "_get_id requires reference. got '$ref'" unless $class;
-    
+
     if( $class eq 'ARRAY' ) {
         my $thingy = tied @$ref;
         if( ! $thingy ) {
@@ -263,7 +263,7 @@ use constant {
     BLOCK_SIZE  => 5,
     ITEM_COUNT  => 6,
 
-    WEAK         => 2,    
+    WEAK         => 2,
 };
 
 sub _freezedry {
@@ -489,7 +489,7 @@ sub UNSHIFT {
 
 sub SPLICE {
     my( $self, $offset, $remove_length, @vals ) = @_;
-    
+
     # if negative, the offset is from the end
     if( $offset < 0 ) {
         $offset = $self->[ITEM_COUNT] + $offset;
@@ -502,7 +502,7 @@ sub SPLICE {
     }
 
     return undef unless $remove_length || @vals;
-    
+
     #
     # embiggen to delta size if this would grow
     #
@@ -516,13 +516,13 @@ sub SPLICE {
         $self->_embiggen( $new_size );
     }
     $self->[ITEM_COUNT] = $new_size;
-    
+
     my $store = $self->[DSTORE];
 
     $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
 
     if( $self->[LEVEL] == 0 ) {
-        my @removed = splice( @{$self->[DATA]}, $offset, $remove_length, 
+        my @removed = splice( @{$self->[DATA]}, $offset, $remove_length,
                               map { $store->_xform_in( $_ ) } @vals );
         return map { $store->_xform_out($_) } @removed;
     }
@@ -538,93 +538,132 @@ sub SPLICE {
     # harmony remove/replace length ( if it exists )
     #
     my $unity_length = @vals > $remove_length ? $remove_length : @vals;
-    
+
     while( $block_idx < $self->[BLOCK_COUNT] && $unity_length > 0 ) {
         #
         # The block may be empty. If the block is not an end block, this means
         # the block is full of undefs. An array may be undef, undef, undef, 'endvalue'.
         # this is important because splice should include undefs that occur before the last
         # non-undef value.
-        # 
+        #
         my $block_capacity = $self->[BLOCK_SIZE] - $block_offset;
         my $block_used_capacity = @$block - $block_offset;
-        
+
         my $unity_capacity = $block_capacity > $unity_length ? $unity_length : $block_capacity;
         my $unity_overflow = $block_capacity - $block_used_capacity;
-        
+
         my @insert = splice @vals, 0, $unity_capacity;
 
         # hmm, what about pulling undefs off the block
-        push @removed, splice @$block, $block_idx, $unity_capacity, @insert;
-        if( $unity_overflow ) {
+        push @removed, splice @$block, $block_offset, $unity_capacity, @insert;
+        if( $unity_overflow && $block_idx < ($self->[BLOCK_COUNT]-1) ) {
+            # case for a middle block having undefs removed
             push @removed, (undef)x $unity_overflow;
         }
-        $remove_length -= $block_theoretcal_capacity;
-        $unity_length  -= $block_theoretcal_capacity;
+        $remove_length -= $unity_capacity;
+        $unity_length  -= $unity_capacity;
+        $block_offset  += $unity_capacity;
 
         # used this block to full capacity, move to the next
-        if( $unity_full_capacity == $block_capacity ) { 
+        if( $unity_capacity == $block_capacity ) {
             $block_idx++;
             $block_offset = 0;
-            $block = $block_idx < $self->[BLOCK_COUNT] ? $blocks->[$block_idx] : undef;
+            last if $block_idx == $self->[BLOCK_COUNT];
+            $block = $blocks->[$block_idx];
         }
     } #while loop
 
     #
-    # The case where there were more items to remove than to fill in
+    # The case where there were more items to remove than to fill in. Does not happen if
+    # there is no more to remove (the last block used)
     #
-    if( $remove_length ) {
-        my $last_block = $block;
+    if( $remove_length > 0 && $block ) {
+        my $backfill_block_idx = $block_idx;
+        my $backfill_block = $block;
+        my $backfill_block_offset = $block_offset;
+        my $backfill_needed = $remove_length;
         while( $block_idx < $self->[BLOCK_COUNT] && $remove_length > 0 ) {
-            $block = $blocks->[$block_idx];
             my $block_capacity_left = $self->[BLOCK_SIZE] - $block_offset;
             my $to_remove = $block_capacity_left > $remove_length ? $remove_length : $block_capacity_left;
 
             # remove the entire block case
             if( $to_remove == $self->[BLOCK_SIZE] ) {
-                splice @$blocks, $block_idx, 1;
-            } else {
-                push @removed, splice @$block, $block_idx, $to_remove;
-
-            
-            $remove_length -= $insert_capacity_left;
-            if( @vals == 0 ) {
-                # at this point, we've run out of items to swap into removed items. Adjust the block
-                # offset and 
-                $block_offset += $insert_capacity_left;
-                if( $block_offset >= $self->[BLOCK_COUNT] ) {
-                    $block_idx++;
-                    if( $block_idx == $self->[BLOCK_COUNT] ) {
-                        # this case is that we'd just filled up the last part of the array near the
-                        # end and there isn't anything more to remove, so we're done
-                        return @removed;
-                    }
-                    $block_offset = 0;
+                my( $remblock ) = splice @$blocks, $block_idx, 1;
+                if( @$remblock < $self->[BLOCK_SIZE] ) {
+                    push @$remblock, (undef)x($self->[BLOCK_SIZE]-@$remblock);
                 }
-                last; #go to the next part, removing and then back filling
+                push @removed, @$remblock;
+                $block = $blocks->[$block_idx]; #get again. the block_idx hasn't changed but the blocks has
+                $backfill_needed -= $self->[BLOCK_SIZE];
             }
-            $block_idx++;
-            $block_offset = 0;
-        } #while loop
-        
-        while( $block_idx < $self->[BLOCK_COUNT] && ($remove_length > 0) ) {
-            if( $block_idx < $#$block ) {
-                my $available_for_remove = $self->[BLOCK_COUNT] - $block_offset;
-                my $remove_amount = $remove_length > $available_for_remove ? $available_for_remove : $remove_length;
-                push @removed, @$block, $block_offset, $remove_amount;
-                $block_offset += $remove_amount;
-                $remove_length -= $remove_amount;
+            else {
+                push @removed, splice @$block, $block_offset, $to_remove;
+                if( ($block_offset+$to_remove) == $self->[BLOCK_SIZE] ) {
+                    $block_idx++;
+                    $block_offset = 0;
+                    $block = $blocks->[$block_idx];
+                }
+            }
+            $remove_length -= $to_remove;
+        } #removing
+
+        #
+        # now pull the stuff past the removal back to the backfill block and offset
+        #
+        while( $block_idx < $self->[BLOCK_COUNT] && $backfill_needed > 0 ) {
+            my $block_capacity_left = @$block - $block_offset;
+            my $block_max_capacity_left = $self->[BLOCK_SIZE] - $block_offset;
+            my $backfill_block_capacity_left = $self->[BLOCK_SIZE] - $backfill_block_offset;
+            if( $backfill_block_capacity_left < $block_capacity_left ) {
+                # could backfill more than the backfill block has space for
+                my @backfill = splice @$block, $block_offset, $backfill_block_capacity_left;
+                splice @$backfill_block, $backfill_block_offset, 0, @backfill;
+                $block_offset += $backfill_block_capacity_left;
+                $backfill_block_idx++;
+                $backfill_needed -= $backfill_max_block_capacity_left;
+                if( $backfill_block_idx == $self->[BLOCK_SIZE] ) {
+                    # out of bocks to backfill. At end. Means backfill block and block are the same
+                    if( @$block > @backfill + $backfill_block_offset ) {
+                        $#$block = @backfill + $backfill_block_offset;
+                    }
+                    return @removed;
+                }
+                $backfill_block = $blocks->[$backfill_block_idx];
+                $backfill_block_offset = 0;
+            }
+            else {
+                # source of backfill doesnt have enough to fully backfill the backfill block
+                splice @$backfill_block, $backfill_block_offset, 0, splice @$block, $block_offset, $block_capacity_left;
+                $backfill_needed -= $block_capacity_left;
+                $backfill_block_offset += $block_capacity_left;
+                if( $backfill_block_offset == $self->[BLOCK_SIZE] ) {
+                    $backfill_block_idx++;
+                    $backfill_block_offset = 0;
+                    $backfill_block = $blocks->[ $backfill_block_idx ];
+                }
+                $block_idx++;
+                if( $block_idx == $self->[BLOCK_SIZE] ) {
+                    splice @$block, $block_offset, $backfill_block_capacity_left;
+                    # no more backfill to get
+                    return @removed;
+                }
+                $block = $blocks->[$block_idx];
             }
         }
-    } # more to remove case
+    } #stuff to remove
+
+    while( @vals ) {
+        # still have more vals to insert
+        
+    }
 
     #
     # The case where there were more items to fill in than remove
     #
 
- 
+
     elsif( $remove_length < @vals ) {
-        
+
     }
     elsif( $remove_length == @vals ) {
         while( $block_idx < $self->[BLOCK_COUNT] && ($remove_length > 0) ) {
@@ -649,7 +688,7 @@ sub SPLICE {
         } #while loop
     }
 # ---------- end of rejigger
-    
+
     my $vacuum = 0; # how much one block needs to draw from subsequent blocks
     my $prev_block;
 
@@ -719,7 +758,7 @@ sub SPLICE {
         $block_idx++;
         $block_offset = 0;
     } #splicy loop
-    
+
     return @removed;
 } #SPLICE
 
@@ -1245,21 +1284,21 @@ __END__
 
 =head1 NAME
 
-Yote - Persistant Perl container objects in a directed graph of lazilly 
+Yote - Persistant Perl container objects in a directed graph of lazilly
 loaded nodes.
 
 =head1 DESCRIPTION
 
-This is for anyone who wants to store arbitrary structured state data and 
+This is for anyone who wants to store arbitrary structured state data and
 doesn't have the time or inclination to write a schema or configure some
 framework. This can be used orthagonally to any other storage system.
 
 Yote only loads data as it needs too. It does not load all stored containers
-at once. Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote container is a key/value store where the values can be 
+at once. Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote container is a key/value store where the values can be
 strings, numbers, arrays, hashes or other Yote containers.
 
-The entry point for all Yote data stores is the root node. 
-All objects in the store are unreachable if they cannot trace a reference 
+The entry point for all Yote data stores is the root node.
+All objects in the store are unreachable if they cannot trace a reference
 path back to this node. If they cannot, running compress_store will remove them.
 
 There are lots of potential uses for Yote, and a few come to mind :
