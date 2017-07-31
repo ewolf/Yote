@@ -51,19 +51,19 @@ sub test_suite {
     # so 5 things
 
     my $max_id = $yote_db->_max_id();
-    is( $max_id, 6, "Number of things created" );
+    is( $max_id, 5, "Number of things created" );
 
     my $dup_store = Yote::open_store( $dir );
 
     my $dup_db = $dup_store->{_DATASTORE};
 
     $max_id = $dup_db->_max_id();
-    is( $max_id, 6, "Number of things created in newly opened store" );
+    is( $max_id, 5, "Number of things created in newly opened store" );
 
     my $dup_root = $dup_store->fetch_root;
 
     $max_id = $dup_db->_max_id();
-    is( $max_id, 6, "Number of things created in newly opened store" );
+    is( $max_id, 5, "Number of things created in newly opened store" );
 
     is( $dup_root->{ID}, $root_node->{ID} );
     is_deeply( $dup_root->{DATA}, $root_node->{DATA} );
@@ -95,13 +95,6 @@ sub test_suite {
     my $hash_in_list_id   = $store->_get_id( $hash_in_list );
 
     my @bucket_in_hash_in_list;
-    {
-        my $tied = tied %$hash_in_list;
-        my $buckets = $tied->[1];
-        for my $bucket (grep { $_ } @$buckets) {
-            push @bucket_in_hash_in_list, $bucket;
-        }
-    }
     my $bucket_in_hash_in_list_id   = $store->_get_id( $hash_in_list );
     
     my $objy              = $hash_in_list->{objy};
@@ -165,6 +158,7 @@ sub test_suite {
     for my $letter (@alpha) {
         $thash->{$letter} = $val++;
     }
+
     $val = 1;
     for my $letter (@alpha) {
         is( $thash->{$letter}, $val++, "Hash value works" );
