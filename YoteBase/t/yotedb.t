@@ -48,12 +48,12 @@ sub test_suite {
     push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
     is( @$l, 9, "Size nine" );
-    
+
 
     push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN"], "push 3" );
     is( @$l, 16, "Size sixteen" );
-    
+
     push @$l, "SEVENTEEN", "EIGHTTEEN";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN"], "push 4" );
     is( @$l, 18, "Size eighteen" );
@@ -78,18 +78,35 @@ sub test_suite {
     is( @$l, 21, "Size twentyone again" );
 
     unshift @$l, 'ZERO';
-    print STDERR Data::Dumper->Dump([$l,"ZASFODF"]);
+
     is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
     is( @$l, 22, "Size twentytwo again" );
 
+    # test push, unshift, fetch, fetchsize, store, storesize, delete, exists, clear, pop, shift, splice
+
+    my $pop = pop @$l;
+    is( $pop, "ONE", "FIRST POP" );
+    is( @$l, 21, "Size after pop" );
+
+    is( $l->[2], "THREE", "fetch early" );
+    is( $l->[10], "ELEVEN", "fetch middle" );
+    is( $l->[20], "TWENTYONE", "fetch end" );
+
+    print STDERR Data::Dumper->Dump([$l,"ZASFODF"]);
+
+    my @spliced = splice @$l, 3, 5, "NEENER", "BOINK", "NEENER";
+    print STDERR Data::Dumper->Dump([\@spliced,$l,"WOO"]);
+    is_deeply( \@spliced, ["FOUR","FIVE","SIX","SEVEN","EIGHT"], "splice return val" );
+    is_deeply( $l, ["ZERO", "TWO", "THREE", "NEENER", "BOINK", "NEENER",
+                    "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first splice" );
     
-    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
-    
+#    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
+
 #    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
 
     print STDERR Data::Dumper->Dump(["------------------------------------"]);
     return;
-    
+
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
             someval => 124.42,
@@ -135,7 +152,7 @@ sub test_suite {
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_binnerval, "`SPANXZ" );
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_linnerval, "SP`A`NXZ" );
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_zinnerval, "PANXZ`" );
-    
+
     # filesize of $dir/1_OBJSTORE should be 360
 
     # purge test. This should eliminate the following :
@@ -157,7 +174,7 @@ sub test_suite {
 
     my @bucket_in_hash_in_list;
     my $bucket_in_hash_in_list_id   = $store->_get_id( $hash_in_list );
-    
+
     my $objy              = $hash_in_list->{objy};
     my $objy_id           = $store->_get_id( $objy );
     my $someobj_id        = $store->_get_id( $objy->get_someobj );
@@ -182,7 +199,7 @@ sub test_suite {
 
     $store->stow_all;
 
-    
+
 
     undef $list_to_remove;
     undef $quickly_removed_obj;
@@ -209,8 +226,8 @@ sub test_suite {
     ok( ! $store->fetch( $objy_id ), "removed objy still removed" );
     ok( ! $store->fetch( $someobj_id ), "removed someobj still removed" );
 
-    $Yote::Hash::SIZE = 7;
-    
+    $Yote::BigHash::SIZE = 7;
+
     my $thash = $store->fetch_root->get_test_hash({});
     # test for hashes large enough that subhashes are inside
 
@@ -255,8 +272,8 @@ sub test_suite {
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
 
     # array tests
-    
-    
+
+
 } #test suite
 
 

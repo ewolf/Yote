@@ -1125,7 +1125,11 @@ sub STORE {
     $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     $self->[1][$idx] = $self->[2]->_xform_in( $val );
 }
-sub STORESIZE {}  #stub for array
+sub STORESIZE {
+    my( $self, $size ) = @_;
+    my $aref = $self->[1];
+    $#$aref = $size-1;
+}
 
 sub EXISTS {
     my( $self, $idx ) = @_;
@@ -1237,7 +1241,7 @@ sub _ensure_capacity {
         $store->_store_weak( $new_id, $newkeeper );
         $store->_dirty( $store->{_WEAK_REFS}{$new_id}, $new_id );
 
-        $self->[LEVEL]++; 
+        $self->[LEVEL]++;
         $self->[BLOCKS] = [ $new_id ];
         $self->[BLOCK_SIZE] = $self->[CAPACITY];
         $self->[CAPACITY] = $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT];
@@ -1303,11 +1307,11 @@ sub FETCHSIZE {
 sub STORE {
     my( $self, $idx, $val ) = @_;
     my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-    my $last_block_idx = $#$block + $block_idx * $self->[BLOCK_SIZE];
-    if( $idx > $last_block_idx ) {
-        $self->[ITEM_COUNT] = $block_idx * $self->[BLOCK_SIZE] + (1+$idx);
-    }
+    my $last_block_idx = $self->[ITEM_COUNT] - 1;
     $tied_block->STORE( $idx - $block_start_idx, $val );
+    if( $idx > $last_block_idx ) {
+        $self->[ITEM_COUNT] = $idx + 1;
+    }
 }
 sub STORESIZE {
     my( $self, $size ) = @_;
@@ -1423,6 +1427,8 @@ sub UNSHIFT {
 sub _unshift {
     my( $self, $offset, @vals ) = @_;
 
+    print STDERR " _unshift ($self) $offset (".join(",",@vals).")\n";
+    
     return unless @vals;
 
     my $newcount = $self->[ITEM_COUNT] + @vals;
@@ -1432,11 +1438,21 @@ sub _unshift {
 
     if( $self->[LEVEL] == 1 ) {
         while( @vals ) {
-            $tied_block->UNSHIFT( @vals );
+            print STDERR "UNSHIFT ($self) ($offset vs $block_start_idx)\n";
+            print STDERR " About to splice ($tied_block) to $offset adding (".join(',',@vals).") to ".join(',',@$block).")\n";
+            $tied_block->SPLICE( $offset , 0, @vals );
+            print STDERR "   block ($tied_block) spliced to (".join(",",@$block)."\n";
+            $offset = 0;
+            print STDERR "   block ($tied_block) last idx is $#$block and size is $self->[BLOCK_SIZE]\n";
             if( $#$block >= $self->[BLOCK_SIZE] ) {
                 (@vals) = @$block[$self->[BLOCK_SIZE]..$#$block];
+                $#$block = $self->[BLOCK_SIZE] - 1;
+                print STDERR "   vals blocked to [$block_idx] (".join(",",@vals)." ) and block ($tied_block) $#$block (size $self->[BLOCK_SIZE]) at (".join(',',@$block).")\n";
                 ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
+                print STDERR "   now on block ($tied_block) $block_idx : (".join(',',@$block).")\n";
             } else {
+                print STDERR "   block ($tied_block) done, no more vals\n";
+                print STDERR "     block ($tied_block) : " .join(',',@$block)."\n";
                 @vals = ();
             }
         }
@@ -1450,13 +1466,18 @@ sub _unshift {
                 $tied_block->STORESIZE( $cut_index );
 
                 my @additions = splice @vals, 0, (1+$cut_index);
-                $tied_block->UNSHIFT( @additions );
+                print STDERR "   vals splice to additions (".join(",",@vals)."\n";
+                $tied_block->_unshift( $offset, @additions ); #offset is only on the first block
+                $offset = 0;
                 push @vals, @backlog;
+                print STDERR "   vals added backlog (".join(",",@vals)."\n";
                 if( @vals ) {
                     ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
                 }
             } else {
-                $tied_block->UNSHIFT( @vals );
+                print STDERR " About to splice ($tied_block) to $offset adding (".join(',',@vals).") to ".join(',',@$block).")\n";
+                $tied_block->SPLICE( $offset, 0, @vals );
+                print STDERR "   block ($tied_block) now ".join(',',@$block)."\n";
                 @vals = ();
             }
         }
@@ -1470,127 +1491,78 @@ sub _unshift {
 sub SPLICE {
     my( $self, $offset, $remove_length, @vals ) = @_;
 
+    return unless @vals || $remove_length;
+
     my @removed;
-    
+
     my $delta = @vals - $remove_length;
-    if( $delta > 0 ) {
-        $self->_ensure_capacity( $self->[ITEM_COUNT] + $delta );
-    }
+    my $new_size = $self->[ITEM_COUNT] + $delta;
+
+
+    print STDERR "SPLICE delta ($self) : $delta, new size : $new_size\n";
     
-    # add things then remove them?
-    my $remove_from_idx = $offset + @vals;
+    if( $delta > 0 ) {
+        $self->_ensure_capacity( $new_size );
+    }
+
+    my $blocks = $self->[BLOCKS];
+    my( $xx ) = $self->_block( $offset - 1  );
+    my( $yy ) = $self->_block( $#$blocks * $self->[BLOCK_SIZE]  );
+    print STDERR Data::Dumper->Dump([$xx,$yy,"CHEW ($self)"]);
+
+
+    #
+    # add things
+    #
 
     if( @vals ) {
         # this adjusts the item count
         $self->_unshift( $offset, @vals );
+        my( $xx ) = $self->_block( $offset - 1  );
+        my( $yy ) = $self->_block( $offset  );
+        print STDERR Data::Dumper->Dump([$xx,$yy,"OOGB ($self $xx/$yy) ($offset) ($self->[ITEM_COUNT])"]);
     }
 
-    unless( $remove_length ) {
-        return @removed;
-    }
+    if( $remove_length > 0 ) {
+    #
+    # remove things
+    #
+        my $remove_start_idx = $offset + @vals;
+        my $remove_end_idx   = $remove_start_idx + $remove_length;
+        my $new_last_idx     = $new_size - 1;
 
-    my( $startblock, $tied_startblock, $startblock_idx, $startblock_start_idx ) = $self->_block( $remove_from_idx );
-    my $remove_start = $remove_from_idx + $remove_length;
-    my( $endblock, $tied_endblock, $endblock_idx, $endblock_start_idx ) = $self->_block( $remove_start );
-
-    my $size   = $self->[BLOCK_SIZE];
-    my $blocks = $self->[BLOCKS];
-    my $store  = $self->[DSTORE];
-    
-    while( $endblock_idx - $startblock_idx > 1 ) {
-        my( $block_idx ) = splice @$blocks, $startblock_idx + 1, 1;
-        push @removed, @{ $store->fetch( $block_idx ) };
+        print STDERR " ($self) rem start idx $remove_start_idx, end idx $remove_end_idx, new last idx $new_last_idx\n";
+        while ( $remove_start_idx <= $new_last_idx ) {
         
-        $remove_length -= $size;
-        $remove_start -= $size;
-        ( $endblock, $tied_endblock, $endblock_idx, $endblock_start_idx ) = $self->_block( $remove_start );
-    }
-    #                     S
-    # * * * * ^ . . . $ * * *
-    # ^ - remove from idx
-    # $ - after remove idx
-    # S - last index
-
-    # . . . l ( size of 4, 'l'ast index of 3 )
-    #     x ( idx of 2 )
-
-    my $after_remove_idx = $remove_from_idx + $remove_length;
-    if( $after_remove_idx >= $self->[ITEM_COUNT] ) {
-        return @removed;
-    }
-
-    if( $startblock_idx == $endblock_idx ) {
-        if( $startblock_idx == $#$blocks ) {
-            return @removed, $tied_startblock->SPLICE( $remove_from_idx - $startblock_start_idx, $remove_length );
+            my( $remstart ) = $self->_block( $remove_start_idx );
+            my( $remend ) = $self->_block( $remove_end_idx + 1 );
+            print STDERR Data::Dumper->Dump([$remstart,$remend,"WSDF"]);
+        
+        
+            my $removed = $self->FETCH( $remove_start_idx );
+            print STDERR "  Removign ($self) '$removed' at idx $remove_start_idx\n";
+            print STDERR "  Gonna replace with '".$self->FETCH($remove_end_idx)."'\n";
+            if( @removed < $remove_length ) {
+                push @removed, $removed;
+            }
+            print STDERR "  Moving '".$self->FETCH($remove_end_idx)." at idx $remove_end_idx to $remove_start_idx\n";
+            $self->STORE( $remove_start_idx, $self->FETCH( $remove_end_idx ) );
+            print STDERR "  Nowish ".$self->FETCH($remove_start_idx)." and ".$self->FETCH($remove_end_idx)."\n";
+            $remove_start_idx++;
+            $remove_end_idx++;
+            print STDERR "  Thenish ".$self->FETCH($remove_start_idx)." and ".$self->FETCH($remove_end_idx)."\n";
         }
-        ( $endblock, $tied_endblock, $endblock_idx, $endblock_start_idx ) = $self->_block( $endblock_start_idx + $size );
     }
+    #
+    # Trim this array to its new size
+    #
+    $self->STORESIZE( $new_size );
 
-    my $block_needs = $startblock->[CAPACITY] - $startblock->[ITEM_COUNT];
+    print STDERR "Returning ($self) removed (".join(',',@removed).")\n";
     
-    if( $block_needs > $remove_length ) {
-        $block_needs = $remove_length;
-        my( @items ) = $endblock->SPLICE( $after_remove_idx - $endblock_start_idx, $block_needs );
-        $startblock->SPLICE( $remove_from_idx - $startblock_start_idx, 0, @items );
-        return @removed;
-    }
-    
-    
-    my $available = ($self->[ITEM_COUNT]-1) - $after_remove_idx;
+    return @removed;
 
-    while( $remove_length > 0 && $available > 0 ) {
-        my $needed
-    }
-
-    my $needed_to_fill = $size - ($remove_from_idx - $startblock_start_idx);
-
-    if( $remove_length > $needed_to_fill ) {
-
-        my $blocks = $self->[BLOCKS];
-    
-    } else {
-        
-    }
-    # [ . . . . x - - - ]
-
-    while( $needed_to_fill > 0 ) {
-        my $avail_in_next = 1;
-    }
-    
-    # my( $self, $offset, $remove_length, @vals ) = @_;
-
-    # # going to unshift it on to the offset, then remove and reshift
-    # $self->_ensure_capacity( $delta + $self->[ITEM_COUNT] );
-
-    # my( $start_block, $start_block_idx, $start_block_start_idx ) = $self->_block( $offset );
-    # if( @vals ) {
-    #     my $in_block_offset = $offset - $start_block_idx * $self->[BLOCK_SIZE];
-    #     $self->_unshift( $start_block_idx, $in_block_offset, @vals );
-    #     $offset += @vals; #offset now where to axe the remove length
-    # }
-
-    # if( $remove_length ) {
-    #     my( $remove_start_block, $remove_start_block_idx, $remove_start_block_start_idx ) = $self->_block( $offset );
-
-    #     # do nothing if already at end
-    #     return if $remove_start_block_idx * $self->[BLOCK_SIZE] + $remove_start_block->FETCHSIZE < $offset;
-
-    #     my( $remove_end_block, $remove_end_block_idx, $remove_end_block_start_idx ) = $self->_block( $offset + $remove_length );
-
-    #     # collapse and adjust
-    #     # if( ($end_block_idx - $start_block_idx) > 1 ) {
-    #     #     my $blocks = $self->[BLOCKS];
-    #     #     splice @$blocks, 1+$start_block_idx, ($end_block_idx - $start_block_idx) - 1;
-    #     #     $remove_length -= $self->[BLOCK_SIZE];
-    #     # }
-
-
-    #     # my $items_after = $end_block->FETCHSIZE - ( 1 + $in_block_start_offset );
-
-    #     # my $in_block_end_offset = $end_block->FETCH_SIZE - $
-
-    # }
-}
+} #SPLICE
 
 sub EXTEND {
 }
