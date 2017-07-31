@@ -377,7 +377,6 @@ sub test_arry {
         
         $a = delete $arry->[81];
         $m = delete $match->[81];
-        print STDERR Data::Dumper->Dump([$arry,$match,$a,$m,"WOO"]);
         _cmpa( "delnowagain $SZ", $arry, $match, $a, $m );
         
         $a = pop @$arry;

@@ -482,10 +482,9 @@ sub DELETE {
     }
     my $del = $self->FETCH( $idx );
     $self->STORE( $idx, undef );
-
     if( $idx == $self->[ITEM_COUNT] - 1 ) {
         $self->[ITEM_COUNT]--;
-        while( $self->[ITEM_COUNT] > 0 && ! $self->EXISTS( $self->[ITEM_COUNT] - 1 ) ) {
+        while( $self->[ITEM_COUNT] > 0 && ! defined( $self->FETCH( $self->[ITEM_COUNT] - 1 ) ) ) {
             $self->[ITEM_COUNT]--;
         }
 
