@@ -155,10 +155,10 @@ sub test_suite {
     ok( ! $store->fetch( $objy_id ), "removed objy still removed" );
     ok( ! $store->fetch( $someobj_id ), "removed someobj still removed" );
 
+    $Yote::Hash::SIZE = 7;
+    
     my $thash = $store->fetch_root->get_test_hash({});
     # test for hashes large enough that subhashes are inside
-    $Yote::Hash::SIZE = 7;
-    $Yote::Hash::THRESH = $Yote::Hash::SIZE * 2;
 
     my( @alpha ) = ("A".."G");
     my $val = 1;
@@ -185,7 +185,8 @@ sub test_suite {
     for my $letter (@alpha) {
         $thash->{$letter} = $val++;
     }
-    
+    print STDERR Data::Dumper->Dump([[sort keys %$thash],'DOOKU']);
+    is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
     
 } #test suite
 

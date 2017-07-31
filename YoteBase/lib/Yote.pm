@@ -679,7 +679,8 @@ sub _raw_data {
     return unless $class;
     my $id = $self->_get_id( $obj );
     die unless $id;
-    my( $r, $is_array );
+    # TODO : clean this up nice
+    my( $r, $is_array, $is_hash );
     if( $class eq 'ARRAY' ) {
         my $tied = tied @$obj;
         if( $tied ) {
@@ -693,7 +694,7 @@ sub _raw_data {
         my $tied = tied %$obj;
         if( $tied ) {
             $r = $tied->[1];
-            $is_array = 1;
+            $is_hash = $tied->[6];
         } else {
             die;
         }
@@ -704,12 +705,15 @@ sub _raw_data {
     }
     elsif( $class eq 'Yote::Hash' ) {
         $r = $obj->[1];
-        $is_array = 1;
+        $is_hash = $obj->[6];
     }
     else {
         $r = $obj->{DATA};
     }
 
+    if( $is_hash ) {
+        return join( "`", $is_hash, map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
+    }
     if( $is_array ) {
         return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
     }
@@ -1137,8 +1141,6 @@ no warnings 'uninitialized';
 use Tie::Hash;
 
 $Yote::Hash::SIZE = 977;
-$Yote::Hash::THRESH = $Yote::Hash::SIZE * 2;
-
 
 sub _bucket {
     my( $self, $key, $return_undef ) = @_;
@@ -1146,7 +1148,8 @@ sub _bucket {
     foreach (split //, $key) {
         $hval = $hval*33 - ord($_);
     }
-    $hval = $hval % $Yote::Hash::SIZE;
+
+    $hval = $hval % $self->[6];
     my $obj_id = $self->[1][$hval];
     my $store = $self->[2];
     unless( $obj_id ) {
@@ -1160,13 +1163,15 @@ sub _bucket {
 }
 
 sub TIEHASH {
-    my( $class, $obj_store, $id, @fetch_buckets ) = @_;
+    my( $class, $obj_store, $id, $size, @fetch_buckets ) = @_;
 
     my $deep_buckets = [ map { ref( $_ ) eq 'Yote::Hash' ? 1 : 0 } map { $_ ? $obj_store->_xform_out($_) : undef } @fetch_buckets ];
+    
+    $size ||= $Yote::Hash::SIZE;
 
     # after $obj_store is a list reference of
     #                 id, data, store
-    my $obj = bless [ $id, [@fetch_buckets], $obj_store, [], 0, $deep_buckets ], $class;
+    my $obj = bless [ $id, [@fetch_buckets], $obj_store, [], 0, $deep_buckets, $size, $size * 2 ], $class;
 
     return $obj;
 }
@@ -1176,44 +1181,43 @@ sub STORE {
     $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
     my( $bid, $bucket ) = $self->_bucket( $key );
 
+    
     if( $self->[5][$bid] ) {
         $self->[4]++ unless exists $bucket->{$key}; #obj count
         $bucket->{$key} = $val;
     } else {
-        if( @$bucket > $Yote::Hash::THRESH ) {
+        if( @$bucket > $self->[7] ) {
             my $store = $self->[2];
             my $newbuck = {};
-            my $id = $store->_get_id( $newbuck );
-            tie %$newbuck, 'Yote::Hash', $store, $id;
-            $store->_dirty( $newbuck, $id );
-            $store->_store_weak( $id, $newbuck );
-            for( my $i=0; $i<$#$bucket; $i++ ) {
-                print STDERR " NEW HASH $newbuck COPY $bucket->[$i] -> $bucket->[$i+1]\n";
+            my $id = $self->[2]->_get_id( $newbuck );
+
+            my $tied = tied %$newbuck;
+            $tied->[6] = $self->[6] * 2;
+            $tied->[7] = $self->[7] * 3;
+            for( my $i=0; $i<$#$bucket; $i+=2 ) {
                 $newbuck->{$bucket->[$i]} = $bucket->[$i+1];
             }
             $self->[4]++ unless exists $newbuck->{$key};
             $newbuck->{$key} = $val;
-                die "BSDF";
             $self->[1][$bid] = $id;
             $self->[5][$bid] = 1;
             return;
-        } 
+        }
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
             if( $bucket->[$i] eq $key ) {
-                print STDERR "REPLACE '$key' -> '$val'\n";
                 $bucket->[$i+1] = $val;
+
                 return;
             }
         }
         $self->[4]++; #obj count
-        print STDERR "STORE '$key' -> '$val'\n";
         push @$bucket, $key, $val;
     }
 } #STORE
 
 sub FIRSTKEY {
     my $self = shift;
-    @{ $self->[3] } = ( 0, 0 );
+    @{ $self->[3] } = ( 0, undef );
     return $self->NEXTKEY;
 }
 
@@ -1226,28 +1230,26 @@ sub NEXTKEY  {
     my( $bucket_idx, $idx_in_bucket ) = @$current;
 
     for( my $bid = $bucket_idx; $bid < @$buckets; $bid++ ) {
-        print STDERR "Check bucket $bid\n";
         my $bucket = defined( $bid ) ? $store->_xform_out($buckets->[$bid]) : undef;
         if( $bucket ) {
             if( $self->[5][$bid] ) {
-                print STDERR " Looking at its nextkey\n";
-                my $key = $bucket->NEXTKEY;
+                my $tied = tied %$bucket;
+                my $key = defined( $idx_in_bucket) ? $tied->NEXTKEY : $tied->FIRSTKEY;
                 if( defined($key) ) {
                     @$current = ( $bid, 0 );
-                    print STDERR " Returning '$key'\n";
                     return $key;
                 }
             } else {
                 if( $idx_in_bucket < $#$bucket ) {
                     @$current = ( $bid, $idx_in_bucket + 2 );
-                    return $bucket->[$idx_in_bucket];
+                    return $bucket->[$idx_in_bucket||0];
                 }
             }
             undef $bucket;
         }
-        $idx_in_bucket = 0;
+        undef $idx_in_bucket;
     }
-    @$current = ( 0, 0 );
+    @$current = ( 0, undef );
     return undef;
 
 } #NEXTKEY
@@ -1288,7 +1290,7 @@ sub DELETE {
     return 0 unless $bucket;
 
     # TODO - see if the buckets revert back to arrays
-    
+
     if( $self->[5][$bid] ) {
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
         $self->[4]-- if exists $bucket->{$key}; #obj count
@@ -1327,7 +1329,7 @@ sub DESTROY {
 
     #remove all WEAK_REFS to the buckets
     undef $self->[1];
-    
+
     delete $self->[2]->{_WEAK_REFS}{$self->[0]};
 }
 
@@ -1345,6 +1347,7 @@ use Data::RecordStore;
 use File::Path qw(make_path);
 
 use constant {
+   CLS => 1,
   DATA => 2,
 };
 
@@ -1359,7 +1362,7 @@ sub open {
   my $DATA_STORE;
   eval {
       $DATA_STORE = Data::RecordStore->open( $args->{ store } );
-      
+
   };
   if( $@ ) {
       if( $@ =~ /old format/ ) {
@@ -1405,7 +1408,7 @@ sub _fetch {
 
       my $is_hanging = 0;
       my $working_part = '';
-      
+
       for my $part (@$parts) {
 
           # if the part ends in a hanging escape
@@ -1479,10 +1482,9 @@ sub _generate_keep_db {
     my( %seen );
     my( @checks ) = ( 1 );
 
-    for my $referenced_id ( grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
+    for my $referenced_id ( grep { $_ != 1 } grep { defined($self->{OBJ_STORE}{_WEAK_REFS}{$_}) } keys %{ $self->{OBJ_STORE}{_WEAK_REFS} } ) {
         push @checks, $referenced_id;
     }
-
 
     #
     # While there are items to check, check them.
@@ -1491,13 +1493,16 @@ sub _generate_keep_db {
         my $check_id = shift( @checks ) || $check_store->pop->[0];
         $mark_to_keep_store->put_record( $check_id, [ 1 ] );
 
-        my $item = $self->_fetch( $check_id );
+        my $obj_arry = $self->_fetch( $check_id );
         $seen{$check_id} = 1;
         my( @additions );
-        if ( ref( $item->[DATA] ) eq 'ARRAY' ) {
-            ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$item->[DATA]};
+        if ( ref( $obj_arry->[DATA] ) eq 'ARRAY' ) {
+            if( $obj_arry->[CLS] eq 'HASH' ) {
+                shift @{$obj_arry->[DATA]}; #remove the size 
+            }
+            ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$obj_arry->[DATA]};
         } else {
-            ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } values %{$item->[DATA]};
+            ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } values %{$obj_arry->[DATA]};
         }
         if( @checks > 1_000_000 ) {
             for my $cid (@checks) {
