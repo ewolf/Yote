@@ -385,6 +385,11 @@ sub _getblock {
         my $block = [];
         my $level = $self->[LEVEL] - 1;
         tie @$block, 'Yote::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
+
+
+        if( $block_idx < int( $self->[ITEM_COUNT] /$self->[BLOCK_SIZE] ) ) {
+            $#$block = $self->[BLOCK_SIZE] - 1;
+        }
         
         tied( @$block )->[UNDERNEATH] = 1;
 
@@ -406,13 +411,15 @@ sub STORE {
     }
 
     if( $idx >= $self->[ITEM_COUNT] ) {
-        $self->[ITEM_COUNT] = $idx - 1;
+        $self->STORESIZE( $idx + 1 );
         my $store = $self->[DSTORE];
         $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
     }
 
     if( $self->[LEVEL] == 0 ) {
         $self->[DATA][$idx] = $self->[DSTORE]->_xform_in( $val );
+        my $store = $self->[DSTORE];
+        $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
         return;
     }
 
@@ -427,14 +434,20 @@ sub STORESIZE {
 
     $size = 0 if $size < 0;
 
+    my $data = $self->[DATA];
+    if( $self->[LEVEL] == 0 && $size > @$data ) {
+        $#$data = $size - 1;
+    }
+    
     # fixes the size of the array if the array were to shrink
     my $current_oversize = $self->[ITEM_COUNT] - $size;
     if( $current_oversize > 0 ) {
         $self->SPLICE( $size, $current_oversize );
     } #if the array shrinks
 
-    $self->_setcount($size);
-#    $self->[ITEM_COUNT] = $size;
+    die "BADSET in ID $self->[ID] $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
+    
+    $self->[ITEM_COUNT] = $size;
 
 } #STORESIZE
 
@@ -506,24 +519,17 @@ sub UNSHIFT {
 }
 
 sub db {
-    return;
     my( $self, $title, $block, $vals, $offset, $remove_length, $removed ) = @_;
     my $LVL = ' * ' x $self->[LEVEL];
     my $buff = "$LVL $title\n\t$LVL BLOCK_SIZE : $self->[BLOCK_SIZE], ID : $self->[ID], LEVEL : $self->[LEVEL], ITEMS : $self->[ITEM_COUNT], BLOCK_COUNT : $self->[BLOCK_COUNT], CAPA : ".($self->[BLOCK_SIZE]*$self->[BLOCK_COUNT]).")\n\t";
     $buff .= "$LVL FULL ($self->[ITEM_COUNT])   [".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t";
     $buff .= "$LVL CURBLK (".scalar(@$block).")) [".join(' ',map { $_ || '.' } @$block)."]\n\t";
-    $buff .= "$LVL REMOVED (".scalar(@$removed).") [".join(",",map { $_ || '.' } @$removed)."]\n" if $removed;
+    $buff .= "$LVL REMOVED (".scalar(@$removed).") [".join(" ",map { $_ || '.' } @$removed)."]\n\t" if $removed;
     $buff .= "$LVL SPLICE $offset,$remove_length, VALS (".scalar(@$vals).") [".join(",",map { $_ || '.' } @$vals)."]\n";
     
 
     print STDERR $buff;# if $Yote::DEBUG && $self->[ID] == 2;
 
-}
-
-sub _setcount {
-    my( $self, $count ) = @_;
-    die "BADSET $count > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $count > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
-    $self->[ITEM_COUNT] = $count;
 }
 
 sub SPLICE {
@@ -554,6 +560,8 @@ sub SPLICE {
     #
     # embiggen to delta size if this would grow
     #
+
+    
     my $new_size = $self->[ITEM_COUNT];
     $new_size -= $remove_length;
     if( $new_size < 0 ) {
@@ -573,8 +581,12 @@ sub SPLICE {
     $Yote::DEBUG = 1; #$self->[LEVEL] == 2;
 
     if( $self->[LEVEL] == 0 ) {
-        $self->_setcount( $new_size );
-        return map { $store->_xform_out($_) } splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
+        print STDERR Data::Dumper->Dump(["LVLS $#$blocks"]);
+        my @r1 = splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
+        my @ret = map { $store->_xform_out($_) } @r1;
+        print STDERR Data::Dumper->Dump([\@vals,\@ret,\@r1,"ZEROSPL $self->[ID] $offset, $remove_length (was $self->[ITEM_COUNT])"]);
+        $self->STORESIZE( $new_size );
+        return @ret;
     }
 
     $store->_dirty( $store->[WEAK]{$self->[ID]}, $self->[ID] );
@@ -592,16 +604,27 @@ sub SPLICE {
         my $block_off = $offset % $BLOCK_SIZE;
         my $block     = $self->_getblock( $block_idx, 'C' );
 
-        $self->db( "REMOVE (first) $remove_length", $block, \@vals, $offset, $remove_length, \@removed );
-
+        $self->db( "REMOVE (first) $remove_length", $block, \@vals, $offset, $remove_length, [] );
+        
         my $can_remove = @$block - $block_off;
         if( $can_remove > $remove_length ) {
             $can_remove = $remove_length;
         }
-        push @removed, splice @$block, $block_off, $can_remove;
-        $remove_length -= $can_remove;
 
-        $self->db( "REMOVE (AF) $remove_length", $block, \@vals, $offset, $remove_length, \@removed );
+        $self->db( "REMOVE (first) $remove_length. Can remove $can_remove from offset $block_off", $block, \@vals, $offset, $remove_length, \@removed );
+
+                print STDERR Data::Dumper->Dump([$block,"FORU splice $block_off, $can_remove"]);
+        if( $can_remove ) {
+            my @move = splice @$block, $block_off, $can_remove;
+            print STDERR Data::Dumper->Dump([\@move,$block,"AR"]);
+            push @removed, @move;
+            $remove_length -= $can_remove;
+            $self->STORESIZE( $self->[ITEM_COUNT] - $can_remove );
+        }
+
+        die "SARDY REMMY (ID $self->[ID], LEVEL $self->[LEVEL]) $self->[ITEM_COUNT] vs $new_size" if $self->[ITEM_COUNT] != $new_size;
+        
+        $self->db( "REMOVE (AF) $remove_length blockidx $block_idx < ".int(($self->[ITEM_COUNT]-1)/$BLOCK_SIZE)."", $block, \@vals, $offset, $remove_length, \@removed );
         #
         # If this is the last block, then things are done.
         # Otherwise we have to clean up the vacuum and remove
@@ -616,21 +639,26 @@ sub SPLICE {
 
             # got to last block? deal with the vacuum and you're done
             if( $block_idx == int(($self->[ITEM_COUNT] - 1)/$BLOCK_SIZE) ) {
+                print STDERR Data::Dumper->Dump([$block_idx,$self->[BLOCK_COUNT],"SAFU" ]);
                 my $block = $self->_getblock( $block_idx );
                 if( $block ) {
                     my $remove = $remove_length > @$block ? @$block : $remove_length;
+                    print STDERR Data::Dumper->Dump([$block,"B1"]);
                     if( $remove > 0 ) {
                         push @removed, splice @$block, 0, $remove;
-                        $self->_setcount( $self->[ITEM_COUNT] - $remove );
+                        $self->STORESIZE( $self->[ITEM_COUNT] - $remove );
+                        print STDERR Data::Dumper->Dump([$block,\@removed,"B2"]);
+                    }
+                    if( $vacuum ) {
+                        print STDERR Data::Dumper->Dump([$block,\@removed,"B2.5 ($vacuum)"]);
+                        my @fill = splice( @$block, 0, $vacuum );
+                        print STDERR Data::Dumper->Dump([$block,\@removed,\@fill,"B3 ($vacuum)"]);
+                        splice @$last_block, scalar(@$last_block), 0, @fill;
+                        print STDERR Data::Dumper->Dump([$last_block,"B4"]);
                     }
                 }
-                if( $vacuum ) {
-                    my @fill = splice( @$block, 0, $vacuum );
-                    splice @$last_block, scalar(@$last_block), 0, @fill;
-                    $self->_setcount( $self->[ITEM_COUNT] - $vacuum );
-                }
-                die "OHNSAKT REMMY" if $self->[ITEM_COUNT] != $new_size;
-                #                $self->_setcount( $new_size );
+                die "OHNSAKT REMMY (ID $self->[ID], LEVEL $self->[LEVEL]) $self->[ITEM_COUNT] vs $new_size" if $self->[ITEM_COUNT] != $new_size;
+                #                $self->STORESIZE( $new_size );
                 $self->db( "REMOVE (LAST) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
                 return @removed;
             }
@@ -646,7 +674,7 @@ sub SPLICE {
                 }
                 splice @$blocks, $block_idx, 1;
                 $remove_length -= $BLOCK_SIZE;
-                $self->_setcount( $self->[ITEM_COUNT] - $BLOCK_SIZE );
+                $self->STORESIZE( $self->[ITEM_COUNT] - $BLOCK_SIZE );
                 $self->db( "REMOVE (WHOLB) $remove_length, vacuum $vacuum", $block, \@vals, $offset, $remove_length, \@removed );
             }
 
@@ -689,7 +717,7 @@ sub SPLICE {
                 $block = $self->_getblock( $block_idx, "C" );
             }
         } #not at end
-        $self->_setcount( $new_size );
+        $self->STORESIZE( $new_size );
     } # has things to remove
 
     if( @vals ) {
@@ -715,7 +743,7 @@ sub SPLICE {
 # HOW??? the sub block somehow has the same level
 #                die "ARGS" if $self->[LEVEL] == tied( @$block )->[LEVEL];
                 push @vals, splice @$block, $block_off, $avail_span;
-                $self->_setcount( $self->[ITEM_COUNT] - $avail_span );
+                $self->STORESIZE( $self->[ITEM_COUNT] - $avail_span );
                 $insert_span = $BLOCK_SIZE - $block_off;
                 if( $insert_span > @vals ) {
                     $insert_span = @vals;
@@ -723,7 +751,7 @@ sub SPLICE {
                 $self->db("BLOCKOFF>--1 <$insert_span>", $block, \@vals, $offset, $remove_length );
             }
             push @$block, splice @vals, 0, $insert_span;
-            $self->_setcount( $self->[ITEM_COUNT] + $insert_span );
+            $self->STORESIZE( $self->[ITEM_COUNT] + $insert_span );
 
             $self->db("BLOCKOFF>0", $block, \@vals, $offset, $remove_length );
             $block_idx++;
@@ -737,7 +765,7 @@ sub SPLICE {
             my @from_vals = splice @vals, 0, $BLOCK_SIZE;
             push @vals, @$block;
             splice @$block, 0, 0, @from_vals;
-            $self->_setcount( $self->[ITEM_COUNT] + $BLOCK_SIZE );
+            $self->STORESIZE( $self->[ITEM_COUNT] + $BLOCK_SIZE );
 
             $self->db("WHOLE BLOCK $block_idx (NEWSIZE $new_size)", $block, \@vals, $offset, $remove_length );
 
@@ -751,7 +779,7 @@ sub SPLICE {
             $block = $self->_getblock( $block_idx, 'C' );
 
             if( @$block ) {
-                $self->_setcount( $self->[ITEM_COUNT] - @$block ) if $LAST_BLK_IDX == $block_idx;
+                $self->STORESIZE( $self->[ITEM_COUNT] - @$block ) if $LAST_BLK_IDX == $block_idx;
                 push @vals, splice @$block, 0, scalar(@$block);
 
             }
@@ -761,7 +789,7 @@ sub SPLICE {
             }
 
             push @$block, splice @vals, 0, $can_insert;
-            $self->_setcount( $self->[ITEM_COUNT] + $can_insert ) if $LAST_BLK_IDX == $block_idx;
+            $self->STORESIZE( $self->[ITEM_COUNT] + $can_insert ) if $LAST_BLK_IDX == $block_idx;
 
             $self->db("PARTIAL <$can_insert>  $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
 
@@ -781,7 +809,7 @@ sub SPLICE {
         #                        $Yote::DEBUG2 = 0;
     } # has vals
 
-    $self->_setcount( $new_size );
+    $self->STORESIZE( $new_size );
     
     return @removed;
 

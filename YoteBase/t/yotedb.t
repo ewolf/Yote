@@ -281,8 +281,9 @@ sub test_arry {
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
     for my $SZ (2..9) {
-#    for my $SZ (3..3) {
+#    for my $SZ (9..9) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
+
         my $arry = $root_node->set_arry( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
         my $match = [ 1 .. 19 ];
@@ -310,6 +311,22 @@ sub test_arry {
 
         is_deeply( $arry, $match, "AFTER SPLICE $SZ" );
         is_deeply( \@a, \@m, "SPLICE return $SZ" );
+
+        my $a2 = $root_node->set_arry2([]);
+        my $m2 = [];
+
+        $a2->[55] = "Z";
+        $m2->[55] = "Z";
+        is( $#$a2, $#$m2, "Same last index $SZ" );
+        is( @$a2, @$m2, "Same size $SZ" );
+        is_deeply( $a2, $m2, "Same stuff $SZ" );
+
+        my( @sa ) = splice @$a2, 3, 44;
+        my( @sm ) = splice @$m2, 3, 44;
+        is( $#$a2, $#$m2, "empty splice last idx $SZ" );
+        is( @$a2, @$m2, "empty splice size $SZ" );
+        is_deeply( $a2, $m2, "empty splice stuff $SZ" );
+        
     }
 }
 
