@@ -399,12 +399,7 @@ sub convert {
 
     for my $id (1..$store_db->entry_count) {
         my( $size ) = @{ $store_db->get_record( $id ) };
-        #    $source_sizes[$id] = $size;
-
         $source_dbs->[$id] = Data::RecordStore::FixedStore->open( "A*", "$source_dir/${id}_OBJSTORE", $size );
-    
-        #    my( $data ) = @{ $source_dbs->[$id]->get_record( 1 ) };
-        #    print STDERR "$id:0) $data\n";
     }
 
 
@@ -418,9 +413,6 @@ sub convert {
     for my $id (1..$source_obj_db->entry_count) {
         my( $source_store_id, $id_in_old_store ) = @{ $source_obj_db->get_record( $id ) };
 
-        #    print STDERR "id ($id) in $source_store_id/$id_in_old_store\n";next;
-
-    
         next unless $id_in_old_store;
 
         # grab data

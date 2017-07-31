@@ -314,7 +314,6 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
-#            print STDERR Data::Dumper->Dump([@$data,"TIE TIE <$id>"]);
             tie %hash, 'Yote::Hash', $self, $id, @$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
@@ -1169,7 +1168,6 @@ sub _bucket {
     }
 
     $hval = $hval % $self->[SIZE];
-#    print STDERR ">>>$hval ($self->[SIZE])\n";
     my $obj_id = $self->[DATA][$hval];
     my $store = $self->[DSTORE];
     unless( $obj_id ) {
@@ -1188,16 +1186,11 @@ sub TIEHASH {
     $type ||= 'S'; #small
     $size ||= $Yote::Hash::SIZE;
 
-    if( $id == 17 ) {     
-        print STDERR Data::Dumper->Dump([\@fetch_buckets,"FB <$id>"])if $type eq 'B';
-    }
-    
     my $deep_buckets = $type eq 'B' ?
         [ map { $_ > 0 && ref( $obj_store->_xform_out($_) ) eq 'HASH' ? 1 : 0 } @fetch_buckets ] : [];
 
     no warnings 'numeric';
-#    print STDERR Data::Dumper->Dump([[[map { $_ > 0 ? ref($obj_store->_xform_out($_)) : "<$_>" } @fetch_buckets]],$deep_buckets,"TIE <$id>"]);
-    
+    #
     # after $obj_store is a list reference of
     #                 id, data, store
     my $obj;
@@ -1275,7 +1268,7 @@ sub FIRSTKEY {
         my( $k, $val ) = each %{$self->[DATA]};
         return wantarray ? ( $k => $val ) : $k;
     }
-    @{ $self->[NEXT] } = ( 0, undef );
+    @{ $self->[NEXT] } = ( 0, undef, undef );
     return $self->NEXTKEY;
 }
 
@@ -1300,13 +1293,15 @@ sub NEXTKEY  {
                 my $tied = tied %$bucket;
                 my $key = defined( $idx_in_bucket) ? $tied->NEXTKEY : $tied->FIRSTKEY;
                 if( defined($key) ) {
-                    @$current = ( $bid, 0 );
+                    # the bucket must be there to keep a weak reference
+                    # to itself. If it was not here, it would load from
+                    # the filesystem each call to NEXTKEY
+                    @$current = ( $bid, 0, $bucket );
                     return wantarray ? ( $key => $bucket->{$key} ): $key;
                 }
             } else {
-#                print STDERR Data::Dumper->Dump([$bucket,"BBBBU <".$self->[DSTORE]->_get_id($self)."> ($self->[TYPE]) <$bucket>" . ref( $bucket),$self->[DEEP]]);
                 if( $idx_in_bucket < $#$bucket ) {
-                    @$current = ( $bid, $idx_in_bucket + 2 );
+                    @$current = ( $bid, $idx_in_bucket + 2, undef );
                     my $key = $bucket->[$idx_in_bucket||0];
                     return wantarray ? ( $key => $bucket->[$idx_in_bucket+1] ) : $key;
                 }
@@ -1315,7 +1310,7 @@ sub NEXTKEY  {
         }
         undef $idx_in_bucket;
     }
-    @$current = ( 0, undef );
+    @$current = ( 0, undef, undef );
     return undef;
 
 } #NEXTKEY
