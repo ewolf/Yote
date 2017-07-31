@@ -93,6 +93,17 @@ sub test_suite {
 
     my $list_to_remove_id = $store->_get_id( $list_to_remove );
     my $hash_in_list_id   = $store->_get_id( $hash_in_list );
+
+    my @bucket_in_hash_in_list;
+    {
+        my $tied = tied %$hash_in_list;
+        my $buckets = $tied->[1];
+        for my $bucket (grep { $_ } @$buckets) {
+            push @bucket_in_hash_in_list, $bucket;
+        }
+    }
+    my $bucket_in_hash_in_list_id   = $store->_get_id( $hash_in_list );
+    
     my $objy              = $hash_in_list->{objy};
     my $objy_id           = $store->_get_id( $objy );
     my $someobj_id        = $store->_get_id( $objy->get_someobj );
@@ -113,7 +124,7 @@ sub test_suite {
     my $quickly_removed_obj = $store->newobj( { soon => 'gone' } );
     my $quickly_removed_id = $quickly_removed_obj->{ID};
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
-    $list_to_remove->[88] = "EIGHTYEIGHT";
+    $list_to_remove->[87] = "EIGHTYSEVEN";
 
     $store->stow_all;
 
@@ -131,7 +142,7 @@ sub test_suite {
 
     undef $hash_in_list;
 
-    is_deeply( [ sort @{$store->run_purger('keep_tally')} ], [ sort $hash_in_list_id, $objy_id, $someobj_id ], "all remaining things that can't trace to the root are removed" );
+    is_deeply( [ sort @{$store->run_purger('keep_tally')} ], [ sort $hash_in_list_id, $objy_id, $someobj_id, @bucket_in_hash_in_list ], "all remaining things that can't trace to the root are removed" );
 
     undef $dup_root;
 

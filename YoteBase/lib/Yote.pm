@@ -1227,6 +1227,7 @@ sub NEXTKEY  {
     }
 
     @$current = ( $bucket_idx, $idx_in_bucket+2 );
+    
     return $bucket->[$idx_in_bucket];
 }
 
