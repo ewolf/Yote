@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '2.01';
+$VERSION = '2.02';
 
 =head1 NAME
 
@@ -2230,10 +2230,10 @@ __END__
 
 =head1 COPYRIGHT AND LICENSE
 
-       Copyright (c) 2016 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       Copyright (c) 2017 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.01  (July, 2017))
+       Version 2.02  (September, 2017))
 
 =cut
