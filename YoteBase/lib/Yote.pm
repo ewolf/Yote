@@ -91,7 +91,6 @@ sub stow_all {
 
         my $thingy = $cls eq 'HASH' ? tied( %$obj ) : $cls eq 'ARRAY' ?  tied( @$obj ) : $obj;
         my $text_rep = $thingy->_freezedry;
-        print STDERR Data::Dumper->Dump([$text_rep,"SAVA"]) if $id == 539;
         my $class = ref( $thingy );
 
 
@@ -276,36 +275,25 @@ use constant {
 sub _freezedry {
     my $self = shift;
     my @items;
-    if( $self->[ITEM_COUNT] > 0 ) {
-        @items = map { if( defined($_) && $_=~ /[\\\`]/ ) { $_ =~ s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } map { $self->[DATA][$_] } (0..($self->[ITEM_COUNT]-1));
+    my $stuff_count = $self->[BLOCK_COUNT] > $self->[ITEM_COUNT] ? $self->[ITEM_COUNT] : $self->[BLOCK_COUNT];
+    if( $stuff_count > 0 ) {
+        @items = map { if( defined($_) && $_=~ /[\\\`]/ ) { $_ =~ s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } map { $self->[DATA][$_] } (0..($stuff_count-1));
     }
-    die "LEV" unless defined($self->[LEVEL]);
-    my $val = join( "`",
+
+    join( "`",
           $self->[LEVEL] || 0,
           $self->[BLOCK_COUNT] || 0,
           $self->[ITEM_COUNT] || 0,
           $self->[UNDERNEATH] || 0,
           @items,
         );
-    print STDERR "FREEZE $self->[ID] : $val\n";
-    $val;
 }
 
 sub _reconstitute {
     my( $cls, $store, $id, $data ) = @_;
     my $arry = [];
-    print STDERR "RECON ID $id LEVEL $data->[0] BLOCKCOUNT $data->[1] ITEMCOUNT $data->[2] UNDERNEATH $data->[3] (". join(",",@$data).")\n";
     tie @$arry, $cls, $store, $id, @$data;
 
-    if( $id == 2 ) {
-        $Yote::FOO = 1;
-        print STDERR Data::Dumper->Dump(["-------------------"]);
-        my $a = $arry->[1];
-        print STDERR Data::Dumper->Dump([$a,"A"]);
-        $Yote::FOO = 0;
-#        print STDERR Data::Dumper->Dump([$arry,$a,$data,tied(@$arry),"FOOH"]);exit;
-    }
-    
     return $arry;
 }
 
@@ -349,9 +337,8 @@ sub FETCH {
     if( $idx >= $self->[ITEM_COUNT] ) {
         return undef;
     }
-#    print STDERR "FETCH idx $idx, ID $self->[ID], LVL $self->[LEVEL] : ".join(',',@{$self->[DATA]})."\n";
+
     if( $self->[LEVEL] == 0 ) {
-        print STDERR "RETURN idx ($idx), ID $self->[ID] VAL : $self->[DATA][$idx]\n";
         return $self->[DSTORE]->_xform_out( $self->[DATA][$idx] );
     }
 
@@ -547,20 +534,6 @@ sub UNSHIFT {
     my( $self, @vals ) = @_;
     return unless @vals;
     return $self->SPLICE( 0, 0, @vals );
-}
-
-sub db {
-    my( $self, $title, $block, $vals, $offset, $remove_length, $removed ) = @_;
-    my $LVL = ' * ' x $self->[LEVEL];
-    my $buff = "$LVL $title\n\t$LVL BLOCK_SIZE : $self->[BLOCK_SIZE], ID : $self->[ID], LEVEL : $self->[LEVEL], ITEMS : $self->[ITEM_COUNT], BLOCK_COUNT : $self->[BLOCK_COUNT], CAPA : ".($self->[BLOCK_SIZE]*$self->[BLOCK_COUNT]).")\n\t";
-    $buff .= "$LVL FULL ($self->[ITEM_COUNT])   [".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t";
-    $buff .= "$LVL CURBLK (".scalar(@$block).")) [".join(' ',map { $_ || '.' } @$block)."]\n\t";
-    $buff .= "$LVL REMOVED (".scalar(@$removed).") [".join(" ",map { $_ || '.' } @$removed)."]\n\t" if $removed;
-    $buff .= "$LVL SPLICE $offset,$remove_length, VALS (".scalar(@$vals).") [".join(",",map { $_ || '.' } @$vals)."]\n";
-
-
-    print STDERR $buff;# if $Yote::DEBUG && $self->[ID] == 2;
-
 }
 
 sub SPLICE {

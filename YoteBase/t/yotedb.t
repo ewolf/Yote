@@ -62,7 +62,7 @@ sub test_suite {
     is_deeply( $dup_root->[Yote::Obj::DATA], $root_node->[Yote::Obj::DATA] );
 
     is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in yote object" );
-    
+
     is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );
 
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_innerval,
@@ -89,7 +89,7 @@ sub test_suite {
 
     my $ltied = tied @$list_to_remove;
     my $list_block_id = $ltied->[1][0];
-    
+
     my $list_to_remove_id = $store->_get_id( $list_to_remove );
     my $hash_in_list_id   = $store->_get_id( $hash_in_list );
 
@@ -176,7 +176,7 @@ sub test_suite {
     # array tests
     # listy test because
     $Yote::Array::MAX_BLOCKS  = 4;
-    
+
      $root_node = $store->fetch_root;
     my $l = $root_node->get_listy( [] );
 
@@ -329,7 +329,7 @@ sub test_hash {
         }
         _cmph( "alphawet", $hash, $match );
 
-        
+
 
     } #each size
 }
@@ -353,16 +353,16 @@ sub test_arry {
         _cmpa( "exists nothing $SZ", exists $arry->[9], exists $match->[9] );
         _cmpa( "exists yada $SZ", exists $arry->[8], exists $match->[8] );
         _cmpa( "exists bevore $SZ", exists $arry->[4], exists $match->[4] );
-        
+
         $arry->[81] = "EI2";
         $match->[81] = "EI2";
         _cmpa( "oneel $SZ", $arry, $match );
 
         $store->stow_all;
-        
+
         my $other_store = Yote::open_store( $dir );
         my $aloaded = $other_store->fetch_root->get_arry;
-        print STDERR Data::Dumper->Dump([$aloaded,$match,$other_store->fetch_root,"FR"]);
+
         _cmpa( "SAVED LOADED", $aloaded, $match );
 
         my $a = $arry->[82];
@@ -373,11 +373,11 @@ sub test_arry {
         $a = delete $arry->[81];
         $m = delete $match->[81];
         _cmpa( "delnow2 $SZ", $arry, $match, $a, $m );
-        
+
         $a = delete $arry->[81];
         $m = delete $match->[81];
         _cmpa( "delnowagain $SZ", $arry, $match, $a, $m );
-        
+
         $a = pop @$arry;
         $m = pop @$match;
         _cmpa( "pops $SZ", $arry, $match, $a, $m );
