@@ -312,21 +312,9 @@ sub fetch {
             $self->_store_weak( $id, \@arry );
             return \@arry;
         }
-        elsif( $class eq 'Yote::ArrayGatekeeper' ) {
-            my( @arry );
-            tie @arry, 'Yote::ArrayGatekeeper', $self, $id, @$data;
-            $self->_store_weak( $id, \@arry );
-            return \@arry;
-        }
         elsif( $class eq 'HASH' ) {
             my( %hash );
             tie %hash, 'Yote::Hash', $self, $id, %$data;
-            $self->_store_weak( $id, \%hash );
-            return \%hash;
-        }
-        elsif( $class eq 'Yote::BigHash' ) {
-            my( %hash );
-            tie %hash, 'Yote::BigHash', $self, $id, @$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -453,9 +441,9 @@ sub stow_all {
         my $cls;
         my $ref = ref( $obj );
         if( $ref eq 'ARRAY' ) {
-            $cls = ref(tied @$obj) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
+            $cls = 'ARRAY';
         } elsif( $ref eq 'HASH' ) {
-            $cls = ref(tied %$obj) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
+            $cls = 'HASH';
         } else {
             $cls = $ref;
         }
@@ -479,7 +467,7 @@ sub stow {
     if( $ref eq 'ARRAY' || $ref eq 'Yote::Array' ) {
         $cls = 'ARRAY';
     } elsif( $ref eq 'HASH' ) {
-        $cls = ref(tied %$ref) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
+        $cls = 'HASH';
     } else {
         $cls = $ref;
     }
@@ -507,7 +495,7 @@ sub _new { #Yote::ObjStore
 
 sub _init {
     my $self = shift;
-    for my $pkg ( qw( Yote::Obj Yote::Array Yote::Hash Yote::ArrayGatekeeper Yote::BigHash ) ) {
+    for my $pkg ( qw( Yote::Obj Yote::Array Yote::Hash ) ) {
         $INC{ $pkg } or eval("use $pkg");
     }
     $self->fetch_root;
@@ -558,29 +546,29 @@ sub __get_id {
         }
         my( @data ) = @$ref;
         my $id = $self->{_YOTEDB}->_get_id( $class );
-        tie @$ref, 'Yote::ArrayGatekeeper', $self, $id;
+        tie @$ref, 'Yote::Array', $self, $id;
         push( @$ref, @data ) if @data;
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
         return $id;
     }
-    elsif( $class eq 'Yote::Hash' || $class eq 'Yote::BigHash' ) {
+    elsif( $class eq 'Yote::Hash' ) {
         return $ref->[0];
     }
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$ref;
         if( $tied ) {
-            my $useclass = ref($tied) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
+            my $useclass = 'HASH';
             $tied->[0] ||= $self->{_YOTEDB}->_get_id( $useclass );
             return $tied->[0];
         } else {
-            $class = 'Yote::BigHash';
+            $class = 'Yote::Hash';
         }
         my $id = $self->{_YOTEDB}->_get_id( $class );
 
         my( %vals ) = %$ref;
 
-        tie %$ref, 'Yote::BigHash', $self, $id;
+        tie %$ref, 'Yote::Hash', $self, $id;
         for my $key (keys %vals) {
             $ref->{$key} = $vals{$key};
         }
@@ -611,13 +599,11 @@ sub _stow {
     my( $text_rep, $data ) = $self->_raw_data( $obj );
 
     if( $class eq 'ARRAY' ) {
-        my $useClass = ref( tied( @$obj ) ) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
-        $self->{_YOTEDB}->_stow( $id,$useClass, $text_rep );
+        $self->{_YOTEDB}->_stow( $id, 'ARRAY', $text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'HASH' ) {
-        my $useClass = ref( tied( %$obj ) ) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
-        $self->{_YOTEDB}->_stow( $id,$useClass,$text_rep );
+        $self->{_YOTEDB}->_stow( $id, 'HASH', $text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'Yote::Array' ) {
@@ -631,31 +617,9 @@ sub _stow {
             }
         }
     }
-    elsif( $class eq 'Yote::ArrayGatekeeper' ) {
-        if( $self->_is_dirty( $id ) ) {
-            $self->{_YOTEDB}->_stow( $id,'Yote::ArrayGatekeeper',$text_rep );
-            $self->_clean( $id );
-        }
-        for my $child (@$data) {
-            if( $child =~ /^[0-9]/ && $self->{_DIRTY}->{$child} ) {
-                $self->_stow( $child, $self->{_DIRTY}->{$child} );
-            }
-        }
-    }
     elsif( $class eq 'Yote::Hash' ) {
         if( $self->_is_dirty( $id ) ) {
             $self->{_YOTEDB}->_stow( $id, 'HASH', $text_rep );
-        }
-        $self->_clean( $id );
-        for my $child (values %$data) {
-            if( $child =~ /^[0-9]/ && $self->{_DIRTY}->{$child} ) {
-                $self->_stow( $child, $self->{_DIRTY}->{$child} );
-            }
-        }
-    }
-    elsif( $class eq 'Yote::BigHash' ) {
-        if( $self->_is_dirty( $id ) ) {
-            $self->{_YOTEDB}->_stow( $id, 'Yote::BigHash', $text_rep );
         }
         $self->_clean( $id );
         for my $child (values %$data) {
@@ -720,10 +684,7 @@ sub _raw_data {
     if( $class eq 'ARRAY' ) {
         my $tied = tied @$obj;
         my $r = $tied->[1];
-        if( ref( $tied ) eq 'Yote::Array' ) {
-            return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
-        }
-        elsif( ref( $tied ) eq 'Yote::ArrayGatekeeper' ) {
+        elsif( ref( $tied ) eq 'Yote::Array' ) {
             return join( "`", $tied->[6], $tied->[4], $tied->[5], $tied->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
         }
         else {
@@ -733,16 +694,12 @@ sub _raw_data {
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$obj;
         my $r = $tied->[1];
-        if( ref( $tied ) eq 'Yote::BigHash' ) {
+        if( ref( $tied ) eq 'Yote::Hash' ) {
             if( $tied->[3] ) {
                 # has an array rather than hash
                 return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
             }
             return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
-        }
-
-        elsif( ref( $tied ) eq 'Yote::Hash' ) {
-            return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
         }
         else {
             die;
@@ -750,18 +707,9 @@ sub _raw_data {
     }
     elsif( $class eq 'Yote::Array' ) {
         my $r = $obj->[1];
-        return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
-    }
-    elsif( $class eq 'Yote::ArrayGatekeeper' ) {
-        my $r = $obj->[1];
         return join( "`", $obj->[6], $obj->[4], $obj->[5], $obj->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
     }
     elsif( $class eq 'Yote::Hash' ) {
-        # not seeing is_hash for the old hashes as there is no extra data for them
-        my $r = $obj->[1];
-        return join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
-    }
-    elsif( $class eq 'Yote::BigHash' ) {
         my $r = $obj->[1];
         return join( "`", $obj->[3], $obj->[4], $obj->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
     }
@@ -1085,103 +1033,6 @@ sub DESTROY {
 
 package Yote::Array;
 
-############################################################################################################
-# This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
-# be called explicitly or modified.                                                                        #
-############################################################################################################
-
-use strict;
-use warnings;
-
-no warnings 'uninitialized';
-use Tie::Array;
-
-sub TIEARRAY {
-    my( $class, $obj_store, $id, @list ) = @_;
-    my $storage = [];
-
-    # once the array is tied, an additional data field will be added
-    # so obj will be [ $id, $storage, $obj_store ]
-    my $obj = bless [$id,$storage,$obj_store], $class;
-    for my $item (@list) {
-        push( @$storage, $item );
-    }
-    return $obj;
-}
-
-sub FETCH {
-    my( $self, $idx ) = @_;
-    return $self->[2]->_xform_out ( $self->[1][$idx] );
-}
-
-sub FETCHSIZE {
-    my $self = shift;
-    return scalar(@{$self->[1]});
-}
-
-sub STORE {
-    my( $self, $idx, $val ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    $self->[1][$idx] = $self->[2]->_xform_in( $val );
-}
-sub STORESIZE {
-    my( $self, $size ) = @_;
-    my $aref = $self->[1];
-    $#$aref = $size-1;
-}
-
-sub EXISTS {
-    my( $self, $idx ) = @_;
-    return defined( $self->[1][$idx] );
-}
-sub DELETE {
-    my( $self, $idx ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    delete $self->[1][$idx];
-}
-
-sub CLEAR {
-    my $self = shift;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    @{$self->[1]} = ();
-}
-sub PUSH {
-    my( $self, @vals ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    push( @{$self->[1]}, map { $self->[2]->_xform_in($_) } @vals );
-}
-sub POP {
-    my $self = shift;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    return $self->[2]->_xform_out( pop @{$self->[1]} );
-}
-sub SHIFT {
-    my( $self ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    my $val = splice @{$self->[1]}, 0, 1;
-    return $self->[2]->_xform_out( $val );
-}
-sub UNSHIFT {
-    my( $self, @vals ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    unshift @{$self->[1]}, map {$self->[2]->_xform_in($_)} @vals;
-}
-sub SPLICE {
-    my( $self, $offset, $length, @vals ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    return map { $self->[2]->_xform_out($_) } splice @{$self->[1]}, $offset, $length, map {$self->[2]->_xform_in($_)} @vals;
-}
-sub EXTEND {}
-
-sub DESTROY {
-    my $self = shift;
-    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
-
-package Yote::BigArray;
-
 
 ############################################################################################################
 # This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
@@ -1194,7 +1045,7 @@ use warnings;
 no warnings 'uninitialized';
 use Tie::Array;
 
-$Yote::BigArray::MAX_BLOCKS = 1_000_000;
+$Yote::Array::MAX_BLOCKS = 1_000_000;
 
 use constant {
     ID          => 0,
@@ -1207,12 +1058,12 @@ use constant {
 };
 
 sub TIEARRAY {
-    my( $class, $obj_store, $id, $level, $item_count, $block_count, $block_size, @list ) = @_;
+    my( $class, $obj_store, $id, $level, $item_count, $block_count, @list ) = @_;
 
     $item_count  ||= 0;
     $level       ||= 0;
-    $block_size  ||= 1;
-    $block_count ||= $Yote::BigArray::MAX_BLOCKS;
+    $block_count ||= $Yote::Array::MAX_BLOCKS;
+    my $block_size  = $block_count ** $level;
 
     my $blocks = [@list];
 
@@ -1238,15 +1089,12 @@ sub FETCH {
     if( $self->[LEVEL] == 0 ) {
         return $self->[DSTORE]->_xform_out( $self->[DATA][$idx] );
     }
-    my $block_idx = int( $idx / $self->[BLOCK_SIZE] );
-    my $block_id = $self->[DATA][$block_idx];
-    if( $block_id ) {
-        my $block = $self->[DSTORE]->fetch( $block_id );
-        my $tied = tied @$block;
-        my $in_block_idx = $idx % $self->[BLOCK_SIZE];
-        return $tied->FETCH( $in_block_idx );
+    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
+    if( $block ) {
+        return $block->[$idx % $self->[BLOCK_SIZE]];
     }
-}
+    return undef;
+} #FETCH
 
 sub FETCHSIZE {
     shift->[ITEM_COUNT];
@@ -1257,14 +1105,20 @@ sub _embiggen {
 
     while( $size >= $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT] ) {
         my $store = $self->[DSTORE];
-        my $newbucket = [];
-        my $newid = $store->{_YOTEDB}->_get_id( 'Yote::BigArray' );
-        tie @$newbucket, 'Yote::BigArray', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE];
-        $store->_store_weak( $newid, $newbucket );
+
+        #
+        # need to tie a new block, not use _getblock
+        # becaues we do squirrely things with its tied guts
+        #
+        my $newblock = [];
+        my $newid = $store->{_YOTEDB}->_get_id( 'Yote::Array' );
+        tie @$newblock, 'Yote::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE], $self->[BLOCK_SIZE];
+        $store->_store_weak( $newid, $newblock );
         $store->_dirty( $store->{_WEAK_REFS}{$newid}, $newid );
 
-        my $tied = tied @$newbucket;
+        my $tied = tied @$newblock;
         $tied->[DATA] = $self->[DATA];
+        $self->[DATA] = [ $newid ];
 
         $self->[BLOCK_SIZE] *= $self->[BLOCK_COUNT];
         $self->[LEVEL]++;
@@ -1272,56 +1126,58 @@ sub _embiggen {
     }
 } #_embiggen
 
+#
+# get a block at the given block index. Returns undef
+# if there isn't one ther, or creates and returns
+# one if passed do create
+#
+sub _getblock {
+    my( $self, $block_idx, $do_create ) = @_;
+    
+    my $block_id = $self->[DATA][$block_idx];
+    my $store = $self->[DSTORE];
+    
+    if( $block_id ) {
+        my $block = $store->fetch( $block_id );
+        return wantarray ? ($block, tied @$block) : $block;
+    }
+
+    if( $do_create ) {
+        $block_id = $store->{_YOTEDB}->_get_id( 'Yote::Array' );
+        my $block = [];
+        my $level = $self->[LEVEL] - 1;
+        tie @$block, 'Yote::Array', $store, $block_id, $level, 0, $self->[BLOCK_COUNT];
+
+        $store->_store_weak( $block_id, $block );
+        $store->_dirty( $store->{_WEAK_REFS}{$block_id}, $block_id );
+        $self->[DATA][$block_idx] = $block_id;
+        return wantarray ? ($block, tied @$block) : $block;
+    }
+    return undef;
+} #_getblock
+
 sub STORE {
     my( $self, $idx, $val ) = @_;
 
+    if( $idx > $self->[BLOCK_COUNT]*$self->[BLOCK_SIZE] ) {
+        $self->_embiggen( $idx );
+        $self->STORE( $idx, $val );
+        return;
+    }
+    
     if( $idx >= $self->[ITEM_COUNT] ) {
-        $self->[ITEM_COUNT]++;
+        $self->[ITEM_COUNT] = $idx - 1;
+        my $store = $self->[DSTORE];
+        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
     }
 
     if( $self->[LEVEL] == 0 ) {
-        if( $idx > $self->[BLOCK_COUNT] ) {
-            $self->_embiggen( $idx );
-            return $self->STORE( $idx, $val );
-        }
-        return $self->[DATA][$idx] = $self->[DSTORE]->_xform_in( $val );
+        $self->[DATA][$idx] = $self->[DSTORE]->_xform_in( $val );
+        return;
     }
 
-    my $block_idx = int( $idx / $self->[BLOCK_SIZE] );
-
-    if( $block_idx >= $self->[BLOCK_COUNT] ) {
-        # EMBIGGEN
-        $self->_embiggen( $idx );
-        return $self->STORE( $idx, $val );
-    }
-
-    my $in_block_idx = $idx % $self->[BLOCK_SIZE];
-
-    my $block_id = $self->[DATA][$block_idx];
-    if( $block_id ) {
-        my $block = $self->[DSTORE]->fetch( $block_id );
-        my $tied = tied @$block;
-        return $tied->STORE( $in_block_idx, $val );
-    }
-
-    #
-    # create a new block for this one
-    #
-    my $store = $self->[DSTORE];
-    my $newblock = [];
-    my $newid = $store->{_YOTEDB}->_get_id( 'Yote::BigArray' );
-    my $newlevel = $self->[LEVEL] - 1;
-    tie @$newblock, 'Yote::BigArray', $store, $newid, $newlevel, 0, $self->[BLOCK_COUNT], $self->[BLOCK_SIZE]
-    $store->_store_weak( $newid, $newblock );
-    $store->_dirty( $store->{_WEAK_REFS}{$newid}, $newid );
-
-    $newblock->[$in_block_idx] = $val;
-
-    $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-
-    if( $idx >= $self->[ITEM_COUNT] ) {
-        $self->[ITEM_COUNT] = $idx + 1;
-    }
+    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ), 'CREATE' );
+    $block->[$idx % $self->[BLOCK_SIZE]] = $val;
 
 } #STORE
 
@@ -1331,44 +1187,9 @@ sub STORESIZE {
     $size = 0 if $size < 0;
 
     # fixes the size of the array if the array were to shrink
-    if( $size < $self->[ITEM_COUNT] ) {
-
-        while( ! $self->EXISTS( $size - 1 ) ) {
-            $size--;
-        }
-        $self->[ITEM_COUNT] = $size;
-
-        my $d = $self->[DATA];
-        if( $self->[LEVEL] == 0 ) {
-            $#$d = $size - 1;
-            return;
-        }
-
-        my $max_block_idx = int( ($size-1) / $self->[BLOCK_SIZE] );
-        my $remove_count = $#$d - $max_block_idx;
-        if( $remove_count > 0 ) {
-            splice @$d, $max_block_idx + 1, $remove_count;
-        }
-
-        my $cut_to = $size - $max_block_idx * $self->[BLOCK_SIZE];
-        my $block_id = $self->[DATA][$max_block_idx];
-        my $block = $self->[DSTORE]->fetch( $block_id );
-        if( $block ) {
-            my $tied = tied @$block;
-            $tied->STORESIZE( $cut_to );
-            $self->[ITEM_COUNT] = $max_block_idx * $self->[BLOCK_SIZE] + $cut_to;
-        } else {
-            while( $max_block_idx-- >= 0 ) {
-                $cut_to = $size - $max_block_idx * $self->[BLOCK_SIZE];
-                $block_id = $self->[DATA][$max_block_idx];
-                $block = $self->[DSTORE]->fetch( $block_id );
-                if( $block ) {
-                    $tied = tied @$block;
-                    $self->[ITEM_COUNT] = $max_block_idx * $self->[BLOCK_SIZE] + $tied->[ITEM_COUNT];
-                    last;
-                }
-            }
-        }
+    my $current_oversize = $self->[ITEM_COUNT] - $size;
+    if( $current_oversize > 0 ) {
+        $self->SPLICE( $size, $current_oversize );
     } #if the array shrinks
 
 } #STORESIZE
@@ -1381,14 +1202,8 @@ sub EXISTS {
     if( $self->[LEVEL] == 0 ) {
         return exists $self->[DATA][$idx];
     }
-    my $block_idx = int( $idx / $self->[BLOCK_SIZE] );
-    my $block_id = $self->[DATA][$block_idx];
-    if( $block_id ) {
-        my $block = $self->[DSTORE]->fetch( $block_id );
-        my $in_block_idx = $idx % $self->[BLOCK_SIZE];
-        return exists $block->[$in_block_idx];
-    }
-    return 0;
+    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
+    return $block && exists $block->[$idx % $self->[BLOCK_SIZE]];
 } #EXISTS
 
 sub DELETE {
@@ -1396,442 +1211,156 @@ sub DELETE {
     if( $idx >= $self->[ITEM_COUNT] ) {
         return undef;
     }
+
+    # if the last one was removed, shrink until there is a
+    # defined value
     if( $idx == $self->[ITEM_COUNT] - 1 ) {
         $self->[ITEM_COUNT]--;
         while( ! $self->EXISTS( $self->[ITEM_COUNT] - 1 ) ) {
             $self->[ITEM_COUNT]--;
         }
+        $self->[DSTORE]->_dirty( $self->[DSTORE]->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
     }
+    
     if( $self->[LEVEL] == 0 ) {
         return $self->[DSTORE]->_xform_out( delete $self->[DATA][$idx] );
     }
-    my $block_idx = int( $idx / $self->[BLOCK_SIZE] );
-    my $block_id = $self->[DATA][$block_idx];
-    if( $block_id ) {
-        my $block = $self->[DSTORE]->fetch( $block_id );
-        my $tied = tied @$block;
-        my $in_block_idx = $idx % $self->[BLOCK_SIZE];
-        return delete $block->[$in_block_idx];
+
+    my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
+    if( $block ) {
+        return delete $block->[ $idx % $self->[BLOCK_SIZE] ];
     }
-}
+} #DELETE
 
 sub CLEAR {
     my $self = shift;
     $self->[ITEM_COUNT] = 0;
     $self->[DATA] = [];
-    $self->[DSTORE]->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+    $self->[DSTORE]->_dirty( $self->[DSTORE]->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
 }
 sub PUSH {
     my( $self, @vals ) = @_;
     return unless @vals;
 
-    $self->_embiggen( @vals + $self->[ITEM_COUNT] );
+    $self->SPLICE( $self->[ITEM_COUNT], 0, @vals );
+}
+sub POP {
+    my $self = shift;
+    return undef unless $self->[ITEM_COUNT];
+    return $self->DELETE( $self->[ITEM_COUNT] - 1 );
+}
+sub SHIFT {
+    my( $self ) = @_;
+    return undef unless $self->[ITEM_COUNT];
+    return $self->SPLICE( 0, 1 );
+}
+
+sub UNSHIFT {
+    my( $self, @vals ) = @_;
+    return unless @vals;
+    return $self->SPLICE( 0, 0, @vals );
+}
+
+
+sub SPLICE {
+    my( $self, $offset, $remove_length, @vals ) = @_;
+
+    # if negative, the offset is from the end
+    if( $offset < 0 ) {
+        $offset = $self->[ITEM_COUNT] + $offset;
+    }
+
+    # if negative, remove everything except the abs($remove_length) at
+    # the end of the list
+    if( $remove_length < 0 ) {
+        $remove_length = ($self->[ITEM_COUNT] - $offset) + $remove_length;
+    }
+
+    #
+    # embiggen to delta size if this would grow
+    #
+    my $delta = @vals - $remove_length;
+    return undef if $delta == 0;
+    if( $delta > 0 ) {
+        $self->_embiggen( $self->[ITEM_COUNT] + $delta );
+    }
 
     my $store = $self->[DSTORE];
+    
+    $self->[ITEM_COUNT] += $delta;
     $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
 
     if( $self->[LEVEL] == 0 ) {
-        push @{$self->[DATA]}, map { $store->_xform_in( $_ ) } @vals;
-        return;
+        my @removed = splice @{$self->[DATA]}, $offset, $remove_length, map { $store->_xform_in( $_ ) } @vals;
+        return map { $store->_xform_out($_) } @removed;
     }
-
-    my $block_idx = int( $self->[ITEM_COUNT] / $self->[BLOCK_SIZE] );
-    my $in_block_start_idx = $idx % $self->[BLOCK_SIZE];
-
-    while( @vals ) {
-        my $block_id = $self->[DATA][$block_idx];
-        my $block_avail = $self->[BLOCK_SIZE] - $in_block_start_idx;
-        my( @filler ) = splice @vals, 0, $block_avail;
-        my $block = $store->fetch( $block_id );
-        unless( $block ) {
-            $block = [];
-            my $newid = $store->{_YOTEDB}->_get_id( 'Yote::BigArray' );
-            tie @$block, 'Yote::BigArray', $store, $newid, $self->[LEVEL] - 1, 
-        }
-        push @$block, @filler;
-    }
-}
-sub POP {
-    my $self = shift;
-}
-sub SHIFT {
-    my( $self ) = @_;
-}
-
-sub UNSHIFT {
-    my( $self, @vals ) = @_;
-}
-
-
-sub SPLICE {
-    my( $self, $offset, $remove_length, @vals ) = @_;
-
-
-} #SPLICE
-
-sub EXTEND {
-}
-
-sub DESTROY {
-    my $self = shift;
-    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
-
-package Yote::ArrayGatekeeper;
-
-############################################################################################################
-# This module is used transparently by Yote to link arrays into its graph structure. This is not meant to  #
-# be called explicitly or modified.                                                                        #
-############################################################################################################
-
-use strict;
-use warnings;
-
-no warnings 'uninitialized';
-use Tie::Array;
-
-$Yote::ArrayGatekeeper::BLOCK_SIZE  = 1024;
-$Yote::ArrayGatekeeper::BLOCK_COUNT = 1024;
-
-use constant {
-    ID          => 0,
-    BLOCKS      => 1,
-    DSTORE      => 2,
-    CAPACITY    => 3,
-    BLOCK_COUNT => 4,
-    BLOCK_SIZE  => 5,
-    ITEM_COUNT  => 6,
-    LEVEL       => 7,
-};
-
-sub TIEARRAY {
-    my( $class, $obj_store, $id, $item_count, $block_count, $block_size, $level, @list ) = @_;
-
-    $block_size  ||= $Yote::ArrayGatekeeper::BLOCK_SIZE;
-    $block_count ||= $Yote::ArrayGatekeeper::BLOCK_COUNT;
-    $item_count  ||= 0;
-    $level       ||= 1;
-    my $capacity = $block_size * $block_count;
-
-    my $blocks = [@list];
-
-    # once the array is tied, an additional data field will be added
-    # so obj will be [ $id, $storage, $obj_store ]
-    my $obj = bless [$id,$blocks,$obj_store,$capacity,$block_count,$block_size, $item_count, $level], $class;
-    return $obj;
-} #TIEARRAY
-
-sub _ensure_capacity {
-    my( $self, $size ) = @_;
-
-    if( $size > $self->[CAPACITY] ) {
-        my $store = $self->[DSTORE];
-        #
-        # make a new gatekeeper and moves the buckets of this
-        # one into the new gatekeeper
-        #
-        my $new_id = $store->{_YOTEDB}->_get_id( 'Yote::ArrayGatekeeper' );
-
-        my $newkeeper = [];
-        tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], $self->[LEVEL], @{$self->[BLOCKS]};
-
-        $store->_store_weak( $new_id, $newkeeper );
-        $store->_dirty( $store->{_WEAK_REFS}{$new_id}, $new_id );
-
-        $self->[LEVEL]++;
-        $self->[BLOCKS] = [ $new_id ];
-        $self->[BLOCK_SIZE] = $self->[CAPACITY];
-        $self->[CAPACITY] = $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT];
-        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-    }
-
-} #_ensure_capacity
-
-sub _dirty {
-    my $self = shift;
-    $self->[DSTORE]->_dirty( $self->[DSTORE]{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-}
-
-# returns the block object ( behind the tied ), the block index
-# and the first item index in the block
-sub _block {
-    my( $self, $idx ) = @_;
-    $self->_ensure_capacity( $idx + 1 );
-
-
-    my $block_idx = int($idx / $self->[BLOCK_SIZE]); #block size
-
-    my $store = $self->[DSTORE];
-
-    my $block_id = $self->[BLOCKS][$block_idx];
-    my $block;
-    if( $block_id ) {
-        $block = $store->fetch($block_id);
-    } elsif( $self->[LEVEL] == 1 ) {
-        $block = [];
-        my $block_id = $store->{_YOTEDB}->_get_id( "ARRAY" );
-        tie @$block, 'Yote::Array', $store, $block_id;
-        $store->_store_weak( $block_id, $block );
-        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
-
-        $self->[BLOCKS][$block_idx] = $block_id;
-        $self->_dirty;
-    } else {
-        my $firstblock = tied( @{$store->fetch($self->[BLOCKS][0])} );
-
-        $block = [];
-        my $block_id = $store->{_YOTEDB}->_get_id( "Yote::ArrayGatekeeper" );
-        tie @$block, 'Yote::ArrayGatekeeper', $store, $block_id, 0, $firstblock->[BLOCK_COUNT], $firstblock->[BLOCK_SIZE], $firstblock->[LEVEL];
-        $store->_store_weak( $block_id, $block );
-        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
-
-        $self->[BLOCKS][$block_idx] = $block_id;
-        $self->_dirty;
-    }
-    return ( $block, tied( @$block), $block_idx, $block_idx * $self->[BLOCK_SIZE] );
-}
-
-sub FETCH {
-    my( $self, $idx ) = @_;
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-    return $tied_block->FETCH( $idx - $block_start_idx );
-}
-
-sub FETCHSIZE {
-    shift->[ITEM_COUNT];
-}
-
-sub STORE {
-    my( $self, $idx, $val ) = @_;
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-    my $last_block_idx = $self->[ITEM_COUNT] - 1;
-    $tied_block->STORE( $idx - $block_start_idx, $val );
-    if( $idx > $last_block_idx ) {
-        $self->[ITEM_COUNT] = $idx + 1;
-    }
-}
-sub STORESIZE {
-    my( $self, $size ) = @_;
-    # fixes the size of the array
-    if( $size < $self->[ITEM_COUNT] ) {
-        my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $self->[BLOCK_SIZE] * int($size/$self->[BLOCK_SIZE]) );
-        my $blocks = $self->[BLOCKS];
-        $#$blocks = $block_idx; #removes further blocks
-        $tied_block->STORESIZE( $size - $block_start_idx );
-        $self->_dirty;
-        $self->[ITEM_COUNT] = $size;
-    }
-}
-
-sub EXISTS {
-    my( $self, $idx ) = @_;
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-    return $tied_block->EXISTS( $idx - $block_start_idx );
-}
-sub DELETE {
-    my( $self, $idx ) = @_;
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $idx );
-
-    if( (1+$idx) == $self->[ITEM_COUNT] ) {
-        # in this case, it is removing the last item here. so shorten the
-        # array until the
-        my $curr_block_start_idx = $block_start_idx;
-        my $blocks = $self->[BLOCKS];
-        my $prev_idx = $idx - 1;
-        while( ! $self->EXISTS( $prev_idx ) && $prev_idx >= 0 ) {
-            if( $curr_block_start_idx == $prev_idx ) {
-                pop @$blocks;
-            }
-            $self->[ITEM_COUNT]--;
-            $prev_idx--;
-        }
-        $self->_dirty;
-    }
-    return $tied_block->DELETE( $idx - $block_start_idx );
-}
-
-sub CLEAR {
-    my $self = shift;
-    $self->_dirty;
-    $self->[ITEM_COUNT] = 0;
-    @{$self->[BLOCKS]} = ();
-}
-sub PUSH {
-    my( $self, @vals ) = @_;
-
-    return unless @vals;
-
-    $self->_ensure_capacity( $self->[ITEM_COUNT] + @vals );
-
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $self->[ITEM_COUNT] );
-
-    $self->[ITEM_COUNT] += @vals;
-    $self->_dirty;
-    my $idx_at = 0;
-    while( @vals ) {
-
-        $idx_at += $self->[BLOCK_SIZE];
-        my $room = $self->[BLOCK_SIZE] - ($tied_block->FETCHSIZE);
-        my( @part ) = splice @vals, 0, $room;
-        $tied_block->PUSH( @part );
-        if( @vals ) {
-            ($block,$tied_block,undef,undef) = $self->_block( $idx_at );
-        }
-    }
-}
-sub POP {
-    my $self = shift;
-
-    my $blocks = $self->[BLOCKS];
-    if( @$blocks ) {
-        my $lastblock = tied @{$self->[DSTORE]->fetch($blocks->[$#$blocks])};
-        my $val = $lastblock->POP;
-        if( @$lastblock == 0 ) {
-            pop @$blocks;
-        }
-        $self->[ITEM_COUNT]--;
-        $self->_dirty;
-        return $val;
-    }
-    return;
-}
-sub SHIFT {
-    my( $self ) = @_;
-    my $blocks = $self->[1];
-    my $store = $self->[DSTORE];
-    if( @$blocks ) {
-        my $block = tied( @{$store->fetch( $blocks->[0] )} );
-        my $val = $block->SHIFT;
-        for( my $i=1; $i<@$blocks; $i++ ) {
-            my $now_block = tied( @{$store->fetch( $blocks->[$i] )} );
-            my $prev_block = tied( @{$store->fetch( $blocks->[$i-1] )} );
-            $prev_block->PUSH( $now_block->SHIFT );
-            if( $#$blocks == -1 ) {
-                pop @$blocks;
-                last;
-            }
-        }
-        $self->[ITEM_COUNT]--;
-        $self->_dirty;
-        return $val;
-    }
-    return;
-}
-
-sub UNSHIFT {
-    shift->_unshift(0,@_);
-}
-
-sub _unshift {
-    my( $self, $offset, @vals ) = @_;
-
-    return unless @vals;
-
-    my $newcount = $self->[ITEM_COUNT] + @vals;
-    $self->_ensure_capacity( $newcount );
-
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $offset );
-
-    if( $self->[LEVEL] == 1 ) {
-        while( @vals ) {
-            $tied_block->SPLICE( $offset , 0, @vals );
-            $offset = 0;
-
-            if( $#$block >= $self->[BLOCK_SIZE] ) {
-                (@vals) = @$block[$self->[BLOCK_SIZE]..$#$block];
-                $#$block = $self->[BLOCK_SIZE] - 1;
-
-                ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
-
-            } else {
-                @vals = ();
-            }
-        }
-    } else {
-        while( @vals ) {
-            my $overflow = (@vals + $tied_block->[ITEM_COUNT]) - $self->[BLOCK_SIZE];
-            if( $overflow > 0 ) {
-                my $cut_index = $self->[BLOCK_SIZE] - @vals;
-                my( @backlog ) = @$block[$cut_index..$#$block];
-
-                $tied_block->STORESIZE( $cut_index );
-
-                my @additions = splice @vals, 0, (1+$cut_index);
-
-                $tied_block->_unshift( $offset, @additions ); #offset is only on the first block
-                $offset = 0;
-                push @vals, @backlog;
-
-                if( @vals ) {
-                    ( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( (1+$block_idx)*$self->[BLOCK_SIZE] );
-                }
-            } else {
-                $tied_block->SPLICE( $offset, 0, @vals );
-                @vals = ();
-            }
-        }
-    }
-
-    $self->[ITEM_COUNT] = $newcount;
-    $self->_dirty;
-
-} #UNSHIFT
-
-sub SPLICE {
-    my( $self, $offset, $remove_length, @vals ) = @_;
-
-    return unless @vals || $remove_length;
-
+    
     my @removed;
 
-    my $delta = @vals - $remove_length;
-    my $new_size = $self->[ITEM_COUNT] + $delta;
+    my $block_idx = int( $offset / $self->[BLOCK_SIZE] );
+    my $block_offset = $offset % $self->[BLOCK_SIZE];
+    
+    my $vacuum = 0; # how much one block needs to draw from subsequent blocks
+    my $prev_block;
+    
+    while( $block_idx < $self->[BLOCK_COUNT] && ($remove_length || @vals ) ) {
+        my $block = $self->_getblock( $block_idx, "CREATE" );
 
+        my $block_space_after_offset = $#$block - $block_offset;
 
-    if( $delta > 0 ) {
-        $self->_ensure_capacity( $new_size );
-    }
-
-    #
-    # add things
-    #
-
-    if( @vals ) {
-        # this adjusts the item count
-        $self->_unshift( $offset, @vals );
-    }
-
-    if( $remove_length > 0 ) {
-        #
-        # remove things by shifting things down over the removed items
-        #
-        my $remove_start_idx = $offset + @vals;
-        my $remove_end_idx   = $remove_start_idx + $remove_length;
-        my $new_last_idx     = $new_size - 1;
-
-        while ( $remove_start_idx <= $new_last_idx ) {
-
-            my( $remstart ) = $self->_block( $remove_start_idx );
-            my( $remend ) = $self->_block( $remove_end_idx + 1 );
-
-            my $removed = $self->FETCH( $remove_start_idx );
-            if( @removed < $remove_length ) {
-                push @removed, $removed;
-            }
-            $self->STORE( $remove_start_idx, $self->FETCH( $remove_end_idx ) );
-            $remove_start_idx++;
-            $remove_end_idx++;
+        if( $vacuum > 0 ) {
+            push @$prev_block, splice( @$block, 0, $block_space_after_offset );
+            $vacuum = 0;
+            undef $prev_block;
         }
-    }
-    #
-    # Trim this array to its new size
-    #
-    $self->STORESIZE( $new_size );
+            
+        #
+        # remove what you can from this block
+        #
+        if( $block_offset == 0 && $remove_length >= $self->[BLOCK_SIZE] ) {
+            #
+            # Remove block entirely as the remove length is larger than it
+            #
+            splice @{$self->[DATA]}, $block_offset, 1;
+            $remove_length -= $self->[BLOCK_SIZE];
+        }
+        elsif( $remove_length > $block_space_after_offset ) {
+            #
+            # Remove the rest of the block
+            #
+            push @removed, splice( @$block, $block_offset, $block_space_after_offset );
+            $remove_length -= $block_space_after_offset;
+        }
+        else {
+            #
+            # Remove remove_length from the block
+            #
+            push @removed, splice( @$block, $block_offset, $remove_length );
+            $remove_length = 0;
+        }
 
+        #
+        # check how much room the block has now to put the vals onto it
+        #
+        my $fillable_room = $self->[BLOCK_SIZE] - $block_offset;
+        
+        if( @vals > $fillable_room ) {
+            push @$block, splice( @vals, 0, $fillable_room );
+        } else {
+            $vacuum = $fillable_room - @vals;
+            $prev_block = $block;
+            if( @vals ) {
+                push @$block, @vals;
+                @vals = ();
+            }
+        }
+
+        # move on to the start of the next block
+        $block_idx++;
+        $block_offset = 0;
+    } #splicy loop
+    
     return @removed;
-
 } #SPLICE
 
 sub EXTEND {
@@ -1855,84 +1384,11 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
-
-use Tie::Hash;
-
-sub TIEHASH {
-    my( $class, $obj_store, $id, %hash ) = @_;
-
-    my $storage = {};
-    # after $obj_store is a list reference of
-    #                 id, data, store
-    my $obj = bless [ $id, $storage,$obj_store ], $class;
-    for my $key (keys %hash) {
-        $storage->{$key} = $hash{$key};
-    }
-    return $obj;
-}
-
-sub STORE {
-    my( $self, $key, $val ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    $self->[1]{$key} = $self->[2]->_xform_in( $val );
-}
-
-sub FIRSTKEY {
-    my $self = shift;
-    my $a = scalar keys %{$self->[1]};
-    my( $k, $val ) = each %{$self->[1]};
-    return wantarray ? ( $k => $val ) : $k;
-}
-sub NEXTKEY  {
-    my $self = shift;
-    my( $k, $val ) = each %{$self->[1]};
-    return wantarray ? ( $k => $val ) : $k;
-}
-
-sub FETCH {
-    my( $self, $key ) = @_;
-    return $self->[2]->_xform_out( $self->[1]{$key} );
-}
-
-sub EXISTS {
-    my( $self, $key ) = @_;
-    return defined( $self->[1]{$key} );
-}
-sub DELETE {
-    my( $self, $key ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    return delete $self->[1]{$key};
-}
-sub CLEAR {
-    my $self = shift;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    %{$self->[1]} = ();
-}
-
-sub DESTROY {
-    my $self = shift;
-    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
-}
-
-
-# ---------------------------------------------------------------------------------------
-
-package Yote::BigHash;
-
-######################################################################################
-# This module is used transparently by Yote to link hashes into its graph structure. #
-# This is not meant to  be called explicitly or modified.                            #
-######################################################################################
-
-use strict;
-use warnings;
-
-no warnings 'uninitialized';
 no warnings 'numeric';
 
 use Tie::Hash;
 
-$Yote::BigHash::SIZE = 977;
+$Yote::Hash::SIZE = 977;
 
 use constant {
     ID      => 0,
@@ -1948,7 +1404,7 @@ sub TIEHASH {
     my( $class, $obj_store, $id, $level, $buckets, $size, @fetch_buckets ) = @_;
     $level ||= 0;
     $size  ||= 0;
-    $buckets ||= $Yote::BigHash::SIZE;
+    $buckets ||= $Yote::Hash::SIZE;
     bless [ $id, $level ? \@fetch_buckets : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef,undef] ], $class;
 }
 
@@ -2070,8 +1526,8 @@ sub STORE {
                     $tied->STORE( $key, $store->_xform_out($data->{$key}) );
                 } else {
                     $hash = {};
-                    my $hash_id = $yotedb->_get_id( 'Yote::BigHash' );
-                    tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
+                    my $hash_id = $yotedb->_get_id( 'Yote::Hash' );
+                    tie %$hash, 'Yote::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
 
                     $store->_store_weak( $hash_id, $hash );
                     $store->_dirty( $store->{_WEAK_REFS}{$hash_id}, $hash_id );
@@ -2103,8 +1559,8 @@ sub STORE {
             $tied->STORE( $key, $val );
         } else {
             $hash = {};
-            $hash_id = $store->{_YOTEDB}->_get_id( 'Yote::BigHash' );
-            tie %$hash, 'Yote::BigHash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
+            $hash_id = $store->{_YOTEDB}->_get_id( 'Yote::Hash' );
+            tie %$hash, 'Yote::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
             $store->_store_weak( $hash_id, $hash );
             $store->_dirty( $store->{_WEAK_REFS}{$hash_id}, $hash_id );
             $data->[$hval] = $hash_id;
@@ -2270,10 +1726,10 @@ sub _fetch {
       $parts = $newparts;
   }
 
-  if( $class eq 'Yote::BigHash' ) {
+  if( $class eq 'Yote::Hash' ) {
       $ret->[DATA] = $parts;
   }
-  elsif( $class eq 'ARRAY' || $class eq 'Yote::ArrayGatekeeper' ) {
+  elsif( $class eq 'ARRAY' || $class eq 'Yote::Array' ) {
       $ret->[DATA] = $parts;
   }
   else {
@@ -2335,7 +1791,7 @@ sub _generate_keep_db {
         $seen{$check_id} = 1;
         my( @additions );
 
-        if( $obj_arry->[CLS] eq 'Yote::BigHash' ) {
+        if( $obj_arry->[CLS] eq 'Yote::Hash' ) {
             my $level = shift @{$obj_arry->[DATA]}; #remove the level
             shift @{$obj_arry->[DATA]}; #remove the buckets
             shift @{$obj_arry->[DATA]}; #remove the size
@@ -2347,7 +1803,7 @@ sub _generate_keep_db {
                 ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } values %$d;
             }
         }
-        elsif ( $obj_arry->[CLS] eq 'Yote::ArrayGatekeeper' ) {
+        elsif ( $obj_arry->[CLS] eq 'Yote::Array' ) {
             shift @{$obj_arry->[DATA]}; #item_count
             shift @{$obj_arry->[DATA]}; #block_count
             shift @{$obj_arry->[DATA]}; #block_size
