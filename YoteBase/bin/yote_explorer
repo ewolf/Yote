@@ -34,6 +34,10 @@ exit;
 sub interpret {
     my $cmd = shift;
 
+    #
+    # SHOW the given ID, which is going to be a number
+    # greater than zero
+    #
     if( $cmd > 0 ) {
         show( $cmd );
     } #SHOW
@@ -286,7 +290,7 @@ sub show {
         print "$id is $r\n\t".join("\n\t",map { "$_ => $obj->{DATA}{$_}" }
                                  keys %{$obj->{DATA}} )."\n";
     }
-}
+} #show
 
 
 
