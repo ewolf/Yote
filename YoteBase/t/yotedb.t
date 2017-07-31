@@ -29,6 +29,29 @@ sub test_suite {
     my $yote_db = $store->{_DATASTORE};
     my $root_node = $store->fetch_root;
 
+    # listy test because
+    print STDERR Data::Dumper->Dump(["------------------------------------"]);
+
+    $Yote::ArrayGatekeeper::BLOCK_SIZE  = 4;
+    $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
+
+    my $l = $root_node->get_listy( [] );
+    push @$l, "ONE", "TWO";
+#    print STDERR Data::Dumper->Dump([$l,"push 1 ($l)"]);
+    push @$l, "THREE", "FOUR", "FIVE";
+#    print STDERR Data::Dumper->Dump([$l,"push 2 ($l)"]);
+    push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
+#    print STDERR Data::Dumper->Dump([$l,"push 3 ($l)"]);
+    push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
+
+#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL push 4 ($l)"]);
+    
+    push @$l, "SEVENTEEN", "EIGHTTEEN";
+    
+#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
+
+    print STDERR Data::Dumper->Dump(["------------------------------------"]);
+    return;
     $root_node->add_to_myList( { objy =>
         $store->newobj( {
             someval => 124.42,
@@ -192,7 +215,27 @@ sub test_suite {
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
 
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
+
+    # array tests
+    
+    
 } #test suite
 
 
 __END__
+
+perl -e '@l = (1,2,3); $l[1] = "A"; print join(",",@l)."\n"'
+1,A,3
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[1] = "A"; print scalar(@l)."\n"'
+3
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = "A"; print scalar(@l)."\n"'
+3
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = "A"; print scalar(@l)."\n"'
+11
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = undef; print scalar(@l)."\n"'perl -e '@l = (1,2,3); $l[10] = undef; print scalar(@l)."\n"'
+11
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = undef; delete $l[10]; print scalar(@l)."\n"'
+3
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = undef; $l[9] = undef; delete $l[10]; print scalar(@l)."\n"'
+10
+wolf@talisman:~/proj/Yote/YoteBase$ perl -e '@l = (1,2,3); $l[10] = undef; $l[9] = undef; delete $l[10]; print scalar(@l)."\n"'
