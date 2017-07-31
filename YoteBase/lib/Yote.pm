@@ -905,7 +905,7 @@ sub NEXTKEY  {
         my $store = $self->[DSTORE];
         do {
             my $nexthashid = $data->[$self->[NEXT][0]||0];
-            if( $nexthashid ) {
+            if( $nexthashid && $nexthashid ne 'u') {
                 my $hash = $self->[NEXT][2] || $store->_fetch( $nexthashid );
                 my $tied = tied %$hash;
 

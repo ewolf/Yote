@@ -125,11 +125,6 @@ sub test_suite {
 
     undef $root_node;
 
-    ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
-    ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
-    ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
-    ok( ! $store->_fetch( $someobj_id ), "removed someobj still removed" );
-
     $Yote::Hash::SIZE = 7;
 
     my $thash = $store->fetch_root->get_test_hash({});
@@ -250,7 +245,7 @@ sub test_suite {
     is_deeply( $l, ["ZERO", undef, "THREE", "NEENER", "BOINK", "NEENER",
                     "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first delete" );
     ok( exists( $l->[0] ), "exists" );
-    ok( !exists( $l->[1] ), "doesnt exist" );
+    ok( exists( $l->[1] ), "exists but is undefined" );
     ok( !exists( $l->[$#$l+1] ), "doesnt exist beyond" );
     ok( exists( $l->[$#$l] ), "exists at end" );
 
@@ -264,7 +259,9 @@ sub test_suite {
     @{$l} = ();
     is( $#$l, -1, "last after clear" );
     is( scalar(@$l), 0, "size after clear" );
-    if(0){
+
+    $Yote::Array::MAX_BLOCKS  = 82;
+    
     push @$l, 0..10000;
     $store->stow_all;
     my $other_store = Yote::open_store( $dir );
@@ -272,7 +269,7 @@ sub test_suite {
     my $ol = $root_node->get_listy( [] );
 
     is_deeply( $l, $ol, "lists compare" );
-    }
+
 } #test suite
 
 sub _cmpa {
