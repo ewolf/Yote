@@ -189,7 +189,6 @@ sub test_suite {
     print STDERR Data::Dumper->Dump([$l,"WIS"]);
 
     push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
-    print STDERR Data::Dumper->Dump([$l,"WIS"]);exit;
 
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
     is( @$l, 9, "Size nine" );
@@ -281,17 +280,21 @@ sub test_suite {
 sub test_arry {
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
-#    for my $SZ (4..9) {
-    for my $SZ (4..4) {
+#    for my $SZ (3..9) {
+    for my $SZ (3..3) {
         $Yote::Array::MAX_BLOCKS  = $SZ;
         my $arry = $root_node->set_arry( [ 1 .. 19 ] );
         my $tied = tied (@$arry);
         my $match = [ 1 .. 19 ];
         is_deeply( $arry, $match, "INITIAL $SZ" );
+
+        print STDERR "x"x100;
+        print STDERR "\n";
         
         my $a = shift @$arry;
         my $m = shift @$match;
         is( $a, $m, "SHIFT $SZ" );
+        print STDERR Data::Dumper->Dump([$a,$m,$arry,$match]);exit;
         is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
         
         $a = pop @$arry;

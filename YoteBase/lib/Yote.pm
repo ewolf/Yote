@@ -250,6 +250,8 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
+#no  warnings 'recursion';
+
 use Tie::Array;
 
 $Yote::Array::MAX_BLOCKS = 1_000_000;
@@ -262,7 +264,8 @@ use constant {
     BLOCK_COUNT => 4,
     BLOCK_SIZE  => 5,
     ITEM_COUNT  => 6,
-
+    UNDERNEATH  => 7,
+    
     WEAK         => 2,
 };
 
@@ -345,6 +348,7 @@ sub _embiggen {
     my( $self, $size ) = @_;
     my $store = $self->[DSTORE];
     while( $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT] ) {
+        die "UNDERNATH" if $self->[UNDERNEATH];
         #
         # need to tie a new block, not use _getblock
         # becaues we do squirrely things with its tied guts
@@ -358,6 +362,7 @@ sub _embiggen {
         my $tied = tied @$newblock;
         $tied->[DATA] = $self->[DATA];
         $tied->[ITEM_COUNT] = $self->[ITEM_COUNT];
+        $tied->[UNDERNEATH] = 1;
         $self->[DATA] = [ $newid ];
 
         $self->[BLOCK_SIZE] *= $self->[BLOCK_COUNT];
@@ -505,8 +510,8 @@ sub UNSHIFT {
 
 sub db {
     my( $self, $title, $block, $vals, $offset, $remove_length ) = @_;
-    my $LVL = ' * ' x (2-$self->[LEVEL]);
-    print STDERR "$LVL $title\n\t$LVL BLOCK_SIZE : $self->[BLOCK_SIZE], LEVEL : $self->[LEVEL], ITEMS : $self->[ITEM_COUNT], BLOCK_COUNT : $self->[BLOCK_COUNT], CAPA : ".($self->[BLOCK_SIZE]*$self->[BLOCK_COUNT]).")\n\t$LVL FULL ($self->[ITEM_COUNT])   [".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t$LVL CURBLK (".scalar(@$block).")) [".join(' ',@$block)."]\n\t$LVL SPLICE $offset,$remove_length, VALS (".scalar(@$vals).") [".join(",",@$vals)."]\n" if $Yote::DEBUG;
+    my $LVL = ' * ' x $self->[LEVEL];
+    print STDERR "$LVL $title\n\t$LVL BLOCK_SIZE : $self->[BLOCK_SIZE], ID : $self->[ID], LEVEL : $self->[LEVEL], ITEMS : $self->[ITEM_COUNT], BLOCK_COUNT : $self->[BLOCK_COUNT], CAPA : ".($self->[BLOCK_SIZE]*$self->[BLOCK_COUNT]).")\n\t$LVL FULL ($self->[ITEM_COUNT])   [".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t$LVL CURBLK (".scalar(@$block).")) [".join(' ',@$block)."]\n\t$LVL SPLICE $offset,$remove_length, VALS (".scalar(@$vals).") [".join(",",@$vals)."]\n" if $Yote::DEBUG;
 }
 
 sub SPLICE {
@@ -525,16 +530,13 @@ sub SPLICE {
 
     return undef unless $remove_length || @vals;
 
-    my $ITEM_COUNT = $self->[ITEM_COUNT];
-    my $LAST_IDX   = $ITEM_COUNT - 1;
-
     # check for removal past end
-    if( $offset > $LAST_IDX ) {
+    if( $offset > ($self->[ITEM_COUNT] - 1) ) {
         $remove_length = 0;
-        $offset = $LAST_IDX + 1;
+        $offset = $self->[ITEM_COUNT];
     }
-    if( $remove_length > ($ITEM_COUNT - $offset) ) {
-        $remove_length = $ITEM_COUNT - $offset;
+    if( $remove_length > ($self->[ITEM_COUNT] - $offset) ) {
+        $remove_length = $self->[ITEM_COUNT] - $offset;
     }
 
     #
@@ -557,17 +559,16 @@ sub SPLICE {
     my $store       = $self->[DSTORE];
     my $blocks      = $self->[DATA];
     my $BLOCK_SIZE  = $self->[BLOCK_SIZE];
-    my $LAST_FILLED_IDX = int( ($new_size - 1)/$BLOCK_SIZE );
 
-    $Yote::DEBUG ||= $self->[LEVEL] == 2;
+    $Yote::DEBUG = 1; #$self->[LEVEL] == 2;
 #    $Yote::DEBUG2 ||= $self->[LEVEL] == 2;
 
-    my $LVL = ' * ' x (2-$self->[LEVEL]);
+    my $LVL = ' * ' x ($self->[LEVEL]);
     if( $Yote::DEBUG ) {
         print STDERR "$LVL after embiggen (item count $self->[ITEM_COUNT], $self->[LEVEL] {$self->[ID]})\n" ;
     }
 
-    print STDERR "$LVL after embiggen (item count $self->[ITEM_COUNT]/block size $BLOCK_SIZE * block count $BLOCK_COUNT =".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t$LVL SPLICE $offset,$remove_length,[".join(",",@vals)."]\n" if $Yote::DEBUG;
+    print STDERR "$LVL after embiggen [ID $self->[ID]] (item count $self->[ITEM_COUNT]/block size $BLOCK_SIZE * block count $BLOCK_COUNT =".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($self->[ITEM_COUNT]-1))."]\n\t$LVL SPLICE $offset,$remove_length,[".join(",",@vals)."]\n" if $Yote::DEBUG;
 
     
     if( $self->[LEVEL] == 0 ) {
@@ -603,13 +604,13 @@ sub SPLICE {
         $remove_length -= $can_remove;
 
         print STDERR "$LVL REMOVE (AF) $remove_length, idx $block_idx, off $block_off.\n\t$LVL FULL[".join(' ',map { $self->FETCH($_) || '.' } (0..($self->[ITEM_COUNT]-1)))."]\n\t$LVL CURB [".join(" ",@$block)."]\n\t$LVL REMD[".join(' ',@removed)."]\n" if $Yote::DEBUG;
-        
+        print STDERR Data::Dumper->Dump(["$self->[ITEM_COUNT] - 1/$BLOCK_SIZE ($Yote::DEBUG)"]);
         #
         # If this is the last block, then things are done.
         # Otherwise we have to clean up the vacuum and remove
         # more things
         #
-        if( $block_idx < $LAST_IDX ) {
+        if( $block_idx < int(($self->[ITEM_COUNT] - 1)/$BLOCK_SIZE) ) {
 
             my $vacuum = $BLOCK_SIZE - @$block;
             my $last_block = $block;
@@ -617,15 +618,19 @@ sub SPLICE {
             $block_idx++;
 
             # got to last block? deal with the vacuum and you're done
-            if( $block_idx == $LAST_IDX ) {
+            if( $block_idx == int(($self->[ITEM_COUNT] - 1)/$BLOCK_SIZE) ) {
                 my $block = $self->_getblock( $block_idx );
                 if( $block ) {
                     my $remove = $remove_length > @$block ? @$block : $remove_length;
                     push @removed, splice @$block, 0, $remove;
+                    $self->[ITEM_COUNT] -= $remove;
                 }
                 if( $vacuum ) {
                     splice @$last_block, scalar(@$last_block), 0, splice( @$block, 0, $vacuum );
+                    $self->[ITEM_COUNT] -= $vacuum;
                 }
+
+                
                 print STDERR "$LVL REMOVE (LAST) $remove_length, idx $block_idx, off $block_off.\n\t$LVL FULL[".join(' ',map { $self->FETCH($_) || '.' } (0..($self->[ITEM_COUNT]-1)))."]\n\t$LVL CURB [".join(" ",@$block)."]\n\t$LVL REMD[".join(' ',@removed)."]\n" if $Yote::DEBUG;
                 return @removed;
             }
@@ -643,7 +648,6 @@ sub SPLICE {
                 $remove_length -= $BLOCK_SIZE;
                 $self->[ITEM_COUNT] -= $BLOCK_SIZE;
                 print STDERR "$LVL REMOVE (WHOLB) $remove_length, idx $block_idx, off $block_off.\n\t$LVL FULL[".join(' ',map { $self->FETCH($_) || '.' } (0..($self->[ITEM_COUNT]-1)))."]\n\t$LVL CURB [".join(" ",@$block)."]\n\t$LVL REMD[".join(' ',@removed)."]\n" if $Yote::DEBUG;
-                
             }
 
             # not yet at last block? apply the vacuum to it until
@@ -670,7 +674,6 @@ sub SPLICE {
             # must be the last block
             my $block = $self->_getblock( $block_idx );
 
-            
             if( $block ) {
                 print STDERR "$LVL REMOVE  $remove_length (ATLAST) vac $vacuum $remove_length, idx $block_idx, off $block_off.\n\t$LVL FULL[".join(' ',map { $self->FETCH($_) || '.' } (0..($self->[ITEM_COUNT]-1)))."]\n\t$LVL CURB [".join(" ",@$block)."]\n\t$LVL REMD[".join(' ',@removed)."]\n" if $Yote::DEBUG;
                 my $remove = $remove_length > @$block ? @$block : $remove_length;
@@ -693,7 +696,7 @@ sub SPLICE {
         my $block_off = $offset % $BLOCK_SIZE;
         my $block     = $self->_getblock( $block_idx, 'C' );
 
-        $self->db("IN VALS at off $block_off", $block, \@vals, $offset, $remove_length );
+        $self->db("$LVL IN VALS at off $block_off", $block, \@vals, $offset, $remove_length );
         # insert into a partial block
         if( $block_off > 0 ) {
             my $insert_span = $BLOCK_SIZE - $block_off;
@@ -740,46 +743,43 @@ sub SPLICE {
         }
 
         # now have partial blocks to push the bubble upwards
-        if( @vals ) {
-            $LAST_IDX   = $ITEM_COUNT - 1;
-            while( $block_idx < $LAST_IDX ) {
-                $block = $self->_getblock( $block_idx, 'C' );
-                
-                if( @$block ) {
-                    $self->[ITEM_COUNT] -= @$block;
-                    push @vals, splice @$block, 0, scalar(@$block);
-
-                }
-                my $can_insert = $BLOCK_SIZE;
-                if( $can_insert > @vals ) {
-                    $can_insert = @vals;
-                }
-                
-                push @$block, splice @vals, 0, $can_insert;
-                $self->[ITEM_COUNT] += $can_insert;
-
-                $self->db("PARTIAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
-#                print STDERR "$LVL PARTIAL $block_idx / offset $block_off BS $BLOCK_SIZE ($self->[ITEM_COUNT]/$new_size/".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($new_size-1))."]\n\t$LVL CURBLK [".join(' ',map { $_ || '.' } @$block)."]\n\t$LVL SPLICE $offset,$remove_length,[".join(",",@vals)."]\n"  if $Yote::DEBUG;
-                
-                $block_idx++;
-                $LAST_IDX   = $ITEM_COUNT - 1;
-            } #while not on last block
+        while( @vals ) {
+            $block = $self->_getblock( $block_idx, 'C' );
             
-            $self->db("BEFOREFINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
+            if( @$block ) {
+                $self->[ITEM_COUNT] -= @$block;
+                push @vals, splice @$block, 0, scalar(@$block);
+
+            }
+            my $can_insert = $BLOCK_SIZE;
+            if( $can_insert > @vals ) {
+                $can_insert = @vals;
+            }
+            
+            push @$block, splice @vals, 0, $can_insert;
+            $self->[ITEM_COUNT] += $can_insert;
+
+            $self->db("PARTIAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
+            #                print STDERR "$LVL PARTIAL $block_idx / offset $block_off BS $BLOCK_SIZE ($self->[ITEM_COUNT]/$new_size/".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($new_size-1))."]\n\t$LVL CURBLK [".join(' ',map { $_ || '.' } @$block)."]\n\t$LVL SPLICE $offset,$remove_length,[".join(",",@vals)."]\n"  if $Yote::DEBUG;
+            
+            $block_idx++;
+        } #while vals
+        
+#            $self->db("BEFOREFINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
             
 #            print STDERR "$LVL BEFOREFINAL $block_idx ($self->[ITEM_COUNT]/$new_size/$BLOCK_SIZE/".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($new_size-1))."]\n\t$LVL CURBLK [".join(' ',map { $_ || '.' } @$block)."]\n\t$LVL SPLICE $offset,$remove_length,[".join(",",@vals)."]\n" if $Yote::DEBUG;
             
             # final block to push into
-            $block = $self->_getblock( $block_idx, 'C' );
-            splice @$block, 0, 0, @vals;
-            $self->[ITEM_COUNT] += @vals;
+           #  $block = $self->_getblock( $block_idx, 'C' );
+           #  splice @$block, 0, 0, @vals;
+           #  $self->[ITEM_COUNT] += @vals;
             
 
-           $self->db("FINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
+           # $self->db("FINAL $block_idx (offset $block_off)", $block, \@vals, $offset, $remove_length );
             
 #            print STDERR "$LVL FINAL $block_idx ($self->[ITEM_COUNT]/$new_size/$BLOCK_SIZE/".($BLOCK_SIZE*$BLOCK_COUNT).")\n\t$LVL FULL[".join(" ",map { $self->FETCH($_) || '.' } 0..($new_size-1))."]\n\t$LVL CURBLK [".join(' ',map { $_ || '.' } @$block)."]\n" if $Yote::DEBUG;
-#                        $Yote::DEBUG2 = 0;
-        } # partial bubbling blocks
+        #                        $Yote::DEBUG2 = 0;
+#        } # partial bubbling blocks
     } # has vals
 
     return @removed;
