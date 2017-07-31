@@ -26,7 +26,7 @@ exit( 0 );
 sub test_suite {
 
     my $store = Yote::open_store( $dir );
-    my $yote_db = $store->{_DATASTORE};
+    my $yote_db = $store->{_YOTEDB};
     my $root_node = $store->fetch_root;
 
     $root_node->add_to_myList( { objy =>
@@ -56,7 +56,7 @@ sub test_suite {
 
     my $dup_store = Yote::open_store( $dir );
 
-    my $dup_db = $dup_store->{_DATASTORE};
+    my $dup_db = $dup_store->{_YOTEDB};
 
     $max_id = $dup_db->_max_id();
     is( $max_id, 6, "Number of things created in newly opened store" );
@@ -130,11 +130,11 @@ sub test_suite {
     undef $list_to_remove;
     undef $quickly_removed_obj;
 
-    my $keep_db = $store->{_DATASTORE}->_generate_keep_db('keep_tally');
+    my $keep_db = $store->{_YOTEDB}->_generate_keep_db('keep_tally');
 
-    my $truncated_things = [sort @{$store->{_DATASTORE}->_truncate_dbs( $keep_db, 'keep tally' ) }];
+    my $truncated_things = [sort @{$store->{_YOTEDB}->_truncate_dbs( $keep_db, 'keep tally' ) }];
 
-    my $purged_things = $store->{_DATASTORE}->_purge_objects( $keep_db, 'keep tally' );
+    my $purged_things = $store->{_YOTEDB}->_purge_objects( $keep_db, 'keep tally' );
 
     is_deeply( [sort @$truncated_things], [ sort $list_block_id, $quickly_removed_id ], "the list had been purged by the pop" );
     
@@ -192,15 +192,17 @@ sub test_suite {
         $confirm_hash{$letter} = $val;
         $val++;
     }
-
+    print STDERR Data::Dumper->Dump(["ZA"]);
     $store->stow_all;
+    print STDERR Data::Dumper->Dump(["ZAasfd"]);
 
     my $sup_store = Yote::open_store( $dir );
     $thash = $sup_store->fetch_root->get_test_hash;
-
+    print STDERR Data::Dumper->Dump(["FOSDF"]);
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
-
+    print STDERR Data::Dumper->Dump(["sdfasdf"]);
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
+    print STDERR Data::Dumper->Dump(["fasdf  sdfasdf"]);
 
     # array tests
     # listy test because
