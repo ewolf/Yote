@@ -657,6 +657,7 @@ sub SPLICE {
                 push @vals, splice @$block, $block_off, $avail_span;
             }
             push @$block, splice @vals, 0, $insert_span;
+
             $block_idx++;
         }
 
@@ -673,13 +674,19 @@ sub SPLICE {
         if( @vals ) {
             while( $block_idx < $BLOCK_COUNT ) {
                 $block = $self->_getblock( $block_idx, 'C' );
-                my $span = $BLOCK_SIZE;
-                if( $span > @vals ) {
-                    $span = @vals;
+                my $insert_span = $BLOCK_SIZE;
+                if( $insert_span > @vals ) {
+                    $insert_span = @vals;
                 }
-                
-                push @vals, splice @$block, $block_off, $span;
-                push @$block, splice @vals, 0, $span;
+                my $avail_span = @$block;
+                if( $avail_span > $insert_span ) {
+                    $avail_span = $insert_span;
+                }
+
+                if( $avail_span > 0 ) {
+                    push @vals, splice @$block, $block_off, $avail_span;
+                }
+                push @$block, splice @vals, 0, $insert_span;
                 $block_idx++;
             }
             # final block to push into

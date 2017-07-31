@@ -279,28 +279,30 @@ sub test_suite {
 } #test suite
 
 sub test_arry {
-    $Yote::Array::MAX_BLOCKS  = 4;
     my $store = Yote::open_store( $dir );
     my $root_node = $store->fetch_root;
-    my $arry = $root_node->get_arry( [ 1 .. 9 ] );
-    my $match = [ 1 .. 9 ];
-    is_deeply( $arry, $match, "INITIAL" );
+    for my $SZ (2..9) {
+        $Yote::Array::MAX_BLOCKS  = $SZ;
+        my $arry = $root_node->set_arry( [ 1 .. 9 ] );
+        my $match = [ 1 .. 9 ];
+        is_deeply( $arry, $match, "INITIAL $SZ" );
+        
+        my $a = shift @$arry;
+        my $m = shift @$match;
+        is( $a, $m, "SHIFT $SZ" );
+        is_deeply( $arry, $match, "AFTER SHIFT $SZ" );
+        
+        $a = pop @$arry;
+        $m = pop @$match;
+        is( $a, $m, "POP $SZ" );
+        is_deeply( $arry, $match, "AFTER POP $SZ" );
+        
+        my( @a ) = splice @$arry, 3, 4, ("A".."N");
+        my( @m ) = splice @$match, 3, 4, ("A".."N");
 
-    my $a = shift @$arry;
-    my $m = shift @$match;
-    is( $a, $m, "SHIFT" );
-    is_deeply( $arry, $match, "AFTER SHIFT" );
-
-    $a = pop @$arry;
-    $m = pop @$match;
-    is( $a, $m, "POP" );
-    is_deeply( $arry, $match, "AFTER POP" );
-
-    my( @a ) = splice @$arry, 3, 4, ("A".."N");
-    my( @m ) = splice @$match, 3, 4, ("A".."N");
-    is_deeply( $arry, $match, "AFTER SPLICE" );
-    is_deeply( \@a, \@m, "SPLICE return" );
-    
+        is_deeply( $arry, $match, "AFTER SPLICE $SZ" );
+        is_deeply( \@a, \@m, "SPLICE return $SZ" );
+    }
 }
 
 __END__
