@@ -1383,14 +1383,18 @@ sub SHIFT {
 }
 
 sub UNSHIFT {
-    my( $self, @vals ) = @_;
+    shift->_unshift(0,@_);
+}
+
+sub _unshift {
+    my( $self, $offset, @vals ) = @_;
 
     return unless @vals;
 
     my $newcount = $self->[ITEM_COUNT] + @vals;
     $self->_ensure_capacity( $newcount );
 
-    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( 0 );
+    my( $block, $tied_block, $block_idx, $block_start_idx ) = $self->_block( $offset );
 
     if( $self->[LEVEL] == 1 ) {
         while( @vals ) {
@@ -1430,9 +1434,55 @@ sub UNSHIFT {
 } #UNSHIFT
 
 sub SPLICE {
+    my( $self, $offset, $remove_length, @vals ) = @_;
+
+    my $delta = @vals - $remove_length;
+    if( $delta > 0 ) {
+        $self->_ensure_capacity( $self->[ITEM_COUNT] + $delta );
+    }
+    
+    # add things then remove them?
+    my $remove_from = $offset + @vals;
+
+    if( @vals ) {
+        $self->_unshift( $offset, @vals );
+    }
+
+    return unless $remove_length;
+
+    my( $startblock, $tied_startblock, $startblock_idx, $startblock_start_idx ) = $self->_block( $remove_from );
+    my( $endblock, $tied_startblock, $endblock_idx, $endblock_start_idx ) = $self->_block( $remove_from + $remove_length );
+
+    if( $startblock_idx == $endblock_idx ) {
+        $tied_startblock->SPLICE( $remove_from - $startblock_start_idx, $remove_length );
+        return;
+    }
+
+    my $size = $self->[BLOCK_SIZE];
+    
+    while( $endblock_idx - $startblock_idx > 1 ) {
+        splice @$blocks, $startblock_idx + 1, 1;
+        $endblock_idx--;
+        $endblock_start_idx -= $size;
+        $self->[ITEM_COUNT] -= $size;
+    }
+
+    my $needed_to_fill = $size - ($remove_from - $startblock_start_idx);
+
+    if( $remove_length > $needed_to_fill ) {
+
+        my $blocks = $self->[BLOCKS];
+    
+    } else {
+        
+    }
+    # [ . . . . x - - - ]
+
+    while( $needed_to_fill > 0 ) {
+        my $avail_in_next = 
+    }
+    
     # my( $self, $offset, $remove_length, @vals ) = @_;
-    # my $delta = @vals + $remove_length;
-    # return if $delta == 0;
 
     # # going to unshift it on to the offset, then remove and reshift
     # $self->_ensure_capacity( $delta + $self->[ITEM_COUNT] );
