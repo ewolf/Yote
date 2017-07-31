@@ -26,7 +26,6 @@ exit( 0 );
 sub test_suite {
 
     my $store = Yote::open_store( $dir );
-    my $yote_db = $store->{_YOTEDB};
     my $root_node = $store->fetch_root;
 
     $root_node->add_to_myList( { objy =>
@@ -41,6 +40,8 @@ sub test_suite {
                                       } ),
                         } ),
                                } );
+    my $il = $root_node->get_myList; my $tied = tied(@$il);
+
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
 
     $store->stow_all;
@@ -51,25 +52,15 @@ sub test_suite {
     #                   in the hash, a newobj in the obj
     # so 6 things
 
-    my $max_id = $yote_db->_max_id();
-    is( $max_id, 6, "Number of things created" );
-
     my $dup_store = Yote::open_store( $dir );
-
-    my $dup_db = $dup_store->{_YOTEDB};
-
-    $max_id = $dup_db->_max_id();
-    is( $max_id, 6, "Number of things created in newly opened store" );
 
     my $dup_root = $dup_store->fetch_root;
 
-    $max_id = $dup_db->_max_id();
-    is( $max_id, 6, "Number of things created in newly opened store" );
-
-    is( $dup_root->{ID}, $root_node->{ID} );
-    is_deeply( $dup_root->{DATA}, $root_node->{DATA} );
+    is( $dup_root->[Yote::Obj::ID], $root_node->[Yote::Obj::ID] );
+    is_deeply( $dup_root->[Yote::Obj::DATA], $root_node->[Yote::Obj::DATA] );
     is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in yote object" );
-        is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );
+    is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );
+
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_innerval,
         "This is an \\ inner `val\\`\n with Käse \\\ essen " );
     is( $dup_root->get_myList->[0]{objy}->get_someobj->get_binnerval, "`SPANXZ" );
@@ -111,15 +102,8 @@ sub test_suite {
 
     $store->stow_all;
 
-    is_deeply( $store->run_purger('keep_tally'), [], "none 4 deleted things recyled because the top non-weak reference is kept." );
-
-    undef $hash_in_list;
-
-    is_deeply( $store->run_purger('keep_tally'), [], "none 4 deleted things recyled because the top non-weak reference is kept." );
-    $hash_in_list = $list_to_remove->[0];
-
     my $quickly_removed_obj = $store->newobj( { soon => 'gone', bigstuff => ('x'x10000) } );
-    my $quickly_removed_id = $quickly_removed_obj->{ID};
+    my $quickly_removed_id = $quickly_removed_obj->[Yote::Obj::ID];
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
     $list_to_remove->[87] = "EIGHTYSEVEN";
 
@@ -130,34 +114,19 @@ sub test_suite {
     undef $list_to_remove;
     undef $quickly_removed_obj;
 
-    my $keep_db = $store->{_YOTEDB}->_generate_keep_db('keep_tally');
-
-    my $truncated_things = [sort @{$store->{_YOTEDB}->_truncate_dbs( $keep_db, 'keep tally' ) }];
-
-    my $purged_things = $store->{_YOTEDB}->_purge_objects( $keep_db, 'keep tally' );
-
-    is_deeply( [sort @$truncated_things], [ sort $list_block_id, $quickly_removed_id ], "the list had been purged by the pop" );
-    
-    is_deeply( [sort @$purged_things], [ sort $list_to_remove_id ], "the list had been purged by the pop" );    
-
-    is_deeply( $store->run_purger('keep_tally'), [], "list and last list contents had been removed removed. it is not referenced by other removed items that still have references." );
 
     undef $hash_in_list;
-
-    is_deeply( [ sort @{$store->run_purger('keep_tally')} ], [ sort $hash_in_list_id, $objy_id, $someobj_id, @bucket_in_hash_in_list ], "all remaining things that can't trace to the root are removed" );
 
     undef $dup_root;
 
     undef $root_node;
 
-    $store->run_purger('keep_tally');
+    ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
+    ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
+    ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
+    ok( ! $store->_fetch( $someobj_id ), "removed someobj still removed" );
 
-    ok( ! $store->fetch( $list_to_remove_id ), "removed list still removed" );
-    ok( ! $store->fetch( $hash_in_list_id ), "removed hash id still removed" );
-    ok( ! $store->fetch( $objy_id ), "removed objy still removed" );
-    ok( ! $store->fetch( $someobj_id ), "removed someobj still removed" );
-
-    $Yote::BigHash::SIZE = 7;
+    $Yote::Hash::SIZE = 7;
 
     my $thash = $store->fetch_root->get_test_hash({});
     # test for hashes large enough that subhashes are inside
@@ -202,8 +171,7 @@ sub test_suite {
 
     # array tests
     # listy test because
-    $Yote::ArrayGatekeeper::BLOCK_SIZE  = 4;
-    $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
+    $Yote::Array::MAX_BLOCKS  = 4;
     
      $root_node = $store->fetch_root;
     my $l = $root_node->get_listy( [] );
@@ -211,15 +179,19 @@ sub test_suite {
     push @$l, "ONE", "TWO";
     is_deeply( $l, ["ONE", "TWO"], "first push" );
     is( @$l, 2, "Size two" );
+    is( $#$l, 1, "last index 1" );
 
     push @$l, "THREE", "FOUR", "FIVE";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE"], "push 1" );
     is( @$l, 5, "Size five" );
+    is( $#$l, 4, "last index 1" );
+    print STDERR Data::Dumper->Dump([$l,"WIS"]);
 
     push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
+    print STDERR Data::Dumper->Dump([$l,"WIS"]);exit;
+
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"], "push 2" );
     is( @$l, 9, "Size nine" );
-
 
     push @$l, "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN"], "push 3" );
@@ -238,16 +210,17 @@ sub test_suite {
     push @$l, "TWENTY","TWENTYONE";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "push 6" );
     is( @$l, 21, "Size twentyone" );
-
+    print STDERR Data::Dumper->Dump([$l,"TINKER"]);
     my $v = shift @$l;
     is( $v, "ONE" );
+    print STDERR Data::Dumper->Dump([$l,"SOW"]);
     is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first shift" );
     is( @$l, 20, "Size twenty" );
-
+    print STDERR Data::Dumper->Dump([$l,"ELLE"]);
     push @$l, $v;
     is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "push 7" );
     is( @$l, 21, "Size twentyone again" );
-
+    print STDERR Data::Dumper->Dump([$l,"BLSO"]);
     unshift @$l, 'ZERO';
 
     is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
@@ -293,7 +266,7 @@ sub test_suite {
     @{$l} = ();
     is( $#$l, -1, "last after clear" );
     is( scalar(@$l), 0, "size after clear" );
-
+    if(0){
     push @$l, 0..10000;
     $store->stow_all;
     my $other_store = Yote::open_store( $dir );
@@ -301,7 +274,7 @@ sub test_suite {
     my $ol = $root_node->get_listy( [] );
 
     is_deeply( $l, $ol, "lists compare" );
-    
+    }
 } #test suite
 
 
