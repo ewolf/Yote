@@ -175,17 +175,14 @@ sub test_suite {
     ok( ! exists($thash->{A}), "deleting hash value works" );
     $thash->{G} = "GG";
     
-    print STDERR Data::Dumper->Dump([keys %$thash,"ARF"]);
     is_deeply( [sort keys %$thash], ["B".."G"], "hash keys works for the simpler hashes" );
 
-    print STDERR ("-"x77)."\n";
-    
     # now stuff enough there so that the hashes must overflow
     ( @alpha ) = ("AA".."ZZ");
     for my $letter (@alpha) {
         $thash->{$letter} = $val++;
     }
-    print STDERR Data::Dumper->Dump([[sort keys %$thash],'DOOKU']);
+
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
     
 } #test suite
