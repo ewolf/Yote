@@ -548,14 +548,12 @@ sub __get_id {
     die "__get_id requires reference. got '$ref'" unless $class;
 
     if( $class eq 'Yote::Array') {
-        print STDERR " GET ID FOR (Yote::Array) $ref --> $ref->[0]\n";
         return $ref->[0];
     }
     elsif( $class eq 'ARRAY' ) {
         my $tied = tied @$ref;
         if( $tied ) {
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( "ARRAY" );
-            print STDERR " GET ID FOR (ARRAY) $ref --> $tied->[0]\n";
             return $tied->[0];
         }
         my( @data ) = @$ref;
@@ -564,11 +562,9 @@ sub __get_id {
         push( @$ref, @data ) if @data;
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
-        print STDERR " GET ID FOR gatekeeper $ref --> $id\n";
         return $id;
     }
     elsif( $class eq 'Yote::Hash' || $class eq 'Yote::BigHash' ) {
-        print STDERR " RETURN ID FOR $class $ref --> $ref->[0]\n";
         return $ref->[0];
     }
     elsif( $class eq 'HASH' ) {
@@ -576,7 +572,6 @@ sub __get_id {
         if( $tied ) {
             my $useclass = ref($tied) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
             $tied->[0] ||= $self->{_DATASTORE}->_get_id( $useclass );
-            print STDERR " GET ID FOR $useclass $ref --> $tied->[0]\n";
             return $tied->[0];
         } else {
             $class = 'Yote::BigHash';
@@ -591,19 +586,15 @@ sub __get_id {
         }
         $self->_dirty( $ref, $id );
         $self->_store_weak( $id, $ref );
-        print STDERR " GET ID FOR $class $ref --> $id\n";
         return $id;
     }
     else {
-        print STDERR " already RETURNING ID --> $ref->{ID}\n"if $ref->{ID};
         return $ref->{ID} if $ref->{ID};
         if( $class eq 'Yote::Root' ) {
             $ref->{ID} = $self->{_DATASTORE}->_first_id( $class );
         } else {
             $ref->{ID} ||= $self->{_DATASTORE}->_get_id( $class );
-            print STDERR " GET ID FOR $class $ref --> $ref->{ID}\n";
         }
-        print STDERR " RETURNING ID --> $ref->{ID}\n";
         return $ref->{ID};
     }
 
@@ -620,11 +611,13 @@ sub _stow {
     my( $text_rep, $data ) = $self->_raw_data( $obj );
 
     if( $class eq 'ARRAY' ) {
-        $self->{_DATASTORE}->_stow( $id,'ARRAY', $text_rep );
+        my $useClass = ref( tied( @$obj ) ) eq 'Yote::ArrayGatekeeper' ? 'Yote::ArrayGatekeeper' : 'ARRAY';
+        $self->{_DATASTORE}->_stow( $id,$useClass, $text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'HASH' ) {
-        $self->{_DATASTORE}->_stow( $id,'HASH',$text_rep );
+        my $useClass = ref( tied( %$obj ) ) eq 'Yote::BigHash' ? 'Yote::BigHash' : 'HASH';
+        $self->{_DATASTORE}->_stow( $id,$useClass,$text_rep );
         $self->_clean( $id );
     }
     elsif( $class eq 'Yote::Array' ) {
@@ -1245,7 +1238,7 @@ sub _ensure_capacity {
         # one into the new gatekeeper
         #
         my $new_id = $store->{_DATASTORE}->_get_id( 'Yote::ArrayGatekeeper' );
-        print STDERR " NEW GATEKEEPER WITH ID --> $new_id\n";
+
         my $newkeeper = [];
         tie @$newkeeper, 'Yote::ArrayGatekeeper', $store, $new_id, $self->[ITEM_COUNT], $self->[BLOCK_COUNT], $self->[BLOCK_SIZE], $self->[LEVEL], @{$self->[BLOCKS]};
 
@@ -1284,7 +1277,6 @@ sub _block {
     } elsif( $self->[LEVEL] == 1 ) {
         $block = [];
         my $block_id = $store->{_DATASTORE}->_get_id( "ARRAY" );
-        print STDERR " NEW ARRAY BLOCK WITH ID --> $block_id\n";
         tie @$block, 'Yote::Array', $store, $block_id;
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
@@ -1296,7 +1288,6 @@ sub _block {
 
         $block = [];
         my $block_id = $store->{_DATASTORE}->_get_id( "Yote::ArrayGatekeeper" );
-        print STDERR " NEW ARRAY Gatekeeper BLOCK WITH ID --> $block_id\n";
         tie @$block, 'Yote::ArrayGatekeeper', $store, $block_id, 0, $firstblock->[BLOCK_COUNT], $firstblock->[BLOCK_SIZE], $firstblock->[LEVEL];
         $store->_store_weak( $block_id, $block );
         $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$block_id}, $block_id );
@@ -2080,8 +2071,8 @@ sub _generate_keep_db {
         my $obj_arry = $self->_fetch( $check_id );
         $seen{$check_id} = 1;
         my( @additions );
-        print STDERR Data::Dumper->Dump([ref($obj_arry->[DATA]),$obj_arry->[CLS],"FSDFO"]);
-        if( $obj_arry->[CLS] eq 'HASH' || $obj_arry->[CLS] eq 'Yote::BigHash' ) {
+
+        if( $obj_arry->[CLS] eq 'Yote::BigHash' ) {
             my $type = shift @{$obj_arry->[DATA]};
             shift @{$obj_arry->[DATA]}; #remove the size
             if( $type eq 'S' ) {
@@ -2090,6 +2081,13 @@ sub _generate_keep_db {
             } else { #BIG type
                 ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$obj_arry->[DATA]};
             }
+        }
+        elsif ( $obj_arry->[CLS] eq 'Yote::ArrayGatekeeper' ) {
+            shift @{$obj_arry->[DATA]}; #item_count
+            shift @{$obj_arry->[DATA]}; #block_count
+            shift @{$obj_arry->[DATA]}; #block_size
+            shift @{$obj_arry->[DATA]}; #level
+            ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$obj_arry->[DATA]};
         }
         elsif ( ref( $obj_arry->[DATA] ) eq 'ARRAY' ) {
             ( @additions ) = grep { /^[^v]/ && ! $seen{$_}++ } @{$obj_arry->[DATA]};

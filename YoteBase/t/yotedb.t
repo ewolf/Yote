@@ -43,8 +43,6 @@ sub test_suite {
                                } );
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
 
-    print STDERR Data::Dumper->Dump([$store,"ALLIZ"]);
-    
     $store->stow_all;
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
@@ -94,6 +92,9 @@ sub test_suite {
 
     my $hash_in_list = $list_to_remove->[0];
 
+    my $ltied = tied @$list_to_remove;
+    my $list_block_id = $ltied->[1][0];
+    
     my $list_to_remove_id = $store->_get_id( $list_to_remove );
     my $hash_in_list_id   = $store->_get_id( $hash_in_list );
 
@@ -131,8 +132,10 @@ sub test_suite {
 
     my $keep_db = $store->{_DATASTORE}->_generate_keep_db('keep_tally');
 
-    is_deeply( [sort @{$store->{_DATASTORE}->_truncate_dbs( $keep_db, 'keep tally' ) }], [ sort $list_to_remove_id, $quickly_removed_id ], "the last thing added is caught by the truncator" );
-    is_deeply( $store->{_DATASTORE}->_purge_objects( $keep_db, 'keep tally' ), [], "the list had been purged by the pop" );
+    my $truncated_things = [sort @{$store->{_DATASTORE}->_truncate_dbs( $keep_db, 'keep tally' ) }];
+    my $purged_things = $store->{_DATASTORE}->_purge_objects( $keep_db, 'keep tally' );
+
+    is_deeply( [sort @$purged_things, @$truncated_things], [ sort $list_to_remove_id, $list_block_id, $quickly_removed_id ], "the list had been purged by the pop" );    
 
     is_deeply( $store->run_purger('keep_tally'), [], "list and last list contents had been removed removed. it is not referenced by other removed items that still have references." );
 
@@ -198,11 +201,10 @@ sub test_suite {
 
     # array tests
     # listy test because
-    print STDERR Data::Dumper->Dump(["------------------------------------"]);
-
     $Yote::ArrayGatekeeper::BLOCK_SIZE  = 4;
     $Yote::ArrayGatekeeper::BLOCK_COUNT = 4;
-
+    
+     $root_node = $store->fetch_root;
     my $l = $root_node->get_listy( [] );
 
     push @$l, "ONE", "TWO";
@@ -290,11 +292,6 @@ sub test_suite {
     @{$l} = ();
     is( $#$l, -1, "last after clear" );
     is( scalar(@$l), 0, "size after clear" );
-#    print STDERR Data::Dumper->Dump([$store,"STOOR"]);
-
-#    print STDERR Data::Dumper->Dump([$l,tied @$l,"LL ($l)"]);
-
-    print STDERR Data::Dumper->Dump(["------------------------------------"]);
 
 } #test suite
 
