@@ -6,123 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '2.03';
-
-=head1 NAME
-
-Yote - Persistant Perl container objects in a directed graph of lazilly loaded nodes.
-
-=head1 DESCRIPTION
-
-This is for anyone who wants to store arbitrary structured state data and doesn't have
-the time or inclination to write a schema or configure some framework. This can be used
-orthagonally to any other storage system.
-
-Yote only loads data as it needs too. It does not load all stored containers at once.
-Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote
-container is a key/value store where the values can be strings, numbers, arrays, hashes
-or other Yote containers.
-
-The entry point for all Yote data stores is the root node. All objects in the store are
-unreachable if they cannot trace a reference path back to this node. If they cannot, running
-compress_store will remove them.
-
-There are lots of potential uses for Yote, and a few come to mind :
-
- * configuration data
- * data modeling
- * user preference data
- * user account data
- * game data
- * shopping carts
- * product information
-
-=head1 SYNOPSIS
-
- use Yote;
-
- my $store = Yote::open_store( '/path/to/data-directory' );
-
- my $root_node = $store->fetch_root;
-
- $root_node->add_to_myList( $store->newobj( {
-    someval  => 123.53,
-    somehash => { A => 1 },
-    someobj  => $store->newobj( { foo => "Bar" },
-                'Optional-Yote-Subclass-Package' );
- } );
-
- # the root node now has a list 'myList' attached to it with the single
- # value of a yote object that yote object has two fields,
- # one of which is an other yote object.
-
- $root_node->add_to_myList( 42 );
-
- #
- # New Yote container objects are created with $store->newobj. Note that
- # they must find a reference path to the root to be protected from
- # being deleted from the record store upon compression.
- #
- my $newObj = $store->newobj;
-
- $root_node->set_field( "Value" );
-
- my $val = $root_node->get_value( "default" );
- # $val eq 'default'
-
- $val = $root_node->get_value( "Somethign Else" );
- # $val eq 'default' (old value not overridden by a new default value)
-
-
- my $otherval = $root_node->get( 'ot3rv@l', 'other default' );
- # $otherval eq 'other default'
-
- $root_node->set( 'ot3rv@l', 'newy valuye' );
- $otherval2 = $root_node->get( 'ot3rv@l', 'yet other default' );
- # $otherval2 eq 'newy valuye'
-
- $root_node->set_value( "Something Else" );
-
- my $val = $root_node->get_value( "default" );
- # $val eq 'Something Else'
-
- my $myList = $root_node->get_myList;
-
- for my $example (@$myList) {
-    print ">$example\n";
- }
-
- #
- # Each object gets a unique ID which can be used to fetch that
- # object directly from the store.
- #
- my $someid = $root_node->get_someobj->{ID};
-
- my $someref = $store->fetch( $someid );
-
- #
- # Even hashes and array have unique yote IDS. These can be
- # determined by calling the _get_id method of the store.
- #
- my $hash = $root_node->set_ahash( { zoo => "Zar" } );
- my $hash_id = $store->_get_id( $hash );
- my $other_ref_to_hash = $store->fetch( $hash_id );
-
- #
- # Anything that cannot trace a reference path to the root
- # is eligable for being removed upon compression.
- #
-
-=head1 PUBLIC METHODS
-
-=cut
-
-
-=head2 open_store( '/path/to/directory' )
-
-Starts up a persistance engine and returns it.
-
-=cut
+$VERSION = '3.0';
 
 sub open_store {
     my $path = pop;
@@ -145,35 +29,24 @@ use File::Copy;
 use File::Path qw(make_path remove_tree);
 use Scalar::Util qw(weaken);
 
-use Module::Loaded;
+use constant {
+    # HASH AND ARRAY
+    ID          => 0,
+    DATA        => 1,
+    DSTORE      => 2,
+    LEVEL       => 3,
 
-=head1 NAME
+    # ARRAY
+    BLOCK_COUNT => 4,
+    BLOCK_SIZE  => 5,
+    ITEM_COUNT  => 6,
 
- Yote::ObjStore - manages Yote::Obj objects in a graph.
+    # HASH
+    BUCKETS => 4,
+    SIZE    => 5,
+    NEXT    => 6,
 
-=head1 DESCRIPTION
-
-The Yote::ObjStore does the following things :
-
- * fetches the root object
- * creates new objects
- * fetches existing objects by id
- * saves all new or changed objects
- * finds objects that cannot connect to the root node and removes them
-
-=cut
-
-# ------------------------------------------------------------------------------------------
-#      * PUBLIC CLASS METHODS *
-# ------------------------------------------------------------------------------------------
-
-=head2 fetch_root
-
- Returns the root node of the graph. All things that can be
-trace a reference path back to the root node are considered active
-and are not removed when the object store is compressed.
-
-=cut
+};
 sub fetch_root {
     my $self = shift;
     die "fetch_root must be called on Yote store object" unless ref( $self );
@@ -186,18 +59,6 @@ sub fetch_root {
     $root;
 } #fetch_root
 
-=head2 newobj( { ... data .... }, optionalClass )
-
- Creates a container object initialized with the
- incoming hash ref data. The class of the object must be either
- Yote::Obj or a subclass of it. Yote::Obj is the default.
-
- Once created, the object will be saved in the data store when
- $store->stow_all has been called.  If the object is not attached
- to the root or an object that can be reached by the root, it will be
- remove when Yote::ObjStore::Compress is called.
-
-=cut
 sub newobj {
     my( $self, $data, $class ) = @_;
     $class ||= 'Yote::Obj';
@@ -209,12 +70,6 @@ sub _newroot {
     Yote::Obj->_new( $self, {}, $self->_first_id );
 }
 
-=head2 copy_from_remote_store( $obj )
-
- This takes an object that belongs to a seperate store and makes
- a deep copy of it.
-
-=cut
 sub copy_from_remote_store {
     my( $self, $obj ) = @_;
     my $r = ref( $obj );
@@ -229,24 +84,11 @@ sub copy_from_remote_store {
     }
 }
 
-=head2 cache_all()
-
- This turns on caching for the store. Any objects loaded will
- remain cached until clear_cache is called. Normally, they
- would be DESTROYed once their last reference was removed unless
- they are in a state that needs stowing.
-
-=cut
 sub cache_all {
     my $self = shift;
     $self->{CACHE_ALL} = 1;
 }
 
-=head2 uncache( obj )
-
-  This removes the object from the cache if it was in the cache
-
-=cut
 sub uncache {
     my( $self, $obj ) = @_;
     if( ref( $obj ) ) {
@@ -256,36 +98,18 @@ sub uncache {
 
 
 
-=head2 pause_cache()
 
- When called, no new objects will be added to the cache until
- cache_all is called.
-
-=cut
 sub pause_cache {
     my $self = shift;
     $self->{CACHE_ALL} = 0;
 }
 
-=head2 clear_cache()
-
- When called, this dumps the object cache. Objects that
- references or have changes that need to be stowed will
- not be cleared.
-
-=cut
 sub clear_cache {
     my $self = shift;
     $self->{_CACHE} = {};
 }
 
 
-
-=head2 fetch( $id )
-
- Returns the object with the given id.
-
-=cut
 sub fetch {
     my( $self, $id ) = @_;
     return undef unless $id;
@@ -314,7 +138,7 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
-            tie %hash, 'Yote::Hash', $self, $id, %$data;
+            tie %hash, 'Yote::Hash', $self, $id, @$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -328,7 +152,7 @@ sub fetch {
                 $obj = $self->{_WEAK_REFS}{$id} || $class->_instantiate( $id, $self );
             };
             die $@ if $@;
-            $obj->{DATA} = $data;
+            $obj->{DATA} = { @$data };
             $obj->{ID} = $id;
             $self->_store_weak( $id, $obj );
             $obj->_load();
@@ -536,13 +360,13 @@ sub __get_id {
     die "__get_id requires reference. got '$ref'" unless $class;
 
     if( $class eq 'Yote::Array') {
-        return $ref->[0];
+        return $ref->[ID];
     }
     elsif( $class eq 'ARRAY' ) {
         my $tied = tied @$ref;
         if( $tied ) {
-            $tied->[0] ||= $self->{_YOTEDB}->_get_id( "ARRAY" );
-            return $tied->[0];
+            $tied->[ID] ||= $self->{_YOTEDB}->_get_id( "ARRAY" );
+            return $tied->[ID];
         }
         my( @data ) = @$ref;
         my $id = $self->{_YOTEDB}->_get_id( $class );
@@ -553,14 +377,14 @@ sub __get_id {
         return $id;
     }
     elsif( $class eq 'Yote::Hash' ) {
-        return $ref->[0];
+        return $ref->[ID];
     }
     elsif( $class eq 'HASH' ) {
         my $tied = tied %$ref;
         if( $tied ) {
             my $useclass = 'HASH';
-            $tied->[0] ||= $self->{_YOTEDB}->_get_id( $useclass );
-            return $tied->[0];
+            $tied->[ID] ||= $self->{_YOTEDB}->_get_id( $useclass );
+            return $tied->[ID];
         } else {
             $class = 'Yote::Hash';
         }
@@ -681,37 +505,29 @@ sub _raw_data {
     my $id = $self->_get_id( $obj );
     die unless $id;
 
-    if( $class eq 'ARRAY' ) {
-        my $tied = tied @$obj;
-        my $r = $tied->[1];
-        elsif( ref( $tied ) eq 'Yote::Array' ) {
-            return join( "`", $tied->[6], $tied->[4], $tied->[5], $tied->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
+    if( $class eq 'ARRAY' || $class eq 'Yote::Array' ) {
+        my $tied = $class eq 'ARRAY' ? tied( @$obj ) : $obj;
+        my $r = $tied->[ID];
+        if( ref( $tied ) eq 'Yote::Array' ) {
+            return join( "`", $tied->[LEVEL], $tied->[ITEM_COUNT], $tied->[BLOCK_COUNT], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
         }
         else {
-            die;
+            die "Unknown class '$class' for yote ARRAY reference. Must be Yote::Array";
         }
     }
-    elsif( $class eq 'HASH' ) {
-        my $tied = tied %$obj;
-        my $r = $tied->[1];
+    elsif( $class eq 'HASH' || $class eq 'Yote::Hash' ) {
+        my $tied = $class eq 'HASH' ? tied( %$obj ) : $obj;
+        my $r = $tied->[ID];
         if( ref( $tied ) eq 'Yote::Hash' ) {
-            if( $tied->[3] ) {
-                # has an array rather than hash
-                return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
+            if( $tied->[LEVEL] ) {
+                # has an array of buckets rather than a simple hash
+                return join( "`", $tied->[LEVEL], $tied->[BUCKETS], $tied->[SIZE], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
             }
-            return join( "`", $tied->[3], $tied->[4], $tied->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
+            return join( "`", $tied->[LEVEL], $tied->[BUCKETS], $tied->[SIZE], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
         }
         else {
-            die;
+            die "Unknown class '$class' for yote HASH reference. Must be Yote::Hash";
         }
-    }
-    elsif( $class eq 'Yote::Array' ) {
-        my $r = $obj->[1];
-        return join( "`", $obj->[6], $obj->[4], $obj->[5], $obj->[7], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @$r ), $r;
-    }
-    elsif( $class eq 'Yote::Hash' ) {
-        my $r = $obj->[1];
-        return join( "`", $obj->[3], $obj->[4], $obj->[5], map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %$r ), $r;
     }
     else {
         my $r = $obj->{DATA};
@@ -1368,7 +1184,7 @@ sub EXTEND {
 
 sub DESTROY {
     my $self = shift;
-    delete $self->[2]->{_WEAK_REFS}{$self->[0]};
+    delete $self->[DSTORE]->{_WEAK_REFS}{$self->[ID]};
 }
 
 # ---------------------------------------------------------------------------------------
@@ -1391,14 +1207,15 @@ use Tie::Hash;
 $Yote::Hash::SIZE = 977;
 
 use constant {
-    ID      => 0,
-    DATA    => 1,
-    DSTORE  => 2,
-    LEVEL   => 3,
-    BUCKETS => 4,
-    SIZE    => 5,
-    NEXT    => 6,
+    ID          => 0,
+    DATA        => 1,
+    DSTORE      => 2,
+    LEVEL       => 3,
+    BUCKETS     => 4,
+    SIZE        => 5,
+    NEXT        => 6,
 };
+
 
 sub TIEHASH {
     my( $class, $obj_store, $id, $level, $buckets, $size, @fetch_buckets ) = @_;
@@ -1726,15 +1543,7 @@ sub _fetch {
       $parts = $newparts;
   }
 
-  if( $class eq 'Yote::Hash' ) {
-      $ret->[DATA] = $parts;
-  }
-  elsif( $class eq 'ARRAY' || $class eq 'Yote::Array' ) {
-      $ret->[DATA] = $parts;
-  }
-  else {
-      $ret->[DATA] = { @$parts };
-  }
+  $ret->[DATA] = $parts;
 
   $ret;
 } #_fetch
@@ -1945,6 +1754,185 @@ sub _stow_all {
 1;
 
 __END__
+
+=head1 NAME
+
+Yote - Persistant Perl container objects in a directed graph of lazilly loaded nodes.
+
+=head1 DESCRIPTION
+
+This is for anyone who wants to store arbitrary structured state data and doesn't have
+the time or inclination to write a schema or configure some framework. This can be used
+orthagonally to any other storage system.
+
+Yote only loads data as it needs too. It does not load all stored containers at once.
+Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote
+container is a key/value store where the values can be strings, numbers, arrays, hashes
+or other Yote containers.
+
+The entry point for all Yote data stores is the root node. All objects in the store are
+unreachable if they cannot trace a reference path back to this node. If they cannot, running
+compress_store will remove them.
+
+There are lots of potential uses for Yote, and a few come to mind :
+
+ * configuration data
+ * data modeling
+ * user preference data
+ * user account data
+ * game data
+ * shopping carts
+ * product information
+
+=head1 SYNOPSIS
+
+ use Yote;
+
+ my $store = Yote::open_store( '/path/to/data-directory' );
+
+ my $root_node = $store->fetch_root;
+
+ $root_node->add_to_myList( $store->newobj( {
+    someval  => 123.53,
+    somehash => { A => 1 },
+    someobj  => $store->newobj( { foo => "Bar" },
+                'Optional-Yote-Subclass-Package' );
+ } );
+
+ # the root node now has a list 'myList' attached to it with the single
+ # value of a yote object that yote object has two fields,
+ # one of which is an other yote object.
+
+ $root_node->add_to_myList( 42 );
+
+ #
+ # New Yote container objects are created with $store->newobj. Note that
+ # they must find a reference path to the root to be protected from
+ # being deleted from the record store upon compression.
+ #
+ my $newObj = $store->newobj;
+
+ $root_node->set_field( "Value" );
+
+ my $val = $root_node->get_value( "default" );
+ # $val eq 'default'
+
+ $val = $root_node->get_value( "Somethign Else" );
+ # $val eq 'default' (old value not overridden by a new default value)
+
+
+ my $otherval = $root_node->get( 'ot3rv@l', 'other default' );
+ # $otherval eq 'other default'
+
+ $root_node->set( 'ot3rv@l', 'newy valuye' );
+ $otherval2 = $root_node->get( 'ot3rv@l', 'yet other default' );
+ # $otherval2 eq 'newy valuye'
+
+ $root_node->set_value( "Something Else" );
+
+ my $val = $root_node->get_value( "default" );
+ # $val eq 'Something Else'
+
+ my $myList = $root_node->get_myList;
+
+ for my $example (@$myList) {
+    print ">$example\n";
+ }
+
+ #
+ # Each object gets a unique ID which can be used to fetch that
+ # object directly from the store.
+ #
+ my $someid = $root_node->get_someobj->{ID};
+
+ my $someref = $store->fetch( $someid );
+
+ #
+ # Even hashes and array have unique yote IDS. These can be
+ # determined by calling the _get_id method of the store.
+ #
+ my $hash = $root_node->set_ahash( { zoo => "Zar" } );
+ my $hash_id = $store->_get_id( $hash );
+ my $other_ref_to_hash = $store->fetch( $hash_id );
+
+ #
+ # Anything that cannot trace a reference path to the root
+ # is eligable for being removed upon compression.
+ #
+
+=head1 PUBLIC METHODS
+
+=head2 open_store( '/path/to/directory' )
+
+Starts up a persistance engine and returns it.
+
+=head1 NAME
+
+ Yote::ObjStore - manages Yote::Obj objects in a graph.
+
+=head1 DESCRIPTION
+
+The Yote::ObjStore does the following things :
+
+ * fetches the root object
+ * creates new objects
+ * fetches existing objects by id
+ * saves all new or changed objects
+ * finds objects that cannot connect to the root node and removes them
+
+=head2 fetch_root
+
+ Returns the root node of the graph. All things that can be
+trace a reference path back to the root node are considered active
+and are not removed when the object store is compressed.
+
+=cut
+
+=head2 newobj( { ... data .... }, optionalClass )
+
+ Creates a container object initialized with the
+ incoming hash ref data. The class of the object must be either
+ Yote::Obj or a subclass of it. Yote::Obj is the default.
+
+ Once created, the object will be saved in the data store when
+ $store->stow_all has been called.  If the object is not attached
+ to the root or an object that can be reached by the root, it will be
+ remove when Yote::ObjStore::Compress is called.
+
+=head2 copy_from_remote_store( $obj )
+
+ This takes an object that belongs to a seperate store and makes
+ a deep copy of it.
+
+=head2 cache_all()
+
+ This turns on caching for the store. Any objects loaded will
+ remain cached until clear_cache is called. Normally, they
+ would be DESTROYed once their last reference was removed unless
+ they are in a state that needs stowing.
+
+=head2 uncache( obj )
+
+  This removes the object from the cache if it was in the cache
+
+=head2 pause_cache()
+
+ When called, no new objects will be added to the cache until
+ cache_all is called.
+
+=head2 clear_cache()
+
+ When called, this dumps the object cache. Objects that
+ references or have changes that need to be stowed will
+ not be cleared.
+
+=cut
+=head2 fetch( $id )
+
+ Returns the object with the given id.
+
+=cut
+
 
 =head1 AUTHOR
        Eric Wolf        coyocanid@gmail.com
