@@ -153,10 +153,13 @@ sub test_suite {
     my $thash = $store->fetch_root->get_test_hash({});
     # test for hashes large enough that subhashes are inside
 
+    my( %confirm_hash );
     my( @alpha ) = ("A".."G");
     my $val = 1;
     for my $letter (@alpha) {
-        $thash->{$letter} = $val++;
+        $thash->{$letter} = $val;
+        $confirm_hash{$letter} = $val;
+        $val++;
     }
 
     $val = 1;
@@ -166,15 +169,19 @@ sub test_suite {
     $thash->{A} = 100;
     is( $thash->{A}, 100, "overriding hash value works" );
     delete $thash->{A};
+    delete $confirm_hash{A};
     ok( ! exists($thash->{A}), "deleting hash value works" );
     $thash->{G} = "GG";
+    $confirm_hash{G} = "GG";
 
     is_deeply( [sort keys %$thash], ["B".."G"], "hash keys works for the simpler hashes" );
 
     # now stuff enough there so that the hashes must overflow
     ( @alpha ) = ("AA".."ZZ");
     for my $letter (@alpha) {
-        $thash->{$letter} = $val++;
+        $thash->{$letter} = $val;
+        $confirm_hash{$letter} = $val;
+        $val++;
     }
 
     $store->stow_all;
@@ -183,7 +190,8 @@ sub test_suite {
     $thash = $sup_store->fetch_root->get_test_hash;
 
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
-    
+
+    is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
 } #test suite
 
 

@@ -1219,7 +1219,7 @@ sub STORE {
             #convert to buckets
             $self->[DATA] = [];
             for my $key (keys %$data) {
-                $self->STORE( $key, $data->{$key} );
+                $self->STORE( $key, $store->_xform_out($data->{$key}) );
             }
         }
         
