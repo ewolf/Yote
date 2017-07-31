@@ -314,7 +314,7 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
-            tie %hash, 'Yote::Hash', $self, $id, map { $_ => $data->{$_} } keys %$data;
+            tie %hash, 'Yote::Hash', $self, $id, @$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -693,6 +693,7 @@ sub _raw_data {
         my $tied = tied %$obj;
         if( $tied ) {
             $r = $tied->[1];
+            $is_array = 1;
         } else {
             die;
         }
@@ -703,6 +704,7 @@ sub _raw_data {
     }
     elsif( $class eq 'Yote::Hash' ) {
         $r = $obj->[1];
+        $is_array = 1;
     }
     else {
         $r = $obj->{DATA};
@@ -820,15 +822,16 @@ sub set {
 sub get {
     my( $self, $fld, $default ) = @_;
     my $cur = $self->{DATA}{$fld};
+    my $store = $self->{STORE};
     if( ! defined( $cur ) && defined( $default ) ) {
         if( ref( $default ) ) {
             # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
-            $self->{STORE}->_dirty( $default->{STORE}->_get_id( $default ) );
+            $store->_dirty( $store->_get_id( $default ) );
         }
-        $self->{STORE}->_dirty( $self, $self->{ID} );
-        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
+        $store->_dirty( $self, $self->{ID} );
+        $self->{DATA}{$fld} = $store->_xform_in( $default );
     }
-    return $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+    return $store->_xform_out( $self->{DATA}{$fld} );
 } #get
 
 
@@ -1018,6 +1021,7 @@ sub _instantiate {
 
 sub DESTROY {
     my $self = shift;
+
     delete $self->{STORE}{_WEAK_REFS}{$self->{ID}};
 }
 
@@ -1115,6 +1119,7 @@ sub DESTROY {
     delete $self->[2]->{_WEAK_REFS}{$self->[0]};
 }
 
+
 # ---------------------------------------------------------------------------------------
 
 package Yote::Hash;
@@ -1131,58 +1136,161 @@ no warnings 'uninitialized';
 
 use Tie::Hash;
 
+sub _bucket {
+    my( $self, $key, $return_undef ) = @_;
+    my $hval = 0;
+    foreach (split //, $key) {
+        $hval = $hval*33 - ord($_);
+    }
+    $hval = $hval % 977;
+    my $obj_id = $self->[1][$hval];
+    my $store = $self->[2];
+    unless( $obj_id ) {
+        return undef if $return_undef;
+        my $bucket = [];
+        my $id = $store->_get_id( $bucket );
+        $self->[1][$hval] = $id;
+        return $hval, $bucket;
+    }
+    $hval, $store->_xform_out( $obj_id );
+}
+
 sub TIEHASH {
-    my( $class, $obj_store, $id, %hash ) = @_;
-    my $storage = {};
+    my( $class, $obj_store, $id, @fetch_buckets ) = @_;
+    my $buckets = [ @fetch_buckets ];
     # after $obj_store is a list reference of
     #                 id, data, store
-    my $obj = bless [ $id, $storage,$obj_store ], $class;
-    for my $key (keys %hash) {
-        $storage->{$key} = $hash{$key};
-    }
+    my $obj = bless [ $id, $buckets, $obj_store, [] ], $class;
+
     return $obj;
 }
 
 sub STORE {
     my( $self, $key, $val ) = @_;
     $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    $self->[1]{$key} = $self->[2]->_xform_in( $val );
+    my( $bid, $bucket ) = $self->_bucket( $key );
+    if( ref( $bucket ) eq 'ARRAY' ) {
+        if( @$bucket > 977*2 ) {
+            my $store = $self->[2];
+            my $newbuck = {};
+            my $id = $store->_get_id( $newbuck );
+            tie @$newbuck, 'Yote::Hash', $store, $id;
+            $store->_dirty( $newbuck, $id );
+            $store->_store_weak( $id, $newbuck );
+            $newbuck->{$key} = $val;
+            $self->[1][$bid] = $id;
+            die "NOTYET";
+            return;
+        } 
+        for( my $i=0; $i<$#$bucket; $i+=2 ) {
+            if( $bucket->[$i] eq $key ) {
+                $bucket->[$i+1] = $val;
+                return;
+            }
+        }
+        push @$bucket, $key, $val;#self->[2]->_xform_in($val);
+    } else {
+        $bucket->{$key} = $val;
+    }
 }
 
 sub FIRSTKEY {
     my $self = shift;
-    my $a = scalar keys %{$self->[1]};
-    my( $k, $val ) = each %{$self->[1]};
-    return wantarray ? ( $k => $val ) : $k;
+    @{ $self->[3] } = ( undef, undef );
+    return $self->NEXTKEY;
 }
 sub NEXTKEY  {
     my $self = shift;
-    my( $k, $val ) = each %{$self->[1]};
-    return wantarray ? ( $k => $val ) : $k;
+    my $buckets = $self->[1];
+    my $store   = $self->[2];
+    my $current = $self->[3];
+
+    my( $bucket_idx, $idx_in_bucket ) = @$current;
+    my $bucket = defined( $bucket_idx ) ? $store->_xform_out($buckets->[$bucket_idx]) : undef;
+    
+    if( ! defined( $bucket ) || @$bucket <= $idx_in_bucket ) { #FIRSTKEY case or exhausted bucket case
+        $idx_in_bucket = 0;
+        # find the first valid bucket
+        for( ; $bucket_idx < @$buckets; $bucket_idx++ ) {
+            if( $buckets->[$bucket_idx]) {
+                $bucket = $store->_xform_out( $buckets->[$bucket_idx] );
+                last if @$bucket;
+            }
+        }
+        if( $bucket ) {
+            @$current = ( $bucket_idx, 2 );
+            return $bucket->[0];
+        } else {
+            @$current = ( undef, undef );
+            return undef;
+        }
+    }
+
+    @$current = ( $bucket_idx, $idx_in_bucket+2 );
+    return $bucket->[$idx_in_bucket];
 }
 
 sub FETCH {
     my( $self, $key ) = @_;
-    return $self->[2]->_xform_out( $self->[1]{$key} );
+    my( $bid, $bucket ) = $self->_bucket( $key );
+    if( ref( $bucket ) eq 'ARRAY' ) {
+        for( my $i=0; $i<$#$bucket; $i+=2 ) {
+            if( $bucket->[$i] eq $key ) {
+                return $bucket->[$i+1];
+            }
+        }
+    } else {
+        return $bucket->{$key}; #self->[2]->_xform_out( $bucket->{$key} );
+    }
 }
 
 sub EXISTS {
     my( $self, $key ) = @_;
-    return defined( $self->[1]{$key} );
+
+    my( $bid, $bucket ) = $self->_bucket( $key );
+    if( ref( $bucket ) eq 'ARRAY' ) {
+        for( my $i=0; $i<$#$bucket; $i+=2 ) {
+            if( $bucket->[$i] eq $key ) {
+                return 1;
+            }
+        }
+    } else {
+        return exists $bucket->{$key};
+    }
+    return 0;
 }
+
 sub DELETE {
     my( $self, $key ) = @_;
-    $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    return delete $self->[1]{$key};
+    my( $bid, $bucket ) = $self->_bucket( $key, 'return_undef' );
+    return 0 unless $bucket;
+    if( ref( $bucket ) eq 'ARRAY' ) {
+        for( my $i=0; $i<$#$bucket; $i+=2 ) {
+            if( $bucket->[$i] eq $key ) {
+                splice @$bucket, $i, 2;
+                $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+                return 1;
+            }
+        }
+    } else {
+        $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
+        return delete $bucket->{$key};
+    }
+    return 0;
 }
 sub CLEAR {
     my $self = shift;
     $self->[2]->_dirty( $self->[2]{_WEAK_REFS}{$self->[0]}, $self->[0] );
-    %{$self->[1]} = ();
+    my $buckets = $self->[1];
+    splice @$buckets, 0, scalar(@$buckets);
 }
 
 sub DESTROY {
     my $self = shift;
+
+    #remove all WEAK_REFS to the buckets
+    undef $self->[1];
+    
     delete $self->[2]->{_WEAK_REFS}{$self->[0]};
 }
 
@@ -1288,7 +1396,7 @@ sub _fetch {
       $parts = $newparts;
   }
 
-  if( $class eq 'ARRAY' ) {
+  if( $class eq 'ARRAY' || $class eq 'HASH' ) {
       $ret->[DATA] = $parts;
   } else {
       $ret->[DATA] = { @$parts };
