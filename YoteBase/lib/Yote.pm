@@ -93,6 +93,7 @@ sub stow_all {
         my $text_rep = $thingy->_freezedry;
         my $class = ref( $thingy );
 
+
         $self->[RECORD_STORE]->stow( "$class $text_rep", $id );
     }
     $self->[DIRTY] = {};
@@ -101,7 +102,7 @@ sub stow_all {
 
 sub _fetch {
     my( $self, $id ) = @_;
-    return undef unless $id;
+    return undef unless $id && $id ne 'u';
 
     my $ref = $self->[DIRTY]{$id} //$self->[WEAK]{$id};
     return $ref if $ref;
@@ -159,7 +160,9 @@ sub _fetch {
         $pieces = $newparts;
     } #if there were escaped ` characters
 
-    $class->_reconstitute( $self, $id, $pieces );
+    my $ret = $class->_reconstitute( $self, $id, $pieces );
+    $self->_store_weak( $id, $ret );
+    return $ret;
 } #_fetch
 
 sub _xform_in {
@@ -167,12 +170,12 @@ sub _xform_in {
     if( ref( $val ) ) {
         return $self->_get_id( $val );
     }
-    return defined $val ? "v$val" : undef;
+    return defined $val ? "v$val" : 'u';
 }
 
 sub _xform_out {
     my( $self, $val ) = @_;
-    return undef unless defined( $val );
+    return undef unless defined( $val ) && $val ne 'u';
     if( index($val,'v') == 0 ) {
         return substr( $val, 1 );
     }
@@ -209,7 +212,7 @@ sub _get_id {
         my $thingy = tied @$ref;
         if( ! $thingy ) {
             my $id = $self->_new_id;
-            tie @$ref, 'Yote::Array', $self, $id, 0, $Yote::Array::MAX_BLOCKS, map { $self->_xform_in($_) } @$ref;
+            tie @$ref, 'Yote::Array', $self, $id, 0, $Yote::Array::MAX_BLOCKS, scalar(@$ref), 0, map { $self->_xform_in($_) } @$ref;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
             return $id;
@@ -272,10 +275,11 @@ use constant {
 sub _freezedry {
     my $self = shift;
     join( "`",
-          $self->[LEVEL],
-          $self->[BLOCK_COUNT],
-          $self->[UNDERNEATH],
-          map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } @{$self->[DATA]}
+          $self->[LEVEL] || 0,
+          $self->[BLOCK_COUNT] || 0,
+          $self->[ITEM_COUNT] || 0,
+          $self->[UNDERNEATH] || 0,
+          map { if( defined($_) && $_=~ /[\\\`]/ ) { $_ =~ s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } @{$self->[DATA]}
       );
 }
 
@@ -283,13 +287,13 @@ sub _reconstitute {
     my( $cls, $store, $id, $data ) = @_;
     my $arry = [];
     tie @$arry, $cls, $store, $id, @$data;
+    
     return $arry;
 }
 
 sub TIEARRAY {
-    my( $class, $obj_store, $id, $level, $block_count, @list ) = @_;
+    my( $class, $obj_store, $id, $level, $block_count, $item_count, $underneath, @list ) = @_;
 
-    my $item_count  = @list;
     my $block_size  = $block_count ** $level;
 
     die "DSFSOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" if $block_size == 1&&$level > 0;
@@ -310,6 +314,7 @@ sub TIEARRAY {
         $block_count,
         $block_size,
         $item_count,
+        $underneath,
     ], $class;
 
     if( $use_push ) {
@@ -329,6 +334,7 @@ sub FETCH {
     if( $self->[LEVEL] == 0 ) {
         return $self->[DSTORE]->_xform_out( $self->[DATA][$idx] );
     }
+
     my $block = $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) );
     if( $block ) {
         return $block->FETCH( $idx % $self->[BLOCK_SIZE] );
@@ -352,14 +358,14 @@ sub _embiggen {
         #
         my $newblock = [];
         my $newid = $store->_new_id;
-        tie @$newblock, 'Yote::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT];
+        tie @$newblock, 'Yote::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[ITEM_COUNT], 1;
         $store->_store_weak( $newid, $newblock );
         $store->_dirty( $store->[WEAK]{$newid}, $newid );
 
         my $tied = tied @$newblock;
-        $tied->[DATA] = $self->[DATA];
-        $tied->[ITEM_COUNT] = $self->[ITEM_COUNT];
-        $tied->[UNDERNEATH] = 1;
+        $tied->[DATA] = [@{$self->[DATA]}];
+
+
         $self->[DATA] = [ $newid ];
 
         $self->[BLOCK_SIZE] *= $self->[BLOCK_COUNT];
@@ -381,7 +387,6 @@ sub _getblock {
 
     if( $block_id ) {
         my $block = $store->_fetch( $block_id );
-        
         return tied(@$block)||$block;
         return wantarray ? ($block, tied( @$block )) : tied( @$block );
     }
@@ -450,7 +455,7 @@ sub STORESIZE {
     if( $current_oversize > 0 ) {
         $self->SPLICE( $size, $current_oversize );
     } #if the array shrinks
-    
+
     $self->_storesize( $size );
 
 } #STORESIZE
@@ -479,14 +484,14 @@ sub DELETE {
     $self->STORE( $idx, undef );
 
     if( $idx == $self->[ITEM_COUNT] - 1 ) {
-        $self->[ITEM_COUNT]--; 
+        $self->[ITEM_COUNT]--;
         while( $self->[ITEM_COUNT] > 0 && ! $self->EXISTS( $self->[ITEM_COUNT] - 1 ) ) {
             $self->[ITEM_COUNT]--;
         }
 
     }
     $self->[DSTORE]->_dirty( $self->[DSTORE]->[WEAK]{$self->[ID]}, $self->[ID] );
-    
+
     return $del;
 
 } #DELETE
@@ -533,7 +538,7 @@ sub db {
     $buff .= "$LVL CURBLK (".scalar(@$block).")) [".join(' ',map { $_ || '.' } @$block)."]\n\t";
     $buff .= "$LVL REMOVED (".scalar(@$removed).") [".join(" ",map { $_ || '.' } @$removed)."]\n\t" if $removed;
     $buff .= "$LVL SPLICE $offset,$remove_length, VALS (".scalar(@$vals).") [".join(",",map { $_ || '.' } @$vals)."]\n";
-    
+
 
     print STDERR $buff;# if $Yote::DEBUG && $self->[ID] == 2;
 
@@ -581,11 +586,11 @@ sub SPLICE {
 
     my $BLOCK_COUNT = $self->[BLOCK_COUNT];
     my $store       = $self->[DSTORE];
-    my $blocks      = $self->[DATA];
     my $BLOCK_SIZE  = $self->[BLOCK_SIZE]; # embiggen may have changed this, so dont set this before the embiggen call
 
     if( $self->[LEVEL] == 0 ) {
         # lowest level, must fit in the size. The end recursion and easy case.
+        my $blocks = $self->[DATA];
         my @raw_return = splice @$blocks, $offset, $remove_length, map { $store->_xform_in($_) } @vals;
         my @ret = map { $store->_xform_out($_) } @raw_return;
         $self->_storesize( $new_size );
@@ -610,7 +615,7 @@ sub SPLICE {
         for( my $idx=$offset; $idx<($offset+$remove_length); $idx++ ) {
             push @removed, $self->FETCH( $idx );
         }
-        
+
         my $things_to_move = $self->[ITEM_COUNT] - ($offset+$remove_length);
         my $to_idx = $offset;
         my $from_idx = $to_idx + $remove_length;
@@ -618,7 +623,7 @@ sub SPLICE {
             $self->STORE( $to_idx, $self->FETCH( $from_idx ) );
             $to_idx++;
             $from_idx++;
-        }   
+        }
     } # has things to remove
 
     if( @vals ) {
@@ -626,7 +631,7 @@ sub SPLICE {
         # while there are any in the insert list, grab all the items in the next block if any
         #    and append to the insert list, then splice in the insert list to the beginning of
         #    the block. There still may be items in the insert list, so repeat until it is done
-        # 
+        #
 
         my $block_idx = int( $offset / $BLOCK_SIZE );
         my $block_off = $offset % $BLOCK_SIZE;
@@ -650,7 +655,7 @@ sub SPLICE {
             my $remmy = $BLOCK_SIZE - $block_off;
             if( $remmy > @vals ) { $remmy = @vals; }
 
-            $block->SPLICE( $block_off, $block->[ITEM_COUNT], splice( @vals, 0, $remmy) ); 
+            $block->SPLICE( $block_off, $block->[ITEM_COUNT], splice( @vals, 0, $remmy) );
             $block_idx++;
             $block_off = 0;
         }
@@ -658,7 +663,7 @@ sub SPLICE {
     } # has vals
 
     $self->_storesize( $new_size );
-    
+
     return @removed;
 
 } #SPLICE
@@ -706,7 +711,7 @@ sub _freezedry {
           $self->[LEVEL],
           $self->[BUCKETS],
           $self->[SIZE],
-          map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } $self->[LEVEL] ? @$r : %$r
+          map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } $self->[LEVEL] ? @$r : %$r
       );
 }
 
@@ -1162,14 +1167,13 @@ sub _load {}
 # -----------------------
 sub _freezedry {
     my $self = shift;
-    join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } $_ } %{$self->[DATA]} );
+    join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } %{$self->[DATA]} );
 }
 
 sub _reconstitute {
     my( $cls, $store, $id, $data ) = @_;
     my $obj = [$id,{@$data},$store];
     bless $obj, $cls;
-    $store->_dirty( $obj, $id );
     $obj->_load;
     $obj;
 }

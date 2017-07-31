@@ -62,7 +62,7 @@ sub test_suite {
 
     is( $dup_root->[Yote::Obj::ID], $root_node->[Yote::Obj::ID] );
     is_deeply( $dup_root->[Yote::Obj::DATA], $root_node->[Yote::Obj::DATA] );
-    print STDERR Data::Dumper->Dump([$dup_root->get_myList->[0],'GRR']);
+
     is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in yote object" );
     
     is( $dup_root->get_myList->[0]{objy}->get_someval, '124.42', "number saved in yote object" );
@@ -191,7 +191,6 @@ sub test_suite {
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE"], "push 1" );
     is( @$l, 5, "Size five" );
     is( $#$l, 4, "last index 1" );
-    print STDERR Data::Dumper->Dump([$l,"WIS"]);
 
     push @$l, "SIX", "SEVEN", "EIGHT", "NINE";
 
@@ -215,17 +214,13 @@ sub test_suite {
     push @$l, "TWENTY","TWENTYONE";
     is_deeply( $l, ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "push 6" );
     is( @$l, 21, "Size twentyone" );
-    print STDERR Data::Dumper->Dump([$l,"TINKER"]);
     my $v = shift @$l;
     is( $v, "ONE" );
-    print STDERR Data::Dumper->Dump([$l,"SOW"]);
     is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first shift" );
     is( @$l, 20, "Size twenty" );
-    print STDERR Data::Dumper->Dump([$l,"ELLE"]);
     push @$l, $v;
     is_deeply( $l, ["TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "push 7" );
     is( @$l, 21, "Size twentyone again" );
-    print STDERR Data::Dumper->Dump([$l,"BLSO"]);
     unshift @$l, 'ZERO';
 
     is_deeply( $l, ["ZERO", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE", "ONE"], "first unshift" );
@@ -368,20 +363,21 @@ sub test_arry {
         $store->stow_all;
         
         my $other_store = Yote::open_store( $dir );
-        print STDERR Data::Dumper->Dump([$other_store->fetch_root,"FETCDH"]);
         my $aloaded = $other_store->fetch_root->get_arry;
-        print STDERR Data::Dumper->Dump([$other_store->_fetch( 25202 ), $aloaded, $other_store->fetch_root,"DSFSDF"]);
         _cmpa( "SAVED LOADED", $aloaded, $match );
 
         my $a = $arry->[82];
         my $m = $match->[82];
-        _cmpa( "delnow $SZ", $arry, $match, $a, $m );
+
+        _cmpa( "delnow1 $SZ", $arry, $match, $a, $m );
 
         $a = delete $arry->[81];
         $m = delete $match->[81];
-        _cmpa( "delnow $SZ", $arry, $match, $a, $m );
+        _cmpa( "delnow2 $SZ", $arry, $match, $a, $m );
+        
         $a = delete $arry->[81];
         $m = delete $match->[81];
+        print STDERR Data::Dumper->Dump([$arry,$match,$a,$m,"WOO"]);
         _cmpa( "delnowagain $SZ", $arry, $match, $a, $m );
         
         $a = pop @$arry;
