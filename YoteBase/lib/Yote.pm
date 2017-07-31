@@ -314,6 +314,7 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
+#            print STDERR Data::Dumper->Dump([@$data,"TIE TIE <$id>"]);
             tie %hash, 'Yote::Hash', $self, $id, @$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
@@ -363,14 +364,12 @@ sub run_purger {
     my $purged;
     if( $do_purge ) {
         $purged = $self->{_DATASTORE}->_purge_objects( $keep_db, $make_tally );
+        $self->{_DATASTORE}->_update_recycle_ids( $keep_db );
+        $keep_db->unlink_store;
     } else {
-        $purged = $self->_copy_active_ids( $keep_db, $make_tally );
+        $purged = $self->_copy_active_ids( $keep_db );
+        # keep db is not copied over
     }
-
-    $self->{_DATASTORE}->_update_recycle_ids( $keep_db );
-
-    # commenting out for a test
-    $keep_db->unlink_store;
 
     $purged;
 } #run_purger
@@ -412,6 +411,8 @@ sub _copy_active_ids {
         }
     } #each entry id
 
+    # reopen data store
+    $self->{_DATASTORE} = Yote::YoteDB->open( $self, $self->{args} );
     move( $original_dir, $backdir ) or die $!;
     move( $newdir, $original_dir ) or die $!;
 
@@ -1142,6 +1143,7 @@ use strict;
 use warnings;
 
 no warnings 'uninitialized';
+no warnings 'numeric';
 
 use Tie::Hash;
 
@@ -1167,6 +1169,7 @@ sub _bucket {
     }
 
     $hval = $hval % $self->[SIZE];
+#    print STDERR ">>>$hval ($self->[SIZE])\n";
     my $obj_id = $self->[DATA][$hval];
     my $store = $self->[DSTORE];
     unless( $obj_id ) {
@@ -1185,9 +1188,16 @@ sub TIEHASH {
     $type ||= 'S'; #small
     $size ||= $Yote::Hash::SIZE;
 
+    if( $id == 17 ) {     
+        print STDERR Data::Dumper->Dump([\@fetch_buckets,"FB <$id>"])if $type eq 'B';
+    }
+    
     my $deep_buckets = $type eq 'B' ?
-        [ map { ref( $_ ) eq 'Yote::Hash' ? 1 : 0 } map { $_ ? $obj_store->_xform_out($_) : undef } @fetch_buckets ] : [];
+        [ map { $_ > 0 && ref( $obj_store->_xform_out($_) ) eq 'HASH' ? 1 : 0 } @fetch_buckets ] : [];
 
+    no warnings 'numeric';
+#    print STDERR Data::Dumper->Dump([[[map { $_ > 0 ? ref($obj_store->_xform_out($_)) : "<$_>" } @fetch_buckets]],$deep_buckets,"TIE <$id>"]);
+    
     # after $obj_store is a list reference of
     #                 id, data, store
     my $obj;
@@ -1241,8 +1251,8 @@ sub STORE {
             }
             $self->[KEYS]++ unless exists $newbuck->{$key};
             $newbuck->{$key} = $val;
-            $self->[DATA][$bid] = $id;
             $self->[DEEP][$bid] = 1;
+            $self->[DATA][$bid] = $id;
             return;
         }
         for( my $i=0; $i<$#$bucket; $i+=2 ) {
@@ -1294,6 +1304,7 @@ sub NEXTKEY  {
                     return wantarray ? ( $key => $bucket->{$key} ): $key;
                 }
             } else {
+#                print STDERR Data::Dumper->Dump([$bucket,"BBBBU <".$self->[DSTORE]->_get_id($self)."> ($self->[TYPE]) <$bucket>" . ref( $bucket),$self->[DEEP]]);
                 if( $idx_in_bucket < $#$bucket ) {
                     @$current = ( $bid, $idx_in_bucket + 2 );
                     my $key = $bucket->[$idx_in_bucket||0];
@@ -1441,7 +1452,6 @@ sub open {
   my $DATA_STORE;
   eval {
       $DATA_STORE = Data::RecordStore->open( $args->{ store } );
-
   };
   if( $@ ) {
       if( $@ =~ /old format/ ) {

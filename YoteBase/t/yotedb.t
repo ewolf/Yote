@@ -179,12 +179,10 @@ sub test_suite {
 
     $store->stow_all;
 
-#    my $sup_store = Yote::open_store( $dir );
-#    $thash = $sup_store->fetch_root->get_test_hash;
+    my $sup_store = Yote::open_store( $dir );
+    $thash = $sup_store->fetch_root->get_test_hash;
 
-
-    
-#    is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
+    is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
     
 } #test suite
 

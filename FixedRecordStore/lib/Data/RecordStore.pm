@@ -56,7 +56,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '2.0';
+$VERSION = '2.01';
 
 =head1 METHODS
 
@@ -532,7 +532,7 @@ sub open {
     my $useSize = $size || do { use bytes; length( pack( $template ) ) };
     die "Cannot open a zero record sized fixed store" unless $useSize;
     unless( -e $filename ) {
-        CORE::open $FH, ">", $filename;
+        CORE::open $FH, ">", $filename or die "Unable to open $filename : $!";
         print $FH "";
         close $FH;
     }
@@ -541,7 +541,7 @@ sub open {
             RECORD_SIZE => $useSize,
             FILENAME => $filename,
     }, $class;
-    print STDERR Data::Dumper->Dump(["OPEN <$filename> ($self)"]);
+    
     $self;
 } #open
 
@@ -719,7 +719,6 @@ sub put_record {
 
     my $fh = $self->_filehandle;
 
-    print STDERR Data::Dumper->Dump([$idx,$data,$fh,"PUT RECORD"]);
     sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     1;
 } #put_record
@@ -759,6 +758,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.0  (Feb 23, 2017))
+       Version 2.01  (Sep 14, 2017))
 
 =cut
