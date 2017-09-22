@@ -6,7 +6,7 @@ no  warnings 'uninitialized';
 
 use vars qw($VERSION);
 
-$VERSION = '2.02';
+$VERSION = '2.03';
 
 =head1 NAME
 
@@ -320,7 +320,7 @@ sub fetch {
         }
         elsif( $class eq 'HASH' ) {
             my( %hash );
-            tie %hash, 'Yote::Hash', $self, $id, @$data;
+            tie %hash, 'Yote::Hash', $self, $id, %$data;
             $self->_store_weak( $id, \%hash );
             return \%hash;
         }
@@ -2234,6 +2234,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.02  (September, 2017))
+       Version 2.03  (September, 2017))
 
 =cut
