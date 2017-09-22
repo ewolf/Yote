@@ -1517,7 +1517,7 @@ sub SPLICE {
         my $new_last_idx     = $new_size - 1;
 
         while ( $remove_start_idx <= $new_last_idx ) {
-        
+
             my( $remstart ) = $self->_block( $remove_start_idx );
             my( $remend ) = $self->_block( $remove_end_idx + 1 );
 
@@ -1643,121 +1643,173 @@ use constant {
     ID     => 0,
     DATA   => 1,
     DSTORE => 2,
-    NEXT   => 3,
-    KEYS   => 4,
-    DEEP   => 5,
-    SIZE   => 6,
-    THRESH => 7,
-    TYPE   => 8,
+    LEVEL  => 3,
+    NEXT   => 4,
+    SIZE   => 5,
 };
 
-sub _bucket {
-    my( $self, $key, $return_undef ) = @_;
-    my $hval = 0;
-    foreach (split //, $key) {
-        $hval = $hval*33 - ord($_);
-    }
-
-    $hval = $hval % $self->[SIZE];
-    my $obj_id = $self->[DATA][$hval];
-    my $store = $self->[DSTORE];
-    unless( $obj_id ) {
-        return ($hval, undef) if $return_undef;
-        my $bucket = [];
-        my $id = $store->_get_id( $bucket );
-        $self->[DATA][$hval] = $id;
-        return $hval, $bucket;
-    }
-    $hval, $store->_xform_out( $obj_id );
-}
-
 sub TIEHASH {
-    my( $class, $obj_store, $id, $type, $size, @fetch_buckets ) = @_;
+    my( $class, $obj_store, $id, $level, $size, @fetch_buckets ) = @_;
 
-    $type ||= 'S'; #small
-    $size ||= $Yote::BigHash::SIZE;
+    $level ||= 0;
+    $size ||= 0;
 
-    my $deep_buckets = $type eq 'B' ?
-        [ map { $_ > 0 && ref( $obj_store->_xform_out($_) ) eq 'HASH' ? 1 : 0 } @fetch_buckets ] : [];
+    bless [ $id, {@fetch_buckets}, $level, [], $size ], $class; #obj_store, [], 0, $deep_buckets, $size, $size * 2, $type ], $class;
 
-    no warnings 'numeric';
-    #
-    # after $obj_store is a list reference of
-    #                 id, data, store
-    my $obj;
-    if( $type eq 'S' ) {
-        $obj = bless [ $id, {@fetch_buckets}, $obj_store, [], 0, $deep_buckets, $size, $size * 2, $type ], $class;
-    }
-    else {
-        $obj = bless [ $id, [@fetch_buckets], $obj_store, [], 0, $deep_buckets, $size, $size * 2, $type ], $class;
-    }
-
-    return $obj;
 }
+
+sub CLEAR {
+    my $self = shift;
+    if( $self->[SIZE] > 0 ) {
+        $self->[SIZE] = 0;
+        my $store = $self->[DSTORE];
+        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+        %{$self->[DATA]} = ();
+    }
+}
+
+sub DELETE {
+    my( $self, $key ) = @_;
+
+    return undef unless $self->EXISTS( $key );
+
+    $self->[SIZE]--;
+
+    my $data = $self->[DATA];
+    my $store = $self->[DSTORE];
+    
+    if( $self->[LEVEL] == 0 ) {
+        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+        return $store->_xform_out( delete $data->{$key} );
+    } else {
+        my $hval = 0;
+        foreach (split //,$key) {
+            $hval = $hval*33 - ord($_);
+        }
+        $hval = $hval % $Yote::BigHash::SIZE;
+        return $self->[DSTORE]->fetch( $data->[$hval] )->DELETE( $key );
+    }
+    return undef;
+} #DELETE
+
+
+sub EXISTS {
+    my( $self, $key ) = @_;
+
+    if( $self->[LEVEL] == 0 ) {
+        return exists $data->{$key};
+    } else {
+        my $hval = 0;
+        foreach (split //,$key) {
+            $hval = $hval*33 - ord($_);
+        }
+        $hval = $hval % $Yote::BigHash::SIZE;
+        my $hash_id = $data->[$hval];
+        if( $hash_id ) {
+            $hash = $self->[DSTORE]->fetch( $hash_id );
+            return $hash->EXISTS( $key );
+        }
+
+    }
+    return 0;
+} #EXISTS
+
+sub FETCH {
+    my( $self, $key ) = @_;
+    my $data = $self->[DATA];
+
+    if( $self->[LEVEL] == 0 ) {
+        return $self->[DSTORE]->_xform_out( $data->{$key} );
+    } else {
+        my $hval = 0;
+        foreach (split //,$key) {
+            $hval = $hval*33 - ord($_);
+        }
+        $hval = $hval % $Yote::BigHash::SIZE;
+        my $hash_id = $data->[$hval];
+        if( $hash_id ) {
+            $hash = $self->[DSTORE]->fetch( $hash_id );
+            return $hash->FETCH( $key );
+        }
+    }
+    return undef;
+} #FETCH
+
 
 sub STORE {
     my( $self, $key, $val ) = @_;
 
-    my $store = $self->[DSTORE];
-    $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
+    my $data = $self->[DATA];
 
-    if( $self->[TYPE] eq 'S' ) {
-        my $data = $self->[DATA];
-        $self->[KEYS]++ unless exists $data->{$key}; #obj count
-        $data->{$key} = $store->_xform_in($val);
+    #
+    # EMBIGGEN TEST
+    #
+    if( ! $self->EXISTS( $key ) ) {
+        if( $self->[SIZE]++ > $Yote::BigHash::SIZE && $self->[LEVEL] == 0 ) {
+            # do the thing converting this to a deeper level
+            $self->[LEVEL]++;
+            my $store = $self->[DSTORE];
+            my $backstore = $store->{_DATASTORE};
+            my( @newhash, @newids );
 
-        if( $self->[KEYS] > $self->[THRESH] ) {
-            $self->[TYPE] = 'B'; #big
-            #convert to buckets
-            $self->[DATA] = [];
             for my $key (keys %$data) {
-                $self->STORE( $key, $store->_xform_out($data->{$key}) );
+                my $hval = 0;
+                foreach (split //,$key) {
+                    $hval = $hval*33 - ord($_);
+                }
+                $hval = $hval % $Yote::BigHash::SIZE;
+                my $hash = $newhash[$hval];
+                if( $hash ) {
+                    $hash->STORE( $key, $data->{$key} );
+                } else {
+                    $hash = {};
+                    $hash_id = $backstore->_get_id( 'Yote::BigHash' );
+                    tie %$newhash, 'Yote::BigHash', $hash_id, 0, 1, $key, $store->_xform_in( $val );
+                    $newhash[$hval] = $hash;
+                    $newids[$hval] = $hash_id;
+                }
+
             }
+            $self->[DATA] = \@newids;
         }
-        return;
-    }
+    } # EMBIGGEN CHECK
 
-    my( $bid, $bucket ) = $self->_bucket( $key );
-
-    if( $self->[DEEP][$bid] ) {
-        $self->[KEYS]++ unless exists $bucket->{$key}; #obj count
-        $bucket->{$key} = $val;
+    if( $self->[LEVEL] == 0 ) {
+        $data->{$key} = $self->[DSTORE]->_xform_in( $val );
     } else {
-        if( @$bucket > $self->[THRESH] ) {
-            my $newbuck = {};
-            my $id = $store->_get_id( $newbuck );
-
-            my $tied = tied %$newbuck;
-            $tied->[SIZE]   = $self->[SIZE] * 2;
-            $tied->[THRESH] = $tied->[SIZE] * 2;
-            for( my $i=0; $i<$#$bucket; $i+=2 ) {
-                $newbuck->{$bucket->[$i]} = $bucket->[$i+1];
-            }
-            $self->[KEYS]++ unless exists $newbuck->{$key};
-            $newbuck->{$key} = $val;
-            $self->[DEEP][$bid] = 1;
-            $self->[DATA][$bid] = $id;
-            return;
+        my $hval = 0;
+        foreach (split //,$key) {
+            $hval = $hval*33 - ord($_);
         }
-        for( my $i=0; $i<$#$bucket; $i+=2 ) {
-            if( $bucket->[$i] eq $key ) {
-                $bucket->[$i+1] = $val;
-                return;
-            }
+        $hval = $hval % $Yote::BigHash::SIZE;
+        my $hash_id = $data->[$hval];
+        my $hash;
+        if( $hash_id ) {
+            $hash = $self->[DSTORE]->fetch( $hash_id );
+            $hash->STORE( $key, $val );
+        } else {
+            $hash = {};
+            $hash_id = $DATASTORE->_get_id( 'Yote::BigHash' );
+            tie %$newhash, 'Yote::BigHash', $hash_id, 0, 1, $key, $val;
+            $data->[$hval] = $hash_id;
         }
-        $self->[KEYS]++; #obj count
-        push @$bucket, $key, $val;
     }
+
 } #STORE
 
 sub FIRSTKEY {
     my $self = shift;
 
-    if( $self->[TYPE] eq 'S' ) {
-        my $a = scalar keys %{$self->[DATA]}; #reset things
-        my( $k, $val ) = each %{$self->[DATA]};
+    my $data = $self->[DATA];
+    if( $self->[LEVEL] == 0 ) {
+        my $a = scalar keys %$data;
+        my( $k, $val ) = each %$data;
         return wantarray ? ( $k => $val ) : $k;
+    } else {
+
     }
+
+
     @{ $self->[NEXT] } = ( 0, undef, undef );
     return $self->NEXTKEY;
 }
@@ -1765,140 +1817,19 @@ sub FIRSTKEY {
 sub NEXTKEY  {
     my $self = shift;
 
-    if( $self->[TYPE] eq 'S' ) {
-        my( $k, $val ) = each %{$self->[DATA]};
-        return wantarray ? ( $k, $val ) : $k;
+    my $data = $self->[DATA];
+    if( $self->[LEVEL] == 0 ) {
+        my( $k, $val ) = each %$data;
+        return wantarray ? ( $k => $val ) : $k;
+    } else {
+
     }
 
-    my $buckets = $self->[DATA];
-    my $store   = $self->[DSTORE];
-    my $current = $self->[NEXT];
-
-    my( $bucket_idx, $idx_in_bucket ) = @$current;
-
-    for( my $bid = $bucket_idx; $bid < @$buckets; $bid++ ) {
-        my $bucket = defined( $bid ) ? $store->_xform_out($buckets->[$bid]) : undef;
-        if( $bucket ) {
-            if( $self->[DEEP][$bid] ) {
-                my $tied = tied %$bucket;
-                my $key = defined( $idx_in_bucket) ? $tied->NEXTKEY : $tied->FIRSTKEY;
-                if( defined($key) ) {
-                    # the bucket must be there to keep a weak reference
-                    # to itself. If it was not here, it would load from
-                    # the filesystem each call to NEXTKEY
-                    @$current = ( $bid, 0, $bucket );
-                    return wantarray ? ( $key => $bucket->{$key} ): $key;
-                }
-            } else {
-                if( $idx_in_bucket < $#$bucket ) {
-                    @$current = ( $bid, $idx_in_bucket + 2, undef );
-                    my $key = $bucket->[$idx_in_bucket||0];
-                    return wantarray ? ( $key => $bucket->[$idx_in_bucket+1] ) : $key;
-                }
-            }
-            undef $bucket;
-        }
-        undef $idx_in_bucket;
-    }
-    @$current = ( 0, undef, undef );
     return undef;
 
 } #NEXTKEY
 
-sub FETCH {
-    my( $self, $key ) = @_;
-    if( $self->[TYPE] eq 'S' ) {
-        my $x = $self->[DSTORE]->_xform_out($self->[DATA]{$key});
-        return $self->[DSTORE]->_xform_out( $self->[DATA]{$key} );
-    }
-    my( $bid, $bucket ) = $self->_bucket( $key );
-    if( $self->[DEEP][$bid] ) {
-        return $bucket->{$key};
-    } else {
-        for( my $i=0; $i<$#$bucket; $i+=2 ) {
-            if( $bucket->[$i] eq $key ) {
-                return $bucket->[$i+1];
-            }
-        }
-    }
-} #FETCH
 
-sub EXISTS {
-    my( $self, $key ) = @_;
-    if( $self->[TYPE] eq 'S' ) {
-        return exists $self->[DATA]{$key};
-    }
-
-    my( $bid, $bucket ) = $self->_bucket( $key );
-    if( $self->[DEEP][$bid] ) {
-        return exists $bucket->{$key};
-    } else {
-        for( my $i=0; $i<$#$bucket; $i+=2 ) {
-            if( $bucket->[$i] eq $key ) {
-                return 1;
-            }
-        }
-    }
-    return 0;
-} #EXISTS
-
-sub DELETE {
-    my( $self, $key ) = @_;
-
-    my $store = $self->[DSTORE];
-
-    if( $self->[TYPE] eq 'S' ) {
-        if( exists $self->[DATA]{$key} ) {
-            $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-            $self->[KEYS]--;
-            delete $self->[DATA]{$key};
-        }
-        return;
-    }
-
-    my( $bid, $bucket ) = $self->_bucket( $key, 'return_undef' );
-    return 0 unless $bucket;
-
-    # TODO - see if the buckets revert back to arrays
-    if( $self->[DEEP][$bid] ) {
-        $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-        $self->[KEYS]-- if exists $bucket->{$key}; #obj count
-        return delete $bucket->{$key};
-    } else {
-        for( my $i=0; $i<$#$bucket; $i+=2 ) {
-            if( $bucket->[$i] eq $key ) {
-                splice @$bucket, $i, 2;
-                $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-                $self->[KEYS]--; #obj count
-                return 1;
-            }
-        }
-    }
-    return 0;
-} #DELETE
-
-sub CLEAR {
-    my $self = shift;
-    my $store = $self->[DSTORE];
-    $self->[KEYS] = 0;
-    $store->_dirty( $store->{_WEAK_REFS}{$self->[ID]}, $self->[ID] );
-
-    if( $self->[TYPE] eq 'S' ) {
-        $self->[DATA] = {};
-    }
-
-    my $buckets = $self->[DATA];
-    for( my $bid=0; $bid<@$buckets; $bid++ ) {
-        if( $self->[DEEP][$bid] ) {
-            my $buck = tied %{$buckets->[$bid]};
-            $buck->CLEAR;
-        } else {
-            my $buck = $buckets->[$bid];
-            splice @$buck, 0, scalar( @$buck );
-        }
-    }
-    splice @$buckets, 0, scalar(@$buckets);
-}
 
 sub DESTROY {
     my $self = shift;
