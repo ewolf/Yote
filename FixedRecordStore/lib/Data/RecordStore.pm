@@ -220,6 +220,7 @@ sub stow {
 
     my $index_in_store = $store->next_id;
 
+    $self->ensure_entry_count( $id );
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
 
     $store->put_record( $index_in_store, [ $id, $data ] );

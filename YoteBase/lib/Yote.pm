@@ -147,10 +147,43 @@ sub run_recycler {
     $recyle_tally->empty;
     
     $recycle_tally->stow( "1", 1 );
-    my $root = $self->fetch_root;
-    $recycle_tally->stow( $root->id, 1 );
+    my $item = $self->fetch_root;
 
-    my( @keep_ids ) = 
+    my( @keep_ids ) = ( $item->id );
+    while( @keep_ids ) {
+        my $id = shift @keep_ids;
+        
+        if( $recycle_tally->fetch( $id ) )
+        $item = $self->_fetch( $id );
+        $recycle_tally->stow( 1, $item_id );
+        if( ref($item) eq 'Yote::Array' ) {
+            for my $c (@$item) {
+                if( ref( $c ) ) {
+                    my $item_id = $self->_get_id( $c );
+                    push( @keep_ids, $item_id ) unless $recycle_tally->fetch( $item_id ) == 1;
+                }
+            }
+        }
+        elsif( ref($item) eq 'Yote::Hash' ) {
+            while( my($k,$v) = each %$item) {
+                if( ref( $v ) ) {
+                    my $item_id = $self->_get_id( $v );
+                    push( @keep_ids, $item_id ) unless $recycle_tally->fetch( $item_id ) == 1;
+                }
+            }
+        }
+        else {
+            push @keep_ids, grep { $_ > 0 && $recycle_tally->fetch($_) != 1 } $item->[DATA];
+        }
+    } #going through all keep_ids
+
+    my $record_store = $self->[RECORD_STORE];
+    my $count = $record_store->entry_count;
+    for( my $i=1; $i<=$count; $i++ ) {
+        if( $recycle_tally->fetch($i) != 1 ) {
+            $record_store->recycle( $i );
+        }
+    }
 
 } #run_recycler
 
