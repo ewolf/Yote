@@ -42,7 +42,6 @@ sub test_suite {
                                       } ),
                         } ),
                                } );
-    my $il = $root_node->get_myList;
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
 
@@ -109,30 +108,25 @@ sub test_suite {
     $list_to_remove->[87] = "EIGHTYSEVEN";
 
     $store->stow_all;
-
+    
     $store->run_recycler;
-
-    ok( $store->_fetch( $list_to_remove_id ), "removed list not yet removed" );
+    
+    ok( $store->_fetch( $list_to_remove_id ), "removed list not yet removed" );    
     ok( $store->_fetch( $hash_in_list_id ), "removed hash id not yet removed" );
     
     ok( $store->_fetch( $objy_id ), "removed objy still removed" );
     ok( $store->_fetch( $someobj_id ), "removed someobj still removed" );
 
-
+    undef $hash_in_list;
     undef $list_to_remove;
-
-    print STDERR Data::Dumper->Dump(["WEAK ($store->[2]{$list_to_remove_id}), DIRTY $store->[1]{$list_to_remove_id})"]);
+    undef $quickly_removed_obj;
+    
+    $store->run_recycler;
     
     ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
     ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
     ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
     ok( ! $store->_fetch( $someobj_id ), "removed someobj still removed" );
-
-    
-    undef $quickly_removed_obj;
-
-
-    undef $hash_in_list;
 
     undef $dup_root;
 
@@ -178,6 +172,7 @@ sub test_suite {
     
     my $sup_store = Yote::open_store( $dir );
     $thash = $sup_store->fetch_root->get_test_hash;
+
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
 
     is_deeply( $thash, \%confirm_hash, "hash checks out keys and values" );
@@ -454,6 +449,9 @@ sub test_arry {
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
 
+
+        print STDERR Data::Dumper->Dump(["NOW DO EDGE CASE for when each is called but not finished and the thing has a live WEAK ref but no trace to the root and make sure it gets removed when that WEAK ref died"]);
+        
     } #each bucketsize
 } #test_arry
 

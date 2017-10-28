@@ -147,6 +147,7 @@ sub run_recycler {
     my $recycle_tally = Data::RecordStore->open( "$base_path/RECYCLE" );
 
     # empty because this may have run recently
+    $self->[RECORD_STORE]->empty_recycler;
     $recycle_tally->empty;
     
     $recycle_tally->stow( "1", 1 );
@@ -179,10 +180,26 @@ sub run_recycler {
             }
         }
         elsif( $ref eq 'ARRAY' ) {
-            push @keep_ids, map { $self->_get_id($_) } grep { ref( $_ ) } @$item;
+            my $tied = tied( @$item );
+            if( $tied ) {
+                my $data = $tied->[DATA];
+                push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
+            } else {
+                push @keep_ids, grep { $recycle_tally->fetch($_) != 1 } map { $self->_get_id($_) } grep { ref( $_ ) } @$item;
+            }
         }
         elsif( $ref eq 'HASH' ) {
-            push @keep_ids, map { $self->_get_id($_) } grep { ref( $_ ) } values %$item;
+            my $tied = tied( %$item );
+            if( $tied ) {
+                my $data = $tied->[DATA];
+                if( $tied->[LEVEL] == 0 ) {
+                    push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } values %$data;
+                } else {
+                    push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
+                }
+            } else {
+                push @keep_ids, grep { $recycle_tally->fetch($_) != 1 } map { $self->_get_id($_) } grep { ref( $_ ) } values %$item;
+            }
         }
         else {
             push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch($_) != 1 } values %{$item->[DATA]};
@@ -193,12 +210,9 @@ sub run_recycler {
     my $record_store = $self->[RECORD_STORE];
     my $count = $record_store->entry_count;
     for( my $i=1; $i<=$count; $i++ ) {
-#        print STDERR "$i <$self->[RECORD_STORE]>) ";
         if( $recycle_tally->fetch($i) != 1 ) {
-#            print STDERR "Recycle";
             $record_store->recycle( $i );
         }
-#        print STDERR "\n";
     }
     # empty to save space
     $recycle_tally->empty;
@@ -218,7 +232,6 @@ sub stow_all {
 
         $self->[RECORD_STORE]->stow( "$class $text_rep", $id );
     }
-#    print STDERR Data::Dumper->Dump(["DUMP DIRTY"]);
     $self->[DIRTY] = {};
 
 } #stow_all
@@ -227,9 +240,6 @@ sub _fetch {
     my( $self, $id ) = @_;
     return undef unless $id && $id ne 'u';
 
-#    print STDERR Data::Dumper->Dump(["FETCH $id in DIRTY"])if $self->[DIRTY]{$id};
-#    print STDERR Data::Dumper->Dump(["FETCH $id in WEAK"])if $self->[WEAK]{$id};
-    
     my $ref = $self->[DIRTY]{$id} //$self->[WEAK]{$id};
     return $ref if $ref;
 
@@ -311,17 +321,13 @@ sub _xform_out {
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die "Store weak called without ref" unless $ref;
-#    print STDERR "WEAK ($id) ($ref)\n";
     $self->[WEAK]{$id} = $ref;
 
     weaken( $self->[WEAK]{$id} );
 } #_store_weak
 
 sub _dirty {
-    # ( $self, $ref, $id )
-#    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) unless "$_[1]";
     return unless $_[1];
-#    print STDERR "MARKDIRTY $_[2] ($_[1])\n";
     $_[0]->[DIRTY]->{$_[2]} = $_[1];
 } #_dirty
 
@@ -850,7 +856,7 @@ sub TIEHASH {
     $level ||= 0;
     $size  ||= 0;
     $buckets ||= $Yote::Hash::SIZE;
-    bless [ $id, $level ? \@fetch_buckets : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef,undef] ], $class;
+    bless [ $id, $level ? [@fetch_buckets] : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef] ], $class;
 }
 
 sub CLEAR {
@@ -903,7 +909,6 @@ sub EXISTS {
         my $hash_id = $data->[$hval];
         if( $hash_id > 0 ) {
             my $hash = $self->[DSTORE]->_fetch( $hash_id );
-#            print STDERR Data::Dumper->Dump([$hash_id,ref($hash),"LA <$self->[DSTORE][0]> ($hval)"]);
             my $tied = tied %$hash;
             return $tied->EXISTS( $key );
         }
@@ -934,6 +939,19 @@ sub FETCH {
     return undef;
 } #FETCH
 
+sub _SHOW {
+    my( $self, $lvl ) = @_;
+    if( $self->[LEVEL] == 0 ) {
+        print STDERR (" " x $lvl ) . "($self->[ID]) : BASE SHOW : " . join( ',', keys %{$self->[DATA]} ) . "\n";
+    } else {
+        my( @ids ) = @{$self->[DATA]}; 
+        print STDERR (" " x $lvl ) . "($self->[ID]) : subhashes : " . join( ',', map { "($_)" } @ids ) . "\n";
+        for my $id (grep { $_ ne 'u' } @ids) {
+            my $h = $self->[DSTORE]->_fetch( $id );
+            tied( %$h )->SHOW( $lvl + 1 );;
+        }
+    }
+}
 
 sub STORE {
     my( $self, $key, $val ) = @_;
@@ -973,7 +991,6 @@ sub STORE {
                     $hash = {};
                     my $hash_id = $store->_new_id;
                     tie %$hash, 'Yote::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
-
                     $store->_store_weak( $hash_id, $hash );
                     $store->_dirty( $store->[Yote::ObjStore::WEAK]{$hash_id}, $hash_id );
 
@@ -1027,40 +1044,58 @@ sub FIRSTKEY {
         my( $k, $val ) = each %$data;
         return wantarray ? ( $k => $self->[DSTORE]->_xform_out( $val ) ) : $k;
     }
-    $self->[NEXT] = [undef,undef,undef];
+    $self->[NEXT] = [undef,undef];
     return $self->NEXTKEY;
 }
 
 sub NEXTKEY  {
     my $self = shift;
     my $data = $self->[DATA];
-    if( $self->[LEVEL] == 0 ) {
+    my $lvl = $self->[LEVEL];
+    if( $lvl == 0 ) {
         my( $k, $val ) = each %$data;
         return wantarray ? ( $k => $self->[DSTORE]->_xform_out($val) ) : $k;
-    } else {
+    } 
+    else {
         my $store = $self->[DSTORE];
-        do {
-            my $nexthashid = $data->[$self->[NEXT][0]||0];
-            if( $nexthashid > 0 ) {
-                my $tied = $self->[NEXT][2];
-                unless( $tied ) {
-                    my $hash = $store->_fetch( $nexthashid );
-                    $tied = tied %$hash;
-                }
 
-                my( $k, $v ) = $self->[NEXT][1] ? $tied->NEXTKEY : $tied->FIRSTKEY;
-                if( defined( $k ) ) {
-                    $self->[NEXT][1] = 1;
-                    $self->[NEXT][2] = $tied;
-                    return wantarray ? ( $k => $v ) : $k;
-                }
+        my $at_start = ! defined( $self->[NEXT][0] );
+        
+        if( $at_start ) {
+            $self->[NEXT][0] = 0;
+            $self->[NEXT][1] = undef;
+        }
+
+        my $hash = $self->[NEXT][1];
+        $at_start ||= ! $hash;
+        unless( $hash ) {
+            my $hash_id = $data->[$self->[NEXT][0]];
+            $hash = $store->_fetch( $hash_id ) if $hash_id > 1;
+        }
+
+        if( $hash ) {
+            my $tied = tied( %$hash );
+            my( $k, $v ) = $at_start ? $tied->FIRSTKEY : $tied->NEXTKEY;
+            if( defined( $k ) ) {
+                $self->[NEXT][1] = $hash; #to keep the weak reference
+                return wantarray ? ( $k => $v ) : $k;
             }
-            $self->[NEXT][0]++;
-            $self->[NEXT][1] = 0;
-            $self->[NEXT][2] = undef;
-        } while( $self->[NEXT][0] < @$data );
+        }
+
+        $self->[NEXT][1] = undef;
+        $self->[NEXT][0]++;
+        
+        if( $self->[NEXT][0] > $#$data ) {
+            $self->[NEXT][0] = undef;
+            return undef;
+        }
+        # recursion case, the next bucket has been incremented
+        return $self->NEXTKEY;
     }
-    $self->[NEXT] = [undef,undef,undef];
+
+    # really should be impossible to reach this case.
+    die "Impossible case";
+    $self->[NEXT] = [undef,undef];
     return undef;
 
 } #NEXTKEY
