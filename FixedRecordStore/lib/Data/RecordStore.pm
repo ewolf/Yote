@@ -58,6 +58,20 @@ use vars qw($VERSION);
 
 $VERSION = '2.02';
 
+use constant {
+    DIRECTORY   => 0,
+    OBJ_INDEX   => 1,
+    RECYC_STORE => 2,
+    STORES      => 3,
+    VERSION     => 4,
+    STORE_IDX   => 5,
+
+    TMPL        => 0,
+    RECORD_SIZE => 1,
+    FILENAME    => 2,
+};
+
+
 =head1 METHODS
 
 =head2 open( directory )
@@ -102,16 +116,16 @@ sub open {
     }
     close $FH;
 
-    my $self = {
-        DIRECTORY => $directory,
-        OBJ_INDEX => Data::RecordStore::FixedStore->open( "IL", $obj_db_filename ),
-        RECYC_STORE => Data::RecordStore::FixedStore->open( "L", "$directory/RECYC" ),
-        STORES    => [],
-        VERSION   => $version,
-    };
+    my $self = [
+        $directory,
+        Data::RecordStore::FixedStore->open( "IL", $obj_db_filename ),
+        Data::RecordStore::FixedStore->open( "L", "$directory/RECYC" ),
+        [],
+        $version,
+    ];
 
     if( $version < 2 ) {
-        $self->{STORE_IDX} = Data::RecordStore::FixedStore->open( "I", "$directory/STORE_INDEX" );
+        $self->[STORE_IDX] = Data::RecordStore::FixedStore->open( "I", "$directory/STORE_INDEX" );
     }
 
     bless $self, ref( $pkg ) || $pkg;
@@ -124,32 +138,35 @@ Returns how many entries are in this store.
 
 =cut
 sub entry_count {
-    shift->{OBJ_INDEX}->entry_count;
+    shift->[OBJ_INDEX]->entry_count;
 }
 
-=head2 ensure_entry_count( min_count )
+=head2 empty()
+
+This empties out the entire record store completely.
+Use only if you mean it.
+
+=cut
+sub empty {
+    my $self = shift;
+    my $stores = $self->_all_stores;
+    $self->[RECYC_STORE]->empty;
+    $self->[OBJ_INDEX]->empty;
+    for my $store (@$stores) {
+        $store->empty;
+    }
+} #empty
+
+=head2 _ensure_entry_count( min_count )
 
 This makes sure there there are at least min_count
 entries in this record store. This creates empty
 records if needed.
 
 =cut
-sub ensure_entry_count {
-    shift->{OBJ_INDEX}->ensure_entry_count( shift );
-} #ensure_entry_count
-
-=head2 set_entry_count( min_count )
-
-This makes sure there there are exactly
-entries in this record store. This creates empty
-records or removes existing ones as needed.
-Use with caution.
-
-=cut
-sub set_entry_count {
-    shift->{OBJ_INDEX}->set_entry_count( shift );
-} #set_entry_count
-
+sub _ensure_entry_count {
+    shift->[OBJ_INDEX]->_ensure_entry_count( shift );
+} #_ensure_entry_count
 
 =head2 next_id
 
@@ -159,9 +176,9 @@ id for it.
 =cut
 sub next_id {
     my $self = shift;
-    my $next = $self->{RECYC_STORE}->pop;
+    my $next = $self->[RECYC_STORE]->pop;
     return $next->[0] if $next && $next->[0];
-    $self->{OBJ_INDEX}->next_id;
+    $self->[OBJ_INDEX]->next_id;
 }
 
 =head2 stow( data, optionalID )
@@ -174,22 +191,21 @@ If an id is not passed in, it creates a new record store.
 Returns the id of the record written to.
 
 =cut
+
 sub stow {
     my( $self, $data, $id ) = @_;
 
-
-    $id //= $self->{OBJ_INDEX}->next_id;
+    $self->_ensure_entry_count( $id ) if $id > 0;
+    $id //= $self->next_id;
 
     die "ID must be a positive integer" if $id < 1;
-
-    $self->ensure_entry_count( $id );
 
     my $save_size = do { use bytes; length( $data ); };
 
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
 
-    my( $current_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
     #
     # Check if this record had been saved before, and that the
@@ -201,7 +217,7 @@ sub stow {
         warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
         # if the data isn't too big or too small for the table, keep it where it is and return
-        if( $old_store->{RECORD_SIZE} >= $save_size && $old_store->{RECORD_SIZE} < 3 * $save_size ) {
+        if( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
@@ -211,7 +227,6 @@ sub stow {
         # there, compacting it if possible
         #
         $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-
     } #if this already had been saved before
 
     my $store_id = 1 + int( log( $save_size ) );
@@ -222,7 +237,7 @@ sub stow {
 
     my $index_in_store = $store->next_id;
 
-    $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
+    $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $index_in_store ] );
 
     $store->put_record( $index_in_store, [ $id, $data ] );
 
@@ -231,13 +246,13 @@ sub stow {
 
 sub delete {
     my( $self, $del_id ) = @_;
-    my( $from_store_id, $current_idx_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $del_id ) };
+    my( $from_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
 
     return unless $from_store_id;
 
     my $from_store = $self->_get_store( $from_store_id );
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
-    $self->{OBJ_INDEX}->put_record( $del_id, [ 0, 0 ] );
+    $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
     1;
 } #delete
 
@@ -253,25 +268,25 @@ sub _swapout {
 
     if( $vacated_store_idx < $last_idx ) {
 
-        sysseek $fh, $store->{RECORD_SIZE} * ($last_idx-1), SEEK_SET 
-            or die "Could not seek ($store->{RECORD_SIZE} * ($last_idx-1)) : $@ $!";
-        my $srv = sysread $fh, my $data, $store->{RECORD_SIZE};
+        sysseek $fh, $store->[RECORD_SIZE] * ($last_idx-1), SEEK_SET
+            or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_idx-1)) : $@ $!";
+        my $srv = sysread $fh, my $data, $store->[RECORD_SIZE];
         defined( $srv ) or die "Could not read : $@ $!";
-        sysseek( $fh, $store->{RECORD_SIZE} * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
+        sysseek( $fh, $store->[RECORD_SIZE] * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
         defined( $srv ) or die "Could not read : $@ $!";
 
         #
         # update the object db with the new store index for the moved object id
         #
-        my( $moving_id ) = unpack( $store->{TMPL}, $data );
+        my( $moving_id ) = unpack( $store->[TMPL], $data );
 
-        $self->{OBJ_INDEX}->put_record( $moving_id, [ $store_id, $vacated_store_idx ] );
+        $self->[OBJ_INDEX]->put_record( $moving_id, [ $store_id, $vacated_store_idx ] );
     }
 
     #
     # truncate now that the store is one record shorter
     #
-    truncate $fh, $store->{RECORD_SIZE} * ($last_idx-1);
+    truncate $fh, $store->[RECORD_SIZE] * ($last_idx-1);
 
 } #_swapout
 
@@ -283,9 +298,9 @@ sub _swapout {
 sub has_id {
     my( $self, $id ) = @_;
     my $ec = $self->entry_count;
-    return 0 if $ec < $id;
+    return 0 if $ec < $id || $id < 1;
 
-    my( $store_id ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
     $store_id > 0;
 }
 
@@ -295,7 +310,7 @@ sub has_id {
 
 =cut
 sub empty_recycler {
-    shift->{RECYC_STORE}->empty;
+    shift->[RECYC_STORE]->empty;
 } #empty_recycler
 
 =head2 recycle( $id )
@@ -305,7 +320,8 @@ sub empty_recycler {
 =cut
 sub recycle {
     my( $self, $id ) = @_;
-    $self->delete( $id ) && $self->{RECYC_STORE}->push( [$id] );
+    $self->delete( $id );
+    $self->[RECYC_STORE]->push( [$id] );
 } #empty_recycler
 
 
@@ -318,9 +334,9 @@ record associated with it, undef is returned.
 sub fetch {
     my( $self, $id ) = @_;
     
-    return undef if $id > $self->{OBJ_INDEX}->entry_count;
+#    return undef if $id > $self->[OBJ_INDEX]->entry_count;
     
-    my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
+    my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
     return undef unless $store_id;
 
     my $store = $self->_get_store( $store_id );
@@ -331,32 +347,32 @@ sub fetch {
     $data;
 } #fetch
 
-=head2 all_stores
-
-Returns a list of all the stores created in this Data::RecordStore
-
-=cut
-sub all_stores {
+#
+# Returns a list of all the stores created in this Data::RecordStore
+#
+sub _all_stores {
     my $self = shift;
-    opendir my $DIR, "$self->{DIRECTORY}/stores";
+    opendir my $DIR, "$self->[DIRECTORY]/stores";
     [ map { /(\d+)_OBJSTORE/; $self->_get_store($1) } grep { /_OBJSTORE/ } readdir($DIR) ];
-} #all_stores
+} #_all_stores
 
 sub _get_store {
     my( $self, $store_index ) = @_;
 
-    if( $self->{STORES}[ $store_index ] ) {
-        return $self->{STORES}[ $store_index ];
+    if( $self->[STORES][ $store_index ] ) {
+        return $self->[STORES][ $store_index ];
     }
 
     my $store_size = int( exp $store_index );
 
     # storing first the size of the record, then the bytes of the record
-    my $store = Data::RecordStore::FixedStore->open( "LZ*", "$self->{DIRECTORY}/stores/${store_index}_OBJSTORE", $store_size );
+    my $store = Data::RecordStore::FixedStore->open( "LZ*", "$self->[DIRECTORY]/stores/${store_index}_OBJSTORE", $store_size );
 
-    $self->{STORES}[ $store_index ] = $store;
+    $self->[STORES][ $store_index ] = $store;
     $store;
 } #_get_store
+
+
 
 =head2 convert( $source_dir, $dest_dir )
 
@@ -401,7 +417,6 @@ sub convert {
 
     my $store_db = Data::RecordStore::FixedStore->open( "I", "$source_dir/STORE_INDEX" );
 
-    #my @old_sizes;
     my $source_dbs = [];
     my $dest_dbs = [];
 
@@ -413,7 +428,7 @@ sub convert {
 
     my $source_obj_db = Data::RecordStore::FixedStore->open( "IL", $source_obj_idx_file );
     my $dest_obj_db = Data::RecordStore::FixedStore->open( "IL", $dest_obj_idx_file );
-    $dest_obj_db->ensure_entry_count($source_obj_db->entry_count);
+    $dest_obj_db->_ensure_entry_count($source_obj_db->entry_count);
 
     my $tenth = int($source_obj_db->entry_count/10);
     my $count = 0;
@@ -458,7 +473,7 @@ sub convert {
 
     print STDERR "Done. Remember that your new database is in $dest_dir and your old one is in $source_dir\n";
 
-}
+} #convert
 
 # ----------- end Data::RecordStore
 =head1 HELPER PACKAGES
@@ -497,7 +512,7 @@ my $entries = $store->entry_count;
 
 if( $entries < $min ) {
 
-    $store->ensure_entry_count( $min );
+    $store->_ensure_entry_count( $min );
 
 }
 
@@ -516,6 +531,13 @@ no warnings 'uninitialized';
 
 use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Copy;
+
+use constant {
+    TMPL        => 0,
+    RECORD_SIZE => 1,
+    FILENAME    => 2,
+    OBJ_INDEX   => 3,
+};
 
 =head2 open( template, filename, size )
 
@@ -537,12 +559,11 @@ sub open {
         close $FH;
     }
     CORE::open $FH, "+<", $filename or die "$@ $!";
-    my $self = bless { TMPL => $template,
-            RECORD_SIZE => $useSize,
-            FILENAME => $filename,
-    }, $class;
-    
-    $self;
+    bless [
+        $template,
+        $useSize,
+        $filename,
+    ], $class;
 } #open
 
 =head2 empty
@@ -553,46 +574,24 @@ This empties out the database, setting it to zero records.
 sub empty {
     my $self = shift;
     my $fh = $self->_filehandle;
-    truncate $self->{FILENAME}, 0;
+    truncate $self->[FILENAME], 0;
     undef;
 } #empty
 
-=head2 ensure_entry_count( count )
+=head2 _ensure_entry_count( count )
 
 Makes sure the data store has at least as many entries
 as the count given. This creates empty records if needed
 to rearch the target record count.
 
 =cut
-sub ensure_entry_count {
+sub _ensure_entry_count {
     my( $self, $count ) = @_;
-
-    my $idx = $self->entry_count;
-
-    if( $count > $idx ) {
-        my $needed = $count - $idx;
-        for( 1..$needed ) {
-            $idx++;
-            $self->put_record( $idx, [ 0, 0 ] );
-        }
+    if( $count > $self->entry_count ) {
+        my $fh = $self->_filehandle;
+        sysseek( $fh, $self->[RECORD_SIZE] * ($count) - 1, SEEK_SET ) && syswrite( $fh, pack( $self->[TMPL], \0 ) );
     }
-
-} #ensure_entry_count
-
-=head2 set_entry_count( count )
-
-Sets the number of entries in this record store,
-growing or shrinking as necessary.
-
-=cut
-sub set_entry_count {
-    my( $self, $count ) = @_;
-    my $fh = $self->_filehandle;
-
-    truncate $fh, $count * $self->{RECORD_SIZE};
-
-} #set_entry_count
-
+} #_ensure_entry_count
 
 =head2
 
@@ -605,8 +604,8 @@ sub entry_count {
     # return how many entries this index has
     my $self = shift;
     my $fh = $self->_filehandle;
-    my $filesize = -s $self->{FILENAME};
-    int( $filesize / $self->{RECORD_SIZE} );
+    my $filesize = -s $self->[FILENAME];
+    int( $filesize / $self->[RECORD_SIZE] );
 }
 
 =head2 get_record( idx )
@@ -622,23 +621,13 @@ sub get_record {
 
     die "get record must be a positive integer" if $idx < 1;
 
-    sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+    sysseek $fh, $self->[RECORD_SIZE] * ($idx-1), SEEK_SET or die "Could not seek ($self->[RECORD_SIZE] * ($idx-1)) : $@ $!";
 
-    my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
+    my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
     
     defined( $srv ) or die "Could not read : $@ $!";
-    [unpack( $self->{TMPL}, $data )];
+    [unpack( $self->[TMPL], $data )];
 } #get_record
-
-=head2 has_id( id )
-
-Returns true if an object with this db exists in the record store.
-
-=cut
-sub has_id {
-    my( $self, $id ) = @_;
-    $self->{OBJ_INDEX}->has_id( $id );
-}
 
 =head2 next_id
 
@@ -649,7 +638,7 @@ sub next_id {
     my( $self ) = @_;
     my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
-    $self->ensure_entry_count( $next_id );
+    $self->_ensure_entry_count( $next_id );
     $next_id;
 } #next_id
 
@@ -665,7 +654,7 @@ sub pop {
     my $entries = $self->entry_count;
     return undef unless $entries;
     my $ret = $self->get_record( $entries );
-    truncate $self->_filehandle, ($entries-1) * $self->{RECORD_SIZE};
+    truncate $self->_filehandle, ($entries-1) * $self->[RECORD_SIZE];
     $ret;
 } #pop
 
@@ -710,14 +699,14 @@ assigned to this store.
 sub put_record {
     my( $self, $idx, $data ) = @_;
 
-    my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
+    my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
     # allows the put_record to grow the data store by no more than one entry
 
     die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
 
     my $fh = $self->_filehandle;
 
-    sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+    sysseek( $fh, $self->[RECORD_SIZE] * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     1;
 } #put_record
 
@@ -730,12 +719,12 @@ sub unlink_store {
     # TODO : more checks
     my $self = shift;
     close $self->_filehandle;
-    unlink $self->{FILENAME};
+    unlink $self->[FILENAME];
 }
 
 sub _filehandle {
     my $self = shift;
-    CORE::open( my $fh, "+<", $self->{FILENAME} ) or die "Unable to open ($self) $self->{FILENAME} : $!";
+    CORE::open( my $fh, "+<", $self->[FILENAME] ) or die "Unable to open ($self) $self->[FILENAME] : $!";
     $fh;
 }
 

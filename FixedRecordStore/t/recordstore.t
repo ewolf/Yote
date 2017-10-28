@@ -45,7 +45,7 @@ sub test_suite {
                              } );
     my $id3 = $store->stow( $json_data );
 
-    $store = Data::RecordStore->open( $dir );    
+    $store = Data::RecordStore->open( $dir );
     is( $id2, $id + 1, "Incremental object ids" );
     is( $store->fetch( $id ), "FOO FOO", "first item saved" );
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
@@ -104,6 +104,39 @@ sub test_suite {
     is( $new_store->entry_count, 2, "Two entries now in store #5" );
     $store->delete( $id );
     is( $new_store->entry_count, 1, "one entries now in store #5 after delete" );
+
+    # test store empty
+    $store->empty;
+    ok( !$store->has_id(1), "does not have any entries" );
+    ok( !$store->has_id(0), "does not have any entries" );
+
+    is( $store->entry_count, 0, "no entries" );
+    $store->stow( "BOOGAH", 4 );
+    is( $store->next_id, '5', "next id is 5" );
+    is( $store->entry_count, 5, "5 entries after skipping ids plus asking to generate the next one" );
+    ok( $store->has_id(4), "has entry four" );
+    ok( ! $store->has_id(1), "no entry one, was skipped" );
+
+    $store->recycle( 3 );
+    is( $store->next_id, 3, 'recycled id' );
+    is( $store->entry_count, 5, "5 entries after recycling empty id" );
+    is( $store->next_id, 6, 'no more recycling ids' );
+    is( $store->fetch( 4 ), "BOOGAH" );
+    $store->recycle( 4 );
+    ok( ! $store->fetch( 4 ), "4 was recycled" );
+    is( $store->next_id, 4, 'recycled id 4' );
+
+    $store->stow( "TEN", 10 );
+    is( $store->entry_count, 10, "entry count explicitly set" );
+    is( $store->next_id, 11, 'after entry count being set' );
+
+    $store->recycle(2);
+    is( $store->next_id, 2, 'recycled id' );
+    $store->recycle(3);
+    $store->recycle(4);
+    $store->empty_recycler;
+    
+    is( $store->next_id, 12, 'after recycler emptied' );
     
 } #test suite
 

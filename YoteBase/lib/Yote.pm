@@ -147,7 +147,7 @@ sub run_recycler {
     my $recycle_tally = Data::RecordStore->open( "$base_path/RECYCLE" );
 
     # empty because this may have run recently
-    $recycle_tally->set_entry_count(0);
+    $recycle_tally->empty;
     
     $recycle_tally->stow( "1", 1 );
     my $item = $self->fetch_root;
@@ -185,7 +185,7 @@ sub run_recycler {
         }
     }
     # empty to save space
-    $recycle_tally->empty; 
+    $recycle_tally->empty;
 } #run_recycler
 
 sub stow_all {
