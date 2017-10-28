@@ -8,7 +8,6 @@ my $builder = Module::Build->new(
     build_requires => {
         'Test::More'            => 0,
         'Module::Build'         => 0,
-        'JSON'                  => 0,
     },
     dist_abstract      => 'Simple and fast record based data store',
     create_makefile_pl => 'traditional',
@@ -18,7 +17,6 @@ my $builder = Module::Build->new(
     test_files         => [ 't/recordstore.t', ],
     requires => {
         'perl'       => 'v5.9.4',
-        'File::Path' => '2.09',
     },
     );
 

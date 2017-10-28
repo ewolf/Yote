@@ -6,7 +6,6 @@ use Data::RecordStore;
 use Data::Dumper;
 use File::Temp qw/ :mktemp tempdir /;
 use Test::More;
-use JSON;
 
 use Carp;
 $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
@@ -40,18 +39,14 @@ sub test_suite {
     ok( ! $store->has_id( 2 ), "still no second id yet" );
     my $id2 = $store->stow( "BAR BAR" );
     ok( $store->has_id( 2 ), "now has second id" );
-    my $json_data = encode_json( {
-        todo => [ "Käse essen"  ],
-                             } );
-    my $id3 = $store->stow( $json_data );
+
+    my $id3 = $store->stow( "Käse essen" );
 
     $store = Data::RecordStore->open( $dir );
     is( $id2, $id + 1, "Incremental object ids" );
     is( $store->fetch( $id ), "FOO FOO", "first item saved" );
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
-    is( $store->fetch( $id3 ), encode_json( {
-        todo => [ "Käse essen"  ],
-                                        } ), "third item saved" );
+    is( $store->fetch( $id3 ), "Käse essen", "third item saved" );
     
     my $ds = Data::RecordStore::FixedStore->open( "LLA4", "$dir2/filename" );
     my( @r ) = (

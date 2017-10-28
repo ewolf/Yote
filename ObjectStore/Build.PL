@@ -6,9 +6,8 @@ use Module::Build;
 my $builder = Module::Build->new(
     add_to_cleanup      => [ 'Data-RecordStore-*' ],
     build_requires => {
-        'Test::More'            => 0,
-        'Module::Build'         => 0,
-        'JSON'                  => 0,
+        'Test::More' => 0,
+        'Module::Build' => 0.40,
     },
     dist_abstract      => 'Simple and fast record based data store',
     create_makefile_pl => 'traditional',
@@ -18,7 +17,7 @@ my $builder = Module::Build->new(
     test_files         => [ 't/recordstore.t', ],
     requires => {
         'perl'       => 'v5.9.4',
-        'File::Path' => '2.09',
+        'Data::RecordStore'     => 2.0,
     },
     );
 
