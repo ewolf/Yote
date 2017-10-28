@@ -18,65 +18,191 @@ exit;
 
 sub convert_store {
     my $store = shift;
-    for my $id ( 1..($store->entry_count-1) ) {
-        my $val = $store->fetch( $id );
-        my( $class, $txt ) = ( $val =~ /^(\S+) (.*)/s );
-        if( $txt =~ /^[\{\[]/ ) {
-            my $data = from_json( $txt );
-            my $converted;
-            if( $class eq 'ARRAY' ) {
-                $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
-            } else {
-                $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
-            }
-            $txt = $converted;
-            $store->stow( "$class $converted", $id );
-            print STDERR "$id\n";
-        }
-        my $data = unfreeze_to_array( $txt );
-        if( $class eq 'HASH' ) {
-            my $hash_txt = join('`', 0, $Yote::Hash::SIZE, scalar(@$data), @$data );
-            $store->stow( "$class $hash_txt", $id );
-        }
-        elsif( $class eq 'ARRAY' ) {
-            my $arry_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$data), 0, @$data );
-            $store->stow( "$class $arry_txt", $id );
-        }
-        elsif( $class eq 'Yote::ArrayGateKeeper' ) {
-        }
-        elsif( $class eq 'Yote::HashGateKeeper' ) {
-        }
-        if( $id == 1 ) {
-            # make sure this is the info node, not the root node.
-            my( %node ) = (@$data);
-            unless( $node{db_version} ) {
-                my $root_id = $store->stow( "$class $txt" );
-                my $now = time;
-                my $info = {
-                    db_version       => $Yote::DB_VERSION,
-                    yote_version     => $Yote::VERSION,
-                    created_time     => $now,
-                    last_update_time => $now,
-                };
-                my $info_txt = join('`', %$info );
-                $store->stow( "Yote::Obj $info_txt" );
-            }
-        }
-    } #each id
+
+    #
+    # Load the info node. This is probably going to be the
+    # root node as that used to be with ID 1, but now the
+    # root node hangs off the info node which gives information
+    # about the object store.
+    #
+    my( $class, $arry_data, $save_txt ) = extract( 1 );
+    my $root_id;
     
+    # make sure this is the info node, not the root node.
+    my( %node ) = (@$arry_data);
+    if( $node{db_version} ) {
+        $root_id = $node{root};
+    }
+    else {
+        # object 1 is not the info node. It is the root
+        # create an info node and move the root.
+        $root_id = $store->stow( "$class $save_txt" );
+        my $now = time;
+        my $info = {
+            db_version       => $Yote::DB_VERSION,
+            yote_version     => $Yote::VERSION,
+            created_time     => $now,
+            last_update_time => $now,
+            root             => $root_id,
+        };
+        my $info_txt = join('`', %$info );
+        $store->stow( "Yote::Obj $info_txt", 1 );
+    }
+    
+    #
+    # Now go through and convert everything attached to the root.
+    # Why not everything? Want to make sure that Yote::BigHash and
+    # Yote::ArrayGatekeeper objects are only converted from the top down.
+    #
+    # First pass at this just stores the index in memory. Maybe should set up
+    # a data store to do this, but do this to get it working for now.
+    #
+    my( %already_converted );
+    my( @ids ) = ( $root_id );
+    while( @ids ) {
+        my $id = shift @ids;
+        my( $class, $data, $save_txt ) = convert_item( $id );
+        my( @ref_ids ) = ref_ids( $class, $data );
+        push @ids, grep { ! $already_converted{$_}++ } @ref_ids;
+    }
+        
 } #convert_store
 
-sub unfreeze_to_array {
-    my $txt = shift;
-    my $data = [ split /\`/, $txt, -1 ];
+sub ref_ids {
+    my( $class, $data ) = @_;
+    if( $class eq 'Yote::Array' ) {
+        splice @$data, 0, 4; #remove level, block size, array size, underneath
+        return grep { $_ > 1 } @$data;
+    }
+    elsif( $class eq 'Yote::Hash' ) {
+        splice @$data, 0, 4; #remove level, buckets, size
+        my $h = {@$data};
+        return grep { $_ > 1 } values %$h;
+    }
+    else {
+        my $h = {@$data};
+        return grep { $_ > 1 } values %$h;
+    }
+} #ref_ids
+    
+sub convert_item {
+    my $id = shift;
+    my( $class, $arry_data, $save_txt ) = extract( $id );
 
-    if ( 0 < grep { /\\$/ } @$data ) {
+    if( $class eq 'HASH' ) {
+        # from the old version, it was impossible to tell '' from undefined, so treating things like '' in the map below
+        $save_txt = join('`', 0, $Yote::Hash::SIZE, scalar(@$arry_data), map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$arry_data );
+        $class = 'Yote::Hash';
+    }
+    elsif( $class eq 'ARRAY' ) {
+        $save_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$arry_data), 0, map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$arry_data );
+        $class = 'Yote::Array';
+    }
+    elsif( $class eq 'Yote::ArrayGatekeeper' ) {
+        my $array = cobble_gatekeeper_arrays( $arry_data );
+        $save_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$array), 0, map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$array );
+        $class = 'Yote::Array';
+    }
+    elsif( $class eq 'Yote::BigHash' ) {
+        my $hash_as_list = cobble_bighash( $arry_data );
+        $save_txt = join('`', 0, $Yote::Hash::SIZE, scalar(@$hash_as_list), map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$hash_as_list );
+        $class = 'Yote::Hash';
+    }
+    $store->stow( "$class $save_txt", $id );
+
+    ( $class, $arry_data, $save_txt );
+} #convert_item
+    
+
+
+sub cobble_bighash {
+    my $data = shift;
+
+    my $data_list = []; #as a list, though
+    my( $hash_type, $is_hash, @hash_data ) = @$data;
+    if( $hash_type eq 'S' ) {
+        # shallow, so acts like a 'normal hash'
+        push @$data_list, @hash_data;
+    } 
+    else {
+        #hash or list is in them thar hash_data
+        for my $bucket_id (grep { $_ > 1 } @hash_data) {
+            # deep bucket is a bighash
+            # shallow bucket is a list of key value pairs
+            my( $class, $arry_data, $save_txt ) = extract( $bucket_id );
+            my $pair_list;
+            if( $class eq 'Yote::ArrayGatekeeper' ) {
+                # list of key/hash pairs
+                $pair_list = cobble_gatekeeper_arrays( $arry_data );
+            }
+            elsif( $class eq 'Yote::BigHash' ) {
+                $pair_list = cobble_bighash( $arry_data );
+            }
+            else {
+                warn "Unable to cobble Yote::BigHash. There was class '$class' which I dont' know what to do with. Ignoring";
+            }
+            while( @$pair_list ) {
+                my $k = shift @$pair_list;
+                my $v = shift @$pair_list;
+                push @$data_list, $k, $v;
+            }
+        }
+    }
+    $data_list;
+} #cobble_bighash
+
+sub cobble_gatekeeper_arrays {
+    my $data = shift;
+    my( $item_count, $block_count, $block_size, $level, @array_ids ) = @$data;
+    my $array_data = [];
+    if( $level == 1 ) {
+        # this is the level above normal arrays
+        for my $arry_id (@array_ids) {
+            my( $class, $subarray_data, $sv_txt ) = extract( $arry_id );
+            push @$array_data, @$subarray_data;
+        }
+        return $array_data;
+    }
+    else {
+        # this gatekeeper is composed of gatekeepers
+        for my $arry_id (@array_ids) {
+            my( $class, $arry_data, $save_txt ) = extract( $arry_id );
+            my $gatekeeper_data = cobble_gatekeeper_arrays( $arry_data );
+            push @$array_data, @$gatekeeper_data;
+        }
+    }
+    $array_data;
+} #cobble_gatekeeper_arrays
+
+sub extract {
+    my $id = shift;
+
+    my $val = $store->fetch( $id );
+    my( $class, $save_txt ) = ( $val =~ /^(\S+) (.*)/s );
+
+    #
+    # Check if this was saved using json. If so, convert to new ` delimited format
+    #
+    if( $save_txt =~ /^[\{\[]/ ) {
+        my $data = from_json( $save_txt );
+        my $converted;
+        if( $class eq 'ARRAY' ) {
+            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
+        } else {
+            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
+        }
+        $save_txt = $converted;
+    }
+
+    my $arry_data = [ split /\`/, $save_txt, -1 ];
+
+    if ( 0 < grep { /\\$/ } @$arry_data ) {
         my $newparts = [];
 
         my $is_hanging = 0;
         my $working_part = '';
 
-        for my $part (@$data) {
+        for my $part (@$arry_data) {
 
             # if the part ends in a hanging escape
             if ( $part =~ /(^|[^\\])((\\\\)+)?[\\]$/ ) {
@@ -100,7 +226,7 @@ sub unfreeze_to_array {
         if ( $is_hanging ) {
             die "Error in parsing parts\n";
         }
-        $data = $newparts;
+        $arry_data = $newparts;
     }
-    $data;
-} #unfreeze_to_array
+    ($class, $arry_data, $save_txt);
+} #extract

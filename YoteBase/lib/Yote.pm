@@ -856,7 +856,21 @@ sub TIEHASH {
     $level ||= 0;
     $size  ||= 0;
     $buckets ||= $Yote::Hash::SIZE;
-    bless [ $id, $level ? [@fetch_buckets] : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef] ], $class;
+    my $hash;
+    if( $level == 0 && $size > $buckets ) {
+        # this case is where a hash is initialized the first time with more items than buckets.
+        $hash = bless [ $id, {}, $obj_store, 0, $buckets, 0, [undef,undef] ], $class;
+        while( @fetch_buckets ) {
+            my $k = shift @fetch_buckets;
+            my $v = shift @fetch_buckets;
+            $hash->STORE( $k, $obj_store->_xform_out($v) );
+        }
+    }
+    else {
+        $hash = bless [ $id, $level ? [@fetch_buckets] : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef] ], $class;
+    }
+
+    $hash;
 }
 
 sub CLEAR {
