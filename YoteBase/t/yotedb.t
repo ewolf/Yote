@@ -121,6 +121,8 @@ sub test_suite {
 
     undef $list_to_remove;
 
+    print STDERR Data::Dumper->Dump(["WEAK ($store->[2]{$list_to_remove_id}), DIRTY $store->[1]{$list_to_remove_id})"]);
+    
     ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
     ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
     ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
@@ -138,7 +140,6 @@ sub test_suite {
 
     $Yote::Hash::SIZE = 7;
 
-    print STDERR Data::Dumper->Dump(['----------------------------------']);
     my $thash = $store->fetch_root->set_test_hash({});
     # test for hashes large enough that subhashes are inside
 
@@ -173,7 +174,8 @@ sub test_suite {
         $val++;
     }
     $store->stow_all;
-
+    undef $store;
+    
     my $sup_store = Yote::open_store( $dir );
     $thash = $sup_store->fetch_root->get_test_hash;
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
@@ -184,7 +186,8 @@ sub test_suite {
     # listy test because
     $Yote::Array::MAX_BLOCKS  = 4;
 
-     $root_node = $store->fetch_root;
+    $store = $sup_store;
+    $root_node = $store->fetch_root;
     my $l = $root_node->get_listy( [] );
 
     push @$l, "ONE", "TWO";
@@ -257,7 +260,7 @@ sub test_suite {
     is_deeply( $l, ["ZERO", undef, "THREE", "NEENER", "BOINK", "NEENER",
                     "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTTEEN", "NINETEEN", "TWENTY","TWENTYONE"], "first delete" );
     ok( exists( $l->[0] ), "exists" );
-    ok( exists( $l->[1] ), "exists but is undefined" );
+    ok( !exists( $l->[1] ), "undefined" );
     ok( !exists( $l->[$#$l+1] ), "doesnt exist beyond" );
     ok( exists( $l->[$#$l] ), "exists at end" );
 

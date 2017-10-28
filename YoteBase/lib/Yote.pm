@@ -193,12 +193,12 @@ sub run_recycler {
     my $record_store = $self->[RECORD_STORE];
     my $count = $record_store->entry_count;
     for( my $i=1; $i<=$count; $i++ ) {
-        print STDERR "$i <$self->[RECORD_STORE]>) ";
+#        print STDERR "$i <$self->[RECORD_STORE]>) ";
         if( $recycle_tally->fetch($i) != 1 ) {
-            print STDERR "Recycle";
+#            print STDERR "Recycle";
             $record_store->recycle( $i );
         }
-        print STDERR "\n";
+#        print STDERR "\n";
     }
     # empty to save space
     $recycle_tally->empty;
@@ -218,7 +218,7 @@ sub stow_all {
 
         $self->[RECORD_STORE]->stow( "$class $text_rep", $id );
     }
-    print STDERR Data::Dumper->Dump(["DUMP DIRTY"]);
+#    print STDERR Data::Dumper->Dump(["DUMP DIRTY"]);
     $self->[DIRTY] = {};
 
 } #stow_all
@@ -227,8 +227,8 @@ sub _fetch {
     my( $self, $id ) = @_;
     return undef unless $id && $id ne 'u';
 
-    print STDERR Data::Dumper->Dump(["FETCH $id in DIRTY"])if $self->[DIRTY]{$id};
-    print STDERR Data::Dumper->Dump(["FETCH $id in WEAK"])if $self->[WEAK]{$id};
+#    print STDERR Data::Dumper->Dump(["FETCH $id in DIRTY"])if $self->[DIRTY]{$id};
+#    print STDERR Data::Dumper->Dump(["FETCH $id in WEAK"])if $self->[WEAK]{$id};
     
     my $ref = $self->[DIRTY]{$id} //$self->[WEAK]{$id};
     return $ref if $ref;
@@ -311,6 +311,7 @@ sub _xform_out {
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
     die "Store weak called without ref" unless $ref;
+#    print STDERR "WEAK ($id) ($ref)\n";
     $self->[WEAK]{$id} = $ref;
 
     weaken( $self->[WEAK]{$id} );
@@ -318,8 +319,9 @@ sub _store_weak {
 
 sub _dirty {
     # ( $self, $ref, $id )
-    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) unless "$_[1]";
-    print STDERR "MARKDIRTY $_[2] ($_[1])\n";
+#    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) unless "$_[1]";
+    return unless $_[1];
+#    print STDERR "MARKDIRTY $_[2] ($_[1])\n";
     $_[0]->[DIRTY]->{$_[2]} = $_[1];
 } #_dirty
 
@@ -901,7 +903,7 @@ sub EXISTS {
         my $hash_id = $data->[$hval];
         if( $hash_id > 0 ) {
             my $hash = $self->[DSTORE]->_fetch( $hash_id );
-            print STDERR Data::Dumper->Dump([$hash_id,ref($hash),"LA <$self->[DSTORE][0]> ($hval)"]);
+#            print STDERR Data::Dumper->Dump([$hash_id,ref($hash),"LA <$self->[DSTORE][0]> ($hval)"]);
             my $tied = tied %$hash;
             return $tied->EXISTS( $key );
         }
@@ -982,7 +984,11 @@ sub STORE {
             }
             $self->[DATA] = \@newids;
             $data = $self->[DATA];
-here is the problem. this isnt in weak yet!
+            # here is the problem. this isnt in weak yet!
+            # this is a weak reference problem and the problem is at NEXTKEY with
+            # LEVEL 0 hashes that are loaded from LEVEL 1 hashes that are loaded from
+            # LEVEL 2 hashes. The level 1 hash is loaded and dumped as needed, not keeping
+            # the ephermal info (or is that sort of chained..hmm)
             $store->_dirty( $store->[Yote::ObjStore::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
@@ -1036,14 +1042,16 @@ sub NEXTKEY  {
         do {
             my $nexthashid = $data->[$self->[NEXT][0]||0];
             if( $nexthashid > 0 ) {
-                my $hash_id = $self->[NEXT][2] || $nexthashid;
-                my $hash = $store->_fetch( $hash_id );
-                my $tied = tied %$hash;
+                my $tied = $self->[NEXT][2];
+                unless( $tied ) {
+                    my $hash = $store->_fetch( $nexthashid );
+                    $tied = tied %$hash;
+                }
 
                 my( $k, $v ) = $self->[NEXT][1] ? $tied->NEXTKEY : $tied->FIRSTKEY;
                 if( defined( $k ) ) {
                     $self->[NEXT][1] = 1;
-                    $self->[NEXT][2] = $hash_id;
+                    $self->[NEXT][2] = $tied;
                     return wantarray ? ( $k => $v ) : $k;
                 }
             }

@@ -218,7 +218,7 @@ sub stow {
 
         # if the data isn't too big or too small for the table, keep it where it is and return
         if( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
-            print STDERR "STOW ($id) --> ($current_store_id,$current_idx_in_store)\n";
+#            print STDERR "STOW ($id) --> ($current_store_id,$current_idx_in_store)\n";
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
@@ -237,10 +237,10 @@ sub stow {
     my $entry_count = $store->entry_count;
 
     my $index_in_store = $store->next_id;
-        print STDERR Data::Dumper->Dump(["STOW <$self> $store_id --> $index_in_store ($id)"]);
+#        print STDERR Data::Dumper->Dump(["STOW <$self> $store_id --> $index_in_store ($id)"]);
     $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $index_in_store ] );
 
-    print STDERR "STOW ($id) --> ($store_id,$index_in_store)\n";
+#    print STDERR "STOW ($id) --> ($store_id,$index_in_store)\n";
     $store->put_record( $index_in_store, [ $id, $data ] );
 
     $id;
@@ -254,7 +254,7 @@ sub delete {
 
     my $from_store = $self->_get_store( $from_store_id );
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
-    print STDERR "DELETE <$self> $del_id\n";
+#    print STDERR "DELETE <$self> $del_id\n";
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
     1;
 } #delete
@@ -282,7 +282,7 @@ sub _swapout {
         # update the object db with the new store index for the moved object id
         #
         my( $moving_id ) = unpack( $store->[TMPL], $data );
-        print STDERR Data::Dumper->Dump(["SWAPOUT <$self> $store_id --> $vacated_store_idx $moving_id"]);
+#        print STDERR Data::Dumper->Dump(["SWAPOUT <$self> $store_id --> $vacated_store_idx $moving_id"]);
         $self->[OBJ_INDEX]->put_record( $moving_id, [ $store_id, $vacated_store_idx ] );
     }
 
@@ -304,7 +304,7 @@ sub has_id {
     return 0 if $ec < $id || $id < 1;
 
     my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
-    print STDERR Data::Dumper->Dump(["HAS_ID <$self> $id --> $store_id ($id)"]);
+#    print STDERR Data::Dumper->Dump(["HAS_ID <$self> $id --> $store_id ($id)"]);
     $store_id > 0;
 }
 
@@ -341,7 +341,7 @@ sub fetch {
     return undef if $id > $self->[OBJ_INDEX]->entry_count;
     
     my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
-    print STDERR Data::Dumper->Dump([$store_id,$id_in_store,$self->[OBJ_INDEX]->entry_count,"RecordStore::fetch <$self> ($id)"]);
+#    print STDERR Data::Dumper->Dump([$store_id,$id_in_store,$self->[OBJ_INDEX]->entry_count,"RecordStore::fetch <$self> ($id)"]);
     return undef unless $store_id;
 
     my $store = $self->_get_store( $store_id );
