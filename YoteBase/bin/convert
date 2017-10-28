@@ -14,16 +14,41 @@ my $store = Data::RecordStore->open( $db_dir );
 
 for my $id ( 1..($store->entry_count-1) ) {
     my $val = $store->fetch( $id );
-    if( $val =~ /^(\S+) ([\{\[].*)/s ) {
-        my( $class, $json ) = ( $1, $2 );
-        my $data = from_json( $json );
+    my( $class, $txt ) = ( $val =~ /^(\S+) (.*)/ );
+    
+    if( $txt =~ /^([\{\[].*)/s ) {
+        #
+        # Convert old style JSON storage into
+        # new style ` delimited parts
+        #
+        my $data = from_json( $txt );
         my $converted;
         if( $class eq 'ARRAY' ) {
             $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
         } else {
             $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
         }
+        $txt = $converted;
         $store->stow( "$class $converted", $id );
         print STDERR "$id\n";
+    }
+
+    #
+    #
+    #  * ARRAY - convert to Yote::Array
+    #  * HASH - convert to Yote::Hash
+    #  * Yote::ArrayGatekeeper - convert to Yote::Array
+    #  * Yote::ArrayGatekeeper
+    #
+    if( $class eq 'ARRAY' ) {
+        $class = 'Yote::Array';
+        # add LEVEL, BLOCK_COUNT, ITEM_COUNT, UNDERNEATH
+        $txt = "0
+    }
+    
+    # if this is the first one, this becomes the
+    # infonode with the root created one off of this
+    if( $id == 1 ) {
+        
     }
 } #each id
