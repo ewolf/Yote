@@ -4,6 +4,7 @@ use strict;
 #use warnings;
 
 use Data::RecordStore;
+use Yote;
 use JSON;
 
 my $db_dir = shift @ARGV;
@@ -11,19 +12,95 @@ my $db_dir = shift @ARGV;
 die "Usage: $0 <recordstore directory>" unless $db_dir;
 
 my $store = Data::RecordStore->open( $db_dir );
+convert_store( $store );
 
-for my $id ( 1..($store->entry_count-1) ) {
-    my $val = $store->fetch( $id );
-    if( $val =~ /^(\S+) ([\{\[].*)/s ) {
-        my( $class, $json ) = ( $1, $2 );
-        my $data = from_json( $json );
-        my $converted;
-        if( $class eq 'ARRAY' ) {
-            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
-        } else {
-            $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
+exit;
+
+sub convert_store {
+    my $store = shift;
+    for my $id ( 1..($store->entry_count-1) ) {
+        my $val = $store->fetch( $id );
+        my( $class, $txt ) = ( $val =~ /^(\S+) (.*)/s );
+        if( $txt =~ /^[\{\[]/ ) {
+            my $data = from_json( $txt );
+            my $converted;
+            if( $class eq 'ARRAY' ) {
+                $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$data );
+            } else {
+                $converted = join( '`', map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } %$data );
+            }
+            $txt = $converted;
+            $store->stow( "$class $converted", $id );
+            print STDERR "$id\n";
         }
-        $store->stow( "$class $converted", $id );
-        print STDERR "$id\n";
+        my $data = unfreeze_to_array( $txt );
+        if( $class eq 'HASH' ) {
+            my $hash_txt = join('`', 0, $Yote::Hash::SIZE, scalar(@$data), @$data );
+            $store->stow( "$class $hash_txt", $id );
+        }
+        elsif( $class eq 'ARRAY' ) {
+            my $arry_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$data), 0, @$data );
+            $store->stow( "$class $arry_txt", $id );
+        }
+        elsif( $class eq 'Yote::ArrayGateKeeper' ) {
+        }
+        elsif( $class eq 'Yote::HashGateKeeper' ) {
+        }
+        if( $id == 1 ) {
+            # make sure this is the info node, not the root node.
+            my( %node ) = (@$data);
+            unless( $node{db_version} ) {
+                my $root_id = $store->stow( "$class $txt" );
+                my $now = time;
+                my $info = {
+                    db_version       => $Yote::DB_VERSION,
+                    yote_version     => $Yote::VERSION,
+                    created_time     => $now,
+                    last_update_time => $now,
+                };
+                my $info_txt = join('`', %$info );
+                $store->stow( "Yote::Obj $info_txt" );
+            }
+        }
+    } #each id
+    
+} #convert_store
+
+sub unfreeze_to_array {
+    my $txt = shift;
+    my $data = [ split /\`/, $txt, -1 ];
+
+    if ( 0 < grep { /\\$/ } @$data ) {
+        my $newparts = [];
+
+        my $is_hanging = 0;
+        my $working_part = '';
+
+        for my $part (@$data) {
+
+            # if the part ends in a hanging escape
+            if ( $part =~ /(^|[^\\])((\\\\)+)?[\\]$/ ) {
+                if ( $is_hanging ) {
+                    $working_part .= "`$part";
+                } else {
+                    $working_part = $part;
+                }
+                $is_hanging = 1;
+            } elsif ( $is_hanging ) {
+                my $newpart = "$working_part`$part";
+                $newpart =~ s/\\`/`/gs;
+                $newpart =~ s/\\\\/\\/gs;
+                push @$newparts, $newpart;
+                $is_hanging = 0;
+            } else {
+                # normal part
+                push @$newparts, $part;
+            }
+        }
+        if ( $is_hanging ) {
+            die "Error in parsing parts\n";
+        }
+        $data = $newparts;
     }
-} #each id
+    $data;
+} #unfreeze_to_array
