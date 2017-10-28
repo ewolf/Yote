@@ -184,7 +184,8 @@ sub run_recycler {
             $record_store->recycle( $i );
         }
     }
-
+    # empty to save space
+    $recyle_tally->empty; 
 } #run_recycler
 
 sub stow_all {
