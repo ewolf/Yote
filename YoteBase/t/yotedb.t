@@ -25,6 +25,7 @@ my $root_node = $store->fetch_root;
 test_arry();
 test_hash();
 test_suite();
+test_upgrade_db();
 done_testing;
 
 exit( 0 );
@@ -452,6 +453,11 @@ sub test_arry {
         
     } #each bucketsize
 } #test_arry
+
+sub test_upgrade_db {
+    "get an old db and make sure it updates properly. go back versions
+and create databases for those versions";
+} #test_upgrade_db
 
 __END__
 
