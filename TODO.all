@@ -1,4 +1,12 @@
- for all projects :
+TODO for the Yote Project
 
-*) split up into separate git repos
-*) verify their values on cpan
+  - build yote_db_converter
+     makes sure the db version is correct
+     
+
+  - how 
+
+
+  - networked or federated yote instances
+     yote server api sorta...with credentials and stuff
+     

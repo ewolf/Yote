@@ -8,6 +8,7 @@ no  warnings 'uninitialized';
 use vars qw($VERSION);
 
 $VERSION = '3.0';
+$Yote::DB_VERSION = 3;
 
 sub open_store {
     my $path = pop;
@@ -34,23 +35,68 @@ use constant {
     RECORD_STORE => 0,
     DIRTY        => 1,
     WEAK         => 2,
+    PATH         => 3,
+    STOREINFO    => 4,
 
     ID           => 0,
 };
 
+#
+# Fetches the user facing root node. This node is
+# off of the store info node as 'root'
+#
 sub fetch_root {
     my $self = shift;
-    my $root = $self->_fetch( 1 );
+    my $info_node = $self->_fetch_store_info_node;
+    my $root = $info_node->get_root;
     unless( $root ) {
-        my $first_id = $self->_new_id;
-        die "Fetch Root must have ID of 1, got '$first_id'" unless $first_id == 1;
-        $root = bless [ 1, {}, $self ], 'Yote::Obj';
+        $root = $self->newobj;
+        $info_node->set_root( $root );
+        $self->stow_all;
     }
     $root;
 } #fetch_root
 
+sub _fetch_store_info_node {
+    my $self = shift;
+    my $node = $self->_fetch( 1 );
+    unless( $node ) {
+        my $first_id = $self->_new_id;
+        die "Fetch STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
+        my $now = time;
+        $node = bless [ 1, {}, $self ], 'Yote::Obj';
+        $node->set_db_version( $Yote::DB_VERSION );
+        $node->set_yote_version( $Yote::VERSION );
+        $node->set_created_time( $now );
+        $node->set_last_update_time( $now );
+        $self->stow_all;
+    }
+
+    # check to make sure that the db version is compatable with this. 
+    if( $node->get_db_version < $Yote::DB_VERSION ) {
+        die "Unable to opening earlier database version ".($node->get_db_version || 'unknown').". Please run 'yote_db_convert $self->[PATH]'";
+    }
+    if( $node->get_db_version > $Yote::DB_VERSION ) {
+        die "Unable to open more advance database version ".($node->get_db_version || 'unknown').". Upgrade yote to open";
+    }
+    
+    $node;
+} #_fetch_store_info_node
+
+#
+# Returns a hash of the info set for this store
+#
+sub info {
+    my $node = shift->[STOREINFO];
+    my $info = {
+        map { $_ => $node->get($_)  }
+        qw( db_version yote_version created_time )
+    };
+    $info;
+} #info
+
 sub open_store {
-    my( $cls, $path ) = @_;
+    my( $cls, $base_path ) = @_;
 
     #
     # Yote subpackages are not normally in %INC and should always be loaded.
@@ -59,11 +105,17 @@ sub open_store {
         $INC{ $pkg } or eval("use $pkg");
     }
 
-    bless [
-        Data::RecordStore->open( $path ),
+    my $store = bless [
+        Data::RecordStore->open( "$base_path/RECORDSTORE" ),
         {}, #DIRTY CACHE
-        {}  #WEAK CACHE
+        {},  #WEAK CACHE
+        $path
         ], $cls;
+
+    $store->[STOREINFO] = $store->_fetch_store_info_node;
+    
+    $store;
+    
 } #open_store
 
 sub newobj {
@@ -81,6 +133,26 @@ sub newobj {
     $obj->_init(); #called the first time the object is created.
     $obj;
 } #newobj
+
+#
+# Recycles and compacts store. IDs that were not found in the store 
+# are marked for reuse.
+#
+sub run_recycler {
+    my $self = shift;
+    my $base_path = $self->[PATH];
+    my $recycle_tally = Data::RecordStore->open( "$base_path/RECYCLE" );
+
+    # empty because this may have run recently
+    $recyle_tally->empty;
+    
+    $recycle_tally->stow( "1", 1 );
+    my $root = $self->fetch_root;
+    $recycle_tally->stow( $root->id, 1 );
+
+    my( @keep_ids ) = 
+
+} #run_recycler
 
 sub stow_all {
     my $self = shift;
