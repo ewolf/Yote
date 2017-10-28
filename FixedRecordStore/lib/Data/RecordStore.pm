@@ -181,7 +181,9 @@ sub stow {
     $id //= $self->{OBJ_INDEX}->next_id;
 
     die "ID must be a positive integer" if $id < 1;
-    
+
+    $self->ensure_entry_count( $id );
+
     my $save_size = do { use bytes; length( $data ); };
 
     # tack on the size of the id (a long or 8 bytes) to the byte count
@@ -220,7 +222,6 @@ sub stow {
 
     my $index_in_store = $store->next_id;
 
-    $self->ensure_entry_count( $id );
     $self->{OBJ_INDEX}->put_record( $id, [ $store_id, $index_in_store ] );
 
     $store->put_record( $index_in_store, [ $id, $data ] );
@@ -316,6 +317,9 @@ record associated with it, undef is returned.
 =cut
 sub fetch {
     my( $self, $id ) = @_;
+    
+    return undef if $id > $self->{OBJ_INDEX}->entry_count;
+    
     my( $store_id, $id_in_store ) = @{ $self->{OBJ_INDEX}->get_record( $id ) };
     return undef unless $store_id;
 
@@ -563,11 +567,14 @@ to rearch the target record count.
 sub ensure_entry_count {
     my( $self, $count ) = @_;
 
-    my $needed = $count - $self->entry_count;
+    my $idx = $self->entry_count;
 
-    if( $needed > 0 ) {
-        my $fh = $self->_filehandle;
-        truncate $fh, $count * $self->{RECORD_SIZE};
+    if( $count > $idx ) {
+        my $needed = $count - $idx;
+        for( 1..$needed ) {
+            $idx++;
+            $self->put_record( $idx, [ 0, 0 ] );
+        }
     }
 
 } #ensure_entry_count

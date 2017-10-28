@@ -1,4 +1,0 @@
-OKEY, rewriting the Yote API.
-
-yote objects will be based on arrays, not hashes for speed
-they will have a volatile

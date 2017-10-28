@@ -39,6 +39,8 @@ use constant {
     STOREINFO    => 4,
 
     ID           => 0,
+    DATA         => 1,
+    LEVEL        => 3,
 };
 
 #
@@ -109,7 +111,7 @@ sub open_store {
         Data::RecordStore->open( "$base_path/RECORDSTORE" ),
         {}, #DIRTY CACHE
         {},  #WEAK CACHE
-        $path
+        $base_path
         ], $cls;
 
     $store->[STOREINFO] = $store->_fetch_store_info_node;
@@ -140,11 +142,12 @@ sub newobj {
 #
 sub run_recycler {
     my $self = shift;
+    $self->stow_all;
     my $base_path = $self->[PATH];
     my $recycle_tally = Data::RecordStore->open( "$base_path/RECYCLE" );
 
     # empty because this may have run recently
-    $recyle_tally->empty;
+    $recycle_tally->set_entry_count(0);
     
     $recycle_tally->stow( "1", 1 );
     my $item = $self->fetch_root;
@@ -152,24 +155,21 @@ sub run_recycler {
     my( @keep_ids ) = ( $item->id );
     while( @keep_ids ) {
         my $id = shift @keep_ids;
-        
-        if( $recycle_tally->fetch( $id ) )
+
         $item = $self->_fetch( $id );
-        $recycle_tally->stow( 1, $item_id );
+        $recycle_tally->stow( 1, $id );
         if( ref($item) eq 'Yote::Array' ) {
-            for my $c (@$item) {
-                if( ref( $c ) ) {
-                    my $item_id = $self->_get_id( $c );
-                    push( @keep_ids, $item_id ) unless $recycle_tally->fetch( $item_id ) == 1;
-                }
-            }
+            my $tied = tied( @$item );
+            my $data = $tied->[DATA];
+            push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
         }
         elsif( ref($item) eq 'Yote::Hash' ) {
-            while( my($k,$v) = each %$item) {
-                if( ref( $v ) ) {
-                    my $item_id = $self->_get_id( $v );
-                    push( @keep_ids, $item_id ) unless $recycle_tally->fetch( $item_id ) == 1;
-                }
+            my $tied = tied( %$item );
+            my $data = $tied->[DATA];
+            if( $tied->[LEVEL] == 0 ) {
+                push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } values %$data;
+            } else {
+                push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
             }
         }
         else {
@@ -185,7 +185,7 @@ sub run_recycler {
         }
     }
     # empty to save space
-    $recyle_tally->empty; 
+    $recycle_tally->empty; 
 } #run_recycler
 
 sub stow_all {

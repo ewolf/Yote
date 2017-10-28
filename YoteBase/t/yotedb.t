@@ -113,9 +113,23 @@ sub test_suite {
 
     $store->stow_all;
 
+    $store->run_recycler;
+
+    ok( $store->_fetch( $list_to_remove_id ), "removed list still removed" );
+    ok( $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
+    ok( $store->_fetch( $objy_id ), "removed objy still removed" );
+    ok( $store->_fetch( $someobj_id ), "removed someobj still removed" );
 
 
     undef $list_to_remove;
+    undef $ltied;
+
+    ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
+    ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
+    ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
+    ok( ! $store->_fetch( $someobj_id ), "removed someobj still removed" );
+
+    
     undef $quickly_removed_obj;
 
 
