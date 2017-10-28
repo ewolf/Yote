@@ -314,7 +314,7 @@ sub _cmph {
 
 
 sub test_hash {
-    for my $SZ (2..100) {
+    for my $SZ (2..30) {
         $Yote::Hash::SIZE = $SZ;
         my $hash = $root_node->set_hash({});
         my $match = {};
@@ -334,9 +334,7 @@ sub test_hash {
             $hash->{$k} = $v;
             $match->{$k} = $v;
         }
-        _cmph( "alphawet", $hash, $match );
-
-
+        _cmph( "alphawet buckets $SZ", $hash, $match );
 
     } #each size
 }
