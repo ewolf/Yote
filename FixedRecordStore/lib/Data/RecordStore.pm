@@ -195,8 +195,8 @@ Returns the id of the record written to.
 sub stow {
     my( $self, $data, $id ) = @_;
 
-    $self->_ensure_entry_count( $id ) if $id > 0;
     $id //= $self->next_id;
+    $self->_ensure_entry_count( $id ) if $id > 0;
 
     die "ID must be a positive integer" if $id < 1;
 
@@ -331,7 +331,7 @@ record associated with it, undef is returned.
 =cut
 sub fetch {
     my( $self, $id ) = @_;
-    
+
     return undef if $id > $self->[OBJ_INDEX]->entry_count;
     
     my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };

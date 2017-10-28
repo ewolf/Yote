@@ -1,4 +1,4 @@
-package Yote;
+package Data::ObjectStore;
 
 use strict;
 use warnings;
@@ -7,18 +7,18 @@ use warnings FATAL => 'all';
 
 use vars qw($VERSION);
 
-$VERSION = '3.0';
-$Yote::DB_VERSION = 3;
+$VERSION = '1.0';
+$Data::ObjectStore::DB_VERSION = 1;
 
 sub open_store {
     my $path = pop;
-    my $store = Yote::ObjStore->open_store( $path );
+    my $store = Data::ObjectStore::Provider->open_store( $path );
     $store;
 }
 
 # --------------------------------------------------------------------------------
 
-package Yote::ObjStore;
+package Data::ObjectStore::Provider;
 
 use strict;
 use warnings;
@@ -27,8 +27,6 @@ no warnings 'uninitialized';
 no warnings 'recursion';
 
 use Data::RecordStore;
-use File::Copy;
-use File::Path qw(make_path remove_tree);
 use Scalar::Util qw(weaken);
 
 use constant {
@@ -45,7 +43,7 @@ use constant {
 
 #
 # Fetches the user facing root node. This node is
-# off of the store info node as 'root'
+# attached to the store info node as 'root'
 #
 sub fetch_root {
     my $self = shift;
@@ -59,6 +57,9 @@ sub fetch_root {
     $root;
 } #fetch_root
 
+#
+# The store info node records useful information about the store
+#
 sub _fetch_store_info_node {
     my $self = shift;
     my $node = $self->_fetch( 1 );
@@ -66,22 +67,14 @@ sub _fetch_store_info_node {
         my $first_id = $self->_new_id;
         die "Fetch STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
         my $now = time;
-        $node = bless [ 1, {}, $self ], 'Yote::Obj';
-        $node->set_db_version( $Yote::DB_VERSION );
-        $node->set_yote_version( $Yote::VERSION );
+        $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Obj';
+        $node->set_db_version( $Data::ObjectStore::DB_VERSION );
+        $node->set_ObjectStore_version( $Data::ObjectStore::VERSION );
         $node->set_created_time( $now );
         $node->set_last_update_time( $now );
         $self->stow_all;
     }
 
-    # check to make sure that the db version is compatable with this. 
-    if( $node->get_db_version < $Yote::DB_VERSION ) {
-        die "Unable to opening earlier database version ".($node->get_db_version || 'unknown').". Please run 'yote_db_convert $self->[PATH]'";
-    }
-    if( $node->get_db_version > $Yote::DB_VERSION ) {
-        die "Unable to open more advance database version ".($node->get_db_version || 'unknown').". Upgrade yote to open";
-    }
-    
     $node;
 } #_fetch_store_info_node
 
@@ -92,7 +85,7 @@ sub info {
     my $node = shift->[STOREINFO];
     my $info = {
         map { $_ => $node->get($_)  }
-        qw( db_version yote_version created_time last_update_time )
+        qw( db_version ObjectStore_version created_time last_update_time )
     };
     $info;
 } #info
@@ -101,9 +94,9 @@ sub open_store {
     my( $cls, $base_path ) = @_;
 
     #
-    # Yote subpackages are not normally in %INC and should always be loaded.
+    # Data::ObjectStore subpackages are not normally in %INC and should always be loaded.
     #
-    for my $pkg ( qw( Yote::Obj Yote::Array Yote::Hash ) ) {
+    for my $pkg ( qw( Data::ObjectStore::Obj Data::ObjectStore::Array Data::ObjectStore::Hash ) ) {
         $INC{ $pkg } or eval("use $pkg");
     }
 
@@ -122,9 +115,9 @@ sub open_store {
 
 sub newobj {
     # works with newobj( { my data } ) or newobj( 'myclass', { my data } )
-    my $self = shift;
-    my $data = pop;
-    my $class = pop || 'Yote::Obj';
+    my $self  = shift;
+    my $data  = pop;
+    my $class = pop || 'Data::ObjectStore::Obj';
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
@@ -165,12 +158,12 @@ sub run_recycler {
         $item = $self->_fetch( $id );
         $recycle_tally->stow( 1, $id );
         my $ref = ref($item);
-        if( $item eq 'Yote::Array' ) {
+        if( $item eq 'Data::ObjectStore::Array' ) {
             my $tied = tied( @$item );
             my $data = $tied->[DATA];
             push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
         }
-        elsif( $item eq 'Yote::Hash' ) {
+        elsif( $item eq 'Data::ObjectStore::Hash' ) {
             my $tied = tied( %$item );
             my $data = $tied->[DATA];
             if( $tied->[LEVEL] == 0 ) {
@@ -220,6 +213,8 @@ sub run_recycler {
 
 sub stow_all {
     my $self = shift;
+    my $node = $self->_fetch_store_info_node;
+    my $now = time;
     for my $id ( keys %{$self->[DIRTY]} ) {
         my $obj = $self->[DIRTY]{$id};
         next unless $obj;
@@ -231,6 +226,7 @@ sub stow_all {
 
 
         $self->[RECORD_STORE]->stow( "$class $text_rep", $id );
+        $node->set_last_update_time( $now );
     }
     $self->[DIRTY] = {};
 
@@ -348,7 +344,7 @@ sub _get_id {
         my $thingy = tied @$ref;
         if( ! $thingy ) {
             my $id = $self->_new_id;
-            tie @$ref, 'Yote::Array', $self, $id, 0, $Yote::Array::MAX_BLOCKS, scalar(@$ref), 0, map { $self->_xform_in($_) } @$ref;
+            tie @$ref, 'Data::ObjectStore::Array', $self, $id, 0, $Data::ObjectStore::Array::MAX_BLOCKS, scalar(@$ref), 0, map { $self->_xform_in($_) } @$ref;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
             return $id;
@@ -361,7 +357,7 @@ sub _get_id {
         if( ! $thingy ) {
             my $id = $self->_new_id;
             my( @keys ) = keys %$ref;
-            tie %$ref, 'Yote::Hash', $self, $id, undef, undef, scalar(@keys), map { $_ => $self->_xform_in($ref->{$_}) } @keys;
+            tie %$ref, 'Data::ObjectStore::Hash', $self, $id, undef, undef, scalar(@keys), map { $_ => $self->_xform_in($ref->{$_}) } @keys;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
             return $id;
@@ -369,7 +365,7 @@ sub _get_id {
         $ref = $thingy;
         $class = ref( $ref );
     }
-    die "Cannot injest object that is not a hash, array or yote obj" unless ( $class eq 'Yote::Hash' || $class eq 'Yote::Array' || $ref->isa( 'Yote::Obj' ) );
+    die "Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
     $ref->[ID] ||= $self->_new_id;
     return $ref->[ID];
 
@@ -377,11 +373,11 @@ sub _get_id {
 
 # --------------------------------------------------------------------------------
 
-package Yote::Array;
+package Data::ObjectStore::Array;
 
 
 ##################################################################################
-# This module is used transparently by Yote to link arrays into its graph        #
+# This module is used transparently by ObjectStore to link arrays into its graph #
 # structure. This is not meant to be called explicitly or modified.              #
 ##################################################################################
 
@@ -394,7 +390,7 @@ no  warnings 'uninitialized';
 
 use Tie::Array;
 
-$Yote::Array::MAX_BLOCKS = 1_000_000;
+$Data::ObjectStore::Array::MAX_BLOCKS = 1_000_000;
 
 use constant {
     ID          => 0,
@@ -502,7 +498,7 @@ sub _embiggen {
         #
         my $newblock = [];
         my $newid = $store->_new_id;
-        tie @$newblock, 'Yote::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[ITEM_COUNT], 1;
+        tie @$newblock, 'Data::ObjectStore::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[ITEM_COUNT], 1;
         $store->_store_weak( $newid, $newblock );
         $store->_dirty( $store->[WEAK]{$newid}, $newid );
 
@@ -538,7 +534,7 @@ sub _getblock {
     $block_id = $store->_new_id;
     my $block = [];
     my $level = $self->[LEVEL] - 1;
-    tie @$block, 'Yote::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
+    tie @$block, 'Data::ObjectStore::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
 
     my $tied = tied( @$block );
     $tied->[UNDERNEATH] = 1;
@@ -807,10 +803,10 @@ sub DESTROY {
 
 # --------------------------------------------------------------------------------
 
-package Yote::Hash;
+package Data::ObjectStore::Hash;
 
 ##################################################################################
-# This module is used transparently by Yote to link hashes into its              #
+# This module is used transparently by ObjectStore to link hashes into its       #
 # graph structure. This is not meant to  be called explicitly or modified.       #
 ##################################################################################
 
@@ -822,7 +818,7 @@ no warnings 'numeric';
 
 use Tie::Hash;
 
-$Yote::Hash::SIZE = 977;
+$Data::ObjectStore::Hash::SIZE = 977;
 
 use constant {
     ID          => 0,
@@ -855,7 +851,7 @@ sub TIEHASH {
     my( $class, $obj_store, $id, $level, $buckets, $size, @fetch_buckets ) = @_;
     $level ||= 0;
     $size  ||= 0;
-    $buckets ||= $Yote::Hash::SIZE;
+    $buckets ||= $Data::ObjectStore::Hash::SIZE;
     my $hash;
     if( $level == 0 && $size > $buckets ) {
         # this case is where a hash is initialized the first time with more items than buckets.
@@ -878,7 +874,7 @@ sub CLEAR {
     if( $self->[SIZE] > 0 ) {
         $self->[SIZE] = 0;
         my $store = $self->[DSTORE];
-        $store->_dirty( $store->[Yote::ObjStore::WEAK]{$self->[ID]}, $self->[ID] );
+        $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
         %{$self->[DATA]} = ();
     }
 }
@@ -894,7 +890,7 @@ sub DELETE {
     my $store = $self->[DSTORE];
 
     if( $self->[LEVEL] == 0 ) {
-        $store->_dirty( $store->[Yote::ObjStore::WEAK]{$self->[ID]}, $self->[ID] );
+        $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
         return $store->_xform_out( delete $data->{$key} );
     } else {
         my $hval = 0;
@@ -1004,9 +1000,9 @@ sub STORE {
                 } else {
                     $hash = {};
                     my $hash_id = $store->_new_id;
-                    tie %$hash, 'Yote::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
+                    tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
                     $store->_store_weak( $hash_id, $hash );
-                    $store->_dirty( $store->[Yote::ObjStore::WEAK]{$hash_id}, $hash_id );
+                    $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$hash_id}, $hash_id );
 
                     $newhash[$hval] = $hash;
                     $newids[$hval] = $hash_id;
@@ -1020,7 +1016,7 @@ sub STORE {
             # LEVEL 0 hashes that are loaded from LEVEL 1 hashes that are loaded from
             # LEVEL 2 hashes. The level 1 hash is loaded and dumped as needed, not keeping
             # the ephermal info (or is that sort of chained..hmm)
-            $store->_dirty( $store->[Yote::ObjStore::WEAK]{$self->[ID]}, $self->[ID] );
+            $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
 
@@ -1040,9 +1036,9 @@ sub STORE {
         } else {
             $hash = {};
             $hash_id = $store->_new_id;
-            tie %$hash, 'Yote::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
+            tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
             $store->_store_weak( $hash_id, $hash );
-            $store->_dirty( $store->[Yote::ObjStore::WEAK]{$hash_id}, $hash_id );
+            $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$hash_id}, $hash_id );
             $data->[$hval] = $hash_id;
         }
     }
@@ -1120,12 +1116,12 @@ sub DESTROY {
     #remove all WEAK_REFS to the buckets
     undef $self->[DATA];
 
-    delete $self->[DSTORE]->[Yote::ObjStore::WEAK]{$self->[ID]};
+    delete $self->[DSTORE]->[Data::ObjectStore::Provider::WEAK]{$self->[ID]};
 }
 
 # --------------------------------------------------------------------------------
 
-package Yote::Obj;
+package Data::ObjectStore::Obj;
 
 use strict;
 use warnings;
@@ -1139,7 +1135,7 @@ use constant {
 };
 
 #
-# The string version of the yote object is simply its id. This allows
+# The string version of the objectstore object is simply its id. This allows
 # object ids to easily be stored as hash keys.
 #
 use overload
@@ -1193,10 +1189,6 @@ sub store {
     return shift->[DSTORE];
 }
 
-# -----------------------
-#
-#     Public Methods
-# -----------------------
 #
 # Defines get_foo, set_foo, add_to_foolist, remove_from_foolist
 #
@@ -1312,7 +1304,7 @@ sub AUTOLOAD {
         goto &$AUTOLOAD;
     }
     else {
-        die "Unknown Yote::Obj function '$func'";
+        die "Unknown Data::ObjectStore::Obj function '$func'";
     }
 
 } #AUTOLOAD
@@ -1320,6 +1312,7 @@ sub AUTOLOAD {
 # -----------------------
 #
 #     Overridable Methods
+#
 # -----------------------
 
 =head2 _init
@@ -1362,7 +1355,7 @@ sub _reconstitute {
 sub DESTROY {
     my $self = shift;
 
-    delete $self->[DSTORE][Yote::ObjStore::WEAK]{$self->[ID]};
+    delete $self->[DSTORE][Data::ObjectStore::Provider::WEAK]{$self->[ID]};
 }
 
 1;
@@ -1371,7 +1364,7 @@ __END__
 
 =head1 NAME
 
-Yote - Persistant Perl container objects in a directed graph of lazilly
+Data::ObjectStore - Persistant Perl container objects in a directed graph of lazilly
 loaded nodes.
 
 =head1 DESCRIPTION
@@ -1380,15 +1373,16 @@ This is for anyone who wants to store arbitrary structured state data and
 doesn't have the time or inclination to write a schema or configure some
 framework. This can be used orthagonally to any other storage system.
 
-Yote only loads data as it needs too. It does not load all stored containers
-at once. Data is stored in a data directory and is stored using the Data::RecordStore module. A Yote container is a key/value store where the values can be
-strings, numbers, arrays, hashes or other Yote containers.
+Data::ObjectStore only loads data as it needs too. It does not load all stored containers
+at once. Data is stored in a data directory and is stored using the Data::RecordStore module. 
+A Data::ObjectStore container is a key/value store where the values can be
+strings, numbers, arrays, hashes or other Data::ObjectStore containers.
 
-The entry point for all Yote data stores is the root node.
+The entry point for all Data::ObjectStore data stores is the root node.
 All objects in the store are unreachable if they cannot trace a reference
 path back to this node. If they cannot, running compress_store will remove them.
 
-There are lots of potential uses for Yote, and a few come to mind :
+There are lots of potential uses for Data::ObjectStore, and a few come to mind :
 
  * configuration data
  * data modeling
@@ -1400,16 +1394,33 @@ There are lots of potential uses for Yote, and a few come to mind :
 
 =head1 SYNOPSIS
 
- use Yote;
+ use Data::ObjectStore;
 
- my $store = Yote::open_store( '/path/to/data-directory' );
+ #
+ # Opens the store in a directory. All file system interactions happen here.
+ #
+ my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
 
+ # get a hash of data about the store
+ my $store_info = $store->info;
+ print $info->{db_version};
+ print $info->{ObjectStore_version};
+ print $info->{created_time};
+ print $info->{last_update_time};
+
+ #
+ #
+ #
  my $root_node = $store->fetch_root;
 
  $root_node->add_to_myList( $store->newobj( {
-    someval  => 123.53,
-    somehash => { A => 1 },
-    someobj  => $store->newobj( { foo => "Bar" }, 'yote - class' );
+    some_val  => 123.53,
+    some_hash => { A => 1 },
+    some_list => [ 1..1000 ],
+    specific_initialized_obj  => $store->newobj( { foo => "Bar" }, 'Data::ObjectStore::ObjChildClass' );
+    generic_initialized_obj  => $store->newobj( { foo => "Bar" } );
+    specific_obj  => $store->newobj( 'Data::ObjectStore::ObjChildClass' );
+    generic_obj  => $store->newobj;
  } );
 
  # the root node now has a list 'myList' attached to it with the single

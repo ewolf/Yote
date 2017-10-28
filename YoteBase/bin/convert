@@ -39,10 +39,10 @@ sub convert_store {
         $root_id = $store->stow( "$class $save_txt" );
         my $now = time;
         my $info = {
-            db_version       => $Yote::DB_VERSION,
-            yote_version     => $Yote::VERSION,
-            created_time     => $now,
-            last_update_time => $now,
+            db_version       => "v$Yote::DB_VERSION",
+            yote_version     => "v$Yote::VERSION",
+            created_time     => "v$now",
+            last_update_time => "v$now",
             root             => $root_id,
         };
         my $info_txt = join('`', %$info );
@@ -70,6 +70,7 @@ sub convert_store {
 
 sub ref_ids {
     my( $class, $data ) = @_;
+    
     if( $class eq 'Yote::Array' ) {
         splice @$data, 0, 4; #remove level, block size, array size, underneath
         return grep { $_ > 1 } @$data;
@@ -99,13 +100,14 @@ sub convert_item {
         $class = 'Yote::Array';
     }
     elsif( $class eq 'Yote::ArrayGatekeeper' ) {
-        my $array = cobble_gatekeeper_arrays( $arry_data );
-        $save_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$array), 0, map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$array );
+        $arry_data = cobble_gatekeeper_arrays( $arry_data );
+        $save_txt = join('`', 0, $Yote::Array::MAX_BLOCKS, scalar(@$arry_data), 0, map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$arry_data );
         $class = 'Yote::Array';
     }
     elsif( $class eq 'Yote::BigHash' ) {
         my $hash_as_list = cobble_bighash( $arry_data );
         $save_txt = join('`', 0, $Yote::Hash::SIZE, scalar(@$hash_as_list), map { s/[\\]/\\\\/gs; s/`/\\`/gs; $_ } @$hash_as_list );
+        $arry_data = $hash_as_list;
         $class = 'Yote::Hash';
     }
     $store->stow( "$class $save_txt", $id );
@@ -179,7 +181,7 @@ sub extract {
 
     my $val = $store->fetch( $id );
     my( $class, $save_txt ) = ( $val =~ /^(\S+) (.*)/s );
-
+    
     #
     # Check if this was saved using json. If so, convert to new ` delimited format
     #
