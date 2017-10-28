@@ -218,6 +218,7 @@ sub stow {
 
         # if the data isn't too big or too small for the table, keep it where it is and return
         if( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
+            print STDERR "STOW ($id) --> ($current_store_id,$current_idx_in_store)\n";
             $old_store->put_record( $current_idx_in_store, [$id,$data] );
             return $id;
         }
@@ -239,6 +240,7 @@ sub stow {
         print STDERR Data::Dumper->Dump(["STOW <$self> $store_id --> $index_in_store ($id)"]);
     $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $index_in_store ] );
 
+    print STDERR "STOW ($id) --> ($store_id,$index_in_store)\n";
     $store->put_record( $index_in_store, [ $id, $data ] );
 
     $id;

@@ -218,6 +218,7 @@ sub stow_all {
 
         $self->[RECORD_STORE]->stow( "$class $text_rep", $id );
     }
+    print STDERR Data::Dumper->Dump(["DUMP DIRTY"]);
     $self->[DIRTY] = {};
 
 } #stow_all
@@ -317,7 +318,8 @@ sub _store_weak {
 
 sub _dirty {
     # ( $self, $ref, $id )
-    print STDERR "MARKDIRTY $_[2]";
+    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) unless "$_[1]";
+    print STDERR "MARKDIRTY $_[2] ($_[1])\n";
     $_[0]->[DIRTY]->{$_[2]} = $_[1];
 } #_dirty
 
@@ -980,7 +982,7 @@ sub STORE {
             }
             $self->[DATA] = \@newids;
             $data = $self->[DATA];
-
+here is the problem. this isnt in weak yet!
             $store->_dirty( $store->[Yote::ObjStore::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
