@@ -2,8 +2,8 @@ package Yote;
 
 use strict;
 use warnings;
-use warnings FATAL => 'all';
 no  warnings 'uninitialized';
+use warnings FATAL => 'all';
 
 use vars qw($VERSION);
 
@@ -150,20 +150,26 @@ sub run_recycler {
     $recycle_tally->empty;
     
     $recycle_tally->stow( "1", 1 );
+    $recycle_tally->stow( "0", $self->[RECORD_STORE]->entry_count );
+
     my $item = $self->fetch_root;
 
-    my( @keep_ids ) = ( $item->id );
+    # add the ids from the weak references
+    my( @keep_ids ) = ( $item->id, keys %{$self->[WEAK]} );
+
+    
     while( @keep_ids ) {
         my $id = shift @keep_ids;
 
         $item = $self->_fetch( $id );
         $recycle_tally->stow( 1, $id );
-        if( ref($item) eq 'Yote::Array' ) {
+        my $ref = ref($item);
+        if( $item eq 'Yote::Array' ) {
             my $tied = tied( @$item );
             my $data = $tied->[DATA];
             push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
         }
-        elsif( ref($item) eq 'Yote::Hash' ) {
+        elsif( $item eq 'Yote::Hash' ) {
             my $tied = tied( %$item );
             my $data = $tied->[DATA];
             if( $tied->[LEVEL] == 0 ) {
@@ -172,17 +178,27 @@ sub run_recycler {
                 push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch( $_ ) != 1 } @$data;
             }
         }
+        elsif( $ref eq 'ARRAY' ) {
+            push @keep_ids, map { $self->_get_id($_) } grep { ref( $_ ) } @$item;
+        }
+        elsif( $ref eq 'HASH' ) {
+            push @keep_ids, map { $self->_get_id($_) } grep { ref( $_ ) } values %$item;
+        }
         else {
-            push @keep_ids, grep { $_ > 0 && $recycle_tally->fetch($_) != 1 } $item->[DATA];
+            push @keep_ids, grep { $_ > 1 && $recycle_tally->fetch($_) != 1 } values %{$item->[DATA]};
         }
     } #going through all keep_ids
+    undef $item;
 
     my $record_store = $self->[RECORD_STORE];
     my $count = $record_store->entry_count;
     for( my $i=1; $i<=$count; $i++ ) {
+        print STDERR "$i <$self->[RECORD_STORE]>) ";
         if( $recycle_tally->fetch($i) != 1 ) {
+            print STDERR "Recycle";
             $record_store->recycle( $i );
         }
+        print STDERR "\n";
     }
     # empty to save space
     $recycle_tally->empty;
@@ -210,6 +226,9 @@ sub _fetch {
     my( $self, $id ) = @_;
     return undef unless $id && $id ne 'u';
 
+    print STDERR Data::Dumper->Dump(["FETCH $id in DIRTY"])if $self->[DIRTY]{$id};
+    print STDERR Data::Dumper->Dump(["FETCH $id in WEAK"])if $self->[WEAK]{$id};
+    
     my $ref = $self->[DIRTY]{$id} //$self->[WEAK]{$id};
     return $ref if $ref;
 
@@ -298,6 +317,7 @@ sub _store_weak {
 
 sub _dirty {
     # ( $self, $ref, $id )
+    print STDERR "MARKDIRTY $_[2]";
     $_[0]->[DIRTY]->{$_[2]} = $_[1];
 } #_dirty
 
@@ -357,8 +377,9 @@ package Yote::Array;
 
 use strict;
 use warnings;
-
-no warnings 'uninitialized';
+use warnings FATAL => 'all';
+no  warnings 'numeric';
+no  warnings 'uninitialized';
 #no  warnings 'recursion';
 
 use Tie::Array;
@@ -498,7 +519,7 @@ sub _getblock {
     my $block_id = $self->[DATA][$block_idx];
     my $store = $self->[DSTORE];
 
-    if( $block_id ) {
+    if( $block_id > 0 ) {
         my $block = $store->_fetch( $block_id );
         return tied(@$block)||$block;
         return wantarray ? ($block, tied( @$block )) : tied( @$block );
@@ -579,7 +600,7 @@ sub EXISTS {
         return 0;
     }
     if( $self->[LEVEL] == 0 ) {
-        return exists $self->[DATA][$idx];
+        return exists $self->[DATA][$idx] && $self->[DATA][$idx] ne 'u';
     }
     return $self->_getblock( int( $idx / $self->[BLOCK_SIZE] ) )->EXISTS( $idx % $self->[BLOCK_SIZE] );
 
@@ -867,7 +888,7 @@ sub EXISTS {
     my( $self, $key ) = @_;
 
     if( $self->[LEVEL] == 0 ) {
-        return exists $self->[DATA]{$key};
+        return exists $self->[DATA]{$key} && $self->[DATA]{$key} ne 'u';
     } else {
         my $data = $self->[DATA];
         my $hval = 0;
@@ -876,8 +897,9 @@ sub EXISTS {
         }
         $hval = $hval % $self->[BUCKETS];
         my $hash_id = $data->[$hval];
-        if( $hash_id ) {
+        if( $hash_id > 0 ) {
             my $hash = $self->[DSTORE]->_fetch( $hash_id );
+            print STDERR Data::Dumper->Dump([$hash_id,ref($hash),"LA <$self->[DSTORE][0]> ($hval)"]);
             my $tied = tied %$hash;
             return $tied->EXISTS( $key );
         }
@@ -899,7 +921,7 @@ sub FETCH {
         }
         $hval = $hval % $self->[BUCKETS];
         my $hash_id = $data->[$hval];
-        if( $hash_id ) {
+        if( $hash_id > 0 ) {
             my $hash = $self->[DSTORE]->_fetch( $hash_id );
             my $tied = tied %$hash;
             return $tied->FETCH( $key );
@@ -972,7 +994,7 @@ sub STORE {
         $hval = $hval % $self->[BUCKETS];
         my $hash_id = $data->[$hval];
         my $hash;
-        if( $hash_id ) {
+        if( $hash_id > 0 ) {
             $hash = $store->_fetch( $hash_id );
             my $tied = tied %$hash;
             $tied->STORE( $key, $val );
@@ -1011,14 +1033,15 @@ sub NEXTKEY  {
         my $store = $self->[DSTORE];
         do {
             my $nexthashid = $data->[$self->[NEXT][0]||0];
-            if( $nexthashid && $nexthashid ne 'u') {
-                my $hash = $self->[NEXT][2] || $store->_fetch( $nexthashid );
+            if( $nexthashid > 0 ) {
+                my $hash_id = $self->[NEXT][2] || $nexthashid;
+                my $hash = $store->_fetch( $hash_id );
                 my $tied = tied %$hash;
 
                 my( $k, $v ) = $self->[NEXT][1] ? $tied->NEXTKEY : $tied->FIRSTKEY;
                 if( defined( $k ) ) {
                     $self->[NEXT][1] = 1;
-                    $self->[NEXT][2] = $hash;
+                    $self->[NEXT][2] = $hash_id;
                     return wantarray ? ( $k => $v ) : $k;
                 }
             }
@@ -1048,6 +1071,7 @@ package Yote::Obj;
 use strict;
 use warnings;
 no  warnings 'uninitialized';
+no  warnings 'numeric';
 
 use constant {
     ID          => 0,
@@ -1093,7 +1117,7 @@ sub get {
 
     my $cur = $self->[DATA]{$fld};
     my $store = $self->[DSTORE];
-    if( ! defined( $cur ) && defined( $default ) ) {
+    if( ( ! defined( $cur ) || $cur eq 'u' ) && defined( $default ) ) {
         if( ref( $default ) ) {
             # this must be done to make sure the reference is saved
             # for cases where the reference has not yet made it to the store of things to save
@@ -1214,7 +1238,7 @@ sub AUTOLOAD {
         *$AUTOLOAD = sub {
             my( $self, $init_val ) = @_;
             my $store = $self->[DSTORE];
-            if( ! defined( $self->[DATA]{$fld} ) && defined($init_val) ) {
+            if( ( ! defined( $self->[DATA]{$fld} ) || $self->[DATA]{$fld} eq 'u' ) && defined($init_val) ) {
                 if( ref( $init_val ) ) {
                     # this must be done to make sure the reference is saved for cases where the reference has not yet made it to the store of things to save
                     my $ref_id = $store->_get_id( $init_val );

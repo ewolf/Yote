@@ -42,7 +42,7 @@ sub test_suite {
                                       } ),
                         } ),
                                } );
-    my $il = $root_node->get_myList; my $tied = tied(@$il);
+    my $il = $root_node->get_myList;
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
 
@@ -87,9 +87,6 @@ sub test_suite {
 
     my $hash_in_list = $list_to_remove->[0];
 
-    my $ltied = tied @$list_to_remove;
-    my $list_block_id = $ltied->[1][0];
-
     my $list_to_remove_id = $store->_get_id( $list_to_remove );
     my $hash_in_list_id   = $store->_get_id( $hash_in_list );
 
@@ -115,14 +112,14 @@ sub test_suite {
 
     $store->run_recycler;
 
-    ok( $store->_fetch( $list_to_remove_id ), "removed list still removed" );
-    ok( $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
+    ok( $store->_fetch( $list_to_remove_id ), "removed list not yet removed" );
+    ok( $store->_fetch( $hash_in_list_id ), "removed hash id not yet removed" );
+    
     ok( $store->_fetch( $objy_id ), "removed objy still removed" );
     ok( $store->_fetch( $someobj_id ), "removed someobj still removed" );
 
 
     undef $list_to_remove;
-    undef $ltied;
 
     ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
     ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
@@ -141,7 +138,8 @@ sub test_suite {
 
     $Yote::Hash::SIZE = 7;
 
-    my $thash = $store->fetch_root->get_test_hash({});
+    print STDERR Data::Dumper->Dump(['----------------------------------']);
+    my $thash = $store->fetch_root->set_test_hash({});
     # test for hashes large enough that subhashes are inside
 
     my( %confirm_hash );
@@ -415,7 +413,6 @@ sub test_arry {
         _cmpa( "unshift more $SZ", $arry, $match, $a, $m );
 
         $arry = $root_node->set_arry_more( [ 1 .. 19 ] );
-        my $tied = tied (@$arry);
         $match = [ 1 .. 19 ];
         is_deeply( $arry, $match, "INITIAL $SZ" );
         is( @$arry, 19, "19 items" );
