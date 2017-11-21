@@ -323,7 +323,7 @@ sub test_broken_file {
     eval { $silo->get_record( 5 ) };
     like( $@, qr/out of bounds/, "truncated not getable" );
     undef $@;
-    
+
     eval { $silo->get_record( 4 ) };
     like( $@, qr/out of bounds/, "partially truncated not getable" );
     undef $@;
