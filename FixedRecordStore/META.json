@@ -35,7 +35,7 @@
    "provides" : {
       "Data::RecordStore" : {
          "file" : "lib/Data/RecordStore.pm",
-         "version" : "3.12"
+         "version" : "3.13"
       },
       "Data::RecordStore::Silo" : {
          "file" : "lib/Data/RecordStore.pm"
@@ -50,6 +50,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "3.12",
+   "version" : "3.13",
    "x_serialization_backend" : "JSON::PP version 2.27400_02"
 }

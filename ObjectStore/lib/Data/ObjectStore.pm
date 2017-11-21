@@ -39,24 +39,53 @@ Data::ObjectStore - Fast and efficient store for structured data.
 
  my $root_container = $store->load_root_container;
 
+ my $current_data = [ 123,123,345,45,3752,346,326,43745,76 ];
+
  my $experiment = {
     project_name   => "Cool project",
     data_collected => {
        20170401 => [ 34234,22456,345,34,123,26,4576 ],
        20170402 => [ 67,53,3,435,63,5624,23,543276 ],
-       20170403 => [ 123,123,345,45,3752,346,326,43745,76 ],
+       20170403 => $current_data,
     },
+    today_data => $current_data,
     notes => "It looks like theory X fits the data the best",
  };
 
  $root_container->set( "experiment", $experiment );
 
+ # save _all_ data connected to the root container
  $store->save;
- 
+
+ # add a data point to the current data.
+ # the reference to current_data is already in the store and
+ # does not need to be re-added.
+ push @$current_data, 234;
+
+ # saves current_data with the new point; it is the only thing changed
+ # since the last save.
+ $store->save;
+
  ....
 
  my $experiment_again = $root_container->get( "experiment" );
+
  my $day_values = $experiment_again->{data_collected}->{20170403};
+ my $same_ref = $experiment_again->{today_data};
+
+ print scalar( @$same_ref ); # prints '10'
+
+ # $day_values and $same_ref both reference the same array.
+
+ # add one more point to day values.
+ push @$day_values, 345345;
+
+ print scalar( @$same_ref ); # prints '11'
+
+ # saves $day_values with the new point; its the only thing changed
+ # since the last save.
+ $store->save;
+
 
 =head1 DESCRIPTION
 
@@ -66,22 +95,30 @@ for you. All you need to provide is a directory, and the store can be opened and
 =head2 SIMPLE USE
 
 The simple use case is using structured data containing only scalars, array refs and hash refs.
-The arrays and hashes may contain references to other arrays and hashes or scalar data. 
-Circular references are allowed. Tied or blessed arrays and references are not allowed.
+The arrays and hashes may contain references to other arrays and hashes or scalar data.
+Circular references are allowed. Blessed or tied or array and hash references are not allowed.
 
-When the data structures are attached to the root container of the store, they become objects
-tied to the store but continue to behave as before.
+When the data structures are attached to the root container of the store, they become
+tied to the store but continue to otherwise behave as before. To attach :
+
+ $root = $store->load_root_container;
+ $root->set( "my key", $my_data_structure );
+
+To load :
+
+ $root = $store->load_root_container;
+ $my_data_structure = $root->get( "my key" );
 
 When accessing the data structures from the root container, they are loaded into memory on
-as as needed basis. The arrays and hashes may be of any size; huge ones are internally sharded 
+as as needed basis. The arrays and hashes may be of any size; huge ones are internally sharded
 and loaded piecemeal into memory as needed. This is all transparent to the programmer; these
 arrays and hashes behave as normal arrays and hashes.
 
-The store is saved with a call to the save method on the store. 
+The store is saved with a call to the save method on the store.
 
-=head2 
+=head2 SYNTACTIC SUGAR
 
-The entry point to storing data is a root container object provided by the store. 
+The entry point to storing data is a root container object provided by the store.
 This is a key/value container with getters and setters. The key is a string and the
 value can be any of the following :
 
@@ -90,15 +127,15 @@ value can be any of the following :
  * arrays
  * Data::ObjectStore::Container objects
 
-The arrays and hashes may store the same things that the container objects may store and may 
+The arrays and hashes may store the same things that the container objects may store and may
 not be tied. The store provides new containers with its create_container method.
 
-Arrays and hashes are tied to the store as soon as they are added to it. 
+Arrays and hashes are tied to the store as soon as they are added to it.
 Any containers connected are loaded upon array or hash lookup on an as needed basis.
 The hashes and array may be of any size; very large examples are stored in shards which
 are loaded as needed.
 
-setters/getters/root 
+setters/getters/root
 
 Data is stored with setters
 
@@ -109,12 +146,12 @@ The container objects are useful as is, and are designed to be extended.
 Containers attached to a container are loaded only when accessed through the getter methods.
 
 Hashes and lists become tied when attached to a conatiner. Very large hashes and lists
-can be stored this way. They are broken into chunks and those chunks are loaded as needed, 
+can be stored this way. They are broken into chunks and those chunks are loaded as needed,
 ie not all at once.
 
 =head2 MORE
 
- .... 
+ ....
 
  my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
 
@@ -130,11 +167,11 @@ ie not all at once.
                                       } );
 
  # syntactic suger. Makes an array called 'users' (if not already there)
- # and adds $user to it. Now $user is connected to the root via the users 
+ # and adds $user to it. Now $user is connected to the root via the users
  # array.
  $root_container->add_to_users( $user );
 
- # more syntactic sugar for the getter. 
+ # more syntactic sugar for the getter.
  $user->add_to_exeriments( $root_container->get_experiment );
 
  # more syntactic sugar for the setter. $foods is now a list
@@ -220,7 +257,7 @@ This examples shows storing hashes, lists and Data::ObjectStore::Container conta
 
 =head1 EXTENDING
 
-Data::ObjectStore::Container is useful as is, but is also designed to be extended. 
+Data::ObjectStore::Container is useful as is, but is also designed to be extended.
 For example, for the hearts game, we can create a Hearts::Game class and
 start to flesh it out. This implements a few methods that would be needed
 for the hearts game.
@@ -254,7 +291,7 @@ for the hearts game.
 
    my $players = $self->get_players
    my $deck = $self->get_deck;
-   
+
    #each player gets 13 cards
    for( 1..13 ) {
      for my $i ( 0..3 ) {
@@ -786,9 +823,11 @@ sub _get_id {
         my $thingy = tied @$ref;
         if( ! $thingy ) {
             my $id = $self->_new_id;
-            tie @$ref, 'Data::ObjectStore::Array', $self, $id, 0, $Data::ObjectStore::Array::MAX_BLOCKS, scalar(@$ref), 0, map { $self->_xform_in($_) } @$ref;
+            my( @items ) = @$ref;
+            tie @$ref, 'Data::ObjectStore::Array', $self, $id, 0, $Data::ObjectStore::Array::MAX_BLOCKS;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
+            push @$ref, @items;
             return $id;
         }
         $ref = $thingy;
@@ -798,10 +837,13 @@ sub _get_id {
         my $thingy = tied %$ref;
         if( ! $thingy ) {
             my $id = $self->_new_id;
-            my( @keys ) = keys %$ref;
-            tie %$ref, 'Data::ObjectStore::Hash', $self, $id, undef, undef, scalar(@keys), map { $_ => $self->_xform_in($ref->{$_}) } @keys;
+            my( %items ) = %$ref;
+            tie %$ref, 'Data::ObjectStore::Hash', $self, $id;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
+            for my $key (keys( %items) ) {
+                $ref->{$key} = $items{$key};
+            }
             return $id;
         }
         $ref = $thingy;

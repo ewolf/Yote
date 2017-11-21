@@ -21,7 +21,7 @@ my $dir = tempdir( CLEANUP => 1 );
 #test_suite();
 my $store = Data::ObjectStore::open_store( $dir );
 my $root_node = $store->load_root_container;
-
+test_loop();
 test_arry();
 test_hash();
 test_suite();
@@ -109,21 +109,21 @@ sub test_suite {
     $list_to_remove->[87] = "EIGHTYSEVEN";
 
     $store->save;
-    
+
     $store->run_recycler;
-    
-    ok( $store->_fetch( $list_to_remove_id ), "removed list not yet removed" );    
+
+    ok( $store->_fetch( $list_to_remove_id ), "removed list not yet removed" );
     ok( $store->_fetch( $hash_in_list_id ), "removed hash id not yet removed" );
-    
+
     ok( $store->_fetch( $objy_id ), "removed objy still removed" );
     ok( $store->_fetch( $someobj_id ), "removed someobj still removed" );
 
     undef $hash_in_list;
     undef $list_to_remove;
     undef $quickly_removed_obj;
-    
+
     $store->run_recycler;
-    
+
     ok( ! $store->_fetch( $list_to_remove_id ), "removed list still removed" );
     ok( ! $store->_fetch( $hash_in_list_id ), "removed hash id still removed" );
     ok( ! $store->_fetch( $objy_id ), "removed objy still removed" );
@@ -170,7 +170,7 @@ sub test_suite {
     }
     $store->save;
     undef $store;
-    
+
     my $sup_store = Data::ObjectStore::open_store( $dir );
     $thash = $sup_store->load_root_container->get_test_hash;
 
@@ -272,7 +272,7 @@ sub test_suite {
     is( scalar(@$l), 0, "size after clear" );
 
     $Data::ObjectStore::Array::MAX_BLOCKS  = 82;
-    
+
     push @$l, 0..10000;
     $store->save;
     my $other_store = Data::ObjectStore::open_store( $dir );
@@ -280,8 +280,42 @@ sub test_suite {
     my $ol = $root_node->get_listy( [] );
 
     is_deeply( $l, $ol, "lists compare" );
-
 } #test suite
+
+sub test_loop {
+    my $dir = tempdir( CLEANUP => 1 );
+
+    my $new_store = Data::ObjectStore::open_store( $dir );
+    $root_node = $store->load_root_container;
+    my $list = [ 1, 2, 3, 4, 5 ];
+    unshift @$list, $list;
+    $root_node->set_list( $list );
+    $new_store->save;
+    $new_store = Data::ObjectStore::open_store( $dir );
+    $root_node = $store->load_root_container;
+    $list = $root_node->get_list;
+    is( scalar( @$list ), 6, "six items in the self referencing list" );
+    is( scalar( @{$list->[0]} ), 6, "six items in the list in the list" );
+    is( scalar( @{$list->[0][0]} ), 6, "six items in the list in the list in the list" );
+    push @$list, '6';
+    is( scalar( @$list ), 7, "seven items in the self referencing list" );
+    is( scalar( @{$list->[0][0]} ), 7, "seven items in the list in the list in the list" );
+
+    my $h = { foo => 'bar' };
+    $h->{h} = $h;
+    push @$list, $h;
+    $new_store->save;
+
+    $new_store = Data::ObjectStore::open_store( $dir );
+    $root_node = $store->load_root_container;
+    $list = $root_node->get_list;
+    my $hash = $list->[7];
+
+    is( scalar( keys %$hash ), 2, "two keys after load" );
+    $hash->{ZIP} = 234;
+    is( scalar( keys %{$hash->{h}} ), 3, "now 3 keys" );
+
+} #test loop
 
 sub _cmpa {
     my( $title, @pairs ) = @_;
@@ -448,9 +482,6 @@ sub test_arry {
         is( @$a2, @$m2, "empty splice size $SZ" );
         is_deeply( $a2, $m2, "empty splice stuff $SZ" );
 
-
-        print STDERR Data::Dumper->Dump(["NOW DO EDGE CASE for when each is called but not finished and the thing has a live WEAK ref but no trace to the root and make sure it gets removed when that WEAK ref died"]);
-        
     } #each bucketsize
 } #test_arry
 
@@ -458,8 +489,8 @@ sub test_upgrade_db {
     "get an old db and make sure it updates properly. go back versions
 and create databases for those versions";
 
-    
-    
+
+
 } #test_upgrade_db
 
 __END__
