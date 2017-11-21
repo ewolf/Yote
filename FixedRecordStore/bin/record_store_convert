@@ -14,6 +14,8 @@ my( $source_dir, $dest_dir ) = @ARGV;
 die "Usage: $0 source_dir destination_dir" unless $source_dir && $dest_dir;
 die "source_dir and destination_dir may not be the same" if $source_dir eq $dest_dir;
 
+die "Directory '$dest_dir' already exists" if -d $dest_dir;
+
 my $source_version = 1;
 my( $source_obj_idx_file, $dest_obj_idx_file );
 convert( $source_dir, $dest_dir );
@@ -57,10 +59,211 @@ sub convert {
 
 } #convert
 
-sub convert_1_to_3 {
-    print STDERR "1Convert from $source_version to $Data::RecordStore::VERSION\n";exit;
+package STORE1;
 
-    die "Directory '$dest_dir' already exists" if -d $dest_dir;
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
+use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
+use File::Copy;
+
+=head2 open( template, filename, size )
+
+Opens or creates the file given as a fixed record 
+length data store. If a size is not given,
+it calculates the size from the template, if it can.
+This will die if a zero byte record size is determined.
+
+=cut
+sub open {
+    my( $pkg, $template, $filename, $size ) = @_;
+    my $class = ref( $pkg ) || $pkg;
+    my $FH;
+    my $useSize = $size || do { use bytes; length( pack( $template ) ) };
+    die "Cannot open a zero record sized fixed store" unless $useSize;
+    unless( -e $filename ) {
+        CORE::open $FH, ">$filename";
+        print $FH "";
+        close $FH;
+    }
+    CORE::open $FH, "+<$filename" or die "$@ $!";
+    bless { TMPL => $template, 
+            RECORD_SIZE => $useSize,
+            FILENAME => $filename,
+    }, $class;
+} #open
+
+=head2 empty
+
+This empties out the database, setting it to zero records.
+
+=cut
+sub empty {
+    my $self = shift;
+    my $fh = $self->_filehandle;
+    truncate $self->{FILENAME}, 0;
+    undef;
+} #empty
+
+=head2 ensure_entry_count( count )
+
+Makes sure the data store has at least as many entries
+as the count given. This creates empty records if needed 
+to rearch the target record count.
+
+=cut
+sub ensure_entry_count {
+    my( $self, $count ) = @_;
+    my $fh = $self->_filehandle;
+
+    my $entries = $self->entry_count;
+    if( $count > $entries ) {
+        for( (1+$entries)..$count ) {
+            $self->put_record( $_, [] );
+        }
+    } 
+} #ensure_entry_count
+
+=head2
+
+Returns the number of entries in this store.
+This is the same as the size of the file divided
+by the record size.
+
+=cut
+sub entry_count {
+    # return how many entries this index has
+    my $self = shift;
+    my $fh = $self->_filehandle;
+    my $filesize = -s $self->{FILENAME};
+    int( $filesize / $self->{RECORD_SIZE} );
+}
+
+
+sub get_record {
+    my( $self, $idx ) = @_;
+
+    my $fh = $self->_filehandle;
+
+# how about an ensure_entry_count right here?
+    # also a has_record
+    if( $idx < 1 ) {
+        die "get record must be a positive integer";
+    }
+   sysseek $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET or die "Could not seek ($self->{RECORD_SIZE} * ($idx-1)) : $@ $!";
+    my $srv = sysread $fh, my $data, $self->{RECORD_SIZE};
+    defined( $srv ) or die "Could not read : $@ $!";
+    [unpack( $self->{TMPL}, $data )];
+} #get_record
+
+=head2 has_id( id )
+
+Returns true if an object with this db exists in the record store.
+
+=cut
+sub has_id {
+    my( $self, $id ) = @_;
+    $self->{OBJ_INDEX}->has_id( $id );
+}
+
+=head2 next_id
+
+adds an empty record and returns its id, starting with 1
+
+=cut
+sub next_id {
+    my( $self ) = @_;
+    my $fh = $self->_filehandle;
+    my $next_id = 1 + $self->entry_count;
+    $self->put_record( $next_id, [] );
+    $next_id;
+} #next_id
+
+
+=head2 pop
+
+Remove the last record and return it. 
+
+=cut
+sub pop {
+    my( $self ) = @_;
+
+    my $entries = $self->entry_count;
+    return undef unless $entries;
+    my $ret = $self->get_record( $entries );
+    truncate $self->_filehandle, ($entries-1) * $self->{RECORD_SIZE};
+    $ret;
+} #pop
+
+=head2 push( data )
+
+Add a record to the end of this store. Returns the id assigned
+to that record. The data must be a scalar or list reference.
+If a list reference, it should conform to the pack template
+assigned to this store.
+
+=cut
+sub push {
+    my( $self, $data ) = @_;
+    my $fh = $self->_filehandle;
+    my $next_id = 1 + $self->entry_count;
+    $self->put_record( $next_id, $data );
+    $next_id;
+} #push
+
+=head2 push( idx, data )
+
+Saves the data to the record and the record to the filesystem.
+The data must be a scalar or list reference.
+If a list reference, it should conform to the pack template
+assigned to this store.
+
+=cut
+sub put_record {
+    my( $self, $idx, $data ) = @_;
+    my $fh = $self->_filehandle;
+    my $to_write = pack ( $self->{TMPL}, ref $data ? @$data : $data );
+
+    # allows the put_record to grow the data store by no more than one entry
+    die "Index out of bounds" if $idx > (1+$self->entry_count);
+
+    my $to_write_length = do { use bytes; length( $to_write ); };
+    if( $to_write_length < $self->{RECORD_SIZE} ) {
+        my $del = $self->{RECORD_SIZE} - $to_write_length;
+        $to_write .= "\0" x $del;
+        $to_write_length = do { use bytes; length( $to_write ); };
+    }
+    die "$to_write_length vs $self->{RECORD_SIZE}" unless $to_write_length == $self->{RECORD_SIZE};
+
+# how about an ensure_entry_count right here?
+
+    sysseek( $fh, $self->{RECORD_SIZE} * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+    1;
+} #put_record
+
+=head2 unlink_store
+
+Removes the file for this record store entirely from the file system.
+
+=cut
+sub unlink_store {
+    # TODO : more checks
+    my $self = shift;
+    close $self->_filehandle;
+    unlink $self->{FILENAME};
+}
+
+sub _filehandle {
+    my $self = shift;
+    CORE::open( my $fh, "+<$self->{FILENAME}" );
+    $fh;
+}
+
+package main;
+
+sub convert_1_to_3 {
+    print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
 
     print STDERR "Creating destination dir\n";
 
@@ -69,51 +272,38 @@ sub convert_1_to_3 {
 
     print STDERR "Starting Convertes from $source_version to $Data::RecordStore::VERSION\n";
 
-    my $store_db = Data::RecordStore::FixedStore->open( "I", "$source_dir/STORE_INDEX" );
+    my $store_index = STORE1->open( "I", "$source_dir/STORE_INDEX" );
 
-    my $source_dbs = [];
-    my $dest_dbs = [];
+    # convert the indexes
+    my $source_index = STORE2->open( "IL", "$source_dir/OBJ_INDEX" );
+    my $dest_index = Data::RecordStore::Silo->open_silo( "IL", "$dest_dir/RECORD_INDEX_SILO" );
+    my( @source_stores, @dest_silos );
+    
+    for my $idx ( 1..$source_index->entry_count ) {
+        my( $store_id, $store_idx ) = @{$source_index->get_record( $idx )};
+        my( $source_size ) = @{ $store_index->get_record( $store_id ) };
 
-    for my $id (1..$store_db->entry_count) {
-        my( $size ) = @{ $store_db->get_record( $id ) };
-        $source_dbs->[$id] = Data::RecordStore::Silo->open_silo( "A*", "$source_dir/${id}_OBJSTORE", $size );
-    }
-
-    my $source_obj_db = Data::RecordStore::Silo->open_silo( "IL", $source_obj_idx_file );
-    my $dest_obj_db = Data::RecordStore::Silo->open_silo( "IL", $dest_obj_idx_file );
-    $dest_obj_db->_ensure_entry_count($source_obj_db->entry_count);
-
-    my $tenth = int($source_obj_db->entry_count/10);
-    my $count = 0;
-
-    for my $id (1..$source_obj_db->entry_count) {
-        my( $source_store_id, $id_in_old_store ) = @{ $source_obj_db->get_record( $id ) };
-
-        next unless $id_in_old_store;
-
-        # grab data
-        my( $data ) = @{ $source_dbs->[$source_store_id]->get_record( $id_in_old_store ) };
-
-        # store in new database
-        my $save_size = do { use bytes; length( $data ); };
-        $save_size += 8;        #for the id
-        my $dest_store_id = 1 + int( log( $save_size ) );
-        my $dest_store_size = int( exp $dest_store_id );
-
-        my $dest_db = $dest_dbs->[$dest_store_id];
-        unless( $dest_db ) {
-            $dest_db = Data::RecordStore::FixedStore->open( "LIZ*", "$dest_dir/stores/${dest_store_id}_OBJSTORE", $dest_store_size );
-            $dest_dbs->[$dest_store_id] = $dest_db;
+        my $source_store = $source_stores[$store_id];
+        unless( $source_store ) {
+            $source_store = STORE1->open( "LZ*", "$source_dir/${store_id}_OBJSTORE", $source_size );
+            $source_stores[$store_id] = $source_store;
         }
-        my $idx_in_dest_store = $dest_db->next_id;
-        $dest_db->put_record( $idx_in_dest_store, [ $id, 0, $data ] );
-
-        $dest_obj_db->put_record( $id, [ $dest_store_id, $idx_in_dest_store ] );
-        if ( ++$count > $tenth ) {
-            print STDERR ".";
-            $count = 0;
+        
+        my $source_record = $source_store->get_record( $store_idx );
+        
+        my $dest_silo_id = 1 + int( log( $source_size ) );
+        my $dest_silo = $dest_silos[ $dest_silo_id ];
+        unless( $dest_silo ) {
+            my $silo_row_size = int( exp $dest_silo_id );
+            $dest_silo = Data::RecordStore::Silo->open_silo( "LIZ*", "$dest_dir/silos/${dest_silo_id}_RECSTORE", $silo_row_size );
+            $dest_silos[ $dest_silo_id ] = $dest_silo;
         }
+        ( undef, my $data ) = @$source_record;
+        my $dest_store_idx = $dest_silo->push( [ $idx, 0, $data ] );
 
+        my $id = $dest_index->next_id;
+        die if $idx != $id;
+        $dest_index->put_record( $id, [ $dest_silo_id, $dest_store_idx ] );
     }
     print STDERR "\n";
 
@@ -170,21 +360,10 @@ sub open {
     ], $class;
 } #open
 
-=head2 empty
-
-This empties out the database, setting it to zero records.
-
-=cut
-sub empty {
-    my $self = shift;
-    my $fh = $self->_filehandle;
-    truncate $self->[FILENAME], 0;
-    undef;
-} #empty
-
 #Makes sure the data store has at least as many entries
 #as the count given. This creates empty records if needed
 #to rearch the target record count.
+
 sub _ensure_entry_count {
     my( $self, $count ) = @_;
     if( $count > $self->entry_count ) {
@@ -243,85 +422,6 @@ sub next_id {
 } #next_id
 
 
-=head2 pop
-
-Remove the last record and return it.
-
-=cut
-sub pop {
-    my( $self ) = @_;
-
-    my $entries = $self->entry_count;
-    return undef unless $entries;
-    my $ret = $self->get_record( $entries );
-    truncate $self->_filehandle, ($entries-1) * $self->[RECORD_SIZE];
-    $ret;
-} #pop
-
-=head2 last_entry
-
-Return the last record.
-
-=cut
-sub last_entry {
-    my( $self ) = @_;
-
-    my $entries = $self->entry_count;
-    return undef unless $entries;
-    $self->get_record( $entries );
-} #last_entry
-
-
-=head2 push( data )
-
-Add a record to the end of this store. Returns the id assigned
-to that record. The data must be a scalar or list reference.
-If a list reference, it should conform to the pack template
-assigned to this store.
-
-=cut
-sub push {
-    my( $self, $data ) = @_;
-    my $fh = $self->_filehandle;
-    my $next_id = 1 + $self->entry_count;
-    $self->put_record( $next_id, $data );
-    $next_id;
-} #push
-
-=head2 push( idx, data )
-
-Saves the data to the record and the record to the filesystem.
-The data must be a scalar or list reference.
-If a list reference, it should conform to the pack template
-assigned to this store.
-
-=cut
-sub put_record {
-    my( $self, $idx, $data ) = @_;
-
-    my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
-    # allows the put_record to grow the data store by no more than one entry
-
-    die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
-
-    my $fh = $self->_filehandle;
-
-    sysseek( $fh, $self->[RECORD_SIZE] * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-    1;
-} #put_record
-
-=head2 unlink_store
-
-Removes the file for this record store entirely from the file system.
-
-=cut
-sub unlink_store {
-    # TODO : more checks
-    my $self = shift;
-    close $self->_filehandle;
-    unlink $self->[FILENAME];
-}
-
 sub _filehandle {
     my $self = shift;
     CORE::open( my $fh, "+<", $self->[FILENAME] ) or die "Unable to open ($self) $self->[FILENAME] : $!";
@@ -332,8 +432,6 @@ package main;
 
 sub convert_2_to_3 {
     print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
-
-    die "Directory '$dest_dir' already exists" if -d $dest_dir;
 
     print STDERR "Creating destination dir\n";
 
@@ -387,9 +485,6 @@ sub convert_2_to_3 {
 
 sub convert_3_to_3_1 {
     print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
-
-
-    die "Directory '$dest_dir' already exists" if -d $dest_dir;
 
     print STDERR "Creating destination dir\n";
 
