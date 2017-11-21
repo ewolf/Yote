@@ -32,10 +32,10 @@ exit( 0 );
 
 sub test_suite {
     $root_node->add_to_myList( { objy =>
-        $store->newobj( {
+        $store->create_container( {
             someval => 124.42,
             somename => 'Käse',
-            someobj => $store->newobj( {
+            someobj => $store->create_container( {
                 binnerval => "`SPANXZ",
                 linnerval => "SP`A`NXZ",
                 zinnerval => "PANXZ`",
@@ -50,16 +50,16 @@ sub test_suite {
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
 
-    # objects created : root, myList, array block in mylist, a hash in myslist + its 1 inner list, a newobj
-    #                   in the hash, a newobj in the obj
+    # objects created : root, myList, array block in mylist, a hash in myslist + its 1 inner list, a create_container
+    #                   in the hash, a create_container in the obj
     # so 6 things
 
     my $dup_store = Data::ObjectStore::open_store( $dir );
 
     my $dup_root = $dup_store->fetch_root;
 
-    is( $dup_root->[Data::ObjectStore::Obj::ID], $root_node->[Data::ObjectStore::Obj::ID] );
-    is_deeply( $dup_root->[Data::ObjectStore::Obj::DATA], $root_node->[Data::ObjectStore::Obj::DATA] );
+    is( $dup_root->[Data::ObjectStore::Container::ID], $root_node->[Data::ObjectStore::Container::ID] );
+    is_deeply( $dup_root->[Data::ObjectStore::Container::DATA], $root_node->[Data::ObjectStore::Container::DATA] );
 
     is( $dup_root->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character saved in object" );
 
@@ -103,8 +103,8 @@ sub test_suite {
 
     $store->stow_all;
 
-    my $quickly_removed_obj = $store->newobj( { soon => 'gone', bigstuff => ('x'x10000) } );
-    my $quickly_removed_id = $quickly_removed_obj->[Data::ObjectStore::Obj::ID];
+    my $quickly_removed_obj = $store->create_container( { soon => 'gone', bigstuff => ('x'x10000) } );
+    my $quickly_removed_id = $quickly_removed_obj->[Data::ObjectStore::Container::ID];
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
     $list_to_remove->[87] = "EIGHTYSEVEN";
 

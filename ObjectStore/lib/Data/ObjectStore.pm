@@ -29,36 +29,51 @@ use constant {
 
 =head1 NAME
 
-Data::ObjectStore - Store data in a graph of container objects and automatically load as needed.
+Data::ObjectStore - Fast and efficient store for structured data.
 
-=head1 ABOUT
+=head1 DESCRIPTION
 
-If you have data you want to quickly, reliably and simply store, this package may be
+If you have structured data you want to quickly, reliably and simply store, this package may be
 for you. All you need to provide is a directory, and the store can be opened and used.
+
+Data is stored with setters
+
+The store provides key value container objects that can attach other container objects,
+hashes and arrays. The entry point for storing objects is the root container of the store.
+The container objects are useful as is, and are designed to be extended.
+
+Containers attached to a container are loaded only when accessed through the getter methods.
+
+Hashes and lists become tied when attached to a conatiner. Very large hashes and lists
+can be stored this way. They are broken into chunks and those chunks are loaded as needed, 
+ie not all at once.
+
 
 =head1 EXAMPLE
 
 For example, you might want to store information about games and user accounts for the hearts card game.
-This examples shows storing hashes, lists and Data::ObjectStore::Obj container objects.
+This examples shows storing hashes, lists and Data::ObjectStore::Container container objects.
 
+ # open the store. All you need is a directory
  $store = Data::ObjectStore::open_store( "/path/to/directory" );
 
+ # create a deck of cards
  for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
     push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King');
  }
 
  #
- # create an object for storage, default class is Data::ObjectStore::Obj
+ # create an object for storage, default class is Data::ObjectStore::Container
  # and populate it with data.
  #
- $game = $store->newobj ( {
+ $game = $store->create_container ( {
    turn    => 0,
    state   => "waiting for players",
    players => {},
-   deck    => [ sort { rand + 0*$a <=> rand + 0*$b } @cards ], # shuffle
+   deck    => [ sort { rand + 0*$a <=> rand + 0*$b } @cards ], # shuffled deck
  } );
 
- $account = $store->newobj( {
+ $account = $store->create_container( {
    name           => 'fred',
    hashedPassword => 'irjwalfs9iu243rfewj',
    games          => [],
@@ -95,6 +110,58 @@ This examples shows storing hashes, lists and Data::ObjectStore::Obj container o
 
 =head1 EXTENDING
 
+Data::ObjectStore::Container is useful as is, but is also designed to be extended. 
+For example, for the hearts game, we can create a Hearts::Game class and
+start to flesh it out. This implements a few methods that would be needed
+for the hearts game.
+
+ package Hearts::Game;
+
+ use Data::ObjectStore;
+ use base 'Data::ObjectStore::Container';
+
+ # called the first time this Hearts::Game object is created.
+ sub _init {
+   my $self = shift;
+   my( @cards );
+   for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
+      push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King');
+   }
+   $self->set_deck( [ sort { rand + 0*$a <=> rand + 0*$b } @cards ] ), # shuffled deck
+   $self->set_players([]);
+   $self->set_state( "waiting" );
+ }
+
+ # called every time this is loaded from the data store.
+ sub _load {
+   my $self = shift;
+   print "game loaded at state : " . $self->get_state;
+ }
+
+ sub deal {
+   my $self = shift;
+   die "Game not started" if $self->get_state eq 'waiting';
+
+   my $players = $self->get_players
+   my $deck = $self->get_deck;
+   
+   #each player gets 13 cards
+   for( 1..13 ) {
+     for my $i ( 0..3 ) {
+        my $card = shift @$deck;
+        $players->[$i]->add_to_hand( $card );
+     }
+   }
+ }
+
+ sub add_player {
+     my($self,$player) = @_;
+     $self->add_to_players( $player );
+     if( @{$self->get_players} == 4 ) {
+         $self->set_state('playing');
+         $self->deal;
+     }
+ }
 
 
 =head1 SYNOPSIS
@@ -111,20 +178,20 @@ This examples shows storing hashes, lists and Data::ObjectStore::Obj container o
  print $store->get_last_update_time;
 
  #
- # The root node is a Data::ObjectStore::Obj instance. Anything saved must
+ # The root node is a Data::ObjectStore::Container instance. Anything saved must
  # trace a path to here in order to be accessed.
  #
  $root_node = $store->fetch_root;
 
 
- $root_node->add_to_myList( $store->newobj( {
+ $root_node->add_to_myList( $store->create_container( {
     some_val  => 123.53,
     some_hash => { A => 1 },
     some_list => [ 1..1000 ],
-    specific_initialized_obj  => $store->newobj( { foo => "Bar" }, 'Data::ObjectStore::ObjChildClass' );
-    generic_initialized_obj  => $store->newobj( { foo => "Bar" } );
-    specific_obj  => $store->newobj( 'Data::ObjectStore::ObjChildClass' );
-    generic_obj  => $store->newobj;
+    specific_initialized_obj  => $store->create_container( { foo => "Bar" }, 'Data::ObjectStore::ContainerChildClass' );
+    generic_initialized_obj  => $store->create_container( { foo => "Bar" } );
+    specific_obj  => $store->create_container( 'Data::ObjectStore::ContainerChildClass' );
+    generic_obj  => $store->create_container;
  } );
 
  # the root node now has a list 'myList' attached to it with the single
@@ -134,11 +201,11 @@ This examples shows storing hashes, lists and Data::ObjectStore::Obj container o
  $root_node->add_to_myList( 42 );
 
  #
- # New Yote container objects are created with $store->newobj. Note that
+ # New Yote container objects are created with $store->create_container. Note that
  # they must find a reference path to the root to be protected from
  # being deleted from the record store upon compression.
  #
- $newObj = $store->newobj;
+ $create_container = $store->create_container;
 
  $root_node->set_field( "Value" );
 
@@ -229,7 +296,7 @@ sub open_store {
     #
     # Data::ObjectStore subpackages are not normally in %INC and should always be loaded.
     #
-    for my $pkg ( qw( Data::ObjectStore::Obj Data::ObjectStore::Array Data::ObjectStore::Hash ) ) {
+    for my $pkg ( qw( Data::ObjectStore::Container Data::ObjectStore::Array Data::ObjectStore::Hash ) ) {
         $INC{ $pkg } or eval("use $pkg");
     }
 
@@ -258,7 +325,7 @@ sub fetch_root {
     my $info_node = $self->_fetch_store_info_node;
     my $root = $info_node->get_root;
     unless( $root ) {
-        $root = $self->newobj;
+        $root = $self->create_container;
         $info_node->set_root( $root );
         $self->stow_all;
     }
@@ -326,9 +393,9 @@ sub get_last_update_time {
     shift->[STOREINFO]{last_update_time};
 }
 
-=head2 newobj( optionalClass, { data } )
+=head2 create_container( optionalClass, { data } )
 
-Returns a new Data::ObjectStore::Obj container
+Returns a new Data::ObjectStore::Container container
 object or a subclass, depending if the optional class
 parameter is supplied. If provided with data, the object
 is initialized with the data.
@@ -339,11 +406,11 @@ stow_all is called.
 
 =cut
 
-sub newobj {
-    # works with newobj( { my data } ) or newobj( 'myclass', { my data } )
+sub create_container {
+    # works with create_container( { my data } ) or create_container( 'myclass', { my data } )
     my $self  = shift;
     my $data  = pop;
-    my $class = pop || 'Data::ObjectStore::Obj';
+    my $class = pop || 'Data::ObjectStore::Container';
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
@@ -353,7 +420,7 @@ sub newobj {
     $self->_store_weak( $id, $obj );
     $obj->_init(); #called the first time the object is created.
     $obj;
-} #newobj
+} #create_container
 
 #
 # Recycles and compacts store. IDs that were not found in the store
@@ -486,7 +553,7 @@ sub _fetch_store_info_node {
         my $first_id = $self->_new_id;
         die "Data::ObjectStore::_fetch_store_info_node : STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
         my $now = time;
-        $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Obj';
+        $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Container';
         $node->set_db_version( $Data::RecordStore::VERSION );
         $node->set_ObjectStore_version( $Data::ObjectStore::VERSION );
         $node->set_created_time( $now );
@@ -630,7 +697,7 @@ sub _get_id {
         $ref = $thingy;
         $class = ref( $ref );
     }
-    die "Data::ObjectStore::_get_id : Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
+    die "Data::ObjectStore::_get_id : Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Container' ) );
     $ref->[ID] ||= $self->_new_id;
     return $ref->[ID];
 
@@ -1388,17 +1455,17 @@ sub DESTROY {
 
 =head1 NAME
 
-Data::ObjectStore::Obj - Persistant Perl container object.
+Data::ObjectStore::Container - Persistant Perl container object.
 
 =head1 SYNOPSIS
 
- $obj_A = $store->newobj;
+ $obj_A = $store->create_container;
 
- $obj_B = $store->newobj( myfoo  => "This foo is mine",
+ $obj_B = $store->create_container( myfoo  => "This foo is mine",
                           mylist => [ "A", "B", "C" ],
                           myhash => { peanut => "Butter" } );
 
- $obj_C = $store->newobj;
+ $obj_C = $store->create_container;
 
  #
  # get operations
@@ -1448,7 +1515,7 @@ Data::ObjectStore::Obj - Persistant Perl container object.
 
 This is a container object that can be used to store key value data
 where the keys are strings and the values can be hashes, arrays or
-Data::ObjectStore::Obj objects. Any instances that can trace a
+Data::ObjectStore::Container objects. Any instances that can trace a
 reference path to the store's root node are reachable upon reload.
 
 This class is designed to be overridden. Two methods are provided
@@ -1458,7 +1525,7 @@ These methods are no-ops in the base class.
 
 =cut
 
-package Data::ObjectStore::Obj;
+package Data::ObjectStore::Container;
 
 use strict;
 use warnings;
@@ -1486,7 +1553,7 @@ use overload
 =head2 set( field, value )
 
 Sets the field to the given value and returns the value.
-The value may be a Data::ObjectStore::Obj or subclass, or
+The value may be a Data::ObjectStore::Container or subclass, or
 a hash or array reference.
 
 =cut
@@ -1514,7 +1581,7 @@ If the value is not defined and a default value is given,
 this sets the value to the given default value and returns
 it.
 
-The value may be a Data::ObjectStore::Obj or subclass, or
+The value may be a Data::ObjectStore::Container or subclass, or
 a hash or array reference.
 
 =cut
@@ -1662,7 +1729,7 @@ sub AUTOLOAD {
         goto &$AUTOLOAD;
     }
     else {
-        die "Data::ObjectStore::Obj::$func : unknown function.";
+        die "Data::ObjectStore::Container::$func : unknown function.";
     }
 
 } #AUTOLOAD
@@ -1716,7 +1783,7 @@ sub DESTROY {
     delete $self->[DSTORE][Data::ObjectStore::WEAK]{$self->[ID]};
 }
 
-# END PACKAGE Data::ObjectStore::Obj
+# END PACKAGE Data::ObjectStore::Container
 
 1;
 
