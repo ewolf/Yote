@@ -18,7 +18,7 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-my $dir = tempdir;#( CLEANUP => 1 );
+my $dir = tempdir( CLEANUP => 1 );
 my $dir2 = tempdir( CLEANUP => 1 );
 my $dir3 = tempdir( CLEANUP => 1 );
 
@@ -42,7 +42,6 @@ sub test_suite {
     ok( ! $store->has_id( 2 ), "still no second id yet" );
     my $id2 = $store->stow( "BAR BAR" );
     ok( $store->has_id( 2 ), "now has second id" );
-
     my $id3 = $store->stow( "Käse essen" );
 
     $store = Data::RecordStore->open_store( $dir );
@@ -108,7 +107,8 @@ sub test_suite {
     ok( !$store->has_id(1), "does not have any entries" );
     ok( !$store->has_id(0), "does not have any entries" );
 
-    is( $store->entry_count, 0, "no entries" );
+    is( $store->entry_count, 0, "empty then no entries" );
+    
     $store->stow( "BOOGAH", 4 );
     is( $store->next_id, '5', "next id is 5" );
     is( $store->entry_count, 5, "5 entries after skipping ids plus asking to generate the next one" );

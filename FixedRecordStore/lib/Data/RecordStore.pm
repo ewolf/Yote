@@ -68,9 +68,8 @@ use constant {
     VERSION     => 4,
     STORE_IDX   => 5,
 
-    TMPL        => 0,
     RECORD_SIZE => 1,
-    FILENAME    => 2,
+    TMPL        => 4,
 };
 
 
@@ -155,7 +154,8 @@ sub stow {
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
 
-    if( $self->[OBJ_INDEX]->entry_count < ($id-1) ) {
+    if( $self->[OBJ_INDEX]->entry_count > $id ) {
+
         my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
         #
@@ -186,8 +186,6 @@ sub stow {
     my $store = $self->_get_store( $store_id );
 
     my $id_in_store = $store->next_id;
-
-    print STDERR Data::Dumper->Dump(["STOW : $id, [$store_id,$id_in_store]"]);
 
     $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $id_in_store ] );
 
@@ -228,7 +226,6 @@ the number of entries.
 =cut
 sub entry_count {
     my $self = shift;
-    print STDERR Data::Dumper->Dump(["OINK"]);
     $self->[OBJ_INDEX]->entry_count - $self->[RECYC_STORE]->entry_count;
 } #entry_count
 
@@ -257,9 +254,8 @@ sub delete_record {
 =cut
 sub has_id {
     my( $self, $id ) = @_;
-    print STDERR Data::Dumper->Dump(["THA"]);
     my $ec = $self->entry_count;
-    print STDERR Data::Dumper->Dump(["HAS ID ($id), EC ($ec)"]);
+
     return 0 if $ec < $id || $id < 1;
 
     my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
@@ -311,13 +307,13 @@ sub _ensure_entry_count {
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
-    my $last_idx = $store->entry_count;
-    my $fh = $store->_filehandle($last_idx);
+    my $last_id = $store->entry_count;
+    my( $f_idx, $fh, $file ) = $store->_fh($last_id);
 
-    if( $vacated_store_idx < $last_idx ) {
+    if( $vacated_store_idx < $last_id ) {
 
-        sysseek $fh, $store->[RECORD_SIZE] * ($last_idx-1), SEEK_SET
-            or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_idx-1)) : $@ $!";
+        sysseek $fh, $store->[RECORD_SIZE] * ($last_id-1), SEEK_SET
+            or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_id-1)) : $@ $!";
         my $srv = sysread $fh, my $data, $store->[RECORD_SIZE];
         defined( $srv ) or die "Could not read : $@ $!";
         sysseek( $fh, $store->[RECORD_SIZE] * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
@@ -333,7 +329,7 @@ sub _swapout {
     #
     # truncate now that the store is one record shorter
     #
-    truncate $fh, $store->[RECORD_SIZE] * ($last_idx-1);
+    truncate $fh, $store->[RECORD_SIZE] * ($last_id-1);
 
     close $fh;
 } #_swapout
@@ -357,7 +353,7 @@ sub empty_recycler {
 =cut
 sub recycle {
     my( $self, $id, $keep_data ) = @_;
-    $self->delete( $id ) unless $keep_data;
+    $self->delete_record( $id ) unless $keep_data;
     $self->[RECYC_STORE]->push( [$id] );
 } #empty_recycler
 
@@ -509,7 +505,7 @@ This empties out the database, setting it to zero records.
 =cut
 sub empty {
     my $self = shift;
-    my( $first, @files ) = $self->_files;
+    my( $first, @files ) = map { "$self->[DIRECTORY]/$_" } $self->_files;
     truncate $first, 0;
     for my $file (@files) {
         unlink $file;
@@ -530,10 +526,11 @@ sub _ensure_entry_count {
 
         my $file_records = int( (-s $last_file ) / $self->[RECORD_SIZE] );
         my $records_needed = $needed - $file_records;
-        
+
         if( $records_needed > 0 ) {
             open( my $fh, "+<", "$self->[DIRECTORY]/$last_file" ) or die "Unable to open '$self->[DIRECTORY]/$last_file' : $!";
-            sysseek( $fh, 0, SEEK_END ) && syswrite( $fh, pack( $self->[TMPL], \0 ) x $records_needed );
+            my $nulls = "\0" x ( $records_needed * $self->[RECORD_SIZE] );
+            sysseek( $fh, 0, SEEK_END ) && syswrite( $fh, $nulls );
             close $fh;
             $needed -= $records_needed;
         }
@@ -569,7 +566,7 @@ sub _fh {
 
     my $file = $files[$f_idx];
     open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Unable to open '$self->[DIRECTORY]/$file' : $! $?";
-    
+
     (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file");
 
 } #_fh
@@ -609,7 +606,7 @@ sub get_record {
     close $fh;
 
     defined( $srv ) or die "Could not read : $@ $!";
-    print STDERR Data::Dumper->Dump([unpack( $self->[TMPL], $data ),-s $file,"UNP <$file>"]);
+
     [unpack( $self->[TMPL], $data )];
 } #get_record
 
@@ -622,6 +619,7 @@ sub next_id {
     my( $self ) = @_;
     my $next_id = 1 + $self->entry_count;
     $self->_ensure_entry_count( $next_id );
+
     $next_id;
 } #next_id
 
@@ -692,10 +690,7 @@ sub put_record {
 
     my( $f_idx, $fh, $file ) = $self->_fh( $id );
 
-    print STDERR Data::Dumper->Dump([$to_write,"PUT RECORD $id --> $f_idx, $fh"]);
-    
     sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
-    print STDERR Data::Dumper->Dump([$swv,-s $fh,$file,"SUPR"]);
     
     close $fh;
 
