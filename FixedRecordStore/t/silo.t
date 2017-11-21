@@ -103,6 +103,7 @@ sub test_open_silo {
     $store->_ensure_entry_count( 9 );
 
     my( @files ) = $store->_files;
+
     is( $store->[0], "$dir/silo", "directory" );
     is_deeply( \@files, [ 0, 1, 2 ], 'three silo files' );
     is( $store->entry_count, 9, "9 entries" );
@@ -185,7 +186,7 @@ sub test_put_record {
 
     $store = Data::RecordStore::Silo->open_silo( 'IAI', $silo_dir );
     is( $store->[1], 9, "record size 9 bytes");
-    my $id = $store->next_id;
+    $id = $store->next_id;
     is( $id, 1, "first id" );
     is( $store->entry_count, 1, "ec 1" );
     $store->put_record( 1, [ 43, "Q", 22 ] );
@@ -212,7 +213,7 @@ sub test_put_record {
     is( $next_id, 4, "pushed id" );
 
     is( $store->entry_count, 4, "now at 4 things" );
-    is( -s "$silo_dir/0", 27, "first file now 27" );    
+    is( -s "$silo_dir/0", 27, "first file now 27" );
     is( -s "$silo_dir/1", 9, "second file now 9" );
 
     is_deeply( $store->last_entry, [ 4, "D", 1001 ], "LAST ENTRY AGREES" );
@@ -222,7 +223,7 @@ sub test_put_record {
     
     $data = $store->pop;
     is_deeply( $store->last_entry, [ 3, "c", 1001 ], "LAST ENTRY AGREES" );    
-    is( -s "$silo_dir/1", 0, "second file emptied" );
+    ok( !(-e "$silo_dir/1"), "second file removed" );
     is_deeply( $data, [ 4, "D", 1001 ], "pop 4" );
     
     $data = $store->pop;
@@ -237,8 +238,45 @@ sub test_put_record {
 
     $data = $store->pop;
     is( $store->last_entry, undef, "No last entry" );
-    is( -s "$silo_dir/1", 0, "first file emptied" );
+    is( $store->entry_count, 0, "no entries after pop" );
+    is( -s "$silo_dir/0", 0, "first file emptied" );
+    ok( ! (-e "$silo_dir/1"), "no second file" );    
+    ok( ! (-e "$silo_dir/2"), "no third file" );    
     is_deeply( $data, [ 1, "A", 1001 ], "pop 1" );
+
+    # 3 records, 2 files
+    $store->push( [ 1, "A", 1001 ] ); #0
+    is( $store->entry_count, 1, "push 1" );
+    $store->push( [ 22, "b", 10003 ] ); #1
+    is( $store->entry_count, 2, "push 2" );
+    $store->push( [ 333, "C", 10003 ] ); #2
+    is( $store->entry_count, 3, "push 3" );
+    $store->push( [ 4444, "d", 10003 ] ); #3
+    is( $store->entry_count, 4, "push 4" );
+    $store->push( [ 55555, "C", 10003 ] ); #4
+    is( $store->entry_count, 5, "push 5" );
+    
+    eval { $store->_copy_record( 0, -1 ); };
+    like( $@, qr/to_index -1 out of bounds/, 'to id too low' );    
+    undef $@;
+
+    eval { $store->_copy_record( 0, 5 ); };
+    like( $@, qr/to_index 5 out of bounds/, 'to id too high' );    
+    undef $@;
+
+    eval { $store->_copy_record( -1, 0 ); };
+    like( $@, qr/from_index -1 out of bounds/, 'from id too low' );    
+    undef $@;
+
+    eval { $store->_copy_record( 5, 0 ); };
+    like( $@, qr/from_index 5 out of bounds/, 'from id too high' );    
+    undef $@;
+    
+    
+    $store->_copy_record( 3, 2 ); # idx used, not id like below
+    is_deeply( $store->get_record( 4 ), [ 4444, "d", 10003 ], "record after copy" );
+    is_deeply( $store->get_record( 3 ), [ 4444, "d", 10003 ], "copied record" );
+    
 } #test_put_record
 
 __END__

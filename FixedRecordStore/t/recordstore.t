@@ -68,39 +68,51 @@ sub test_suite {
     is_deeply( $ds->get_record( 1 ), $r[1], "First record" );
     is_deeply( $ds->get_record( 3 ), $r[3], "Third record" );
 
+    my $cur_silo = $store->_get_silo( 8 );
+    is( $cur_silo->entry_count, 0, "silo #8 empty" );
+    
     #
     # Try testing the moving of a record
     #
     $store = Data::RecordStore->open_store( $dir3 );
-    $id = $store->stow( "x" x 2972 );
-    my $cur_store = $store->_get_store( 8 );
 
-    is( $cur_store->entry_count, 1, "One entry in store #8" );
+    print STDERR "--------------------------\n";
+    $id = $store->stow( "x" x 2972 ); # 7 is 1096, 8 is 2980, should be in 8
 
-    my $yid = $store->stow( "y" x 2972 );
-    is( $cur_store->entry_count, 2, "Two entry in store #8" );
+    # 1, 2, 3, 4,  5,  6,   7,   8,    9,
+    # 2, 7,20,54,148,403,1096,2980, 8103, 
     
-    $store->stow( "x" x 3000, $id );
+    is( $cur_silo->entry_count, 1, "One entry in silo #8" );
 
-    is( $cur_store->entry_count, 1, "Entry relocated from store #8" );
-    my $new_store = $store->_get_store( 9 );
-    is( $new_store->entry_count, 1, "One entry relocated to store #9" );
+    my $yid = $store->stow( "y" x 2972 ); # 7 is 1096, 8 is 2980, should be in 8
+    is( $cur_silo->entry_count, 2, "Two entry in silo #8" );
+    
+    $store->stow( "x" x 3000, $id );  # 8 is max 2980, should be in 9
+
+    is( $cur_silo->entry_count, 1, "Entry relocated from silo #8" );
+    my $new_silo = $store->_get_silo( 9 );
+    is( $new_silo->entry_count, 1, "One entry relocated to silo #9" );
 
     is( $store->fetch( $yid ), "y" x 2972, "correctly relocated data" );
 
     # try for a much smaller relocation
 
+    $new_silo = $store->_get_silo( 5 );
+    is( $new_silo->entry_count, 0, "No entries in silo #5" );
+
+    
     $store->stow( "x" x 90, $id );
     
-    is( $new_store->entry_count, 0, "One entry relocated from store #9" );
-    $new_store = $store->_get_store( 5 );
-    is( $new_store->entry_count, 1, "One entry relocated to store #5" );
+    $new_silo = $store->_get_silo( 9 );
+    is( $new_silo->entry_count, 0, "One entry relocated from silo #9" );
+    $new_silo = $store->_get_silo( 5 );
+    is( $new_silo->entry_count, 1, "One entry relocated to silo #5" );
     # test for record too large. idx out of bounds
 
     my $xid = $store->stow( "x" x 90 );
-    is( $new_store->entry_count, 2, "Two entries now in store #5" );
+    is( $new_silo->entry_count, 2, "Two entries now in silo #5" );
     $store->delete_record( $id );
-    is( $new_store->entry_count, 1, "one entries now in store #5 after delete" );
+    is( $new_silo->entry_count, 1, "one entries now in silo #5 after delete" );
 
     # test store empty
     $store->empty;
