@@ -153,7 +153,7 @@ sub test_suite {
     $next_id = $store->next_id;
 
     is( $next_id, 1, "next id is recycled 1 after commit" );
-    
+
     check( $store, "after trans recyc next id",
            trans   => 0,
            entries => 2, # 1 and 2
@@ -203,7 +203,7 @@ sub test_suite {
            ids     => 2,
            silo    => 2,
         );
-    
+
     $next_id = $store->next_id;
 
     is( $next_id, 3, "next id is three" );
@@ -215,15 +215,15 @@ sub test_suite {
            ids     => 3, #after next id
            silo    => 2,
         );
-    
+
     $trans->rollback;
 "
     also, test to make sure a broken written record at the end of a silo file
         doesn't sink the whole thing
-    
+
     there is something in the silo that shouldnt be there
         rollback didnt work for this case
- ";    
+ ";
     check( $store, "after transaction rollback",
            trans   => 0, #transaction done
            entries => 3,
@@ -235,6 +235,66 @@ sub test_suite {
     $next_id = $store->next_id;
     is( $next_id, 4, "next id is 4 after aborted recycle" );
 
+    check( $store, "after aborted recycle",
+           trans   => 0,
+           entries => 4,
+           recyc   => 0,
+           ids     => 4,
+           silo    => 0,
+        );
+    
 
+
+    $trans = $store->create_transaction;
+    check( $store, "new trans",
+           trans   => 1, #new trans
+           entries => 4,
+           recyc   => 0,
+           ids     => 4,
+           silo    => 0,
+        );
+
+    $id = $trans->stow( "HERE IS SOME" );
+    is( $id, 5, "new trans new id" );
+
+    check( $store, "new trans will store",
+           trans   => 1, #new trans
+           entries => 5, #new id
+           recyc   => 0,
+           ids     => 5, #new id generated
+           silo    => 1, #something in silo
+        );
+
+    $id = $trans->stow( "CHANGED mind", $id );
+    is( $id, 5, "new trans new id still 5" );
+
+    check( $store, "new trans will store overwrite",
+           trans   => 1,
+           entries => 5,
+           recyc   => 0,
+           ids     => 5, #same id used
+           silo    => 2, #one more silo entry though
+       );
+
+    $id = $trans->stow( "MEW NEW mind" );
+    is( $id, 6, "new trans new id now 6" );
+    
+    check( $store, "new trans will store overwrite",
+           trans   => 1,
+           entries => 6, #new entry
+           recyc   => 0,
+           ids     => 6, #new id for new entry
+           silo    => 3, #one more silo entry though
+       );
+
+    $trans->commit;
+
+    check( $store, "new trans commit",
+           trans   => 0,
+           entries => 6,
+           recyc   => 0,
+           ids     => 6, #same id used
+           silo    => 2, #one more silo entry though
+       );
 
 } #test_suite
