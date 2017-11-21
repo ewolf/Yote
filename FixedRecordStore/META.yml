@@ -17,14 +17,15 @@ name: Data-RecordStore
 provides:
   Data::RecordStore:
     file: lib/Data/RecordStore.pm
-    version: '3.10'
+    version: '3.12'
   Data::RecordStore::Silo:
     file: lib/Data/RecordStore.pm
   Data::RecordStore::Transaction:
     file: lib/Data/RecordStore.pm
 requires:
+  Make::Path: '2.07'
   perl: v5.9.4
 resources:
   license: http://dev.perl.org/licenses/
-version: '3.10'
+version: '3.12'
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
