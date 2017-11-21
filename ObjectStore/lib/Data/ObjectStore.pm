@@ -31,7 +31,28 @@ use constant {
 
 Data::ObjectStore - Fast and efficient store for structured data.
 
+=head1 DESCRIPTION
+
+Data::ObjectStore stores structured data on the file system in a directory
+the programmer supplies. Any configuration of interconnected hashes, arrays
+and Data::ObjectStore::Container objects may be placed in the store.
+
+The store keeps track of changes to any data structure reference placed
+within it. A single save operation writes all changes to the data structure
+or its fields that were made since the last save operation.
+
+Items load from the store on an as needed basis. Very large hashes and arrays
+are transparently chunked behind a tied interface. A single root container is
+the point of entry to add items. If a path of reference can trace from this
+root container to the itemn, the item can be referenced from the store.
+
+It is built for speed, efficiency and ease of use. Container objects have
+powerful syntactic sugar for convenience, and are extensible.
+This can be used orthagonally with any other storage system.
+
 =head1 SYNOPSIS
+
+ # SETTING DATA
 
  use Data::ObjectStore;
 
@@ -52,6 +73,9 @@ Data::ObjectStore - Fast and efficient store for structured data.
     notes => "It looks like theory X fits the data the best",
  };
 
+ # this ads the data to the store and only needs to be done
+ # once. Any further changes to the data structure are monitored
+ # by the store and saved upon call to save.
  $root_container->set( "experiment", $experiment );
 
  # save _all_ data connected to the root container
@@ -68,8 +92,17 @@ Data::ObjectStore - Fast and efficient store for structured data.
 
  ....
 
- my $experiment_again = $root_container->get( "experiment" );
+ # GETTING DATA
 
+ my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
+
+ # loads the root container ( but not yet referenced contents )
+ my $root = $store->load_root_container;
+
+ # loads the content referenced by the experiment key.
+ my $experiment_again = $root->get( "experiment" );
+
+ # loads the data collected hash and a particular day
  my $day_values = $experiment_again->{data_collected}->{20170403};
  my $same_ref = $experiment_again->{today_data};
 
@@ -86,13 +119,102 @@ Data::ObjectStore - Fast and efficient store for structured data.
  # since the last save.
  $store->save;
 
+ ....
 
-=head1 DESCRIPTION
+ # CONTAINERS AND SYNTACTIC SUGAR
 
-If you have structured data you want to quickly, reliably and simply store, this package may be
-for you. All you need to provide is a directory, and the store can be opened and used.
+ my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
 
-=head2 SIMPLE USE
+ my $root = $store->load_root_container;
+
+ # the container provides syntactic sugar and can be subclassed
+ my $user = $store->create_container( {
+   name        => "Edna",
+   hashedPass  => "weroiusafda89",
+   title       => "director",
+   experiments => [],
+                                     } );
+
+ # Makes an array called 'users' (if not already there), attached it to
+ # the root and adds $user to it.
+ # Now $user is connected to the root via the users array.
+ $root->add_to_users( $user );
+
+ # $root->get_experiment is the same as $root->get( 'experiment' );
+ my $experiments = $root->get_experiment;
+
+ $user->add_to_exeriments( $experiments );
+
+ # more syntactic sugar for lists attached to a container.
+ # $user->set_foods is the same as $user->set( 'foods' );
+ my $foods = $user->set_foods( [] );
+ push @$foods, "PEAS", "PEAS", "PEAS", "ORANGES";
+
+ $user->remove_from_foods( "PEAS" );
+ # $foods now "PEAS", "PEAS", "ORANGES"
+
+ $user->remove_all_from_foods( "PEAS" );
+ # $foods now "ORANGES"
+
+ my $val = $user->get_status( "default" );
+ # $val eq 'default'
+
+ $val = $user->get_status( "Somethign Else" );
+ # $val eq 'default' (old value not overridden by a new default value)
+
+ $val = $user->set_status( "A NEW STATUS" );
+ # $val eq 'A NEW STATUS'
+
+ ....
+
+ # SUBCLASSING CONTAINERS
+
+ package Mad::Science::User;
+ use Data::ObjectStore;
+ use base 'Data::ObjectStore::Container';
+
+ # called when an object is newly created
+ sub _init {
+   my $self = shift;
+   $self->set_status( "NEWLY CREATED" );
+   $self->set_experiments([]);
+ }
+
+ # called when the object is loaded from the store
+ sub _load {
+   my $self = shift;
+   print "Loaded " . $self->get_name . " from store";
+   if( @{$self->get_experiments} > 0 ) {
+     $self->set_status( "DOING EXPERIMENTS" );
+   }
+ }
+
+ sub evacuate {
+   my $self = shift;
+   $self->set_status( "HEADING FOR THE HILLS" );
+ }
+
+ package main;
+
+ my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
+
+ # creates Mad::Science::User object
+ # calls Mad::Science::User::_init on it.
+ my $user = $store->create_container( 'Mad::Science::User',
+                                      { name => 'Larry' } );
+ $store->set_larry( $user );
+
+ print $user->get_status; # prints 'NEWLY CREATED'
+
+ $user->add_to_experiments( "NEW EXPERIMENT" );
+
+ $reopened_store = Data::ObjectStore::open_store( '/path/to/data-directory' );
+
+ # calls Mad::Science::User::_load
+ my $larry = $store->get_larry;
+ print $larry->get_status; #prints 'DOING EXPERIMENTS'
+
+=head1 SIMPLE USE CASE
 
 The simple use case is using structured data containing only scalars, array refs and hash refs.
 The arrays and hashes may contain references to other arrays and hashes or scalar data.
@@ -100,6 +222,15 @@ Circular references are allowed. Blessed or tied or array and hash references ar
 
 When the data structures are attached to the root container of the store, they become
 tied to the store but continue to otherwise behave as before. To attach :
+
+ $my_data_structure = {
+     lol => [ [...], [...] ],
+     loh => [ {...}, {...} ],
+     hol => { a => [...], b => [...] },
+     hoh => { a => {...}, b => {...} },
+     text    => "Here is some text",
+     numbers => 34535,
+ };
 
  $root = $store->load_root_container;
  $root->set( "my key", $my_data_structure );
@@ -114,9 +245,10 @@ as as needed basis. The arrays and hashes may be of any size; huge ones are inte
 and loaded piecemeal into memory as needed. This is all transparent to the programmer; these
 arrays and hashes behave as normal arrays and hashes.
 
-The store is saved with a call to the save method on the store.
+The data is saved with a call to the save method on the store. The data structure only needs
+to be added once to the store.
 
-=head2 SYNTACTIC SUGAR
+=head1 BASIC CONTAINERS
 
 The entry point to storing data is a root container object provided by the store.
 This is a key/value container with getters and setters. The key is a string and the
@@ -127,13 +259,8 @@ value can be any of the following :
  * arrays
  * Data::ObjectStore::Container objects
 
-The arrays and hashes may store the same things that the container objects may store and may
-not be tied. The store provides new containers with its create_container method.
-
-Arrays and hashes are tied to the store as soon as they are added to it.
-Any containers connected are loaded upon array or hash lookup on an as needed basis.
-The hashes and array may be of any size; very large examples are stored in shards which
-are loaded as needed.
+The store provides new containers with its create_container method which takes
+an optional hash reference to initialize the container with.
 
 setters/getters/root
 
@@ -149,7 +276,7 @@ Hashes and lists become tied when attached to a conatiner. Very large hashes and
 can be stored this way. They are broken into chunks and those chunks are loaded as needed,
 ie not all at once.
 
-=head2 MORE
+=head2 EXTENDING CONTAINERS
 
  ....
 
@@ -166,7 +293,7 @@ ie not all at once.
     experiments => [],
                                       } );
 
- # syntactic suger. Makes an array called 'users' (if not already there)
+ # syntactic sugar. Makes an array called 'users' (if not already there)
  # and adds $user to it. Now $user is connected to the root via the users
  # array.
  $root_container->add_to_users( $user );
