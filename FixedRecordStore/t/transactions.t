@@ -76,7 +76,7 @@ sub test_suite {
     like( $@, qr/not active/, "cant delete record on inactve" );
     undef $@;
 
-    eval { $trans->recycle(3); };
+    eval { $trans->recycle_id(3); };
     like( $@, qr/not active/, "cant recycle record on inactve" );
     undef $@;
 
@@ -118,7 +118,7 @@ sub test_suite {
            silo    => 2, # same id written to silo
         );
 
-    $trans->recycle( $id );
+    $trans->recycle_id( $id );
 
     check( $store, "trans recycle",
            trans   => 1,
@@ -194,7 +194,7 @@ sub test_suite {
            silo    => 2, #addl stow on same id
         );
 
-    $trans->recycle( $id );
+    $trans->recycle_id( $id );
 
     check( $store, "trans recyc",
            trans   => 1,

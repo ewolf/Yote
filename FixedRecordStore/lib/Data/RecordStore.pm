@@ -2,59 +2,118 @@ package Data::RecordStore;
 
 =head1 NAME
 
-Data::RecordStore - Simple and fast record based data store
+ Data::RecordStore - Simple and fast record based data store
 
 =head1 SYNPOSIS
 
-use Data::RecordStore;
+ use Data::RecordStore;
+
+ my $store = Data::RecordStore->open_store( $directory );
+ my $data = "TEXT DATA OR BYTES";
+
+ ### Without transactions ###
+
+ my $id = $store->stow( $data );
+
+ my $new_or_recycled_id = $store->next_id;
+ $store->stow( $new_data, $new_or_recycled_id );
+
+ my $val = $store->fetch( $some_id );
+
+ my $count = $store->entry_count;
+
+ $store->delete_record( $del_id );
+
+ $store->recycle_id( $del_id );
+
+ my $has_id = $store->has_id( $someother_id );
+
+ $store->empty_recycler; #all recycled ids are gone
+
+ $store->empty; # clears out store completely
 
 
-my $store = Data::RecordStore->open_store( $directory );
 
-my $transaction = $store->create_transaction;
+ ### Using Transactions ###
 
-my $data = "TEXT DATA OR BYTES";
+ my $transaction = $store->create_transaction;
 
-my $val   = $store->fetch( $someid );
+ print join(",", $transaction->get_update_time,
+                 $transaction->get_process_id,
+                 $transaction->get_state,
+                 $transaction->get_id );
 
-my $id   = $transaction->stow( $data, $optionalID );
+ my $new_id = $transaction->stow( $data );
 
-my $new_or_recycled_id = $store->next_id;
+ my $new_or_recycled_id = $store->next_id;
 
-$transaction->stow( "MORE DATA", $new_or_recycled_id );
+ $transaction->stow( "MORE DATA", $new_or_recycled_id );
 
-$transaction->delete_record( $someid );
-$transaction->recycle( $dead_id );
+ $transaction->delete_record( $someid );
 
-$transaction->commit;
+ $transaction->recycle_id( $dead_id );
 
-my $has_object_at_id = $store->has_id( $someid );
+ if( $is_good ) {
+    $transaction->commit;
+ } else {
+    $transaction->rollback;
+ }
 
-$store->empty_recycler;
 
-$store->purge_failed_transaction;
+ ### Transaction maintenance ###
+
+ # Get a list of transactions that are old and probably stale.
+ for my $trans ($store->list_transactions) {
+
+   next if $trans->get_udpate_time > $too_old;
+
+   if( $trans->get_state == Data::RecordStore::Transaction::TRA_IN_COMMIT
+     || $trans->get_state == Data::RecordStore::Transaction::TRA_CLEANUP_COMMIT )
+   {
+      $trans->commit;
+   }
+   elsif( $trans->get_state == Data::RecordStore::Transaction::TRA_IN_ROLLBACK
+     || $trans->get_state == Data::RecordStore::Transaction::TRA_CLEANUP_ROLLBACK )
+   {
+      $trans->rollback;
+   }
+   elsif( $trans->get_state == Data::RecordStore::Transaction::TRA_ACTIVE )
+   {
+      # commit or rollback, depending on preference
+   }
+ }
+
 
 =head1 DESCRIPTION
 
 A simple and fast way to store arbitrary text or byte data.
-It is written entirely in perl with no non-core dependencies. It is designed to be
-both easy to set up and easy to use.
+It is written entirely in perl with no non-core dependencies.
+It is designed to be both easy to set up and easy to use.
 
-Transactions allow the RecordStore to protect data. Upon opening, the
-store checks if a failed transaction
+Transactions allow the RecordStore to protect data.
+Transactions can collect stow, delete_record and recycle_id actions.
+Data stowed this way is stored in the record store, but indexed to
+only by the transaction. Upon a transaction commit, the indexes
+are updated and discarded data removed. Destructive actions are
+only performed once the transaction updates the indexes.
+
+Data is stored in fixed record file silos. This applies
+to index data, recycling data, payload data and transaction data.
+These silos are self vaccuuming. Entries that are removed either
+by deletion or recycling have their space in the file replaced
+by a live entry.
+
+This is not a server or daemon, this is a direct operation on
+the file system. Only meta data such as directories, file location
+and fixed calculated values are stored as state. That means this
+is not thread safe. It can be used in a thread safe manner if
+a program using it provides locking mechanisms.
+
 
 =head1 LIMITATIONS
 
-Data::RecordStore is not meant to store huge amounts of data.
-It will fail if it tries to create a file size greater than the
-max allowed by the filesystem. This limitation may be removed in
-subsequent versions. This limitation is most important when working
-with sets of data that approach the max file size of the system
-in question.
-
-This is not written with thread safety in mind, so unexpected behavior
-can occur when multiple Data::RecordStore objects open the same directory.
-Locking coordination is currently the responsibility of the implementation.
+Data::RecordStore is not thread safe. Thread coordination
+and locking can be done on a level above Data::RecordStore.
 
 =cut
 
@@ -170,10 +229,22 @@ sub open_store {
 
 } #open_store
 
+=head2 create_transaction()
+
+Creates and returns a transaction object.
+
+=cut
+
 sub create_transaction {
     my $self = shift;
     Data::RecordStore::Transaction->_create( $self );
 }
+
+=head2 list_transactions
+
+Returns a list of currently existing transaction objects that are not marked TRA_DONE.
+
+=cut
 
 sub list_transactions {
     my $self = shift;
@@ -363,6 +434,29 @@ sub empty {
     }
 } #empty
 
+=head2 empty_recycler()
+
+  Clears out all data from the recycler
+
+=cut
+sub empty_recycler {
+    shift->[RECYC_SILO]->empty;
+} #empty_recycler
+
+=head2 recycle( id, keep_data_flag )
+
+  Ads the id to the recycler, so it will be returned when next_id is called.
+  This removes the data occupied by the id, freeing up space unles keep_data_flag
+  is set to true.
+
+=cut
+sub recycle_id {
+    my( $self, $id ) = @_;
+    $self->delete_record( $id );
+    $self->[RECYC_SILO]->push( [$id] );
+} #empty_recycler
+
+
 #This makes sure there there are at least min_count
 #entries in this record store. This creates empty
 #records if needed.
@@ -405,31 +499,6 @@ sub _swapout {
 
 } #_swapout
 
-
-=head2 empty_recycler()
-
-  Clears out all data from the recycler
-
-=cut
-sub empty_recycler {
-    shift->[RECYC_SILO]->empty;
-} #empty_recycler
-
-=head2 recycle( id, keep_data_flag )
-
-  Ads the id to the recycler, so it will be returned when next_id is called.
-  This removes the data occupied by the id, freeing up space unles keep_data_flag
-  is set to true.
-
-=cut
-sub recycle {
-    my( $self, $id, $keep_data ) = @_;
-    $self->delete_record( $id ) unless $keep_data;
-    $self->[RECYC_SILO]->push( [$id] );
-} #empty_recycler
-
-
-
 #
 # Returns a list of all the silos created in this Data::RecordStore
 #
@@ -470,41 +539,36 @@ Data::RecordStore::Silo
 =head1 DESCRIPTION
 
 A fixed record store that uses perl pack and unpack templates to store
-identically sized sets of data and uses a single file to do so.
+identically sized sets of data and uses a set of files to do so.
 
 =head1 SYNOPSIS
 
-my $template = "LII"; # perl pack template. See perl pack/unpack.
+ my $template = "LII"; # perl pack template. See perl pack/unpack.
 
-my $size; #required if the template does not have a definite size, like A*
+ my $size; #required if the template does not have a definite size, like A*
 
-my $store = Data::RecordStore::Silo->open_silo( $template, $filename, $size );
+ my $store = Data::RecordStore::Silo->open_silo( $template, $filename, $size );
 
-my $new_id = $store->next_id;
+ my $new_id = $store->next_id;
 
-$store->put_record( $id, [ 321421424243, 12, 345 ] );
+ $store->put_record( $new_id, [ 321421424243, 12, 345 ] );
 
-my $more_data = $store->get_record( $other_id );
+ my $more_data = $store->get_record( $other_id );
 
-my $removed_last = $store->pop;
+ my $removed_last = $store->pop;
 
-my $last_id = $store->push( $data_at_the_end );
+ my $last_id = $store->push( $data_for_the_end );
 
-my $entries = $store->entry_count;
+ my $entries = $store->entry_count;
 
-if( $entries < $min ) {
+ $store->emtpy;
 
-    $store->_ensure_entry_count( $min );
-
-}
-
-$store->emtpy;
-
-$store->unlink_store;
+ $store->unlink_store;
 
 =head1 METHODS
 
 =cut
+
 package Data::RecordStore::Silo;
 
 use strict;
@@ -855,6 +919,65 @@ sub _files {
 
 # ----------- end Data::RecordStore::Silo
 
+=head1 HELPER PACKAGE
+
+Data::RecordStore::Transaction
+
+=head1 DESCRIPTION
+
+A transaction that can collect actions on the record store and then
+writes them as a block.
+
+=head1 SYNOPSIS
+
+my $trans = $store->create_transaction;
+
+print join(",", $transaction->get_update_time,
+                $transaction->get_process_id,
+                $transaction->get_state,
+                $transaction->get_id );
+
+my $new_id = $transaction->stow( $data );
+
+my $new_or_recycled_id = $store->next_id;
+
+$transaction->stow( "MORE DATA", $new_or_recycled_id );
+
+$transaction->delete_record( $someid );
+$transaction->recycle_id( $dead_id );
+
+if( $is_good ) {
+   $transaction->commit;
+} else {
+   $transaction->rollback;
+}
+#
+# Get a list of transactions that are old and probably stale.
+#
+for my $trans ($store->list_transactions) {
+
+  next if $trans->get_udpate_time > $too_old;
+
+  if( $trans->get_state == Data::RecordStore::Transaction::TRA_IN_COMMIT
+    || $trans->get_state == Data::RecordStore::Transaction::TRA_CLEANUP_COMMIT )
+  {
+     $trans->commit;
+  }
+  elsif( $trans->get_state == Data::RecordStore::Transaction::TRA_IN_ROLLBACK
+    || $trans->get_state == Data::RecordStore::Transaction::TRA_CLEANUP_ROLLBACK )
+  {
+     $trans->rollback;
+  }
+  elsif( $trans->get_state == Data::RecordStore::Transaction::TRA_ACTIVE )
+  {
+     # commit or rollback, depending on preference
+  }
+}
+
+
+=head1 METHODS
+
+=cut
 package Data::RecordStore::Transaction;
 
 use constant {
@@ -878,7 +1001,7 @@ use constant {
 our @STATE_LOOKUP = ('Active','In Commit','In Rollback','In Commit Cleanup','In Rollback Cleanup','Done');
 
 #
-#
+# Creates a new transaction or returns an existing one based on the data provided
 #
 sub _create {
     my( $pkg, $record_store, $trans_data ) = @_;
@@ -917,10 +1040,54 @@ sub _create {
 
 } #_create
 
+=head2 get_update_time
+
+Returns the epoch time when the last time this was updated.
+
+=cut
+
 sub get_update_time { shift->[UPDATE_TIME] }
+
+=head2 get_process_id
+
+Returns the process id that last wrote to this transaction.
+
+=cut
+
 sub get_process_id  { shift->[PID] }
+
+=head2 get_state
+
+Returns the state of this process. Values are 
+  TRA_ACTIVE
+  TRA_IN_COMMIT
+  TRA_IN_ROLLBACK
+  TRA_COMMIT_CLEANUP
+  TRA_ROLLBACK_CLEANUP
+  TRA_DONE
+
+=cut
+
 sub get_state       { shift->[STATE] }
+
+=head2 get_id
+
+Returns the ID for this transaction, which is the same as its
+position in the transaction index plus one.
+
+=cut
+
 sub get_id          { shift->[ID] }
+
+=head2 stow( $data, $optional_id )
+
+Stores the data given. Returns the id that the data was stowed under.
+If the id is not given, this generates one from the record store.
+The data stored this way is really stored in the record store, but
+the index is not updated until a commit happens. That means it is
+not reachable from the store until the commit.
+
+=cut
 
 sub stow {
     my( $self, $data, $id ) = @_;
@@ -966,6 +1133,12 @@ sub stow {
 
 } #stow
 
+=head2 delete_record( $id )
+
+Marks that the record associated with the id is to be deleted when the transaction commits.
+
+=cut
+
 sub delete_record {
     my( $self, $id_to_delete ) = @_;
     die "Data::RecordStore::Transaction::delete_record Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
@@ -978,7 +1151,13 @@ sub delete_record {
     1;
 } #delete_record
 
-sub recycle {
+=head2 recycle_id( $id )
+
+Marks that the record associated with the id is to be deleted and its id recycled when the transaction commits.
+
+=cut
+
+sub recycle_id {
     my( $self, $id_to_recycle ) = @_;
     die "Data::RecordStore::Transaction::recycle Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
     my $trans_silo = $self->[SILO];
@@ -989,6 +1168,12 @@ sub recycle {
                              [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 } #recycle
+
+=head2 commit()
+
+Commit applies 
+
+=cut
 
 sub commit {
     my $self = shift;
@@ -1056,7 +1241,7 @@ sub commit {
                 $store->delete_record( $record_id );
             }
             elsif( $action eq 'R' ) {
-                $store->recycle( $record_id );
+                $store->recycle_id( $record_id );
             }
         }
     }
@@ -1067,6 +1252,12 @@ sub commit {
     $trans_silo->unlink_store;
 
 } #commit
+
+=head2 unlink_store
+
+Removes the file for this record store entirely from the file system.
+
+=cut
 
 sub rollback {
     my $self = shift;
@@ -1147,6 +1338,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.00  (Nov 21, 2017))
+       Version 3.00  (Dec 4, 2017))
 
 =cut

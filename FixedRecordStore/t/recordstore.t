@@ -129,13 +129,13 @@ sub test_suite {
     ok( $store->has_id(4), "has entry four" );
     ok( ! $store->has_id(1), "no entry one, was skipped" );
 
-    $store->recycle( 3 );
+    $store->recycle_id( 3 );
     is( $store->entry_count, 4, "4 entries after recycling entry" );
     is( $store->next_id, 3, 'recycled id' );
     is( $store->entry_count, 5, "5 entries after recycling empty id" );
     is( $store->next_id, 6, 'no more recycling ids' );
     is( $store->fetch( 4 ), "BOOGAH" );
-    $store->recycle( 4 );
+    $store->recycle_id( 4 );
     ok( ! $store->fetch( 4 ), "4 was recycled" );
     is( $store->next_id, 4, 'recycled id 4' );
 
@@ -143,10 +143,10 @@ sub test_suite {
     is( $store->entry_count, 10, "entry count explicitly set" );
     is( $store->next_id, 11, 'after entry count being set' );
 
-    $store->recycle(2);
+    $store->recycle_id(2);
     is( $store->next_id, 2, 'recycled id' );
-    $store->recycle(3);
-    $store->recycle(4);
+    $store->recycle_id(3);
+    $store->recycle_id(4);
     $store->empty_recycler;
 
     is( $store->next_id, 12, 'after recycler emptied' );
