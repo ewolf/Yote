@@ -9,7 +9,7 @@ package Data::RecordStore;
  use Data::RecordStore;
 
  $store = Data::RecordStore->open_store( $directory );
- $data = "TEXT DATA";
+ $data = "TEXT OR BINARY DATA";
 
  ### Without transactions ###
 
@@ -126,11 +126,11 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.00';
+$VERSION = '3.10';
 
 use constant {
     DIRECTORY    => 0,
-    OBJ_INDEX    => 1,
+    RECORD_INDEX => 1,
     RECYC_SILO   => 2,
     SILOS        => 3,
     VERSION      => 4,
@@ -164,12 +164,19 @@ sub open_store {
     my $directory = pop @_;
     my $pkg = shift @_ || 'Data::RecordStore';
 
+    # directory structure
+    #   root/VERSION <-- version file
+    #   root/RECORD_INDEX_SILO <-- record index silo directory
+    #   root/RECYC_SILO        <-- recycle silo directory
+    #   root/silos/            <-- directory for silo directories
+
+    
     make_path( "$directory/silos", { error => \my $err } );
     if( @$err ) {
         my( $err ) = values %{ $err->[0] };
         die $err;
     }
-    my $obj_db_filename = "$directory/OBJ_INDEX";
+    my $record_index_directory = "$directory/RECORD_INDEX_SILO";
 
     #
     # Find the version of the database.
@@ -181,14 +188,19 @@ sub open_store {
         CORE::open $FH, "<", $version_file;
         $version = <$FH>;
         chomp $version;
-    } else {
+
+        if( $version < 3.1 ) {
+            die "opening $directory. A database was found with version $version. Please run the record_store_convert program to upgrade to version $VERSION.";
+        }
+    }
+    else {
         #
         # a version file needs to be created. if the database
         # had been created and no version exists, assume it is
         # version 1.
         #
-        if( -e $obj_db_filename ) {
-            die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the conversion program.";
+        if( -e $record_index_directory && -e "$record_index_directory/STORE_INDEX" ) {
+            die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the record_store_convert program.";
         }
         $version = $VERSION;
         CORE::open $FH, ">", $version_file;
@@ -196,28 +208,10 @@ sub open_store {
     }
     close $FH;
 
-    # # RECORDS ARE int transaction id, int status, process id
-    # my $transaction_record =
-    #     Data::RecordStore::Silo->open_silo( "IIL", "$dir/TRANS_REC" );
-    # if( $transaction_record->entry_count > 0 ) {
-    #     my $last_transaction = $transaction_record->last_entry;
-    #     my( $tid, $status, $pid ) = @$last_transaction;
-
-    #     # check if pid is active
-
-    #     unless( $pid ) { #is active
-
-    #         if( $status == TRA_WRITE ) {
-    #              # is okey, the transaction is complete, just hasn't been removed yet
-    #         }
-    #     }
-    #     die "Incomplete transaction";
-    # }
-
     my $self = [
         $directory,
-        Data::RecordStore::Silo->open_silo( "IL", $obj_db_filename ),
-        Data::RecordStore::Silo->open_silo( "L", "$directory/RECYC" ),
+        Data::RecordStore::Silo->open_silo( "IL", $record_index_directory ),
+        Data::RecordStore::Silo->open_silo( "L", "$directory/RECYC_SILO" ),
         [],
         $version,
 #        $transaction_record,
@@ -229,7 +223,7 @@ sub open_store {
 
 =head2 create_transaction()
 
-Creates and returns a transaction object.
+Creates and returns a transaction object
 
 =cut
 
@@ -281,14 +275,19 @@ sub stow {
 
     die "ID must be a positive integer" if $id < 1;
 
+    my $uue = $data =~ /\0/;
+    if( $uue ) {
+        $data = pack 'u', $data;
+    }
+
     my $save_size = do { use bytes; length( $data ); };
 
-    # tack on the size of the id (a long or 8 bytes) to the byte count
-    $save_size += 8;
+    # tack on the size of the id (a long + an int or 12 bytes) to the byte count
+    $save_size += 12;
     my( $current_silo_id, $current_id_in_silo, $old_silo, $needs_swap );
-    if( $self->[OBJ_INDEX]->entry_count > $id ) {
+    if( $self->[RECORD_INDEX]->entry_count > $id ) {
 
-        ( $current_silo_id, $current_id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+        ( $current_silo_id, $current_id_in_silo ) = @{ $self->[RECORD_INDEX]->get_record( $id ) };
 
         #
         # Check if this record had been saved before, and that the
@@ -297,11 +296,11 @@ sub stow {
         if ( $current_silo_id ) {
             $old_silo = $self->_get_silo( $current_silo_id );
 
-            warn "object '$id' references silo '$current_silo_id' which does not exist" unless $old_silo;
+            warn "record '$id' references silo '$current_silo_id' which does not exist" unless $old_silo;
 
             # if the data isn't too big or too small for the table, keep it where it is and return
             if ( $old_silo->[RECORD_SIZE] >= $save_size && $old_silo->[RECORD_SIZE] < 3 * $save_size ) {
-                $old_silo->put_record( $current_id_in_silo, [$id,$data] );
+                $old_silo->put_record( $current_id_in_silo, [$id,$uue,$data] );
                 return $id;
             }
 
@@ -319,9 +318,9 @@ sub stow {
 
     my $id_in_silo = $silo->next_id;
 
-    $self->[OBJ_INDEX]->put_record( $id, [ $silo_id, $id_in_silo ] );
+    $self->[RECORD_INDEX]->put_record( $id, [ $silo_id, $id_in_silo ] );
 
-    $silo->put_record( $id_in_silo, [ $id, $data ] );
+    $silo->put_record( $id_in_silo, [ $id, $uue, $data ] );
 
     if( $needs_swap ) {
         $self->_swapout( $old_silo, $current_silo_id, $current_id_in_silo );
@@ -339,16 +338,20 @@ record associated with it, undef is returned.
 sub fetch {
     my( $self, $id ) = @_;
 
-    return undef if $id > $self->[OBJ_INDEX]->entry_count;
+    return undef if $id > $self->[RECORD_INDEX]->entry_count;
 
-    my( $silo_id, $id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+    my( $silo_id, $id_in_silo ) = @{ $self->[RECORD_INDEX]->get_record( $id ) };
 
     return undef unless $silo_id;
 
     my $silo = $self->_get_silo( $silo_id );
 
     # skip the included id, just get the data
-    ( undef, my $data ) = @{ $silo->get_record( $id_in_silo ) };
+    ( undef, my $uue, my $data ) = @{ $silo->get_record( $id_in_silo ) };
+
+    if( $uue ) {
+        $data = unpack "u", $data;
+    }
 
     $data;
 } #fetch
@@ -362,7 +365,7 @@ the number of entries.
 =cut
 sub entry_count {
     my $self = shift;
-    $self->[OBJ_INDEX]->entry_count - $self->[RECYC_SILO]->entry_count;
+    $self->[RECORD_INDEX]->entry_count - $self->[RECYC_SILO]->entry_count;
 } #entry_count
 
 =head2 delete_record( id )
@@ -374,19 +377,19 @@ It does not reuse the id.
 
 sub delete_record {
     my( $self, $del_id ) = @_;
-    my( $from_silo_id, $current_id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
+    my( $from_silo_id, $current_id_in_silo ) = @{ $self->[RECORD_INDEX]->get_record( $del_id ) };
 
     return unless $from_silo_id;
 
     my $from_silo = $self->_get_silo( $from_silo_id );
-    $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
+    $self->[RECORD_INDEX]->put_record( $del_id, [ 0, 0 ] );
     $self->_swapout( $from_silo, $from_silo_id, $current_id_in_silo );
     1;
 } #delete_record
 
 =head2 has_id( id )
 
-  Returns true if an object with this id exists in the record store.
+  Returns true if an record with this id exists in the record store.
 
 =cut
 sub has_id {
@@ -395,7 +398,7 @@ sub has_id {
 
     return 0 if $ec < $id || $id < 1;
 
-    my( $silo_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+    my( $silo_id ) = @{ $self->[RECORD_INDEX]->get_record( $id ) };
     $silo_id > 0;
 } #has_id
 
@@ -410,7 +413,7 @@ sub next_id {
     my $self = shift;
     my $next = $self->[RECYC_SILO]->pop;
     return $next->[0] if $next && $next->[0];
-    $self->[OBJ_INDEX]->next_id;
+    $self->[RECORD_INDEX]->next_id;
 }
 
 
@@ -424,7 +427,7 @@ sub empty {
     my $self = shift;
     my $silos = $self->_all_silos;
     $self->[RECYC_SILO]->empty;
-    $self->[OBJ_INDEX]->empty;
+    $self->[RECORD_INDEX]->empty;
     for my $silo (@$silos) {
         $silo->empty;
     }
@@ -475,7 +478,7 @@ sub delete { goto &Data::RecordStore::delete_record }
 #entries in this record store. This creates empty
 #records if needed.
 sub _ensure_entry_count {
-    shift->[OBJ_INDEX]->_ensure_entry_count( shift );
+    shift->[RECORD_INDEX]->_ensure_entry_count( shift );
 } #_ensure_entry_count
 
 #
@@ -490,11 +493,11 @@ sub _swapout {
     if( $vacated_silo_id < $last_id ) {
         my $data = $silo->_copy_record( $last_id - 1, $vacated_silo_id - 1 );
         #
-        # update the object db with the new silo index for the moved object id
+        # update the record db with the new silo index for the moved record id
         #
         my( $moving_id ) = unpack( $silo->[TMPL], $data );
 
-        $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
+        $self->[RECORD_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
 
         #
         # truncate now that the silo is one record shorter
@@ -519,7 +522,7 @@ sub _swapout {
 sub _all_silos {
     my $self = shift;
     opendir my $DIR, "$self->[DIRECTORY]/silos";
-    [ map { /(\d+)_OBJSTORE/; $self->_get_silo($1) } grep { /_OBJSTORE/ } readdir($DIR) ];
+    [ map { /(\d+)_RECSTORE/; $self->_get_silo($1) } grep { /_RECSTORE/ } readdir($DIR) ];
 } #_all_silos
 
 sub _get_silo {
@@ -531,8 +534,8 @@ sub _get_silo {
 
     my $silo_row_size = int( exp $silo_index );
 
-    # storing first the size of the record, then the bytes of the record
-    my $silo = Data::RecordStore::Silo->open_silo( "LZ*", "$self->[DIRECTORY]/silos/${silo_index}_OBJSTORE", $silo_row_size, $silo_index );
+    # storing first the size of the record, uuencode flag, then the bytes of the record
+    my $silo = Data::RecordStore::Silo->open_silo( "LIZ*", "$self->[DIRECTORY]/silos/${silo_index}_RECSTORE", $silo_row_size, $silo_index );
 
     $self->[SILOS][ $silo_index ] = $silo;
     $silo;
@@ -1047,7 +1050,7 @@ sub _create {
     push @$trans_data, $record_store;
 
     # action
-    # obj id
+    # record id
     # from silo id
     # from record id
     # to silo id
@@ -1126,11 +1129,11 @@ sub stow {
 
     my $save_size = do { use bytes; length( $data ); };
 
-    # tack on the size of the id (a long or 8 bytes) to the byte count
-    $save_size += 8;
+    # tack on the size of the id (a long + an int or 12 bytes) to the byte count
+    $save_size += 12;
     my( $from_silo_id, $from_record_id ) = ( 0, 0 );
-    if( $store->[Data::RecordStore::OBJ_INDEX]->entry_count > $id ) {
-        ( $from_silo_id, $from_record_id ) = @{ $store->[Data::RecordStore::OBJ_INDEX]->get_record( $id ) };
+    if( $store->[Data::RecordStore::RECORD_INDEX]->entry_count > $id ) {
+        ( $from_silo_id, $from_record_id ) = @{ $store->[Data::RecordStore::RECORD_INDEX]->get_record( $id ) };
     }
 
     my $to_silo_id = 1 + int( log( $save_size ) );
@@ -1143,7 +1146,7 @@ sub stow {
 
     my $next_trans_id = $trans_silo->next_id;
     # action (stow)
-    # obj id
+    # record id
     # from silo id
     # from silo idx
     # to silo id
@@ -1166,7 +1169,7 @@ sub delete_record {
     die "Data::RecordStore::Transaction::delete_record Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
     my $trans_silo = $self->[SILO];
 
-    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_delete ) };
+    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::RECORD_INDEX]->get_record( $id_to_delete ) };
     my $next_trans_id = $trans_silo->next_id;
     $trans_silo->put_record( $next_trans_id,
                              [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
@@ -1184,7 +1187,7 @@ sub recycle_id {
     die "Data::RecordStore::Transaction::recycle Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
     my $trans_silo = $self->[SILO];
 
-    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_recycle ) };
+    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::RECORD_INDEX]->get_record( $id_to_recycle ) };
     my $next_trans_id = $trans_silo->next_id;
     $trans_silo->put_record( $next_trans_id,
                              [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
@@ -1207,7 +1210,7 @@ sub commit {
 
     my $store = $self->[STORE];
 
-    my $index        = $store->[Data::RecordStore::OBJ_INDEX];
+    my $index        = $store->[Data::RecordStore::RECORD_INDEX];
     my $recycle_silo = $store->[Data::RecordStore::RECYC_SILO];
     my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
@@ -1291,7 +1294,7 @@ sub rollback {
 
     my $store = $self->[STORE];
 
-    my $index        = $store->[Data::RecordStore::OBJ_INDEX];
+    my $index        = $store->[Data::RecordStore::RECORD_INDEX];
     my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
     my $trans_id     = $self->[ID];

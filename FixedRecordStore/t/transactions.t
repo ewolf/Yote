@@ -27,7 +27,7 @@ exit( 0 );
 sub check {
     my( $store, $txt, %checks ) = @_;
 
-    my $silo = $store->_get_silo(3);
+    my $silo = $store->_get_silo(4);
 
     my( @trans ) = $store->list_transactions;
     is( @trans, $checks{trans}, "$txt : transactions" );

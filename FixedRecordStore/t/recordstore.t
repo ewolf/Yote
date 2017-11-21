@@ -77,25 +77,25 @@ sub test_suite {
     $store = Data::RecordStore->open_store( $dir3 );
     $cur_silo = $store->_get_silo( 8 );
 
-    $id = $store->stow( "x" x 2972 ); # 7 is 1096, 8 is 2980, should be in 8
+    $id = $store->stow( "x" x 2968 ); # 7 is 1085, 8 is 2969, should be in 8
 
     is( $store->entry_count, 1, "one entry count in store" );
 
-    # 1, 2, 3, 4,  5,  6,   7,   8,    9,
-    # 2, 7,20,54,148,403,1096,2980, 8103,
+    # 3, 4,  5,  6,   7,   8,    9,
+    # 9,43,137,392,1085,2969, 8092,  (1 + e^n - 12)
     is( $cur_silo->entry_count, 1, "One entry in silo #8" );
 
-    my $yid = $store->stow( "y" x 2972 ); # 7 is 1096, 8 is 2980, should be in 8
+    my $yid = $store->stow( "y" x 2961 ); # 7 is 1085, 8 is 2969, should be in 8
     is( $yid, 2, "Second ID" );
     is( $cur_silo->entry_count, 2, "Two entry in silo #8" );
 
-    $store->stow( "x" x 3000, $id );  # 8 is max 2980, should be in 9
+    $store->stow( "x" x 3000, $id );  # 8 is max 2969, should be in 9
 
     is( $cur_silo->entry_count, 1, "Entry relocated from silo #8" );
     my $new_silo = $store->_get_silo( 9 );
     is( $new_silo->entry_count, 1, "One entry relocated to silo #9" );
 
-    is( $store->fetch( $yid ), "y" x 2972, "correctly relocated data" );
+    is( $store->fetch( $yid ), "y" x 2961, "correctly relocated data" );
 
     # try for a much smaller relocation
 
