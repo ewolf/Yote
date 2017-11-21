@@ -381,6 +381,8 @@ sub save {
 
 } #save
 
+sub _has_dirty { my $self = shift; scalar( keys %{$self->[DIRTY]||{}}) }
+
 #
 # The store info node records useful information about the store
 #
@@ -1368,6 +1370,8 @@ for convenience. _init is run the first time the object is created.
 _load is run each time the object is loaded from the data store.
 These methods are no-ops in the base class.
 
+=head2 METHODS
+
 =cut
 
 package Data::ObjectStore::Container;
@@ -1609,6 +1613,11 @@ sub _load {}
 #     Private Methods
 #
 # -----------------------
+
+sub _id {
+    shift->[ID];
+}
+
 sub _freezedry {
     my $self = shift;
     join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } %{$self->[DATA]} );
