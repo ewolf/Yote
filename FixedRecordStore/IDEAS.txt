@@ -24,10 +24,16 @@ _________________________________
  bad state and the transaction started but never finished. The
  transaction can be resumed and completed or it can be reverted.
  
- transactions get a silo, it has
+ transactions share a metadata silo, it has
     process that started the transaction
     time the transaction started
     state of the transaction (integer)
+
+ transaction each get a silo, it has
+    record id
+    action character 'W'rite, 'D'elete, 'R'ecycle
+    silo id
+    id inside silo
 
  transaction methods
     list pending transactions
