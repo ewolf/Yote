@@ -15,11 +15,11 @@ my $transaction = $store->create_transaction;
 
 my $data = "TEXT DATA OR BYTES";
 
-my $id    = $transaction->stow( $data, $optionalID );
+my $val   = $store->fetch( $someid );
 
-my $val   = $transaction->fetch( $id );
+my $id   = $transaction->stow( $data, $optionalID );
 
-my $new_or_recycled_id = $transaction->next_id;
+my $new_or_recycled_id = $store->next_id;
 
 $transaction->stow( "MORE DATA", $new_or_recycled_id );
 
@@ -132,22 +132,23 @@ sub open_store {
     }
     close $FH;
 
-    # RECORDS ARE int transaction id, int status, process id
-    my $transaction_record = Data::RecordStore::FixedStore->open_fixed_store( "IIL", "$dir/TRANS_REC" );
-    if( $transaction_record->entry_count > 0 ) {
-        my $last_transaction = $transaction_record->last_entry;
-        my( $tid, $status, $pid ) = @$last_transaction;
+    # # RECORDS ARE int transaction id, int status, process id
+    # my $transaction_record =
+    #     Data::RecordStore::FixedStore->open_fixed_store( "IIL", "$dir/TRANS_REC" );
+    # if( $transaction_record->entry_count > 0 ) {
+    #     my $last_transaction = $transaction_record->last_entry;
+    #     my( $tid, $status, $pid ) = @$last_transaction;
 
-        # check if pid is active
+    #     # check if pid is active
 
-        unless( $pid ) { #is active
+    #     unless( $pid ) { #is active
             
-            if( $status == TRA_WRITE ) {
-                 # is okey, the transaction is complete, just hasn't been removed yet
-            }           
-        }
-        die "Incomplete transaction";
-    }
+    #         if( $status == TRA_WRITE ) {
+    #              # is okey, the transaction is complete, just hasn't been removed yet
+    #         }           
+    #     }
+    #     die "Incomplete transaction";
+    # }
     
     my $self = [
         $directory,
@@ -155,7 +156,7 @@ sub open_store {
         Data::RecordStore::FixedStore->open_fixed_store( "L", "$directory/RECYC" ),
         [],
         $version,
-        $transaction_record,
+#        $transaction_record,
     ];
 
     bless $self, ref( $pkg ) || $pkg;
@@ -192,32 +193,32 @@ sub stow {
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
 
-    if( $self->[OBJ_INDEX]->entry_count > $id ) {
+#     if( $self->[OBJ_INDEX]->entry_count > $id ) {
 
-        my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+#         my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
-        #
-        # Check if this record had been saved before, and that the
-        # store is was in has a large enough record size.
-        #
-        if ( $current_store_id ) {
-            my $old_store = $self->_get_store( $current_store_id );
+#         #
+#         # Check if this record had been saved before, and that the
+#         # store is was in has a large enough record size.
+#         #
+#         if ( $current_store_id ) {
+#             my $old_store = $self->_get_store( $current_store_id );
 
-            warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
+#             warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
-            # if the data isn't too big or too small for the table, keep it where it is and return
-            if ( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
-                $old_store->put_record( $current_idx_in_store, [$id,$data] );
-                return $id;
-            }
+#             # if the data isn't too big or too small for the table, keep it where it is and return
+#             if ( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
+#                 $old_store->put_record( $current_idx_in_store, [$id,$data] );
+#                 return $id;
+#             }
 
-            #
-            # the old store was not big enough (or missing), so remove its record from
-            # there, compacting it if possible
-            #
-            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-        }                       #if this already had been saved before
-    }
+#             #
+#             # the old store was not big enough (or missing), so remove its record from
+#             # there, compacting it if possible
+#             #
+# #            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
+#         }                       #if this already had been saved before
+#     }
 
     my $store_id = 1 + int( log( $save_size ) );
 
@@ -267,7 +268,7 @@ sub entry_count {
     $self->[OBJ_INDEX]->entry_count - $self->[RECYC_STORE]->entry_count;
 } #entry_count
 
-=head2 delete( id )
+=head2 delete_record( id )
 
 Removes the entry with the given id from the store, freeing up its space.
 It does not reuse the id.
@@ -280,7 +281,7 @@ sub delete_record {
     return unless $from_store_id;
 
     my $from_store = $self->_get_store( $from_store_id );
-    $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
+#    $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
     1;
 } #delete_record
@@ -773,25 +774,51 @@ sub _files {
 
 # ----------- end Data::RecordStore::FixedStore
 
-package Data::RecordStore::Transaction;
+# package Data::RecordStore::Transaction;
 
-use constant {
-    TRA_ACTIVE  => 0, # transaction has been created
-    TRA_COMMIT  => 1, # commit has been called, not yet completed
-    TRA_WRITE   => 2, # commit has been called, has not yet completed
-    TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
-};
+# use constant {
+#     TRA_ACTIVE  => 0, # transaction has been created
+#     TRA_COMMIT  => 1, # commit has been called, not yet completed
+#     TRA_WRITE   => 2, # commit has been called, has not yet completed
+#     TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
+# };
 
-#
-#
-#
-sub _create {
-    my( $pkg, $record_store ) = @_;
-    my $dir = $record_store->[DIRECTORY];
-    # create transaction record
-    # create transaction store
-    my $transaction_store = Data::RecordStore::FixedStore->open_fixed_store( "IL", "$dir/TRANS/TRANS_" ),
-}
+# #
+# #
+# #
+# sub _create {
+#     my( $pkg, $record_store ) = @_;
+#     my $dir = $record_store->[DIRECTORY];
+#     # create transaction record
+#     # create transaction store
+#     my $transaction_store = Data::RecordStore::FixedStore->open_fixed_store( "IL", "$dir/TRANS/TRANS_" ),
+# }
+
+# sub stow {
+#     #
+#     # Pushes new on to the store, writes in the transaction
+#     # record where the new thing is.
+#     # 
+# }
+
+# sub delete_record {
+
+# }
+# sub recycle {
+
+# }
+
+# sub commit {
+#     # have a list of id -> new store, new store index, then apply it
+#     # then remove the transaction as complete
+#     # if it barfs in the middle, the transaction is not removed and
+#     # can be used to revert
+# }
+
+# sub revert {
+#     # removes this transaction. this cannot undo next_id calls though
+    
+# }
 
 1;
 

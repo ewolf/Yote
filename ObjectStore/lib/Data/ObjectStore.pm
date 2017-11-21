@@ -101,7 +101,7 @@ sub open_store {
     }
 
     my $store = bless [
-        Data::RecordStore->open( "$base_path/RECORDSTORE" ),
+        Data::RecordStore->open_store( "$base_path/RECORDSTORE" ),
         {}, #DIRTY CACHE
         {},  #WEAK CACHE
         $base_path
@@ -137,7 +137,7 @@ sub run_recycler {
     my $self = shift;
     $self->stow_all;
     my $base_path = $self->[PATH];
-    my $recycle_tally = Data::RecordStore->open( "$base_path/RECYCLE" );
+    my $recycle_tally = Data::RecordStore->open_store( "$base_path/RECYCLE" );
 
     # empty because this may have run recently
     $self->[RECORD_STORE]->empty_recycler;
