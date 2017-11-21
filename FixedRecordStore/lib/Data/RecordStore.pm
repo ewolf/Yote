@@ -134,7 +134,7 @@ sub open_store {
 
     # # RECORDS ARE int transaction id, int status, process id
     # my $transaction_record =
-    #     Data::RecordStore::FixedStore->open_fixed_store( "IIL", "$dir/TRANS_REC" );
+    #     Data::RecordStore::Silo->open_silo( "IIL", "$dir/TRANS_REC" );
     # if( $transaction_record->entry_count > 0 ) {
     #     my $last_transaction = $transaction_record->last_entry;
     #     my( $tid, $status, $pid ) = @$last_transaction;
@@ -152,8 +152,8 @@ sub open_store {
     
     my $self = [
         $directory,
-        Data::RecordStore::FixedStore->open_fixed_store( "IL", $obj_db_filename ),
-        Data::RecordStore::FixedStore->open_fixed_store( "L", "$directory/RECYC" ),
+        Data::RecordStore::Silo->open_silo( "IL", $obj_db_filename ),
+        Data::RecordStore::Silo->open_silo( "L", "$directory/RECYC" ),
         [],
         $version,
 #        $transaction_record,
@@ -421,7 +421,7 @@ sub _get_store {
     my $store_row_size = int( exp $store_index );
 
     # storing first the size of the record, then the bytes of the record
-    my $store = Data::RecordStore::FixedStore->open_fixed_store( "LZ*", "$self->[DIRECTORY]/stores/${store_index}_OBJSTORE", $store_row_size );
+    my $store = Data::RecordStore::Silo->open_silo( "LZ*", "$self->[DIRECTORY]/stores/${store_index}_OBJSTORE", $store_row_size );
 
     $self->[STORES][ $store_index ] = $store;
     $store;
@@ -437,7 +437,7 @@ their own right and are documented here.
 
 =head1 HELPER PACKAGE
 
-Data::RecordStore::FixedStore
+Data::RecordStore::Silo
 
 =head1 DESCRIPTION
 
@@ -450,7 +450,7 @@ my $template = "LII"; # perl pack template. See perl pack/unpack.
 
 my $size; #required if the template does not have a definite size, like A*
 
-my $store = Data::RecordStore::FixedStore->open_fixed_store( $template, $filename, $size );
+my $store = Data::RecordStore::Silo->open_silo( $template, $filename, $size );
 
 my $new_id = $store->next_id;
 
@@ -477,7 +477,7 @@ $store->unlink_store;
 =head1 METHODS
 
 =cut
-package Data::RecordStore::FixedStore;
+package Data::RecordStore::Silo;
 
 use strict;
 use warnings;
@@ -495,28 +495,30 @@ use constant {
     TMPL             => 4,
 };
 
-$Data::RecordStore::FixedStore::MAX_SIZE = 2_000_000_000;
+$Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
 
-=head2 open_fixed_store( template, filename, record_size )
+=head2 open_silo( template, filename, record_size )
 
-Opens or creates the file given as a fixed record
-length data store. If a size is not given,
-it calculates the size from the template, if it can.
-This will die if a zero byte record size is determined.
+Opens or creates the directory for a group of files
+that represent one silo storing records of the given
+template and size.
+If a size is not given, it calculates the size from
+the template, if it can. This will die if a zero byte 
+record size is given or calculated.
 
 =cut
-sub open_fixed_store {
+sub open_silo {
     my( $pkg, $template, $directory, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    my $record_size = $size || do { use bytes; length( pack( $template ) ) };
-    my $file_max_records = int( $Data::RecordStore::FixedStore::MAX_SIZE / $record_size );
+    my $record_size = $size // do { use bytes; length( pack( $template ) ) };
+    die "Cannot open a zero record sized fixed store" unless $record_size;
+    my $file_max_records = int( $Data::RecordStore::Silo::MAX_SIZE / $record_size );
     if( $file_max_records == 0 ) {
-        warn "Opening store of size $record_size which is above the set max size of $Data::RecordStore::FixedStore::MAX_SIZE. Allowing only one record per file for this size.";
+        warn "Opening store of size $record_size which is above the set max size of $Data::RecordStore::Silo::MAX_SIZE. Allowing only one record per file for this size.";
         $file_max_records = 1;
     }
     my $file_max_size = $file_max_records * $record_size;
 
-    die "Cannot open a zero record sized fixed store" unless $record_size;
 
     unless( -d $directory ) {
         die "Error operning record store. $directory exists and is not a directory" if -e $directory;
@@ -534,7 +536,7 @@ sub open_fixed_store {
         $file_max_records,
         $template,
     ], $class;
-} #open_fixed_store
+} #open_silo
 
 =head2 empty
 
@@ -776,7 +778,7 @@ sub _files {
 } #_files
 
 
-# ----------- end Data::RecordStore::FixedStore
+# ----------- end Data::RecordStore::Silo
 
 # package Data::RecordStore::Transaction;
 
@@ -795,7 +797,7 @@ sub _files {
 #     my $dir = $record_store->[DIRECTORY];
 #     # create transaction record
 #     # create transaction store
-#     my $transaction_store = Data::RecordStore::FixedStore->open_fixed_store( "IL", "$dir/TRANS/TRANS_" ),
+#     my $transaction_store = Data::RecordStore::Silo->open_silo( "IL", "$dir/TRANS/TRANS_" ),
 # }
 
 # sub stow {

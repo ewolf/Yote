@@ -50,7 +50,7 @@ sub test_suite {
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
     is( $store->fetch( $id3 ), "Käse essen", "third item saved" );
     
-    my $ds = Data::RecordStore::FixedStore->open_fixed_store( "LLA4", "$dir2/filename" );
+    my $ds = Data::RecordStore::Silo->open_silo( "LLA4", "$dir2/filename" );
     my( @r ) = (
         [],
         [ 12,44,"BOO" ],
@@ -141,7 +141,7 @@ sub test_suite {
 
 sub test_record_silos {
 
-    $Data::RecordStore::FixedStore::MAX_SIZE = 80;
+    $Data::RecordStore::Silo::MAX_SIZE = 80;
     
     my $store = Data::RecordStore->open_store( $dir );
     $store->empty;

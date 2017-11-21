@@ -1,0 +1,64 @@
+scratchpad for ideas
+_________________________________
+
+
+-transactions-
+
+ Transactions are provided to the programmer and the programmer
+ must still manage them as they do not provide a locking mechanism
+ of their own.
+
+ A transaction is a list of pending updates to the
+ master index of the record store. When a transaction commits,
+ the index is updated for all the items in the list.
+ The transaction record is then removed. If the process is killed
+ before the transaction record is removed, the datastore is in a
+ bad state and the transaction started but never finished. The
+ transaction can be resumed and completed or it can be reverted.
+ 
+
+ 
+
+-clean datastore silos-
+
+ Datastore silos could gain garbage records over time.
+ This happens when a new value for a record is created
+ and the system is killed before it can remove the
+ old value of the record.
+
+ It is tempting to assume this is a rare enough event
+ that it wouldn't make a difference, but prudence
+ dictates that this case should have a solution.
+
+ Cleaning out the silos is a recycling process involving
+ the silo, the main record index, and a scratch store with
+ as many entrees as the silo grouping has.
+
+ A silo grouping is all the silos of one size for records.
+
+ The pseudocode for cleaning all silo groupings :
+
+  - create and empty out a directory location for scratch silo indexes
+
+  - create a scratch index (using a silo) for each silo. This index
+    has a boolean as the single field
+
+  - iterate over the master record index
+
+    - look at : silo id, index in that silo
+
+    - write an entry in the scratch index corresponding
+      to the silo id and write a 1 at the appropriate index.
+
+  - iterate each scratch silo index from 0 to length-1
+
+    - if the entry has a 1, do nothing
+
+    - if the entry doesn't have a 1 :
+       - copy the last item in the silo to this record entry
+       - update the position in the master record of the copied item
+       - truncate the silo by one
+
+    
+
+   
