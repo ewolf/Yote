@@ -113,6 +113,7 @@ sub test_suite {
     ok( ! $store->has_id(1), "no entry one, was skipped" );
 
     $store->recycle( 3 );
+    is( $store->entry_count, 4, "4 entries after recycling entry" );
     is( $store->next_id, 3, 'recycled id' );
     is( $store->entry_count, 5, "5 entries after recycling empty id" );
     is( $store->next_id, 6, 'no more recycling ids' );

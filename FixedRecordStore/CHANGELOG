@@ -1,4 +1,6 @@
-2.00 - the databases for Data::RecordStore now automatically
+ 2.02 - 
+	
+ 2.00 - the databases for Data::RecordStore now automatically
 	hold e^n bytes, where n is the id of the database.
 
 	When items are moved from a database, the file is

@@ -1,25 +1,13 @@
-be able to open a record store read only
+--== TODO ==--
 
- * conversion of old to new database ( command line maybe? )
+review documentation
 
+regenerate readme ( perldoc )
 
-#-----------------------
+upload new version
 
-API documentation and testing
+cap the size of the file silos at 2G and split them further, so there is a 2.1, 2.2, etc silo that
+is algorithmically calculated based on silo size and ID
 
-open
+investigate the possibility of having the record store spam multiple hosts and filesystems.
 
-stow
-fetch
-delete
-
-empty
-empty_recycler
-recycle
-next_id
-has_id
-entry_count
-
-set_entry_count
-
-convert

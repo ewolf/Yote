@@ -12,6 +12,7 @@ use Data::RecordStore;
 my $store = Data::RecordStore->open( $directory );
 
 my $data = "TEXT DATA OR BYTES";
+
 my $id    = $store->stow( $data, $optionalID );
 
 my $val   = $store->fetch( $id );
@@ -20,11 +21,12 @@ my $new_or_recycled_id = $store->next_id;
 
 $store->stow( "MORE DATA", $new_or_recycled_id );
 
-my $has = $store->has_id( $someid );
+my $has_object_at_id = $store->has_id( $someid );
+
+$store->delete( $someid );
 
 $store->empty_recycler;
 $store->recycle( $dead_id );
-
 
 =head1 DESCRIPTION
 
@@ -56,7 +58,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '2.02';
+$VERSION = '2.03';
 
 use constant {
     DIRECTORY   => 0,
@@ -132,55 +134,6 @@ sub open {
 
 } #open
 
-=head2 entry_count
-
-Returns how many entries are in this store.
-
-=cut
-sub entry_count {
-    shift->[OBJ_INDEX]->entry_count;
-}
-
-=head2 empty()
-
-This empties out the entire record store completely.
-Use only if you mean it.
-
-=cut
-sub empty {
-    my $self = shift;
-    my $stores = $self->_all_stores;
-    $self->[RECYC_STORE]->empty;
-    $self->[OBJ_INDEX]->empty;
-    for my $store (@$stores) {
-        $store->empty;
-    }
-} #empty
-
-=head2 _ensure_entry_count( min_count )
-
-This makes sure there there are at least min_count
-entries in this record store. This creates empty
-records if needed.
-
-=cut
-sub _ensure_entry_count {
-    shift->[OBJ_INDEX]->_ensure_entry_count( shift );
-} #_ensure_entry_count
-
-=head2 next_id
-
-This sets up a new empty record and returns the
-id for it.
-
-=cut
-sub next_id {
-    my $self = shift;
-    my $next = $self->[RECYC_STORE]->pop;
-    return $next->[0] if $next && $next->[0];
-    $self->[OBJ_INDEX]->next_id;
-}
-
 =head2 stow( data, optionalID )
 
 This saves the text or byte data to the record store.
@@ -233,8 +186,6 @@ sub stow {
 
     my $store = $self->_get_store( $store_id );
 
-    my $entry_count = $store->entry_count;
-
     my $index_in_store = $store->next_id;
     $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $index_in_store ] );
 
@@ -243,6 +194,47 @@ sub stow {
     $id;
 } #stow
 
+=head2 fetch( id )
+
+Returns the record associated with the ID. If the ID has no
+record associated with it, undef is returned.
+
+=cut
+sub fetch {
+    my( $self, $id ) = @_;
+
+    return undef if $id > $self->[OBJ_INDEX]->entry_count;
+    
+    my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+
+    return undef unless $store_id;
+
+    my $store = $self->_get_store( $store_id );
+
+    # skip the included id, just get the data
+    ( undef, my $data ) = @{ $store->get_record( $id_in_store ) };
+
+    $data;
+} #fetch
+
+=head2 entry_count
+
+Returns how many active ids have been assigned in this store.
+If an ID was assigned but not used, it still counts towards 
+the number of entries.
+
+=cut
+sub entry_count {
+    my $self = shift;
+    $self->[OBJ_INDEX]->entry_count - $self->[RECYC_STORE]->entry_count;
+} #entry_count
+
+=head2 delete( id )
+
+Removes the entry with the given id from the store, freeing up its space.
+It does not reuse the id.
+
+=cut
 sub delete {
     my( $self, $del_id ) = @_;
     my( $from_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
@@ -254,6 +246,58 @@ sub delete {
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
     1;
 } #delete
+
+=head2 has_id( id )
+
+  Returns true if an object with this id exists in the record store.
+
+=cut
+sub has_id {
+    my( $self, $id ) = @_;
+    my $ec = $self->entry_count;
+    return 0 if $ec < $id || $id < 1;
+
+    my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+    $store_id > 0;
+} #has_id
+
+
+=head2 next_id
+
+This sets up a new empty record and returns the
+id for it.
+
+=cut
+sub next_id {
+    my $self = shift;
+    my $next = $self->[RECYC_STORE]->pop;
+    return $next->[0] if $next && $next->[0];
+    $self->[OBJ_INDEX]->next_id;
+}
+
+
+=head2 empty()
+
+This empties out the entire record store completely.
+Use only if you mean it.
+
+=cut
+sub empty {
+    my $self = shift;
+    my $stores = $self->_all_stores;
+    $self->[RECYC_STORE]->empty;
+    $self->[OBJ_INDEX]->empty;
+    for my $store (@$stores) {
+        $store->empty;
+    }
+} #empty
+
+#This makes sure there there are at least min_count
+#entries in this record store. This creates empty
+#records if needed.
+sub _ensure_entry_count {
+    shift->[OBJ_INDEX]->_ensure_entry_count( shift );
+} #_ensure_entry_count
 
 #
 # Removes a record from the store. If there was a record at the end of the store
@@ -288,19 +332,6 @@ sub _swapout {
 
 } #_swapout
 
-=head2 has_id( id )
-
-  Returns true if an object with this db exists in the record store.
-
-=cut
-sub has_id {
-    my( $self, $id ) = @_;
-    my $ec = $self->entry_count;
-    return 0 if $ec < $id || $id < 1;
-
-    my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
-    $store_id > 0;
-}
 
 =head2 empty_recycler()
 
@@ -311,40 +342,20 @@ sub empty_recycler {
     shift->[RECYC_STORE]->empty;
 } #empty_recycler
 
-=head2 recycle( $id )
+=head2 recycle( id, keep_data_flag )
 
   Ads the id to the recycler, so it will be returned when next_id is called.
+  This removes the data occupied by the id, freeing up space unles keep_data_flag
+  is set to true.
 
 =cut
 sub recycle {
-    my( $self, $id ) = @_;
-    $self->delete( $id );
+    my( $self, $id, $keep_data ) = @_;
+    $self->delete( $id ) unless $keep_data;
     $self->[RECYC_STORE]->push( [$id] );
 } #empty_recycler
 
 
-=head2 fetch( id )
-
-Returns the record associated with the ID. If the ID has no
-record associated with it, undef is returned.
-
-=cut
-sub fetch {
-    my( $self, $id ) = @_;
-
-    return undef if $id > $self->[OBJ_INDEX]->entry_count;
-    
-    my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
-
-    return undef unless $store_id;
-
-    my $store = $self->_get_store( $store_id );
-
-    # skip the included id, just get the data
-    ( undef, my $data ) = @{ $store->get_record( $id_in_store ) };
-
-    $data;
-} #fetch
 
 #
 # Returns a list of all the stores created in this Data::RecordStore
@@ -393,7 +404,7 @@ identically sized sets of data and uses a single file to do so.
 
 my $template = "LII"; # perl pack template. See perl pack/unpack.
 
-my $size;   #required if the template does not have a definite size, like A*
+my $size; #required if the template does not have a definite size, like A*
 
 my $store = Data::RecordStore::FixedStore->open( $template, $filename, $size );
 
@@ -477,13 +488,9 @@ sub empty {
     undef;
 } #empty
 
-=head2 _ensure_entry_count( count )
-
-Makes sure the data store has at least as many entries
-as the count given. This creates empty records if needed
-to rearch the target record count.
-
-=cut
+#Makes sure the data store has at least as many entries
+#as the count given. This creates empty records if needed
+#to rearch the target record count.
 sub _ensure_entry_count {
     my( $self, $count ) = @_;
     if( $count > $self->entry_count ) {
@@ -640,10 +647,10 @@ __END__
 
 =head1 COPYRIGHT AND LICENSE
 
-       Copyright (c) 2015 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       Copyright (c) 2015-2017 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.02  (Nov 3, 2017))
+       Version 2.03  (Nov 21, 2017))
 
 =cut
