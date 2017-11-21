@@ -61,7 +61,7 @@ Locking coordination is currently the responsibility of the implementation.
 use strict;
 use warnings;
 
-use Fcntl qw( SEEK_SET SEEK_END LOCK_EX LOCK_UN );
+use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Path qw(make_path);
 use Data::Dumper;
 
@@ -512,7 +512,7 @@ use warnings;
 no warnings 'uninitialized';
 no warnings 'numeric';
 
-use Fcntl qw( SEEK_SET SEEK_END LOCK_EX LOCK_UN );
+use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
 use File::Path qw(make_path remove_tree);
 
 use constant {
@@ -782,7 +782,7 @@ sub _ensure_entry_count {
             # fill the last flie up with \0
             CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to open '$self->[DIRECTORY]/$write_file' : $!";
             my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
-            (my $pos = sysseek( $fh, 0, SEEK_END )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            (my $pos = sysseek( $fh, $self->[RECORD_SIZE] * $existing_file_records, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
             $needed -= $records_needed_to_fill;
         }
@@ -925,7 +925,7 @@ sub get_id          { shift->[ID] }
 sub stow {
     my( $self, $data, $id ) = @_;
     die "Data::RecordStore::Transaction::stow Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
-   
+
     my $trans_silo = $self->[SILO];
 
     my $store = $self->[STORE];
@@ -970,7 +970,7 @@ sub delete_record {
     my( $self, $id_to_delete ) = @_;
     die "Data::RecordStore::Transaction::delete_record Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
     my $trans_silo = $self->[SILO];
-    
+
     my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_delete ) };
     my $next_trans_id = $trans_silo->next_id;
     $trans_silo->put_record( $next_trans_id,
@@ -982,7 +982,7 @@ sub recycle {
     my( $self, $id_to_recycle ) = @_;
     die "Data::RecordStore::Transaction::recycle Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
     my $trans_silo = $self->[SILO];
-    
+
     my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_recycle ) };
     my $next_trans_id = $trans_silo->next_id;
     $trans_silo->put_record( $next_trans_id,
@@ -1009,14 +1009,14 @@ sub commit {
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_IN_COMMIT ] );
     $self->[STATE] = TRA_IN_COMMIT;
-    
+
     my $actions = $trans_silo->entry_count;
 
     #
     # Rewire the index to the new silo/location
     #
     my( %record_id2tsteps );
-    
+
     for my $a_id (1..$actions) {
         my $tstep = $trans_silo->get_record($a_id);
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) = @$tstep;
@@ -1130,7 +1130,7 @@ sub rollback {
     if( $trans_id == $dir_silo->entry_count ) {
         $dir_silo->pop;
     }
-    
+
 } #rollback
 
 1;

@@ -28,6 +28,7 @@ exit( 0 );
 sub test_suite {
     test_open_silo();
     test_put_record();
+    test_broken_file();
 } #test_suite
 
 sub test_open_silo {
@@ -119,7 +120,7 @@ sub test_open_silo {
 
     $store->unlink_store;
     ok( ! (-e "$dir/silo"), "unlinked completely" );
-    
+
 } #test_open_silo
 
 sub test_put_record {
@@ -200,9 +201,9 @@ sub test_put_record {
     is( $store->entry_count, 0, "ec back to 0" );
     $id = $store->next_id;
     is( $id, 1, "back to first id" );
-    $store->pop; 
+    $store->pop;
     is( $store->entry_count, 0, "ec back to 0" );
-    
+
     my $next_id = $store->push( [ 1, "A", 1001 ] );
     is( $next_id, 1, "pushed id" );
     $next_id = $store->push( [ 2, "b", 1001 ] );
@@ -218,21 +219,21 @@ sub test_put_record {
 
     is_deeply( $store->last_entry, [ 4, "D", 1001 ], "LAST ENTRY AGREES" );
     is( $store->entry_count, 4, "now at 4 things" );
-    is( -s "$silo_dir/0", 27, "first file now 27" );    
+    is( -s "$silo_dir/0", 27, "first file now 27" );
     is( -s "$silo_dir/1", 9, "second file now 9" );
-    
+
     $data = $store->pop;
-    is_deeply( $store->last_entry, [ 3, "c", 1001 ], "LAST ENTRY AGREES" );    
+    is_deeply( $store->last_entry, [ 3, "c", 1001 ], "LAST ENTRY AGREES" );
     ok( !(-e "$silo_dir/1"), "second file removed" );
     is_deeply( $data, [ 4, "D", 1001 ], "pop 4" );
-    
+
     $data = $store->pop;
-    is_deeply( $store->last_entry, [ 2, "b", 1001 ], "LAST ENTRY AGREES" );    
+    is_deeply( $store->last_entry, [ 2, "b", 1001 ], "LAST ENTRY AGREES" );
     is( -s "$silo_dir/0", 18, "first file smaller" );
     is_deeply( $data, [ 3, "c", 1001 ], "pop 3" );
 
     $data = $store->pop;
-    is_deeply( $store->last_entry, [ 1, "A", 1001 ], "LAST ENTRY AGREES" );        
+    is_deeply( $store->last_entry, [ 1, "A", 1001 ], "LAST ENTRY AGREES" );
     is( -s "$silo_dir/0", 9, "first file smaller" );
     is_deeply( $data, [ 2, "b", 1001 ], "pop 2" );
 
@@ -240,8 +241,8 @@ sub test_put_record {
     is( $store->last_entry, undef, "No last entry" );
     is( $store->entry_count, 0, "no entries after pop" );
     is( -s "$silo_dir/0", 0, "first file emptied" );
-    ok( ! (-e "$silo_dir/1"), "no second file" );    
-    ok( ! (-e "$silo_dir/2"), "no third file" );    
+    ok( ! (-e "$silo_dir/1"), "no second file" );
+    ok( ! (-e "$silo_dir/2"), "no third file" );
     is_deeply( $data, [ 1, "A", 1001 ], "pop 1" );
 
     # 3 records, 2 files
@@ -255,28 +256,68 @@ sub test_put_record {
     is( $store->entry_count, 4, "push 4" );
     $store->push( [ 55555, "C", 10003 ] ); #4
     is( $store->entry_count, 5, "push 5" );
-    
+
     eval { $store->_copy_record( 0, -1 ); };
-    like( $@, qr/to_index -1 out of bounds/, 'to id too low' );    
+    like( $@, qr/to_index -1 out of bounds/, 'to id too low' );
     undef $@;
 
     eval { $store->_copy_record( 0, 5 ); };
-    like( $@, qr/to_index 5 out of bounds/, 'to id too high' );    
+    like( $@, qr/to_index 5 out of bounds/, 'to id too high' );
     undef $@;
 
     eval { $store->_copy_record( -1, 0 ); };
-    like( $@, qr/from_index -1 out of bounds/, 'from id too low' );    
+    like( $@, qr/from_index -1 out of bounds/, 'from id too low' );
     undef $@;
 
     eval { $store->_copy_record( 5, 0 ); };
-    like( $@, qr/from_index 5 out of bounds/, 'from id too high' );    
+    like( $@, qr/from_index 5 out of bounds/, 'from id too high' );
     undef $@;
-    
-    
+
+
     $store->_copy_record( 3, 2 ); # idx used, not id like below
     is_deeply( $store->get_record( 4 ), [ 4444, "d", 10003 ], "record after copy" );
     is_deeply( $store->get_record( 3 ), [ 4444, "d", 10003 ], "copied record" );
-    
+
 } #test_put_record
+
+sub test_broken_file {
+
+    my $dir = tempdir( CLEANUP => 1 );
+    my $silo_dir = "$dir/silo";
+
+    local $Data::RecordStore::Silo::MAX_SIZE = 80;
+
+    my $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
+
+    # make sure 0 file was created
+    ok( -e "$silo_dir/0", 'initial silo file created' );
+
+    $store->_ensure_entry_count( 4 );
+    is( $store->entry_count, 4, "store has four entries" );
+    my $next_id = $store->next_id;
+    is( $next_id, 5, "next id is 5" );
+    is( $store->entry_count, 5, "store has 5 entries" );
+
+    my( @files ) = $store->_files;
+    is_deeply( \@files, [ 0, 1 ], 'two silo files' );
+
+    # break the last file here
+    truncate "$store->[0]/1", 19; #remove the last byte from this record 'breaking' it
+    is( $store->entry_count, 4, "entry count back down to 4" );
+    $next_id = $store->next_id;
+    is( $next_id, 5, "next id is again 5" );
+    is( $store->entry_count, 5, "store back up to 5 entries" );
+
+    # remove the last file and mess with the first one.
+    unlink "$store->[0]/1";
+    truncate "$store->[0]/0", 71;
+    
+    is( $store->entry_count, 3, "entry count back down to 3" );
+    $next_id = $store->next_id;
+    is( $next_id, 4, "next id is again 4" );
+
+    
+    
+} #test_broken_file
 
 __END__

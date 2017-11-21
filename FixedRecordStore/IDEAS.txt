@@ -60,9 +60,10 @@ x    recycle <-- exception if in a dead state
 x    commit a transaction    <-- state is then dead
 x    roll back a transaction <-- state is then dead
 
-x    get_start_time
-x    get_process
+x    get_update_time
+x    get_process_id
 x    get_state
+x    get_id
 
 -clean datastore silos-
 

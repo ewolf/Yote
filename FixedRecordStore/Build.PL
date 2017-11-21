@@ -14,7 +14,10 @@ my $builder = Module::Build->new(
     license            => 'perl',
     module_name        => 'Data::RecordStore',
     release_status     => 'stable',
-    test_files         => [ 't/recordstore.t', ],
+    test_files         => [ 't/recordstore.t',
+                            't/silo.t',
+                            't/transactions.t',
+                        ],
     requires => {
         'perl'       => 'v5.9.4',
     },
