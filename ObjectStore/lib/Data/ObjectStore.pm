@@ -38,13 +38,13 @@ for you. All you need to provide is a directory, and the store can be opened and
 
 =head1 EXAMPLE
 
-For example, you might want to store information about games and user accounts for the hearts card game. 
+For example, you might want to store information about games and user accounts for the hearts card game.
 This examples shows storing hashes, lists and Data::ObjectStore::Obj container objects.
 
  $store = Data::ObjectStore::open_store( "/path/to/directory" );
 
  for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
-    push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King'); 
+    push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King');
  }
 
  #
@@ -66,7 +66,7 @@ This examples shows storing hashes, lists and Data::ObjectStore::Obj container o
 
  $root = $store->fetch_root;
 
- # creates a lists in root if they did not already exist 
+ # creates a lists in root if they did not already exist
  $root->add_to_games( $game );
  $root->add_to_accounts( $account );
 
@@ -252,7 +252,7 @@ Fetches the user facing root node. This node is
 attached to the store info node as 'root'.
 
 =cut
-    
+
 sub fetch_root {
     my $self = shift;
     my $info_node = $self->_fetch_store_info_node;
@@ -267,7 +267,7 @@ sub fetch_root {
 
 =head2 info
 
-Returns a hash of info about this opened data store. 
+Returns a hash of info about this opened data store.
 Updating the hash has no effect.
 
  * db_version
@@ -276,7 +276,7 @@ Updating the hash has no effect.
  * last_update_time
 
 =cut
-    
+
 sub info {
     my $node = shift->[STOREINFO];
     my $info = {
@@ -321,7 +321,7 @@ sub get_created_time {
 
 
 =cut
-    
+
 sub get_last_update_time {
     shift->[STOREINFO]{last_update_time};
 }
@@ -449,7 +449,7 @@ sub run_recycler {
 =head2 stow_all
 
 When called, this stores all objects that have
-been changed since the last time stow_all was 
+been changed since the last time stow_all was
 called.
 
 =cut
@@ -467,7 +467,6 @@ sub stow_all {
         my $thingy = $cls eq 'HASH' ? tied( %$obj ) : $cls eq 'ARRAY' ?  tied( @$obj ) : $obj;
         my $text_rep = $thingy->_freezedry;
         my $class = ref( $thingy );
-
 
         $transaction->stow( "$class $text_rep", $id );
         $node->set_last_update_time( $now );
@@ -507,7 +506,6 @@ sub _fetch {
     return $ref if $ref;
 
     my $stowed = $self->[RECORD_STORE]->fetch( $id );
-
     return undef unless $stowed;
 
     my $pos = index( $stowed, ' ' );
@@ -1450,7 +1448,7 @@ Data::ObjectStore::Obj - Persistant Perl container object.
 
 This is a container object that can be used to store key value data
 where the keys are strings and the values can be hashes, arrays or
-Data::ObjectStore::Obj objects. Any instances that can trace a 
+Data::ObjectStore::Obj objects. Any instances that can trace a
 reference path to the store's root node are reachable upon reload.
 
 This class is designed to be overridden. Two methods are provided
@@ -1459,7 +1457,7 @@ _load is run each time the object is loaded from the data store.
 These methods are no-ops in the base class.
 
 =cut
-    
+
 package Data::ObjectStore::Obj;
 
 use strict;

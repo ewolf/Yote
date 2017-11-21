@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.12';
+$VERSION = '3.13';
 
 use constant {
     DIRECTORY    => 0,
@@ -341,7 +341,6 @@ sub fetch {
     return undef if $id > $self->[RECORD_INDEX]->entry_count;
 
     my( $silo_id, $id_in_silo ) = @{ $self->[RECORD_INDEX]->get_record( $id ) };
-
     return undef unless $silo_id;
 
     my $silo = $self->_get_silo( $silo_id );
@@ -1125,12 +1124,17 @@ sub stow {
 
     die "ID must be a positive integer" if $id < 1;
 
+    my $uue = $data =~ /\0/;
+    if( $uue ) {
+        $data = pack 'u', $data;
+    }
+
     my $save_size = do { use bytes; length( $data ); };
 
     # tack on the size of the id (a long + an int or 12 bytes) to the byte count
     $save_size += 12;
     my( $from_silo_id, $from_record_id ) = ( 0, 0 );
-    if( $store->[Data::RecordStore::RECORD_INDEX]->entry_count > $id ) {
+    if( $store->[Data::RecordStore::RECORD_INDEX]->entry_count >= $id ) {
         ( $from_silo_id, $from_record_id ) = @{ $store->[Data::RecordStore::RECORD_INDEX]->get_record( $id ) };
     }
 
@@ -1140,9 +1144,10 @@ sub stow {
 
     my $to_record_id = $to_silo->next_id;
 
-    $to_silo->put_record( $to_record_id, [ $id, $data ] );
+    $to_silo->put_record( $to_record_id, [ $id, $uue, $data ] );
 
     my $next_trans_id = $trans_silo->next_id;
+
     # action (stow)
     # record id
     # from silo id
@@ -1361,6 +1366,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.12  (Dec 5, 2017))
+       Version 3.13  (Dec 5, 2017))
 
 =cut

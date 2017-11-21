@@ -289,6 +289,8 @@ sub test_suite {
 
     $trans->commit;
 
+    is( $store->fetch( $id ), "MEW NEW mind", "transaction value" );
+    
     check( $store, "new trans commit",
            trans   => 0,
            entries => 6,
