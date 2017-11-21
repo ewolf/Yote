@@ -8,8 +8,8 @@ package Data::RecordStore;
 
  use Data::RecordStore;
 
- my $store = Data::RecordStore->open_store( $directory );
- my $data = "TEXT DATA OR BYTES";
+ $store = Data::RecordStore->open_store( $directory );
+ $data = "TEXT DATA";
 
  ### Without transactions ###
 
@@ -160,11 +160,9 @@ there, it opens it, otherwise it creates a new one.
 
 =cut
 
-# alias
-sub open { goto &Data::RecordStore::open_store }
-
 sub open_store {
-    my( $pkg, $directory ) = @_;
+    my $directory = pop @_;
+    my $pkg = shift @_ || 'Data::RecordStore';
 
     make_path( "$directory/silos", { error => \my $err } );
     if( @$err ) {
@@ -374,8 +372,6 @@ It does not reuse the id.
 
 =cut
 
-sub delete { goto &Data::RecordStore::delete_record }
-
 sub delete_record {
     my( $self, $del_id ) = @_;
     my( $from_silo_id, $current_id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
@@ -455,6 +451,24 @@ sub recycle_id {
     $self->delete_record( $id );
     $self->[RECYC_SILO]->push( [$id] );
 } #empty_recycler
+
+
+=head2 open( direcdtory )
+
+Alias to open_store
+
+=cut
+    
+sub open { goto &Data::RecordStore::open_store }
+
+=head2 delete( id )
+
+Alias to delete_record
+
+=cut
+    
+sub delete { goto &Data::RecordStore::delete_record }
+
 
 
 #This makes sure there there are at least min_count
@@ -600,8 +614,6 @@ the template, if it can. This will die if a zero byte
 record size is given or calculated.
 
 =cut
-
-sub open { goto &Data::RecordStore::Silo::open_silo }
 
 sub open_silo {
     my( $pkg, $template, $directory, $size, $silo_index ) = @_;
@@ -803,6 +815,16 @@ sub unlink_store {
     my $self = shift;
     remove_tree( $self->[DIRECTORY] ) // die "Data::RecordStore::Silo->unlink_store: Error unlinking store : $!";
 } #unlink_store
+
+
+=head2 open( direcdtory )
+
+Alias to open_silo
+
+=cut
+
+sub open { goto &Data::RecordStore::Silo::open_silo }
+
 
 #
 # This copies a record from one index in the store to an other.

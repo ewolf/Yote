@@ -36,7 +36,66 @@ Data::ObjectStore - Store data in a graph of container objects and automatically
 If you have data you want to quickly, reliably and simply store, this package may be
 for you. All you need to provide is a directory, and the store can be opened and used.
 
-examples of user
+=head1 EXAMPLE
+
+For example, you might want to store information about games and user accounts for the hearts card game. 
+This examples shows storing hashes, lists and Data::ObjectStore::Obj container objects.
+
+ $store = Data::ObjectStore::open_store( "/path/to/directory" );
+
+ for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
+    push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King'); 
+ }
+
+ #
+ # create an object for storage, default class is Data::ObjectStore::Obj
+ # and populate it with data.
+ #
+ $game = $store->newobj ( {
+   turn    => 0,
+   state   => "waiting for players",
+   players => {},
+   deck    => [ sort { rand + 0*$a <=> rand + 0*$b } @cards ], # shuffle
+ } );
+
+ $account = $store->newobj( {
+   name           => 'fred',
+   hashedPassword => 'irjwalfs9iu243rfewj',
+   games          => [],
+ } );
+
+ $root = $store->fetch_root;
+
+ # creates a lists in root if they did not already exist 
+ $root->add_to_games( $game );
+ $root->add_to_accounts( $account );
+
+ $account->add_to_games( $game );
+ $game->get_players->{ $account->get_name } = $account;
+
+ # overwrites old dealer if there already was a value
+ $account->set_dealer( $account );
+
+ $store->stow_all;
+
+ ...
+
+ $reopened_store = Data::ObjectStore::open_store( "/path/to/directory" );
+
+ my $accounts = $reopened_store->get_accounts;
+
+ # the games or individual account objects are not yet loaded
+ for( my $i=0; $i<@$accounts; $i++ ) {
+    my $account = $accounts->[$i]; # now the individual account is loaded.
+    my $games = $account->get_games;
+    for my $game (@$games) {  # each game is loaded at the top of this loop
+       ....
+    }
+ }
+
+=head1 EXTENDING
+
+
 
 =head1 SYNOPSIS
 
