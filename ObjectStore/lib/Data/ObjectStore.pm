@@ -682,9 +682,12 @@ save is called.
 
 sub create_container {
     # works with create_container( { my data } ) or create_container( 'myclass', { my data } )
-    my $self  = shift;
-    my $data  = pop;
-    my $class = pop || 'Data::ObjectStore::Container';
+    my( $self, $class, $data ) = @_;
+    if( ref( $class ) ) {
+        $data  = $class;
+        $class = 'Data::ObjectStore::Container';
+    }
+    $class //= 'Data::ObjectStore::Container';
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
