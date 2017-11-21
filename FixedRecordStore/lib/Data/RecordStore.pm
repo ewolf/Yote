@@ -80,10 +80,10 @@ use constant {
     RECORD_SIZE => 1,
     TMPL        => 4,
 
-    TRA_ACTIVE  => 0, # transaction has been created
-    TRA_COMMIT  => 1, # commit has been called, not yet completed
-    TRA_WRITE   => 2, # commit has been called, has not yet completed
-    TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
+    TRA_ACTIVE  => 1, # transaction has been created
+    TRA_COMMIT  => 2, # commit has been called, not yet completed
+    TRA_WRITE   => 3, # commit has been called, has not yet completed
+    TRA_DONE    => 4, # everything in commit has been written, TRA is in process of being removed
 
 };
 
@@ -170,6 +170,18 @@ sub open_store {
 sub create_transaction {
     my $self = shift;
     Data::RecordStore::Transaction->_create( $self );
+}
+
+sub list_transactions {
+    my $self = shift;
+    my $trans_directory = Data::RecordStore::Silo->open_silo( "LLI", "$dir/TRANS/META" );
+    my @trans;
+    my $items = $trans_directory->entry_count;
+    for my $trans_id ( 1..$items ) {
+        my $data = $trans_directory->get_record( $trans_id );
+        push @trans, Data::RecordStore::Transaction->_create( $self, $data, $trans_id );
+    }
+    @items;
 }
 
 =head2 stow( data, optionalID )
@@ -832,41 +844,139 @@ sub _files {
 
 # ----------- end Data::RecordStore::Silo
 
-# package Data::RecordStore::Transaction;
+package Data::RecordStore::Transaction;
 
-# use constant {
-#     TRA_ACTIVE  => 0, # transaction has been created
-#     TRA_COMMIT  => 1, # commit has been called, not yet completed
-#     TRA_WRITE   => 2, # commit has been called, has not yet completed
-#     TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
-# };
+use constant {
+    PID        => 0,
+    START_TIME => 1,
+    STATE      => 2,
+    STORE      => 3,
+    SILO       => 4,
+    ID         => 5,
+    DIRECDTORY => 6,
+    
+    TRA_ACTIVE      => 0, # transaction has been created
+    TRA_IN_COMMIT   => 1, # commit has been called, not yet completed
+    TRA_IN_ROLLBACK => 2, # commit has been called, has not yet completed
+    TRA_CLEANING_UP => 3, # everything in commit has been written, TRA is in process of being removed
+};
 
-# #
-# #
-# #
-# sub _create {
-#     my( $pkg, $record_store ) = @_;
-#     my $dir = $record_store->[DIRECTORY];
-#     # create transaction record
-#     # create transaction store
-#     my $transaction_store = Data::RecordStore::Silo->open_silo( "IL", "$dir/TRANS/TRANS_" ),
-# }
+#
+#
+#
+sub _create {
+    my( $pkg, $record_store, $trans_data, $trans_id ) = @_;
+    my $dir = $record_store->[DIRECTORY];
 
-# sub stow {
-#     #
-#     # Pushes new on to the store, writes in the transaction
-#     # record where the new thing is.
-#     #
-# }
+    # update meta data
+    # create transaction record
+    # create transaction store
+    # has pid, starttime, state
+    my $trans_directory = Data::RecordStore::Silo->open_silo( "LLI", "$dir/TRANS/META" );
+    
+    unless( $trans_data ) {
+        $trans_data = [ $$, time, TRA_ACTIVE ];
+        $trans_id = $trans_directory->push( $trans_data );
+    }
+    
+    push @$trans_data, $record_store;
 
-# sub delete_record {
+    # action
+    # obj id
+    # from silo id
+    # from silo idx
+    # to silo id
+    # to silo idx
+    push @$trans_data, Data::RecordStore::Silo->open_silo(
+        "CLILIL", 
+        "$store->[DIRECTORY]/TRANS/instances/$trans_id" 
+        );
+    push @$trans_data, $trans_id;
+    push @$trans_data, $trans_directory;
+    
+    bless $trans_data, $pkg;
+    
+} #_create
 
-# }
-# sub recycle {
+sub get_start_time { shift->[START_TIME] }
+sub get_process_id { shift->[PID] }
+sub get_state      { shift->[STATE] }
+sub get_id         { shift->[ID] }
 
-# }
+sub stow {
+    my( $self, $data, $id ) = @_;
+    die "Data::RecordStore::Transaction::stow Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
 
-# sub commit {
+    my $trans_silo = $self->[SILO];
+    
+    my $store = $self->[STORE];
+    $id //= $store->next_id;
+
+    $store->_ensure_entry_count( $id ) if $id > 0;
+
+    die "ID must be a positive integer" if $id < 1;
+
+    my $save_size = do { use bytes; length( $data ); };
+
+    # tack on the size of the id (a long or 8 bytes) to the byte count
+    $save_size += 8;
+    my( $from_silo_id, $from_record_id ) = ( 0, 0 );
+    if( $store->[OBJ_INDEX]->entry_count > $id ) {
+        ( $from_silo_id, $from_record_id ) = @{ $store->[OBJ_INDEX]->get_record( $id ) };
+    }
+
+    my $to_silo_id = 1 + int( log( $save_size ) );
+
+    my $to_silo = $store->_get_silo( $to_silo_id );
+
+    my $to_record_id = $silo->next_id;
+
+    $silo->put_record( $to_record_id, [ $id, $data ] );
+
+    my $next_trans_id = $trans_silo->next_id;
+    # action (stow)
+    # obj id
+    # from silo id
+    # from silo idx
+    # to silo id
+    # to silo idx
+    $trans_silo->put_record( $next_trans_id, [ 'S', $id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ] );
+    
+    $id;
+    
+} #stow
+
+sub delete_record {
+    my( $self, $id_to_delete ) = @_;
+    my( $from_silo_id, $from_record_id ) = @{ $store->[OBJ_INDEX]->get_record( $id_to_delete ) };
+    $trans_silo->put_record( $next_trans_id, [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
+    1;
+} #delete_record
+
+sub recycle {
+    my( $self, $id_to_recycle ) = @_;
+    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[OBJ_INDEX]->get_record( $id_to_recycle ) };
+    $trans_silo->put_record( $next_trans_id, [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
+    1;
+}
+
+sub commit {
+    my $self = shift;
+
+    my $index      = $self->[STORE][OBJ_INDEX];
+    my $dir_silo   = $self->[DIRECTORY];
+    my $trans_silo = $self->[SILO];
+
+    my $actions = $trans_silo->entry_count;
+
+    for my $a_id (1..$actions) {
+        my( $record_id, $from_silo_id, $from_record_id, $from_silo_id, $from_record_id ) =
+            @{ $trans_silo->get_record($a_id) };
+        if( $from_silo_id ) {
+            
+        }
+    }
+    
 #     # have a list of id -> new store, new store index, then apply it
 #     # then remove the transaction as complete
 #     # if it barfs in the middle, the transaction is not removed and
@@ -876,7 +986,7 @@ sub _files {
 # sub revert {
 #     # removes this transaction. this cannot undo next_id calls though
 
-# }
+}
 
 1;
 

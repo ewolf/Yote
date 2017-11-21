@@ -23,32 +23,45 @@ _________________________________
  before the transaction record is removed, the datastore is in a
  bad state and the transaction started but never finished. The
  transaction can be resumed and completed or it can be reverted.
- 
+
+ transaction directories
+    TRANS
+    TRANS/META
+    TRANS/instances/1
+    TRANS/instances/2
+    TRANS/instances/...
+
  transactions share a metadata silo, it has
     process that started the transaction
     time the transaction started
     state of the transaction (integer)
+          1) active
+          2) in commit
+          3) in rollback or cancel
+          4) in cleaning up
 
  transaction each get a silo, it has
-    record id
     action character 'W'rite, 'D'elete, 'R'ecycle
-    silo id
-    id inside silo
+    record id
+    from silo id
+    from id inside silo
+    to silo id
+    to id inside silo
 
  transaction methods
-    list pending transactions
-    create a new transaction
+x    list pending transactions
+x    create a new transaction 
 
-    stow <-- exception if in a dead state
-    delete_record <-- exception if in a dead state
-    recycle <-- exception if in a dead state
+x    stow <-- exception if in a dead state
+x    delete_record <-- exception if in a dead state
+x    recycle <-- exception if in a dead state
 
     commit a transaction    <-- state is then dead
     roll back a transaction <-- state is then dead
 
-    get_start_time
-    get_process
-    get_state
+x    get_start_time
+x    get_process
+x    get_state
 
 -clean datastore silos-
 
