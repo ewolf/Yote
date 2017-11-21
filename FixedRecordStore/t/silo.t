@@ -33,7 +33,7 @@ sub test_suite {
 sub test_open_silo {
     my $dir = tempdir( CLEANUP => 1 );
 
-    $Data::RecordStore::Silo::MAX_SIZE = 80;
+    local $Data::RecordStore::Silo::MAX_SIZE = 80;
     my $store;
 
     my $silo_dir = "$dir/silo";
@@ -56,6 +56,10 @@ sub test_open_silo {
     eval {$store = Data::RecordStore::Silo->open_silo( 'A*', "$toobigdir", 199 ); };
     ok( ! $@, "no die for opening a store with a record larger than the max silo size (just a warning)" );
     ok( -e "$toobigdir/0", 'initial silo file created for toobig' );
+    is( $store->[1], 199, "199 record size" );
+    is( $store->[2], 199, "199 file size" );
+    is( $store->[3], 1,  "1 max records per silo file" );
+
 
     my $cantdir = "$dir/cant";
 
@@ -85,7 +89,34 @@ sub test_open_silo {
     like( $@, qr/record size does not agree/, 'template and size given dont agree' );
     undef $@;
 
+    $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 30 );
+    is( $store->[1], 30, "30 record size" );
+    is( $store->[2], 60, "60 file size" );
+    is( $store->[3], 2,  "2 max records per silo file" );
 
+    $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 41 );
+    is( $store->[1], 41, "41 record size" );
+    is( $store->[2], 41, "41 file size" );
+    is( $store->[3], 1,  "1 max records per silo file" );
+    
+    $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
+    $store->_ensure_entry_count( 9 );
+    
+    my( @files ) = $store->_files;
+    is( $store->[0], "$dir/silo", "directory" );
+    is_deeply( \@files, [ 0, 1, 2 ], 'three silo files' );
+    is( $store->entry_count, 9, "9 entries" );
+    is( -s "$dir/silo/0", 80, "first file 80 bytes" );
+    is( -s "$dir/silo/1", 80, "second file 80 bytes" );
+    is( -s "$dir/silo/2", 20, "last file 20 bytes" );
+
+    $store->empty;
+    ok( -e "$dir/silo/0", "first file still exists" );
+    is( -s "$dir/silo/0", 0, "first file zero bytes after empty" );
+    ok( ! (-e "$dir/silo/1"), "second file gone" );
+    ok( ! (-e "$dir/silo/2"), "third file gone" );
+
+    
 } #test_open_silo
 
 sub test_put_record {
@@ -93,6 +124,8 @@ sub test_put_record {
 
     my $dir = tempdir( CLEANUP => 1 );
     my $silo_dir = "$dir/silo";
+    
+    local $Data::RecordStore::Silo::MAX_SIZE = 80;
 
     my $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
 
@@ -137,8 +170,12 @@ sub test_put_record {
     eval { $store->get_record( 0 ); };
     like( $@, qr/out of bounds/, 'id too low' );
 
+    # test how many silo files are generated
     my( @files ) = $store->_files;
     is_deeply( \@files, [ 0 ], 'one silo file' );
+
+    is( $store->[3], 4, 'four max records per silo file' );
+    is( $store->[2], 80, '80 sized silo file' );
 
 } #test_put_record
 
