@@ -387,12 +387,21 @@ sub _swapout {
         my( $moving_id ) = unpack( $silo->[TMPL], $data );
 
         $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
+
+        #
+        # truncate now that the silo is one record shorter
+        #
+        $silo->pop;
     }
-    
-    #
-    # truncate now that the silo is one record shorter
-    #
-    $silo->pop;
+    elsif( $vacated_silo_id == $last_id ) {
+        #
+        # this was the last record, so just remove it
+        #
+        $silo->pop;
+    }
+    else {
+        die "Data::RecordStore::_swapout : error, swapping out id $vacated_silo_id is larger than the last id $last_id";           
+    }
 
 } #_swapout
 
@@ -1082,6 +1091,7 @@ sub rollback {
     #
     # Rewire the index to the old silo/location
     #
+    my( %swapout );
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
@@ -1091,6 +1101,9 @@ sub rollback {
         } else {
             $index->put_record( $record_id, [ 0, 0 ] );
         }
+        if( $to_silo_id ) {
+            push @{$swapout{ $to_silo_id }}, $to_record_id;
+        }
     }
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_ROLLBACK ] );
@@ -1099,12 +1112,8 @@ sub rollback {
     #
     # Cleanup new data
     #
-    for my $a_id (1..$actions) {
-        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
-            @{ $trans_silo->get_record($a_id) };
-
-        print STDERR Data::Dumper->Dump([$to_silo_id,$to_record_id,"SAA"]);
-        if( $to_silo_id ) {
+    for my $to_silo_id (keys %swapout) {
+        for my $to_record_id (sort { $b <=> $a } @{$swapout{$to_silo_id}}) {
             my $to_silo = $store->_get_silo( $to_silo_id );
             $store->_swapout( $to_silo, $to_silo_id, $to_record_id );
         }
