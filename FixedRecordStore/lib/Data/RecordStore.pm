@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.10';
+$VERSION = '3.11';
 
 use constant {
     DIRECTORY    => 0,
@@ -769,7 +769,7 @@ to that record. The data must be a scalar or list reference.
 If a list reference, it should conform to the pack template
 assigned to this store.
 
-=cut
+=cut 
 sub push {
     my( $self, $data ) = @_;
     my $next_id = $self->next_id;
@@ -1361,6 +1361,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.00  (Dec 4, 2017))
+       Version 3.11  (Dec 5, 2017))
 
 =cut

@@ -64,15 +64,15 @@ sub test_open_silo {
 
     my $cantdir = "$dir/cant";
 
-    `touch $cantdir`;
+    open my $out, ">", $cantdir;
+    print $out "TOUCH\n";
+    close $out;
     eval {$silo = Data::RecordStore::Silo->open_silo( 'A*', "$cantdir", 30 ); };
     like( $@, qr/not a directory/, 'dies if directory is not a directory' );
     undef $@;
 
-    `rm $cantdir`;
-    `mkdir $cantdir`;
-
-    `chmod a-w $cantdir`;
+    unlink $cantdir;
+    mkdir $cantdir, 0444;
 
     if( ! -w $cantdir ) {
         # this test is useless if performed by root which would always be allowed
