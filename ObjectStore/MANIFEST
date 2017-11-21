@@ -9,3 +9,6 @@ README
 t/object_store.t
 TODO.txt
 VERSIONS
+Makefile.PL
+META.yml
+META.json

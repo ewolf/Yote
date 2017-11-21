@@ -1570,7 +1570,7 @@ sub _SHOW {
         print STDERR (" " x $lvl ) . "($self->[ID]) : subhashes : " . join( ',', map { "($_)" } @ids ) . "\n";
         for my $id (grep { $_ ne 'u' } @ids) {
             my $h = $self->[DSTORE]->_fetch( $id );
-            tied( %$h )->SHOW( $lvl + 1 );;
+            tied( %$h )->SHOW( $lvl + 1 );
         }
     }
 }
@@ -1589,14 +1589,14 @@ sub STORE {
     }
 
     if( $self->[LEVEL] == 0 ) {
-        $data->{$key} = $self->[DSTORE]->_xform_in( $val );
+        my $store = $self->[DSTORE];
+        $data->{$key} = $store->_xform_in( $val );
 
         if( $self->[SIZE] > $self->[BUCKETS] ) {
-
             # do the thing converting this to a deeper level
             $self->[LEVEL] = 1;
-            my $store = $self->[DSTORE];
-            my( @newhash, @newids );
+            my( @newhash );
+            my( @newids ) = ( 0 ) x $self->[BUCKETS];
 
             for my $key (keys %$data) {
                 my $hval = 0;
@@ -1628,11 +1628,11 @@ sub STORE {
             # LEVEL 0 hashes that are loaded from LEVEL 1 hashes that are loaded from
             # LEVEL 2 hashes. The level 1 hash is loaded and dumped as needed, not keeping
             # the ephermal info (or is that sort of chained..hmm)
-            $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
-
-    } else {
+        $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
+    }
+    else {
         my $store = $self->[DSTORE];
         my $hval = 0;
         foreach (split //,$key) {
