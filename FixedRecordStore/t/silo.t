@@ -98,10 +98,10 @@ sub test_open_silo {
     is( $store->[1], 41, "41 record size" );
     is( $store->[2], 41, "41 file size" );
     is( $store->[3], 1,  "1 max records per silo file" );
-    
+
     $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
     $store->_ensure_entry_count( 9 );
-    
+
     my( @files ) = $store->_files;
     is( $store->[0], "$dir/silo", "directory" );
     is_deeply( \@files, [ 0, 1, 2 ], 'three silo files' );
@@ -116,7 +116,7 @@ sub test_open_silo {
     ok( ! (-e "$dir/silo/1"), "second file gone" );
     ok( ! (-e "$dir/silo/2"), "third file gone" );
 
-    
+
 } #test_open_silo
 
 sub test_put_record {
@@ -124,7 +124,7 @@ sub test_put_record {
 
     my $dir = tempdir( CLEANUP => 1 );
     my $silo_dir = "$dir/silo";
-    
+
     local $Data::RecordStore::Silo::MAX_SIZE = 80;
 
     my $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
@@ -177,6 +177,57 @@ sub test_put_record {
     is( $store->[3], 4, 'four max records per silo file' );
     is( $store->[2], 80, '80 sized silo file' );
 
+    $store->empty;
+
+    local $Data::RecordStore::Silo::MAX_SIZE = 27; #3 records
+
+    $store = Data::RecordStore::Silo->open_silo( 'IAI', $silo_dir );
+    is( $store->[1], 9, "record size 9 bytes");
+    my $id = $store->next_id;
+    is( $id, 1, "first id" );
+    is( $store->entry_count, 1, "ec 1" );
+    $store->put_record( 1, [ 43, "Q", 22 ] );
+    is( -s "$silo_dir/0", 9, "file size now 9 bytes" );
+    my $data = $store->get_record( 1 );
+    is_deeply( $data, [  43, "Q", 22 ], 'correct data stored for first record' );
+    is( $store->entry_count, 1, "ec still 1" );
+
+    my $pop_data = $store->pop;
+    is_deeply( $pop_data, $data, 'popped data is the first record' );
+    is( $store->entry_count, 0, "ec back to 0" );
+    $id = $store->next_id;
+    is( $id, 1, "back to first id" );
+    $store->pop; 
+    is( $store->entry_count, 0, "ec back to 0" );
+    
+    my $next_id = $store->push( [ 1, "A", 1001 ] );
+    is( $next_id, 1, "pushed id" );
+    $next_id = $store->push( [ 2, "b", 1001 ] );
+    is( $next_id, 2, "pushed id" );
+    $next_id = $store->push( [ 3, "c", 1001 ] );
+    is( $next_id, 3, "pushed id" );
+    $next_id = $store->push( [ 4, "D", 1001 ] );
+    is( $next_id, 4, "pushed id" );
+
+    is( $store->entry_count, 4, "now at 4 things" );
+    is( -s "$silo_dir/0", 27, "first file now 27" );    
+    is( -s "$silo_dir/1", 9, "second file now 9" );
+
+    $data = $store->pop;
+    is( -s "$silo_dir/1", 0, "second file emptied" );
+    is_deeply( $data, [ 4, "D", 1001 ], "pop 4" );
+    
+    $data = $store->pop;
+    is( -s "$silo_dir/0", 18, "first file smaller" );
+    is_deeply( $data, [ 3, "c", 1001 ], "pop 3" );
+
+    $data = $store->pop;
+    is( -s "$silo_dir/0", 9, "first file smaller" );
+    is_deeply( $data, [ 2, "b", 1001 ], "pop 2" );
+
+    $data = $store->pop;
+    is( -s "$silo_dir/1", 0, "first file emptied" );
+    is_deeply( $data, [ 1, "A", 1001 ], "pop 1" );
 } #test_put_record
 
 __END__
