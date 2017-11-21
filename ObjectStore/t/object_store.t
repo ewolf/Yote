@@ -20,7 +20,7 @@ BEGIN {
 my $dir = tempdir( CLEANUP => 1 );
 #test_suite();
 my $store = Data::ObjectStore::open_store( $dir );
-my $root_node = $store->fetch_root;
+my $root_node = $store->load_root_container;
 
 test_arry();
 test_hash();
@@ -46,7 +46,7 @@ sub test_suite {
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character defore stow" );
 
-    $store->stow_all;
+    $store->save;
 
     is( $root_node->get_myList->[0]{objy}->get_somename, 'Käse', "utf 8 character after stow before load" );
 
@@ -56,7 +56,7 @@ sub test_suite {
 
     my $dup_store = Data::ObjectStore::open_store( $dir );
 
-    my $dup_root = $dup_store->fetch_root;
+    my $dup_root = $dup_store->load_root_container;
 
     is( $dup_root->[Data::ObjectStore::Container::ID], $root_node->[Data::ObjectStore::Container::ID] );
     is_deeply( $dup_root->[Data::ObjectStore::Container::DATA], $root_node->[Data::ObjectStore::Container::DATA] );
@@ -80,7 +80,7 @@ sub test_suite {
 
     $list_to_remove->[9] = "NINE";
 
-    $store->stow_all;
+    $store->save;
 
     undef $list_to_remove;
     $list_to_remove = $root_node->get_myList();
@@ -101,14 +101,14 @@ sub test_suite {
 
     $root_node->set_myList( [] );
 
-    $store->stow_all;
+    $store->save;
 
     my $quickly_removed_obj = $store->create_container( { soon => 'gone', bigstuff => ('x'x10000) } );
     my $quickly_removed_id = $quickly_removed_obj->[Data::ObjectStore::Container::ID];
     push @$list_to_remove, "SDLFKJSDFLKJSDFKJSDHFKJSDHFKJSHDFKJSHDF" x 3, $quickly_removed_obj;
     $list_to_remove->[87] = "EIGHTYSEVEN";
 
-    $store->stow_all;
+    $store->save;
     
     $store->run_recycler;
     
@@ -135,7 +135,7 @@ sub test_suite {
 
     $Data::ObjectStore::Hash::SIZE = 7;
 
-    my $thash = $store->fetch_root->set_test_hash({});
+    my $thash = $store->load_root_container->set_test_hash({});
     # test for hashes large enough that subhashes are inside
 
     my( %confirm_hash );
@@ -168,11 +168,11 @@ sub test_suite {
         $confirm_hash{$letter} = $val;
         $val++;
     }
-    $store->stow_all;
+    $store->save;
     undef $store;
     
     my $sup_store = Data::ObjectStore::open_store( $dir );
-    $thash = $sup_store->fetch_root->get_test_hash;
+    $thash = $sup_store->load_root_container->get_test_hash;
 
     is_deeply( [sort keys %$thash], [sort ("B".."G","AA".."ZZ")], "hash keys works for the heftier hashes" );
 
@@ -183,7 +183,7 @@ sub test_suite {
     $Data::ObjectStore::Array::MAX_BLOCKS  = 4;
 
     $store = $sup_store;
-    $root_node = $store->fetch_root;
+    $root_node = $store->load_root_container;
     my $l = $root_node->get_listy( [] );
 
     push @$l, "ONE", "TWO";
@@ -274,9 +274,9 @@ sub test_suite {
     $Data::ObjectStore::Array::MAX_BLOCKS  = 82;
     
     push @$l, 0..10000;
-    $store->stow_all;
+    $store->save;
     my $other_store = Data::ObjectStore::open_store( $dir );
-    $root_node = $store->fetch_root;
+    $root_node = $store->load_root_container;
     my $ol = $root_node->get_listy( [] );
 
     is_deeply( $l, $ol, "lists compare" );
@@ -364,10 +364,10 @@ sub test_arry {
         $match->[81] = "EI2";
         _cmpa( "oneel $SZ", $arry, $match );
 
-        $store->stow_all;
+        $store->save;
 
         my $other_store = Data::ObjectStore::open_store( $dir );
-        my $aloaded = $other_store->fetch_root->get_arry;
+        my $aloaded = $other_store->load_root_container->get_arry;
 
         _cmpa( "SAVED LOADED", $aloaded, $match );
 
