@@ -295,7 +295,7 @@ It does not reuse the id.
 
 =cut
 
-sub delete { goto &Data::RecordStore::delete_record }    
+sub delete { goto &Data::RecordStore::delete_record }
 
 sub delete_record {
     my( $self, $del_id ) = @_;
@@ -379,7 +379,7 @@ sub _swapout {
         my( $moving_id ) = unpack( $silo->[TMPL], $data );
 
         $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
-        
+
         #
         # truncate now that the silo is one record shorter
         #
@@ -736,11 +736,11 @@ sub unlink_store {
 #
 sub _copy_record {
     my( $self, $from_idx, $to_idx ) = @_;
-    
+
     die "Data::RecordStore::Silo->_copy_record : from_index $from_idx out of bounds. Store has entry count of ".$self->entry_count if $from_idx >= $self->entry_count || $from_idx < 0;
 
     die "Data::RecordStore::Silo->_copy_record : to_index $to_idx out of bounds. Store has entry count of ".$self->entry_count if $to_idx >= $self->entry_count || $to_idx < 0;
-    
+
     my( $from_file_idx, $fh_from ) = $self->_fh($from_idx+1);
     my( $to_file_idx, $fh_to ) = $self->_fh($to_idx+1);
     sysseek $fh_from, $self->[RECORD_SIZE] * ($from_file_idx), SEEK_SET
@@ -847,68 +847,72 @@ sub _files {
 package Data::RecordStore::Transaction;
 
 use constant {
-    PID        => 0,
-    START_TIME => 1,
-    STATE      => 2,
-    STORE      => 3,
-    SILO       => 4,
-    ID         => 5,
-    DIRECDTORY => 6,
-    
-    TRA_ACTIVE      => 0, # transaction has been created
-    TRA_IN_COMMIT   => 1, # commit has been called, not yet completed
-    TRA_IN_ROLLBACK => 2, # commit has been called, has not yet completed
-    TRA_CLEANING_UP => 3, # everything in commit has been written, TRA is in process of being removed
+    ID          => 0,
+    PID         => 1,
+    UPDATE_TIME => 2,
+    STATE       => 3,
+    STORE       => 4,
+    SILO        => 5,
+    CATALOG     => 6,
+
+    TRA_ACTIVE           => 0, # transaction has been created
+    TRA_IN_COMMIT        => 1, # commit has been called, not yet completed
+    TRA_IN_ROLLBACK      => 2, # commit has been called, has not yet completed
+    TRA_CLEANUP_COMMIT   => 3, # everything in commit has been written, TRA is in process of being removed
+    TRA_CLEANUP_ROLLBACK => 4, # everything in commit has been written, TRA is in process of being removed
+    TRA_DONE             => 5, # transaction complete. It may be removed.
 };
 
 #
 #
 #
 sub _create {
-    my( $pkg, $record_store, $trans_data, $trans_id ) = @_;
-    my $dir = $record_store->[DIRECTORY];
+    my( $pkg, $record_store, $trans_data ) = @_;
 
-    # update meta data
-    # create transaction record
-    # create transaction store
-    # has pid, starttime, state
-    my $trans_directory = Data::RecordStore::Silo->open_silo( "LLI", "$dir/TRANS/META" );
-    
-    unless( $trans_data ) {
-        $trans_data = [ $$, time, TRA_ACTIVE ];
-        $trans_id = $trans_directory->push( $trans_data );
+    # transaction id
+    # process id
+    # update time
+    # state
+    my $trans_catalog = Data::RecordStore::Silo->open_silo( "ILLI", "$record_store->[DIRECTORY]/TRANS/META" );
+
+    if( $trans_data ) {
+        ($trans_id) = @$trans_data;
     }
-    
+    else {
+        $trans_id = $trans_catalog->next_id;
+        $trans_data = [ $trans_id, $$, time, TRA_ACTIVE ];
+        $trans_catalog->put_record( $trans_id, $trans_data );
+    }
+
     push @$trans_data, $record_store;
 
     # action
     # obj id
     # from silo id
-    # from silo idx
+    # from record id
     # to silo id
-    # to silo idx
+    # to record id
     push @$trans_data, Data::RecordStore::Silo->open_silo(
-        "CLILIL", 
-        "$store->[DIRECTORY]/TRANS/instances/$trans_id" 
+        "CLILIL",
+        "$record_store->[DIRECTORY]/TRANS/instances/$trans_id"
         );
-    push @$trans_data, $trans_id;
-    push @$trans_data, $trans_directory;
-    
+    push @$trans_data, $trans_catalog;
+
     bless $trans_data, $pkg;
-    
+
 } #_create
 
-sub get_start_time { shift->[START_TIME] }
-sub get_process_id { shift->[PID] }
-sub get_state      { shift->[STATE] }
-sub get_id         { shift->[ID] }
+sub get_update_time { shift->[UPDATE_TIME] }
+sub get_process_id  { shift->[PID] }
+sub get_state       { shift->[STATE] }
+sub get_id          { shift->[ID] }
 
 sub stow {
     my( $self, $data, $id ) = @_;
     die "Data::RecordStore::Transaction::stow Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
 
     my $trans_silo = $self->[SILO];
-    
+
     my $store = $self->[STORE];
     $id //= $store->next_id;
 
@@ -940,58 +944,66 @@ sub stow {
     # from silo idx
     # to silo id
     # to silo idx
-    $trans_silo->put_record( $next_trans_id, [ 'S', $id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ] );
-    
+    $trans_silo->put_record( $next_trans_id,
+                             [ 'S', $id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ] );
+
     $id;
-    
+
 } #stow
 
 sub delete_record {
     my( $self, $id_to_delete ) = @_;
     my( $from_silo_id, $from_record_id ) = @{ $store->[OBJ_INDEX]->get_record( $id_to_delete ) };
-    $trans_silo->put_record( $next_trans_id, [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
+    $trans_silo->put_record( $next_trans_id,
+                             [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 } #delete_record
 
 sub recycle {
     my( $self, $id_to_recycle ) = @_;
     my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[OBJ_INDEX]->get_record( $id_to_recycle ) };
-    $trans_silo->put_record( $next_trans_id, [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
+    $trans_silo->put_record( $next_trans_id,
+                             [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 }
 
 sub commit {
     my $self = shift;
 
+    die "Cannot commit. State is ".$self->get_state if $self->get_state
+
     my $store = $self->[STORE];
-    
+
     my $index        = $store->[OBJ_INDEX];
     my $recycle_silo = $store->[OBJ_INDEX];
     my $dir_silo     = $self->[DIRECTORY];
     my $trans_silo   = $self->[SILO];
 
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_COMMIT ] );
+    my $trans_id = $self->[ID];
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_IN_COMMIT ] );
     my $actions = $trans_silo->entry_count;
 
+    #
+    # Rewire the index to the new silo/location
+    #
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
         if( $action eq 'S' ) {
-            $index->put_record( $id, [ $to_silo_id, $to_record_id ] );
+            $index->put_record( $record_id, [ $to_silo_id, $to_record_id ] );
         } else {
-            $index->put_record( $id, [ 0, 0 ] );
+            $index->put_record( $record_id, [ 0, 0 ] );
             if( $action eq 'R' ) {
-                $recycle_silo->push( [$id] );
+                $recycle_silo->push( [$record_id] );
            }
-        }
-        if( $from_silo_id ) {
-            my $from_silo = $store->_get_silo( $from_silo_id );
-            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
         }
     }
 
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_CLEANUP ] );    
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_COMMIT ] );
 
+    #
+    # Cleanup discarded data
+    #
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
@@ -1000,24 +1012,28 @@ sub commit {
             $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
         }
     }
-    
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_DONE ] );
-    
+
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_DONE ] );
+
 } #commit
 
 sub revert {
     my $self = shift;
 
     my $store = $self->[STORE];
-    
+
     my $index        = $store->[OBJ_INDEX];
     my $recycle_silo = $store->[OBJ_INDEX];
     my $dir_silo     = $self->[DIRECTORY];
     my $trans_silo   = $self->[SILO];
 
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_ROLLBACK ] );
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_IN_ROLLBACK ] );
+
     my $actions = $trans_silo->entry_count;
 
+    #
+    # Rewire the index to the old silo/location
+    #
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
@@ -1029,19 +1045,22 @@ sub revert {
         }
     }
 
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_NEEDS_CLEANUP ] );
-    
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_ROLLBACK ] );
+
+    #
+    # Cleanup new data
+    #
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
-    
-        if( $from_silo_id ) {
-            my $from_silo = $store->_get_silo( $from_silo_id );
-            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
+
+        if( $to_silo_id ) {
+            my $to_silo = $store->_get_silo( $to_silo_id );
+            $store->_swapout( $to_silo, $to_silo_id, $to_record_id );
         }
     }
 
-    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_DONE ] );
+    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_DONE ] );
 
 } #revert
 
