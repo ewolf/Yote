@@ -211,7 +211,7 @@ sub run_recycler {
     my $count = $record_store->entry_count;
     for( my $i=1; $i<=$count; $i++ ) {
         if( $recycle_tally->fetch($i) != 1 ) {
-            $record_store->recycle( $i );
+            $record_store->recycle_id( $i );
         }
     }
     # empty to save space
