@@ -242,7 +242,7 @@ sub test_suite {
            ids     => 4,
            silo    => 0,
         );
-    
+
 
 
     $trans = $store->create_transaction;
@@ -278,7 +278,7 @@ sub test_suite {
 
     $id = $trans->stow( "MEW NEW mind" );
     is( $id, 6, "new trans new id now 6" );
-    
+
     check( $store, "new trans will store overwrite",
            trans   => 1,
            entries => 6, #new entry
