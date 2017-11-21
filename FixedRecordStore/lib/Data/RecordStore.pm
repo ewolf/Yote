@@ -142,14 +142,14 @@ sub open_store {
     #     # check if pid is active
 
     #     unless( $pid ) { #is active
-            
+
     #         if( $status == TRA_WRITE ) {
     #              # is okey, the transaction is complete, just hasn't been removed yet
-    #         }           
+    #         }
     #     }
     #     die "Incomplete transaction";
     # }
-    
+
     my $self = [
         $directory,
         Data::RecordStore::Silo->open_silo( "IL", $obj_db_filename ),
@@ -493,15 +493,18 @@ Opens or creates the directory for a group of files
 that represent one silo storing records of the given
 template and size.
 If a size is not given, it calculates the size from
-the template, if it can. This will die if a zero byte 
+the template, if it can. This will die if a zero byte
 record size is given or calculated.
 
 =cut
 sub open_silo {
     my( $pkg, $template, $directory, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    my $record_size = $size // do { use bytes; length( pack( $template ) ) };
-    die "Cannot open a zero record sized fixed store" unless $record_size;
+    my $template_size = do { use bytes; length( pack( $template ) ) };
+    my $record_size = $size // $template_size;
+
+    die "Data::RecordStore::Silo->open_sile error : given record size does not agree with template size" if $size && $template_size && $template_size != $size;
+    die "Data::RecordStore::Silo->open_silo Cannot open a zero record sized fixed store" unless $record_size;
     my $file_max_records = int( $Data::RecordStore::Silo::MAX_SIZE / $record_size );
     if( $file_max_records == 0 ) {
         warn "Opening store of size $record_size which is above the set max size of $Data::RecordStore::Silo::MAX_SIZE. Allowing only one record per file for this size.";
@@ -510,12 +513,15 @@ sub open_silo {
     my $file_max_size = $file_max_records * $record_size;
 
     unless( -d $directory ) {
-        die "Error operning record store. $directory exists and is not a directory" if -e $directory;
-        make_path( $directory ) or die "Unable to create directory $directory";
+        die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists and is not a directory" if -e $directory;
+        make_path( $directory ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
     }
     unless( -e "$directory/0" ){
-        open( my $fh, ">", "$directory/0" ) or die "Unable to open '$directory/0' : $!";
+        open( my $fh, ">", "$directory/0" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/0' : $!";
         close $fh;
+    }
+    unless( -w "$directory/0" ){
+        die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists but is not writeable" if -e $directory;
     }
 
     bless [
@@ -568,15 +574,18 @@ The array in question is the unpacked template.
 =cut
 sub get_record {
     my( $self, $id ) = @_;
-    die "get record must be a positive integer" if $id < 1;
-    
+
+    die "Data::RecordStore::Silo->get_record : index $id out of bounds. Store has entry count of ".$self->entry_count if $id > $self->entry_count || $id < 1;
+
     my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
-    sysseek( $fh, $self->[RECORD_SIZE] * $f_idx, SEEK_SET ) or die "get_record : error reading id $id at file $file_id at index $f_idx. Could not seek to ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
+    sysseek( $fh, $self->[RECORD_SIZE] * $f_idx, SEEK_SET )
+        or die "Data::RecordStore::Silo->get_record : error reading id $id at file $file_id at index $f_idx. Could not seek to ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
     my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
     close $fh;
 
-    defined( $srv ) or die "get_record : error reading id $id at file $file_id at index $f_idx. Could not read : $@ $!";
+    defined( $srv )
+        or die "Data::RecordStore::Silo->get_record : error reading id $id at file $file_id at index $f_idx. Could not read : $@ $!";
 
     [unpack( $self->[TMPL], $data )];
 } #get_record
@@ -608,7 +617,7 @@ sub pop {
     my( $f_idx, $fh, $file ) = $self->_fh( $entries );
     truncate $fh, $f_idx * $self->[RECORD_SIZE];
     close $fh;
-    
+
     $ret;
 } #pop
 
@@ -652,19 +661,19 @@ assigned to this store.
 sub put_record {
     my( $self, $id, $data ) = @_;
 
-    die "put_record : index $id out of bounds. Store has entry count of ".$self->entry_count if $id > (1+$self->entry_count) || $id < 1;
+    die "Data::RecordStore::Silo->put_record : index $id out of bounds. Store has entry count of ".$self->entry_count if $id > $self->entry_count || $id < 1;
 
     my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
 
     # allows the put_record to grow the data store by no more than one entry
     my $write_size = do { use bytes; length( $to_write ) };
 
-    die "Data::RecordStore::Silo::put_record : record too large" if $write_size > $self->[RECORD_SIZE];
-    
+    die "Data::RecordStore::Silo->put_record : record too large" if $write_size > $self->[RECORD_SIZE];
+
     my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
-    sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) ) || die "put_record : unable to put record id $id at file $file_id index $f_idx : $@ $!";
-    
+    sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) ) || die "Data::RecordStore::Silo->put_record : unable to put record id $id at file $file_id index $f_idx : $@ $!";
+
     close $fh;
 
     1;
@@ -677,12 +686,12 @@ Removes the file for this record store entirely from the file system.
 =cut
 sub unlink_store {
     my $self = shift;
-    remove_tree( $self->[DIRECTORY] ) // die "Error unlinking store : $!";
+    remove_tree( $self->[DIRECTORY] ) // die "Data::RecordStore::Silo->unlink_store: Error unlinking store : $!";
 } #unlink_store
 
 #
 # This copies a record from one index in the store to an other.
-# This returns the data of record so copied 
+# This returns the data of record so copied
 #
 sub _copy_record {
     my( $self, $from_idx, $to_idx ) = @_;
@@ -690,11 +699,11 @@ sub _copy_record {
     my( $to_file_idx, $fh_from ) = $self->_fh($from_idx);
     my( $from_file_idx, $fh_to ) = $self->_fh($to_idx);
     sysseek $fh_from, $self->[RECORD_SIZE] * ($from_idx), SEEK_SET
-        or die "Swapout could not seek ($self->[RECORD_SIZE] * ($to_idx)) : $@ $!";
+        or die "Data::RecordStore::Silo->_copy_record could not seek ($self->[RECORD_SIZE] * ($to_idx)) : $@ $!";
     my $srv = sysread $fh_from, my $data, $self->[RECORD_SIZE];
-    defined( $srv ) or die "Could not read : $@ $!";
+    defined( $srv ) or die "Data::RecordStore::Silo->_copy_record could not read : $@ $!";
     sysseek( $fh_to, $self->[RECORD_SIZE] * $to_idx, SEEK_SET ) && ( my $swv = syswrite( $fh_to, $data ) );
-    defined( $srv ) or die "Could not read : $@ $!";
+    defined( $srv ) or die "Data::RecordStore::Silo->_copy_record could not read : $@ $!";
     $data;
 } #_copy_record
 
@@ -715,9 +724,9 @@ sub _ensure_entry_count {
         $records_needed_to_fill = $needed if $records_needed_to_fill > $needed;
         if( $records_needed_to_fill > 0 ) {
             # fill the last flie up with \0
-            open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Unable to open '$self->[DIRECTORY]/$write_file' : $!";
+            open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to open '$self->[DIRECTORY]/$write_file' : $!";
             my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
-            (my $pos = sysseek( $fh, 0, SEEK_END )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            (my $pos = sysseek( $fh, 0, SEEK_END )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
             $needed -= $records_needed_to_fill;
         }
@@ -725,10 +734,10 @@ sub _ensure_entry_count {
             # still needed, so create a new file
             $write_file++;
 
-            die "File $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
-            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
+            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
             my $nulls = "\0" x ( $self->[FILE_MAX_RECORDS] * $self->[RECORD_SIZE] );
-            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             $needed -= $self->[FILE_MAX_RECORDS];
             close $fh;
         }
@@ -736,10 +745,10 @@ sub _ensure_entry_count {
             # still needed, so create a new file
             $write_file++;
 
-            die "File $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
-            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
+            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
             my $nulls = "\0" x ( $needed * $self->[RECORD_SIZE] );
-            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
         }
     }
@@ -756,13 +765,13 @@ sub _fh {
     my( $self, $id ) = @_;
 
     my @files = $self->_files;
-    die "No files found for this data store" unless @files;
+    die "Data::RecordStore::Silo->_fh : No files found for this data store" unless @files;
 
     my $f_idx;
     if( $id ) {
         $f_idx = int( ($id-1) / $self->[FILE_MAX_RECORDS] );
         if( $f_idx > $#files || $f_idx < 0 ) {
-            die "Requested a non existant file handle ($f_idx, $id)";
+            die "Data::RecordStore::Silo->_fh : requested a non existant file handle ($f_idx, $id)";
         }
     }
     else {
@@ -770,7 +779,7 @@ sub _fh {
     }
 
     my $file = $files[$f_idx];
-    open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Unable to open '$self->[DIRECTORY]/$file' : $! $?";
+    open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Data::RecordStore::Silo->_fhu nable to open '$self->[DIRECTORY]/$file' : $! $?";
 
     (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file",$f_idx);
 
@@ -781,7 +790,7 @@ sub _fh {
 #
 sub _files {
     my $self = shift;
-    opendir( my $dh, $self->[DIRECTORY] ) or die "Can't open $self->[DIRECTORY]\n";
+    opendir( my $dh, $self->[DIRECTORY] ) or die "Data::RecordStore::Silo->_files : can't open $self->[DIRECTORY]\n";
     my( @files ) = (sort { $a <=> $b } grep { $_ > 0 || $_ eq '0' } readdir( $dh ) );
     closedir $dh;
     @files;
@@ -814,7 +823,7 @@ sub _files {
 #     #
 #     # Pushes new on to the store, writes in the transaction
 #     # record where the new thing is.
-#     # 
+#     #
 # }
 
 # sub delete_record {
@@ -833,7 +842,7 @@ sub _files {
 
 # sub revert {
 #     # removes this transaction. this cannot undo next_id calls though
-    
+
 # }
 
 1;
