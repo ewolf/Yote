@@ -133,6 +133,7 @@ sub open_store {
     #
     for my $pkg ( qw( Data::ObjectStore::Container Data::ObjectStore::Array Data::ObjectStore::Hash ) ) {
         $INC{ $pkg } or eval("use $pkg");
+        undef $@;
     }
 
     my $store = bless [
@@ -249,6 +250,10 @@ sub create_container {
         $class = 'Data::ObjectStore::Container';
     }
     $class //= 'Data::ObjectStore::Container';
+
+    unless( $INC{ $class } ) {
+        eval("use $class");
+    }
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
