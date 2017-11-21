@@ -17,8 +17,8 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-my $dir = tempdir;#( CLEANUP => 1 );
-print STDERR Data::Dumper->Dump([$dir,"DUH" ]);
+my $dir = tempdir( CLEANUP => 1 );
+
 my $store = Data::ObjectStore::open_store( $dir );
 my $root_node = $store->load_root_container;
 test_suite();

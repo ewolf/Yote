@@ -289,9 +289,6 @@ sub show {
                     show( $in );
                     return;
                 }
-                if( $in eq 'q' ) {
-                    return;
-                }
             }
         }
     }
