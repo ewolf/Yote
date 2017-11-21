@@ -100,7 +100,7 @@ sub open_store {
     my $version_file = "$directory/VERSION";
     my $FH;
     if( -e $version_file ) {
-        CORE::open $FH, "<", $version_file;
+        open $FH, "<", $version_file;
         $version = <$FH>;
         chomp $version;
     } else {
@@ -113,7 +113,7 @@ sub open_store {
             die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the conversion program.";
         }
         $version = $VERSION;
-        CORE::open $FH, ">", $version_file;
+        open $FH, ">", $version_file;
         print $FH "$version\n";
     }
     close $FH;
@@ -303,7 +303,7 @@ sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
     my $last_idx = $store->entry_count;
-    my $fh = $store->_filehandle;
+    my $fh = $store->_filehandle($last_idx);
 
     if( $vacated_store_idx < $last_idx ) {
 
@@ -462,11 +462,11 @@ sub open_fixed_store {
     my $useSize = $size || do { use bytes; length( pack( $template ) ) };
     die "Cannot open a zero record sized fixed store" unless $useSize;
     unless( -e $filename ) {
-        CORE::open $FH, ">", $filename or die "Unable to open $filename : $!";
+        open $FH, ">", $filename or die "Unable to open $filename : $!";
         print $FH "";
         close $FH;
     }
-    CORE::open $FH, "+<", $filename or die "$@ $!";
+    open $FH, "+<", $filename or die "$@ $!";
     bless [
         $template,
         $useSize,
@@ -586,8 +586,8 @@ assigned to this store.
 =cut
 sub push {
     my( $self, $data ) = @_;
-    my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
+    my $fh = $self->_filehandle;
     $self->put_record( $next_id, $data );
     $next_id;
 } #push

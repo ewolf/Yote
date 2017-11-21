@@ -3,7 +3,6 @@ abstract: 'Simple and fast record based data store'
 author:
   - 'Eric Wolf        coyocanid@gmail.com'
 build_requires:
-  JSON: '0'
   Module::Build: '0'
   Test::More: '0'
 configure_requires:
@@ -18,12 +17,12 @@ name: Data-RecordStore
 provides:
   Data::RecordStore:
     file: lib/Data/RecordStore.pm
-    version: '2.01'
+    version: '2.03'
   Data::RecordStore::FixedStore:
     file: lib/Data/RecordStore.pm
 requires:
   perl: v5.9.4
 resources:
   license: http://dev.perl.org/licenses/
-version: '2.01'
+version: '2.03'
 x_serialization_backend: 'CPAN::Meta::YAML version 0.012'

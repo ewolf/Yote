@@ -16,7 +16,6 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "JSON" : "0",
             "Module::Build" : "0",
             "Test::More" : "0"
          }
@@ -35,7 +34,7 @@
    "provides" : {
       "Data::RecordStore" : {
          "file" : "lib/Data/RecordStore.pm",
-         "version" : "2.01"
+         "version" : "2.03"
       },
       "Data::RecordStore::FixedStore" : {
          "file" : "lib/Data/RecordStore.pm"
@@ -47,6 +46,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.01",
+   "version" : "2.03",
    "x_serialization_backend" : "JSON::PP version 2.27300"
 }
