@@ -80,10 +80,10 @@ use constant {
     RECORD_SIZE => 1,
     TMPL        => 4,
 
-    TRA_ACTIVE  => 1, # transaction has been created
-    TRA_COMMIT  => 2, # commit has been called, not yet completed
-    TRA_WRITE   => 3, # commit has been called, has not yet completed
-    TRA_DONE    => 4, # everything in commit has been written, TRA is in process of being removed
+    TRA_ACTIVE   => 1, # transaction has been created
+    TRA_COMMIT   => 2, # commit has been called, not yet completed
+    TRA_ROLLBACK => 3, # rollback has been called, has not yet completed
+    TRA_DONE     => 4, # everything in commit has been written, TRA is in process of being removed
 
 };
 
@@ -963,30 +963,87 @@ sub recycle {
 sub commit {
     my $self = shift;
 
-    my $index      = $self->[STORE][OBJ_INDEX];
-    my $dir_silo   = $self->[DIRECTORY];
-    my $trans_silo = $self->[SILO];
+    my $store = $self->[STORE];
+    
+    my $index        = $store->[OBJ_INDEX];
+    my $recycle_silo = $store->[OBJ_INDEX];
+    my $dir_silo     = $self->[DIRECTORY];
+    my $trans_silo   = $self->[SILO];
 
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_COMMIT ] );
     my $actions = $trans_silo->entry_count;
 
     for my $a_id (1..$actions) {
-        my( $record_id, $from_silo_id, $from_record_id, $from_silo_id, $from_record_id ) =
+        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
+            @{ $trans_silo->get_record($a_id) };
+        if( $action eq 'S' ) {
+            $index->put_record( $id, [ $to_silo_id, $to_record_id ] );
+        } else {
+            $index->put_record( $id, [ 0, 0 ] );
+            if( $action eq 'R' ) {
+                $recycle_silo->push( [$id] );
+           }
+        }
+        if( $from_silo_id ) {
+            my $from_silo = $store->_get_silo( $from_silo_id );
+            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
+        }
+    }
+
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_CLEANUP ] );    
+
+    for my $a_id (1..$actions) {
+        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
         if( $from_silo_id ) {
-            
+            my $from_silo = $store->_get_silo( $from_silo_id );
+            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
         }
     }
     
-#     # have a list of id -> new store, new store index, then apply it
-#     # then remove the transaction as complete
-#     # if it barfs in the middle, the transaction is not removed and
-#     # can be used to revert
-# }
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_DONE ] );
+    
+} #commit
 
-# sub revert {
-#     # removes this transaction. this cannot undo next_id calls though
+sub revert {
+    my $self = shift;
 
-}
+    my $store = $self->[STORE];
+    
+    my $index        = $store->[OBJ_INDEX];
+    my $recycle_silo = $store->[OBJ_INDEX];
+    my $dir_silo     = $self->[DIRECTORY];
+    my $trans_silo   = $self->[SILO];
+
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_ROLLBACK ] );
+    my $actions = $trans_silo->entry_count;
+
+    for my $a_id (1..$actions) {
+        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
+            @{ $trans_silo->get_record($a_id) };
+
+        if( $from_silo_id ) {
+            $index->put_record( $id, [ $from_silo_id, $from_record_id ] );
+        } else {
+            $index->put_record( $id, [ 0, 0 ] );
+        }
+    }
+
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_NEEDS_CLEANUP ] );
+    
+    for my $a_id (1..$actions) {
+        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
+            @{ $trans_silo->get_record($a_id) };
+    
+        if( $from_silo_id ) {
+            my $from_silo = $store->_get_silo( $from_silo_id );
+            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
+        }
+    }
+
+    $dir_silo->put_record( $self->[ID], [ $$, time, TRA_DONE ] );
+
+} #revert
 
 1;
 
