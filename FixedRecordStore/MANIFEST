@@ -1,4 +1,3 @@
-bin/c2.pl
 bin/converter.pl
 bin/recordstore_explorer
 Build.PL

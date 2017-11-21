@@ -1,9 +1,8 @@
-3.00 - renamed methods 'delete' and 'open' as to not collide
-       with reserved words.
-
-       instituted a maximum filesize for the data files.
-
-       ...working on ...transactions?
+3.00 - Big update
+	introduces transactions
+	fixed record stores are not called Silos
+	silos now have a max file size and span multiple files
+	updates to tests
 
 2.02 - updated version. removed old build dependencies.
       appogies, but changing open to open_store to not use

@@ -1,3 +1,10 @@
+
+3.00 - Big update
+	introduces transactions
+	fixed record stores are not called Silos
+	silos now have a max file size and span multiple files
+	updates to tests
+	
  2.02 - rename methods 'open' to 'open_store' or 'open_fixed_store'
 	in order to avoid collision with the 'open' reserved function. 
 	
