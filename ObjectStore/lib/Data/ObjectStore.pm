@@ -2,32 +2,19 @@ package Data::ObjectStore;
 
 use strict;
 use warnings;
-no  warnings 'uninitialized';
+
 use warnings FATAL => 'all';
 
-use vars qw($VERSION);
-
-$VERSION = '1.0';
-$Data::ObjectStore::DB_VERSION = 1;
-
-sub open_store {
-    my $path = pop;
-    my $store = Data::ObjectStore::Provider->open_store( $path );
-    $store;
-}
-
-# --------------------------------------------------------------------------------
-
-package Data::ObjectStore::Provider;
-
-use strict;
-use warnings;
 no warnings 'numeric';
 no warnings 'uninitialized';
 no warnings 'recursion';
 
 use Data::RecordStore;
 use Scalar::Util qw(weaken);
+use vars qw($VERSION);
+
+$VERSION = '1.0';
+$Data::ObjectStore::DB_VERSION = 1;
 
 use constant {
     RECORD_STORE => 0,
@@ -41,57 +28,135 @@ use constant {
     LEVEL        => 3,
 };
 
-#
-# Fetches the user facing root node. This node is
-# attached to the store info node as 'root'
-#
-sub fetch_root {
-    my $self = shift;
-    my $info_node = $self->_fetch_store_info_node;
-    my $root = $info_node->get_root;
-    unless( $root ) {
-        $root = $self->newobj;
-        $info_node->set_root( $root );
-        $self->stow_all;
-    }
-    $root;
-} #fetch_root
+=head1 NAME
 
-#
-# The store info node records useful information about the store
-#
-sub _fetch_store_info_node {
-    my $self = shift;
-    my $node = $self->_fetch( 1 );
-    unless( $node ) {
-        my $first_id = $self->_new_id;
-        die "Data::ObjectStore::Provider::_fetch_store_info_node : STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
-        my $now = time;
-        $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Obj';
-        $node->set_db_version( $Data::ObjectStore::DB_VERSION );
-        $node->set_ObjectStore_version( $Data::ObjectStore::VERSION );
-        $node->set_created_time( $now );
-        $node->set_last_update_time( $now );
-        $self->stow_all;
-    }
+Data::ObjectStore - Persistant Perl container objects in a directed graph of lazilly
+loaded nodes.
 
-    $node;
-} #_fetch_store_info_node
+=head1 DESCRIPTION
 
-#
-# Returns a hash of the info set for this store
-#
-sub info {
-    my $node = shift->[STOREINFO];
-    my $info = {
-        map { $_ => $node->get($_)  }
-        qw( db_version ObjectStore_version created_time last_update_time )
-    };
-    $info;
-} #info
+This is for anyone who wants to store arbitrary structured state data and
+doesn't have the time or inclination to write a schema or configure some
+framework. This can be used orthagonally to any other storage system.
+
+Data::ObjectStore only loads data as it needs too. It does not load all stored containers
+at once. Data is stored in a data directory and is stored using the Data::RecordStore module.
+A Data::ObjectStore container is a key/value store where the values can be
+strings, numbers, arrays, hashes or other Data::ObjectStore containers.
+
+The entry point for all Data::ObjectStore data stores is the root node.
+All objects in the store are unreachable if they cannot trace a reference
+path back to this node. If they cannot, running compress_store will remove them.
+
+There are lots of potential uses for Data::ObjectStore, and a few come to mind :
+
+ * configuration data
+ * data modeling
+ * user preference data
+ * user account data
+ * game data
+ * shopping carts
+ * product information
+
+=head1 SYNOPSIS
+
+ use Data::ObjectStore;
+
+ #
+ # Opens the store in a directory. All file system interactions happen here.
+ #
+ my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
+
+ # get a hash of data about the store
+ my $store_info = $store->info;
+ print $info->{db_version};
+ print $info->{ObjectStore_version};
+ print $info->{created_time};
+ print $info->{last_update_time};
+
+ #
+ #
+ #
+ my $root_node = $store->fetch_root;
+
+ $root_node->add_to_myList( $store->newobj( {
+    some_val  => 123.53,
+    some_hash => { A => 1 },
+    some_list => [ 1..1000 ],
+    specific_initialized_obj  => $store->newobj( { foo => "Bar" }, 'Data::ObjectStore::ObjChildClass' );
+    generic_initialized_obj  => $store->newobj( { foo => "Bar" } );
+    specific_obj  => $store->newobj( 'Data::ObjectStore::ObjChildClass' );
+    generic_obj  => $store->newobj;
+ } );
+
+ # the root node now has a list 'myList' attached to it with the single
+ # value of a yote object that yote object has two fields,
+ # one of which is an other yote object.
+
+ $root_node->add_to_myList( 42 );
+
+ #
+ # New Yote container objects are created with $store->newobj. Note that
+ # they must find a reference path to the root to be protected from
+ # being deleted from the record store upon compression.
+ #
+ my $newObj = $store->newobj;
+
+ $root_node->set_field( "Value" );
+
+ my $val = $root_node->get_value( "default" );
+ # $val eq 'default'
+
+ $val = $root_node->get_value( "Somethign Else" );
+ # $val eq 'default' (old value not overridden by a new default value)
+
+
+ my $otherval = $root_node->get( 'ot3rv@l', 'other default' );
+ # $otherval eq 'other default'
+
+ $root_node->set( 'ot3rv@l', 'newy valuye' );
+ $otherval2 = $root_node->get( 'ot3rv@l', 'yet other default' );
+ # $otherval2 eq 'newy valuye'
+
+ $root_node->set_value( "Something Else" );
+
+ my $val = $root_node->get_value( "default" );
+ # $val eq 'Something Else'
+
+ my $myList = $root_node->get_myList;
+
+ for my $example (@$myList) {
+    print ">$example\n";
+ }
+
+ #
+ # Each object gets a unique ID which can be used to fetch that
+ # object directly from the store.
+ #
+ my $someid = $root_node->get_someobj->{ID};
+
+ my $someref = $store->fetch( $someid );
+
+ #
+ # Even hashes and array have unique yote IDS. These can be
+ # determined by calling the _get_id method of the store.
+ #
+ my $hash = $root_node->set_ahash( { zoo => "Zar" } );
+ my $hash_id = $store->_get_id( $hash );
+ my $other_ref_to_hash = $store->fetch( $hash_id );
+
+ #
+ # Anything that cannot trace a reference path to the root
+ # is eligable for being removed upon compression.
+ #
+
+=head1 PUBLIC METHODS
+
+=cut
 
 sub open_store {
-    my( $cls, $base_path ) = @_;
+    my $base_path = pop;
+    my $cls = pop || 'Data::ObjectStore';
 
     #
     # Data::ObjectStore subpackages are not normally in %INC and should always be loaded.
@@ -112,6 +177,34 @@ sub open_store {
     $store;
 
 } #open_store
+
+#
+# Fetches the user facing root node. This node is
+# attached to the store info node as 'root'
+#
+sub fetch_root {
+    my $self = shift;
+    my $info_node = $self->_fetch_store_info_node;
+    my $root = $info_node->get_root;
+    unless( $root ) {
+        $root = $self->newobj;
+        $info_node->set_root( $root );
+        $self->stow_all;
+    }
+    $root;
+} #fetch_root
+
+#
+# Returns a hash of the info set for this store
+#
+sub info {
+    my $node = shift->[STOREINFO];
+    my $info = {
+        map { $_ => $node->get($_)  }
+        qw( db_version ObjectStore_version created_time last_update_time )
+    };
+    $info;
+} #info
 
 sub newobj {
     # works with newobj( { my data } ) or newobj( 'myclass', { my data } )
@@ -204,7 +297,7 @@ sub run_recycler {
     my $count = $record_store->entry_count;
     for( my $i=1; $i<=$count; $i++ ) {
         if( $recycle_tally->fetch($i) != 1 ) {
-            $record_store->recycle( $i );
+            $record_store->recycle_id( $i );
         }
     }
     # empty to save space
@@ -232,6 +325,29 @@ sub stow_all {
 
 } #stow_all
 
+#
+# The store info node records useful information about the store
+#
+sub _fetch_store_info_node {
+    my $self = shift;
+    my $node = $self->_fetch( 1 );
+    unless( $node ) {
+        my $first_id = $self->_new_id;
+        die "Data::ObjectStore::_fetch_store_info_node : STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
+        my $now = time;
+        $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Obj';
+        $node->set_db_version( $Data::ObjectStore::DB_VERSION );
+        $node->set_ObjectStore_version( $Data::ObjectStore::VERSION );
+        $node->set_created_time( $now );
+        $node->set_last_update_time( $now );
+        $self->stow_all;
+    }
+
+    $node;
+} #_fetch_store_info_node
+
+
+
 sub _fetch {
     my( $self, $id ) = @_;
     return undef unless $id && $id ne 'u';
@@ -244,7 +360,7 @@ sub _fetch {
     return undef unless $stowed;
 
     my $pos = index( $stowed, ' ' );
-    die "Data::ObjectStore::Provider::_fetch : Malformed record '$stowed'" if $pos == -1;
+    die "Data::ObjectStore::_fetch : Malformed record '$stowed'" if $pos == -1;
 
     my $class    = substr $stowed, 0, $pos;
     my $dryfroze = substr $stowed, $pos + 1;
@@ -287,7 +403,7 @@ sub _fetch {
             }
         }
         if ( $is_hanging ) {
-            die "Data::ObjectStore::Provider::_fetch Error in parsing object record\n";
+            die "Data::ObjectStore::_fetch Error in parsing object record\n";
         }
         $pieces = $newparts;
     } #if there were escaped ` characters
@@ -316,7 +432,7 @@ sub _xform_out {
 
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
-    die "Data::ObjectStore::Provider::_store_weak : Store weak called without ref" unless $ref;
+    die "Data::ObjectStore::_store_weak : Store weak called without ref" unless $ref;
     $self->[WEAK]{$id} = $ref;
 
     weaken( $self->[WEAK]{$id} );
@@ -338,7 +454,7 @@ sub _get_id {
 
     my $class = ref( $ref );
 
-    die "Data::ObjectStore::Provider::_get_id : requires reference. got '$ref'" unless $class;
+    die "Data::ObjectStore::_get_id : requires reference. got '$ref'" unless $class;
 
     if( $class eq 'ARRAY' ) {
         my $thingy = tied @$ref;
@@ -365,7 +481,7 @@ sub _get_id {
         $ref = $thingy;
         $class = ref( $ref );
     }
-    die "Data::ObjectStore::Provider::_get_id : Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
+    die "Data::ObjectStore::_get_id : Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
     $ref->[ID] ||= $self->_new_id;
     return $ref->[ID];
 
@@ -873,7 +989,7 @@ sub CLEAR {
     if( $self->[SIZE] > 0 ) {
         $self->[SIZE] = 0;
         my $store = $self->[DSTORE];
-        $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
+        $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
         %{$self->[DATA]} = ();
     }
 }
@@ -889,7 +1005,7 @@ sub DELETE {
     my $store = $self->[DSTORE];
 
     if( $self->[LEVEL] == 0 ) {
-        $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
+        $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
         return $store->_xform_out( delete $data->{$key} );
     } else {
         my $hval = 0;
@@ -1001,7 +1117,7 @@ sub STORE {
                     my $hash_id = $store->_new_id;
                     tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
                     $store->_store_weak( $hash_id, $hash );
-                    $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$hash_id}, $hash_id );
+                    $store->_dirty( $store->[Data::ObjectStore::WEAK]{$hash_id}, $hash_id );
 
                     $newhash[$hval] = $hash;
                     $newids[$hval] = $hash_id;
@@ -1015,7 +1131,7 @@ sub STORE {
             # LEVEL 0 hashes that are loaded from LEVEL 1 hashes that are loaded from
             # LEVEL 2 hashes. The level 1 hash is loaded and dumped as needed, not keeping
             # the ephermal info (or is that sort of chained..hmm)
-            $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$self->[ID]}, $self->[ID] );
+            $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
 
@@ -1037,7 +1153,7 @@ sub STORE {
             $hash_id = $store->_new_id;
             tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
             $store->_store_weak( $hash_id, $hash );
-            $store->_dirty( $store->[Data::ObjectStore::Provider::WEAK]{$hash_id}, $hash_id );
+            $store->_dirty( $store->[Data::ObjectStore::WEAK]{$hash_id}, $hash_id );
             $data->[$hval] = $hash_id;
         }
     }
@@ -1110,7 +1226,7 @@ sub DESTROY {
     #remove all WEAK_REFS to the buckets
     undef $self->[DATA];
 
-    delete $self->[DSTORE]->[Data::ObjectStore::Provider::WEAK]{$self->[ID]};
+    delete $self->[DSTORE]->[Data::ObjectStore::WEAK]{$self->[ID]};
 }
 
 # --------------------------------------------------------------------------------
@@ -1349,7 +1465,7 @@ sub _reconstitute {
 sub DESTROY {
     my $self = shift;
 
-    delete $self->[DSTORE][Data::ObjectStore::Provider::WEAK]{$self->[ID]};
+    delete $self->[DSTORE][Data::ObjectStore::WEAK]{$self->[ID]};
 }
 
 1;
@@ -1498,59 +1614,36 @@ The Yote::ObjStore does the following things :
  * saves all new or changed objects
  * finds objects that cannot connect to the root node and removes them
 
-=head2 fetch_root
+=head1 METHODS
 
- Returns the root node of the graph. All things that can be
+=head2 fetch_root()
+
+Returns the root node of the graph. All things that can be
 trace a reference path back to the root node are considered active
 and are not removed when the object store is compressed.
 
-=cut
+=head2 info()
 
-=head2 newobj( { ... data .... }, optionalClass )
+Returns a hash that gives info about this ObjectStore with the keys
+  * db_version
+  * ObjectStore_version
+  * created_time
+  * last_update_time
 
- Creates a container object initialized with the
- incoming hash ref data. The class of the object must be either
- Yote::Obj or a subclass of it. Yote::Obj is the default.
+=head2 newobj( optionalClass, { ... data .... } )
 
- Once created, the object will be saved in the data store when
- $store->stow_all has been called.  If the object is not attached
- to the root or an object that can be reached by the root, it will be
- remove when Yote::ObjStore::Compress is called.
+Creates a container object initialized with the
+incoming hash ref data. The class of the object must be either
+Yote::Obj or a subclass of it. Yote::Obj is the default.
 
-=head2 copy_from_remote_store( $obj )
+Once created, the object will be saved in the data store when
+$store->stow_all has been called.  If the object is not attached
+to the root or an object that can be reached by the root, it will be
+remove when Yote::ObjStore::Compress is called.
 
- This takes an object that belongs to a seperate store and makes
- a deep copy of it.
+=head2 open_store( directory )
 
-=head2 cache_all()
-
- This turns on caching for the store. Any objects loaded will
- remain cached until clear_cache is called. Normally, they
- would be DESTROYed once their last reference was removed unless
- they are in a state that needs stowing.
-
-=head2 uncache( obj )
-
-  This removes the object from the cache if it was in the cache
-
-=head2 pause_cache()
-
- When called, no new objects will be added to the cache until
- cache_all is called.
-
-=head2 clear_cache()
-
- When called, this dumps the object cache. Objects that
- references or have changes that need to be stowed will
- not be cleared.
-
-=cut
-=head2 fetch( $id )
-
- Returns the object with the given id.
-
-=cut
-
+Return
 
 =head1 AUTHOR
        Eric Wolf        coyocanid@gmail.com

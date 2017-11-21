@@ -1,7 +1,7 @@
 {
    "abstract" : "Simple and fast record based data store",
    "author" : [
-      "Eric Wolf        coyocanid@gmail.com"
+      "unknown"
    ],
    "dynamic_config" : 1,
    "generated_by" : "Module::Build version 0.4224",

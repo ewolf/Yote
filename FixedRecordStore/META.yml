@@ -1,7 +1,7 @@
 ---
 abstract: 'Simple and fast record based data store'
 author:
-  - 'Eric Wolf        coyocanid@gmail.com'
+  - unknown
 build_requires:
   Module::Build: '0'
   Test::More: '0'
