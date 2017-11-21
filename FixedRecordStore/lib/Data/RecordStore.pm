@@ -72,19 +72,22 @@ $VERSION = '3.00';
 use constant {
     DIRECTORY    => 0,
     OBJ_INDEX    => 1,
-    RECYC_SILO  => 2,
+    RECYC_SILO   => 2,
     SILOS        => 3,
     VERSION      => 4,
     TRANS_RECORD => 5,
 
-    RECORD_SIZE => 1,
-    TMPL        => 4,
+    RECORD_SIZE      => 1,
+    FILE_SIZE        => 2,
+    FILE_MAX_RECORDS => 3,
+    TMPL             => 4,
 
-    TRA_ACTIVE   => 1, # transaction has been created
-    TRA_COMMIT   => 2, # commit has been called, not yet completed
-    TRA_ROLLBACK => 3, # rollback has been called, has not yet completed
-    TRA_DONE     => 4, # everything in commit has been written, TRA is in process of being removed
-
+    TRA_ACTIVE           => 1, # transaction has been created
+    TRA_IN_COMMIT        => 2, # commit has been called, not yet completed
+    TRA_IN_ROLLBACK      => 3, # commit has been called, has not yet completed
+    TRA_CLEANUP_COMMIT   => 4, # everything in commit has been written, TRA is in process of being removed
+    TRA_CLEANUP_ROLLBACK => 5, # everything in commit has been written, TRA is in process of being removed
+    TRA_DONE             => 6, # transaction complete. It may be removed.
 };
 
 
@@ -174,14 +177,19 @@ sub create_transaction {
 
 sub list_transactions {
     my $self = shift;
-    my $trans_directory = Data::RecordStore::Silo->open_silo( "LLI", "$dir/TRANS/META" );
+    my $trans_directory = Data::RecordStore::Silo->open_silo( "ILLI", "$self->[DIRECTORY]/TRANS/META" );
     my @trans;
     my $items = $trans_directory->entry_count;
-    for my $trans_id ( 1..$items ) {
+    for( my $trans_id=$items; $trans_id > 0; $trans_id-- ) {
         my $data = $trans_directory->get_record( $trans_id );
-        push @trans, Data::RecordStore::Transaction->_create( $self, $data, $trans_id );
+        my $trans = Data::RecordStore::Transaction->_create( $self, $data );
+        if( $trans->get_state == TRA_DONE ) {
+            $trans_directory->pop; #its done, remove it
+        } else {
+            push @trans, $trans;
+        }
     }
-    @items;
+    @trans;
 }
 
 =head2 stow( data, optionalID )
@@ -855,13 +863,16 @@ use constant {
     SILO        => 5,
     CATALOG     => 6,
 
-    TRA_ACTIVE           => 0, # transaction has been created
-    TRA_IN_COMMIT        => 1, # commit has been called, not yet completed
-    TRA_IN_ROLLBACK      => 2, # commit has been called, has not yet completed
-    TRA_CLEANUP_COMMIT   => 3, # everything in commit has been written, TRA is in process of being removed
-    TRA_CLEANUP_ROLLBACK => 4, # everything in commit has been written, TRA is in process of being removed
-    TRA_DONE             => 5, # transaction complete. It may be removed.
+    TRA_ACTIVE           => 1, # transaction has been created
+    TRA_IN_COMMIT        => 2, # commit has been called, not yet completed
+    TRA_IN_ROLLBACK      => 3, # commit has been called, has not yet completed
+    TRA_CLEANUP_COMMIT   => 4, # everything in commit has been written, TRA is in process of being removed
+    TRA_CLEANUP_ROLLBACK => 5, # everything in commit has been written, TRA is in process of being removed
+    TRA_DONE             => 6, # transaction complete. It may be removed.
+
 };
+
+our @STATE_LOOKUP = ('Active','In Commit','In Rollback','In Commit Cleanup','In Rollback Cleanup','Done');
 
 #
 #
@@ -873,7 +884,8 @@ sub _create {
     # process id
     # update time
     # state
-    my $trans_catalog = Data::RecordStore::Silo->open_silo( "ILLI", "$record_store->[DIRECTORY]/TRANS/META" );
+    my $trans_catalog = Data::RecordStore::Silo->open_silo( "ILLI", "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/META" );
+    my $trans_id;
 
     if( $trans_data ) {
         ($trans_id) = @$trans_data;
@@ -893,8 +905,8 @@ sub _create {
     # to silo id
     # to record id
     push @$trans_data, Data::RecordStore::Silo->open_silo(
-        "CLILIL",
-        "$record_store->[DIRECTORY]/TRANS/instances/$trans_id"
+        "ALILIL",
+        "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/instances/$trans_id"
         );
     push @$trans_data, $trans_catalog;
 
@@ -910,7 +922,7 @@ sub get_id          { shift->[ID] }
 sub stow {
     my( $self, $data, $id ) = @_;
     die "Data::RecordStore::Transaction::stow Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
-
+   
     my $trans_silo = $self->[SILO];
 
     my $store = $self->[STORE];
@@ -925,17 +937,17 @@ sub stow {
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
     my( $from_silo_id, $from_record_id ) = ( 0, 0 );
-    if( $store->[OBJ_INDEX]->entry_count > $id ) {
-        ( $from_silo_id, $from_record_id ) = @{ $store->[OBJ_INDEX]->get_record( $id ) };
+    if( $store->[Data::RecordStore::OBJ_INDEX]->entry_count > $id ) {
+        ( $from_silo_id, $from_record_id ) = @{ $store->[Data::RecordStore::OBJ_INDEX]->get_record( $id ) };
     }
 
     my $to_silo_id = 1 + int( log( $save_size ) );
 
     my $to_silo = $store->_get_silo( $to_silo_id );
 
-    my $to_record_id = $silo->next_id;
+    my $to_record_id = $to_silo->next_id;
 
-    $silo->put_record( $to_record_id, [ $id, $data ] );
+    $to_silo->put_record( $to_record_id, [ $id, $data ] );
 
     my $next_trans_id = $trans_silo->next_id;
     # action (stow)
@@ -953,34 +965,42 @@ sub stow {
 
 sub delete_record {
     my( $self, $id_to_delete ) = @_;
-    my( $from_silo_id, $from_record_id ) = @{ $store->[OBJ_INDEX]->get_record( $id_to_delete ) };
-    $trans_silo->put_record( $next_trans_id,
-                             [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
+    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_delete ) };
+    my $from_silo = $self->[STORE]->_get_silo( $from_silo_id );
+    $from_silo->put_record( $self->[ID],
+                            [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 } #delete_record
 
 sub recycle {
     my( $self, $id_to_recycle ) = @_;
-    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[OBJ_INDEX]->get_record( $id_to_recycle ) };
-    $trans_silo->put_record( $next_trans_id,
-                             [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
+    my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_recycle ) };
+    my $from_silo = $self->[STORE]->_get_silo( $from_silo_id );
+    $from_silo->put_record( $self->[ID],
+                            [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 }
 
 sub commit {
     my $self = shift;
 
-    die "Cannot commit. State is ".$self->get_state if $self->get_state
+    my $state = $self->get_state;
+    die "Cannot commit transaction. Transaction state is ".$STATE_LOOKUP[$state]
+        unless $state == TRA_ACTIVE || $state == TRA_IN_COMMIT ||
+        $state == TRA_IN_ROLLBACK || $state == TRA_CLEANUP_COMMIT;
 
     my $store = $self->[STORE];
 
-    my $index        = $store->[OBJ_INDEX];
-    my $recycle_silo = $store->[OBJ_INDEX];
-    my $dir_silo     = $self->[DIRECTORY];
+    my $index        = $store->[Data::RecordStore::OBJ_INDEX];
+    my $recycle_silo = $store->[Data::RecordStore::OBJ_INDEX];
+    my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
 
     my $trans_id = $self->[ID];
+
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_IN_COMMIT ] );
+    $self->[STATE] = TRA_IN_COMMIT;
+    
     my $actions = $trans_silo->entry_count;
 
     #
@@ -989,6 +1009,7 @@ sub commit {
     for my $a_id (1..$actions) {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
+        
         if( $action eq 'S' ) {
             $index->put_record( $record_id, [ $to_silo_id, $to_record_id ] );
         } else {
@@ -1000,6 +1021,7 @@ sub commit {
     }
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_COMMIT ] );
+    $self->[STATE] = TRA_CLEANUP_COMMIT;
 
     #
     # Cleanup discarded data
@@ -1008,26 +1030,37 @@ sub commit {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
         if( $from_silo_id ) {
+            # what to do if it comes from nowhere
             my $from_silo = $store->_get_silo( $from_silo_id );
             $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
         }
     }
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_DONE ] );
+    $self->[STATE] = TRA_DONE;
+
+    $trans_silo->unlink_store;
 
 } #commit
 
-sub revert {
+sub rollback {
     my $self = shift;
+
+    my $state = $self->get_state;
+    die "Cannot rollback transaction. Transaction state is ".$STATE_LOOKUP[$state]
+        unless $state == TRA_ACTIVE || $state == TRA_IN_COMMIT ||
+        $state == TRA_IN_ROLLBACK || $state == TRA_CLEANUP_COMMIT;
 
     my $store = $self->[STORE];
 
-    my $index        = $store->[OBJ_INDEX];
-    my $recycle_silo = $store->[OBJ_INDEX];
-    my $dir_silo     = $self->[DIRECTORY];
+    my $index        = $store->[Data::RecordStore::OBJ_INDEX];
+    my $recycle_silo = $store->[Data::RecordStore::OBJ_INDEX];
+    my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
+    my $trans_id     = $self->[ID];
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_IN_ROLLBACK ] );
+    $self->[STATE] = TRA_IN_ROLLBACK;
 
     my $actions = $trans_silo->entry_count;
 
@@ -1039,13 +1072,14 @@ sub revert {
             @{ $trans_silo->get_record($a_id) };
 
         if( $from_silo_id ) {
-            $index->put_record( $id, [ $from_silo_id, $from_record_id ] );
+            $index->put_record( $record_id, [ $from_silo_id, $from_record_id ] );
         } else {
-            $index->put_record( $id, [ 0, 0 ] );
+            $index->put_record( $record_id, [ 0, 0 ] );
         }
     }
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_ROLLBACK ] );
+    $self->[STATE] = TRA_CLEANUP_ROLLBACK;
 
     #
     # Cleanup new data
@@ -1061,8 +1095,17 @@ sub revert {
     }
 
     $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_DONE ] );
+    $self->[STATE] = TRA_DONE;
 
-} #revert
+    $trans_silo->unlink_store;
+
+    # if this is the last transaction, remove it from the list
+    # of transactions
+    if( $trans_id == $dir_silo->entry_count ) {
+        $dir_silo->pop;
+    }
+    
+} #rollback
 
 1;
 
