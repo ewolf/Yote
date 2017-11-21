@@ -387,18 +387,12 @@ sub _swapout {
         my( $moving_id ) = unpack( $silo->[TMPL], $data );
 
         $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
-
-        #
-        # truncate now that the silo is one record shorter
-        #
-        $silo->pop;
     }
-    elsif( $vacated_silo_id == $last_id ) {
-        #
-        # this was the last record, so just remove it
-        #
-        $silo->pop;
-    }
+    
+    #
+    # truncate now that the silo is one record shorter
+    #
+    $silo->pop;
 
 } #_swapout
 
