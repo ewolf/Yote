@@ -99,7 +99,7 @@ there, it opens it, otherwise it creates a new one.
 =cut
 
 # alias
-sub open { goto &Data::RecordStore::open_store }    
+sub open { goto &Data::RecordStore::open_store }
 
 sub open_store {
     my( $pkg, $directory ) = @_;
@@ -165,7 +165,7 @@ sub open_store {
 
     bless $self, ref( $pkg ) || $pkg;
 
-} #open
+} #open_store
 
 sub create_transaction {
     my $self = shift;
@@ -196,10 +196,10 @@ sub stow {
 
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
-    my( $current_silo_id, $current_idx_in_silo, $old_silo, $needs_swap );
+    my( $current_silo_id, $current_id_in_silo, $old_silo, $needs_swap );
     if( $self->[OBJ_INDEX]->entry_count > $id ) {
 
-        ( $current_silo_id, $current_idx_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+        ( $current_silo_id, $current_id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
         #
         # Check if this record had been saved before, and that the
@@ -212,7 +212,7 @@ sub stow {
 
             # if the data isn't too big or too small for the table, keep it where it is and return
             if ( $old_silo->[RECORD_SIZE] >= $save_size && $old_silo->[RECORD_SIZE] < 3 * $save_size ) {
-                $old_silo->put_record( $current_idx_in_silo, [$id,$data] );
+                $old_silo->put_record( $current_id_in_silo, [$id,$data] );
                 return $id;
             }
 
@@ -226,21 +226,16 @@ sub stow {
 
     my $silo_id = 1 + int( log( $save_size ) );
 
-    print STDERR "GET SILO $silo_id\n";
     my $silo = $self->_get_silo( $silo_id );
 
     my $id_in_silo = $silo->next_id;
-
-    print STDERR Data::Dumper->Dump(["SILO ($id_in_silo) NOW WITH COUNT ".$silo->entry_count]);
-
-    print STDERR Data::Dumper->Dump(["stow (silo id : $silo_id, id in silo : $id_in_silo, id : $id)"]);
 
     $self->[OBJ_INDEX]->put_record( $id, [ $silo_id, $id_in_silo ] );
 
     $silo->put_record( $id_in_silo, [ $id, $data ] );
 
     if( $needs_swap ) {
-        $self->_swapout( $old_silo, $current_silo_id, $current_idx_in_silo );
+        $self->_swapout( $old_silo, $current_silo_id, $current_id_in_silo );
     }
 
     $id;
@@ -259,8 +254,6 @@ sub fetch {
 
     my( $silo_id, $id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
-    print STDERR Data::Dumper->Dump(["fetch (silo id : $silo_id, id in silo : $id_in_silo, id : $id)"]);
-    
     return undef unless $silo_id;
 
     my $silo = $self->_get_silo( $silo_id );
@@ -294,13 +287,13 @@ sub delete { goto &Data::RecordStore::delete_record }
 
 sub delete_record {
     my( $self, $del_id ) = @_;
-    my( $from_silo_id, $current_idx_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
+    my( $from_silo_id, $current_id_in_silo ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
 
     return unless $from_silo_id;
 
     my $from_silo = $self->_get_silo( $from_silo_id );
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
-    $self->_swapout( $from_silo, $from_silo_id, $current_idx_in_silo );
+    $self->_swapout( $from_silo, $from_silo_id, $current_id_in_silo );
     1;
 } #delete_record
 
@@ -362,20 +355,27 @@ sub _ensure_entry_count {
 # then move that record to the vacated space, reducing the file size by one record.
 #
 sub _swapout {
-    my( $self, $silo, $silo_id, $vacated_silo_idx ) = @_;
+    my( $self, $silo, $silo_id, $vacated_silo_id ) = @_;
 
-    my $last_idx = $silo->entry_count - 1;
-    print STDERR Data::Dumper->Dump(["SWAPOUT silo id : $silo_id at index $vacated_silo_idx and last index $last_idx"]);
-    if( $vacated_silo_idx < $last_idx ) {
-        my $data = $silo->_copy_record( $last_idx, $vacated_silo_idx );
+    my $last_id = $silo->entry_count;
+
+    if( $vacated_silo_id < $last_id ) {
+        my $data = $silo->_copy_record( $last_id - 1, $vacated_silo_id - 1 );
         #
         # update the object db with the new silo index for the moved object id
         #
         my( $moving_id ) = unpack( $silo->[TMPL], $data );
-        print STDERR Data::Dumper->Dump(["swap put (silo id : $silo_id, id in silo : $vacated_silo_idx, id : $moving_id)"]);
-        $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_idx ] );
+
+        $self->[OBJ_INDEX]->put_record( $moving_id, [ $silo_id, $vacated_silo_id ] );
+        
         #
         # truncate now that the silo is one record shorter
+        #
+        $silo->pop;
+    }
+    elsif( $vacated_silo_id == $last_id ) {
+        #
+        # this was the last record, so just remove it
         #
         $silo->pop;
     }
@@ -426,7 +426,7 @@ sub _get_silo {
     my $silo_row_size = int( exp $silo_index );
 
     # storing first the size of the record, then the bytes of the record
-    my $silo = Data::RecordStore::Silo->open_silo( "LZ*", "$self->[DIRECTORY]/silos/${silo_index}_OBJSTORE", $silo_row_size );
+    my $silo = Data::RecordStore::Silo->open_silo( "LZ*", "$self->[DIRECTORY]/silos/${silo_index}_OBJSTORE", $silo_row_size, $silo_index );
 
     $self->[SILOS][ $silo_index ] = $silo;
     $silo;
@@ -498,11 +498,12 @@ use constant {
     FILE_SIZE        => 2,
     FILE_MAX_RECORDS => 3,
     TMPL             => 4,
+    SILO_INDEX       => 5,
 };
 
 $Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
 
-=head2 open_silo( template, filename, record_size )
+=head2 open_silo( template, filename, record_size, optional_silo_index )
 
 Opens or creates the directory for a group of files
 that represent one silo storing records of the given
@@ -516,11 +517,11 @@ record size is given or calculated.
 sub open { goto &Data::RecordStore::Silo::open_silo }
 
 sub open_silo {
-    my( $pkg, $template, $directory, $size ) = @_;
+    my( $pkg, $template, $directory, $size, $silo_index ) = @_;
     my $class = ref( $pkg ) || $pkg;
     my $template_size = $template =~ /\*/ ? 0 : do { use bytes; length( pack( $template ) ) };
     my $record_size = $size // $template_size;
-    print STDERR Data::Dumper->Dump([$template_size,$size]);
+
     die "Data::RecordStore::Silo->open_sile error : given record size does not agree with template size" if $size && $template_size && $template_size != $size;
     die "Data::RecordStore::Silo->open_silo Cannot open a zero record sized fixed store" unless $record_size;
     my $file_max_records = int( $Data::RecordStore::Silo::MAX_SIZE / $record_size );
@@ -542,13 +543,16 @@ sub open_silo {
         die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists but is not writeable" if -e $directory;
     }
 
-    bless [
+    my $silo = bless [
         $directory,
         $record_size,
         $file_max_size,
         $file_max_records,
         $template,
+        $silo_index,
     ], $class;
+
+    $silo;
 } #open_silo
 
 =head2 empty
