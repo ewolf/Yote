@@ -192,33 +192,33 @@ sub stow {
 
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
+    my( $current_store_id, $current_idx_in_store, $old_store, $needs_swap );
+    if( $self->[OBJ_INDEX]->entry_count > $id ) {
 
-#     if( $self->[OBJ_INDEX]->entry_count > $id ) {
+        ( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
-#         my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
+        #
+        # Check if this record had been saved before, and that the
+        # store is was in has a large enough record size.
+        #
+        if ( $current_store_id ) {
+            $old_store = $self->_get_store( $current_store_id );
 
-#         #
-#         # Check if this record had been saved before, and that the
-#         # store is was in has a large enough record size.
-#         #
-#         if ( $current_store_id ) {
-#             my $old_store = $self->_get_store( $current_store_id );
+            warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
 
-#             warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
+            # if the data isn't too big or too small for the table, keep it where it is and return
+            if ( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
+                $old_store->put_record( $current_idx_in_store, [$id,$data] );
+                return $id;
+            }
 
-#             # if the data isn't too big or too small for the table, keep it where it is and return
-#             if ( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
-#                 $old_store->put_record( $current_idx_in_store, [$id,$data] );
-#                 return $id;
-#             }
-
-#             #
-#             # the old store was not big enough (or missing), so remove its record from
-#             # there, compacting it if possible
-#             #
-# #            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-#         }                       #if this already had been saved before
-#     }
+            #
+            # the old store was not big enough (or missing), so remove its record from
+            # there, compacting it if possible
+            #
+            $needs_swap = 1;
+        }                       #if this already had been saved before
+    }
 
     my $store_id = 1 + int( log( $save_size ) );
 
@@ -229,6 +229,10 @@ sub stow {
     $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $id_in_store ] );
 
     $store->put_record( $id_in_store, [ $id, $data ] );
+
+    if( $needs_swap ) {
+        $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
+    }
 
     $id;
 } #stow
@@ -281,8 +285,8 @@ sub delete_record {
     return unless $from_store_id;
 
     my $from_store = $self->_get_store( $from_store_id );
-#    $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
+    $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     1;
 } #delete_record
 
