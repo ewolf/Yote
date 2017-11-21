@@ -998,10 +998,11 @@ use warnings;
 
 no warnings 'uninitialized';
 no warnings 'numeric';
+no warnings 'recursion';
 
 use Tie::Hash;
 
-$Data::ObjectStore::Hash::SIZE = 977;
+$Data::ObjectStore::Hash::SIZE = 13337;
 
 use constant {
     ID          => 0,
