@@ -65,7 +65,7 @@ sub _fetch_store_info_node {
     my $node = $self->_fetch( 1 );
     unless( $node ) {
         my $first_id = $self->_new_id;
-        die "Fetch STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
+        die "Data::ObjectStore::Provider::_fetch_store_info_node : STORE INFO NODE must have ID of 1, got '$first_id'" unless $first_id == 1;
         my $now = time;
         $node = bless [ 1, {}, $self ], 'Data::ObjectStore::Obj';
         $node->set_db_version( $Data::ObjectStore::DB_VERSION );
@@ -108,9 +108,9 @@ sub open_store {
         ], $cls;
 
     $store->[STOREINFO] = $store->_fetch_store_info_node;
-    
+
     $store;
-    
+
 } #open_store
 
 sub newobj {
@@ -130,7 +130,7 @@ sub newobj {
 } #newobj
 
 #
-# Recycles and compacts store. IDs that were not found in the store 
+# Recycles and compacts store. IDs that were not found in the store
 # are marked for reuse.
 #
 sub run_recycler {
@@ -142,7 +142,7 @@ sub run_recycler {
     # empty because this may have run recently
     $self->[RECORD_STORE]->empty_recycler;
     $recycle_tally->empty;
-    
+
     $recycle_tally->stow( "1", 1 );
     $recycle_tally->stow( "0", $self->[RECORD_STORE]->entry_count );
 
@@ -151,7 +151,7 @@ sub run_recycler {
     # add the ids from the weak references
     my( @keep_ids ) = ( $item->id, keys %{$self->[WEAK]} );
 
-    
+
     while( @keep_ids ) {
         my $id = shift @keep_ids;
 
@@ -244,7 +244,7 @@ sub _fetch {
     return undef unless $stowed;
 
     my $pos = index( $stowed, ' ' );
-    die "Malformed record '$stowed'" if $pos == -1;
+    die "Data::ObjectStore::Provider::_fetch : Malformed record '$stowed'" if $pos == -1;
 
     my $class    = substr $stowed, 0, $pos;
     my $dryfroze = substr $stowed, $pos + 1;
@@ -287,7 +287,7 @@ sub _fetch {
             }
         }
         if ( $is_hanging ) {
-            die "Error in parsing parts\n";
+            die "Data::ObjectStore::Provider::_fetch Error in parsing object record\n";
         }
         $pieces = $newparts;
     } #if there were escaped ` characters
@@ -316,7 +316,7 @@ sub _xform_out {
 
 sub _store_weak {
     my( $self, $id, $ref ) = @_;
-    die "Store weak called without ref" unless $ref;
+    die "Data::ObjectStore::Provider::_store_weak : Store weak called without ref" unless $ref;
     $self->[WEAK]{$id} = $ref;
 
     weaken( $self->[WEAK]{$id} );
@@ -338,7 +338,7 @@ sub _get_id {
 
     my $class = ref( $ref );
 
-    die "_get_id requires reference. got '$ref'" unless $class;
+    die "Data::ObjectStore::Provider::_get_id : requires reference. got '$ref'" unless $class;
 
     if( $class eq 'ARRAY' ) {
         my $thingy = tied @$ref;
@@ -365,7 +365,7 @@ sub _get_id {
         $ref = $thingy;
         $class = ref( $ref );
     }
-    die "Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
+    die "Data::ObjectStore::Provider::_get_id : Cannot injest object that is not a hash, array or objectstore obj" unless ( $class eq 'Data::ObjectStore::Hash' || $class eq 'Data::ObjectStore::Array' || $ref->isa( 'Data::ObjectStore::Obj' ) );
     $ref->[ID] ||= $self->_new_id;
     return $ref->[ID];
 
@@ -435,8 +435,7 @@ sub TIEARRAY {
 
     my $block_size  = $block_count ** $level;
 
-    die "DSFSOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" if $block_size == 1&&$level > 0;
-    die "NOO" if $block_count < 1;
+    die "Data::ObjectStore::Array::TIEARRAY : error creating array with params level:$level, block_size:$block_size, block_count:$block_count " if ($block_size == 1 && $level > 0) || $block_count < 1;
 
     my $use_push = @list > $block_count;
 
@@ -491,7 +490,7 @@ sub _embiggen {
     my( $self, $size ) = @_;
     my $store = $self->[DSTORE];
     while( $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT] ) {
-        die "UNDERNATH $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT]" if $self->[UNDERNEATH];
+        die "Data::ObjectStore::Array::_embiggen : tried to embiggen non UNDERNATH $size > $self->[BLOCK_SIZE] * $self->[BLOCK_COUNT]" if $self->[UNDERNEATH];
         #
         # need to tie a new block, not use _getblock
         # becaues we do squirrely things with its tied guts
@@ -580,7 +579,7 @@ sub STORE {
 
 sub _storesize {
     my( $self, $size ) = @_;
-    die "BADSET in ID $self->[ID] $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
+    die "Data::ObjectStore::Array::_storesize : Cannot set store sizeto in ID $self->[ID]. $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE] " if $size > $self->[BLOCK_COUNT] * $self->[BLOCK_SIZE];
     $self->[ITEM_COUNT] = $size;
 }
 
@@ -954,7 +953,7 @@ sub _SHOW {
     if( $self->[LEVEL] == 0 ) {
         print STDERR (" " x $lvl ) . "($self->[ID]) : BASE SHOW : " . join( ',', keys %{$self->[DATA]} ) . "\n";
     } else {
-        my( @ids ) = @{$self->[DATA]}; 
+        my( @ids ) = @{$self->[DATA]};
         print STDERR (" " x $lvl ) . "($self->[ID]) : subhashes : " . join( ',', map { "($_)" } @ids ) . "\n";
         for my $id (grep { $_ ne 'u' } @ids) {
             my $h = $self->[DSTORE]->_fetch( $id );
@@ -1065,12 +1064,12 @@ sub NEXTKEY  {
     if( $lvl == 0 ) {
         my( $k, $val ) = each %$data;
         return wantarray ? ( $k => $self->[DSTORE]->_xform_out($val) ) : $k;
-    } 
+    }
     else {
         my $store = $self->[DSTORE];
 
         my $at_start = ! defined( $self->[NEXT][0] );
-        
+
         if( $at_start ) {
             $self->[NEXT][0] = 0;
             $self->[NEXT][1] = undef;
@@ -1094,7 +1093,7 @@ sub NEXTKEY  {
 
         $self->[NEXT][1] = undef;
         $self->[NEXT][0]++;
-        
+
         if( $self->[NEXT][0] > $#$data ) {
             $self->[NEXT][0] = undef;
             return undef;
@@ -1102,11 +1101,6 @@ sub NEXTKEY  {
         # recursion case, the next bucket has been incremented
         return $self->NEXTKEY;
     }
-
-    # really should be impossible to reach this case.
-    die "Impossible case";
-    $self->[NEXT] = [undef,undef];
-    return undef;
 
 } #NEXTKEY
 
@@ -1304,7 +1298,7 @@ sub AUTOLOAD {
         goto &$AUTOLOAD;
     }
     else {
-        die "Unknown Data::ObjectStore::Obj function '$func'";
+        die "Data::ObjectStore::Obj::$func : unknown function.";
     }
 
 } #AUTOLOAD
@@ -1374,7 +1368,7 @@ doesn't have the time or inclination to write a schema or configure some
 framework. This can be used orthagonally to any other storage system.
 
 Data::ObjectStore only loads data as it needs too. It does not load all stored containers
-at once. Data is stored in a data directory and is stored using the Data::RecordStore module. 
+at once. Data is stored in a data directory and is stored using the Data::RecordStore module.
 A Data::ObjectStore container is a key/value store where the values can be
 strings, numbers, arrays, hashes or other Data::ObjectStore containers.
 

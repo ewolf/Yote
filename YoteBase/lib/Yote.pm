@@ -74,14 +74,14 @@ sub _fetch_store_info_node {
         $self->stow_all;
     }
 
-    # check to make sure that the db version is compatable with this. 
+    # check to make sure that the db version is compatable with this.
     if( $node->get_db_version < $Yote::DB_VERSION ) {
         die "Unable to opening earlier database version ".($node->get_db_version || 'unknown').". Please run 'yote_db_convert $self->[PATH]'";
     }
     if( $node->get_db_version > $Yote::DB_VERSION ) {
         die "Unable to open more advance database version ".($node->get_db_version || 'unknown').". Upgrade yote to open";
     }
-    
+
     $node;
 } #_fetch_store_info_node
 
@@ -115,9 +115,9 @@ sub open_store {
         ], $cls;
 
     $store->[STOREINFO] = $store->_fetch_store_info_node;
-    
+
     $store;
-    
+
 } #open_store
 
 sub newobj {
@@ -137,7 +137,7 @@ sub newobj {
 } #newobj
 
 #
-# Recycles and compacts store. IDs that were not found in the store 
+# Recycles and compacts store. IDs that were not found in the store
 # are marked for reuse.
 #
 sub run_recycler {
@@ -149,7 +149,7 @@ sub run_recycler {
     # empty because this may have run recently
     $self->[RECORD_STORE]->empty_recycler;
     $recycle_tally->empty;
-    
+
     $recycle_tally->stow( "1", 1 );
     $recycle_tally->stow( "0", $self->[RECORD_STORE]->entry_count );
 
@@ -158,7 +158,7 @@ sub run_recycler {
     # add the ids from the weak references
     my( @keep_ids ) = ( $item->id, keys %{$self->[WEAK]} );
 
-    
+
     while( @keep_ids ) {
         my $id = shift @keep_ids;
 
@@ -958,7 +958,7 @@ sub _SHOW {
     if( $self->[LEVEL] == 0 ) {
         print STDERR (" " x $lvl ) . "($self->[ID]) : BASE SHOW : " . join( ',', keys %{$self->[DATA]} ) . "\n";
     } else {
-        my( @ids ) = @{$self->[DATA]}; 
+        my( @ids ) = @{$self->[DATA]};
         print STDERR (" " x $lvl ) . "($self->[ID]) : subhashes : " . join( ',', map { "($_)" } @ids ) . "\n";
         for my $id (grep { $_ ne 'u' } @ids) {
             my $h = $self->[DSTORE]->_fetch( $id );
@@ -1069,12 +1069,12 @@ sub NEXTKEY  {
     if( $lvl == 0 ) {
         my( $k, $val ) = each %$data;
         return wantarray ? ( $k => $self->[DSTORE]->_xform_out($val) ) : $k;
-    } 
+    }
     else {
         my $store = $self->[DSTORE];
 
         my $at_start = ! defined( $self->[NEXT][0] );
-        
+
         if( $at_start ) {
             $self->[NEXT][0] = 0;
             $self->[NEXT][1] = undef;
@@ -1098,7 +1098,7 @@ sub NEXTKEY  {
 
         $self->[NEXT][1] = undef;
         $self->[NEXT][0]++;
-        
+
         if( $self->[NEXT][0] > $#$data ) {
             $self->[NEXT][0] = undef;
             return undef;
