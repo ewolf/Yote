@@ -364,7 +364,7 @@ sub _swapout {
     #
     # truncate now that the store is one record shorter
     #
-    truncate $fh, $store->[RECORD_SIZE] * $last_idx;
+    $store->pop;
 } #_swapout
 
 
@@ -509,7 +509,6 @@ sub open_silo {
     }
     my $file_max_size = $file_max_records * $record_size;
 
-
     unless( -d $directory ) {
         die "Error operning record store. $directory exists and is not a directory" if -e $directory;
         make_path( $directory ) or die "Unable to create directory $directory";
@@ -581,24 +580,6 @@ sub get_record {
 
     [unpack( $self->[TMPL], $data )];
 } #get_record
-
-#
-# This copies a record from one index in the store to an other.
-# This returns the data of record so copied 
-#
-sub _copy_record {
-    my( $self, $from_idx, $to_idx ) = @_;
-
-    my( $to_file_idx, $fh_from ) = $self->_fh($from_idx);
-    my( $from_file_idx, $fh_to ) = $self->_fh($to_idx);
-    sysseek $fh_from, $store->[RECORD_SIZE] * ($from_idx), SEEK_SET
-        or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_id-1)) : $@ $!";
-    my $srv = sysread $fh, my $data, $store->[RECORD_SIZE];
-    defined( $srv ) or die "Could not read : $@ $!";
-    sysseek( $fh_to, $store->[RECORD_SIZE] * $to_idx, SEEK_SET ) && ( my $swv = syswrite( $fh_to, $data ) );
-    defined( $srv ) or die "Could not read : $@ $!";
-    $data;
-} #_copy_record
 
 =head2 next_id
 
@@ -676,7 +657,10 @@ sub put_record {
     my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
 
     # allows the put_record to grow the data store by no more than one entry
+    my $write_size = do { use bytes; length( $to_write ) };
 
+    die "Data::RecordStore::Silo::put_record : record too large" if $write_size > $self->[RECORD_SIZE];
+    
     my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
     sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) ) || die "put_record : unable to put record id $id at file $file_id index $f_idx : $@ $!";
@@ -695,6 +679,24 @@ sub unlink_store {
     my $self = shift;
     remove_tree( $self->[DIRECTORY] ) // die "Error unlinking store : $!";
 } #unlink_store
+
+#
+# This copies a record from one index in the store to an other.
+# This returns the data of record so copied 
+#
+sub _copy_record {
+    my( $self, $from_idx, $to_idx ) = @_;
+
+    my( $to_file_idx, $fh_from ) = $self->_fh($from_idx);
+    my( $from_file_idx, $fh_to ) = $self->_fh($to_idx);
+    sysseek $fh_from, $self->[RECORD_SIZE] * ($from_idx), SEEK_SET
+        or die "Swapout could not seek ($self->[RECORD_SIZE] * ($to_idx)) : $@ $!";
+    my $srv = sysread $fh_from, my $data, $self->[RECORD_SIZE];
+    defined( $srv ) or die "Could not read : $@ $!";
+    sysseek( $fh_to, $self->[RECORD_SIZE] * $to_idx, SEEK_SET ) && ( my $swv = syswrite( $fh_to, $data ) );
+    defined( $srv ) or die "Could not read : $@ $!";
+    $data;
+} #_copy_record
 
 
 #Makes sure the data store has at least as many entries
