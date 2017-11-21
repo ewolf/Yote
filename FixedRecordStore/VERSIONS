@@ -1,3 +1,10 @@
+3.00 - renamed methods 'delete' and 'open' as to not collide
+       with reserved words.
+
+       instituted a maximum filesize for the data files.
+
+       ...working on ...transactions?
+
 2.02 - updated version. removed old build dependencies.
       appogies, but changing open to open_store to not use
       a reserved word.

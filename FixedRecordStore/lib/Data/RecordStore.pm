@@ -11,28 +11,37 @@ use Data::RecordStore;
 
 my $store = Data::RecordStore->open_store( $directory );
 
+my $transaction = $store->create_transaction;
+
 my $data = "TEXT DATA OR BYTES";
 
-my $id    = $store->stow( $data, $optionalID );
+my $id    = $transaction->stow( $data, $optionalID );
 
-my $val   = $store->fetch( $id );
+my $val   = $transaction->fetch( $id );
 
-my $new_or_recycled_id = $store->next_id;
+my $new_or_recycled_id = $transaction->next_id;
 
-$store->stow( "MORE DATA", $new_or_recycled_id );
+$transaction->stow( "MORE DATA", $new_or_recycled_id );
+
+$transaction->delete_record( $someid );
+$transaction->recycle( $dead_id );
+
+$transaction->commit;
 
 my $has_object_at_id = $store->has_id( $someid );
 
-$store->delete_record( $someid );
-
 $store->empty_recycler;
-$store->recycle( $dead_id );
+
+$store->purge_failed_transaction;
 
 =head1 DESCRIPTION
 
 A simple and fast way to store arbitrary text or byte data.
 It is written entirely in perl with no non-core dependencies. It is designed to be
 both easy to set up and easy to use.
+
+Transactions allow the RecordStore to protect data. Upon opening, the
+store checks if a failed transaction
 
 =head1 LIMITATIONS
 
@@ -61,15 +70,21 @@ use vars qw($VERSION);
 $VERSION = '3.00';
 
 use constant {
-    DIRECTORY   => 0,
-    OBJ_INDEX   => 1,
-    RECYC_STORE => 2,
-    STORES      => 3,
-    VERSION     => 4,
-    STORE_IDX   => 5,
+    DIRECTORY    => 0,
+    OBJ_INDEX    => 1,
+    RECYC_STORE  => 2,
+    STORES       => 3,
+    VERSION      => 4,
+    TRANS_RECORD => 5,
 
     RECORD_SIZE => 1,
     TMPL        => 4,
+
+    TRA_ACTIVE  => 0, # transaction has been created
+    TRA_COMMIT  => 1, # commit has been called, not yet completed
+    TRA_WRITE   => 2, # commit has been called, has not yet completed
+    TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
+
 };
 
 
@@ -117,17 +132,40 @@ sub open_store {
     }
     close $FH;
 
+    # RECORDS ARE int transaction id, int status, process id
+    my $transaction_record = Data::RecordStore::FixedStore->open_fixed_store( "IIL", "$dir/TRANS_REC" );
+    if( $transaction_record->entry_count > 0 ) {
+        my $last_transaction = $transaction_record->last_entry;
+        my( $tid, $status, $pid ) = @$last_transaction;
+
+        # check if pid is active
+
+        unless( $pid ) { #is active
+            
+            if( $status == TRA_WRITE ) {
+                 # is okey, the transaction is complete, just hasn't been removed yet
+            }           
+        }
+        die "Incomplete transaction";
+    }
+    
     my $self = [
         $directory,
         Data::RecordStore::FixedStore->open_fixed_store( "IL", $obj_db_filename ),
         Data::RecordStore::FixedStore->open_fixed_store( "L", "$directory/RECYC" ),
         [],
         $version,
+        $transaction_record,
     ];
 
     bless $self, ref( $pkg ) || $pkg;
 
 } #open
+
+sub create_transaction {
+    my $self = shift;
+    Data::RecordStore::Transaction->_create( $self );
+}
 
 =head2 stow( data, optionalID )
 
@@ -384,10 +422,9 @@ sub _get_store {
     $store;
 } #_get_store
 
-
-
-
 # ----------- end Data::RecordStore
+
+
 =head1 HELPER PACKAGES
 
 Data::RecordStore relies on two helper packages that are useful in
@@ -735,6 +772,26 @@ sub _files {
 
 
 # ----------- end Data::RecordStore::FixedStore
+
+package Data::RecordStore::Transaction;
+
+use constant {
+    TRA_ACTIVE  => 0, # transaction has been created
+    TRA_COMMIT  => 1, # commit has been called, not yet completed
+    TRA_WRITE   => 2, # commit has been called, has not yet completed
+    TRA_DONE    => 3, # everything in commit has been written, TRA is in process of being removed
+};
+
+#
+#
+#
+sub _create {
+    my( $pkg, $record_store ) = @_;
+    my $dir = $record_store->[DIRECTORY];
+    # create transaction record
+    # create transaction store
+    my $transaction_store = Data::RecordStore::FixedStore->open_fixed_store( "IL", "$dir/TRANS/TRANS_" ),
+}
 
 1;
 
