@@ -378,7 +378,7 @@ sub _swapout {
     my( $self, $silo, $silo_id, $vacated_silo_id ) = @_;
 
     my $last_id = $silo->entry_count;
-    print STDERR Data::Dumper->Dump([$last_id,$vacated_silo_id,"CHOMP"]);
+
     if( $vacated_silo_id < $last_id ) {
         my $data = $silo->_copy_record( $last_id - 1, $vacated_silo_id - 1 );
         #
@@ -400,7 +400,7 @@ sub _swapout {
         $silo->pop;
     }
     else {
-        die "Data::RecordStore::_swapout : error, swapping out id $vacated_silo_id is larger than the last id $last_id";           
+        die "Data::RecordStore::_swapout : error, swapping out id $vacated_silo_id is larger than the last id $last_id";
     }
 
 } #_swapout
@@ -1110,7 +1110,8 @@ sub rollback {
     $self->[STATE] = TRA_CLEANUP_ROLLBACK;
 
     #
-    # Cleanup new data
+    # Cleanup new data. The swapouts for a silo are sorted by descending ID.
+    # this allows the cleanup to go backwards from the end of the silo file
     #
     for my $to_silo_id (keys %swapout) {
         for my $to_record_id (sort { $b <=> $a } @{$swapout{$to_silo_id}}) {
