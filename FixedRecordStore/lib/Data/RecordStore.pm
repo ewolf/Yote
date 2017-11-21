@@ -468,7 +468,11 @@ sub open_fixed_store {
     my $class = ref( $pkg ) || $pkg;
     my $record_size = $size || do { use bytes; length( pack( $template ) ) };
     my $file_max_records = int( $Data::RecordStore::FixedStore::MAX_SIZE / $record_size );
-    my $file_max_size    = $file_max_records * $record_size;
+    if( $file_max_records == 0 ) {
+        warn "Opening store of size $record_size which is above the set max size of $Data::RecordStore::FixedStore::MAX_SIZE. Allowing only one record per file for this size.";
+        $file_max_records = 1;
+    }
+    my $file_max_size = $file_max_records * $record_size;
 
     die "Cannot open a zero record sized fixed store" unless $record_size;
 
@@ -490,14 +494,6 @@ sub open_fixed_store {
     ], $class;
 } #open_fixed_store
 
-sub _files {
-    my $self = shift;
-    opendir( my $dh, $self->[DIRECTORY] ) or die "Can't open $self->[DIRECTORY]\n";
-    my( @files ) = sort { $a <=> $b } grep { $_ > 1  || $_ eq '0' } readdir( $dh );
-    closedir $dh;
-    @files;
-} #_files
-
 =head2 empty
 
 This empties out the database, setting it to zero records.
@@ -512,64 +508,6 @@ sub empty {
     }
     undef;
 } #empty
-
-#Makes sure the data store has at least as many entries
-#as the count given. This creates empty records if needed
-#to rearch the target record count.
-sub _ensure_entry_count {
-    my( $self, $count ) = @_;
-    my $needed = $count - $self->entry_count;
-
-    while( $needed > 0 ) {
-        my( @files ) = $self->_files;
-        my $last_file = $files[$#files];
-
-        my $file_records = int( (-s $last_file ) / $self->[RECORD_SIZE] );
-        my $records_needed = $needed - $file_records;
-
-        if( $records_needed > 0 ) {
-            open( my $fh, "+<", "$self->[DIRECTORY]/$last_file" ) or die "Unable to open '$self->[DIRECTORY]/$last_file' : $!";
-            my $nulls = "\0" x ( $records_needed * $self->[RECORD_SIZE] );
-            sysseek( $fh, 0, SEEK_END ) && syswrite( $fh, $nulls );
-            close $fh;
-            $needed -= $records_needed;
-        }
-        if( $needed > 0 ) {
-            my $next_file = $last_file + 1;
-
-            die "File $self->[DIRECTORY]/$next_file already exists" if -e $next_file;
-            open( my $fh, ">", "$self->[DIRECTORY]/$next_file" ) or die "Unable to open '$self->[DIRECTORY]/$last_file' : $!";
-            close $fh;
-        }
-    }
-} #_ensure_entry_count
-
-#
-# Takes an insertion id and returns a file insertion index and filehandle.
-#
-sub _fh {
-    my( $self, $id ) = @_;
-
-    my @files = $self->_files;
-    die "No files found for this data store" unless @files;
-
-    my $f_idx;
-    if( $id ) {
-        $f_idx = int( $id / $self->[FILE_MAX_RECORDS] );
-        if( $f_idx > $#files || $f_idx < 0 ) {
-            die "Requested a non existant file handle ($f_idx, $id)\n";
-        }
-    }
-    else {
-        $f_idx = $#files;
-    }
-
-    my $file = $files[$f_idx];
-    open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Unable to open '$self->[DIRECTORY]/$file' : $! $?";
-
-    (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file");
-
-} #_fh
 
 =head2
 
@@ -599,13 +537,13 @@ sub get_record {
     my( $self, $id ) = @_;
     die "get record must be a positive integer" if $id < 1;
     
-    my( $f_idx, $fh, $file ) = $self->_fh( $id );
+    my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
-    sysseek( $fh, $self->[RECORD_SIZE] * $f_idx, SEEK_SET ) or die "get_record : could not seek ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
+    sysseek( $fh, $self->[RECORD_SIZE] * $f_idx, SEEK_SET ) or die "get_record : error reading id $id at file $file_id at index $f_idx. Could not seek to ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
     my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
     close $fh;
 
-    defined( $srv ) or die "Could not read : $@ $!";
+    defined( $srv ) or die "get_record : error reading id $id at file $file_id at index $f_idx. Could not read : $@ $!";
 
     [unpack( $self->[TMPL], $data )];
 } #get_record
@@ -619,7 +557,6 @@ sub next_id {
     my( $self ) = @_;
     my $next_id = 1 + $self->entry_count;
     $self->_ensure_entry_count( $next_id );
-
     $next_id;
 } #next_id
 
@@ -666,7 +603,7 @@ assigned to this store.
 =cut
 sub push {
     my( $self, $data ) = @_;
-    my $next_id = 1 + $self->entry_count;
+    my $next_id = $self->next_id;
     $self->put_record( $next_id, $data );
     $next_id;
 } #push
@@ -682,15 +619,15 @@ assigned to this store.
 sub put_record {
     my( $self, $id, $data ) = @_;
 
-    die "Index $id out of bounds. Store has entry count of ".$self->entry_count if $id > (1+$self->entry_count) || $id < 1;
+    die "put_record : index $id out of bounds. Store has entry count of ".$self->entry_count if $id > (1+$self->entry_count) || $id < 1;
 
     my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
 
     # allows the put_record to grow the data store by no more than one entry
 
-    my( $f_idx, $fh, $file ) = $self->_fh( $id );
+    my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
-    sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+    sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) ) || die "put_record : unable to put record id $id at file $file_id index $f_idx : $@ $!";
     
     close $fh;
 
@@ -704,8 +641,98 @@ Removes the file for this record store entirely from the file system.
 =cut
 sub unlink_store {
     my $self = shift;
-    rmtree $self->[DIRECTORY];
+    remove_tree( $self->[DIRECTORY] ) // die "Error unlinking store : $!";
 } #unlink_store
+
+
+#Makes sure the data store has at least as many entries
+#as the count given. This creates empty records if needed
+#to rearch the target record count.
+sub _ensure_entry_count {
+    my( $self, $count ) = @_;
+    my $needed = $count - $self->entry_count;
+
+    if( $needed > 0 ) {
+        my( @files ) = $self->_files;
+        my $write_file = $files[$#files];
+
+        my $existing_file_records = int( (-s "$self->[DIRECTORY]/$write_file" ) / $self->[RECORD_SIZE] );
+        my $records_needed_to_fill = $self->[FILE_MAX_RECORDS] - $existing_file_records;
+        $records_needed_to_fill = $needed if $records_needed_to_fill > $needed;
+        if( $records_needed_to_fill > 0 ) {
+            # fill the last flie up with \0
+            open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Unable to open '$self->[DIRECTORY]/$write_file' : $!";
+            my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
+            (my $pos = sysseek( $fh, 0, SEEK_END )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            close $fh;
+            $needed -= $records_needed_to_fill;
+        }
+        while( $needed > $self->[FILE_MAX_RECORDS] ) {
+            # still needed, so create a new file
+            $write_file++;
+
+            die "File $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
+            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            my $nulls = "\0" x ( $self->[FILE_MAX_RECORDS] * $self->[RECORD_SIZE] );
+            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            $needed -= $self->[FILE_MAX_RECORDS];
+            close $fh;
+        }
+        if( $needed > 0 ) {
+            # still needed, so create a new file
+            $write_file++;
+
+            die "File $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
+            open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            my $nulls = "\0" x ( $needed * $self->[RECORD_SIZE] );
+            (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
+            close $fh;
+        }
+    }
+} #_ensure_entry_count
+
+#
+# Takes an insertion id and returns
+#   an insertion index for in the file
+#   filehandle.
+#   filepath/filename
+#   which number file this is (0 is the first)
+#
+sub _fh {
+    my( $self, $id ) = @_;
+
+    my @files = $self->_files;
+    die "No files found for this data store" unless @files;
+
+    my $f_idx;
+    if( $id ) {
+        $f_idx = int( ($id-1) / $self->[FILE_MAX_RECORDS] );
+        if( $f_idx > $#files || $f_idx < 0 ) {
+            die "Requested a non existant file handle ($f_idx, $id)";
+        }
+    }
+    else {
+        $f_idx = $#files;
+    }
+
+    my $file = $files[$f_idx];
+    open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Unable to open '$self->[DIRECTORY]/$file' : $! $?";
+
+    (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file",$f_idx);
+
+} #_fh
+
+#
+# Returns the list of filenames of the 'silos' of this store. They are numbers starting with 0
+#
+sub _files {
+    my $self = shift;
+    opendir( my $dh, $self->[DIRECTORY] ) or die "Can't open $self->[DIRECTORY]\n";
+    my( @files ) = (sort { $a <=> $b } grep { $_ > 0 || $_ eq '0' } readdir( $dh ) );
+    closedir $dh;
+    @files;
+} #_files
+
 
 # ----------- end Data::RecordStore::FixedStore
 

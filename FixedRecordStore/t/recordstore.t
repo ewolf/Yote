@@ -141,9 +141,18 @@ sub test_suite {
 
 sub test_record_silos {
 
-    $Data::RecordStore::FixedStore::MAX_SIZE = 200;
+    $Data::RecordStore::FixedStore::MAX_SIZE = 80;
+    
+    my $store = Data::RecordStore->open_store( $dir );
+    $store->empty;
 
-    # this affects both  
+    is( $store->entry_count, 0, "Emptied store" );
+
+    for( 1..11 ) {
+        my $id = $store->next_id;
+        $store->stow( "GZAA $id", $id );
+        is( $id, $_, "got correct id $_" );
+    }
     
 } #test_record_silos
 
