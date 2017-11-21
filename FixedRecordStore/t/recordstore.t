@@ -18,10 +18,13 @@ BEGIN {
 #               init
 # -----------------------------------------------------
 
-my $dir = tempdir( CLEANUP => 1 );
+my $dir = tempdir;#( CLEANUP => 1 );
 my $dir2 = tempdir( CLEANUP => 1 );
 my $dir3 = tempdir( CLEANUP => 1 );
+
 test_suite();
+test_record_silos();
+
 done_testing;
 
 exit( 0 );
@@ -97,7 +100,7 @@ sub test_suite {
 
     my $xid = $store->stow( "x" x 90 );
     is( $new_store->entry_count, 2, "Two entries now in store #5" );
-    $store->delete( $id );
+    $store->delete_record( $id );
     is( $new_store->entry_count, 1, "one entries now in store #5 after delete" );
 
     # test store empty
@@ -136,5 +139,12 @@ sub test_suite {
     
 } #test suite
 
+sub test_record_silos {
+
+    $Data::RecordStore::FixedStore::MAX_SIZE = 200;
+
+    # this affects both  
+    
+} #test_record_silos
 
 __END__

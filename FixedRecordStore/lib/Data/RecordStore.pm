@@ -23,7 +23,7 @@ $store->stow( "MORE DATA", $new_or_recycled_id );
 
 my $has_object_at_id = $store->has_id( $someid );
 
-$store->delete( $someid );
+$store->delete_record( $someid );
 
 $store->empty_recycler;
 $store->recycle( $dead_id );
@@ -52,13 +52,13 @@ Locking coordination is currently the responsibility of the implementation.
 use strict;
 use warnings;
 
-use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
+use Fcntl qw( SEEK_SET SEEK_END LOCK_EX LOCK_UN );
 use File::Path qw(make_path);
 use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '2.03';
+$VERSION = '3.00';
 
 use constant {
     DIRECTORY   => 0,
@@ -145,6 +145,7 @@ sub stow {
     my( $self, $data, $id ) = @_;
 
     $id //= $self->next_id;
+
     $self->_ensure_entry_count( $id ) if $id > 0;
 
     die "ID must be a positive integer" if $id < 1;
@@ -154,38 +155,43 @@ sub stow {
     # tack on the size of the id (a long or 8 bytes) to the byte count
     $save_size += 8;
 
-    my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
-
-    #
-    # Check if this record had been saved before, and that the
-    # store is was in has a large enough record size.
-    #
-    if( $current_store_id ) {
-        my $old_store = $self->_get_store( $current_store_id );
-
-        warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
-
-        # if the data isn't too big or too small for the table, keep it where it is and return
-        if( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
-            $old_store->put_record( $current_idx_in_store, [$id,$data] );
-            return $id;
-        }
+    if( $self->[OBJ_INDEX]->entry_count < ($id-1) ) {
+        my( $current_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
         #
-        # the old store was not big enough (or missing), so remove its record from
-        # there, compacting it if possible
+        # Check if this record had been saved before, and that the
+        # store is was in has a large enough record size.
         #
-        $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
-    } #if this already had been saved before
+        if ( $current_store_id ) {
+            my $old_store = $self->_get_store( $current_store_id );
+
+            warn "object '$id' references store '$current_store_id' which does not exist" unless $old_store;
+
+            # if the data isn't too big or too small for the table, keep it where it is and return
+            if ( $old_store->[RECORD_SIZE] >= $save_size && $old_store->[RECORD_SIZE] < 3 * $save_size ) {
+                $old_store->put_record( $current_idx_in_store, [$id,$data] );
+                return $id;
+            }
+
+            #
+            # the old store was not big enough (or missing), so remove its record from
+            # there, compacting it if possible
+            #
+            $self->_swapout( $old_store, $current_store_id, $current_idx_in_store );
+        }                       #if this already had been saved before
+    }
 
     my $store_id = 1 + int( log( $save_size ) );
 
     my $store = $self->_get_store( $store_id );
 
-    my $index_in_store = $store->next_id;
-    $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $index_in_store ] );
+    my $id_in_store = $store->next_id;
 
-    $store->put_record( $index_in_store, [ $id, $data ] );
+    print STDERR Data::Dumper->Dump(["STOW : $id, [$store_id,$id_in_store]"]);
+
+    $self->[OBJ_INDEX]->put_record( $id, [ $store_id, $id_in_store ] );
+
+    $store->put_record( $id_in_store, [ $id, $data ] );
 
     $id;
 } #stow
@@ -200,7 +206,7 @@ sub fetch {
     my( $self, $id ) = @_;
 
     return undef if $id > $self->[OBJ_INDEX]->entry_count;
-    
+
     my( $store_id, $id_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
 
     return undef unless $store_id;
@@ -216,12 +222,13 @@ sub fetch {
 =head2 entry_count
 
 Returns how many active ids have been assigned in this store.
-If an ID was assigned but not used, it still counts towards 
+If an ID was assigned but not used, it still counts towards
 the number of entries.
 
 =cut
 sub entry_count {
     my $self = shift;
+    print STDERR Data::Dumper->Dump(["OINK"]);
     $self->[OBJ_INDEX]->entry_count - $self->[RECYC_STORE]->entry_count;
 } #entry_count
 
@@ -231,7 +238,7 @@ Removes the entry with the given id from the store, freeing up its space.
 It does not reuse the id.
 
 =cut
-sub delete {
+sub delete_record {
     my( $self, $del_id ) = @_;
     my( $from_store_id, $current_idx_in_store ) = @{ $self->[OBJ_INDEX]->get_record( $del_id ) };
 
@@ -241,7 +248,7 @@ sub delete {
     $self->_swapout( $from_store, $from_store_id, $current_idx_in_store );
     $self->[OBJ_INDEX]->put_record( $del_id, [ 0, 0 ] );
     1;
-} #delete
+} #delete_record
 
 =head2 has_id( id )
 
@@ -250,7 +257,9 @@ sub delete {
 =cut
 sub has_id {
     my( $self, $id ) = @_;
+    print STDERR Data::Dumper->Dump(["THA"]);
     my $ec = $self->entry_count;
+    print STDERR Data::Dumper->Dump(["HAS ID ($id), EC ($ec)"]);
     return 0 if $ec < $id || $id < 1;
 
     my( $store_id ) = @{ $self->[OBJ_INDEX]->get_record( $id ) };
@@ -326,6 +335,7 @@ sub _swapout {
     #
     truncate $fh, $store->[RECORD_SIZE] * ($last_idx-1);
 
+    close $fh;
 } #_swapout
 
 
@@ -434,20 +444,22 @@ package Data::RecordStore::FixedStore;
 use strict;
 use warnings;
 no warnings 'uninitialized';
+no warnings 'numeric';
 
-use Fcntl qw( SEEK_SET LOCK_EX LOCK_UN );
-use File::Copy;
+use Fcntl qw( SEEK_SET SEEK_END LOCK_EX LOCK_UN );
+use File::Path qw(make_path);
 
 use constant {
-    TMPL        => 0,
-    RECORD_SIZE => 1,
-    FILENAME    => 2,
-    OBJ_INDEX   => 3,
+    DIRECTORY        => 0,
+    RECORD_SIZE      => 1,
+    FILE_SIZE        => 2,
+    FILE_MAX_RECORDS => 3,
+    TMPL             => 4,
 };
 
 $Data::RecordStore::FixedStore::MAX_SIZE = 2_000_000_000;
 
-=head2 open_fixed_store( template, filename, size )
+=head2 open_fixed_store( template, filename, record_size )
 
 Opens or creates the file given as a fixed record
 length data store. If a size is not given,
@@ -456,23 +468,39 @@ This will die if a zero byte record size is determined.
 
 =cut
 sub open_fixed_store {
-    my( $pkg, $template, $filename, $size ) = @_;
+    my( $pkg, $template, $directory, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
-    my $FH;
-    my $useSize = $size || do { use bytes; length( pack( $template ) ) };
-    die "Cannot open a zero record sized fixed store" unless $useSize;
-    unless( -e $filename ) {
-        open $FH, ">", $filename or die "Unable to open $filename : $!";
-        print $FH "";
-        close $FH;
+    my $record_size = $size || do { use bytes; length( pack( $template ) ) };
+    my $file_max_records = int( $Data::RecordStore::FixedStore::MAX_SIZE / $record_size );
+    my $file_max_size    = $file_max_records * $record_size;
+
+    die "Cannot open a zero record sized fixed store" unless $record_size;
+
+    unless( -d $directory ) {
+        die "Error operning record store. $directory exists and is not a directory" if -e $directory;
+        make_path( $directory ) or die "Unable to create directory $directory";
     }
-    open $FH, "+<", $filename or die "$@ $!";
+    unless( -e "$directory/0" ){
+        open( my $fh, ">", "$directory/0" ) or die "Unable to open '$directory/0' : $!";
+        close $fh;
+    }
+
     bless [
+        $directory,
+        $record_size,
+        $file_max_size,
+        $file_max_records,
         $template,
-        $useSize,
-        $filename,
     ], $class;
-} #open
+} #open_fixed_store
+
+sub _files {
+    my $self = shift;
+    opendir( my $dh, $self->[DIRECTORY] ) or die "Can't open $self->[DIRECTORY]\n";
+    my( @files ) = sort { $a <=> $b } grep { $_ > 1  || $_ eq '0' } readdir( $dh );
+    closedir $dh;
+    @files;
+} #_files
 
 =head2 empty
 
@@ -481,8 +509,11 @@ This empties out the database, setting it to zero records.
 =cut
 sub empty {
     my $self = shift;
-    my $fh = $self->_filehandle;
-    truncate $self->[FILENAME], 0;
+    my( $first, @files ) = $self->_files;
+    truncate $first, 0;
+    for my $file (@files) {
+        unlink $file;
+    }
     undef;
 } #empty
 
@@ -491,11 +522,57 @@ sub empty {
 #to rearch the target record count.
 sub _ensure_entry_count {
     my( $self, $count ) = @_;
-    if( $count > $self->entry_count ) {
-        my $fh = $self->_filehandle;
-        sysseek( $fh, $self->[RECORD_SIZE] * ($count) - 1, SEEK_SET ) && syswrite( $fh, pack( $self->[TMPL], \0 ) );
+    my $needed = $count - $self->entry_count;
+
+    while( $needed > 0 ) {
+        my( @files ) = $self->_files;
+        my $last_file = $files[$#files];
+
+        my $file_records = int( (-s $last_file ) / $self->[RECORD_SIZE] );
+        my $records_needed = $needed - $file_records;
+        
+        if( $records_needed > 0 ) {
+            open( my $fh, "+<", "$self->[DIRECTORY]/$last_file" ) or die "Unable to open '$self->[DIRECTORY]/$last_file' : $!";
+            sysseek( $fh, 0, SEEK_END ) && syswrite( $fh, pack( $self->[TMPL], \0 ) x $records_needed );
+            close $fh;
+            $needed -= $records_needed;
+        }
+        if( $needed > 0 ) {
+            my $next_file = $last_file + 1;
+
+            die "File $self->[DIRECTORY]/$next_file already exists" if -e $next_file;
+            open( my $fh, ">", "$self->[DIRECTORY]/$next_file" ) or die "Unable to open '$self->[DIRECTORY]/$last_file' : $!";
+            close $fh;
+        }
     }
 } #_ensure_entry_count
+
+#
+# Takes an insertion id and returns a file insertion index and filehandle.
+#
+sub _fh {
+    my( $self, $id ) = @_;
+
+    my @files = $self->_files;
+    die "No files found for this data store" unless @files;
+
+    my $f_idx;
+    if( $id ) {
+        $f_idx = int( $id / $self->[FILE_MAX_RECORDS] );
+        if( $f_idx > $#files || $f_idx < 0 ) {
+            die "Requested a non existant file handle ($f_idx, $id)\n";
+        }
+    }
+    else {
+        $f_idx = $#files;
+    }
+
+    my $file = $files[$f_idx];
+    open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Unable to open '$self->[DIRECTORY]/$file' : $! $?";
+    
+    (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file");
+
+} #_fh
 
 =head2
 
@@ -507,10 +584,13 @@ by the record size.
 sub entry_count {
     # return how many entries this index has
     my $self = shift;
-    my $fh = $self->_filehandle;
-    my $filesize = -s $self->[FILENAME];
+    my @files = $self->_files;
+    my $filesize;
+    for my $file (@files) {
+        $filesize += -s "$self->[DIRECTORY]/$file";
+    }
     int( $filesize / $self->[RECORD_SIZE] );
-}
+} #entry_count
 
 =head2 get_record( idx )
 
@@ -519,17 +599,17 @@ The array in question is the unpacked template.
 
 =cut
 sub get_record {
-    my( $self, $idx ) = @_;
-
-    my $fh = $self->_filehandle;
-
-    die "get record must be a positive integer" if $idx < 1;
-
-    sysseek $fh, $self->[RECORD_SIZE] * ($idx-1), SEEK_SET or die "Could not seek ($self->[RECORD_SIZE] * ($idx-1)) : $@ $!";
-
-    my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
+    my( $self, $id ) = @_;
+    die "get record must be a positive integer" if $id < 1;
     
+    my( $f_idx, $fh, $file ) = $self->_fh( $id );
+
+    sysseek( $fh, $self->[RECORD_SIZE] * $f_idx, SEEK_SET ) or die "get_record : could not seek ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
+    my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
+    close $fh;
+
     defined( $srv ) or die "Could not read : $@ $!";
+    print STDERR Data::Dumper->Dump([unpack( $self->[TMPL], $data ),-s $file,"UNP <$file>"]);
     [unpack( $self->[TMPL], $data )];
 } #get_record
 
@@ -540,7 +620,6 @@ adds an empty record and returns its id, starting with 1
 =cut
 sub next_id {
     my( $self ) = @_;
-    my $fh = $self->_filehandle;
     my $next_id = 1 + $self->entry_count;
     $self->_ensure_entry_count( $next_id );
     $next_id;
@@ -558,7 +637,10 @@ sub pop {
     my $entries = $self->entry_count;
     return undef unless $entries;
     my $ret = $self->get_record( $entries );
-    truncate $self->_filehandle, ($entries-1) * $self->[RECORD_SIZE];
+    my( $f_idx, $fh, $file ) = $self->_fh( $entries );
+    truncate $fh, $f_idx * $self->[RECORD_SIZE];
+    close $fh;
+    
     $ret;
 } #pop
 
@@ -587,7 +669,6 @@ assigned to this store.
 sub push {
     my( $self, $data ) = @_;
     my $next_id = 1 + $self->entry_count;
-    my $fh = $self->_filehandle;
     $self->put_record( $next_id, $data );
     $next_id;
 } #push
@@ -601,16 +682,23 @@ assigned to this store.
 
 =cut
 sub put_record {
-    my( $self, $idx, $data ) = @_;
+    my( $self, $id, $data ) = @_;
+
+    die "Index $id out of bounds. Store has entry count of ".$self->entry_count if $id > (1+$self->entry_count) || $id < 1;
 
     my $to_write = pack ( $self->[TMPL], ref $data ? @$data : $data );
+
     # allows the put_record to grow the data store by no more than one entry
 
-    die "Index $idx out of bounds. Store has entry count of ".$self->entry_count if $idx > (1+$self->entry_count);
+    my( $f_idx, $fh, $file ) = $self->_fh( $id );
 
-    my $fh = $self->_filehandle;
+    print STDERR Data::Dumper->Dump([$to_write,"PUT RECORD $id --> $f_idx, $fh"]);
+    
+    sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
+    print STDERR Data::Dumper->Dump([$swv,-s $fh,$file,"SUPR"]);
+    
+    close $fh;
 
-    sysseek( $fh, $self->[RECORD_SIZE] * ($idx-1), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) );
     1;
 } #put_record
 
@@ -620,18 +708,9 @@ Removes the file for this record store entirely from the file system.
 
 =cut
 sub unlink_store {
-    # TODO : more checks
     my $self = shift;
-    close $self->_filehandle;
-    unlink $self->[FILENAME];
-}
-
-sub _filehandle {
-    my $self = shift;
-    open( my $fh, "+<", $self->[FILENAME] ) or die "Unable to open ($self) $self->[FILENAME] : $!";
-    $fh;
-}
-
+    rmtree $self->[DIRECTORY];
+} #unlink_store
 
 # ----------- end Data::RecordStore::FixedStore
 
@@ -649,6 +728,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.03  (Nov 21, 2017))
+       Version 3.00  (Nov 21, 2017))
 
 =cut
