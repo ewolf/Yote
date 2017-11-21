@@ -1,7 +1,9 @@
+bin/c2.pl
 bin/converter.pl
 bin/recordstore_explorer
 Build.PL
 CHANGELOG
+IDEAS.txt
 lib/Data/RecordStore.pm
 LICENSE
 Makefile.PL
@@ -10,5 +12,7 @@ META.json
 META.yml
 README
 t/recordstore.t
+t/silo.t
+t/transactions.t
 TODO.txt
 VERSIONS

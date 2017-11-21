@@ -74,9 +74,13 @@ sub test_open_silo {
 
     `chmod a-w $cantdir`;
 
-    eval {$store = Data::RecordStore::Silo->open_silo( 'A*', "$cantdir", 30 ); };
-    like( $@, qr/Unable to open/, 'directory exists not writeable' );
-    undef $@;
+    if( ! -w $cantdir ) {
+        # this test is useless if performed by root which would always be allowed
+        # to write
+        eval {$store = Data::RecordStore::Silo->open_silo( 'A*', "$cantdir", 30 ); };
+        like( $@, qr/Unable to open/, 'directory exists not writeable' );
+        undef $@
+    }
 
     $store = Data::RecordStore::Silo->open_silo( 'A*', $silo_dir, 20 );
     is( $store->[1], 20, "20 record size" );
