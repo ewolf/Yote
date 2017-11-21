@@ -40,7 +40,7 @@ sub new {
             lock_attempt_timeout => $args->{lock_attempt_timeout},
             lock_timeout         => $args->{lock_timeout},
                                                   } ),
-        STORE                => Yote::ServerStore->_new( { root => $args->{yote_root_dir} } ),
+        STORE                => Yote::ServerStore->_new( $args->{yote_root_dir} ),
     }, $class;
     $server->{STORE}{_locker} = $server->{_locker};
     $server;
@@ -266,7 +266,7 @@ sub _unroll_ids {
     my( $store, $ids, $seen ) = @_;
     $seen  //= {};
 
-    my( @items ) = ( map { $store->fetch($_) } @$ids );
+    my( @items ) = ( map { $store->_fetch($_) } @$ids );
 
     my @outids;
     for my $item( @items ) {
@@ -454,7 +454,7 @@ sub invoke_payload {
     # This obj is the object that the method call is on
     #
     my $obj = $obj_id eq '_' ? $server_root :
-        $store->fetch( $obj_id );
+        $store->_fetch( $obj_id );
 
     unless( $obj->can( $action ) ) {
         die( "Bad Req : invalid method :'$action'" );
@@ -514,7 +514,7 @@ sub invoke_payload {
         }
 
         if( $needs_update ) {
-            my $should_have_obj = $store->fetch( $should_have_id );
+            my $should_have_obj = $store->_fetch( $should_have_id );
             my $ref = ref( $should_have_obj );
             my $data;
             if( $ref eq 'ARRAY' ) {
@@ -557,28 +557,22 @@ package Yote::ServerStore;
 
 use Data::RecordStore;
 
-use base 'Yote::ObjStore';
-
 sub _new { #Yote::ServerStore
-    my( $pkg, $args ) = @_;
-    $args->{store} = "$args->{root}/DATA_STORE";
-    my $self = $pkg->SUPER::_new( $args );
-
+    my( $pkg, $root_dir ) = @_;
+    my $self = bless {}, $pkg;
+    $self->{STORE} = Yote::open_store( "$root_dir/DATA_STORE" );
+    
     # keeps track of when any object had been last updated.
     # use like $self->{OBJ_UPDATE_DB}->put_record( $obj_id, [ time ] );
     # or my( $time ) = @{ $self->{OBJ_UPDATE_DB}->get_record( $obj_id ) };
-    $self->{OBJ_UPDATE_DB} = Data::RecordStore::FixedStore->open( "LL", "$args->{root}/OBJ_META" );
-
-    my( $m, $ms ) = ( Time::HiRes::gettimeofday  );
-    $self->{OBJ_UPDATE_DB}->put_record( $self->{ID}, [ $m, $ms ] );
-
+    $self->{OBJ_UPDATE_DB} = Data::RecordStore::Silo->open_silo( "LL", "$root_dir/OBJ_META" );
     $self;
 } #_new
 
 sub _dirty {
     my( $self, $ref, $id ) = @_;
-    $self->SUPER::_dirty( $ref, $id );
-    $self->{OBJ_UPDATE_DB}->ensure_entry_count( $id );
+    $self->{STORE}->_dirty( $ref, $id );
+    $self->{OBJ_UPDATE_DB}->_ensure_entry_count( $id );
 
     my( $m, $ms ) = ( Time::HiRes::gettimeofday  );
     $self->{OBJ_UPDATE_DB}->put_record( $id, [ $m, $ms ] );
@@ -590,7 +584,7 @@ sub stow_all {
         my $obj_id = $self->_get_id( $obj );
         $self->{OBJ_UPDATE_DB}->ensure_entry_count( $obj_id );
     }
-    $self->SUPER::stow_all;
+    $self->{STORE}->stow_all;
 } #stow_all
 
 sub _last_updated {
@@ -663,7 +657,7 @@ sub _xform_out {
             return undef;
         }
     }
-    return $self->SUPER::_xform_out( $val );
+    return $self->{STORE}->_xform_out( $val );
 } #_xform_out
 
 
@@ -694,9 +688,29 @@ sub _xform_in {
 
 sub newobj {
     my( $self, $data, $class ) = @_;
-    $class ||= 'Yote::ServerObj';
-    $class->_new( $self, $data );
+    $class //= 'Yote::ServerObj';
+    my $newo = $self->{STORE}->newobj($class,$data);
+    $newo->[2] = $self;
+    $newo;
 } #newobj
+
+sub fetch_root {
+    shift->{STORE}->fetch_root;
+}
+sub info {
+    shift->{STORE}->info;
+}
+sub run_recycler {
+    shift->{STORE}->run_recycler;
+}
+
+sub _get_id {
+    shift->{STORE}->_get_id;
+}
+
+sub _fetch {
+    shift->{STORE}->_fetch;
+}
 
 sub fetch_server_root {
     my $self = shift;
@@ -706,7 +720,7 @@ sub fetch_server_root {
     my $system_root = $self->fetch_root;
     my $server_root = $system_root->get_server_root;
     unless( $server_root ) {
-        $server_root = Yote::ServerRoot->_new( $self );
+        $server_root = $self->newobj({},'Yote::ServerRoot' );
         $system_root->set_server_root( $server_root );
         $self->stow_all;
     }
@@ -719,8 +733,6 @@ sub fetch_server_root {
     # or even : $myapp->run( 'command', @args );
 
     $self->{SERVER_ROOT} ||= $server_root;
-
-    $server_root;
     
 } #fetch_server_root
 
@@ -792,14 +804,14 @@ sub _callable_methods {
 
 sub _get {
     my( $self, $fld, $default ) = @_;
-    if( ! defined( $self->{DATA}{$fld} ) && defined($default) ) {
+    if( ! defined( $self->[1]{$fld} ) && defined($default) ) {
         if( ref( $default ) ) {
-            $self->{STORE}->_dirty( $default, $self->{STORE}->_get_id( $default ) );
+            $self->[2]->_dirty( $default, $self->[2]->_get_id( $default ) );
         }
-        $self->{STORE}->_dirty( $self, $self->{ID} );
-        $self->{DATA}{$fld} = $self->{STORE}->_xform_in( $default );
+        $self->[2]->_dirty( $self, $self->[0] );
+        $self->[1]{$fld} = $self->[2]->_xform_in( $default );
     }
-    $self->{STORE}->_xform_out( $self->{DATA}{$fld} );
+    $self->[2]->_xform_out( $self->[1]{$fld} );
 } #_get
 
 
@@ -828,14 +840,14 @@ sub _log {
 sub fetch_session {
     my( $self, $token ) = @_;
     my $session = $self->_fetch_session( $token ) || $self->_create_session;
-    $self->{SESSION} = $session;
+    $self->[7] = $session; # see Yote constants
     $session;
 }
 
 sub _fetch_session {
     my( $self, $token ) = @_;
     
-    $self->{STORE}->lock( 'token_mutex' );
+    $self->[2]->lock( 'token_mutex' );
     my $slots = $self->get__token_timeslots();
 
     for( my $i=0; $i<@$slots; $i++ ) {
@@ -844,11 +856,11 @@ sub _fetch_session {
                 # make sure this is in the most current 'boat'
                 $slots->[0]{ $token } = $session;
             }
-            $self->{STORE}->unlock( 'token_mutex' );
+            $self->[2]->unlock( 'token_mutex' );
             return $session;
         }
     }
-    $self->{STORE}->unlock( 'token_mutex' );
+    $self->[2]->unlock( 'token_mutex' );
     0;
 } #_fetch_sesion
 
@@ -869,7 +881,7 @@ sub _create_session {
     my $current_time_chunk         = int( time / 100 );  
     my $earliest_valid_time_chunk  = $current_time_chunk - 7;
 
-    $self->{STORE}->lock( 'token_mutex' );
+    $self->[2]->lock( 'token_mutex' );
 
     #
     # A list of slot 'boats' which store token -> ip
@@ -893,7 +905,7 @@ sub _create_session {
     # See if the most recent time slot is current. If it is behind, create a new current slot
     # create a new most recent boat.
     #
-    my $session = $self->{STORE}->newobj( {
+    my $session = $self->[2]->newobj( {
         _has_ids2times => {},
         _token => $token }, 'Yote::ServerSession' );
     
@@ -912,9 +924,9 @@ sub _create_session {
         delete $slots->[$i]{ $token };
     }
 
-    $self->{STORE}->_stow( $slots );
-    $self->{STORE}->_stow( $slot_data );
-    $self->{STORE}->unlock( 'token_mutex' );
+    $self->[2]->_stow( $slots );
+    $self->[2]->_stow( $slot_data );
+    $self->[2]->unlock( 'token_mutex' );
 
 
     $session;
@@ -924,13 +936,13 @@ sub _create_session {
 sub _destroy_session {
     my( $self, $token ) = @_;
     
-    $self->{STORE}->lock( 'token_mutex' );
+    $self->[2]->lock( 'token_mutex' );
     my $slots = $self->get__token_timeslots();
     for( my $i=0; $i<@$slots; $i++ ) {
         delete $slots->[$i]{ $token };
     }
-    $self->{STORE}->_stow( $slots );
-    $self->{STORE}->unlock( 'token_mutex' );
+    $self->[2]->_stow( $slots );
+    $self->[2]->unlock( 'token_mutex' );
     1;
 } #_destroy_session
 
@@ -959,9 +971,9 @@ sub fetch_app {
         $app = $app_name->_new( $self->{STORE} );
         $apps->{$app_name} = $app;
     }
-    my $acct = $self->{SESSION} ? $self->{SESSION}->get_acct : undef;
+    my $acct = $self->[7] ? $self->[7]->get_acct : undef;
 
-    return $app, $acct, $self->{SESSION};
+    return $app, $acct, $self->[7];
 } #fetch_app
 
 sub fetch_root {
@@ -970,8 +982,8 @@ sub fetch_root {
 
 sub init_root {
     my $self = shift;
-    my $session = $self->{SESSION} || $self->_create_session;
-    $self->{SESSION} = $session;
+    my $session = $self->[7] || $self->_create_session;
+    $self->[7] = $session;
     $session->set__has_ids2times({});
     my $token = $session->get__token;
     return $self, $token;
@@ -1023,8 +1035,8 @@ sub _onLogin {}
 
 sub logout {
     my $self = shift;
-    my $server = $self->{SESSION}{SERVER};
-    $server->_destroy_session( $self->{SESSION}->get__token );
+    my $server = $self->[7][2];
+    $server->_destroy_session( $self->[7]->get__token );
 } #logout
 
 # ------- END Yote::Server::Acct
@@ -1057,8 +1069,8 @@ sub _create_account {
         $self->_err( "Unable to create account" );
     }
 
-    my $acct = $self->{STORE}->newobj( { user => $un }, $class_override || $self->_acct_class );
-    $acct->set__password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->{ID} ) )  );
+    my $acct = $self->[2]->newobj( { user => $un }, $class_override || $self->_acct_class );
+    $acct->set__password_hash( crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct->[0] ) )  );
 
     # TODO - create an email infrastructure for account validation
     $acct->set_app( $self );
@@ -1069,9 +1081,9 @@ sub _create_account {
 
 sub logout {
     my $self = shift;
-    my $root = $self->{SESSION}{SERVER_ROOT};
-    $root->_destroy_session( $self->{SESSION}->get__token ) if $root;
-    delete $self->{SESSION};
+    my $root = $self->[7][2]{SERVER_ROOT};
+    $root->_destroy_session( $self->[7]->get__token ) if $root;
+    delete $self->[7];
     1;
 } #logout
 
@@ -1083,12 +1095,12 @@ sub login {
 
     # doing it like this so a failed attempt has about the same amount of time
     # as an attempt against a nonexistant account. maybe random microsleep?
-    my $pwh = crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct ? $acct->{ID} : $self->{ID} ) );
+    my $pwh = crypt( $pw, length( $pw ) . Digest::MD5::md5_hex($acct ? $acct->[0] : $self->[0] ) );
     if( $acct && $pwh eq $acct->get__password_hash ) {
         # this and Yote::ServerRoot::fetch_app are the only ways to expose the account obj
         # to the UI. If the UI calls for an acct object it wasn't exposed to, Yote::Server
         # won't allow it. fetch_app only calls it if the correct cookie token is passed in
-        $self->{SESSION}->set_acct( $acct );
+        $self->[7]->set_acct( $acct );
         $acct->_onLogin;
         return $acct;
     }

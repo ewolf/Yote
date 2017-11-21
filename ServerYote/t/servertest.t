@@ -142,12 +142,12 @@ sub test_suite {
     is( $retcode, 200, "root node has no noMethod call" );
     ok( $ret->{err}, "nothing returned for error case noMethod" );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'test' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], '_', 'test' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
     is_deeply( $ret->{methods}, {}, 'correct methods (none) for server root with non fetch_root call (called test)' );
     is_deeply( $ret->{updates}, [], "no updates without token" );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'fetch_root' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], '_', 'fetch_root' );
     is( $retcode, 200, "no access without token when calling by id for server root only" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
@@ -165,7 +165,7 @@ sub test_suite {
                [ sort { $a->{id} <=> $b->{id} } (
                      {
                          cls  => 'Yote::ServerRoot', 
-                         id   => $root->{ID}, 
+                         id   => $root->[0], 
                          data => {
                              txt     => 'vSOMETEXT',
                              fooObj  => $store->_get_id( $fooObj ),
@@ -221,14 +221,14 @@ sub test_suite {
                  ) ], "updates for fetch_root by id, no token" );
 
     # now try with a token
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, '_', 'create_token' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], '_', 'create_token' );
     is( $retcode, 200, "token was returned" );
     my( $token ) = map { substr( $_, 1 ) }  @{ $ret->{result} };
     cmp_ok( $token, '>', 0, "Got token" );
     is_deeply( $ret->{updates}, [], "no updates when calling create token" );
     is_deeply( $ret->{methods}, {}, 'no methods returned for creat token ' );
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_root' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, 'fetch_root' );
     is( $retcode, 200, "able to return with token" );
 
     ok( $ret->{methods}{'Yote::ServerRoot'}, "has methods for server root" );
@@ -246,15 +246,15 @@ sub test_suite {
 
 
     # make sure no prive _ method is called.
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, '_updates_needed' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, '_updates_needed' );
     ok( $ret->{err}, "cannot call underscore method" );
 
     # make sure no nonexistant method is called.
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'slurpyfoo' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, 'slurpyfoo' );
     ok( $ret->{err}, "cannot call nonexistant method" );
 
 
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'update' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, 'update' );
 
     $root->set_extra( "WOOF" );
 #
@@ -264,10 +264,10 @@ sub test_suite {
 # ok, server root wasn't reloaded because it doesn't do that. Maybe that is bad. set an other extra?
 
     # get the 'foo' object off of the root
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'update' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, 'update' );
     is( $retcode, 200, "able to fetch allowed object" );
     is_deeply( $ret->{updates}, [{cls  => 'Yote::ServerRoot', 
-                                  id   => $root->{ID}, 
+                                  id   => $root->[0], 
                                   data => {
                                       extra   => 'vWOOF',
                                       txt     => 'vSOMETEXT',
@@ -277,7 +277,7 @@ sub test_suite {
                                   } } ], "updates for fetch_root by id token after change and save" );
 
     # now try some objects that are more than just server root objects
-    ( $retcode, $hdrs, $ret ) = msg( $root->{ID}, $token, 'fetch_app', 'Testy' );
+    ( $retcode, $hdrs, $ret ) = msg( $root->[0], $token, 'fetch_app', 'Testy' );
 
     is( $retcode, 200, "able to fetch allowed object" );
 
@@ -297,7 +297,7 @@ sub test_suite {
     ok( $attached_objid, "testyobj has its attached obj" );
     is_deeply( $id2up->{$attached_objid}{data}, {}, "attached obj has no data yet" );
 
-    ok( ! $id2up->{$root->{ID}}, "Server Obj not returned as it was in the session" );
+    ok( ! $id2up->{$root->[0]}, "Server Obj not returned as it was in the session" );
 
     # now call a method on testy that changes the attached obj
     # but does not return it

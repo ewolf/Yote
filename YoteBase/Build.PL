@@ -8,7 +8,7 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
         'Module::Build' => 0.40,
     },
-    dist_abstract      => 'fixed record store',
+    dist_abstract      => 'oject store',
     create_makefile_pl => 'traditional',
     license            => 'perl',
     module_name        => 'Yote',
@@ -16,8 +16,7 @@ my $builder = Module::Build->new(
     test_files         => [ 't/yotedb.t', ],
     requires => {
         'perl'                  => 'v5.10',
-        'JSON'                  => 0,
-        'Data::RecordStore'     => 2.0,
+        'Data::RecordStore'     => 3.15,
     },
     );
 
