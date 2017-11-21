@@ -1,0 +1,250 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Data::Dumper;
+use Data::RecordStore;
+use File::Copy;
+use File::Path qw( make_path );
+
+die "Converter requires Data::RecordStore version of at least 3.1" unless $Data::RecordStore::VERSION >= 3.1;
+
+my( $source_dir, $dest_dir ) = @ARGV;
+die "Usage: $0 source_dir destination_dir" unless $source_dir && $dest_dir;
+die "source_dir and destination_dir may not be the same" if $source_dir eq $dest_dir;
+
+my $source_version = 1;
+my( $source_obj_idx_file, $dest_obj_idx_file );
+convert( $source_dir, $dest_dir );
+
+=head2 convert( $source_dir, $dest_dir )
+
+Copies the database from source dir into dest dir while converting it
+to version 2. This does nothing if the source dir database is already
+at version 2
+
+=cut
+sub convert {
+    my( $source_dir, $dest_dir ) = @ARGV;
+    die "Usage : converter.pl <db source dir> <db target dir>" unless $source_dir && $dest_dir;
+
+    $source_obj_idx_file = "$source_dir/OBJ_INDEX";
+    $dest_obj_idx_file = "$dest_dir/RECORD_INDEX";
+    die "Database not found in directory '$source_dir'" unless -e $source_obj_idx_file;
+
+    my $ver_file = "$source_dir/VERSION";
+    if ( -e $ver_file ) {
+        CORE::open( my $FH, "<", $ver_file );
+        $source_version = <$FH>;
+        chomp $source_version;
+        close $FH;
+    }
+
+    if( $source_version == 3.1 ) {
+        print STDERR "Database at '$source_dir' already at version $source_version. Doing nothing\n";
+        exit;
+    }
+    elsif ( $source_version == 3 ) {
+        convert_3_to_3_1();
+    }
+    elsif ( $source_version >= 2 ) {
+        convert_2_to_3();
+    }
+    else {
+        convert_1_to_3();
+    }
+
+} #convert
+
+sub convert_1_to_3 {
+    print STDERR "1Convert from $source_version to $Data::RecordStore::VERSION\n";exit;
+
+    die "Directory '$dest_dir' already exists" if -d $dest_dir;
+
+    print STDERR "Creating destination dir\n";
+
+    mkdir $dest_dir or die "Unable to create directory '$dest_dir'";
+    mkdir "$dest_dir/stores" or die "Unable to create directory '$dest_dir/stores'";
+
+    print STDERR "Starting Convertes from $source_version to $Data::RecordStore::VERSION\n";
+
+    my $store_db = Data::RecordStore::FixedStore->open( "I", "$source_dir/STORE_INDEX" );
+
+    my $source_dbs = [];
+    my $dest_dbs = [];
+
+    for my $id (1..$store_db->entry_count) {
+        my( $size ) = @{ $store_db->get_record( $id ) };
+        $source_dbs->[$id] = Data::RecordStore::Silo->open_silo( "A*", "$source_dir/${id}_OBJSTORE", $size );
+    }
+
+    my $source_obj_db = Data::RecordStore::Silo->open_silo( "IL", $source_obj_idx_file );
+    my $dest_obj_db = Data::RecordStore::Silo->open_silo( "IL", $dest_obj_idx_file );
+    $dest_obj_db->_ensure_entry_count($source_obj_db->entry_count);
+
+    my $tenth = int($source_obj_db->entry_count/10);
+    my $count = 0;
+
+    for my $id (1..$source_obj_db->entry_count) {
+        my( $source_store_id, $id_in_old_store ) = @{ $source_obj_db->get_record( $id ) };
+
+        next unless $id_in_old_store;
+
+        # grab data
+        my( $data ) = @{ $source_dbs->[$source_store_id]->get_record( $id_in_old_store ) };
+
+        # store in new database
+        my $save_size = do { use bytes; length( $data ); };
+        $save_size += 8;        #for the id
+        my $dest_store_id = 1 + int( log( $save_size ) );
+        my $dest_store_size = int( exp $dest_store_id );
+
+        my $dest_db = $dest_dbs->[$dest_store_id];
+        unless( $dest_db ) {
+            $dest_db = Data::RecordStore::FixedStore->open( "LIZ*", "$dest_dir/stores/${dest_store_id}_OBJSTORE", $dest_store_size );
+            $dest_dbs->[$dest_store_id] = $dest_db;
+        }
+        my $idx_in_dest_store = $dest_db->next_id;
+        $dest_db->put_record( $idx_in_dest_store, [ $id, 0, $data ] );
+
+        $dest_obj_db->put_record( $id, [ $dest_store_id, $idx_in_dest_store ] );
+        if ( ++$count > $tenth ) {
+            print STDERR ".";
+            $count = 0;
+        }
+
+    }
+    print STDERR "\n";
+
+    print STDERR "Adding version information\n";
+
+    CORE::open( my $FH, ">", "$dest_dir/VERSION");
+    print $FH "$Data::RecordStore::VERSION\n";
+    close $FH;
+
+
+    print STDERR "Done. Remember that your new database is in $dest_dir and your old one is in $source_dir\n";
+} #convert_1_to_3
+
+sub convert_2_to_3 {
+    print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
+
+    die "Directory '$dest_dir' already exists" if -d $dest_dir;
+
+    print STDERR "Creating destination dir\n";
+
+    mkdir $dest_dir or die "Unable to create directory '$dest_dir'";
+
+    print STDERR "Starting Convertes from $source_version to $Data::RecordStore::VERSION\n";
+    # just convert the OBJ_STORES to RECORD_STORES
+    
+    my $store_db = Data::RecordStore::FixedStore->open( "I", "$source_dir/STORE_INDEX" );
+
+    my $source_dbs = [];
+    my $dest_dbs = [];
+
+    for my $id (1..$store_db->entry_count) {
+        my( $size ) = @{ $store_db->get_record( $id ) };
+        $source_dbs->[$id] = Data::RecordStore::FixedStore->open( "A*", "$source_dir/${id}_OBJSTORE", $size );
+    }
+
+
+    my $source_obj_db = Data::RecordStore::FixedStore->open( "IL", $source_obj_idx_file );
+    my $dest_obj_db = Data::RecordStore::FixedStore->open( "IL", $dest_obj_idx_file );
+    $dest_obj_db->_ensure_entry_count($source_obj_db->entry_count);
+
+    my $tenth = int($source_obj_db->entry_count/10);
+    my $count = 0;
+
+    for my $id (1..$source_obj_db->entry_count) {
+        my( $source_store_id, $id_in_old_store ) = @{ $source_obj_db->get_record( $id ) };
+
+        next unless $id_in_old_store;
+
+        # grab data
+        my( $data ) = @{ $source_dbs->[$source_store_id]->get_record( $id_in_old_store ) };
+
+        # store in new database
+        my $save_size = do { use bytes; length( $data ); };
+        $save_size += 8;        #for the id
+        my $dest_store_id = 1 + int( log( $save_size ) );
+        my $dest_store_size = int( exp $dest_store_id );
+
+        my $dest_db = $dest_dbs->[$dest_store_id];
+        unless( $dest_db ) {
+            $dest_db = Data::RecordStore::FixedStore->open( "LZ*", "$dest_dir/stores/${dest_store_id}_OBJSTORE", $dest_store_size );
+            $dest_dbs->[$dest_store_id] = $dest_db;
+        }
+        my $idx_in_dest_store = $dest_db->next_id;
+        $dest_db->put_record( $idx_in_dest_store, [ $id, $data ] );
+
+        $dest_obj_db->put_record( $id, [ $dest_store_id, $idx_in_dest_store ] );
+        if ( ++$count > $tenth ) {
+            print STDERR ".";
+            $count = 0;
+        }
+
+    }
+    print STDERR "\n";
+
+    print STDERR "Adding version information\n";
+
+    CORE::open( my $FH, ">", "$dest_dir/VERSION");
+    print $FH "$Data::RecordStore::VERSION\n";
+    close $FH;
+
+
+    print STDERR "Done. Remember that your new database is in $dest_dir and your old one is in $source_dir\n";
+
+} #convert_2_to_3
+
+sub convert_3_to_3_1 {
+    print STDERR "Convert from $source_version to $Data::RecordStore::VERSION\n";
+
+
+    die "Directory '$dest_dir' already exists" if -d $dest_dir;
+
+    print STDERR "Creating destination dir\n";
+
+    mkdir $dest_dir or die "Unable to create directory '$dest_dir'";
+    mkdir "$dest_dir/stores" or die "Unable to create directory '$dest_dir/stores'";
+
+    print STDERR "Starting Convertes from $source_version to $Data::RecordStore::VERSION\n";
+    # copy the OBJ_INDEX --> RECORD_INDEX_SILO
+    `cp -R $source_dir/OBJ_INDEX $dest_dir/RECORD_INDEX_SILO`;
+
+    make_path( "$dest_dir/silos" );
+
+    # convert the OBJ_STORES to RECORD_STORES
+    opendir my $dir, "$source_dir/silos";
+    my @silos = grep { /_OBJSTORE/ } readdir( $dir );
+
+    for my $silofile (@silos) {
+        my( $silo_index ) = ( $silofile =~ /^(\d+)_/ );
+        my $source_file = "$source_dir/silos/$silofile";
+        print STDERR "converting $source_file\n";
+        my $silo_row_size = int( exp $silo_index );
+        my $source_silo = Data::RecordStore::Silo->open_silo( "LZ*", $source_file, $silo_row_size );
+        my $dest_silo   = Data::RecordStore::Silo->open_silo( "LIZ*", "$dest_dir/silos/${silo_index}_RECSTORE", $silo_row_size );
+        for my $rec_id ( 1..$source_silo->entry_count ) {
+            my $rec = $source_silo->get_record( $rec_id );
+            my $put_id = $dest_silo->next_id;
+            die if $put_id != $rec_id;
+            my( $id, $data ) = @$rec;
+            $dest_silo->put_record( $put_id, [ $id, 0, $data ] );
+        }
+    }
+
+    print STDERR "\n";
+
+    print STDERR "Adding version information\n";
+
+    CORE::open( my $FH, ">", "$dest_dir/VERSION");
+    print $FH "$Data::RecordStore::VERSION\n";
+    close $FH;
+
+
+    print STDERR "Done. Remember that your new database is in $dest_dir and your old one is in $source_dir\n";
+
+} #convert_3_to_3_1

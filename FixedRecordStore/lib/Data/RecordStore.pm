@@ -190,7 +190,7 @@ sub open_store {
         chomp $version;
 
         if( $version < 3.1 ) {
-            die "opening $directory. A database was found with version $version. Please run the record_store_convert program to upgrade to version $VERSION.";
+            die "A database was found in $directory with version $version. Please run the record_store_convert program to upgrade to version $VERSION.";
         }
     }
     else {
@@ -199,8 +199,8 @@ sub open_store {
         # had been created and no version exists, assume it is
         # version 1.
         #
-        if( -e $record_index_directory && -e "$record_index_directory/STORE_INDEX" ) {
-            die "opening $directory. A database was found with no version information and is assumed to be an old format. Please run the record_store_convert program.";
+        if( -e $record_index_directory ) {
+            die "A database was found in $directory with no version information and is assumed to be an old format. Please run the record_store_convert program.";
         }
         $version = $VERSION;
         CORE::open $FH, ">", $version_file;
@@ -602,12 +602,11 @@ use constant {
     FILE_SIZE        => 2,
     FILE_MAX_RECORDS => 3,
     TMPL             => 4,
-    SILO_INDEX       => 5,
 };
 
 $Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
 
-=head2 open_silo( template, filename, record_size, optional_silo_index )
+=head2 open_silo( template, filename, record_size )
 
 Opens or creates the directory for a group of files
 that represent one silo storing records of the given
@@ -619,7 +618,7 @@ record size is given or calculated.
 =cut
 
 sub open_silo {
-    my( $pkg, $template, $directory, $size, $silo_index ) = @_;
+    my( $pkg, $template, $directory, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
     my $template_size = $template =~ /\*/ ? 0 : do { use bytes; length( pack( $template ) ) };
     my $record_size = $size // $template_size;
@@ -634,7 +633,7 @@ sub open_silo {
     my $file_max_size = $file_max_records * $record_size;
 
     unless( -d $directory ) {
-        die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists and is not a directory" if -e $directory;
+        die "Data::RecordStore::Silo->open_silo Error opening record store. $directory exists and is not a directory" if -e $directory;
         make_path( $directory ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
     }
     unless( -e "$directory/0" ){
@@ -651,7 +650,6 @@ sub open_silo {
         $file_max_size,
         $file_max_records,
         $template,
-        $silo_index,
     ], $class;
 
     $silo;
