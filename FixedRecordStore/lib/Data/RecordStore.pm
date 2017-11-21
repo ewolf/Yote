@@ -9,7 +9,7 @@ Data::RecordStore - Simple and fast record based data store
 use Data::RecordStore;
 
 
-my $store = Data::RecordStore->open( $directory );
+my $store = Data::RecordStore->open_store( $directory );
 
 my $data = "TEXT DATA OR BYTES";
 
@@ -76,14 +76,14 @@ use constant {
 
 =head1 METHODS
 
-=head2 open( directory )
+=head2 open_store( directory )
 
 Takes a single argument - a directory, and constructs the data store in it.
 The directory must be writeable or creatible. If a RecordStore already exists
 there, it opens it, otherwise it creates a new one.
 
 =cut
-sub open {
+sub open_store {
     my( $pkg, $directory ) = @_;
 
     make_path( "$directory/stores", { error => \my $err } );
@@ -120,15 +120,11 @@ sub open {
 
     my $self = [
         $directory,
-        Data::RecordStore::FixedStore->open( "IL", $obj_db_filename ),
-        Data::RecordStore::FixedStore->open( "L", "$directory/RECYC" ),
+        Data::RecordStore::FixedStore->open_fixed_store( "IL", $obj_db_filename ),
+        Data::RecordStore::FixedStore->open_fixed_store( "L", "$directory/RECYC" ),
         [],
         $version,
     ];
-
-    if( $version < 2 ) {
-        $self->[STORE_IDX] = Data::RecordStore::FixedStore->open( "I", "$directory/STORE_INDEX" );
-    }
 
     bless $self, ref( $pkg ) || $pkg;
 
@@ -373,10 +369,10 @@ sub _get_store {
         return $self->[STORES][ $store_index ];
     }
 
-    my $store_size = int( exp $store_index );
+    my $store_row_size = int( exp $store_index );
 
     # storing first the size of the record, then the bytes of the record
-    my $store = Data::RecordStore::FixedStore->open( "LZ*", "$self->[DIRECTORY]/stores/${store_index}_OBJSTORE", $store_size );
+    my $store = Data::RecordStore::FixedStore->open_fixed_store( "LZ*", "$self->[DIRECTORY]/stores/${store_index}_OBJSTORE", $store_row_size );
 
     $self->[STORES][ $store_index ] = $store;
     $store;
@@ -406,7 +402,7 @@ my $template = "LII"; # perl pack template. See perl pack/unpack.
 
 my $size; #required if the template does not have a definite size, like A*
 
-my $store = Data::RecordStore::FixedStore->open( $template, $filename, $size );
+my $store = Data::RecordStore::FixedStore->open_fixed_store( $template, $filename, $size );
 
 my $new_id = $store->next_id;
 
@@ -449,7 +445,9 @@ use constant {
     OBJ_INDEX   => 3,
 };
 
-=head2 open( template, filename, size )
+$Data::RecordStore::FixedStore::MAX_SIZE = 2_000_000_000;
+
+=head2 open_fixed_store( template, filename, size )
 
 Opens or creates the file given as a fixed record
 length data store. If a size is not given,
@@ -457,7 +455,7 @@ it calculates the size from the template, if it can.
 This will die if a zero byte record size is determined.
 
 =cut
-sub open {
+sub open_fixed_store {
     my( $pkg, $template, $filename, $size ) = @_;
     my $class = ref( $pkg ) || $pkg;
     my $FH;
@@ -630,7 +628,7 @@ sub unlink_store {
 
 sub _filehandle {
     my $self = shift;
-    CORE::open( my $fh, "+<", $self->[FILENAME] ) or die "Unable to open ($self) $self->[FILENAME] : $!";
+    open( my $fh, "+<", $self->[FILENAME] ) or die "Unable to open ($self) $self->[FILENAME] : $!";
     $fh;
 }
 

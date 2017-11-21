@@ -29,7 +29,7 @@ exit( 0 );
 
 sub test_suite {
 
-    my $store = Data::RecordStore->open( $dir );
+    my $store = Data::RecordStore->open_store( $dir );
 
     ok( ! $store->has_id( 1 ), "no first id yet" );
     ok( ! $store->has_id( 2 ), "no second id yet" );
@@ -42,13 +42,13 @@ sub test_suite {
 
     my $id3 = $store->stow( "Käse essen" );
 
-    $store = Data::RecordStore->open( $dir );
+    $store = Data::RecordStore->open_store( $dir );
     is( $id2, $id + 1, "Incremental object ids" );
     is( $store->fetch( $id ), "FOO FOO", "first item saved" );
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
     is( $store->fetch( $id3 ), "Käse essen", "third item saved" );
     
-    my $ds = Data::RecordStore::FixedStore->open( "LLA4", "$dir2/filename" );
+    my $ds = Data::RecordStore::FixedStore->open_fixed_store( "LLA4", "$dir2/filename" );
     my( @r ) = (
         [],
         [ 12,44,"BOO" ],
@@ -69,7 +69,7 @@ sub test_suite {
     #
     # Try testing the moving of a record
     #
-    $store = Data::RecordStore->open( $dir3 );
+    $store = Data::RecordStore->open_store( $dir3 );
     $id = $store->stow( "x" x 2972 );
     my $cur_store = $store->_get_store( 8 );
 

@@ -1,4 +1,6 @@
-2.02 - updated version. removed old build dependencies. 
+2.02 - updated version. removed old build dependencies.
+      appogies, but changing open to open_store to not use
+      a reserved word.
 1.04 - added version, changelog, readme to manifest
 1.03 - added version, changelog, readme
 1.02 - updated the min perl version needed

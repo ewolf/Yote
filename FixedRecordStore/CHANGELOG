@@ -1,4 +1,5 @@
- 2.02 - 
+ 2.02 - rename methods 'open' to 'open_store' or 'open_fixed_store'
+	in order to avoid collision with the 'open' reserved function. 
 	
  2.00 - the databases for Data::RecordStore now automatically
 	hold e^n bytes, where n is the id of the database.

@@ -4,7 +4,7 @@ NAME
 SYNPOSIS
     use Data::RecordStore;
 
-    my $store = Data::RecordStore->open( $directory );
+    my $store = Data::RecordStore->open_store( $directory );
 
     my $data = "TEXT DATA OR BYTES";
 
@@ -40,7 +40,7 @@ LIMITATIONS
     implementation.
 
 METHODS
-  open( directory )
+  open_store( directory )
     Takes a single argument - a directory, and constructs the data store in
     it. The directory must be writeable or creatible. If a RecordStore
     already exists there, it opens it, otherwise it creates a new one.
@@ -100,8 +100,8 @@ SYNOPSIS
     my $size; #required if the template does not have a definite size, like
     A*
 
-    my $store = Data::RecordStore::FixedStore->open( $template, $filename,
-    $size );
+    my $store = Data::RecordStore::FixedStore->open_fixed_store( $template,
+    $filename, $size );
 
     my $new_id = $store->next_id;
 
@@ -126,7 +126,7 @@ SYNOPSIS
     $store->unlink_store;
 
 METHODS
-  open( template, filename, size )
+  open_fixed_store( template, filename, size )
     Opens or creates the file given as a fixed record length data store. If
     a size is not given, it calculates the size from the template, if it
     can. This will die if a zero byte record size is determined.
