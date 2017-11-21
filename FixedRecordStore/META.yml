@@ -23,7 +23,6 @@ provides:
   Data::RecordStore::Transaction:
     file: lib/Data/RecordStore.pm
 requires:
-  Make::Path: '2.07'
   perl: v5.9.4
 resources:
   license: http://dev.perl.org/licenses/
