@@ -998,8 +998,6 @@ use strict;
 use warnings;
 use warnings FATAL => 'all';
 no  warnings 'numeric';
-no  warnings 'uninitialized';
-#no  warnings 'recursion';
 
 use Tie::Array;
 
@@ -1045,7 +1043,7 @@ sub _reconstitute {
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, $level, $block_count, $item_count, $underneath, @list ) = @_;
-
+    $item_count //= 0;
     my $block_size  = $block_count ** $level;
 
     die "Data::ObjectStore::Array::TIEARRAY : error creating array with params level:$level, block_size:$block_size, block_count:$block_count " if ($block_size == 1 && $level > 0) || $block_count < 1;
@@ -1134,7 +1132,7 @@ sub _embiggen {
 sub _getblock {
     my( $self, $block_idx ) = @_;
 
-    my $block_id = $self->[DATA][$block_idx];
+    my $block_id = $self->[DATA][$block_idx] // 0;
     my $store = $self->[DSTORE];
 
     if( $block_id > 0 ) {
