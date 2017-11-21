@@ -1,3 +1,5 @@
+3.13 - fix broken transactions.
+    
 3.11 - remove backticks from tests. include version info
     
 3.10 - automatically uuencode data coming into the store that has \0 in the middle
