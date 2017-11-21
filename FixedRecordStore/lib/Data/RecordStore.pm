@@ -378,7 +378,7 @@ sub _swapout {
     my( $self, $silo, $silo_id, $vacated_silo_id ) = @_;
 
     my $last_id = $silo->entry_count;
-
+    print STDERR Data::Dumper->Dump([$last_id,$vacated_silo_id,"CHOMP"]);
     if( $vacated_silo_id < $last_id ) {
         my $data = $silo->_copy_record( $last_id - 1, $vacated_silo_id - 1 );
         #
@@ -965,21 +965,27 @@ sub stow {
 
 sub delete_record {
     my( $self, $id_to_delete ) = @_;
+    die "Data::RecordStore::Transaction::delete_record Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
+    my $trans_silo = $self->[SILO];
+    
     my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_delete ) };
-    my $from_silo = $self->[STORE]->_get_silo( $from_silo_id );
-    $from_silo->put_record( $self->[ID],
-                            [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
+    my $next_trans_id = $trans_silo->next_id;
+    $trans_silo->put_record( $next_trans_id,
+                             [ 'D', $id_to_delete, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
 } #delete_record
 
 sub recycle {
     my( $self, $id_to_recycle ) = @_;
+    die "Data::RecordStore::Transaction::recycle Error : is not active" unless $self->[STATE] == TRA_ACTIVE;
+    my $trans_silo = $self->[SILO];
+    
     my( $from_silo_id, $from_record_id ) = @{ $self->[STORE]->[Data::RecordStore::OBJ_INDEX]->get_record( $id_to_recycle ) };
-    my $from_silo = $self->[STORE]->_get_silo( $from_silo_id );
-    $from_silo->put_record( $self->[ID],
-                            [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
+    my $next_trans_id = $trans_silo->next_id;
+    $trans_silo->put_record( $next_trans_id,
+                             [ 'R', $id_to_recycle, $from_silo_id, $from_record_id, 0, 0 ] );
     1;
-}
+} #recycle
 
 sub commit {
     my $self = shift;
@@ -992,7 +998,7 @@ sub commit {
     my $store = $self->[STORE];
 
     my $index        = $store->[Data::RecordStore::OBJ_INDEX];
-    my $recycle_silo = $store->[Data::RecordStore::OBJ_INDEX];
+    my $recycle_silo = $store->[Data::RecordStore::RECYC_SILO];
     my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
 
@@ -1006,17 +1012,16 @@ sub commit {
     #
     # Rewire the index to the new silo/location
     #
+    my( %record_id2tsteps );
+    
     for my $a_id (1..$actions) {
-        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
-            @{ $trans_silo->get_record($a_id) };
-        
+        my $tstep = $trans_silo->get_record($a_id);
+        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) = @$tstep;
+        push @{$record_id2tsteps{$record_id}}, $tstep;
         if( $action eq 'S' ) {
             $index->put_record( $record_id, [ $to_silo_id, $to_record_id ] );
         } else {
             $index->put_record( $record_id, [ 0, 0 ] );
-            if( $action eq 'R' ) {
-                $recycle_silo->push( [$record_id] );
-           }
         }
     }
 
@@ -1024,15 +1029,32 @@ sub commit {
     $self->[STATE] = TRA_CLEANUP_COMMIT;
 
     #
-    # Cleanup discarded data
+    # Cleanup discarded data. If the same record moved around a bunch, clean things up
+    # incrementally.
     #
-    for my $a_id (1..$actions) {
-        my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
-            @{ $trans_silo->get_record($a_id) };
-        if( $from_silo_id ) {
-            # what to do if it comes from nowhere
-            my $from_silo = $store->_get_silo( $from_silo_id );
-            $store->_swapout( $from_silo, $from_silo_id, $from_record_id );
+    for my $record_id (keys %record_id2tsteps) {
+        my $tsteps = $record_id2tsteps{$record_id};
+        my( $last_to_silo_id, $last_to_record_id );
+        for my $tstep (@$tsteps) {
+            my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) = @$tstep;
+            if( $action eq 'S' ) {
+                if( $last_to_silo_id ) {
+                    my $silo = $store->_get_silo( $last_to_silo_id );
+                    $store->_swapout( $silo, $last_to_silo_id, $last_to_record_id );
+                }
+                $last_to_silo_id   = $to_silo_id;
+                $last_to_record_id = $to_record_id;
+                if( $from_silo_id ) {
+                    my $silo = $store->_get_silo( $from_silo_id );
+                    $store->_swapout( $silo, $from_silo_id, $from_record_id );
+                }
+            }
+            elsif( $action eq 'D' ) {
+                $store->delete_record( $record_id );
+            }
+            elsif( $action eq 'R' ) {
+                $store->recycle( $record_id );
+            }
         }
     }
 
@@ -1054,7 +1076,6 @@ sub rollback {
     my $store = $self->[STORE];
 
     my $index        = $store->[Data::RecordStore::OBJ_INDEX];
-    my $recycle_silo = $store->[Data::RecordStore::OBJ_INDEX];
     my $dir_silo     = $self->[CATALOG];
     my $trans_silo   = $self->[SILO];
     my $trans_id     = $self->[ID];
@@ -1088,6 +1109,7 @@ sub rollback {
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) =
             @{ $trans_silo->get_record($a_id) };
 
+        print STDERR Data::Dumper->Dump([$to_silo_id,$to_record_id,"SAA"]);
         if( $to_silo_id ) {
             my $to_silo = $store->_get_silo( $to_silo_id );
             $store->_swapout( $to_silo, $to_silo_id, $to_record_id );
