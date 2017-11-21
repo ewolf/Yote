@@ -116,7 +116,9 @@ sub test_open_silo {
     ok( ! (-e "$dir/silo/1"), "second file gone" );
     ok( ! (-e "$dir/silo/2"), "third file gone" );
 
-
+    $store->unlink_store;
+    ok( ! (-e "$dir/silo"), "unlinked completely" );
+    
 } #test_open_silo
 
 sub test_put_record {
@@ -213,19 +215,28 @@ sub test_put_record {
     is( -s "$silo_dir/0", 27, "first file now 27" );    
     is( -s "$silo_dir/1", 9, "second file now 9" );
 
+    is_deeply( $store->last_entry, [ 4, "D", 1001 ], "LAST ENTRY AGREES" );
+    is( $store->entry_count, 4, "now at 4 things" );
+    is( -s "$silo_dir/0", 27, "first file now 27" );    
+    is( -s "$silo_dir/1", 9, "second file now 9" );
+    
     $data = $store->pop;
+    is_deeply( $store->last_entry, [ 3, "c", 1001 ], "LAST ENTRY AGREES" );    
     is( -s "$silo_dir/1", 0, "second file emptied" );
     is_deeply( $data, [ 4, "D", 1001 ], "pop 4" );
     
     $data = $store->pop;
+    is_deeply( $store->last_entry, [ 2, "b", 1001 ], "LAST ENTRY AGREES" );    
     is( -s "$silo_dir/0", 18, "first file smaller" );
     is_deeply( $data, [ 3, "c", 1001 ], "pop 3" );
 
     $data = $store->pop;
+    is_deeply( $store->last_entry, [ 1, "A", 1001 ], "LAST ENTRY AGREES" );        
     is( -s "$silo_dir/0", 9, "first file smaller" );
     is_deeply( $data, [ 2, "b", 1001 ], "pop 2" );
 
     $data = $store->pop;
+    is( $store->last_entry, undef, "No last entry" );
     is( -s "$silo_dir/1", 0, "first file emptied" );
     is_deeply( $data, [ 1, "A", 1001 ], "pop 1" );
 } #test_put_record

@@ -475,7 +475,7 @@ no warnings 'uninitialized';
 no warnings 'numeric';
 
 use Fcntl qw( SEEK_SET SEEK_END LOCK_EX LOCK_UN );
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 
 use constant {
     DIRECTORY        => 0,
