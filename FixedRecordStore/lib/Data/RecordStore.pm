@@ -217,7 +217,7 @@ sub stow {
             # there, compacting it if possible
             #
             $needs_swap = 1;
-        }                       #if this already had been saved before
+        } #if this already had been saved before
     }
 
     my $store_id = 1 + int( log( $save_size ) );
@@ -350,18 +350,10 @@ sub _ensure_entry_count {
 sub _swapout {
     my( $self, $store, $store_id, $vacated_store_idx ) = @_;
 
-    my $last_id = $store->entry_count;
-    my( $f_idx, $fh, $file ) = $store->_fh($last_id);
+    my $last_idx = $store->entry_count - 1;
 
-    if( $vacated_store_idx < $last_id ) {
-
-        sysseek $fh, $store->[RECORD_SIZE] * ($last_id-1), SEEK_SET
-            or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_id-1)) : $@ $!";
-        my $srv = sysread $fh, my $data, $store->[RECORD_SIZE];
-        defined( $srv ) or die "Could not read : $@ $!";
-        sysseek( $fh, $store->[RECORD_SIZE] * ( $vacated_store_idx - 1 ), SEEK_SET ) && ( my $swv = syswrite( $fh, $data ) );
-        defined( $srv ) or die "Could not read : $@ $!";
-
+    if( $vacated_store_idx < $last_idx ) {
+        my $data = $store->_copy_record( $last_idx, $vacated_store_idx );
         #
         # update the object db with the new store index for the moved object id
         #
@@ -372,9 +364,7 @@ sub _swapout {
     #
     # truncate now that the store is one record shorter
     #
-    truncate $fh, $store->[RECORD_SIZE] * ($last_id-1);
-
-    close $fh;
+    truncate $fh, $store->[RECORD_SIZE] * $last_idx;
 } #_swapout
 
 
@@ -591,6 +581,24 @@ sub get_record {
 
     [unpack( $self->[TMPL], $data )];
 } #get_record
+
+#
+# This copies a record from one index in the store to an other.
+# This returns the data of record so copied 
+#
+sub _copy_record {
+    my( $self, $from_idx, $to_idx ) = @_;
+
+    my( $to_file_idx, $fh_from ) = $self->_fh($from_idx);
+    my( $from_file_idx, $fh_to ) = $self->_fh($to_idx);
+    sysseek $fh_from, $store->[RECORD_SIZE] * ($from_idx), SEEK_SET
+        or die "Swapout could not seek ($store->[RECORD_SIZE] * ($last_id-1)) : $@ $!";
+    my $srv = sysread $fh, my $data, $store->[RECORD_SIZE];
+    defined( $srv ) or die "Could not read : $@ $!";
+    sysseek( $fh_to, $store->[RECORD_SIZE] * $to_idx, SEEK_SET ) && ( my $swv = syswrite( $fh_to, $data ) );
+    defined( $srv ) or die "Could not read : $@ $!";
+    $data;
+} #_copy_record
 
 =head2 next_id
 

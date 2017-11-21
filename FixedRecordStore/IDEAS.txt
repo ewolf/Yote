@@ -1,6 +1,14 @@
 scratchpad for ideas
 _________________________________
 
+-testing this shit-
+ The tests are in dire need of update and have to be sure
+ there is full code coverage. *sigh* the unfun part.
+ especially test the swapout and the _copy_record.
+
+ Test the hell out of the silo first. That may be
+ somewhat simpler to test.
+
 
 -transactions-
 
@@ -16,8 +24,25 @@ _________________________________
  bad state and the transaction started but never finished. The
  transaction can be resumed and completed or it can be reverted.
  
+ transactions get a silo, it has
+    process that started the transaction
+    time the transaction started
+    state of the transaction (integer)
 
- 
+ transaction methods
+    list pending transactions
+    create a new transaction
+
+    stow <-- exception if in a dead state
+    delete_record <-- exception if in a dead state
+    recycle <-- exception if in a dead state
+
+    commit a transaction    <-- state is then dead
+    roll back a transaction <-- state is then dead
+
+    get_start_time
+    get_process
+    get_state
 
 -clean datastore silos-
 
