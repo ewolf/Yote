@@ -3,7 +3,6 @@ package Yote;
 use strict;
 use warnings;
 no  warnings 'uninitialized';
-use warnings FATAL => 'all';
 
 use vars qw($VERSION);
 
@@ -1556,6 +1555,6 @@ and are not removed when the object store is compressed.
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.03  (September, 2017))
+       Version 3.00  (Mar, 2018))
 
 =cut
