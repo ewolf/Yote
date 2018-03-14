@@ -4,20 +4,20 @@ use Module::Build;
 
 
 my $builder = Module::Build->new(
-    add_to_cleanup      => [ 'Data-RecordStore-*' ],
+    add_to_cleanup      => [ 'Data-ObjectStore-*' ],
     build_requires => {
         'Test::More' => 0,
         'Module::Build' => 0.40,
     },
-    dist_abstract      => 'Simple and fast record based data store',
+    dist_abstract      => 'Object Store store',
     create_makefile_pl => 'traditional',
     license            => 'perl',
-    module_name        => 'Data::RecordStore',
+    module_name        => 'Data::ObjectStore',
     release_status     => 'stable',
-    test_files         => [ 't/recordstore.t', ],
+    test_files         => [ 't/object_store.t', ],
     requires => {
         'perl'       => 'v5.9.4',
-        'Data::RecordStore'     => 2.0,
+        'Data::RecordStore'     => 3.14,
     },
     );
 
