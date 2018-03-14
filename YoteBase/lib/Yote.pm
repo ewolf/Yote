@@ -11,8 +11,7 @@ $Yote::DB_VERSION = 3;
 
 sub open_store {
     my $path = pop;
-    my $store = Yote::ObjStore->open_store( $path );
-    $store;
+    Yote::ObjStore->open_store( $path );
 }
 
 # --------------------------------------------------------------------------------
@@ -340,7 +339,7 @@ sub _get_id {
     my( $self, $ref ) = @_;
 
     my $class = ref( $ref );
-
+    use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]) unless $class;
     die "_get_id requires reference. got '$ref'" unless $class;
 
     if( $class eq 'ARRAY' ) {
