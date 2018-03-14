@@ -1,5 +1,4 @@
-bin/converter.pl
-bin/recordstore_explorer
+bin/objectstore_explorer
 Build.PL
 CHANGELOG
 lib/Data/ObjectStore.pm

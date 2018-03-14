@@ -9,7 +9,7 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
         'Module::Build' => 0.40,
     },
-    dist_abstract      => 'Object Store store',
+    dist_abstract      => 'Object store',
     create_makefile_pl => 'traditional',
     license            => 'perl',
     module_name        => 'Data::ObjectStore',
@@ -17,7 +17,7 @@ my $builder = Module::Build->new(
     test_files         => [ 't/object_store.t', ],
     requires => {
         'perl'       => 'v5.9.4',
-        'Data::RecordStore'     => 3.14,
+        'Data::RecordStore'     => 3.15,
     },
     );
 

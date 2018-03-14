@@ -18,13 +18,13 @@ BEGIN {
 # -----------------------------------------------------
 
 my $dir = tempdir( CLEANUP => 1 );
-#test_suite();
+
 my $store = Data::ObjectStore::open_store( $dir );
 my $root_node = $store->load_root_container;
+test_suite();
 test_loop();
 test_arry();
 test_hash();
-test_suite();
 test_upgrade_db();
 done_testing;
 
@@ -286,14 +286,16 @@ sub test_loop {
     my $dir = tempdir( CLEANUP => 1 );
 
     my $new_store = Data::ObjectStore::open_store( $dir );
-    $root_node = $store->load_root_container;
+    my $new_root_node = $new_store->load_root_container;
     my $list = [ 1, 2, 3, 4, 5 ];
     unshift @$list, $list;
-    $root_node->set_list( $list );
+
+    $new_root_node->set_list( $list );
+
     $new_store->save;
     $new_store = Data::ObjectStore::open_store( $dir );
-    $root_node = $store->load_root_container;
-    $list = $root_node->get_list;
+    $new_root_node = $new_store->load_root_container;
+    $list = $new_root_node->get_list;
     is( scalar( @$list ), 6, "six items in the self referencing list" );
     is( scalar( @{$list->[0]} ), 6, "six items in the list in the list" );
     is( scalar( @{$list->[0][0]} ), 6, "six items in the list in the list in the list" );
@@ -307,8 +309,8 @@ sub test_loop {
     $new_store->save;
 
     $new_store = Data::ObjectStore::open_store( $dir );
-    $root_node = $store->load_root_container;
-    $list = $root_node->get_list;
+    $new_root_node = $new_store->load_root_container;
+    $list = $new_root_node->get_list;
     my $hash = $list->[7];
 
     is( scalar( keys %$hash ), 2, "two keys after load" );
@@ -375,8 +377,7 @@ sub test_hash {
 }
 
 sub test_arry {
-#    for my $SZ (2..9) {
-    for my $SZ (7..7) {
+    for my $SZ (2..9) {
         $Data::ObjectStore::Array::MAX_BLOCKS  = $SZ;
 
         my $arry = $root_node->set_arry( [] );

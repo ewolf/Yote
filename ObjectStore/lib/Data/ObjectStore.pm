@@ -13,7 +13,7 @@ use Data::RecordStore;
 use Scalar::Util qw(weaken);
 use vars qw($VERSION);
 
-$VERSION = '1.0';
+$VERSION = '1.101';
 
 use constant {
     RECORD_STORE => 0,
@@ -29,30 +29,18 @@ use constant {
 
 =head1 NAME
 
-Data::ObjectStore - Fast and efficient store for structured data.
+Data::ObjectStore - store perl objects, hashes and arrays in a rooted tree on-disc.
 
 =head1 DESCRIPTION
 
-Data::ObjectStore stores structured data on the file system in a directory
-the programmer supplies. Any configuration of interconnected hashes, arrays
-and Data::ObjectStore::Container objects may be placed in the store.
+If you have structured data you want to store, store it in an object store.
+Have really huge arrays or hashes? No problem, those are chunked in batches.
+They're neatly TIED and loaded as needed.
 
-The store keeps track of changes to any data structure reference placed
-within it. A single save operation writes all changes to the data structure
-or its fields that were made since the last save operation.
-
-Items load from the store on an as needed basis. Very large hashes and arrays
-are transparently chunked behind a tied interface. A single root container is
-the point of entry to add items. If a path of reference can trace from this
-root container to the itemn, the item can be referenced from the store.
-
-It is built for speed, efficiency and ease of use. Container objects have
-powerful syntactic sugar for convenience, and are extensible.
-This can be used orthagonally with any other storage system.
+Add to, remove from or update the structure and the store knows. A single method brings
+it all of it up to date.
 
 =head1 SYNOPSIS
-
- # SETTING DATA
 
  use Data::ObjectStore;
 
@@ -62,112 +50,45 @@ This can be used orthagonally with any other storage system.
 
  my $current_data = [ 123,123,345,45,3752,346,326,43745,76 ];
 
- my $experiment = {
-    project_name   => "Cool project",
-    data_collected => {
-       20170401 => [ 34234,22456,345,34,123,26,4576 ],
-       20170402 => [ 67,53,3,435,63,5624,23,543276 ],
-       20170403 => $current_data,
-    },
-    today_data => $current_data,
-    notes => "It looks like theory X fits the data the best",
- };
+ # get_experiment and set_experiment automagically work.
+ my $experiment = $root_container->get_expirement;
+ unless( $experiment ) {
+   # My::Experiment @ISA Data::ObjectStore::Container
+   $experiment = $root_container->set_expirement(
+             $store->create_container( 'My::Experiment' )
+                                                );
+ }
 
- # this ads the data to the store and only needs to be done
- # once. Any further changes to the data structure are monitored
- # by the store and saved upon call to save.
- $root_container->set( "experiment", $experiment );
+ # returns val if val is defined.
+ # If val isn't defined, it sets val to 'default value' and returns it.
+ my $val = $experiment->get_val( 'default value' );
 
- # save _all_ data connected to the root container
+ $experiment->set( "note", "this is identical to 'set_note'" );
+
+ # creates data_sets list or uses existing one
+ $experiment->add_to_data_sets( $current_data );
+
  $store->save;
 
- # add a data point to the current data.
- # the reference to current_data is already in the store and
- # does not need to be re-added.
+ # forgot a point! Add to the current data and save it.
  push @$current_data, 234;
-
- # saves current_data with the new point; it is the only thing changed
- # since the last save.
  $store->save;
 
  ....
 
- # GETTING DATA
+ my $data_sets = $store->load_root_container
+                       ->get_experiment
+                       ->get_data_sets;
+ for my $set (@$data_sets) {
+   ....
+ }
 
- my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
 
- # loads the root container ( but not yet referenced contents )
- my $root = $store->load_root_container;
+=head1 SUBCLASSING
 
- # loads the content referenced by the experiment key.
- my $experiment_again = $root->get( "experiment" );
-
- # loads the data collected hash and a particular day
- my $day_values = $experiment_again->{data_collected}->{20170403};
- my $same_ref = $experiment_again->{today_data};
-
- print scalar( @$same_ref ); # prints '10'
-
- # $day_values and $same_ref both reference the same array.
-
- # add one more point to day values.
- push @$day_values, 345345;
-
- print scalar( @$same_ref ); # prints '11'
-
- # saves $day_values with the new point; its the only thing changed
- # since the last save.
- $store->save;
-
- ....
-
- # CONTAINERS AND SYNTACTIC SUGAR
-
- my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
-
- my $root = $store->load_root_container;
-
- # the container provides syntactic sugar and can be subclassed
- my $user = $store->create_container( {
-   name        => "Edna",
-   hashedPass  => "weroiusafda89",
-   title       => "director",
-   experiments => [],
-                                     } );
-
- # Makes an array called 'users' (if not already there), attached it to
- # the root and adds $user to it.
- # Now $user is connected to the root via the users array.
- $root->add_to_users( $user );
-
- # $root->get_experiment is the same as $root->get( 'experiment' );
- my $experiments = $root->get_experiment;
-
- $user->add_to_exeriments( $experiments );
-
- # more syntactic sugar for lists attached to a container.
- # $user->set_foods is the same as $user->set( 'foods' );
- my $foods = $user->set_foods( [] );
- push @$foods, "PEAS", "PEAS", "PEAS", "ORANGES";
-
- $user->remove_from_foods( "PEAS" );
- # $foods now "PEAS", "PEAS", "ORANGES"
-
- $user->remove_all_from_foods( "PEAS" );
- # $foods now "ORANGES"
-
- my $val = $user->get_status( "default" );
- # $val eq 'default'
-
- $val = $user->get_status( "Somethign Else" );
- # $val eq 'default' (old value not overridden by a new default value)
-
- $val = $user->set_status( "A NEW STATUS" );
- # $val eq 'A NEW STATUS'
-
- ....
-
- # SUBCLASSING CONTAINERS
+Blessed objects must be a subclass of Data::ObjectStore::Container
+in order to be able to be stored in the object store. _init and _load
+can be useful to override.
 
  package Mad::Science::User;
  use Data::ObjectStore;
@@ -194,372 +115,12 @@ This can be used orthagonally with any other storage system.
    $self->set_status( "HEADING FOR THE HILLS" );
  }
 
- package main;
-
- my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
-
- # creates Mad::Science::User object
- # calls Mad::Science::User::_init on it.
- my $user = $store->create_container( 'Mad::Science::User',
-                                      { name => 'Larry' } );
- $store->set_larry( $user );
-
- print $user->get_status; # prints 'NEWLY CREATED'
-
- $user->add_to_experiments( "NEW EXPERIMENT" );
-
- $reopened_store = Data::ObjectStore::open_store( '/path/to/data-directory' );
-
- # calls Mad::Science::User::_load
- my $larry = $store->get_larry;
- print $larry->get_status; #prints 'DOING EXPERIMENTS'
-
-=head1 SIMPLE USE CASE
-
-The simple use case is using structured data containing only scalars, array refs and hash refs.
-The arrays and hashes may contain references to other arrays and hashes or scalar data.
-Circular references are allowed. Blessed or tied or array and hash references are not allowed.
-
-When the data structures are attached to the root container of the store, they become
-tied to the store but continue to otherwise behave as before. To attach :
-
- $my_data_structure = {
-     lol => [ [...], [...] ],
-     loh => [ {...}, {...} ],
-     hol => { a => [...], b => [...] },
-     hoh => { a => {...}, b => {...} },
-     text    => "Here is some text",
-     numbers => 34535,
- };
-
- $root = $store->load_root_container;
- $root->set( "my key", $my_data_structure );
-
-To load :
-
- $root = $store->load_root_container;
- $my_data_structure = $root->get( "my key" );
-
-When accessing the data structures from the root container, they are loaded into memory on
-as as needed basis. The arrays and hashes may be of any size; huge ones are internally sharded
-and loaded piecemeal into memory as needed. This is all transparent to the programmer; these
-arrays and hashes behave as normal arrays and hashes.
-
-The data is saved with a call to the save method on the store. The data structure only needs
-to be added once to the store.
-
-=head1 BASIC CONTAINERS
-
-The entry point to storing data is a root container object provided by the store.
-This is a key/value container with getters and setters. The key is a string and the
-value can be any of the following :
-
- * string, numeric or binary scalar data
- * hashes
- * arrays
- * Data::ObjectStore::Container objects
-
-The store provides new containers with its create_container method which takes
-an optional hash reference to initialize the container with.
-
-setters/getters/root
-
-Data is stored with setters
-
-The store provides key value container objects that can attach other container objects,
-hashes and arrays. The entry point for storing objects is the root container of the store.
-The container objects are useful as is, and are designed to be extended.
-
-Containers attached to a container are loaded only when accessed through the getter methods.
-
-Hashes and lists become tied when attached to a conatiner. Very large hashes and lists
-can be stored this way. They are broken into chunks and those chunks are loaded as needed,
-ie not all at once.
-
-=head2 EXTENDING CONTAINERS
-
- ....
-
- my $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
-
- my $root_container = $store->load_root_container;
-
- # $user is connected to the store but only accessable if it
- # connects to the root.
- my $user = $store->create_container( {
-    username    => "Edna",
-    hashedPass  => "weroiusafda89",
-    title       => "director",
-    experiments => [],
-                                      } );
-
- # syntactic sugar. Makes an array called 'users' (if not already there)
- # and adds $user to it. Now $user is connected to the root via the users
- # array.
- $root_container->add_to_users( $user );
-
- # more syntactic sugar for the getter.
- $user->add_to_exeriments( $root_container->get_experiment );
-
- # more syntactic sugar for the setter. $foods is now a list
- # that is tied to the store.
- my $foods = $user->set_foods( [] );
- push @$foods, "PEAS", "PEAS", "PEAS", "ORANGES";
-
- # more syntactic sugar for removing from a list
- $user->remove_from_foods( "PEAS" );
- # $foods now "PEAS", "PEAS", "ORANGES"
-
- $user->remove_all_from_foods( "PEAS" );
- # $foods now "ORANGES"
-
- # Mad::Laboratory was defined as a subclass of Data::ObjectStore::Container
- $user->set_lab( $store->create_container( 'Mad::Laboratory', {
-    scientists => [],
-    budget     => 234324,
-                 } );
-
- # nothing is saved to disc until this is called.
- $store->save;
-
-
-=head1 EXAMPLE
-
-For example, you might want to store information about games and user accounts for the hearts card game.
-This examples shows storing hashes, lists and Data::ObjectStore::Container container objects.
-
- # open the store. All you need is a directory
- $store = Data::ObjectStore::open_store( "/path/to/directory" );
-
- # create a deck of cards
- for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
-    push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King');
- }
-
- #
- # create an object for storage, default class is Data::ObjectStore::Container
- # and populate it with data.
- #
- $game = $store->create_container ( {
-   turn    => 0,
-   state   => "waiting for players",
-   players => {},
-   deck    => [ sort { rand + 0*$a <=> rand + 0*$b } @cards ], # shuffled deck
- } );
-
- $account = $store->create_container( {
-   name           => 'fred',
-   hashedPassword => 'irjwalfs9iu243rfewj',
-   games          => [],
- } );
-
- $root = $store->load_root_container;
-
- # creates a lists in root if they did not already exist
- $root->add_to_games( $game );
- $root->add_to_accounts( $account );
-
- $account->add_to_games( $game );
- $game->get_players->{ $account->get_name } = $account;
-
- # overwrites old dealer if there already was a value
- $account->set_dealer( $account );
-
- $store->save;
-
- ...
-
- $reopened_store = Data::ObjectStore::open_store( "/path/to/directory" );
-
- my $accounts = $reopened_store->get_accounts;
-
- # the games or individual account objects are not yet loaded
- for( my $i=0; $i<@$accounts; $i++ ) {
-    my $account = $accounts->[$i]; # now the individual account is loaded.
-    my $games = $account->get_games;
-    for my $game (@$games) {  # each game is loaded at the top of this loop
-       ....
-    }
- }
-
-=head1 EXTENDING
-
-Data::ObjectStore::Container is useful as is, but is also designed to be extended.
-For example, for the hearts game, we can create a Hearts::Game class and
-start to flesh it out. This implements a few methods that would be needed
-for the hearts game.
-
- package Hearts::Game;
-
- use Data::ObjectStore;
- use base 'Data::ObjectStore::Container';
-
- # called the first time this Hearts::Game object is created.
- sub _init {
-   my $self = shift;
-   my( @cards );
-   for $suit ('Spades','Clubs','Hearts','Diamonds' ) {
-      push @cards, map { "$_ of $suit" } ('Ace',2..10,'Jack','Queen','King');
-   }
-   $self->set_deck( [ sort { rand + 0*$a <=> rand + 0*$b } @cards ] ), # shuffled deck
-   $self->set_players([]);
-   $self->set_state( "waiting" );
- }
-
- # called every time this is loaded from the data store.
- sub _load {
-   my $self = shift;
-   print "game loaded at state : " . $self->get_state;
- }
-
- sub deal {
-   my $self = shift;
-   die "Game not started" if $self->get_state eq 'waiting';
-
-   my $players = $self->get_players
-   my $deck = $self->get_deck;
-
-   #each player gets 13 cards
-   for( 1..13 ) {
-     for my $i ( 0..3 ) {
-        my $card = shift @$deck;
-        $players->[$i]->add_to_hand( $card );
-     }
-   }
- }
-
- sub add_player {
-     my($self,$player) = @_;
-     $self->add_to_players( $player );
-     if( @{$self->get_players} == 4 ) {
-         $self->set_state('playing');
-         $self->deal;
-     }
- }
-
-
-=head1 SYNOPSIS
-
- use Data::ObjectStore;
-
- #
- # Opens the store in a directory. All file system interactions happen here.
- #
- $store = Data::ObjectStore::open_store( '/path/to/data-directory' );
- print $store->get_db_version;
- print $store->get_store_version;
- print $store->get_created_time;
- print $store->get_last_update_time;
-
- #
- # The root node is a Data::ObjectStore::Container instance. Anything saved must
- # trace a path to here in order to be accessed.
- #
- $root_container = $store->load_root_container;
-
-
- $root_container->add_to_myList( $store->create_container( {
-    some_val  => 123.53,
-    some_hash => { A => 1 },
-    some_list => [ 1..1000 ],
-    specific_initialized_obj  => $store->create_container( { foo => "Bar" }, 'Data::ObjectStore::ContainerChildClass' );
-    generic_initialized_obj  => $store->create_container( { foo => "Bar" } );
-    specific_obj  => $store->create_container( 'Data::ObjectStore::ContainerChildClass' );
-    generic_obj  => $store->create_container;
- } );
-
- # the root node now has a list 'myList' attached to it with the single
- # value of a yote object that yote object has two fields,
- # one of which is an other yote object.
-
- $root_container->add_to_myList( 42 );
-
- #
- # New Yote container objects are created with $store->create_container. Note that
- # they must find a reference path to the root to be protected from
- # being deleted from the record store upon compression.
- #
- $create_container = $store->create_container;
-
- $root_container->set_field( "Value" );
-
- $val = $root_container->get_value( "default" );
- # $val eq 'default'
-
- $val = $root_container->get_value( "Somethign Else" );
- # $val eq 'default' (old value not overridden by a new default value)
-
-
- $otherval = $root_container->get( 'ot3rv@l', 'other default' );
- # $otherval eq 'other default'
-
- $root_container->set( 'ot3rv@l', 'newy valuye' );
- $otherval2 = $root_container->get( 'ot3rv@l', 'yet other default' );
- # $otherval2 eq 'newy valuye'
-
- $root_container->set_value( "Something Else" );
-
- $val = $root_container->get_value( "default" );
- # $val eq 'Something Else'
-
- $myList = $root_container->get_myList;
-
- for $example (@$myList) {
-    print ">$example\n";
- }
-
- #
- # Each object gets a unique ID which can be used to fetch that
- # object directly from the store.
- #
- $someid = $root_container->get_someobj->{ID};
-
- $someref = $store->fetch( $someid );
-
- #
- # Even hashes and array have unique yote IDS. These can be
- # determined by calling the _get_id method of the store.
- #
- $hash = $root_container->set_ahash( { zoo => "Zar" } );
- $hash_id = $store->_get_id( $hash );
- $other_ref_to_hash = $store->fetch( $hash_id );
-
- #
- # Anything that cannot trace a reference path to the root
- # is eligable for being removed upon compression.
- #
-
-=head1 DESCRIPTION
-
-This is for anyone who wants to store arbitrary structured state data and
-doesn't have the time or inclination to write a schema or configure some
-framework. This can be used orthagonally to any other storage system.
-
-Data::ObjectStore only loads data as it needs too. It does not load all stored containers
-at once. Data is stored in a data directory and is stored using the Data::RecordStore module.
-A Data::ObjectStore container is a key/value store where the values can be
-strings, numbers, arrays, hashes or other Data::ObjectStore containers.
-
-The entry point for all Data::ObjectStore data stores is the root node.
-All objects in the store are unreachable if they cannot trace a reference
-path back to this node. If they cannot, running compress_store will remove them.
-
-There are lots of potential uses for Data::ObjectStore, and a few come to mind :
-
- * configuration data
- * data modeling
- * user preference data
- * user account data
- * game data
- * shopping carts
- * product information
-
 
 =head1 PUBLIC METHODS
 
 =head2 open_store( '/path/to/directory' )
 
-Starts up a persistance engine and returns it.
+Starts up a persistance engine that stores data in the given directory and returns it.
 
 =cut
 
@@ -589,8 +150,8 @@ sub open_store {
 
 =head2 load_root_container
 
-Fetches the user facing root node. This node is
-attached to the store info node as 'root'.
+Fetches the root node of the store, 
+a Data::ObjectStore::Container object.
 
 =cut
 
@@ -647,9 +208,9 @@ sub get_store_version {
     shift->[STOREINFO]{ObjectStore_version};
 }
 
-=head2 get_created_time {
+=head2 get_created_time
 
-
+Returns when the store was created.
 
 =cut
 
@@ -657,9 +218,9 @@ sub get_created_time {
     shift->[STOREINFO]{created_time};
 }
 
-=head2 get_last_update_time {
+=head2 get_last_update_time
 
-
+Returns the last time this store was updated.
 
 =cut
 
@@ -682,9 +243,12 @@ save is called.
 
 sub create_container {
     # works with create_container( { my data } ) or create_container( 'myclass', { my data } )
-    my $self  = shift;
-    my $data  = pop;
-    my $class = pop || 'Data::ObjectStore::Container';
+    my( $self, $class, $data ) = @_;
+    if( ref( $class ) ) {
+        $data  = $class;
+        $class = 'Data::ObjectStore::Container';
+    }
+    $class //= 'Data::ObjectStore::Container';
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
@@ -816,6 +380,8 @@ sub save {
     $self->[DIRTY] = {};
 
 } #save
+
+sub _has_dirty { my $self = shift; scalar( keys %{$self->[DIRTY]||{}}) }
 
 #
 # The store info node records useful information about the store
@@ -998,8 +564,6 @@ use strict;
 use warnings;
 use warnings FATAL => 'all';
 no  warnings 'numeric';
-no  warnings 'uninitialized';
-#no  warnings 'recursion';
 
 use Tie::Array;
 
@@ -1045,7 +609,7 @@ sub _reconstitute {
 
 sub TIEARRAY {
     my( $class, $obj_store, $id, $level, $block_count, $item_count, $underneath, @list ) = @_;
-
+    $item_count //= 0;
     my $block_size  = $block_count ** $level;
 
     die "Data::ObjectStore::Array::TIEARRAY : error creating array with params level:$level, block_size:$block_size, block_count:$block_count " if ($block_size == 1 && $level > 0) || $block_count < 1;
@@ -1134,7 +698,7 @@ sub _embiggen {
 sub _getblock {
     my( $self, $block_idx ) = @_;
 
-    my $block_id = $self->[DATA][$block_idx];
+    my $block_id = $self->[DATA][$block_idx] // 0;
     my $store = $self->[DSTORE];
 
     if( $block_id > 0 ) {
@@ -1572,7 +1136,7 @@ sub _SHOW {
         print STDERR (" " x $lvl ) . "($self->[ID]) : subhashes : " . join( ',', map { "($_)" } @ids ) . "\n";
         for my $id (grep { $_ ne 'u' } @ids) {
             my $h = $self->[DSTORE]->_fetch( $id );
-            tied( %$h )->SHOW( $lvl + 1 );;
+            tied( %$h )->SHOW( $lvl + 1 );
         }
     }
 }
@@ -1591,14 +1155,14 @@ sub STORE {
     }
 
     if( $self->[LEVEL] == 0 ) {
-        $data->{$key} = $self->[DSTORE]->_xform_in( $val );
+        my $store = $self->[DSTORE];
+        $data->{$key} = $store->_xform_in( $val );
 
         if( $self->[SIZE] > $self->[BUCKETS] ) {
-
             # do the thing converting this to a deeper level
             $self->[LEVEL] = 1;
-            my $store = $self->[DSTORE];
-            my( @newhash, @newids );
+            my( @newhash );
+            my( @newids ) = ( 0 ) x $self->[BUCKETS];
 
             for my $key (keys %$data) {
                 my $hval = 0;
@@ -1630,11 +1194,11 @@ sub STORE {
             # LEVEL 0 hashes that are loaded from LEVEL 1 hashes that are loaded from
             # LEVEL 2 hashes. The level 1 hash is loaded and dumped as needed, not keeping
             # the ephermal info (or is that sort of chained..hmm)
-            $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
 
         } # EMBIGGEN CHECK
-
-    } else {
+        $store->_dirty( $store->[Data::ObjectStore::WEAK]{$self->[ID]}, $self->[ID] );
+    }
+    else {
         my $store = $self->[DSTORE];
         my $hval = 0;
         foreach (split //,$key) {
@@ -1732,19 +1296,23 @@ sub DESTROY {
 
 # --------------------------------------------------------------------------------
 
-=head1 NAME
+=head1 Data::ObjectStore::Container
 
-Data::ObjectStore::Container - Persistant Perl container object.
+ Persistant Perl container object.
 
-=head1 SYNOPSIS
+=head2 SYNOPSIS
 
  $obj_A = $store->create_container;
 
- $obj_B = $store->create_container( myfoo  => "This foo is mine",
+ $obj_B = $store->create_container( {
+                          myfoo  => "This foo is mine",
                           mylist => [ "A", "B", "C" ],
-                          myhash => { peanut => "Butter" } );
+                          myhash => { peanut => "Butter" } 
+                                  } );
 
- $obj_C = $store->create_container;
+ $obj_C = $store->create_container( 'My::Subclass' );
+
+ $obj_D = $store->create_container( 'My::Othersubclass', { initial => "DATA" } );
 
  #
  # get operations
@@ -1755,11 +1323,11 @@ Data::ObjectStore::Container - Persistant Perl container object.
 
  print $obj_B->get_myhash->{peanut}; # prints 'butter'
 
- $val = $obj_A->get_unsetVal; # $val is now undef
+ $val = $obj_A->get_val; # $val is now undef
 
- $val = $obj_A->get_unsetVal("default"); # $val is now 'default'
+ $val = $obj_A->get_val("default"); # $val is now 'default'
 
- $val = $obj_A->get_unsetVal("otherdefault"); # $val is still 'default'
+ $val = $obj_A->get_Val("otherdefault"); # $val is still 'default'
 
  $val = $obj_A->set_arbitraryfield( "SOMEVALUE" ); # $val is 'SOMEVALUE'
 
@@ -1790,7 +1358,7 @@ Data::ObjectStore::Container - Persistant Perl container object.
 
  # yes, the $newlist reference is changed when the object is operated on with list operations
 
-=head1 DESCRIPTION
+=head2 DESCRIPTION
 
 This is a container object that can be used to store key value data
 where the keys are strings and the values can be hashes, arrays or
@@ -1801,6 +1369,8 @@ This class is designed to be overridden. Two methods are provided
 for convenience. _init is run the first time the object is created.
 _load is run each time the object is loaded from the data store.
 These methods are no-ops in the base class.
+
+=head2 METHODS
 
 =cut
 
@@ -2043,6 +1613,11 @@ sub _load {}
 #     Private Methods
 #
 # -----------------------
+
+sub _id {
+    shift->[ID];
+}
+
 sub _freezedry {
     my $self = shift;
     join( "`", map { if( defined($_) ) { s/[\\]/\\\\/gs; s/`/\\`/gs; } defined($_) ? $_ : 'u' } %{$self->[DATA]} );
@@ -2074,10 +1649,11 @@ __END__
 
 =head1 COPYRIGHT AND LICENSE
 
-       Copyright (c) 2017 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       Copyright (c) 2018 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 2.03  (September, 2017))
+       Version 1.101  (Mar, 2018))
 
 =cut
+
