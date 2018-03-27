@@ -333,15 +333,15 @@ sub test_suite {
 
     my $dir3 = tempdir( CLEANUP => 1 );
     my $store3 = Data::RecordStore->open_store( $dir3 );
-    my $val1 = "x" x 12;
-    my $val2 = "x" x 1224;
+    $val1 = "x" x 12;
+    $val2 = "x" x 1224;
     my $val3 = "x" x 12;
     my $val4 = "x" x 10_000;
-    my( @ids );
+    ( @ids ) = ();
     for (1..10) {
         push @ids, $store3->stow( $val1 );
     }
-    my $t = $store3->create_transaction;
+    $t = $store3->create_transaction;
     for my $id (@ids) {
         $t->stow( $val2, $id );
     }
@@ -373,17 +373,16 @@ sub test_suite {
        );
 
     my $dir4 = tempdir( CLEANUP => 1 );
-    my $store3 = Data::RecordStore->open_store( $dir );
-    my $val1 = "x" x 12;
-    my $val2 = "x" x 1224;
-    my $val3 = "x" x 12;
-    my $val4 = "x" x 10_000;
-    my( @ids );
+    my $store4 = Data::RecordStore->open_store( $dir );
+    $val1 = "x" x 12;
+    $val2 = "x" x 1224;
+    $val3 = "x" x 12;
+    $val4 = "x" x 10_000;
     for (1..10) {
-        push @ids, $store2->stow( $val1 );
+        push @ids, $store4->stow( $val1 );
     }
 
-    my $t = $store->create_transaction;
+    $t = $store4->create_transaction;
     for my $id (@ids) {
         $t->stow( $val2, $id );
     }
@@ -393,7 +392,7 @@ sub test_suite {
     unlike( $@, qr/\S/, 'no commit error moar multimove' );
     unlike( $@, qr/_swapout/, 'no swapout error moar multimove' );
 
-    my $t = $store->create_transaction;
+    $t = $store4->create_transaction;
     for my $id (@ids) {
         $t->stow( $val3, $id );
     }
