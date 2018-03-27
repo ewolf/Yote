@@ -892,6 +892,7 @@ sub _ensure_entry_count {
             # fill the last flie up with \0
 
             CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to open '$self->[DIRECTORY]/$write_file' : $!";
+            binmode $fh; # for windows
             my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, $self->[RECORD_SIZE] * $existing_file_records, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
@@ -903,6 +904,7 @@ sub _ensure_entry_count {
 
             die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
             CORE::open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            binmode $fh; # for windows
             my $nulls = "\0" x ( $self->[FILE_MAX_RECORDS] * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             $needed -= $self->[FILE_MAX_RECORDS];
@@ -914,6 +916,7 @@ sub _ensure_entry_count {
 
             die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
             CORE::open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            binmode $fh; # for windows
             my $nulls = "\0" x ( $needed * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
@@ -948,6 +951,7 @@ sub _fh {
 
     my $file = $files[$f_idx];
     CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Data::RecordStore::Silo->_fhu nable to open '$self->[DIRECTORY]/$file' : $! $?";
+    binmode $fh; # for windows
 
     (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file",$f_idx);
 
