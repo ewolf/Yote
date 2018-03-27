@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.16';
+$VERSION = '3.17';
 
 use constant {
     DIRECTORY    => 0,
@@ -609,6 +609,7 @@ use constant {
     FILE_SIZE        => 2,
     FILE_MAX_RECORDS => 3,
     TMPL             => 4,
+    LOCK             => 5,
 };
 
 $Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
@@ -638,7 +639,7 @@ sub open_silo {
         $file_max_records = 1;
     }
     my $file_max_size = $file_max_records * $record_size;
-
+    my $lock_fh;
     unless( -d $directory ) {
         die "Data::RecordStore::Silo->open_silo Error opening record store. $directory exists and is not a directory" if -e $directory;
         make_path( $directory ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
@@ -647,6 +648,8 @@ sub open_silo {
         CORE::open( my $fh, ">", "$directory/0" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/0' : $!";
         close $fh;
     }
+    CORE::open( $lock_fh, ">", "$directory/l" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/l' : $!";
+
     unless( -w "$directory/0" ){
         die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists but is not writeable" if -e $directory;
     }
@@ -657,6 +660,7 @@ sub open_silo {
         $file_max_size,
         $file_max_records,
         $template,
+        $lock_fh,
     ], $class;
 
     $silo;
@@ -669,11 +673,13 @@ This empties out the database, setting it to zero records.
 =cut
 sub empty {
     my $self = shift;
+    $self->_lock_write;
     my( $first, @files ) = map { "$self->[DIRECTORY]/$_" } $self->_files;
     truncate $first, 0;
     for my $file (@files) {
         unlink $file;
     }
+    $self->_unlock;
     undef;
 } #empty
 
@@ -687,11 +693,13 @@ by the record size.
 sub entry_count {
     # return how many entries this index has
     my $self = shift;
+    $self->_lock_read;
     my @files = $self->_files;
     my $filesize;
     for my $file (@files) {
         $filesize += -s "$self->[DIRECTORY]/$file";
     }
+    $self->_unlock;
     int( $filesize / $self->[RECORD_SIZE] );
 } #entry_count
 
@@ -704,6 +712,7 @@ The array in question is the unpacked template.
 sub get_record {
     my( $self, $id ) = @_;
 
+    $self->_lock_read;
     die "Data::RecordStore::Silo->get_record : index $id out of bounds. Store has entry count of ".$self->entry_count if $id > $self->entry_count || $id < 1;
 
     my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
@@ -712,10 +721,10 @@ sub get_record {
         or die "Data::RecordStore::Silo->get_record : error reading id $id at file $file_id at index $f_idx. Could not seek to ($self->[RECORD_SIZE] * $f_idx) : $@ $!";
     my $srv = sysread $fh, my $data, $self->[RECORD_SIZE];
     close $fh;
+    $self->_unlock;
 
     defined( $srv )
         or die "Data::RecordStore::Silo->get_record : error reading id $id at file $file_id at index $f_idx. Could not read : $@ $!";
-
     [unpack( $self->[TMPL], $data )];
 } #get_record
 
@@ -726,8 +735,10 @@ adds an empty record and returns its id, starting with 1
 =cut
 sub next_id {
     my( $self ) = @_;
+    $self->_lock_write;
     my $next_id = 1 + $self->entry_count;
     $self->_ensure_entry_count( $next_id );
+    $self->_unlock;
     $next_id;
 } #next_id
 
@@ -742,6 +753,7 @@ sub pop {
 
     my $entries = $self->entry_count;
     return undef unless $entries;
+    $self->_lock_write;
     my $ret = $self->get_record( $entries );
     my( $f_idx, $fh, $file ) = $self->_fh( $entries );
     my $new_fs = $f_idx * $self->[RECORD_SIZE];
@@ -750,6 +762,7 @@ sub pop {
     } else {
         unlink $file;
     }
+    $self->_unlock;
     close $fh;
 
     $ret;
@@ -808,7 +821,9 @@ sub put_record {
 
     my( $f_idx, $fh, $file, $file_id ) = $self->_fh( $id );
 
+    $self->_lock_write;
     sysseek( $fh, $self->[RECORD_SIZE] * ($f_idx), SEEK_SET ) && ( my $swv = syswrite( $fh, $to_write ) ) || die "Data::RecordStore::Silo->put_record : unable to put record id $id at file $file_id index $f_idx : $@ $!";
+    $self->_unlock;
     close $fh;
 
     1;
@@ -872,8 +887,10 @@ sub _ensure_entry_count {
         my $existing_file_records = int( (-s "$self->[DIRECTORY]/$write_file" ) / $self->[RECORD_SIZE] );
         my $records_needed_to_fill = $self->[FILE_MAX_RECORDS] - $existing_file_records;
         $records_needed_to_fill = $needed if $records_needed_to_fill > $needed;
+        $self->_lock_write;
         if( $records_needed_to_fill > 0 ) {
             # fill the last flie up with \0
+
             CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to open '$self->[DIRECTORY]/$write_file' : $!";
             my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, $self->[RECORD_SIZE] * $existing_file_records, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
@@ -901,6 +918,7 @@ sub _ensure_entry_count {
             (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
             close $fh;
         }
+        $self->_unlock;
     }
 } #_ensure_entry_count
 
@@ -946,6 +964,18 @@ sub _files {
     @files;
 } #_files
 
+sub _lock_read {
+    my $fh = shift->[LOCK];
+    flock( $fh, 1 );
+}
+sub _lock_write {
+    my $fh = shift->[LOCK];
+    flock( $fh, 2 );
+}
+sub _unlock {
+    my $fh = shift->[LOCK];
+    flock( $fh, 8 );
+}
 
 # ----------- end Data::RecordStore::Silo
 
@@ -1356,10 +1386,10 @@ __END__
 
 =head1 COPYRIGHT AND LICENSE
 
-       Copyright (c) 2015-2017 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
+       Copyright (c) 2015-2018 Eric Wolf. All rights reserved.  This program is free software; you can redistribute it and/or modify it
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.16  (Mar 14, 2017))
+       Version 3.17  (April, 2018))
 
 =cut
