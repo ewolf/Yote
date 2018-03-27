@@ -45,9 +45,9 @@ package Data::RecordStore;
 
  my $new_id = $transaction->stow( $data );
 
- my $new_or_recycled_id = $store->next_id;
+ my $new_or_reused_id = $store->next_id;
 
- $transaction->stow( "MORE DATA", $new_or_recycled_id );
+ $transaction->stow( "MORE DATA", $new_or_reused_id );
 
  $transaction->delete_record( $someid );
 
@@ -505,11 +505,19 @@ sub _swapout {
     }
     elsif( $vacated_silo_id == $last_id ) {
         #
-        # this was the last record, so just remove it
+        # this was the last record, so just remove it and
+        # the silo it rode in on.
         #
         $silo->pop;
     }
     else {
+
+        # this is a bug caused when two entries are swapped out on the same silo
+        # where they both were at the end at the time the vacated id record was
+        # created by the transaction commit. The answer is to sort the
+        # ids by the the lastid here.
+        
+#        use Carp 'longmess'; print STDERR Data::Dumper->Dump([longmess]);
         die "Data::RecordStore::_swapout : error, swapping out id $vacated_silo_id is larger than the last id $last_id";
     }
 
@@ -1226,51 +1234,37 @@ sub commit {
     my $actions = $trans_silo->entry_count;
 
     #
-    # Rewire the index to the new silo/location
+    # in this phase, the indexes are updated. The blank spaces
+    # are not purged here.
     #
-    my( %record_id2tsteps );
-
-    for my $a_id (1..$actions) {
+    my $purges = [];
+    my( %foundid );
+    for( my $a_id=$actions; $a_id > 0; $a_id-- ) {
         my $tstep = $trans_silo->get_record($a_id);
         my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) = @$tstep;
-        push @{$record_id2tsteps{$record_id}}, $tstep;
-        if( $action eq 'S' ) {
-            $index->put_record( $record_id, [ $to_silo_id, $to_record_id ] );
-        } else {
-            $index->put_record( $record_id, [ 0, 0 ] );
+        if( 0 == $foundid{$record_id}++ ) {
+            if( $action eq 'S' ) {
+                $index->put_record( $record_id, [ $to_silo_id, $to_record_id ] );
+            } else {
+                $index->put_record( $record_id, [ 0, 0 ] );
+            }
+            push @$purges, [ $action, $record_id, $from_silo_id, $from_record_id ];
+            
+        } elsif( $action eq 'S' ) {
+            push @$purges, [ $action, $record_id, $to_silo_id, $to_record_id ];
         }
     }
 
-    $dir_silo->put_record( $trans_id, [ $trans_id, $$, time, TRA_CLEANUP_COMMIT ] );
-    $self->[STATE] = TRA_CLEANUP_COMMIT;
-
-    #
-    # Cleanup discarded data. If the same record moved around a bunch, clean things up
-    # incrementally.
-    #
-    for my $record_id (keys %record_id2tsteps) {
-        my $tsteps = $record_id2tsteps{$record_id};
-        my( $last_to_silo_id, $last_to_record_id );
-        for my $tstep (@$tsteps) {
-            my( $action, $record_id, $from_silo_id, $from_record_id, $to_silo_id, $to_record_id ) = @$tstep;
-            if( $action eq 'S' ) {
-                if( $last_to_silo_id ) {
-                    my $silo = $store->_get_silo( $last_to_silo_id );
-                    $store->_swapout( $silo, $last_to_silo_id, $last_to_record_id );
-                }
-                $last_to_silo_id   = $to_silo_id;
-                $last_to_record_id = $to_record_id;
-                if( $from_silo_id ) {
-                    my $silo = $store->_get_silo( $from_silo_id );
-                    $store->_swapout( $silo, $from_silo_id, $from_record_id );
-                }
-            }
-            elsif( $action eq 'D' ) {
-                $store->delete_record( $record_id );
-            }
-            elsif( $action eq 'R' ) {
-                $store->recycle_id( $record_id );
-            }
+    $purges = [ sort { $b->[3] <=> $a->[3] } @$purges ];
+    for my $purge (@$purges) {
+        my( $action, $record_id, $from_silo_id, $from_record_id ) = @$purge;
+        if ( $action eq 'S' ) {
+            my $silo = $store->_get_silo( $from_silo_id );
+            $store->_swapout( $silo, $from_silo_id, $from_record_id );
+        } elsif ( $action eq 'D' ) {
+            $store->delete_record( $record_id );
+        } elsif ( $action eq 'R' ) {
+            $store->recycle_id( $record_id );
         }
     }
 

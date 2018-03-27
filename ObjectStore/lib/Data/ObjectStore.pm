@@ -131,6 +131,7 @@ sub open_store {
     #
     for my $pkg ( qw( Data::ObjectStore::Container Data::ObjectStore::Array Data::ObjectStore::Hash ) ) {
         $INC{ $pkg } or eval("use $pkg");
+        undef $@;
     }
 
     my $store = bless [
@@ -248,6 +249,10 @@ sub create_container {
     }
     $class //= 'Data::ObjectStore::Container';
     if( $class ne 'Data::ObjectStore::Container' && ! $INC{$class} ) {
+        eval("use $class");
+    }
+
+    unless( $INC{ $class } ) {
         eval("use $class");
     }
 
@@ -995,10 +1000,11 @@ use warnings;
 
 no warnings 'uninitialized';
 no warnings 'numeric';
+no warnings 'recursion';
 
 use Tie::Hash;
 
-$Data::ObjectStore::Hash::SIZE = 977;
+$Data::ObjectStore::Hash::SIZE = 13337;
 
 use constant {
     ID          => 0,
