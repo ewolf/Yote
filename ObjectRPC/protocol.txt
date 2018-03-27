@@ -1,0 +1,115 @@
+                                 Data::ObjectRPC
+
+===Introduction===
+
+Data::ObjectRPC is build on top of Data::ObjectStore.
+
+The RPC is composed of
+  protocol
+  javascript client
+  object server
+
+Objects exist on the server, with their avatars on the client.
+Any object fields that do not start with an underscore are copied to
+the client object avatar. Any methods on the server objects that do
+not start with an underscore are copied to the client object avatar.
+Invoking those methods on the client avatar object returns a promise
+and invokes the methods on the server.
+
+===The Protocol===
+
+The protocol is a hash data structure encoded in json. It consists
+of a request and a response.
+
+object-id
+   an integer representing an object
+
+token
+   an integer session id
+
+method-names
+   method-name list
+
+method-name
+   string
+   
+key
+   string
+
+argument
+   value
+
+return
+   value
+
+value
+   one of the following :
+     * integeter referecing an object
+     * "vVALUE" string prepended with v for number or string values
+     * "u" undefined
+     * {} a javascript object
+     * [] a javascript array
+
+update
+   {
+     i : object-id,
+     m : [method-names],
+     v : {key,value pairs}
+   }
+
+init-request
+   {
+     i : 0,
+     m : 'init',
+     t : {optional token},
+   }
+
+request
+   {
+     i : object-id,
+     m : method-name,
+     a : [arguments],
+     t : token
+   }
+
+response
+   {
+     r : [returns],
+     u : [updates],
+     t : token
+   }
+
+
+===Javascript Client===
+
+ * calls the server with the init-request, sending a token if it has any
+ * keeps a cache hash of id -> object
+ * when a response is received
+     ** if in the cache hash, update object fields and fire off any listeners
+     ** if not in the cache hash, create a new avatar object and store it in the
+        cache hash. attach the generic request method to it, maybe closured to it.
+ * when making method calls, use await and async.
+
+===Object Server===
+
+ * keeps a session object with client state for every client
+ * 
+
+The object server has to do the following when it receives a request :
+
+ * use the token to find the session
+ * verify : target objectis visible to the session
+ * verify : any objects references in the method arguments are visible to the session
+ * invoke the method get the return value
+ * scan return value for any objects
+ * add those objects to the session
+ * find any objects marked "dirty" as a consequence of the method call
+ * update the last update time for these dirty objects
+ * scan the objects in the session and see if any were updated since the last time
+   the session was updated.
+ * if the request is the init-request, bundle all objects of the session as updates
+ * update the last update time for the sesssion
+ * bundle the returns and updates in the response. return the token, possibly assining
+   a new one
+ * call save
+ * send the response
