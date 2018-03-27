@@ -247,6 +247,9 @@ sub create_container {
         $class = 'Data::ObjectStore::Container';
     }
     $class //= 'Data::ObjectStore::Container';
+    if( $class ne 'Data::ObjectStore::Container' && ! $INC{$class} ) {
+        eval("use $class");
+    }
 
     my $id = $self->_new_id;
     my $obj = bless [ $id,
@@ -254,6 +257,7 @@ sub create_container {
                       $self ], $class;
     $self->_dirty( $obj, $id );
     $self->_store_weak( $id, $obj );
+
     $obj->_init(); #called the first time the object is created.
     $obj;
 } #create_container
@@ -419,7 +423,7 @@ sub _fetch {
     my $class    = substr $stowed, 0, $pos;
     my $dryfroze = substr $stowed, $pos + 1;
 
-    unless( $INC{ $class } ) {
+    if( $class ne 'Data::ObjectStore::Container' && $INC{ $class } ) {
         eval("use $class");
     }
 
@@ -1624,6 +1628,9 @@ sub _freezedry {
 sub _reconstitute {
     my( $cls, $store, $id, $data ) = @_;
     my $obj = [$id,{@$data},$store];
+    if( $cls ne 'Data::ObjectStore::Container' && $INC{ $cls } ) {
+        eval("use $cls");
+    }
     bless $obj, $cls;
     $obj->_load;
     $obj;
