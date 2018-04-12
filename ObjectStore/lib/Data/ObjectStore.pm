@@ -11,7 +11,7 @@ use Data::RecordStore;
 use Scalar::Util qw(weaken);
 use vars qw($VERSION);
 
-$VERSION = '1.104';
+$VERSION = '1.105';
 
 use constant {
     RECORD_STORE => 0,
