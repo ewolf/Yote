@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.18';
+$VERSION = '3.19';
 
 use constant {
     DIRECTORY    => 0,
@@ -134,7 +134,7 @@ use constant {
     RECYC_SILO   => 2,
     SILOS        => 3,
     VERSION      => 4,
-    TRANS_RECORD => 5,
+    OPTIONS      => 5,
 
     RECORD_SIZE      => 1,
     FILE_SIZE        => 2,
@@ -152,15 +152,24 @@ use constant {
 
 =head1 METHODS
 
-=head2 open_store( directory )
+=head2 open_store( directory, options )
 
 Takes a single argument - a directory, and constructs the data store in it.
 The directory must be writeable or creatible. If a RecordStore already exists
 there, it opens it, otherwise it creates a new one.
 
+=over 2
+
+=head3 Options
+
+=item group - when files are created, they use this user group if able.
+
+=back
+
 =cut
 
 sub open_store {
+    my $opts = ref( $_[$#_] ) ? pop : {};
     my $directory = pop @_;
     my $pkg = shift @_ || 'Data::RecordStore';
 
@@ -170,8 +179,7 @@ sub open_store {
     #   root/RECYC_SILO        <-- recycle silo directory
     #   root/silos/            <-- directory for silo directories
 
-    
-    make_path( "$directory/silos", { error => \my $err } );
+    make_path( "$directory/silos", { error => \my $err, map { $_ => $opts->{$_} } grep { $opts->{$_} } qw( group mode ) } );
     if( @$err ) {
         my( $err ) = values %{ $err->[0] };
         die $err;
@@ -210,11 +218,11 @@ sub open_store {
 
     my $self = [
         $directory,
-        Data::RecordStore::Silo->open_silo( "IL", $record_index_directory ),
-        Data::RecordStore::Silo->open_silo( "L", "$directory/RECYC_SILO" ),
+        Data::RecordStore::Silo->open_silo( "IL", $record_index_directory, $opts ),
+        Data::RecordStore::Silo->open_silo( "L", "$directory/RECYC_SILO", $opts ),
         [],
         $version,
-#        $transaction_record,
+        $opts,
     ];
 
     bless $self, ref( $pkg ) || $pkg;
@@ -240,7 +248,7 @@ Returns a list of currently existing transaction objects that are not marked TRA
 
 sub list_transactions {
     my $self = shift;
-    my $trans_directory = Data::RecordStore::Silo->open_silo( "ILLI", "$self->[DIRECTORY]/TRANS/META" );
+    my $trans_directory = Data::RecordStore::Silo->open_silo( "ILLI", "$self->[DIRECTORY]/TRANS/META", $self->[OPTIONS] );
     my @trans;
     my $items = $trans_directory->entry_count;
     for( my $trans_id=$items; $trans_id > 0; $trans_id-- ) {
@@ -542,7 +550,7 @@ sub _get_silo {
     my $silo_row_size = int( exp $silo_index );
 
     # storing first the size of the record, uuencode flag, then the bytes of the record
-    my $silo = Data::RecordStore::Silo->open_silo( "LIZ*", "$self->[DIRECTORY]/silos/${silo_index}_RECSTORE", $silo_row_size, $silo_index );
+    my $silo = Data::RecordStore::Silo->open_silo( "LIZ*", "$self->[DIRECTORY]/silos/${silo_index}_RECSTORE", $silo_row_size, $self->[OPTIONS] );
 
     $self->[SILOS][ $silo_index ] = $silo;
     $silo;
@@ -614,7 +622,7 @@ use constant {
 
 $Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
 
-=head2 open_silo( template, filename, record_size )
+=head2 open_silo( template, filename, record_size, options )
 
 Opens or creates the directory for a group of files
 that represent one silo storing records of the given
@@ -623,12 +631,25 @@ If a size is not given, it calculates the size from
 the template, if it can. This will die if a zero byte
 record size is given or calculated.
 
+=over 2
+
+=head3 Options
+
+=item group - when files are created, they use this user group if able.
+
+=back
+
 =cut
 
 sub open_silo {
-    my( $pkg, $template, $directory, $size ) = @_;
+    my( $pkg, $template, $directory, $size, $opts ) = @_;
     my $class = ref( $pkg ) || $pkg;
     my $template_size = $template =~ /\*/ ? 0 : do { use bytes; length( pack( $template ) ) };
+    if( ref( $size ) ) {
+        $opts = $size;
+        undef $size;
+    }
+    $opts //= {};
     my $record_size = $size // $template_size;
 
     die "Data::RecordStore::Silo->open_sile error : given record size does not agree with template size" if $size && $template_size && $template_size != $size;
@@ -642,7 +663,7 @@ sub open_silo {
     my $lock_fh;
     unless( -d $directory ) {
         die "Data::RecordStore::Silo->open_silo Error opening record store. $directory exists and is not a directory" if -e $directory;
-        make_path( $directory ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
+        make_path( $directory, { map { $_ => $opts->{$_} } grep { $opts->{$_} } qw( group mode ) } ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
     }
     unless( -e "$directory/0" ){
         CORE::open( my $fh, ">", "$directory/0" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/0' : $!";
@@ -1025,6 +1046,7 @@ use constant {
     STORE       => 4,
     SILO        => 5,
     CATALOG     => 6,
+    OPTIONS     => 7,
 
     TRA_ACTIVE           => 1, # transaction has been created
     TRA_IN_COMMIT        => 2, # commit has been called, not yet completed
@@ -1041,13 +1063,13 @@ our @STATE_LOOKUP = ('Active','In Commit','In Rollback','In Commit Cleanup','In 
 # Creates a new transaction or returns an existing one based on the data provided
 #
 sub _create {
-    my( $pkg, $record_store, $trans_data ) = @_;
+    my( $pkg, $record_store, $trans_data, $options ) = @_;
 
     # transaction id
     # process id
     # update time
     # state
-    my $trans_catalog = Data::RecordStore::Silo->open_silo( "ILLI", "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/META" );
+    my $trans_catalog = Data::RecordStore::Silo->open_silo( "ILLI", "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/META", $options );
     my $trans_id;
 
     if( $trans_data ) {
@@ -1069,10 +1091,13 @@ sub _create {
     # to record id
     push @$trans_data, Data::RecordStore::Silo->open_silo(
         "ALILIL",
-        "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/instances/$trans_id"
+        "$record_store->[Data::RecordStore::DIRECTORY]/TRANS/instances/$trans_id",
+        $options,
         );
     push @$trans_data, $trans_catalog;
 
+    push @$trans_data, $options;
+    
     bless $trans_data, $pkg;
 
 } #_create
@@ -1367,6 +1392,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.18  (April, 2018))
+       Version 3.19  (April, 2018))
 
 =cut
