@@ -181,8 +181,7 @@ sub open_store {
 
     make_path( "$directory/silos", { error => \my $err, map { $_ => $opts->{$_} } grep { $opts->{$_} } qw( group mode ) } );
     if( @$err ) {
-        my( $err ) = values %{ $err->[0] };
-        die $err;
+        die join ',',map { values %$_ } @$err;
     }
     my $record_index_directory = "$directory/RECORD_INDEX_SILO";
 
@@ -194,6 +193,7 @@ sub open_store {
     my $FH;
     if( -e $version_file ) {
         CORE::open $FH, "<", $version_file;
+        $opts->{group} && chown -1, $opts->{group}, $FH;
         $version = <$FH>;
         chomp $version;
 
@@ -212,6 +212,7 @@ sub open_store {
         }
         $version = $VERSION;
         CORE::open $FH, ">", $version_file;
+        $opts->{group} && chown -1, $opts->{group}, $FH;
         print $FH "$version\n";
     }
     close $FH;
@@ -617,7 +618,7 @@ use constant {
     FILE_SIZE        => 2,
     FILE_MAX_RECORDS => 3,
     TMPL             => 4,
-    LOCK             => 5,
+    OPTIONS          => 5,
 };
 
 $Data::RecordStore::Silo::MAX_SIZE = 2_000_000_000;
@@ -660,16 +661,15 @@ sub open_silo {
         $file_max_records = 1;
     }
     my $file_max_size = $file_max_records * $record_size;
-    my $lock_fh;
     unless( -d $directory ) {
         die "Data::RecordStore::Silo->open_silo Error opening record store. $directory exists and is not a directory" if -e $directory;
         make_path( $directory, { map { $_ => $opts->{$_} } grep { $opts->{$_} } qw( group mode ) } ) or die "Data::RecordStore::Silo->open_silo : Unable to create directory $directory";
     }
     unless( -e "$directory/0" ){
         CORE::open( my $fh, ">", "$directory/0" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/0' : $!";
+        $opts->{group} && chown -1, $opts->{group}, $fh;
         close $fh;
     }
-    CORE::open( $lock_fh, ">", "$directory/l" ) or die "Data::RecordStore::Silo->open_silo : Unable to open '$directory/l' : $!";
 
     unless( -w "$directory/0" ){
         die "Data::RecordStore::Silo->open_silo Error operning record store. $directory exists but is not writeable" if -e $directory;
@@ -681,7 +681,7 @@ sub open_silo {
         $file_max_size,
         $file_max_records,
         $template,
-        $lock_fh,
+        $opts,
     ], $class;
 
     $silo;
@@ -900,6 +900,7 @@ sub _ensure_entry_count {
             # fill the last flie up with \0
 
             CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to open '$self->[DIRECTORY]/$write_file' : $!";
+            $self->[OPTIONS]{group} && chown -1, $self->[OPTIONS]{group}, $fh;
             binmode $fh; # for windows
             my $nulls = "\0" x ( $records_needed_to_fill * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, $self->[RECORD_SIZE] * $existing_file_records, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
@@ -912,6 +913,7 @@ sub _ensure_entry_count {
 
             die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
             CORE::open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            $self->[OPTIONS]{group} && chown -1, $self->[OPTIONS]{group}, $fh;
             binmode $fh; # for windows
             my $nulls = "\0" x ( $self->[FILE_MAX_RECORDS] * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
@@ -924,6 +926,7 @@ sub _ensure_entry_count {
 
             die "Data::RecordStore::Silo->ensure_entry_count : file $self->[DIRECTORY]/$write_file already exists" if -e $write_file;
             CORE::open( my $fh, ">", "$self->[DIRECTORY]/$write_file" ) or die "Data::RecordStore::Silo->ensure_entry_count : unable to create '$self->[DIRECTORY]/$write_file' : $!";
+            $self->[OPTIONS]{group} && chown -1, $self->[OPTIONS]{group}, $fh;
             binmode $fh; # for windows
             my $nulls = "\0" x ( $needed * $self->[RECORD_SIZE] );
             (my $pos = sysseek( $fh, 0, SEEK_SET )) && (my $wrote = syswrite( $fh, $nulls )) || die "Data::RecordStore::Silo->ensure_entry_count : unable to write blank to '$self->[DIRECTORY]/$write_file' : $!";
@@ -958,6 +961,7 @@ sub _fh {
 
     my $file = $files[$f_idx];
     CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Data::RecordStore::Silo->_fhu nable to open '$self->[DIRECTORY]/$file' : $! $?";
+    $self->[OPTIONS]{group} && chown -1, $self->[OPTIONS]{group}, $fh;
     binmode $fh; # for windows
 
     (($id - ($f_idx*$self->[FILE_MAX_RECORDS])) - 1,$fh,"$self->[DIRECTORY]/$file",$f_idx);
