@@ -11,7 +11,7 @@ use Data::RecordStore;
 use Scalar::Util qw(weaken);
 use vars qw($VERSION);
 
-$VERSION = '1.105';
+$VERSION = '1.106';
 
 use constant {
     RECORD_STORE => 0,
@@ -1661,7 +1661,7 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.105  (Mar, 2018))
+       Version 1.106  (April, 2018))
 
 =cut
 

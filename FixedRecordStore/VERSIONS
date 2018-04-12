@@ -1,3 +1,5 @@
+3.19 - added options to allow for filemode and group to be set for files created
+
 3.18 - removed flocking, didn't work with windows
        added options to open_store. Just using 'group' for now.
        removed changelog (appended it to the end of this document)
