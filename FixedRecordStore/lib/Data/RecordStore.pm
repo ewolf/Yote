@@ -154,13 +154,14 @@ use constant {
 
 =head2 open_store( directory, options )
 
-Takes a single argument - a directory, and constructs the data store in it.
+Takes a directory, and constructs the data store in it.
 The directory must be writeable or creatible. If a RecordStore already exists
-there, it opens it, otherwise it creates a new one.
-
-=over 2
+there, it opens it, otherwise it creates a new one. Options may be group and 
+mode for group ownership and file mode.
 
 =head3 Options
+
+=over 2
 
 =item group - when files are created, they use this user group if able.
 
@@ -632,9 +633,9 @@ If a size is not given, it calculates the size from
 the template, if it can. This will die if a zero byte
 record size is given or calculated.
 
-=over 2
-
 =head3 Options
+
+=over 2
 
 =item group - when files are created, they use this user group if able.
 
@@ -960,7 +961,7 @@ sub _fh {
     }
 
     my $file = $files[$f_idx];
-    CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Data::RecordStore::Silo->_fhu nable to open '$self->[DIRECTORY]/$file' : $! $?";
+    CORE::open( my $fh, "+<", "$self->[DIRECTORY]/$file" ) or die "Data::RecordStore::Silo->_fh unable to open '$self->[DIRECTORY]/$file' : $! $?";
     $self->[OPTIONS]{group} && chown -1, $self->[OPTIONS]{group}, $fh;
     binmode $fh; # for windows
 
