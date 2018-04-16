@@ -1,3 +1,7 @@
+3.21 - removed bad exe files from Makefile.PL, checked Makefile.PL in
+    
+3.20 - updated minimum perl version to 5.20 
+    
 3.19 - added options to allow for filemode and group to be set for files created
 
 3.18 - removed flocking, didn't work with windows

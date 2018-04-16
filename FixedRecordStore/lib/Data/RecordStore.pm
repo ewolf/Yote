@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.20';
+$VERSION = '3.21';
 
 use constant {
     DIRECTORY    => 0,
@@ -1396,6 +1396,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.20  (April, 2018))
+       Version 3.21  (April, 2018))
 
 =cut
