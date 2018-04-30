@@ -48,7 +48,6 @@ open_silo( char        * directory,
   silo->directory        = strdup( directory );
   silo->file_max_records = file_max_records;
   silo->file_max_size    = file_max_records * record_size;
-  silo->stamp            = malloc( record_size );
   
   return silo;
   
@@ -58,7 +57,6 @@ void
 cleanup_silo( Silo *silo )
 {
   free( silo->directory );
-  free( silo->stamp );
 } //cleanup_silo
 
 silo_dir_info *
@@ -133,27 +131,16 @@ silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_a
   int file_number, record_position, file_position;
   char * filename;
   unsigned long idx = id - 1;
-  long delta;
   if ( write_amount == 0 )
     {
       write_amount = strlen( data );
     }
 
-  delta = silo->record_size - write_amount;
-  if ( delta < 0 )
+  if ( silo->record_size < write_amount )
     {
       // too big. must be at least one less than the record size for the '\0' byte.
       return 0;
     }
-  if ( delta == 1 )
-    {
-      silo->stamp[silo->record_size-1] = '\0';
-    }
-  else if( delta > 0 )
-    {
-      memset( write_amount + silo->stamp, '\0', delta );
-    }
-  memcpy( silo->stamp, data, write_amount );
   
   silo_ensure_entry_count( silo, id );
   
@@ -169,7 +156,7 @@ silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_a
   silo_file = fopen( filename, "r+" );
   fseek( silo_file, file_position, SEEK_SET );
 
-  fwrite( silo->stamp, silo->record_size, 1, silo_file );
+  fwrite( data, write_amount, 1, silo_file );
   fclose( silo_file );
   free( filename );
   return 1;

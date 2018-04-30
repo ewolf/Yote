@@ -14,7 +14,6 @@ typedef struct
   unsigned long  file_max_records;
   unsigned int   silo_type;
   unsigned int   file_size_limit;
-  char         * stamp;
 } Silo;
 
 /* Silo methods */
