@@ -440,29 +440,28 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
   unsigned long sid;
   
   char *        trans_record;
+  RecordStore * store;
   
   unsigned long next_trans_sid;
   if( trans->state == TRA_ACTIVE )
     {
-      record = silo_get_record( trans->store->index_silo, ridA );
-      memcpy( &silo_idx, record, sizeof( int ) );
-      memcpy( &sid, record + sizeof( int ), sizeof( unsigned long ) );
-      free( record );
+      store = trans->store;
+      PREP_INDEX;
+      LOAD_INDEX( store, ridA );
       
       next_trans_sid = silo_next_id( trans->silo );
-      trans_record = calloc( trans->silo->record_size, 1 );
-      memcpy( trans_record, &trans_type, sizeof( int ) );
-      memcpy( trans_record + sizeof( int ), &ridA, sizeof( unsigned long ) );
-      memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ), &silo_idx, sizeof( int ) );
-      memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) + sizeof( int ),
-              &sid, sizeof( unsigned long ) );
+      trans_record = (TransactionEntry)calloc( trans->silo->record_size, 1 );
+      trans_record->type = trans_type;
+      trans_record->rid  = ridA;
+      trans_record->from_silo_idx = SILO_IDX;
+      trans_record->from_sid = SID;
 
       if ( ridB > 0 )
         {
-          record = silo_get_record( trans->store->index_silo, ridB );
-          memcpy( &silo_idx, record, sizeof( int ) );
-          memcpy( &sid, record + sizeof( int ), sizeof( unsigned long ) );
-          free( record );
+          LOAD_INDEX( store, ridB );
+          trans_record->to_silo_idx = SILO_IDX;
+          trans_record->to_sid = SID;
+
           memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) +
                   sizeof( int ) + sizeof( unsigned long ),
                   &silo_idx, sizeof( int ) );
@@ -480,54 +479,88 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
   return 1;
 } //trans_recycle_id
 
-int _sort_purged( const void * a, const void * b )
-{
-  // -1 for a first
-  //  the higher the sid, the more to the left
-  if ( ((TransactionEntry*)a)->from_sid > ((TransactionEntry*)b)->from_sid )
-    {
-      return -1;
-    }
-  else if ( ((TransactionEntry*)b)->from_sid > ((TransactionEntry*)a)->from_sid )
-    {
-      return 1;
-    }
-  return 0;
-}
-
 int
 commit( Transaction *trans )
 {
-  unsigned long      i;
+  /*
+    We all know what a commit is for transactions.
+
+    There are 3 transaction actions that operate on 
+       a record : STOW, DELETE, RECYCLE.
+
+    The records are indexed by rid (record id). When
+       a STOW happens, a new data entry is recorded with
+       the new stow data and the old entry is preserved.
+       The master record index still points to the original location
+       until the commit.
+
+    DELETE and RECYCLE remove an entry, with RECYCLE
+       making its rid available for reuse.
+
+    Commit looks at each action in a transaction, starting
+       with the latest one. DELETE and RECYCLE are easy, their
+       order doesn't matter. with STOW, the order can matter since
+       a single record may be stowed multiple times. The last one
+       is the 'final' one for this transaction. The master record
+       index is updated to this new locatoin and the old location(s)
+       are purged of the old data and that space recovered.
+
+    The space recovery is done by moving the last data entry in the 
+       silo files to the now available spot and updating the master
+       record index for the swapped out entry to point to this spot.
+   */
+  RecordStore      * store;
+  
+  unsigned long      i, j;
   unsigned long      actions;
   TransactionEntry * entry;
   
-  TransactionEntry ** entry_list;
-  unsigned long       entry_count;
-  unsigned long       entries;
-  int                 had_entry;
-
-  TransactionEntry ** purge_list;
-  unsigned long       purge_count;
+  unsigned long   *  rid_list;
+  unsigned long   *  purged_rids;
+  unsigned int       purged_rid_count;
+  
+  unsigned long      entry_count;
+  unsigned long      entries;
+  int                had_entry;
+  
+  TransactionEntry ** purge_to_list;
+  unsigned long       purge_to_count;
+  TransactionEntry ** purge_from_list;
+  unsigned long       purge_from_count;
   
   if ( trans->state == TRA_ACTIVE         ||
        trans->state == TRA_IN_COMMIT      ||
        trans->state == TRA_IN_ROLLBACK    ||
        trans->state == TRA_CLEANUP_COMMIT )
     {
-      purge_count  = 0;
+      store = trans->store;
+      
+      purge_to_count   = 0;
+      purge_from_count = 0;
       entry_count  = 0;
+
+      
+      trans->state = TRA_IN_COMMIT;
+      silo_put_record( store->transaction_catalog_silo,
+                       trans->tid,
+                       (char*)trans,
+                       sizeof( Transaction ) );
+
       
       entries = silo_entry_count( trans->silo );
-      entry_list = calloc( sizeof(TransactionEntry*), entries );
-      purge_list = calloc( sizeof(TransactionEntry*), entries );
-      for ( i=entries; i > 0; i++ )
+      rid_list        = calloc( sizeof(unsigned long), entries );
+      purge_to_list   = calloc( sizeof(TransactionEntry*), entries );
+      purge_from_list = calloc( sizeof(TransactionEntry*), entries );
+       
+      for ( i=entries; i > 0; i-- )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
+
+          // if we have encountered
           had_entry = 0;
-          for ( i=0; i<entry_count; i++ )
+          for ( j=0; j<entry_count; j++ )
             {
-              if ( entry_list[i] == entry )
+              if ( rid_list[j] == entry->rid )
                 {
                   had_entry = 1;
                   break;
@@ -538,53 +571,83 @@ commit( Transaction *trans )
             {
               if ( entry->type == TRA_STOW )
                 {
-                  purge_list[purge_count++] = entry;
+                  // purge the 'to'
+                  purge_to_list[purge_to_count++] = entry;
                 }
             }
           else
             {
-              entry_list[entry_count++] = entry;
+              rid_list[entry_count++] = entry->rid;
               if ( entry->type == TRA_STOW )
                 {
                   // update index
-                  
+                  SAVE_INDEX( store, entry->rid, entry->to_silo_idx, entry->to_sid );
                 }
               else //deletion
                 {
-                  // update index to zero out
-                  //                  silo_put_record( trans->store->index_silo, rid, { 0, 0 }, sizeof);
+                  SAVE_INDEX( store, entry->rid, 0, 0 );
                 }
-              purge_list[purge_count++] = entry;
+              // purge the 'from'
+              purge_from_list[purge_from_count++] = entry;
             }
-          qsort( purge_list, purge_count, sizeof( TransactionEntry *), _sort_purged );
-          for ( i=0; i<purge_count; i++ )
+
+          // purge to contains prevoius STOWS for a single rid.
+          // the destination locations for these are no longer
+          // valid and can be swapped away.
+          purged_rid_count = 0;
+          for ( i=0; i<purge_to_count; i++ )
             {
-              entry = purge_list[i];
+              entry = purge_to_list[i];
+              _swapout( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+              purged_rids[ purged_rid_count++ ] = entry->rid;
+            } //each purge_to
+
+          // the from_count is to purge items that are either deleted
+          // or have a 
+          
+          for ( i=0; i<purge_from_count; i++ )
+            {
+              entry = purge_from_list[i];
               if ( entry->type == TRA_STOW )
                 {
-                  _swapout( trans->store, trans->store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                  // check if this 'from' had already been purged by a 'to'
+                  // if so, don't swapout
+                  had_entry = 0;
+                  for ( j=0; j<purged_rid_count; j++ )
+                    {
+                      if ( purged_rids[ j ] == entry->rid )
+                        {
+                          had_entry = 1;
+                          break;
+                        }
+                    }
+                  if ( 0 == had_entry )
+                    {
+                      _swapout( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                    }
                 }
               else if ( entry->type == TRA_DELETE )
                 {
-                  delete_record( trans->store, entry->rid );
+                  delete_record( store, entry->rid );
                 }
               else // if ( entry->type == TRA_RECYCLE )
                 {
-                  recycle_id( trans->store, entry->rid );
+                  recycle_id( store, entry->rid );
                 }
-            }
+            } //each purge from 
+
           // update catalog
           trans->state = TRA_DONE;
           trans->pid   = getpid();
           trans->update_time = time(NULL);
-          silo_put_record( trans->store->transaction_catalog_silo,
+          silo_put_record( store->transaction_catalog_silo,
                            trans->tid,
                            (char*)trans,
                            sizeof( Transaction ) );
           unlink_silo( trans->silo );
-        }
+        } //each entry
       return 0;
-    }
+    } // if reasonable state
   
   return 1;
 
@@ -594,5 +657,40 @@ commit( Transaction *trans )
 int
 rollback( Transaction *trans )
 {
+  RecordStore * store;
+
+  
+  unsigned long      i, j;
+  unsigned long      actions;
+  TransactionEntry * entry;
+  
+  unsigned long   *  rid_list;
+  unsigned long   *  purged_rids;
+  unsigned int       purged_rid_count;
+  
+  unsigned long      entry_count;
+  unsigned long      entries;
+  int                had_entry;
+
+  if ( trans->state == TRA_ACTIVE         ||
+       trans->state == TRA_IN_COMMIT      ||
+       trans->state == TRA_IN_ROLLBACK    ||
+       trans->state == TRA_CLEANUP_COMMIT )
+    {
+      store = trans->store;
+      
+      trans->state = TRA_IN_ROLLBACK;
+      silo_put_record( store->transaction_catalog_silo,
+                       trans->tid,
+                       (char*)trans,
+                       sizeof( Transaction ) );
+      
+      entries = silo_entry_count( trans->silo );
+      for ( i=entries; i > 0; i-- )
+        //      for ( i=0; i<entries; i++ )
+        {
+          entry = (TransactionEntry *)silo_get_record( trans->silo, i );
+        }
+    }  
   return 1;
 } //rollback

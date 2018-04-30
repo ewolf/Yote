@@ -114,6 +114,62 @@ void test_silo( Test * t )
   char * res;
   TransactionEntry * trans;
   struct stat * stat_buffer = malloc( sizeof( struct stat ) );
+
+  // TEST common and edge cases
+  /*
+    
+    open_silo( dir, rec_size, max_filesize )
+       - test with dir already there
+       - test with dir not there
+       - test with unwriteable dir
+       - different record_sizes (0, small, big)
+       - different max_file_size (0, small, big)
+
+    empty_silo   <---- tested
+
+    unlink_silo  <--- tested
+
+    cleanup_silo <--- valgrind tested
+
+    silo_ensure_entry_count
+       - 0 and an other count
+       - a count with larger than record_size*max_file_size
+    
+    silo_entry_count
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+       - after pop
+
+    silo_next_id
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+
+    silo_get_record( silo, idx )
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+       - at an index past the last index
+
+    silo_pop
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+
+    silo_last_entry
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+
+    silo_put_record( silo, id, data, amount )
+
+    silo_push
+       - when empty
+       - when at end of silo file
+       - when at start of silo file past the first
+   */
+  
   
   if ( 0 == stat( dir, stat_buffer ) && S_ISDIR( stat_buffer->st_mode ) )
     {

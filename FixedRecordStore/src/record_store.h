@@ -122,6 +122,7 @@ typedef struct
 typedef struct
 {
   unsigned int  type;          // TRA_STOW, TRA_DELETE, TRA_RECYCLE
+  unsigned int  completed;     // 1 if completed
   unsigned long rid;           // record id
   unsigned int  from_silo_idx; // location before transaction
   unsigned long from_sid;      // 
