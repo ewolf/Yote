@@ -1,0 +1,8 @@
+Changes
+Makefile.PL
+MANIFEST
+ppport.h
+README
+XS.xs
+t/Data-RecordStore-XS.t
+lib/Data/RecordStore/XS.pm

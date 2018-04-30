@@ -2,9 +2,9 @@
 
 Silo *
 open_silo( char    * directory,
-           long long record_size )
+           unsigned long long record_size )
 {
-  long long file_max_records;
+  unsigned long long file_max_records;
   Silo *silo;
   file_max_records = (MAX_FILE_SIZE / record_size);
 
@@ -60,7 +60,7 @@ cleanup_silo( Silo *silo )
   free( silo->file_descriptors );
 } //cleanup_silo
 
-long long
+unsigned long long
 silo_entry_count( Silo *silo )
 {
   DIR *d;
@@ -96,7 +96,7 @@ silo_entry_count( Silo *silo )
 int
 empty_silo( Silo *silo )
 {
-  long long i;
+  unsigned long long i;
   SILO_FD_ID( silo_entry_count(silo) );
   for ( i=silo->cur_silo_idx; i>0; i-- )
     {
@@ -122,7 +122,7 @@ empty_silo( Silo *silo )
 int
 unlink_silo( Silo *silo ) {
   long i;
-  long long ec = silo_entry_count(silo);
+  unsigned long long ec = silo_entry_count(silo);
   SILO_FD_ID( ec == 0 ?  1 : ec  );
   for ( i=silo->cur_silo_idx; i>=0; i-- )
     {
@@ -142,7 +142,7 @@ unlink_silo( Silo *silo ) {
 } //unlink_silo
 
 int
-silo_put_record( Silo *silo, long long id, void *data, long long write_amount )
+silo_put_record( Silo *silo, unsigned long long id, void *data, unsigned long long write_amount )
 {
   if ( write_amount == 0 )
     {
@@ -163,10 +163,10 @@ silo_put_record( Silo *silo, long long id, void *data, long long write_amount )
   return 0;
 } //silo_put_record
 
-long long
+unsigned long long
 silo_next_id( Silo *silo )
 {
-  long long next_id;
+  unsigned long long next_id;
   next_id = 1 + silo_entry_count( silo );
   silo_ensure_entry_count( silo, next_id );
 
@@ -178,7 +178,7 @@ void *
 silo_pop( Silo * silo )
 {
   char * ret;
-  long long entries = silo_entry_count( silo );
+  unsigned long long entries = silo_entry_count( silo );
   
   if ( entries > 0 )
     {
@@ -202,10 +202,10 @@ silo_pop( Silo * silo )
   return NULL;
 } //pop
 
-long long
-silo_push( Silo *silo, void *data, long long write_amount )
+unsigned long long
+silo_push( Silo *silo, void *data, unsigned long long write_amount )
 {
-  long long nextid = silo_next_id( silo );
+  unsigned long long nextid = silo_next_id( silo );
   silo_put_record( silo, nextid, data, write_amount );
   return nextid;
 } //silo_push
@@ -213,7 +213,7 @@ silo_push( Silo *silo, void *data, long long write_amount )
 void *
 silo_last_entry( Silo * silo )
 {
-  long long entries = silo_entry_count( silo );
+  unsigned long long entries = silo_entry_count( silo );
   if( entries > 0 ) {
     return silo_get_record( silo, entries );
   }
@@ -221,7 +221,7 @@ silo_last_entry( Silo * silo )
 } //silo_last_entry
 
 void *
-silo_get_record( Silo *silo, long long id )
+silo_get_record( Silo *silo, unsigned long long id )
 {
   char * data;
 
@@ -243,10 +243,10 @@ silo_get_record( Silo *silo, long long id )
 
 
 int
-silo_ensure_entry_count( Silo *silo, long long count )
+silo_ensure_entry_count( Silo *silo, unsigned long long count )
 {
-  long long    cur_count, records_in_last, to_fill_last;
-  long long    needed;
+  unsigned long long    cur_count, records_in_last, to_fill_last;
+  unsigned long long    needed;
   unsigned int last_silo_idx;
 
   // cur_count = (file_max_records * (files - 1)) + last_records

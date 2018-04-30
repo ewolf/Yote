@@ -10,12 +10,14 @@
 #define MAX_SILOS 100
 
 /* public interface */
-typedef struct {
+typedef struct
+{
   unsigned int silo_idx;
-  long long    sid;
+  unsigned long long    sid;
 } IndexEntry;
 
-typedef struct {
+typedef struct
+{
   char        * directory;
   Silo        * index_silo;
   Silo        * recycle_silo;
@@ -44,7 +46,7 @@ typedef struct {
     SILO = store->silos[ idx ];                                     \
     if ( SILO == NULL )                                             \
       {                                                             \
-        __record_size = (long long)round( exp( SILO_IDX ) );    \
+        __record_size = (unsigned long long)round( exp( SILO_IDX ) );    \
         __dir = malloc( 4 + strlen( store->directory )              \
                         + (SILO_IDX > 10 ?                          \
                            ceil(log10(SILO_IDX)) : 1 ) );           \
@@ -59,7 +61,7 @@ typedef struct {
 #define PREP_INDEX char * index_data;
 
 #define PREP_SILO                               \
-  long long __record_size;                      \
+  unsigned long long __record_size;                      \
   char    * __dir                               \
 
 #define LOAD_INDEX( store, rid )                                    \
@@ -73,9 +75,9 @@ typedef struct {
 
 #define PREP_SWAP                               \
   char        * swap_record;                    \
-  long long     swap_rid;                       \
+  unsigned long long     swap_rid;                       \
   char        * index_entry;                    \
-  long long     last_sid
+  unsigned long long     last_sid
 
 // move last record to the space left by the
 // vacating record. Do a copy to be safer rather
@@ -85,12 +87,12 @@ typedef struct {
   if ( vacated_sid < last_sid )                                         \
     {                                                                   \
       swap_record = silo_get_record( silo, last_sid );                  \
-      memcpy( &swap_rid, swap_record, sizeof( long long ) );            \
+      memcpy( &swap_rid, swap_record, sizeof( unsigned long long ) );            \
       silo_put_record( silo, vacated_sid, swap_record, silo->record_size ); \
-      index_entry = calloc( sizeof( unsigned int ) + sizeof( long long ), 1 ); \
+      index_entry = calloc( sizeof( unsigned int ) + sizeof( unsigned long long ), 1 ); \
       memcpy( index_entry, &silo_idx, sizeof( unsigned int ) );         \
-      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( long long ) ); \
-      silo_put_record( silo, swap_rid, index_entry, sizeof( unsigned int ) + sizeof( long long ) ); \
+      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( unsigned long long ) ); \
+      silo_put_record( silo, swap_rid, index_entry, sizeof( unsigned int ) + sizeof( unsigned long long ) ); \
       free( index_entry );                                              \
       free( swap_record );                                              \
       swap_record = silo_pop( silo );                                   \
@@ -110,16 +112,16 @@ void          empty_store( RecordStore *store );
 void          unlink_store( RecordStore *store );
 void          cleanup_store( RecordStore *store );
 
-long long store_entry_count( RecordStore *store );
-long long next_id( RecordStore *store );
-int           has_id( RecordStore *store, long long rid );
-void          delete_record( RecordStore *store, long long rid );
+unsigned long long store_entry_count( RecordStore *store );
+unsigned long long next_id( RecordStore *store );
+int           has_id( RecordStore *store, unsigned long long rid );
+void          delete_record( RecordStore *store, unsigned long long rid );
 
-long long stow( RecordStore *store, char *data, long long rid, long long save_size );
-char       *  fetch( RecordStore *store, long long rid );
+unsigned long long stow( RecordStore *store, char *data, unsigned long long rid, unsigned long long save_size );
+char       *  fetch( RecordStore *store, unsigned long long rid );
 
 
-void          recycle_id( RecordStore *store, long long rid );
+void          recycle_id( RecordStore *store, unsigned long long rid );
 void          empty_recycler( RecordStore *store );
 
 /* Transactions */
@@ -138,7 +140,7 @@ void          empty_recycler( RecordStore *store );
 #define TRANS( trans, trans_type, ridA, ridB )                          \
   RecordStore      * store;                                             \
   TransactionEntry * trans_record;                                      \
-  long long          next_trans_sid;                                    \
+  unsigned long long          next_trans_sid;                                    \
   int                TRANS_RES;                                         \
                                                                         \
   if( trans->state == TRA_ACTIVE )                                      \
@@ -169,7 +171,7 @@ void          empty_recycler( RecordStore *store );
 // and each transaction gets its own instance silo
 typedef struct
 {
-  long long tid;           // transaction id
+  unsigned long long tid;           // transaction id
   pid_t         pid;           // process id
   time_t        update_time;   // update time
   unsigned int  state;         // TRA_ACTIVE, TRA_IN_COMMIT, TRA_IN_ROLLBACK, TRA_CLEANUP_COMIT, TRA_CLEANUP_ROLLBACK, TRA_DONE
@@ -181,22 +183,22 @@ typedef struct
 {
   unsigned int type;            // TRA_STOW, TRA_DELETE, TRA_RECYCLE
   unsigned int completed;       // 1 if completed
-  long long    rid;             // record id
+  unsigned long long    rid;             // record id
   unsigned int from_silo_idx;   // location before transaction
-  long long    from_sid;        // 
+  unsigned long long    from_sid;        // 
   unsigned int to_silo_idx;     // location after transaction
-  long long    to_sid;          // 
+  unsigned long long    to_sid;          // 
 } TransactionEntry;
 
 
 Transaction * create_transaction( RecordStore *store );
-Transaction * open_transaction( RecordStore *store, long long tid );
-Transaction * list_transactions( RecordStore *store );
+Transaction * open_transaction( RecordStore *store, unsigned long long tid );
+Transaction ** list_transactions( RecordStore *store );
 
-long long trans_stow( Transaction *trans, char *data, long long id, long long write_amount );
+unsigned long long trans_stow( Transaction *trans, char *data, unsigned long long id, unsigned long long write_amount );
 
-int       trans_delete_record( Transaction *trans, long long id );
-int       trans_recycle_id( Transaction *trans, long long id );
+int       trans_delete_record( Transaction *trans, unsigned long long id );
+int       trans_recycle_id( Transaction *trans, unsigned long long id );
 
 int       commit( Transaction *trans );
 int       rollback( Transaction *trans );

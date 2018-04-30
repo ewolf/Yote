@@ -16,12 +16,12 @@
   the files themselves, including current number of records. The files are
   canonical and multiple processes may work on the same silo.
  */
-typedef struct
+typedef struct 
 {
   char         * directory;
-  long long      record_size;
-  long long      file_max_records;
-  long long      file_max_size;
+  unsigned long long      record_size;
+  unsigned long long      file_max_records;
+  unsigned long long      file_max_size;
 
   // the rest are for convenience
   int            dirl;
@@ -29,7 +29,7 @@ typedef struct
   int          * file_descriptors;
   int            cur_fd;
   unsigned int   cur_silo_idx;
-  long long      cur_filepos;
+  unsigned long long      cur_filepos;
 } Silo;
 
 #define SILO_FILE( silo_idx ) sprintf( silo->filename + silo->dirl, "%d%c", silo_idx, '\0');
@@ -68,16 +68,16 @@ typedef struct
 #define SILO_MAX_FILES 1000
 
 /* Silo methods */
-Silo       * open_silo( char *directory, long long record_size );
+Silo       * open_silo( char *directory, unsigned long long record_size );
 int          empty_silo( Silo *silo );
-int          silo_ensure_entry_count( Silo *silo, long long count );
-long long    silo_entry_count( Silo *silo );
-void       * silo_get_record( Silo *silo, long long sid );
-long long    silo_next_id( Silo *silo );
+int          silo_ensure_entry_count( Silo *silo, unsigned long long count );
+unsigned long long    silo_entry_count( Silo *silo );
+void       * silo_get_record( Silo *silo, unsigned long long sid );
+unsigned long long    silo_next_id( Silo *silo );
 void       * silo_pop( Silo *silo );
 void       * silo_last_entry( Silo *silo );
-long long    silo_push( Silo *silo, void *data, long long write_amount );
-int          silo_put_record( Silo *silo, long long id, void *data, long long write_amount );
+unsigned long long    silo_push( Silo *silo, void *data, unsigned long long write_amount );
+int          silo_put_record( Silo *silo, unsigned long long id, void *data, unsigned long long write_amount );
 int          silo_try_lock( Silo *silo );
 int          silo_lock( Silo *silo );
 int          unlink_silo( Silo *silo );

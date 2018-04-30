@@ -1,0 +1,4 @@
+TYPEMAP
+RecordStorey * T_PTROBJ
+unsigned long long T_U_LONG_LONG
+uint64_t T_U_LONG_LONG 
