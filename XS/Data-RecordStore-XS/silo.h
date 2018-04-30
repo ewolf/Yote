@@ -53,12 +53,14 @@ typedef struct
   silo->cur_filepos = silo->record_size * ( silo_idx % silo->file_max_records ); 
 
 #define SILO_FD_ID( id )                                                \
-  silo->cur_silo_idx = (id-1)/silo->file_max_records;                   \
-  sprintf( silo->filename + silo->dirl, "%d%c", silo->cur_silo_idx, '\0'); \
+  silo->cur_silo_idx = id == 0 ? 0 : (id-1)/silo->file_max_records;     \
+  sprintf( silo->filename + silo->dirl, "%d%c",                         \
+           silo->cur_silo_idx, '\0');                                   \
   if ( silo->file_descriptors[silo->cur_silo_idx] >= 0 ) {              \
     silo->cur_fd = silo->file_descriptors[silo->cur_silo_idx];          \
   } else {                                                              \
-    silo->cur_fd = open( silo->filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR ); \
+    silo->cur_fd = open( silo->filename,                                \
+                         O_RDWR|O_CREAT, S_IRUSR|S_IWUSR );             \
     silo->file_descriptors[silo->cur_silo_idx] = silo->cur_fd;          \
   }                                                                     \
   silo->cur_filepos = silo->record_size * ( (id - 1) % silo->file_max_records ); 

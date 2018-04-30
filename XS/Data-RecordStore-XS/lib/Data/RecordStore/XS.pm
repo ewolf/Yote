@@ -92,6 +92,11 @@ sub DESTROY {
     store_cleanup( shift->[0] );
 }
 
+sub _get_silo {
+    my( $store, $sidx ) = @_;
+    bless [ store_get_silo( $store->[0], $sidx ), "LIZ*" ], 'Data::RecordStore::Silo::XS';
+}
+
 #sub create_transaction {
     
 #}
@@ -127,12 +132,12 @@ sub push {
 
 sub get_record {
     my( $self, $id ) = @_;
-    get_record_silo( $self->[0], $self->[1], length( $self->[1] ), $id );
+    [get_record_silo( $self->[0], $self->[1], length( $self->[1] ), $id )];
 }
 
-# sub entry_count {
-
-# }
+sub entry_count {
+    entry_count_silo(shift->[0]);
+}
 
 # sub get_record {
 

@@ -46,14 +46,15 @@ typedef struct
     SILO = store->silos[ idx ];                                     \
     if ( SILO == NULL )                                             \
       {                                                             \
-        __record_size = (RECSIZE)round( exp( SILO_IDX ) );              \
+        __record_size = (RECSIZE)ceil( exp( idx ) );                \
         __dir = malloc( 4 + strlen( store->directory )              \
                         + (SILO_IDX > 10 ?                          \
                            ceil(log10(SILO_IDX)) : 1 ) );           \
         sprintf( __dir, "%s%s%s%s%d", store->directory, PATHSEP,    \
-                 "S", PATHSEP, SILO_IDX );                          \
+                 "S", PATHSEP, idx );                               \
         SILO = open_silo( __dir, __record_size );                   \
         store->silos[ idx ] = SILO;                                 \
+        SILO_IDX = idx;                                             \
         free( __dir );                                              \
       }                                                             \
   }
@@ -61,7 +62,7 @@ typedef struct
 #define PREP_INDEX char * index_data;
 
 #define PREP_SILO                               \
-  RECSIZE __record_size;                            \
+  RECSIZE __record_size;                        \
   char    * __dir                               \
 
 #define LOAD_INDEX( store, rid )                                    \
@@ -70,37 +71,42 @@ typedef struct
     memcpy( store->skeletonKey, index_data, sizeof( IndexEntry ) ); \
     free( index_data );                                             \
   } else {                                                          \
-    SILO_IDX = 0;                                                   \
+    SID = 0;                                                        \
   }  
 
-#define PREP_SWAP                               \
-  char        * swap_record;                    \
+#define PREP_SWAP                                   \
+  char        * swap_record;                        \
   RECSIZE     swap_rid;                             \
-  char        * index_entry;                    \
+  char        * index_entry;                        \
   RECSIZE     last_sid
 
 // move last record to the space left by the
 // vacating record. Do a copy to be safer rather
 // than a pop which could lose data
-#define SWAP( store, silo, silo_idx, vacated_sid )                      \
-  last_sid = silo_entry_count( silo );                                  \
+#define SWAPOUT( store, from_silo, from_silo_idx, vacated_sid )         \
+  last_sid = silo_entry_count( from_silo );                             \
   if ( vacated_sid < last_sid )                                         \
     {                                                                   \
-      swap_record = silo_get_record( silo, last_sid );                  \
-      memcpy( &swap_rid, swap_record, sizeof( RECSIZE ) );                  \
-      silo_put_record( silo, vacated_sid, swap_record, silo->record_size ); \
-      index_entry = calloc( sizeof( unsigned int ) + sizeof( RECSIZE ), 1 ); \
-      memcpy( index_entry, &silo_idx, sizeof( unsigned int ) );         \
-      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( RECSIZE ) );  \
-      silo_put_record( silo, swap_rid, index_entry, sizeof( unsigned int ) + sizeof( RECSIZE ) ); \
+      swap_record = silo_get_record( from_silo, last_sid );             \
+      memcpy( &swap_rid, swap_record, sizeof( RECSIZE ) );              \
+      silo_put_record( from_silo, vacated_sid,                          \
+                       swap_record, from_silo->record_size );           \
+      SAVE_INDEX( store, swap_rid, SILO_IDX, SID );                     \
+      index_entry = calloc( sizeof( unsigned int ) +                    \
+                            sizeof( RECSIZE ), 1 );                     \
+      memcpy( index_entry, &from_silo_idx, sizeof( unsigned int ) );    \
+      memcpy( index_entry + sizeof( int ),                              \
+              &swap_rid, sizeof( RECSIZE ) );                           \
+      silo_put_record( store->index_silo, swap_rid, index_entry,        \
+                       sizeof( index_entry ) );                         \
       free( index_entry );                                              \
       free( swap_record );                                              \
-      swap_record = silo_pop( silo );                                   \
+      swap_record = silo_pop( from_silo );                              \
       free( swap_record );                                              \
     }                                                                   \
   else if ( vacated_sid == last_sid )                                   \
     {                                                                   \
-      swap_record = silo_pop( silo );                                   \
+      swap_record = silo_pop( from_silo );                              \
       free( swap_record );                                              \
     }
 
@@ -139,7 +145,7 @@ void empty_recycler( RecordStore *store );
 #define TRANS( trans, trans_type, ridA, ridB )                          \
   RecordStore      * store;                                             \
   TransactionEntry * trans_record;                                      \
-  RECSIZE          next_trans_sid;                                          \
+  RECSIZE            next_trans_sid;                                    \
   int                TRANS_RES;                                         \
                                                                         \
   if( trans->state == TRA_ACTIVE )                                      \

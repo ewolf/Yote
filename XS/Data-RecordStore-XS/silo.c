@@ -96,6 +96,7 @@ int
 empty_silo( Silo *silo )
 {
   RECSIZE i;
+  // WHEN silo_entry_count is 0, things go kerblewie
   SILO_FD_ID( silo_entry_count(silo) );
   for ( i=silo->cur_silo_idx; i>0; i-- )
     {
@@ -219,13 +220,12 @@ silo_last_entry( Silo * silo )
 } //silo_last_entry
 
 void *
-silo_get_record( Silo *silo, RECSIZE id )
+silo_get_record( Silo *silo, RECSIZE sid )
 {
   char * data;
-
-  if ( silo_entry_count( silo ) >= id )
+  if ( silo_entry_count( silo ) >= sid )
     {
-      SILO_FD_ID( id );
+      SILO_FD_ID( sid );
       lseek( FD, FPOS, SEEK_SET );
       data = calloc( 1 + silo->record_size, 1 );
       if ( -1 == read( FD, data, silo->record_size ) )

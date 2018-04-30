@@ -18,9 +18,9 @@ diag( "HELLO" );
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-my $dir = tempdir( CLEANUP => 1 );
+my $diry = tempdir( CLEANUP => 1 );
 
-my $store = Data::RecordStore::XS->open_store( $dir );
+my $store = Data::RecordStore::XS->open_store( $diry );
 is( $store->next_id, 1, "First ID" );
 is( $store->next_id, 2, "2nd ID" );
 
@@ -32,33 +32,30 @@ my $silo_dir = tempdir( CLEANUP => 1 );
 my $silo = Data::RecordStore::Silo::XS->open_silo( "II", $silo_dir );
 is( $silo->next_id, 1, "first silo id" );
 is( $silo->next_id, 2, "2nd silo id" );
-diag( "STORE ONE" );
-my $id = $silo->push( [ 1, 2 ] );
+$id = $silo->push( [ 1, 2 ] );
 is( $id, 3, "3rd id from push" );
-diag( "STORE TWO" );
 $silo->put_record( 2, [ 24, 9 ] );
-diag( "STORED" );
 
 my $r1 = $silo->get_record( 3 );
 is_deeply( $r1, [ 1, 2 ], "first stored record" );
-is_deeply( $silo->get_record(2), [ 24, 2 ], "second stored record" );
+is_deeply( $silo->get_record(2), [ 24, 9 ], "second stored record" );
 
-done_testing;
-
-exit( 0 );
-__END__
 
 # -----------------------------------------------------
 #               init
 # -----------------------------------------------------
 
-$dir = tempdir( CLEANUP => 1 );
+my $dir = tempdir( CLEANUP => 1 );
 my $dir2 = tempdir( CLEANUP => 1 );
 my $dir3 = tempdir( CLEANUP => 1 );
 
+diag "Test Suite";
 test_suite();
+
+diag "Record Silos";
 test_record_silos();
 
+diag "Done";
 done_testing;
 
 exit( 0 );
@@ -77,14 +74,13 @@ sub test_suite {
     my $id2 = $store->stow( "BAR BAR" );
     ok( $store->has_id( 2 ), "now has second id" );
     my $id3 = $store->stow( "Käse essen" );
-
     $store = Data::RecordStore::XS->open_store( $dir );
     is( $id2, $id + 1, "Incremental object ids" );
     is( $store->fetch( $id ), "FOO FOO", "first item saved" );
     is( $store->fetch( $id2 ), "BAR BAR", "second item saved" );
     is( $store->fetch( $id3 ), "Käse essen", "third item saved" );
 
-    my $ds = Data::RecordStore::XS::Silo->open_silo( "LLA4", "$dir2/filename" );
+    my $ds = Data::RecordStore::Silo::XS->open_silo( "LLA4", "$dir2/filename" );
     my( @r ) = (
         [],
         [ 12,44,"BOO" ],
@@ -128,15 +124,11 @@ sub test_suite {
     is( $cur_silo->entry_count, 1, "Entry relocated from silo #8" );
     my $new_silo = $store->_get_silo( 9 );
     is( $new_silo->entry_count, 1, "One entry relocated to silo #9" );
-
     is( $store->fetch( $yid ), "y" x 2961, "correctly relocated data" );
-
     # try for a much smaller relocation
 
     $new_silo = $store->_get_silo( 5 );
     is( $new_silo->entry_count, 0, "No entries in silo #5" );
-
-
     $store->stow( "x" x 90, $id );
 
     $new_silo = $store->_get_silo( 9 );
@@ -149,7 +141,6 @@ sub test_suite {
     is( $new_silo->entry_count, 2, "Two entries now in silo #5" );
     $store->delete_record( $id );
     is( $new_silo->entry_count, 1, "one entries now in silo #5 after delete" );
-
     # test store empty
     $store->empty;
     ok( !$store->has_id(1), "does not have any entries" );

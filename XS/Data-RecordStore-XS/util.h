@@ -26,7 +26,7 @@
 #endif
 
 // CRY is easier to find than printf vs sprintf
-#define CRY printf
+#define CRY(args...) fprintf (stderr, args )
 
 #define WARN( msg ) perror( buildstringn( 5, msg, " ", __FILE__, " line ", __LINE__ ) )
 

@@ -124,6 +124,16 @@ CODE:
 OUTPUT:
     RETVAL
 
+Silo *
+store_get_silo( store, sidx )
+    RecordStore * store
+    unsigned int sidx
+CODE:
+    PREP_SILO;
+    SET_SILO( store, sidx );
+    RETVAL = SILO;
+OUTPUT:
+    RETVAL
 
 void
 store_empty( store )
@@ -148,6 +158,14 @@ next_id_silo( silo )
      Silo * silo
 CODE:
      RETVAL = silo_next_id( silo );
+OUTPUT:
+     RETVAL
+
+uint64_t
+entry_count_silo( silo )
+     Silo * silo
+CODE:
+     RETVAL = silo_entry_count( silo );
 OUTPUT:
      RETVAL
 

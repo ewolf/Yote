@@ -35,7 +35,6 @@ open_store( char *directory )
   store->skeletonKey = malloc( sizeof( IndexEntry ) );
   
   free( dir );
-  
   return store;
 } //open_store
 
@@ -163,9 +162,9 @@ delete_record( RecordStore *store, RECSIZE rid )
   LOAD_INDEX( store, rid );
   if ( SID > 0 )
     {
-      // write a blank index record and swap out the old data      
+      // write a blank index record and swap out the old data
       PREP_SWAP;
-      SWAP( store, SILO, SILO_IDX, SID );
+      SWAPOUT( store, SILO, SILO_IDX, SID );
       SAVE_INDEX( store, rid, 0, 0 );      
     }
 } //delete_record
@@ -190,22 +189,20 @@ stow( RecordStore *store, char *data, RECSIZE rid, RECSIZE save_size )
   if ( SID > 0 )
     {
       SET_SILO( store, SILO_IDX );
-      if ( entry_size > SILO->record_size )
+      if ( entry_size > SILO->record_size || SILO->record_size > 3*entry_size )
         { // needs to find a new silo
           // remove it from the old silo
           PREP_SWAP;
-          SWAP( store, SILO, SILO_IDX, SID );
-
+          SWAPOUT( store, SILO, SILO_IDX, SID );
           // add it to the new one
-          SILO_IDX = entry_size < 21 ? 3 : (int)round( logf( entry_size ) );
+          SILO_IDX = entry_size < 21 ? 3 : (int)ceil( logf( entry_size ) );
           SET_SILO( store, SILO_IDX );
           SID = silo_next_id( SILO );
-
         }
     }
   else
     { // new entry
-      SILO_IDX = entry_size < 21 ? 3 : (int)round( logf( entry_size ) );
+      SILO_IDX = entry_size < 21 ? 3 : (int)ceil( logf( entry_size ) );
       SET_SILO( store, SILO_IDX );
       SID = silo_next_id( SILO );
     }
@@ -237,17 +234,16 @@ fetch( RecordStore *store, RECSIZE rid )
       PREP_SILO;
       SET_SILO( store, SILO_IDX );
       entry = silo_get_record( SILO, SID );
-          
       size   = 1 + SILO->record_size - sizeof( RECSIZE );
       record = calloc( size, 1 );
       memcpy( record, entry + sizeof( RECSIZE ), size );
-      
+
       free( entry );
       
       return record;
     }
   return NULL;
-}
+} //fetch
 
 
 void
@@ -515,7 +511,7 @@ commit( Transaction *trans )
       for ( i=0; i<purge_to_count; i++ )
         {
           entry = purge_to_list[i];
-          SWAP( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+          SWAPOUT( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
           purged_rids[ purged_rid_count++ ] = entry->rid;
         } //each purge_to
       
@@ -540,7 +536,7 @@ commit( Transaction *trans )
                 }
               if ( 0 == had_entry )
                 {
-                  SWAP( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                  SWAPOUT( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
                 }
             }
           else if ( entry->type == TRA_DELETE )
@@ -634,7 +630,7 @@ rollback( Transaction *trans )
       for ( i=0; i<swapout_count; i++ )
         {
           entry = swapouts[ i ];
-          SWAP( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+          SWAPOUT( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
         }
       
       // now do the swapouts
