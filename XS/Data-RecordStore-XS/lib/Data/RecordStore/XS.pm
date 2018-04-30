@@ -31,87 +31,91 @@ require XSLoader;
 XSLoader::load('Data::RecordStore::XS', $VERSION);
 
 # Preloaded methods go here.
-sub open_store {
+# sub open_store {
+#     my $opts = ref( $_[$#_] ) ? pop : {};
+#     my $directory = pop @_;
+#     my $pkg = shift @_ || 'Data::RecordStore';
+#     my $store = store_open( $directory );
+#     bless $store, $pkg;
+# }
+
+# sub stow {
     
-}
+# }
 
-sub stow {
+# sub next_id {
 
-}
+# }
 
-sub next_id {
+# sub has_id {
 
-}
+# }
 
-sub has_id {
+# sub entry_count {
 
-}
+# }
 
-sub entry_count {
+# sub delete_record {
 
-}
+# }
 
-sub delete_record {
+# sub recycle_id {
 
-}
+# }
 
-sub recycle_id {
+# sub empty_recycler {
 
-}
+# }
 
-sub empty_recycler {
-
-}
-
-sub create_transaction {
+# sub create_transaction {
     
-}
+# }
 
-package Data::RecordStore::Silo::XS;
+#package Data::RecordStore::Silo::XS;
 
-sub open_silo {
-    my( $pkg, $template, $directory, $size ) = @_;
+# sub open_silo {
+#     my( $pkg, $template, $directory, $size ) = @_;
     
-}
+# }
 
-sub empty {
+# sub empty {
 
-}
+# }
 
-sub entry_count {
+# sub entry_count {
 
-}
+# }
 
-sub get_record {
+# sub get_record {
 
-}
+# }
 
-sub next_id {
+# sub next_id {
 
-}
+# }
 
-sub pop {
+# sub pop {
 
-}
+# }
 
-sub last_entry {
+# sub last_entry {
 
-}
+# }
 
-sub push {
+# sub push {
 
-}
+# }
 
-sub put_record {
+# sub put_record {
 
-}
+# }
 
-sub unlink_store {
+# sub unlink_store {
 
-}
+# }
 
 
-package Data::RecordStore::Transaction::XS;
+# package Data::RecordStore::Transaction::XS;
 
 1;
 __END__

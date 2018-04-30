@@ -1,4 +1,16 @@
 TYPEMAP
-RecordStorey * T_PTROBJ
-unsigned long long T_U_LONG_LONG
-uint64_t T_U_LONG_LONG 
+RecordStore * T_PTROBJ
+
+TYPEMAP
+Silo        * T_PTROBJ
+
+TYPEMAP
+uint64_t T_UINT64
+
+INPUT
+T_UINT64
+    $var = SvU64($arg)
+
+OUTPUT
+T_UINT64
+    $arg = newSVu64($var);

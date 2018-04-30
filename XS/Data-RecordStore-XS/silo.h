@@ -3,6 +3,8 @@
 
 #include "util.h"
 
+#define RECSIZE unsigned long long
+
 /*
   A Silo is a fixed width bucket of data.
   This allows it to be indexed very quickly. Since filesystems have max
@@ -18,19 +20,21 @@
  */
 typedef struct 
 {
-  char         * directory;
-  unsigned long long      record_size;
-  unsigned long long      file_max_records;
-  unsigned long long      file_max_size;
-
+  char  * directory;
+  RECSIZE record_size;
+  RECSIZE file_max_records;
+  RECSIZE file_max_size;
+  
   // the rest are for convenience
-  int            dirl;
-  char         * filename;
-  int          * file_descriptors;
-  int            cur_fd;
-  unsigned int   cur_silo_idx;
-  unsigned long long      cur_filepos;
+  int          dirl;
+  char       * filename;
+  int        * file_descriptors;
+  int          cur_fd;
+  unsigned int cur_silo_idx;
+  RECSIZE      cur_filepos;
+  
 } Silo;
+
 
 #define SILO_FILE( silo_idx ) sprintf( silo->filename + silo->dirl, "%d%c", silo_idx, '\0');
 
@@ -68,20 +72,20 @@ typedef struct
 #define SILO_MAX_FILES 1000
 
 /* Silo methods */
-Silo       * open_silo( char *directory, unsigned long long record_size );
-int          empty_silo( Silo *silo );
-int          silo_ensure_entry_count( Silo *silo, unsigned long long count );
-unsigned long long    silo_entry_count( Silo *silo );
-void       * silo_get_record( Silo *silo, unsigned long long sid );
-unsigned long long    silo_next_id( Silo *silo );
-void       * silo_pop( Silo *silo );
-void       * silo_last_entry( Silo *silo );
-unsigned long long    silo_push( Silo *silo, void *data, unsigned long long write_amount );
-int          silo_put_record( Silo *silo, unsigned long long id, void *data, unsigned long long write_amount );
-int          silo_try_lock( Silo *silo );
-int          silo_lock( Silo *silo );
-int          unlink_silo( Silo *silo );
-void         cleanup_silo( Silo *silo );
+Silo  * open_silo( char *directory, RECSIZE record_size );
+int     empty_silo( Silo *silo );
+int     silo_ensure_entry_count( Silo *silo, RECSIZE count );
+RECSIZE     silo_entry_count( Silo *silo );
+void  * silo_get_record( Silo *silo, RECSIZE sid );
+RECSIZE     silo_next_id( Silo *silo );
+void  * silo_pop( Silo *silo );
+void  * silo_last_entry( Silo *silo );
+RECSIZE     silo_push( Silo *silo, void *data, RECSIZE write_amount );
+int     silo_put_record( Silo *silo, RECSIZE id, void *data, RECSIZE write_amount );
+int     silo_try_lock( Silo *silo );
+int     silo_lock( Silo *silo );
+int     unlink_silo( Silo *silo );
+void    cleanup_silo( Silo *silo );
 
 
 #endif

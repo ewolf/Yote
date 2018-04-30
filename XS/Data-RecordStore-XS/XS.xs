@@ -4,28 +4,10 @@
 #include "XSUB.h"
 
 #include "ppport.h"
-typedef IndexEntry IndexEntryy 
-typedef RecordStore RecordStorey
-typedef Silo Siloy
 
-MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::XS
+#include "record_store.h"
+typedef RecordStore RecordStore;
 
-RecordStorey *
-store_open(directory)
-     char *directory
-CODE:
-     RETVAL = open_store( directory );
-OUTPUT:
-     RETVAL
-
-uint64_t
-store_stow( store, data, write_amount )
-     RecordStorey * store
-     char * data
-     uint64_t write_amount
-CODE:
-     RETVAL = stow( store, data, write_amount );
-     
   // store_fetch
   // store_delete
   // store_recycle
@@ -42,7 +24,6 @@ CODE:
   // transaction_commit
   // transaction_rollback
 
-MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::Silo::XS
   // silo_open
   // silo_empty
   // silo_next_id
@@ -51,3 +32,26 @@ MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::Silo::XS
   // silo_put
   // silo_get
   // silo_unlink
+
+MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::XS
+
+RecordStore *
+store_open(directory)
+     char *directory
+CODE:
+    RETVAL = open_store( directory );
+OUTPUT:
+    RETVAL
+
+uint64_t
+store_stow( store, data, rid, write_amount )
+     RecordStore * store
+     char * data
+     uint64_t rid
+     uint64_t write_amount
+CODE:
+     RETVAL = stow( store, data, rid, write_amount );
+OUTPUT:
+     RETVAL
+
+MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::Silo::XS

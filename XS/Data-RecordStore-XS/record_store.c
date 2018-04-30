@@ -28,7 +28,7 @@ open_store( char *directory )
   store->index_silo = open_silo( dir, sizeof( IndexEntry ) );
   
   sprintf( dir, "%s%s%s", directory, PATHSEP, "R" );
-  store->recycle_silo = open_silo( dir, sizeof(unsigned long long) );
+  store->recycle_silo = open_silo( dir, sizeof(RECSIZE) );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "T" );  
   store->trans_silo = open_silo( dir, sizeof( Transaction ) );
@@ -128,20 +128,20 @@ unlink_store( RecordStore *store )
 
 } //unlink_store
 
-unsigned long long
+RECSIZE
 store_entry_count( RecordStore *store )
 {
   return silo_entry_count( store->index_silo ) - silo_entry_count( store->recycle_silo );
 } //store_entry_count
 
-unsigned long long
+RECSIZE
 next_id( RecordStore *store )
 {
-  unsigned long long recycled_rid;
+  RECSIZE recycled_rid;
   char *recycled;
   recycled = silo_pop( store->recycle_silo );
   if ( recycled != NULL ) {
-    memcpy( &recycled_rid, recycled, sizeof( unsigned long long ) );
+    memcpy( &recycled_rid, recycled, sizeof( RECSIZE ) );
     free( recycled );
     return recycled_rid;
   }
@@ -149,7 +149,7 @@ next_id( RecordStore *store )
 } //next_id
 
 int
-has_id( RecordStore *store, unsigned long long rid )
+has_id( RecordStore *store, RECSIZE rid )
 {
   PREP_INDEX;
   LOAD_INDEX( store, rid );
@@ -157,7 +157,7 @@ has_id( RecordStore *store, unsigned long long rid )
 } //has_id
 
 void
-delete_record( RecordStore *store, unsigned long long rid )
+delete_record( RecordStore *store, RECSIZE rid )
 {
   PREP_INDEX;
   LOAD_INDEX( store, rid );
@@ -170,11 +170,11 @@ delete_record( RecordStore *store, unsigned long long rid )
     }
 } //delete_record
 
-unsigned long long
-stow( RecordStore *store, char *data, unsigned long long rid, unsigned long long save_size )
+RECSIZE
+stow( RecordStore *store, char *data, RECSIZE rid, RECSIZE save_size )
 {
   char    * entry_data;
-  unsigned long long entry_size;
+  RECSIZE entry_size;
   int       ret;
 
   rid = rid == 0 ? silo_next_id( store->index_silo ) : rid;
@@ -182,7 +182,7 @@ stow( RecordStore *store, char *data, unsigned long long rid, unsigned long long
     {
       save_size = 1 + strlen( data );
     }
-  entry_size = save_size + sizeof( unsigned long long );
+  entry_size = save_size + sizeof( RECSIZE );
   entry_data = calloc( entry_size, 1 );
   PREP_INDEX;
   PREP_SILO;
@@ -210,8 +210,8 @@ stow( RecordStore *store, char *data, unsigned long long rid, unsigned long long
       SID = silo_next_id( SILO );
     }
   // update the entry, which is id/data
-  memcpy( entry_data, &rid, sizeof( unsigned long long ) );
-  memcpy( entry_data + sizeof(unsigned long long), data, save_size );
+  memcpy( entry_data, &rid, sizeof( RECSIZE ) );
+  memcpy( entry_data + sizeof(RECSIZE), data, save_size );
   if ( 0 == silo_put_record( SILO, SID, entry_data, entry_size ) )
     {
       // update the index
@@ -224,11 +224,11 @@ stow( RecordStore *store, char *data, unsigned long long rid, unsigned long long
 } //stow
 
 char *
-fetch( RecordStore *store, unsigned long long rid )
+fetch( RecordStore *store, RECSIZE rid )
 {
   char       * entry;
   char       * record;
-  unsigned long long    size;
+  RECSIZE    size;
 
   PREP_INDEX;
   LOAD_INDEX( store, rid );
@@ -238,9 +238,9 @@ fetch( RecordStore *store, unsigned long long rid )
       SET_SILO( store, SILO_IDX );
       entry = silo_get_record( SILO, SID );
           
-      size   = 1 + SILO->record_size - sizeof( unsigned long long );
+      size   = 1 + SILO->record_size - sizeof( RECSIZE );
       record = calloc( size, 1 );
-      memcpy( record, entry + sizeof( unsigned long long ), size );
+      memcpy( record, entry + sizeof( RECSIZE ), size );
       
       free( entry );
       
@@ -251,10 +251,10 @@ fetch( RecordStore *store, unsigned long long rid )
 
 
 void
-recycle_id( RecordStore *store, unsigned long long rid )
+recycle_id( RecordStore *store, RECSIZE rid )
 {
-  char * cid = malloc( sizeof( unsigned long long ) );
-  memcpy( cid, &rid, sizeof( unsigned long long ) );
+  char * cid = malloc( sizeof( RECSIZE ) );
+  memcpy( cid, &rid, sizeof( RECSIZE ) );
   silo_push( store->recycle_silo, cid, 0 );
   delete_record( store, rid );
   free( cid );
@@ -307,7 +307,7 @@ create_transaction( RecordStore *store )
 
 
 Transaction *
-open_transaction( RecordStore *store, unsigned long long tid )
+open_transaction( RecordStore *store, RECSIZE tid )
 {
   // creates an entry in the transaction silo and
   // creates a silo for this record
@@ -339,8 +339,8 @@ list_transactions( RecordStore *store )
 {
   Transaction ** tlist;
   Transaction  * trans;
-  unsigned long long entry_count = silo_entry_count( store->trans_silo );
-  unsigned long long i, ts;
+  RECSIZE entry_count = silo_entry_count( store->trans_silo );
+  RECSIZE i, ts;
   tlist = calloc( sizeof(Transaction*), 1 + entry_count );
   for ( i=0; i<entry_count; i++ )
     {
@@ -353,10 +353,10 @@ list_transactions( RecordStore *store )
   return tlist;
 } //list_transactions
 
-unsigned long long
-trans_stow( Transaction *trans, char *data, unsigned long long rid, unsigned long long write_amount )
+RECSIZE
+trans_stow( Transaction *trans, char *data, RECSIZE rid, RECSIZE write_amount )
 {
-  unsigned long long trans_rid;
+  RECSIZE trans_rid;
   if( trans->state == TRA_ACTIVE )
     {
       trans_rid = silo_next_id( trans->store->index_silo );
@@ -369,14 +369,14 @@ trans_stow( Transaction *trans, char *data, unsigned long long rid, unsigned lon
 } //trans_stow
 
 int
-trans_delete_record( Transaction *trans, unsigned long long rid )
+trans_delete_record( Transaction *trans, RECSIZE rid )
 {
   TRANS( trans, TRA_DELETE, rid, 0 );
   return TRANS_RES;
 } //trans_delete_record
 
 int
-trans_recycle_id( Transaction *trans, unsigned long long rid )
+trans_recycle_id( Transaction *trans, RECSIZE rid )
 {
   TRANS( trans, TRA_RECYCLE, rid, 0 );
   return TRANS_RES;
@@ -414,23 +414,23 @@ commit( Transaction *trans )
    */
   RecordStore      *  store;
   
-  unsigned long long           i, j;
+  RECSIZE           i, j;
   TransactionEntry *  entry;
-  unsigned long long   *       rid_list;
+  RECSIZE   *       rid_list;
   
-  unsigned long long   *       purged_rids;
+  RECSIZE   *       purged_rids;
   long int            purged_rid_count;
   
-  unsigned long long           entry_count;
-  unsigned long long           entries;
+  RECSIZE           entry_count;
+  RECSIZE           entries;
   
   int                 had_entry;
   
   TransactionEntry ** purge_to_list;
-  unsigned long long           purge_to_count;
+  RECSIZE           purge_to_count;
   
   TransactionEntry ** purge_from_list;
-  unsigned long long           purge_from_count;
+  RECSIZE           purge_from_count;
   
   if ( trans->state == TRA_ACTIVE         ||
        trans->state == TRA_IN_COMMIT      ||
@@ -454,7 +454,7 @@ commit( Transaction *trans )
 
       
       entries = silo_entry_count( trans->silo );
-      rid_list        = calloc( sizeof(unsigned long long), entries );
+      rid_list        = calloc( sizeof(RECSIZE), entries );
       purge_to_list   = calloc( sizeof(TransactionEntry*), entries );
       purge_from_list = calloc( sizeof(TransactionEntry*), entries );
 
@@ -510,7 +510,7 @@ commit( Transaction *trans )
       // the destination locations for these are no longer
       // valid and can be swapped away.
       purged_rid_count = 0;
-      purged_rids = calloc( sizeof( unsigned long long ), purge_to_count );
+      purged_rids = calloc( sizeof( RECSIZE ), purge_to_count );
       PREP_SWAP;
       for ( i=0; i<purge_to_count; i++ )
         {
@@ -575,13 +575,13 @@ rollback( Transaction *trans )
 {
   RecordStore      *  store;
 
-  unsigned long long           i;
+  RECSIZE           i;
   TransactionEntry *  entry;
   
   TransactionEntry ** swapouts;
   long int            swapout_count;
   
-  unsigned long long           entries;
+  RECSIZE           entries;
 
   // CLEANUP COMMIT might be dangerous, the state may be
   // inconsistant
