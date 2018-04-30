@@ -101,3 +101,94 @@ filesize( char *file ) {
     }
     return statbuf.st_size;
 } //filesize
+
+LinkedList *
+create_linked_list( void * item )
+{
+  LinkedList * list;
+
+  list = malloc( sizeof( LinkedList ) );
+  list->item = item;
+  list->next = NULL;
+  list->prev = NULL;
+  
+  return list;
+} //create_linked_list
+
+LinkedList *
+set_next( LinkedList list, void * item )
+{
+  LinkedList * next = create_linked_list( item );
+  list->next = next;
+  next->prev = list;
+  
+  return next;
+} //set_next
+
+LinkedList *
+set_prev( LinkedList list, void * item )
+{
+  LinkedList * prev = create_linked_list( item );
+  list->prev = list;
+  prev->next = prev;
+  
+  return prev;
+} //set_prev
+
+LinkedList *
+insert_next( LinkedList list, void * item )
+{
+  LinkedList * next;
+  LinkedList * new_next = create_linked_list( item );
+  next           = list->next;
+  list->next     = new_next;
+  new_next->prev = list;
+  
+  if ( next )
+    {
+      next->prev     = new_next;
+      new_next->next = next;
+    }
+  
+  return new_next;
+} //insert_next
+
+LinkedList *
+insert_prev( LinkedList list, void * item )
+{
+  LinkedList * prev;
+  LinkedList * new_prev = create_linked_list( item );
+  prev           = list->prev;
+  list->prev     = new_prev;
+  new_prev->next = list;
+  if ( prev )
+    {
+      prev->next     = new_prev;
+      new_prev->prev = prev;
+    }
+  
+  return new_prev;
+} //insert_prev
+
+void
+free_linked_list( LinkedList *list, int free_items )
+{
+  LinkedList * l;
+  if ( free_items && list->item )
+    {
+      free( list->item );
+      list->item = NULL;
+    }
+  if ( l = list->next )
+    {
+      list->next = NULL;
+      free_linked_list( l );
+      
+    }
+  if ( l = list->prev )
+    {
+      list->prev = NULL;
+      free_linked_list( l );
+    }
+  free( list );
+}

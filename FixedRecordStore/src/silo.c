@@ -186,7 +186,7 @@ silo_pop( Silo * silo )
     
     file_number     = entries / silo->file_max_records;
     file_position   = silo->record_size * ((entries-1) % silo->file_max_records);
-    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) );
+    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 10 ? ceil(log10(file_number)) : 1 ) );
     sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
     if( file_position > 0 ) {
       if( 0 != truncate( filename, file_position ) ) {
@@ -236,7 +236,7 @@ silo_get_record( Silo *silo, unsigned long id )
     record_position = idx % silo->file_max_records;
     file_position   = silo->record_size * record_position;
   
-    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) );
+    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 10 ? ceil(log10(file_number)) : 1 ) );
     sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
   
     silo_file = fopen( filename, "r+" );
@@ -311,7 +311,7 @@ silo_ensure_entry_count( Silo *silo, unsigned long count )
       {
         // create a new file and fill it will nulls
         ++info->last_filenumber;
-        newfile = malloc( 2 + strlen( silo->directory ) + (info->last_filenumber > 1 ? ceil(log10(info->last_filenumber)) : 1 ) );
+        newfile = malloc( 2 + strlen( silo->directory ) + (info->last_filenumber > 10 ? ceil(log10(info->last_filenumber)) : 1 ) );
         sprintf( newfile, "%s%s%d", silo->directory, PATHSEP, info->last_filenumber );
         creat( newfile, 0644 );
         if( 0 != truncate( newfile, silo->file_max_size ) ) {

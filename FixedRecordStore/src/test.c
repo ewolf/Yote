@@ -54,6 +54,7 @@ void chks( char * a, char * b, char * desc, Test *t ) {
 
 void test_util( Test * t )
 {
+  char * thing[10];
   chkl( make_path( "///tmp/fooby/blecch/" ), 0, "make path double slash", t );
   chkl( make_path( "/tmp/fooby/blecch/" ), 0, "remake path without double", t );
   chkl( make_path( "/tmp/fooby/blecch" ), 0, "remake path no trailing /", t );
@@ -61,6 +62,19 @@ void test_util( Test * t )
 
   creat( "/tmp/nothingy", 0666 );
   chkl( make_path( "/tmp/nothingy" ), 1, "make path against file", t );
+
+  // linked list test
+  thing[0] = strdup("THIS IS THING A");
+  thing[1] = strdup("THIS IS THING N");
+  thing[2] = strdup("THIS IS THING C");
+  thing[3] = strdup("THIS IS THING D");
+  thing[4] = strdup("THIS IS THING E");
+  LinkedList * list = create_linked_list( thing[0] );
+  chks( list->item, thing[0], "string set properly", t );
+  set_next( list, thing[1] );
+  chks( list->next->item, thing[1], "next string set properly", t );
+  chkb( list->prev, "no prev yet" );
+  
 } //test_util
 
 void test_silo( Test * t )
@@ -197,12 +211,12 @@ void test_record_store( Test *t )
   id = next_id( store );
   chkl( id, 1, "first record id", t );
 
-  stow( store, "0123456789" , 1 );
+  stow( store, "0123456789" , 1, 0 );
   
   res = fetch( store, 1 );
   chks( res, "0123456789" , "first item", t );
   free( res );
-  stow( store, "1123456789" , 5 );
+  stow( store, "1123456789" , 5, 0 );
 
   id = next_id( store );
   chkl( id, 6, "rec id now", t );  
@@ -222,7 +236,7 @@ void test_record_store( Test *t )
   chkl( silo_entry_count( store->silos[3] ), 1, "one entry in second silo after deletion and swap", t );
   chkl( store_entry_count( store ), 6, "still 6 entries in store fater delete", t );
 
-  stow( store, "2123456789" , 5 );
+  stow( store, "2123456789" , 5, 0 );
   chkl( silo_entry_count( store->silos[3] ), 2, "two entries in second silo", t );
   chkl( store_entry_count( store ), 6, "still 6 entries in store", t );
   recycle_id( store, 6 );
@@ -255,8 +269,8 @@ int main() {
   t->tests_fail = 0;
 
   test_util( t );
-  test_silo( t );
-  test_record_store( t );
+  //  test_silo( t );
+  //  test_record_store( t );
     
   // TODO BUSYWORK - make sure all of these have return values that can be analyzed
   // for success, etc.

@@ -16,22 +16,13 @@ typedef struct
   char        * directory;
   Silo        * index_silo;
   Silo        * recycle_silo;
+  Silo        * transaction_catalog_silo;
   Silo       ** silos;
   char        * version;
   unsigned long max_file_size;
   // TODO - add options
 } RecordStore;
 
-typedef struct
-{
-  int silo_idx;
-  unsigned long sid; //silo entry id
-} IndexEntry;
-
-typedef struct
-{
-  
-} Transaction;
 
 /* RecordStore methods */
 RecordStore * open_store( char *directory, unsigned long max_file_size );
@@ -44,26 +35,59 @@ unsigned long next_id( RecordStore *store );
 int           has_id( RecordStore *store, unsigned long rid );
 void          delete_record( RecordStore *store, unsigned long rid );
 
-unsigned long stow( RecordStore *store, char *data, unsigned long rid );
+unsigned long stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size );
 char       *  fetch( RecordStore *store, unsigned long rid );
 
 
 void          recycle_id( RecordStore *store, unsigned long rid );
 void          empty_recycler( RecordStore *store );
 
+/* Transactions */
+
+#define TRA_ACTIVE 1
+#define TRA_IN_COMMIT 2
+#define TRA_IN_ROLLBACK 3
+#define TRA_CLEANUP_COMMIT 4
+#define TRA_CLEANUP_ROLLBACK 5
+#define TRA_DONE 6
+
+#define TRA_STOW 1
+#define TRA_DELETE 1
+#define TRA_RECYCLE 2
+
+// transactions are cataloged in RecordStore transaction silo
+// and each transaction gets its own instance silo
+typedef struct
+{
+  unsigned long tid;           // transaction id
+  pid_t         pid;           // process id
+  time_t        update_time;   // update time
+  unsigned int  state;         // TRA_ACTIVE, TRA_IN_COMMIT, TRA_IN_ROLLBACK, TRA_CLEANUP_COMIT, TRA_CLEANUP_ROLLBACK, TRA_DONE
+  Silo        * silo;    
+  RecordStore * store;    
+} Transaction;
+
+typedef struct
+{
+  unsigned int  type;          // TRA_STOW, TRA_DELETE, TRA_RECYCLE
+  unsigned long rid;           // record id
+  unsigned int  from_silo_idx; // location before transaction
+  unsigned long from_sid;      // 
+  unsigned int  to_silo_idx;   // location after transaction
+  unsigned long to_sid;        // 
+} TransactionEntry;
+
+
 Transaction * create_transaction( RecordStore *store );
+Transaction * open_transaction( RecordStore *store, unsigned long tid );
 Transaction * list_transactions( RecordStore *store );
 
+unsigned long trans_stow( Transaction *trans, char *data, unsigned long id, unsigned long write_amount );
+int           trans_delete_record( Transaction *trans, unsigned long id );
+int           trans_recycle_id( Transaction *trans, unsigned long id );
 
-/* Transaction methods */
-unsigned long get_update_time( Transaction *trans );
-unsigned int  get_process_id( Transaction *trans );
-unsigned int  get_state( Transaction *trans );
-unsigned int  get_id( Transaction *trans );
-unsigned long trans_stow( Transaction *trans, char *data, unsigned long id );
-void          trans_delete_record( Transaction *trans, unsigned long id );
-void          trans_recycle_id( Transaction *trans, unsigned long id );
-void          commit( Transaction *trans );
-void          rollback( Transaction *trans );
+int          commit( Transaction *trans );
+int          rollback( Transaction *trans );
+
 
 #endif

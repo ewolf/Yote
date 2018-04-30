@@ -7,14 +7,13 @@
 
 void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacated_sid );
 
-IndexEntry * _index_entry( RecordStore *store, unsigned long rid );
 Silo * _get_silo( RecordStore *store, int sidx );
 
 RecordStore *
 open_store( char *directory, unsigned long max_file_size )
 {
   RecordStore * store;
-  //   /S   /R   /I
+  //   /S  -silos   /R  -recyclesilo  /I  -indexsilo  /T -transcata /A - transActions
 
   store = (RecordStore *)malloc( sizeof( RecordStore ) );
   store->version       = RS_VERSION;
@@ -30,10 +29,18 @@ open_store( char *directory, unsigned long max_file_size )
   
   sprintf( dir, "%s%s%s", directory, PATHSEP, "I" );
   
-  store->index_silo = open_silo( dir, 1 + sizeof(int) + sizeof(long), max_file_size );
+  store->index_silo = open_silo( dir, sizeof(int) + sizeof(long), max_file_size );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "R" );
-  store->recycle_silo = open_silo( dir, 1 + sizeof(long), max_file_size );  
+  store->recycle_silo = open_silo( dir, sizeof(long), max_file_size );
+
+  sprintf( dir, "%s%s%s", directory, PATHSEP, "T" );  
+  store->index_silo = open_silo( dir,
+                                 sizeof( unsigned long ) +  // transaction id
+                                 sizeof( unsigned long ) +  // process id
+                                 sizeof( unsigned long ) +  // update time
+                                 sizeof( int ),             // state
+                                 max_file_size );
   
   free( dir );
   
@@ -50,6 +57,8 @@ cleanup_store( RecordStore *store )
   free( store->index_silo );
   cleanup_silo( store->recycle_silo );
   free( store->recycle_silo );
+  cleanup_silo( store->transaction_catalog_silo );
+  free( store->transaction_catalog_silo );
   for( i=0; i<MAX_SILOS; i++ )
     {
       silo = store->silos[i];
@@ -79,6 +88,7 @@ empty_store( RecordStore *store )
     }
   empty_silo( store->recycle_silo );
   empty_silo( store->index_silo );
+  empty_silo( store->transaction_catalog_silo );
 } //empty_store
 
 void
@@ -99,6 +109,7 @@ unlink_store( RecordStore *store )
     }
   unlink_silo( store->recycle_silo );
   unlink_silo( store->index_silo );
+  unlink_silo( store->transaction_catalog_silo );
   dir = malloc( 3 + strlen( store->directory ));
   sprintf( dir, "%s%s%s", store->directory, PATHSEP, "S" );
   if ( 0 == rmdir( dir ) )
@@ -177,20 +188,24 @@ delete_record( RecordStore *store, unsigned long rid )
 } //delete_record
 
 unsigned long
-stow( RecordStore *store, char *data, unsigned long rid )
+stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size )
 {
   Silo        * silo;
   int           silo_idx;
   
   unsigned long sid;
-  unsigned long save_size;
+  
   char        * entry_data;
   
   char        * index_data;
   
   rid = rid == 0 ? silo_next_id( store->index_silo ) : rid;
 
-  save_size = 1 + strlen( data ) + sizeof( unsigned long );
+  if ( save_size == 0 )
+    {
+      save_size = 1 + strlen( data );
+    }
+  save_size = save_size + sizeof( unsigned long );
   entry_data = malloc( save_size );
   index_data = silo_get_record( store->index_silo, rid );
   if ( index_data && strlen( index_data ) > 0 )
@@ -286,41 +301,14 @@ recycle_id( RecordStore *store, unsigned long rid )
   delete_record( store, rid );
   free( cid );
 } //recycle_id
+
+
 void
 empty_recycler( RecordStore *store )
 {
   empty_silo( store->recycle_silo );
 } //empty_recycler
 
-Transaction *
-create_transaction( RecordStore *store )
-{
-  return NULL;
-} //create_transaction
-
-Transaction *
-list_transactions( RecordStore *store )
-{
-  return NULL;
-} //list_transactions
-
-
-IndexEntry *
-_index_entry( RecordStore *store, unsigned long rid )
-{
-  IndexEntry * ie;
-  char *index_entry = silo_get_record( store->index_silo, rid );
-  if ( strlen( index_entry ) > 0 )
-    {
-      ie = malloc( sizeof( IndexEntry ) );
-      memcpy( ie, index_entry, sizeof( IndexEntry ) );
-      free( index_entry );
-      return ie;
-    }
-  
-  return NULL;
-  
-} //_index_entry;
 
 void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacated_sid )
 {
@@ -358,6 +346,7 @@ void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacat
     }
 } //_swapout
 
+
 Silo *
 _get_silo( RecordStore *store, int sidx )
 {
@@ -375,7 +364,7 @@ _get_silo( RecordStore *store, int sidx )
       return s;
     }
   record_size = (unsigned long)round( exp( sidx ) );
-  dir = malloc( 4 + strlen( store->directory ) + (sidx > 1 ? (1+((int)ceil(log10(sidx)))) : 1 ) );
+  dir = malloc( 4 + strlen( store->directory ) + (sidx > 10 ? ceil(log10(sidx)) : 1 ) );
   dir[0] = '\0';
   sprintf( dir, "%s%s%s%s%d",
            store->directory,
@@ -391,3 +380,208 @@ _get_silo( RecordStore *store, int sidx )
   return s;
 } //_get_silo
 
+int _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ridB );
+
+
+Transaction *
+create_transaction( RecordStore *store )
+{
+  // creates an entry in the transaction_catalog silo and
+  // creates a silo for this record
+  Transaction * trans;
+  char        * silo_dir;
+  
+  trans = malloc( store->transaction_catalog_silo->record_size + 
+                  sizeof( Silo * ) + sizeof( RecordStore * ) );
+  trans->tid         = silo_next_id( store->transaction_catalog_silo );
+  trans->pid         = getpid();
+  trans->update_time = time(NULL);
+  trans->state       = TRA_ACTIVE;
+
+  silo_put_record( store->transaction_catalog_silo,
+                   trans->tid,
+                   trans,
+                   store->transaction_catalog_silo->record_size );
+  
+  trans->store = store;
+
+  // DIR/A/ID
+  silo_dir = malloc( 4 + sizeof( store->directory ) + (trans->tid > 10 ? ceil(log10(trans->tid)) : 1 ) );
+  sprintf( silo_dir, "%s%s%s%s%d",
+           store->directory,
+           PATHSEP,
+           "A",
+           PATHSEP,
+           trans->tid );
+  
+  trans->silo = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  
+  free( silo_dir );
+       
+  return trans;
+} //create_transaction
+
+
+Transaction *
+open_transaction( RecordStore *store, unsigned long tid )
+{
+  // creates an entry in the transaction_catalog silo and
+  // creates a silo for this record
+  Transaction * trans;
+  char        * silo_dir;
+  
+  trans = silo_get_record( store->transaction_catalog_silo, tid );
+
+  // DIR/A/ID
+  silo_dir = malloc( 4 + sizeof( store->directory ) + (trans->tid > 10 ? ceil(log10(tid)) : 1 ) );
+  sprintf( silo_dir, "%s%s%s%s%d",
+           store->directory,
+           PATHSEP,
+           "A",
+           PATHSEP,
+           tid );
+  
+  trans->silo = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  
+  free( silo_dir );
+       
+  return trans;
+} //open_transaction
+
+
+Transaction *
+list_transactions( RecordStore *store )
+{
+  /*
+  char * meta_dir;
+  char * meta_data;
+  unsigned long items, i;
+  Silo * meta_silo;
+  Transaction *trans;
+  meta_dir = malloc( 5 + strlen(store->directory) );
+  sprintf( meta_dir, "%s%s%s%s%s", store->directory, PATHSEP, "T", PATHSEP, "M" );
+  meta_silo = open_silo( meta_dir,
+                         sizeof( unsigned long ) + sizeof( int ) + sizeof( int ) + sizeof( unsigned long ),
+                         store->max_file_size );
+  items = silo_entry_count( meta_silo );
+  for ( i = items ; i > 0; i-- )
+    {
+      meta_data = silo_get_record( meta_silo, i );
+      trans = trans_create( store, meta_data );
+      if ( trans && trans->state == TRA_DONE )
+        {
+          
+        }
+    }
+  free( meta_dir );
+  */
+  return NULL;
+} //list_transactions
+
+unsigned long
+trans_stow( Transaction *trans, char *data, unsigned long rid, unsigned long write_amount )
+{
+  char * record;
+  char * trans_record;
+  unsigned long trans_rid;
+  if( trans->state == TRA_ACTIVE )
+    {
+      trans_rid = silo_next_id( trans->store->index_silo );
+      stow( trans->store, data, trans_rid, write_amount );
+      
+      return _trans( trans, TRA_STOW, rid, trans_rid );
+    }
+  return 1;
+} //trans_stow
+
+int
+trans_delete_record( Transaction *trans, unsigned long rid )
+{
+  return _trans( trans, TRA_DELETE, rid, 0 );
+} //trans_delete_record
+
+int
+trans_recycle_id( Transaction *trans, unsigned long rid )
+{
+  return _trans( trans, TRA_RECYCLE, rid, 0 );
+}
+
+int
+_trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ridB )
+{
+  char *        record;
+  int           silo_idx;
+  unsigned long sid;
+  
+  char *        trans_record;
+  
+  unsigned long next_trans_sid;
+  if( trans->state == TRA_ACTIVE )
+    {
+      record = silo_get_record( trans->store->index_silo, ridA );
+      memcpy( &silo_idx, record, sizeof( int ) );
+      memcpy( &sid, record + sizeof( int ), sizeof( unsigned long ) );
+      free( record );
+      
+      next_trans_sid = silo_next_id( trans->silo );
+      trans_record = malloc( trans->silo->record_size );
+      memcpy( trans_record, &trans_type, sizeof( int ) );
+      memcpy( trans_record + sizeof( int ), &ridA, sizeof( unsigned long ) );
+      memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ), &silo_idx, sizeof( int ) );
+      memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) + sizeof( int ),
+              &sid, sizeof( unsigned long ) );
+
+      if ( ridB > 0 )
+        {
+          record = silo_get_record( trans->store->index_silo, ridB );
+          memcpy( &silo_idx, record, sizeof( int ) );
+          memcpy( &sid, record + sizeof( int ), sizeof( unsigned long ) );
+          free( record );
+          memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) +
+                  sizeof( int ) + sizeof( unsigned long ),
+                  &silo_idx, sizeof( int ) );
+          memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) +
+                  sizeof( int ) + sizeof( unsigned long ) + sizeof( int ),
+                  &sid, sizeof( unsigned long ) );
+        }
+      
+      
+      silo_put_record( trans->silo, next_trans_sid, trans_record, trans->silo->record_size );
+      free( trans_record );
+
+      return 0;
+    }
+  return 1;
+} //trans_recycle_id
+
+
+
+int
+commit( Transaction *trans )
+{
+  unsigned long i;
+  unsigned long actions;
+  TransactionEntry * entry;
+  if ( trans->state == TRA_ACTIVE         ||
+       trans->state == TRA_IN_COMMIT      ||
+       trans->state == TRA_IN_ROLLBACK    ||
+       trans->state == TRA_CLEANUP_COMMIT )
+    {
+      actions = silo_entry_count( trans->silo );
+      for ( i=actions; i > 0; i++ )
+        {
+          entry = silo_get_record( trans->silo, i );
+          
+        }
+    }
+  else {
+    return 1;
+  }
+} //commit
+
+
+int
+rollback( Transaction *trans )
+{
+
+} //rollback
