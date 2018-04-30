@@ -251,7 +251,7 @@ recycle_id( RecordStore *store, RECSIZE rid )
 {
   char * cid = malloc( sizeof( RECSIZE ) );
   memcpy( cid, &rid, sizeof( RECSIZE ) );
-  silo_push( store->recycle_silo, cid, 0 );
+  silo_push( store->recycle_silo, cid, sizeof( RECSIZE ) );
   delete_record( store, rid );
   free( cid );
 } //recycle_id

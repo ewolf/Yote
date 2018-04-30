@@ -157,8 +157,10 @@ silo_put_record( Silo *silo, RECSIZE sid, void *data, RECSIZE write_amount )
   silo_ensure_entry_count( silo, sid );
   SILO_FD_ID( sid );
   lseek( FD, FPOS, SEEK_SET );
-  write( FD, data, write_amount );
-
+  if( write( FD, data, write_amount ) == -1 )
+    {
+      perror( "silo_put_record" );
+    }
   return 0;
 } //silo_put_record
 
@@ -168,7 +170,6 @@ silo_next_id( Silo *silo )
   RECSIZE next_id;
   next_id = 1 + silo_entry_count( silo );
   silo_ensure_entry_count( silo, next_id );
-
   return next_id;
 } //silo_next_id
 
@@ -184,7 +185,7 @@ silo_pop( Silo * silo )
       ret = silo_get_record( silo, entries );
       SILO_FD_ID( entries );
       
-      if ( FPOS > 0 )
+      if ( FPOS > 0 || silo->cur_silo_idx == 0 )
         {
           if ( 0 != ftruncate( FD, FPOS ) )
             {
@@ -195,9 +196,8 @@ silo_pop( Silo * silo )
         {
           perror( "silo_pop" );
         }
-    
-    return ret;
-  }
+      return ret;
+    }
   return NULL;
 } //pop
 
@@ -266,13 +266,13 @@ silo_ensure_entry_count( Silo *silo, RECSIZE count )
       needed = count - cur_count;
 
       last_silo_idx = cur_count > 1 ? (cur_count-1) / silo->file_max_records : 0;
-      
       records_in_last = cur_count - (silo->file_max_records * last_silo_idx );
       to_fill_last = silo->file_max_records - records_in_last;
       if ( to_fill_last > needed )
         {
           to_fill_last = needed;
         }
+
       // truncate the last_silo_idx;
       if ( to_fill_last > 0 )
         {
