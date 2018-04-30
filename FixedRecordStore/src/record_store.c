@@ -27,13 +27,13 @@ open_store( char *directory, unsigned long max_file_size )
   
   sprintf( dir, "%s%s%s", directory, PATHSEP, "I" );
   
-  store->index_silo = open_silo( dir, sizeof( IndexEntry ), max_file_size );
+  store->index_silo = open_silo( dir, sizeof( IndexEntry ), max_file_size, 1000 );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "R" );
-  store->recycle_silo = open_silo( dir, sizeof(long), max_file_size );
+  store->recycle_silo = open_silo( dir, sizeof(long), max_file_size, 1000 );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "T" );  
-  store->trans_silo = open_silo( dir, sizeof( Transaction ), max_file_size );
+  store->trans_silo = open_silo( dir, sizeof( Transaction ), max_file_size, 1000 );
   store->skeletonKey = malloc( sizeof( IndexEntry ) );
   
   free( dir );
@@ -336,7 +336,7 @@ create_transaction( RecordStore *store )
            PATHSEP,
            trans->tid );
   
-  trans->silo = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  trans->silo = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size, 1000 );
   
   free( silo_dir );
        
@@ -363,7 +363,7 @@ open_transaction( RecordStore *store, unsigned long tid )
            PATHSEP,
            tid );
   
-  trans->silo  = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  trans->silo  = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size, 1000 );
   trans->store = store;
   
   free( silo_dir );
@@ -385,7 +385,7 @@ list_transactions( RecordStore *store )
   sprintf( meta_dir, "%s%s%s%s%s", store->directory, PATHSEP, "T", PATHSEP, "M" );
   meta_silo = open_silo( meta_dir,
                          sizeof( unsigned long ) + sizeof( int ) + sizeof( int ) + sizeof( unsigned long ),
-                         store->max_file_size );
+                         store->max_file_size, 1000 );
   items = silo_entry_count( meta_silo );
   for ( i = items ; i > 0; i-- )
     {

@@ -1,19 +1,4 @@
 #include "silo.h"
-#include "util.h"
-
-// reentrant function that sums filesizes.
-// if passed in NULL, it returns the tally and
-// resets it to zero
-void _files( char *directory, void (*fun)(char*,int) );
-
-typedef struct {
-  unsigned int       files;
-  unsigned long long total_filesize;
-  unsigned long long last_filesize;
-  int                last_filenumber;
-  char             * last_filename;
-} silo_dir_info;
-
 
 Silo *
 open_silo( char        * directory,
@@ -43,17 +28,25 @@ open_silo( char        * directory,
   silo->max_silo_files   = max_silo_files;
   silo->record_size      = record_size;
   silo->file_max_records = file_max_records;
-  silo->file_max_size    = file_max_records * record_size;
   
   silo->directory        = strdup( directory );
   silo->dirl             = sizeof( directory ); // includes path sep
 
   // directory + / + (max file) \0
-  silo->file_descriptors = calloc( sizeof( int ), max_silo_files );
+  silo->file_descriptors = malloc( sizeof( int ) * max_silo_files );
+  memset( silo->file_descriptors, -1, sizeof( int ) * max_silo_files );
   silo->filename         = calloc( 2 + silo->dirl + (max_silo_files > 10 ? ceil(log10(max_silo_files)) : 1 ), 1 );
   memcpy( silo->filename, directory, silo->dirl );
   silo->filename[ silo->dirl - 1 ] = PATHSEPCHAR;
+  CRY("SILO_OPEN '%s'\n", directory);   
+  silo->dir_dh = open( directory, O_DIRECTORY );
+  if( silo->dir_dh == -1 )
+    {
+      WARN( "open_silo");
+    }
 
+  SILO_FD( 0 );
+  
   return silo;
   
 } //open_silo
@@ -61,45 +54,18 @@ open_silo( char        * directory,
 void
 cleanup_silo( Silo *silo )
 {
-  close( silo->first_fd );
+  int i;
+  for( i=0; i<silo->max_silo_files; i++ )
+    {
+      if( 0 <= silo->file_descriptors[i] )
+        {
+          close( silo->file_descriptors[i] );
+        }
+    }
   free( silo->directory );
   free( silo->filename );
   free( silo->file_descriptors );
 } //cleanup_silo
-
-silo_dir_info *
-_sum_filesizes( char *filename, int file_number )
-{
-  struct stat statbuf;
-  silo_dir_info *ret;
-  static silo_dir_info info = { 0, 0, 0, -1, NULL };
-  
-  if( filename ) {
-    stat( filename, &statbuf );
-    info.total_filesize += statbuf.st_size;
-    info.files++;
-    if ( file_number > info.last_filenumber )
-      {
-        info.last_filenumber = file_number;
-        if( info.last_filename ) {
-          free( info.last_filename );
-        }
-        info.last_filename = strdup( filename );
-        info.last_filesize = statbuf.st_size;
-      }
-    return NULL;
-  }
-  ret = malloc( sizeof( silo_dir_info ) );
-  memcpy( ret, &info, sizeof( silo_dir_info ) );
-  
-  info.total_filesize  = 0;
-  info.last_filesize   = 0;
-  info.last_filenumber = -1;
-  info.last_filename   = NULL;
-  info.files           = 0;
-  return ret;
-
-} //_sum_filesizes
 
 unsigned long
 silo_entry_count( Silo *silo )
@@ -110,13 +76,9 @@ silo_entry_count( Silo *silo )
 
   long last_filenum, filenum;
   
-  d = opendir( silo->directory );
-  if ( d == NULL )
-    {
-      perror( "silo_entry_count" );
-      return 0;
-    }
   last_filenum = -1;
+  d = fdopendir( silo->dir_dh );
+  rewinddir( d );
   while ( NULL != (dir = readdir(d)) )
     {
       filenum = atoi( dir->d_name );
@@ -131,12 +93,9 @@ silo_entry_count( Silo *silo )
     {
       if( 0 == stat( silo->filename, &statbuf ) )
         {
-          // record count = last_filenum * file_max_records + filesize / record_size;
-          closedir( d );
           return last_filenum * silo->file_max_records + statbuf.st_size / silo->record_size;
         }
     }
-  closedir( d );
   
   return 0;
   
@@ -147,26 +106,65 @@ void _unlink( char *filename, int nada )
   unlink( filename );
 }
  
-void
+int
 empty_silo( Silo *silo )
 {
-  _files( silo->directory, _unlink );
+  unsigned long i;
+  SILO_FD_ID( silo_entry_count(silo) );
+  for ( i=silo->cur_silo_idx; i>0; i-- )
+    {
+      SILO_FD( i );
+      CRY("ES UL '%s'\n",silo->filename);
+      if ( 0 != unlink( silo->filename ) )
+        {
+          perror( "empty_silo" );
+          return 1;
+        }
+      close( silo->file_descriptors[i] );
+    }
+  SILO_FD( 0 );
+  CRY("ES TRUN '%s'\n",silo->filename);
+  if( 0 != ftruncate( FD, 0 ) )
+    {
+      perror( "empty_silo" );
+      return 1;
+    }
+  close( silo->file_descriptors[0] );
+  memset( silo->file_descriptors, -1, sizeof( int ) * silo->max_silo_files );
+  return 0;
 } //empty_silo
 
-void unlink_silo( Silo *silo ) {
-  empty_silo( silo );
+int
+unlink_silo( Silo *silo ) {
+  unsigned long i;
+  SILO_FD_ID( silo_entry_count(silo) );
+  if ( 0 != unlink( silo->filename ) )
+    {
+      perror( "unlink_silo" );
+      return 1;
+    }
+  for ( i=silo->cur_silo_idx - 1; i>=0; i++ )
+    {
+      SILO_FD( i );
+      if ( 0 != unlink( silo->filename ) )
+        {
+          //          if it doesn't exist?
+          //          perror( "unlink_siloy" );
+          //          return 1;
+        }
+      close( silo->file_descriptors[i] );
+    }
+  memset( silo->file_descriptors, -1, sizeof( int ) * silo->max_silo_files );
   if( 0 != rmdir( silo->directory ) ) {
     perror( "unlink_silo" );
+    return 1;
   }
-}
+  return 0;
+} //unlink_silo
 
 int
 silo_put_record( Silo *silo, unsigned long id, void *data, unsigned long write_amount )
 {
-  int silo_fd;
-  int file_number, record_position, file_position;
-  char * filename;
-  unsigned long idx = id - 1;
   if ( write_amount == 0 )
     {
       write_amount = strlen( data );
@@ -175,26 +173,15 @@ silo_put_record( Silo *silo, unsigned long id, void *data, unsigned long write_a
   if ( silo->record_size < write_amount )
     {
       // too big. must be at least one less than the record size for the '\0' byte.
-      return 0;
+      return 1;
     }
   
   silo_ensure_entry_count( silo, id );
-  
-  // find which file and where in the file to seek to
-  // based on the idx
-  file_number     = idx / silo->file_max_records;
-  record_position = idx % silo->file_max_records;
-  file_position   = silo->record_size * record_position;
+  SILO_FD_ID( id );
+  lseek( FD, FPOS, SEEK_SET );
+  write( FD, data, write_amount );
 
-  filename = malloc( strlen( silo->directory ) + 4 );
-  sprintf( filename, "%s/%d", silo->directory, file_number );
-  
-  silo_fd = open( filename, O_WRONLY|O_CREAT, 0644 );
-  lseek( silo_fd, file_position, SEEK_SET );
-  write( silo_fd, data, write_amount );
-  close( silo_fd );
-  free( filename );
-  return 1;
+  return 0;
 } //silo_put_record
 
 unsigned long
@@ -211,26 +198,25 @@ silo_next_id( Silo *silo )
 void *
 silo_pop( Silo * silo )
 {
-  int file_number, file_position;  
-  char * ret, * filename;
+  char * ret;
   unsigned long entries = silo_entry_count( silo );
   
-  if( entries > 0 ) {
-    ret = silo_get_record( silo, entries );
-    
-    file_number     = entries / silo->file_max_records;
-    file_position   = silo->record_size * ((entries-1) % silo->file_max_records);
-    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 10 ? ceil(log10(file_number)) : 1 ) );
-    sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
-    if( file_position > 0 ) {
-      if( 0 != truncate( filename, file_position ) ) {
-        perror( "TRUNCATE" );
-      }
-    } else {
-      unlink( filename );
-    }
-    
-    free( filename );
+  if ( entries > 0 )
+    {
+      ret = silo_get_record( silo, entries );
+      SILO_FD_ID( entries );
+      
+      if ( FPOS > 0 )
+        {
+          if ( 0 != ftruncate( FD, FPOS ) )
+            {
+              perror( "silo_pop" );
+            }
+        }
+      else if( 0 != unlink( silo->filename ) )
+        {
+          perror( "silo_pop" );
+        }
     
     return ret;
   }
@@ -258,148 +244,109 @@ silo_last_entry( Silo * silo )
 void *
 silo_get_record( Silo *silo, unsigned long id )
 {
-  int silo_fd;
-  int file_number, record_position, file_position;
-  char * filename;
   char * data;
-  unsigned long long idx = id - 1;
 
-  if ( silo_entry_count( silo ) > idx ) {
-  
-    file_number     = idx / silo->file_max_records;
-    record_position = idx % silo->file_max_records;
-    file_position   = silo->record_size * record_position;
-  
-    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 10 ? ceil(log10(file_number)) : 1 ) );
-    sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
-
-    silo_fd = open( filename, O_RDONLY );
-    lseek( silo_fd, file_position, SEEK_SET );
-    data = calloc( 1 + silo->record_size, 1 );
-    if ( -1 == read( silo_fd, data, silo->record_size ) )
-      {
-        perror( "silo_get_record" );
-      }
-    close( silo_fd );
-    free( filename );
-
-    return data;
-  }
+  if ( silo_entry_count( silo ) >= id )
+    {
+      SILO_FD_ID( id );
+      lseek( FD, FPOS, SEEK_SET );
+      data = calloc( 1 + silo->record_size, 1 );
+      if ( -1 == read( FD, data, silo->record_size ) )
+        {
+          perror( "silo_get_record" );
+        }
+      return data;
+    }
   
   return NULL;
 } //silo_get_record
 
 
-// _files iterates over the silo files in the silos directory
-// and runs the fun for each one of them.
-void
-_files( char *directory, void (*fun)(char*,int) )
-{
-  int file_number;
-  DIR *d;
-  struct dirent *dir;
-  char *filedir;
 
-  d = opendir( directory );
-  if ( d ) {
-    while ( NULL != (dir = readdir(d)) )
-      {
-        file_number = atoi( dir->d_name );
-        if ( file_number > 0 || strcmp( dir->d_name, "0" ) == 0 )
-          {
-            filedir = malloc( 2 + strlen( directory ) + strlen( dir->d_name ) );
-            sprintf( filedir, "%s%s%s", directory, PATHSEP, dir->d_name );
-            fun( filedir, file_number );
-            free( filedir );
-          }
-      }
-    closedir(d);
-  }
-
-} //_files
-
-void
+int
 silo_ensure_entry_count( Silo *silo, unsigned long count )
 {
-  char *newfile;
-  int needed, records_needed_to_fill, existing_file_records, new_record_count;
-  silo_dir_info * info;
-  _files( silo->directory, (void*)_sum_filesizes );
-  info = _sum_filesizes( NULL, 0 );
-  
-  needed = count - info->total_filesize / silo->record_size;
+  unsigned long cur_count, records_in_last, to_fill_last;
+  long needed;
+  int last_silo_idx;
 
-  if( needed > 0 ) {
-    
-    existing_file_records = info->last_filesize / silo->record_size;
-    records_needed_to_fill = silo->file_max_records - existing_file_records;
-    records_needed_to_fill = records_needed_to_fill > needed ? needed : records_needed_to_fill;
-    new_record_count = records_needed_to_fill + existing_file_records;
-    if ( records_needed_to_fill > 0 )
-      {
-        // fill the record with nulls to its max size
-        if( 0 != truncate( info->last_filename, new_record_count * silo->record_size ) ) {
-          perror( "silo_ensure_entry_count" );
+  // cur_count = (file_max_records * (files - 1)) + last_records
+  // last_records = cur_count - (file_max_records * (files - 1)) 
+  // files = cur_count % file_max_records ? 1 + cur_count / file_max_records : cur_count / file_max_records
+
+  // say, records 7 per, cur count is 23 (files = 4)
+  //  files = 1 + (23/7) = 4;
+  //  last_records = 23 - ( 7 * 23/7 ) = 2
+  //  filepos = 
+
+  // say, 7 per, cur count is 21 (files = 3)
+  //  files = 21 % 7 ? 1 + (21/7) = 4 : 21/7 = _3_
+  //  last_records = 21 - ( 7 * 21/7 ) = 0
+  
+  cur_count = silo_entry_count( silo );
+  needed = count - cur_count;
+  if ( needed > 0 )
+    {
+      last_silo_idx = (cur_count-1) / silo->file_max_records;
+      CRY("CURC %ld, lsi %d\n", cur_count, last_silo_idx );
+      
+      records_in_last = cur_count - (silo->file_max_records * last_silo_idx );
+      to_fill_last = silo->file_max_records - records_in_last;
+      CRY("ENSURE %ld, needs %ld, tofilllast %ld (last silo %d)\n",count,needed,to_fill_last, last_silo_idx);
+      if ( to_fill_last > needed )
+        {
+          to_fill_last = needed;
         }
-        needed -= records_needed_to_fill;
-      }
-    while ( needed > silo->file_max_records )
-      {
-        // create a new file and fill it will nulls
-        ++info->last_filenumber;
-        newfile = malloc( 2 + strlen( silo->directory ) + (info->last_filenumber > 10 ? ceil(log10(info->last_filenumber)) : 1 ) );
-        sprintf( newfile, "%s%s%d", silo->directory, PATHSEP, info->last_filenumber );
-        creat( newfile, 0644 );
-        if( 0 != truncate( newfile, silo->file_max_size ) ) {
-          perror( "silo_ensure_entry_count" );
+      // truncate the last_silo_idx;
+      if ( to_fill_last > 0 )
+        {
+          SILO_FD( last_silo_idx );
+          if ( 0 != ftruncate( FD, (records_in_last+to_fill_last) * silo->record_size ) )
+            {
+              perror( "silo_ensure_entry_count" );
+              return 1;
+            }
+          needed -= to_fill_last;
         }
-        free( newfile );
-        needed -= silo->file_max_records;
-      }
-    if ( needed > 0 )
-      {
-        // create a new file and fill it will nulls
-        newfile = malloc( strlen( silo->directory ) + 10 );
-        sprintf( newfile, "%s/%d", silo->directory, ++info->last_filenumber );
-        creat( newfile, 0644 );
-        if( 0 != truncate( newfile, needed * silo->record_size ) ) {
-          perror( "silo_ensure_entry_count" );
+
+      to_fill_last = silo->file_max_records * silo->record_size;
+      while ( needed > silo->file_max_records )
+        {
+          CRY("  ENSURE needs %ld (%ld)\n",needed,silo->file_max_records);
+          SILO_FD( ++last_silo_idx );
+          if ( 0 != ftruncate( FD, to_fill_last ) )
+            {
+              perror( "silo_ensure_entry_count" );
+              return 1;
+            }
+          needed -= silo->file_max_records;
         }
-        free( newfile );
-      }
-  }
-  free( info->last_filename );
-  free( info );
+
+      if ( needed > 0 )
+        {
+          SILO_FD( ++last_silo_idx );
+          if ( 0 != ftruncate( FD, needed * silo->record_size ) )
+            {
+              perror( "silo_ensure_entry_count" );
+              return 1;
+            }
+        }
+    } //if needed
+  return 0;
 } //silo_ensure_entry_count
 
 // return 0 if lock was successfull. Non-blocking
 int
 silo_try_lock( Silo *silo )
 {
-  int ret = flock( silo->first_fd, LOCK_EX | LOCK_NB );
-  if ( ret == 0 )
-    {
-      return 0;
-    }
-  if( ret == EBADF )
-    {
-      close( silo->first_fd );
-      silo->first_fd = open( silo->first_fn, O_WRONLY|O_CREAT, 0644 );
-      ret = flock( silo->first_fd, LOCK_EX | LOCK_NB );
-    }
-  return ret;
+  SILO_FD( 0 );
+  return flock( FD, LOCK_EX | LOCK_NB );
 } //silo_try_lock
 
 // return 0 if lock was successfull. Blocks.
 int
 silo_lock( Silo *silo )
 {
-  int ret = flock( silo->first_fd, LOCK_EX );
-  if( ret == EBADF )
-    {
-      close( silo->first_fd );
-      silo->first_fd = open( silo->first_fn, O_WRONLY|O_CREAT, 0644 );
-      ret = flock( silo->first_fd, LOCK_EX | LOCK_NB );
-    }
-  return ret;
+  SILO_FD( 0 );
+  return flock( FD, LOCK_EX );
 } //silo_lock

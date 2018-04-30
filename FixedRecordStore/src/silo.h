@@ -1,9 +1,7 @@
 #ifndef _SILO
 #define _SILO
 
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
+#include "util.h"
 
 /*
   A Silo is a fixed width bucket of data.
@@ -24,7 +22,6 @@ typedef struct
 
   unsigned long  record_size;
   unsigned long  file_max_records;
-  unsigned long  file_max_size;
   unsigned int   max_silo_files;
 
   // the rest are for convenience
@@ -32,25 +29,50 @@ typedef struct
   char         * filename;
   int          * file_descriptors;
   int            cur_fd;
+  unsigned long  cur_silo_idx;
+  unsigned long  cur_filepos;
+  int            dir_dh;
 } Silo;
 
-#define SILO_FD( num )                                          \
-  if ( silo->file_descriptors[num] > 0 ) {                      \
-    silo->cur_fd = silo->file_descriptors[num];                 \
-  } else {                                                      \
-    sprintf( silo->filename + silo->dirl, "%d%c", num, '\0' );  \
-    silo->cur_fd = open( silo->filename );                      \
-    silo->file_descriptors[num] = silo->cur_fd;                 \
-  }
+#define SILO_FD( silo_idx )                                             \
+  silo->cur_silo_idx = silo_idx;                                        \
+  sprintf( silo->filename + silo->dirl, "%ld%c", silo->cur_silo_idx, '\0'); \
+  if ( silo->file_descriptors[silo_idx] >= 0 ) {                         \
+    silo->cur_fd = silo->file_descriptors[silo_idx];                    \
+  } else {                                                              \
+    CRY("SILO_FD (%d) OPEN '%s' < %ld >\n",__LINE__,silo->filename ,silo->cur_silo_idx); \
+    silo->cur_fd = open( silo->filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR ); \
+    if ( silo->cur_fd == -1 ) {                                         \
+      WARN("SILO_FD");                                                  \
+    }                                                                   \
+    silo->file_descriptors[silo_idx] = silo->cur_fd;                    \
+  }                                                                     \
+  silo->cur_filepos = silo->record_size * ( silo_idx % silo->file_max_records ); 
+
+#define SILO_FD_ID( id )                                                \
+  silo->cur_silo_idx = id/silo->file_max_records;                       \
+  sprintf( silo->filename + silo->dirl, "%ld%c", silo->cur_silo_idx, '\0'); \
+  if ( silo->file_descriptors[silo->cur_silo_idx] >= 0 ) {              \
+    silo->cur_fd = silo->file_descriptors[silo->cur_silo_idx];          \
+  } else {                                                              \
+    CRY("SILO_FD_ID (%d) OPEN '%s' < %ld / %ld = %ld >\n",__LINE__,silo->filename, id ,silo->file_max_records,silo->cur_silo_idx); \
+    silo->cur_fd = open( silo->filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR ); \
+    silo->file_descriptors[silo->cur_silo_idx] = silo->cur_fd;          \
+  }                                                                     \
+  silo->cur_filepos = silo->record_size *                               \
+    ( (id - 1) % silo->file_max_records ); 
+
 #define FD silo->cur_fd
+#define FPOS silo->cur_filepos
   
 
 /* Silo methods */
 Silo       *  open_silo( char *directory,
                          unsigned long record_size,
-                         unsigned long max_file_size );
-void          empty_silo( Silo *silo );
-void          silo_ensure_entry_count( Silo *silo, unsigned long count );
+                         unsigned long max_file_size,
+                         unsigned int  max_silo_files );
+int           empty_silo( Silo *silo );
+int           silo_ensure_entry_count( Silo *silo, unsigned long count );
 unsigned long silo_entry_count( Silo *silo );
 void       *  silo_get_record( Silo *silo, unsigned long idx );
 unsigned long silo_next_id( Silo *silo );
@@ -60,7 +82,7 @@ unsigned long silo_push( Silo *silo, void *data, unsigned long write_amount );
 int           silo_put_record( Silo *silo, unsigned long id, void *data, unsigned long write_amount );
 int           silo_try_lock( Silo *silo );
 int           silo_lock( Silo *silo );
-void          unlink_silo( Silo *silo );
+int           unlink_silo( Silo *silo );
 void          cleanup_silo( Silo *silo );
 
 

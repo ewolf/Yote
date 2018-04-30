@@ -2,7 +2,6 @@
 #ifndef _RECORD_STORE_SEEN
 #define _RECORD_STORE_SEEN
 
-#include <math.h>
 #include "silo.h"
 #include "util.h"
 
@@ -53,7 +52,7 @@ typedef struct {
         sprintf( __dir, "%s%s%s%s%d", store->directory, PATHSEP,    \
                  "S", PATHSEP, SILO_IDX );                          \
         SILO = open_silo( __dir, __record_size,                     \
-                          store->max_file_size );                   \
+                          store->max_file_size, 1000 );             \
         store->silos[ idx ] = SILO;                                 \
         free( __dir );                                              \
       }                                                             \

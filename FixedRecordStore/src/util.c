@@ -224,3 +224,43 @@ buildstring(int str_count,...)
   free( strs );
   return ret;
 } //buildstring
+
+char *
+buildstringn(int str_count,...)
+{
+  char ** strs;
+  char *  ret;
+  va_list ap;
+  unsigned int size, s;
+  unsigned long i;
+
+  size = 0;
+  strs = calloc( sizeof(char *), str_count );
+  va_start( ap, str_count );
+  for ( i=0; i<str_count-1; i++ )
+    {
+      ret = va_arg( ap, char * );
+      size += strlen( ret );
+      strs[ i ] = ret;
+    }
+  i = va_arg( ap, unsigned long );
+  s = i > 10 ? 1+ceil(log10(i)) : 2;
+  strs[ str_count - 1 ] = calloc( s, 1 );
+  sprintf( strs[ str_count - 1 ], "%ld", i );
+  size += s;
+  
+  va_end( ap );
+
+  ret = calloc( 1 + size, 1 );
+  size = 0;
+  for ( i=0; i<str_count; i++ )
+    {
+      s = strlen( strs[i] );
+      memcpy( ret + size, strs[i], s );
+      size += s;
+    }
+  ret[size] = '\0';
+  free( strs[ str_count - 1 ] );
+  free( strs );
+  return ret;
+} //buildstringn

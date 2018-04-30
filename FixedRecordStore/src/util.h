@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
 
 
 #if defined _WIN32 || defined __CYGWIN__
@@ -26,10 +28,13 @@
 // CRY is easier to find than printf vs sprintf
 #define CRY printf
 
+#define WARN( msg ) perror( buildstringn( 5, msg, " ", __FILE__, " line ", __LINE__ ) )
+
 int make_path( char *path );
 int filecount( char *directory );
 int filesize( char *file );
 char * buildstring(int str_count,...);
+char * buildstringn(int str_count,...);
 
 // not sure if the linked list stuff is useful
 typedef struct LinkedList {
