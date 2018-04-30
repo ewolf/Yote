@@ -13,7 +13,7 @@ RecordStore *
 open_store( char *directory, unsigned long max_file_size )
 {
   RecordStore * store;
-  //   /S  -silos   /R  -recyclesilo  /I  -indexsilo  /T -transcata /A - transActions
+  //   /S  -silos   /R  -recyclesilo  /I  -indexsilo  /T -trans_cata /A - transActions
 
   store = (RecordStore *)malloc( sizeof( RecordStore ) );
   store->version       = RS_VERSION;
@@ -400,14 +400,14 @@ create_transaction( RecordStore *store )
 
   silo_put_record( store->transaction_catalog_silo,
                    trans->tid,
-                   trans,
+                   (char*)trans,
                    store->transaction_catalog_silo->record_size );
   
   trans->store = store;
 
   // DIR/A/ID
   silo_dir = malloc( 4 + sizeof( store->directory ) + (trans->tid > 10 ? ceil(log10(trans->tid)) : 1 ) );
-  sprintf( silo_dir, "%s%s%s%s%d",
+  sprintf( silo_dir, "%s%s%s%s%ld",
            store->directory,
            PATHSEP,
            "A",
@@ -430,11 +430,11 @@ open_transaction( RecordStore *store, unsigned long tid )
   Transaction * trans;
   char        * silo_dir;
   
-  trans = silo_get_record( store->transaction_catalog_silo, tid );
+  trans = (Transaction*)silo_get_record( store->transaction_catalog_silo, tid );
 
   // DIR/A/ID
   silo_dir = malloc( 4 + sizeof( store->directory ) + (trans->tid > 10 ? ceil(log10(tid)) : 1 ) );
-  sprintf( silo_dir, "%s%s%s%s%d",
+  sprintf( silo_dir, "%s%s%s%s%ld",
            store->directory,
            PATHSEP,
            "A",
@@ -481,8 +481,6 @@ list_transactions( RecordStore *store )
 unsigned long
 trans_stow( Transaction *trans, char *data, unsigned long rid, unsigned long write_amount )
 {
-  char * record;
-  char * trans_record;
   unsigned long trans_rid;
   if( trans->state == TRA_ACTIVE )
     {
@@ -559,29 +557,41 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
 int
 commit( Transaction *trans )
 {
-  unsigned long i;
-  unsigned long actions;
+  unsigned long      i;
+  unsigned long      actions;
   TransactionEntry * entry;
+  LinkedList       * purges;
+
+
   if ( trans->state == TRA_ACTIVE         ||
        trans->state == TRA_IN_COMMIT      ||
        trans->state == TRA_IN_ROLLBACK    ||
        trans->state == TRA_CLEANUP_COMMIT )
     {
+      purges = NULL;
       actions = silo_entry_count( trans->silo );
       for ( i=actions; i > 0; i++ )
         {
-          entry = silo_get_record( trans->silo, i );
+          entry = (TransactionEntry *)silo_get_record( trans->silo, i );
+          if( purges == NULL )
+            {
+              
+            }
+          else
+            {
+              
+            }
           
         }
     }
-  else {
-    return 1;
-  }
+  
+  return 1;
+
 } //commit
 
 
 int
 rollback( Transaction *trans )
 {
-
+  return 1;
 } //rollback

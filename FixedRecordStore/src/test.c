@@ -54,6 +54,7 @@ void chks( char * a, char * b, char * desc, Test *t ) {
 
 void test_util( Test * t )
 {
+  LinkedList * list, * listB;
   char * thing[10];
   chkl( make_path( "///tmp/fooby/blecch/" ), 0, "make path double slash", t );
   chkl( make_path( "/tmp/fooby/blecch/" ), 0, "remake path without double", t );
@@ -66,15 +67,31 @@ void test_util( Test * t )
   // linked list test
   thing[0] = strdup("THIS IS THING A");
   thing[1] = strdup("THIS IS THING N");
-  //  thing[2] = strdup("THIS IS THING C");
-  //  thing[3] = strdup("THIS IS THING D");
-  //  thing[4] = strdup("THIS IS THING E");
-  LinkedList * list = create_linked_list( thing[0] );
-  chks( (char*)list->item, thing[0], "string set properly", t );
-  set_next( list, thing[1] );
-  chks( list->next->item, thing[1], "next string set properly", t );
-  chkb( list->prev == 0, "no prev yet", t );
+  thing[2] = strdup("THIS IS THING C");
+  thing[3] = strdup("THIS IS THING D");
+  thing[4] = strdup("THIS IS THING E");
 
+  list = create_linked_list( thing[0] );
+  
+  chks( (char*)list->item, "THIS IS THING A", "string set properly", t );
+  listB = set_next( list, thing[1] );
+  chks( list->next->item, "THIS IS THING N", "next string set properly", t );
+  chkb( list->prev == 0, "no prev yet", t );
+  chks( listB->prev->item, "THIS IS THING A", "next links back", t );
+
+  listB = insert_next( list, thing[2] );
+  chks( listB->next->item, "THIS IS THING N", "insert next string set properly", t );
+  chks( list->next->next->prev->item, "THIS IS THING C", "bouncy bouncy", t );
+  chks( list->item, "THIS IS THING A", "list still list", t );
+  
+  listB = set_prev( list, thing[3] );
+  chks( listB->next->item, "THIS IS THING A", "prev link back", t );
+  chks( list->prev->item, "THIS IS THING D", "prev link to", t );
+
+  listB = insert_prev( list, thing[4] );
+  chks( listB->next->item, "THIS IS THING A", "prev ins link back", t );
+  chks( listB->prev->item, "THIS IS THING D", "prev ins updated link to", t );
+  chks( list->prev->item, "THIS IS THING E", "prev inst link to", t );
 
   free_linked_list( list, 1 );
   

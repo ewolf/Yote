@@ -129,8 +129,8 @@ LinkedList *
 set_prev( LinkedList * list, void * item )
 {
   LinkedList * prev = create_linked_list( item );
-  list->prev = list;
-  prev->next = prev;
+  list->prev = prev;
+  prev->next = list;
   
   return prev;
 } //set_prev
@@ -182,12 +182,14 @@ free_linked_list( LinkedList *list, int free_items )
   if ( (l = list->next) )
     {
       list->next = NULL;
+      l->prev = NULL;
       free_linked_list( l, free_items );
       
     }
   if ( (l = list->prev) )
     {
       list->prev = NULL;
+      l->next = NULL;
       free_linked_list( l, free_items );
     }
   free( list );
