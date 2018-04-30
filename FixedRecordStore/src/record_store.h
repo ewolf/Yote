@@ -11,8 +11,12 @@
 #define MAX_SILOS 100
 
 /* public interface */
-typedef struct
-{
+typedef struct {
+  unsigned int  silo_idx;
+  unsigned long sid;
+} IndexEntry;
+
+typedef struct {
   char        * directory;
   Silo        * index_silo;
   Silo        * recycle_silo;
@@ -20,8 +24,56 @@ typedef struct
   Silo       ** silos;
   char        * version;
   unsigned long max_file_size;
+  
+  IndexEntry  * skeletonKey;
+  Silo        * current_silo;
   // TODO - add options
 } RecordStore;
+
+
+#define SILO_IDX store->skeletonKey->silo_idx
+#define SID store->skeletonKey->sid
+#define SILO store->current_silo
+
+#define SAVE_INDEX( store, rid, silo_idx, sid  )                \
+  SILO_IDX = silo_idx;                                          \
+  SID = sid;                                                    \
+  silo_put_record( store->index_silo, rid,                      \
+                   (char*)store->skeletonKey, sizeof( IndexEntry ) )
+
+#define SET_SILO( store, idx )                                      \
+  if ( idx < MAX_SILOS && idx >= 0 ) {                              \
+    SILO = store->silos[ idx ];                                     \
+    if ( SILO == NULL )                                             \
+      {                                                             \
+        __record_size = (unsigned long)round( exp( SILO_IDX ) );    \
+        __dir = malloc( 4 + strlen( store->directory )              \
+                        + (SILO_IDX > 10 ?                          \
+                           ceil(log10(SILO_IDX)) : 1 ) );           \
+        sprintf( __dir, "%s%s%s%s%d", store->directory, PATHSEP,    \
+                 "S", PATHSEP, SILO_IDX );                          \
+        SILO = open_silo( __dir, __record_size,                     \
+                          store->max_file_size );                   \
+        store->silos[ idx ] = SILO;                                 \
+        free( __dir );                                              \
+      }                                                             \
+  }
+
+#define PREP_INDEX char * index_data;
+
+#define PREP_SILO              \
+  unsigned long __record_size; \
+  char        * __dir          \
+
+
+#define LOAD_INDEX( store, rid )                                    \
+  index_data = silo_get_record( store->index_silo, rid );           \
+  if ( index_data ) {                                               \
+    memcpy( store->skeletonKey, index_data, sizeof( IndexEntry ) ); \
+    free( index_data );                                             \
+  } else {                                                          \
+    SILO_IDX = 0;                                                   \
+  }  
 
 
 /* RecordStore methods */

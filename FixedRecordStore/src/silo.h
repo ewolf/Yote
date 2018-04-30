@@ -9,16 +9,17 @@
 typedef struct
 {
   char         * directory;
-  unsigned int   record_size;
-  unsigned int   file_max_size;
-  unsigned int   file_max_records;
+  unsigned long  record_size;
+  unsigned long  file_max_size;
+  unsigned long  file_max_records;
   unsigned int   silo_type;
   unsigned int   file_size_limit;
+  char         * stamp;
 } Silo;
 
 /* Silo methods */
 Silo       *  open_silo( char *directory,
-                         unsigned int record_size,
+                         unsigned long record_size,
                          unsigned long max_file_size );
 void          empty_silo( Silo *silo );
 void          silo_ensure_entry_count( Silo *silo, unsigned long count );

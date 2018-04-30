@@ -267,9 +267,8 @@ void test_record_store( Test *t )
   
   id = next_id( store );
   chkl( id, 1, "first record id", t );
-
   stow( store, "0123456789" , 1, 0 );
-  
+
   res = fetch( store, 1 );
   chks( res, "0123456789" , "first item", t );
   free( res );
@@ -318,10 +317,7 @@ void test_record_store( Test *t )
 }//test_record_store
 
 int main() {
-  char * x = buildstring( "THIS", "/", "IS A", " BIGSTRING" );
-  printf( "'%s'\n", x );
-  return 0;
-  
+
   printf( "Starting tests\n" );
   Test * t = malloc( sizeof(Test) );
   t->tests_run = 0;
