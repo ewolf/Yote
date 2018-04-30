@@ -344,7 +344,6 @@ void test_silo( Test * t )
 
 void test_record_store( Test *t )
 {
-  char iF1[] = "RECSTORE/I/0";
   struct stat stat_buffer;
    
   long long id;

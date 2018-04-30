@@ -5,8 +5,6 @@
 // sid  - silo entry index id
 // sidx - index of silo
 
-void _swapout( RecordStore *store, Silo *silo, int silo_idx, long long vacated_sid );
-
 RecordStore *
 open_store( char *directory )
 {
@@ -165,7 +163,8 @@ delete_record( RecordStore *store, long long rid )
   if ( SID > 0 )
     {
       // write a blank index record and swap out the old data
-      _swapout( store, SILO, SILO_IDX, SID );
+      PREP_SWAP;
+      SWAP( store, SILO, SILO_IDX, SID );
       SAVE_INDEX( store, rid, 0, 0 );
     }
 } //delete_record
@@ -192,7 +191,8 @@ stow( RecordStore *store, char *data, long long rid, long long save_size )
       if ( entry_size > SILO->record_size )
         { // needs to find a new silo
           // remove it from the old silo
-          _swapout( store, SILO, SILO_IDX, SID );
+          PREP_SWAP;
+          SWAP( store, SILO, SILO_IDX, SID );
 
           // add it to the new one
           SILO_IDX = entry_size < 21 ? 3 : (int)round( logf( entry_size ) );
@@ -263,47 +263,6 @@ empty_recycler( RecordStore *store )
 {
   empty_silo( store->recycle_silo );
 } //empty_recycler
-
-
-void _swapout( RecordStore *store, Silo *silo, int silo_idx, long long vacated_sid )
-{
-  char        * swap_record;
-  long long     swap_rid;
-  char        * index_entry;
-  long long     last_sid = silo_entry_count( silo );
-  
-  if ( vacated_sid < last_sid )
-    {
-      // move last record to the space left by the
-      // vacating record. Do a copy to be safer rather
-      // than a pop which could lose data
-      swap_record = silo_get_record( silo, last_sid );
-      memcpy( &swap_rid, swap_record, sizeof( long long ) );
-      silo_put_record( silo, vacated_sid, swap_record, silo->record_size );
-
-      // update the index
-      index_entry = calloc( sizeof( unsigned int ) + sizeof( long long ), 1 );
-      memcpy( index_entry, &silo_idx, sizeof( unsigned int ) );
-      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( long long ) );
-      silo_put_record( silo, swap_rid, index_entry, sizeof( unsigned int ) + sizeof( long long ) );
-
-      free( index_entry );
-      free( swap_record );
-
-      // remove the last record which has been moved
-      swap_record = silo_pop( silo );
-      free( swap_record );
-    }
-  else if ( vacated_sid == last_sid )
-    {
-      // at the end, so just pop it off
-      swap_record = silo_pop( silo );
-      free( swap_record );
-    }
-} //_swapout
-
-
-int _trans( Transaction *trans, int trans_type, long long ridA, long long ridB );
 
 
 Transaction *
@@ -410,7 +369,8 @@ trans_stow( Transaction *trans, char *data, long long rid, long long write_amoun
       trans_rid = silo_next_id( trans->store->index_silo );
       stow( trans->store, data, trans_rid, write_amount );
       
-      return _trans( trans, TRA_STOW, rid, trans_rid );
+      TRANS( trans, TRA_STOW, rid, trans_rid );
+      return TRANS_RES;
     }
   return 1;
 } //trans_stow
@@ -418,49 +378,16 @@ trans_stow( Transaction *trans, char *data, long long rid, long long write_amoun
 int
 trans_delete_record( Transaction *trans, long long rid )
 {
-  return _trans( trans, TRA_DELETE, rid, 0 );
+  TRANS( trans, TRA_DELETE, rid, 0 );
+  return TRANS_RES;
 } //trans_delete_record
 
 int
 trans_recycle_id( Transaction *trans, long long rid )
 {
-  return _trans( trans, TRA_RECYCLE, rid, 0 );
+  TRANS( trans, TRA_RECYCLE, rid, 0 );
+  return TRANS_RES;
 }
-
-int
-_trans( Transaction *trans, int trans_type, long long ridA, long long ridB )
-{
-  RecordStore      * store;
-  TransactionEntry * trans_record;
-  long long          next_trans_sid;
-  
-  if( trans->state == TRA_ACTIVE )
-    {
-      store = trans->store;
-      PREP_INDEX;
-      LOAD_INDEX( store, ridA );
-      
-      next_trans_sid = silo_next_id( trans->silo );
-      trans_record = (TransactionEntry*)calloc( sizeof(TransactionEntry), 1 );
-      trans_record->type          = trans_type;
-      trans_record->rid           = ridA;
-      trans_record->from_silo_idx = SILO_IDX;
-      trans_record->from_sid      = SID;
-
-      if ( ridB > 0 )
-        {
-          LOAD_INDEX( store, ridB );
-          trans_record->to_silo_idx = SILO_IDX;
-          trans_record->to_sid      = SID;
-        }
-      
-      silo_put_record( trans->silo, next_trans_sid, trans_record, sizeof( TransactionEntry ) );
-      free( trans_record );
-
-      return 0;
-    }
-  return 1;
-} //trans_recycle_id
 
 int
 commit( Transaction *trans )
@@ -495,7 +422,6 @@ commit( Transaction *trans )
   RecordStore      *  store;
   
   long long           i, j;
-  long long           actions;
   TransactionEntry *  entry;
   long long   *       rid_list;
   
@@ -591,10 +517,12 @@ commit( Transaction *trans )
       // the destination locations for these are no longer
       // valid and can be swapped away.
       purged_rid_count = 0;
+      purged_rids = calloc( sizeof( long long ), purge_to_count );
+      PREP_SWAP;
       for ( i=0; i<purge_to_count; i++ )
         {
           entry = purge_to_list[i];
-          _swapout( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+          SWAP( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
           purged_rids[ purged_rid_count++ ] = entry->rid;
         } //each purge_to
       
@@ -619,7 +547,7 @@ commit( Transaction *trans )
                 }
               if ( 0 == had_entry )
                 {
-                  _swapout( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                  SWAP( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
                 }
             }
           else if ( entry->type == TRA_DELETE )
@@ -652,19 +580,15 @@ commit( Transaction *trans )
 int
 rollback( Transaction *trans )
 {
-  RecordStore      * store;
+  RecordStore      *  store;
 
-  long long          i, j;
-  long long          actions;  
-  TransactionEntry * entry;
+  long long           i;
+  TransactionEntry *  entry;
   
-  long long        * rid_list;
-  long long        * purged_rids;
-  long int           purged_rid_count;
+  TransactionEntry ** swapouts;
+  long int            swapout_count;
   
-  long long          entry_count;
-  long long          entries;
-  int                had_entry;
+  long long           entries;
 
   // CLEANUP COMMIT might be dangerous, the state may be
   // inconsistant
@@ -682,8 +606,12 @@ rollback( Transaction *trans )
                        trans->tid,
                        trans,
                        sizeof( Transaction ) );
-      
+
       entries = silo_entry_count( trans->silo );
+      swapouts = calloc( sizeof( TransactionEntry * ), entries );
+      swapout_count = 0;
+      //  [ from, to-rom ]  --> [ to-rom to-rom2 ] ---> [ to-rom2 to  ]
+      //    swapout to, to-rom2, to-rom
       for ( i=entries; i > 0; i-- )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
@@ -699,6 +627,7 @@ rollback( Transaction *trans )
           if ( entry->to_sid )
             {
               // add to swapouts
+              swapouts[ swapout_count++ ] = entry;
             }
         } // each entry
       
@@ -708,7 +637,13 @@ rollback( Transaction *trans )
                        trans->tid,
                        trans,
                        sizeof( Transaction ) );
-
+      PREP_SWAP;
+      for ( i=0; i<swapout_count; i++ )
+        {
+          entry = swapouts[ i ];
+          SWAP( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+        }
+      
       // now do the swapouts
       
       trans->state = TRA_DONE;

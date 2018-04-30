@@ -71,6 +71,38 @@ typedef struct {
     SILO_IDX = 0;                                                   \
   }  
 
+#define PREP_SWAP                               \
+  char        * swap_record;                    \
+  long long     swap_rid;                       \
+  char        * index_entry;                    \
+  long long     last_sid
+
+// move last record to the space left by the
+// vacating record. Do a copy to be safer rather
+// than a pop which could lose data
+#define SWAP( store, silo, silo_idx, vacated_sid )                      \
+  last_sid = silo_entry_count( silo );                                  \
+  if ( vacated_sid < last_sid )                                         \
+    {                                                                   \
+      swap_record = silo_get_record( silo, last_sid );                  \
+      memcpy( &swap_rid, swap_record, sizeof( long long ) );            \
+      silo_put_record( silo, vacated_sid, swap_record, silo->record_size ); \
+      index_entry = calloc( sizeof( unsigned int ) + sizeof( long long ), 1 ); \
+      memcpy( index_entry, &silo_idx, sizeof( unsigned int ) );         \
+      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( long long ) ); \
+      silo_put_record( silo, swap_rid, index_entry, sizeof( unsigned int ) + sizeof( long long ) ); \
+      free( index_entry );                                              \
+      free( swap_record );                                              \
+      swap_record = silo_pop( silo );                                   \
+      free( swap_record );                                              \
+    }                                                                   \
+  else if ( vacated_sid == last_sid )                                   \
+    {                                                                   \
+      swap_record = silo_pop( silo );                                   \
+      free( swap_record );                                              \
+    }
+
+
 
 /* RecordStore methods */
 RecordStore * open_store( char *directory );
@@ -102,6 +134,36 @@ void          empty_recycler( RecordStore *store );
 #define TRA_STOW 1
 #define TRA_DELETE 1
 #define TRA_RECYCLE 2
+
+#define TRANS( trans, trans_type, ridA, ridB )                          \
+  RecordStore      * store;                                             \
+  TransactionEntry * trans_record;                                      \
+  long long          next_trans_sid;                                    \
+  int                TRANS_RES;                                         \
+                                                                        \
+  if( trans->state == TRA_ACTIVE )                                      \
+    {                                                                   \
+      store = trans->store;                                             \
+      PREP_INDEX;                                                       \
+      LOAD_INDEX( store, ridA );                                        \
+                                                                        \
+      next_trans_sid = silo_next_id( trans->silo );                     \
+      trans_record = (TransactionEntry*)calloc( sizeof(TransactionEntry), 1 ); \
+      trans_record->type          = trans_type;                         \
+      trans_record->rid           = ridA;                               \
+      trans_record->from_silo_idx = SILO_IDX;                           \
+      trans_record->from_sid      = SID;                                \
+      if ( ridB > 0 )                                                   \
+        {                                                               \
+          LOAD_INDEX( store, ridB );                                    \
+          trans_record->to_silo_idx = SILO_IDX;                         \
+          trans_record->to_sid      = SID;                              \
+        }                                                               \
+      silo_put_record( trans->silo, next_trans_sid, trans_record, sizeof( TransactionEntry ) ); \
+      free( trans_record );                                             \
+      TRANS_RES = 0;                                                    \
+    }                                                                   \
+  TRANS_RES = 1
 
 // transactions are cataloged in RecordStore transaction silo
 // and each transaction gets its own instance silo
