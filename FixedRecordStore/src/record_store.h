@@ -36,6 +36,7 @@ typedef struct
 /* RecordStore methods */
 RecordStore * open_store( char *directory, unsigned long max_file_size );
 void          empty_store( RecordStore *store );
+void          unlink_store( RecordStore *store );
 void          cleanup_store( RecordStore *store );
 
 unsigned long store_entry_count( RecordStore *store );

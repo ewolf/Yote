@@ -13,7 +13,6 @@ Silo * _get_silo( RecordStore *store, int sidx );
 RecordStore *
 open_store( char *directory, unsigned long max_file_size )
 {
-  int i;
   RecordStore * store;
   //   /S   /R   /I
 
@@ -26,7 +25,6 @@ open_store( char *directory, unsigned long max_file_size )
   
   char * dir = malloc( strlen( directory ) + 3  );
   sprintf( dir, "%s%s%s", directory, PATHSEP, "S" );
-  i = strlen(dir);
 
   make_path( dir );
   
@@ -82,6 +80,42 @@ empty_store( RecordStore *store )
   empty_silo( store->recycle_silo );
   empty_silo( store->index_silo );
 } //empty_store
+
+void
+unlink_store( RecordStore *store )
+{
+  int i;
+  Silo * s;
+  char * dir;
+  for ( i=0; i<MAX_SILOS; i++ )
+    {
+      s = store->silos[i];
+      if ( s != NULL ) {
+        store->silos[i] = NULL;
+        unlink_silo( s );
+        cleanup_silo( s );
+        free( s );
+      }
+    }
+  unlink_silo( store->recycle_silo );
+  unlink_silo( store->index_silo );
+  dir = malloc( 3 + strlen( store->directory ));
+  sprintf( dir, "%s%s%s", store->directory, PATHSEP, "S" );
+  if ( 0 == rmdir( dir ) )
+    {
+      if ( 0 != rmdir( store->directory ) )
+        {
+          perror( "unlink_store" );
+        }
+    }
+  else
+    {
+      perror( "unlink_store" );
+    }
+  
+  free( dir );
+
+} //unlink_store
 
 unsigned long
 store_entry_count( RecordStore *store )
@@ -159,7 +193,7 @@ stow( RecordStore *store, char *data, unsigned long rid )
   save_size = 1 + strlen( data ) + sizeof( unsigned long );
   entry_data = malloc( save_size );
   index_data = silo_get_record( store->index_silo, rid );
-  if ( strlen( index_data ) > 0 )
+  if ( index_data && strlen( index_data ) > 0 )
     {
       memcpy( &silo_idx, index_data, sizeof( int ));
       memcpy( &sid, index_data + sizeof( int ), sizeof( unsigned long ));
@@ -171,7 +205,7 @@ stow( RecordStore *store, char *data, unsigned long rid )
           _swapout( store, silo, silo_idx, sid );
 
           // add it to the new one
-          silo_idx = 1 + (int)round( logf( save_size ) );
+          silo_idx = save_size < 21 ? 3 : (int)round( logf( save_size ) );
           silo = _get_silo( store, silo_idx );
           sid = silo_next_id( silo );
 
@@ -179,7 +213,8 @@ stow( RecordStore *store, char *data, unsigned long rid )
     }
   else
     { // new entry
-      silo_idx = 1 + (int)round( logf( save_size ) );
+      silo_idx = save_size < 21 ? 3 : (int)round( logf( save_size ) );
+
       silo = _get_silo( store, silo_idx );
       sid = silo_next_id( silo );
     }
@@ -224,7 +259,6 @@ fetch( RecordStore *store, unsigned long rid )
       if( silo_idx > 0 )
         {
           memcpy( &sid, index_data + sizeof( int ), sizeof( unsigned long ));
-          CRY("SILO IDX %d\n",silo_idx);
           silo   = _get_silo( store, silo_idx );
           entry  = silo_get_record( silo, sid );
           
@@ -294,7 +328,6 @@ void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacat
   unsigned long swap_rid;
   char        * index_entry;
   unsigned long last_sid = silo_entry_count( silo );
-  
   if ( vacated_sid < last_sid )
     {
       // move last record to the space left by the
@@ -302,29 +335,27 @@ void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacat
       // than a pop which could lose data
       swap_record = silo_get_record( silo, last_sid );
       memcpy( &swap_rid, swap_record, sizeof( unsigned long ) );
-      silo_put_record( silo, vacated_sid, swap_record, 0 );
+      silo_put_record( silo, vacated_sid, swap_record, silo->record_size );
 
       // update the index
-      index_entry = silo_get_record( store->index_silo, swap_rid );
-      if( index_entry )
-        {
-          
-        }
-      swap_entry = _index_entry( store, swap_rid );
-      swap_entry->sid = vacated_sid;
-      silo_put_record( store->index_silo, vacated_sid, swap_entry, 0 );
-      free( swap_entry );
+      index_entry = malloc( sizeof( int ) + sizeof( unsigned long ) );
+      memcpy( index_entry, &silo_idx, sizeof( int ) );
+      memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( unsigned long ) );
+      silo_put_record( silo, swap_rid, index_entry, sizeof( int ) + sizeof( unsigned long ) );
 
-      // pop the old copy off
+      free( index_entry );
       free( swap_record );
+
+      // remove the last record which has been moved
       swap_record = silo_pop( silo );
+      free( swap_record );
     }
   else if ( vacated_sid == last_sid )
     {
       // at the end, so just pop it off
       swap_record = silo_pop( silo );
+      free( swap_record );
     }
-  free( swap_record );
 } //_swapout
 
 Silo *
@@ -333,7 +364,6 @@ _get_silo( RecordStore *store, int sidx )
   Silo *s;
   unsigned long record_size;
   char * dir;
-
   if ( sidx >= MAX_SILOS )
     {
       return NULL;

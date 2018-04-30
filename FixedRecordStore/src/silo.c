@@ -43,7 +43,7 @@ open_silo( char        * directory,
 
   // malloc the silo and set its data
   silo = (Silo *)malloc( sizeof( Silo ) );
-  
+
   silo->record_size      = record_size;
   silo->directory        = strdup( directory );
   silo->file_max_records = file_max_records;

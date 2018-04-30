@@ -22,7 +22,7 @@ void chkb( int a, char * desc, Test *t ) {
   t->tests_run++;
   if( ! a ) {
     t->tests_fail++;
-    printf( "Error : Failed : %s\n", desc );
+    printf( "Failed : Failed : %s\n", desc );
   }
   else if( VERB ) {
     printf( "Passed : %s\n", desc );
@@ -34,7 +34,7 @@ void chkl( long a, long b, char * desc, Test *t ) {
   t->tests_run++;
   if( a != b ) {
     t->tests_fail++;
-    printf( "Error : Got %ld and expected %ld : %s\n", a, b, desc );
+    printf( "Failed : Got %ld and expected %ld : %s\n", a, b, desc );
   }
   else if( VERB ) {
     printf( "Passed : %s\n", desc );
@@ -45,7 +45,7 @@ void chks( char * a, char * b, char * desc, Test *t ) {
   t->tests_run++;
   if( a == NULL || strcmp(a, b) != 0 ) {
     t->tests_fail++;
-    printf( "Error : Got '%s' and expected '%s' : %s\n", a, b, desc );
+    printf( "Failed : Got '%s' and expected '%s' : %s\n", a, b, desc );
   }
   else if( VERB ) {
     printf( "Passed : %s\n", desc );
@@ -189,9 +189,9 @@ void test_silo( Test * t )
 
 void test_record_store( Test *t )
 {
-  int booly;
   unsigned long id;
-  RecordStore * store = open_store( "RECSTORE", 44 );
+  RecordStore * store = open_store( "RECSTORE", 80 );
+  chkl( silo_entry_count(store->index_silo), 0, "store created and nothing in index", t );
   char * res;
   
   id = next_id( store );
@@ -202,8 +202,8 @@ void test_record_store( Test *t )
   res = fetch( store, 1 );
   chks( res, "0123456789" , "first item", t );
   free( res );
-
   stow( store, "1123456789" , 5 );
+
   id = next_id( store );
   chkl( id, 6, "rec id now", t );  
 
@@ -214,34 +214,35 @@ void test_record_store( Test *t )
   chkb( ! has_id( store, 3 ), "no third id", t );
   chkb( ! has_id( store, 4 ), "no fourth id", t );
   chkb( has_id( store, 5 ), "has fifth id", t );
-  chkb( has_id( store, 6 ), "no sixth id", t );
+  chkb( !has_id( store, 6 ), "no sixth id", t );
 
-  chkl( silo_entry_count( store->silos[4] ), 2, "two entries in second silo", t );
-  res = fetch( store, 3 );
+  chkl( silo_entry_count( store->silos[3] ), 2, "two entries in second silo", t );
 
   delete_record( store, 5 );
-  chkl( silo_entry_count( store->silos[4] ), 1, "one entry in second silo after deletion and swap", t );
+  chkl( silo_entry_count( store->silos[3] ), 1, "one entry in second silo after deletion and swap", t );
   chkl( store_entry_count( store ), 6, "still 6 entries in store fater delete", t );
 
   stow( store, "2123456789" , 5 );
-  chkl( silo_entry_count( store->silos[4] ), 2, "two entries in second silo", t );
+  chkl( silo_entry_count( store->silos[3] ), 2, "two entries in second silo", t );
   chkl( store_entry_count( store ), 6, "still 6 entries in store", t );
   recycle_id( store, 6 );
   chkl( store_entry_count( store ), 5, "now 5 entries in store", t );
   recycle_id( store, 5 );
   chkl( store_entry_count( store ), 4, "now 4 entries in store", t );
-  chkl( silo_entry_count( store->silos[4] ), 1, "one entry in second silo after recycle", t );
+  chkl( silo_entry_count( store->silos[3] ), 1, "one entry in second silo after recycle", t );
   id = next_id( store );
   chkl( id, 5, "recycled id 5", t );
   id = next_id( store );
-  chkl( id, 5, "recycled id 6", t );
+  chkl( id, 6, "recycled id 6", t );
   
-  // this is in silo index 4
-  chks( res, "1123456789" , "forced item", t );
+  // this is in silo index 3
+  res = fetch( store, 5 );
+  chkb( res == 0, "nothing for recycled id", t );
   free( res );
 
   delete_record( store, 3 );
-  
+
+  unlink_store( store );
   
   cleanup_store( store );
   free( store );
