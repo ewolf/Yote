@@ -20,3 +20,5 @@ lib/Yote/ConfigData.pm
 yote_root/html/cc
 yote_root/html/madyote
 yote_root/html/se
+XS.c
+*.o
