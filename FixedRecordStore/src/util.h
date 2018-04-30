@@ -20,6 +20,8 @@
 #define PATHSEPCHAR '/'
 #endif
 
+#define CRY printf
+
 int make_path( char *path );
 int filecount( char *directory );
 int filesize( char *file );

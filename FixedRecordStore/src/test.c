@@ -100,7 +100,7 @@ void test_silo( Test * t )
     }
   chkl( filecount( dir ), 1, "One file", t );
   chkl( silo_entry_count(silo), 0, "starts at zero entry count", t );
-  chkl( silo_put_record( silo, 1, "01234567890" ), 0, "record too large", t );
+  chkl( silo_put_record( silo, 1, "01234567890", 0 ), 0, "record too large", t );
   chkl( silo_entry_count(silo), 0, "still zero entry count", t );
   chkl( filesize( F1 ), 0, "size 0", t );
 
@@ -108,7 +108,7 @@ void test_silo( Test * t )
   chkl( id, 1, "first id", t );
   chkl( filesize( F1 ), 11, "size 1", t );
   
-  chkl( silo_put_record( silo, id, "0123456789" ), 1, "first record put", t );
+  chkl( silo_put_record( silo, id, "0123456789", 0 ), 1, "first record put", t );
   
   res = silo_get_record( silo, id );
   chks( res, "0123456789", "first entry", t );
@@ -117,7 +117,7 @@ void test_silo( Test * t )
   res = silo_last_entry(silo);
   chks( res, "0123456789", "last entry", t );
   chkl( silo_entry_count(silo), 1, "first entry count", t );
-  chkl( silo_put_record( silo, id, "0123456789" ), 1, "put first valid record", t );
+  chkl( silo_put_record( silo, id, "0123456789", 0 ), 1, "put first valid record", t );
   
   free( res );
   res = silo_last_entry(silo);
@@ -127,7 +127,7 @@ void test_silo( Test * t )
   chks( res, "0123456789", "first entry still same", t );
   chkl( silo_entry_count(silo), 1, "first entry count still same", t );
 
-  id = silo_push( silo, "POOOPYTWO" );
+  id = silo_push( silo, "POOOPYTWO", 0 );
   chkl( id, 2, "second entry id", t );
   chkl( filesize( F1 ), 22, "size 2", t );
   chkl( silo_entry_count(silo), 2, "second entry count", t );
@@ -158,7 +158,7 @@ void test_silo( Test * t )
   // make sure there is just one file
   chkl( filecount( dir ), 1, "One file", t ); 
   
-  chkl( silo_put_record( silo, 6, "9876543210" ), 1, "put first valid record", t );  
+  chkl( silo_put_record( silo, 6, "9876543210", 0 ), 1, "put first valid record", t );  
   chkl( filesize( F1 ), 44, "full size for file 1", t );
   chkl( filesize( F2 ), 22, "half size for file 2", t );
   chkl( silo_entry_count(silo), 6, "6 records now", t );
@@ -189,17 +189,59 @@ void test_silo( Test * t )
 
 void test_record_store( Test *t )
 {
+  int booly;
   unsigned long id;
-  RecordStore * store = open_store( "RECSTORE", 2000000 );
+  RecordStore * store = open_store( "RECSTORE", 44 );
   char * res;
+  
   id = next_id( store );
-  //  chkl( id, 1, "first record id", t );
+  chkl( id, 1, "first record id", t );
 
-  stow( store, "EWERBOSDONNNN" , 1 );
+  stow( store, "0123456789" , 1 );
   
   res = fetch( store, 1 );
-  chks( res, "EWERBOSDONNNN" , "first item", t );
+  chks( res, "0123456789" , "first item", t );
   free( res );
+
+  stow( store, "1123456789" , 5 );
+  id = next_id( store );
+  chkl( id, 6, "rec id now", t );  
+
+  chkl( store_entry_count( store ), 6, "6 entries in store", t );
+
+  chkb( has_id( store, 1 ), "has first id", t );
+  chkb( ! has_id( store, 2 ), "no second id", t );
+  chkb( ! has_id( store, 3 ), "no third id", t );
+  chkb( ! has_id( store, 4 ), "no fourth id", t );
+  chkb( has_id( store, 5 ), "has fifth id", t );
+  chkb( has_id( store, 6 ), "no sixth id", t );
+
+  chkl( silo_entry_count( store->silos[4] ), 2, "two entries in second silo", t );
+  res = fetch( store, 3 );
+
+  delete_record( store, 5 );
+  chkl( silo_entry_count( store->silos[4] ), 1, "one entry in second silo after deletion and swap", t );
+  chkl( store_entry_count( store ), 6, "still 6 entries in store fater delete", t );
+
+  stow( store, "2123456789" , 5 );
+  chkl( silo_entry_count( store->silos[4] ), 2, "two entries in second silo", t );
+  chkl( store_entry_count( store ), 6, "still 6 entries in store", t );
+  recycle_id( store, 6 );
+  chkl( store_entry_count( store ), 5, "now 5 entries in store", t );
+  recycle_id( store, 5 );
+  chkl( store_entry_count( store ), 4, "now 4 entries in store", t );
+  chkl( silo_entry_count( store->silos[4] ), 1, "one entry in second silo after recycle", t );
+  id = next_id( store );
+  chkl( id, 5, "recycled id 5", t );
+  id = next_id( store );
+  chkl( id, 5, "recycled id 6", t );
+  
+  // this is in silo index 4
+  chks( res, "1123456789" , "forced item", t );
+  free( res );
+
+  delete_record( store, 3 );
+  
   
   cleanup_store( store );
   free( store );

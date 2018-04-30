@@ -125,15 +125,20 @@ void unlink_silo( Silo *silo ) {
 }
 
 int
-silo_put_record( Silo *silo, unsigned long id, char *data )
+silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_amount )
 {
   FILE * silo_file;
   int file_number, record_position, file_position;
   char * filename;
   unsigned long idx = id - 1;
   
-  if( strlen( data ) >= silo->record_size ) {
-    // too big, needs the \0 byte. 
+  if ( write_amount == 0 )
+    {
+      write_amount = strlen( data );
+    }
+
+  if( write_amount >= silo->record_size ) {
+    // too big. must be at least one less than the record size for the '\0' byte.
     return 0;
   }
   
@@ -151,7 +156,8 @@ silo_put_record( Silo *silo, unsigned long id, char *data )
   silo_file = fopen( filename, "r+" );
   fseek( silo_file, file_position, SEEK_SET );
 
-  fwrite( data, strlen( data ), 1, silo_file );
+  
+  fwrite( data, write_amount, 1, silo_file );
   fclose( silo_file );
   free( filename );
   return 1;
@@ -198,10 +204,10 @@ silo_pop( Silo * silo )
 } //pop
 
 unsigned long
-silo_push( Silo *silo, char *data )
+silo_push( Silo *silo, char *data, unsigned long write_amount )
 {
   unsigned long nextid = silo_next_id( silo );
-  silo_put_record( silo, nextid, data );
+  silo_put_record( silo, nextid, data, write_amount );
   return nextid;
 } //silo_push
 

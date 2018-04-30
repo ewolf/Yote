@@ -27,8 +27,8 @@ char       *  silo_get_record( Silo *silo, unsigned long idx );
 unsigned long silo_next_id( Silo *silo );
 char       *  silo_pop( Silo *silo );
 char       *  silo_last_entry( Silo *silo );
-unsigned long silo_push( Silo *silo, char *data );
-int           silo_put_record( Silo *silo, unsigned long id, char *data );
+unsigned long silo_push( Silo *silo, char *data, unsigned long write_amount );
+int           silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_amount );
 void          unlink_silo( Silo *silo );
 void          cleanup_silo( Silo *silo );
 
