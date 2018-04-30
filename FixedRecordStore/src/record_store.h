@@ -117,13 +117,13 @@ typedef struct
 
 typedef struct
 {
-  unsigned int  type;          // TRA_STOW, TRA_DELETE, TRA_RECYCLE
-  unsigned int  completed;     // 1 if completed
-  long long rid;           // record id
-  unsigned int from_silo_idx; // location before transaction
-  long long from_sid;      // 
-  unsigned int  to_silo_idx;   // location after transaction
-  long long to_sid;        // 
+  unsigned int type;            // TRA_STOW, TRA_DELETE, TRA_RECYCLE
+  unsigned int completed;       // 1 if completed
+  long long    rid;             // record id
+  unsigned int from_silo_idx;   // location before transaction
+  long long    from_sid;        // 
+  unsigned int to_silo_idx;     // location after transaction
+  long long    to_sid;          // 
 } TransactionEntry;
 
 

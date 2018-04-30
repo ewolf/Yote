@@ -322,7 +322,7 @@ create_transaction( RecordStore *store )
 
   silo_put_record( store->trans_silo,
                    trans->tid,
-                   (char*)trans,
+                   trans,
                    sizeof( Transaction ) );
   
   trans->store = store;
@@ -454,7 +454,7 @@ _trans( Transaction *trans, int trans_type, long long ridA, long long ridB )
           trans_record->to_sid      = SID;
         }
       
-      silo_put_record( trans->silo, next_trans_sid, (char*)trans_record, sizeof( TransactionEntry ) );
+      silo_put_record( trans->silo, next_trans_sid, trans_record, sizeof( TransactionEntry ) );
       free( trans_record );
 
       return 0;
@@ -526,9 +526,11 @@ commit( Transaction *trans )
 
       
       trans->state = TRA_IN_COMMIT;
+      trans->pid   = getpid();
+      trans->update_time = time(NULL);
       silo_put_record( store->trans_silo,
                        trans->tid,
-                       (char*)trans,
+                       trans,
                        sizeof( Transaction ) );
 
       
@@ -536,7 +538,8 @@ commit( Transaction *trans )
       rid_list        = calloc( sizeof(long long), entries );
       purge_to_list   = calloc( sizeof(TransactionEntry*), entries );
       purge_from_list = calloc( sizeof(TransactionEntry*), entries );
-       
+
+      // update the indexes for the transaction entries.
       for ( i=entries; i > 0; i-- )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
@@ -575,62 +578,69 @@ commit( Transaction *trans )
               // purge the 'from'
               purge_from_list[purge_from_count++] = entry;
             }
+        } // update index for each transaction entry
 
-          // purge to contains prevoius STOWS for a single rid.
-          // the destination locations for these are no longer
-          // valid and can be swapped away.
-          purged_rid_count = 0;
-          for ( i=0; i<purge_to_count; i++ )
+      trans->state = TRA_CLEANUP_COMMIT;
+      trans->update_time = time(NULL);
+      silo_put_record( store->trans_silo,
+                       trans->tid,
+                       trans,
+                       sizeof( Transaction ) );
+
+      // purge to contains prevoius STOWS for a single rid.
+      // the destination locations for these are no longer
+      // valid and can be swapped away.
+      purged_rid_count = 0;
+      for ( i=0; i<purge_to_count; i++ )
+        {
+          entry = purge_to_list[i];
+          _swapout( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
+          purged_rids[ purged_rid_count++ ] = entry->rid;
+        } //each purge_to
+      
+      // the from_count is to purge items that are either deleted
+      // or have a single stow (multiple stows cruft was removed above )
+      
+      for ( i=0; i<purge_from_count; i++ )
+        {
+          entry = purge_from_list[i];
+          if ( entry->type == TRA_STOW )
             {
-              entry = purge_to_list[i];
-              _swapout( store, store->silos[entry->to_silo_idx], entry->to_silo_idx, entry->to_sid );
-              purged_rids[ purged_rid_count++ ] = entry->rid;
-            } //each purge_to
-
-          // the from_count is to purge items that are either deleted
-          // or have a 
-          
-          for ( i=0; i<purge_from_count; i++ )
+              // check if this 'from' had already been purged by a 'to'
+              // if so, don't swapout
+              had_entry = 0;
+              for ( j=0; j<purged_rid_count; j++ )
+                {
+                  if ( purged_rids[ j ] == entry->rid )
+                    {
+                      had_entry = 1;
+                      break;
+                    }
+                }
+              if ( 0 == had_entry )
+                {
+                  _swapout( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                }
+            }
+          else if ( entry->type == TRA_DELETE )
             {
-              entry = purge_from_list[i];
-              if ( entry->type == TRA_STOW )
-                {
-                  // check if this 'from' had already been purged by a 'to'
-                  // if so, don't swapout
-                  had_entry = 0;
-                  for ( j=0; j<purged_rid_count; j++ )
-                    {
-                      if ( purged_rids[ j ] == entry->rid )
-                        {
-                          had_entry = 1;
-                          break;
-                        }
-                    }
-                  if ( 0 == had_entry )
-                    {
-                      _swapout( store, store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
-                    }
-                }
-              else if ( entry->type == TRA_DELETE )
-                {
-                  delete_record( store, entry->rid );
-                }
-              else // if ( entry->type == TRA_RECYCLE )
-                {
-                  recycle_id( store, entry->rid );
-                }
-            } //each purge from 
+              delete_record( store, entry->rid );
+            }
+          else // if ( entry->type == TRA_RECYCLE )
+            {
+              recycle_id( store, entry->rid );
+            }
+        } //each purge from 
 
-          // update catalog
-          trans->state = TRA_DONE;
-          trans->pid   = getpid();
-          trans->update_time = time(NULL);
-          silo_put_record( store->trans_silo,
-                           trans->tid,
-                           (char*)trans,
-                           sizeof( Transaction ) );
-          unlink_silo( trans->silo );
-        } //each entry
+      // update catalog
+      trans->state = TRA_DONE;
+      trans->update_time = time(NULL);
+      silo_put_record( store->trans_silo,
+                       trans->tid,
+                       trans,
+                       sizeof( Transaction ) );
+      unlink_silo( trans->silo );
+
       return 0;
     } // if reasonable state
   
@@ -642,20 +652,22 @@ commit( Transaction *trans )
 int
 rollback( Transaction *trans )
 {
-  RecordStore *      store;
+  RecordStore      * store;
 
   long long          i, j;
   long long          actions;  
   TransactionEntry * entry;
   
-  long long   *      rid_list;
-  long long   *      purged_rids;
+  long long        * rid_list;
+  long long        * purged_rids;
   long int           purged_rid_count;
   
   long long          entry_count;
   long long          entries;
   int                had_entry;
 
+  // CLEANUP COMMIT might be dangerous, the state may be
+  // inconsistant
   if ( trans->state == TRA_ACTIVE         ||
        trans->state == TRA_IN_COMMIT      ||
        trans->state == TRA_IN_ROLLBACK    ||
@@ -664,17 +676,49 @@ rollback( Transaction *trans )
       store = trans->store;
       
       trans->state = TRA_IN_ROLLBACK;
+      trans->pid   = getpid();
+      trans->update_time = time(NULL);
       silo_put_record( store->trans_silo,
                        trans->tid,
-                       (char*)trans,
+                       trans,
                        sizeof( Transaction ) );
       
       entries = silo_entry_count( trans->silo );
       for ( i=entries; i > 0; i-- )
-        //      for ( i=0; i<entries; i++ )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
-        }
-    }  
+          if ( entry->from_sid )
+            {
+              SAVE_INDEX( store, entry->rid, entry->from_silo_idx, entry->from_sid );
+            }
+          else
+            {
+              // a first time stow
+              SAVE_INDEX( store, entry->rid, 0, 0LL );
+            }
+          if ( entry->to_sid )
+            {
+              // add to swapouts
+            }
+        } // each entry
+      
+      trans->state = TRA_CLEANUP_ROLLBACK;
+      trans->update_time = time(NULL);
+      silo_put_record( store->trans_silo,
+                       trans->tid,
+                       trans,
+                       sizeof( Transaction ) );
+
+      // now do the swapouts
+      
+      trans->state = TRA_DONE;
+      trans->update_time = time(NULL);
+      silo_put_record( store->trans_silo,
+                       trans->tid,
+                       trans,
+                       sizeof( Transaction ) );
+      
+      return 0;
+    } // if okey state
   return 1;
 } //rollback
