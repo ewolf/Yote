@@ -111,38 +111,21 @@ create_linked_list( void * item )
   list->item = item;
   list->next = NULL;
   list->prev = NULL;
+  list->head = list;
   
   return list;
 } //create_linked_list
 
-LinkedList *
-set_next( LinkedList * list, void * item )
-{
-  LinkedList * next = create_linked_list( item );
-  list->next = next;
-  next->prev = list;
-  
-  return next;
-} //set_next
-
-LinkedList *
-set_prev( LinkedList * list, void * item )
-{
-  LinkedList * prev = create_linked_list( item );
-  list->prev = prev;
-  prev->next = list;
-  
-  return prev;
-} //set_prev
 
 LinkedList *
 insert_next( LinkedList * list, void * item )
 {
   LinkedList * next;
   LinkedList * new_next = create_linked_list( item );
+  new_next->head = list->head;
+  new_next->prev = list;
   next           = list->next;
   list->next     = new_next;
-  new_next->prev = list;
   
   if ( next )
     {
@@ -161,10 +144,17 @@ insert_prev( LinkedList * list, void * item )
   prev           = list->prev;
   list->prev     = new_prev;
   new_prev->next = list;
+
   if ( prev )
     {
+      new_prev->head = list->head;
       prev->next     = new_prev;
       new_prev->prev = prev;
+    }
+  else
+    {
+      new_prev->head = new_prev;
+      list->head     = new_prev;
     }
   
   return new_prev;
@@ -173,24 +163,28 @@ insert_prev( LinkedList * list, void * item )
 void
 free_linked_list( LinkedList *list, int free_items )
 {
-  LinkedList * l;
-  if ( free_items && list->item )
+  LinkedList * start = list->head;
+
+  while ( start )
     {
-      free( list->item );
-      list->item = NULL;
+      list = start->next;
+      if ( free_items && start->item )
+        {
+          free( start->item );
+        }
+      free( start );
+      start = list;
     }
-  if ( (l = list->next) )
-    {
-      list->next = NULL;
-      l->prev = NULL;
-      free_linked_list( l, free_items );
-      
-    }
-  if ( (l = list->prev) )
-    {
-      list->prev = NULL;
-      l->next = NULL;
-      free_linked_list( l, free_items );
-    }
-  free( list );
 } //free_linked_list
+/*
+void
+find_in_list( LinkedList *list, (void*) item )
+{
+  if( list->item == item )
+    {
+      return list;
+    }
+  return ( list->prev && find_in_list( list->prev, item ) )
+    || ( list->next && find_in_list( list->next, item ) );
+} //find_in_list
+*/

@@ -560,7 +560,7 @@ commit( Transaction *trans )
   unsigned long      i;
   unsigned long      actions;
   TransactionEntry * entry;
-  LinkedList       * purges;
+  LinkedList       * purges, * entries;
 
 
   if ( trans->state == TRA_ACTIVE         ||
@@ -569,17 +569,29 @@ commit( Transaction *trans )
        trans->state == TRA_CLEANUP_COMMIT )
     {
       purges = NULL;
+      trans  = NULL;
       actions = silo_entry_count( trans->silo );
       for ( i=actions; i > 0; i++ )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
-          if( purges == NULL )
+
+          if ( entries == NULL )
             {
-              
+              entries = create_linked_list( entry );
             }
           else
             {
-              
+
+            }
+          
+          // check if it needs a purge
+          if ( purges == NULL )
+            {
+              purges = create_linked_list( entry );
+            }
+          else
+            {
+              purges = insert_next( purges, entry );
             }
           
         }

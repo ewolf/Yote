@@ -27,6 +27,7 @@ typedef struct LinkedList {
   void * item;
   struct LinkedList * next;
   struct LinkedList * prev;
+  struct LinkedList * head;
 } LinkedList;
 
 int make_path( char *path );
@@ -34,9 +35,8 @@ int filecount( char *directory );
 int filesize( char *file );
 
 LinkedList * create_linked_list( void * item );
-LinkedList * set_next( LinkedList *list, void * item);
-LinkedList * set_prev( LinkedList *list, void * item);
 LinkedList * insert_next( LinkedList *list, void * item);
 LinkedList * insert_prev( LinkedList *list, void * item);
 void         free_linked_list( LinkedList *list, int free_items );
+LinkedList * find_in_list( LinkedList *list, void * item );
 #endif

@@ -73,10 +73,12 @@ void test_util( Test * t )
 
   list = create_linked_list( thing[0] );
   
-  chks( (char*)list->item, "THIS IS THING A", "string set properly", t );
-  listB = set_next( list, thing[1] );
+  chks( (char*)list->item, "THIS IS THING A", "linked list head string set properly", t );
+  listB = insert_next( list, thing[1] );
   chks( list->next->item, "THIS IS THING N", "next string set properly", t );
   chkb( list->prev == 0, "no prev yet", t );
+  chkb( listB->prev == list, "prev link to list", t );
+  chkb( list->next == listB, "list to prev link", t );
   chks( listB->prev->item, "THIS IS THING A", "next links back", t );
 
   listB = insert_next( list, thing[2] );
@@ -84,7 +86,7 @@ void test_util( Test * t )
   chks( list->next->next->prev->item, "THIS IS THING C", "bouncy bouncy", t );
   chks( list->item, "THIS IS THING A", "list still list", t );
   
-  listB = set_prev( list, thing[3] );
+  listB = insert_prev( list, thing[3] );
   chks( listB->next->item, "THIS IS THING A", "prev link back", t );
   chks( list->prev->item, "THIS IS THING D", "prev link to", t );
 
