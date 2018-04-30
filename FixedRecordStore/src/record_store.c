@@ -155,7 +155,7 @@ has_id( RecordStore *store, unsigned long rid )
 {
   PREP_INDEX;
   LOAD_INDEX( store, rid );
-  return SILO_IDX > 0;
+  return SID > 0;
 } //has_id
 
 void
@@ -163,7 +163,7 @@ delete_record( RecordStore *store, unsigned long rid )
 {
   PREP_INDEX;
   LOAD_INDEX( store, rid );
-  if ( SILO_IDX > 0 )
+  if ( SID > 0 )
     {
       // write a blank index record and swap out the old data
       _swapout( store, SILO, SILO_IDX, SID );
@@ -187,7 +187,7 @@ stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size
   PREP_INDEX;
   PREP_SILO;
   LOAD_INDEX( store, rid );
-  if ( SILO_IDX > 0 )
+  if ( SID > 0 )
     {
       SET_SILO( store, SILO_IDX );
       if ( entry_size > SILO->record_size )
@@ -230,7 +230,7 @@ fetch( RecordStore *store, unsigned long rid )
 
   PREP_INDEX;
   LOAD_INDEX( store, rid );
-  if ( SILO_IDX > 0 )
+  if ( SID > 0 )
     {
       PREP_SILO;
       SET_SILO( store, SILO_IDX );
