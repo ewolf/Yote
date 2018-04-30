@@ -31,21 +31,24 @@ require XSLoader;
 XSLoader::load('Data::RecordStore::XS', $VERSION);
 
 # Preloaded methods go here.
-# sub open_store {
-#     my $opts = ref( $_[$#_] ) ? pop : {};
-#     my $directory = pop @_;
-#     my $pkg = shift @_ || 'Data::RecordStore';
-#     my $store = store_open( $directory );
-#     bless $store, $pkg;
-# }
+sub open_store {
+    my $opts = ref( $_[$#_] ) ? pop : {};
+    my $directory = pop @_;
+    my $pkg = shift @_ || 'Data::RecordStore::XS';
+    my $store = store_open( $directory );
+    bless [ $store ], $pkg;
+}
 
-# sub stow {
+sub next_id {
+    my $store = shift;
+    use Test::More; diag( "NEXT ID GOT $store, $store->[0]" );
+    store_next_id( $store->[0] );
+}
+
+
+#sub stow {
     
-# }
-
-# sub next_id {
-
-# }
+#}
 
 # sub has_id {
 
@@ -90,9 +93,6 @@ XSLoader::load('Data::RecordStore::XS', $VERSION);
 
 # }
 
-# sub next_id {
-
-# }
 
 # sub pop {
 

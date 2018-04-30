@@ -6,7 +6,7 @@
 #include "ppport.h"
 
 #include "record_store.h"
-typedef RecordStore RecordStore;
+typedef RecordStore RecordStorey;
 
   // store_fetch
   // store_delete
@@ -35,17 +35,18 @@ typedef RecordStore RecordStore;
 
 MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::XS
 
-RecordStore *
+RecordStorey *
 store_open(directory)
      char *directory
 CODE:
+    printf( "opening store '%s'\n", directory );
     RETVAL = open_store( directory );
 OUTPUT:
     RETVAL
 
 uint64_t
-store_stow( store, data, rid, write_amount )
-     RecordStore * store
+stow( store, data, rid, write_amount )
+     RecordStorey * store
      char * data
      uint64_t rid
      uint64_t write_amount
@@ -54,4 +55,16 @@ CODE:
 OUTPUT:
      RETVAL
 
+uint64_t
+store_next_id( store )
+     RecordStorey * store
+PREINIT:
+    RecordStorey *thisrs;
+CODE:
+     thisrs = (RecordStorey*)store;
+     RETVAL = next_id( thisrs );
+OUTPUT:
+     RETVAL
+       
+     
 MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::Silo::XS

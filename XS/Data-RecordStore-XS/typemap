@@ -1,16 +1,17 @@
 TYPEMAP
-RecordStore * T_PTROBJ
+RecordStorey * T_PTROBJ
 
 TYPEMAP
 Silo        * T_PTROBJ
 
 TYPEMAP
-uint64_t T_UINT64
+unsigned long long T_U_LONG_LONG
+uint64_t T_U_LONG_LONG
 
 INPUT
-T_UINT64
-    $var = SvU64($arg)
+T_U_LONG_LONG
+    $var = (unsigned long long)SvUV($arg)
 
 OUTPUT
-T_UINT64
-    $arg = newSVu64($var);
+T_U_LONG_LONG
+    sv_setuv($arg,(UV)$var);

@@ -11,8 +11,14 @@ use warnings;
 use Test::More tests => 1;
 BEGIN { use_ok('Data::RecordStore::XS') };
 
+diag( "HELLO" );
+
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
+my $store = Data::RecordStore::XS::open_store( "/tmp/FOOS" );
+diag( "Opened $store" );
+my $id = $store->next_id;
+diag( "Got ID $id" );
