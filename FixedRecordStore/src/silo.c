@@ -137,7 +137,7 @@ silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_a
       write_amount = strlen( data );
     }
 
-  if( write_amount >= silo->record_size ) {
+  if( write_amount > silo->record_size ) {
     // too big. must be at least one less than the record size for the '\0' byte.
     return 0;
   }
@@ -243,7 +243,10 @@ silo_get_record( Silo *silo, unsigned long id )
     fseek( silo_file, file_position, SEEK_SET );
 
     data = malloc( silo->record_size );
-    fread( data, silo->record_size, 1, silo_file );  
+    if ( 1 > fread( data, silo->record_size, 1, silo_file ) )
+      {
+        perror( "fread" );
+      }
     fclose( silo_file );
     free( filename );
 

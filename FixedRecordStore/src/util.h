@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,8 +22,15 @@
 #define PATHSEPCHAR '/'
 #endif
 
+// CRY is easier to find than printf vs sprintf
 #define CRY printf
 
+int make_path( char *path );
+int filecount( char *directory );
+int filesize( char *file );
+char * buildstring(...);
+
+// not sure if the linked list stuff is useful
 typedef struct LinkedList {
   void * item;
   struct LinkedList * next;
@@ -30,13 +38,10 @@ typedef struct LinkedList {
   struct LinkedList * head;
 } LinkedList;
 
-int make_path( char *path );
-int filecount( char *directory );
-int filesize( char *file );
-
 LinkedList * create_linked_list( void * item );
 LinkedList * insert_next( LinkedList *list, void * item);
 LinkedList * insert_prev( LinkedList *list, void * item);
 void         free_linked_list( LinkedList *list, int free_items );
 LinkedList * find_in_list( LinkedList *list, void * item );
+
 #endif

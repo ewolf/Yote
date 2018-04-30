@@ -70,6 +70,7 @@ void test_util( Test * t )
   thing[2] = strdup("THIS IS THING C");
   thing[3] = strdup("THIS IS THING D");
   thing[4] = strdup("THIS IS THING E");
+  thing[5] = strdup("THIS IS THING F");
 
   list = create_linked_list( thing[0] );
   
@@ -95,8 +96,12 @@ void test_util( Test * t )
   chks( listB->prev->item, "THIS IS THING D", "prev ins updated link to", t );
   chks( list->prev->item, "THIS IS THING E", "prev inst link to", t );
 
-  free_linked_list( list, 1 );
+  chkb( find_in_list( list, thing[0] ) == list, "found first thing put in", t );
+  chkb( find_in_list( list, thing[5] ) == 0, "nothere not found", t );
+
   
+  free_linked_list( list, 1 );
+  free( thing[5] );
 } //test_util
 
 void test_silo( Test * t )
@@ -107,6 +112,7 @@ void test_silo( Test * t )
   Silo *silo;
   unsigned long id;
   char * res;
+  TransactionEntry * trans;
   struct stat * stat_buffer = malloc( sizeof( struct stat ) );
   
   if ( 0 == stat( dir, stat_buffer ) && S_ISDIR( stat_buffer->st_mode ) )
@@ -136,7 +142,7 @@ void test_silo( Test * t )
     }
   chkl( filecount( dir ), 1, "One file", t );
   chkl( silo_entry_count(silo), 0, "starts at zero entry count", t );
-  chkl( silo_put_record( silo, 1, "01234567890", 0 ), 0, "record too large", t );
+  chkl( silo_put_record( silo, 1, "012345678901", 0 ), 0, "record too large", t );
   chkl( silo_entry_count(silo), 0, "still zero entry count", t );
   chkl( filesize( F1 ), 0, "size 0", t );
 
@@ -207,7 +213,7 @@ void test_silo( Test * t )
   res = silo_get_record( silo, 4 );
   chks( res, "", "empty record 4", t );
   free( res );
-  
+
   // test emtpy_silo
   empty_silo( silo );
   chkl( silo_entry_count(silo), 0, "entry count after empty", t );
@@ -221,6 +227,35 @@ void test_silo( Test * t )
   cleanup_silo( silo );
   free( silo );
   free( stat_buffer );
+
+  // new silo for TransactionEntry
+  silo  = open_silo( dir, sizeof( TransactionEntry ), 1000 );
+  trans = calloc( sizeof( TransactionEntry ), 1 );
+  trans->type = 1;
+  trans->rid  = 2;
+  trans->from_silo_idx = 3;
+  trans->from_sid = 4;
+  trans->to_silo_idx = 5;
+  trans->to_sid = 6;
+
+  id = silo_next_id( silo );
+  chkl( silo_put_record( silo, id, (char*)trans, sizeof( TransactionEntry ) ), 1, "Put Trans Record", t );
+  free( trans );
+
+  trans = (TransactionEntry*)silo_get_record( silo, 1 );
+  chkl( trans->type, 1, "Trans E a", t );
+  chkl( trans->rid, 2, "Trans E b", t );
+  chkl( trans->from_silo_idx, 3, "Trans E c", t );
+  chkl( trans->from_sid, 4, "Trans E d", t );
+  chkl( trans->to_silo_idx, 5, "Trans E e", t );
+  chkl( trans->to_sid, 6, "Trans E f", t );
+
+  free( trans );
+  unlink_silo( silo );
+  
+  cleanup_silo( silo );
+  free( silo );
+  
 } //test_silo
 
 void test_record_store( Test *t )
@@ -274,25 +309,27 @@ void test_record_store( Test *t )
   // this is in silo index 3
   res = fetch( store, 5 );
   chkb( res == 0, "nothing for recycled id", t );
-  free( res );
-
   delete_record( store, 3 );
-
   unlink_store( store );
   
   cleanup_store( store );
   free( store );
+
 }//test_record_store
 
 int main() {
+  var x = buildstring( "THIS", "/", "IS A", " BIGSTRING" );
+  printf( "'%s'\n", x );
+  return;
+  
   printf( "Starting tests\n" );
   Test * t = malloc( sizeof(Test) );
   t->tests_run = 0;
   t->tests_fail = 0;
 
   test_util( t );
-  //  test_silo( t );
-  //  test_record_store( t );
+  test_silo( t );
+  test_record_store( t );
     
   // TODO BUSYWORK - make sure all of these have return values that can be analyzed
   // for success, etc.

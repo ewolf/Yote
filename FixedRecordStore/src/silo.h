@@ -20,8 +20,8 @@ typedef struct
 Silo       *  open_silo( char *directory,
                          unsigned int record_size,
                          unsigned long max_file_size );
-void          empty_silo( Silo *silo );
-void          silo_ensure_entry_count( Silo *silo, unsigned long count );
+int           empty_silo( Silo *silo );
+int           silo_ensure_entry_count( Silo *silo, unsigned long count );
 unsigned long silo_entry_count( Silo *silo );
 char       *  silo_get_record( Silo *silo, unsigned long idx );
 unsigned long silo_next_id( Silo *silo );
@@ -29,20 +29,8 @@ char       *  silo_pop( Silo *silo );
 char       *  silo_last_entry( Silo *silo );
 unsigned long silo_push( Silo *silo, char *data, unsigned long write_amount );
 int           silo_put_record( Silo *silo, unsigned long id, char *data, unsigned long write_amount );
-void          unlink_silo( Silo *silo );
+int           unlink_silo( Silo *silo );
 void          cleanup_silo( Silo *silo );
 
 
 #endif
-
-/*
-  // calculate the record size based on silo
-  // type or use passed in value
-  if ( silo_type == INDEX_SILO ) {
-    record_size = sizeof( int ) + sizeof( long );
-  } else if ( silo_type == RECYC_SILO ) {
-    record_size = sizeof( long );
-  } else if ( silo_type == TRANS_SILO ) {
-    record_size = 2 * sizeof( int ) + sizeof( long );
-  }
-*/

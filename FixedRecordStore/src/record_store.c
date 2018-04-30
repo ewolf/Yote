@@ -35,7 +35,7 @@ open_store( char *directory, unsigned long max_file_size )
   store->recycle_silo = open_silo( dir, sizeof(long), max_file_size );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "T" );  
-  store->index_silo = open_silo( dir,
+  store->transaction_catalog_silo = open_silo( dir,
                                  sizeof( unsigned long ) +  // transaction id
                                  sizeof( unsigned long ) +  // process id
                                  sizeof( unsigned long ) +  // update time
@@ -53,12 +53,16 @@ cleanup_store( RecordStore *store )
 {
   Silo * silo;
   int i = 0;
+  
   cleanup_silo( store->index_silo );
   free( store->index_silo );
+  
   cleanup_silo( store->recycle_silo );
   free( store->recycle_silo );
+  
   cleanup_silo( store->transaction_catalog_silo );
   free( store->transaction_catalog_silo );
+  
   for( i=0; i<MAX_SILOS; i++ )
     {
       silo = store->silos[i];
@@ -206,7 +210,7 @@ stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size
       save_size = 1 + strlen( data );
     }
   save_size = save_size + sizeof( unsigned long );
-  entry_data = malloc( save_size );
+  entry_data = calloc( save_size, 1 );
   index_data = silo_get_record( store->index_silo, rid );
   if ( index_data && strlen( index_data ) > 0 )
     {
@@ -215,7 +219,6 @@ stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size
       silo = _get_silo( store, silo_idx );
       if ( save_size > silo->record_size )
         { // needs to find a new silo
-
           // remove it from the old silo
           _swapout( store, silo, silo_idx, sid );
 
@@ -238,15 +241,15 @@ stow( RecordStore *store, char *data, unsigned long rid, unsigned long save_size
   memcpy( entry_data, &rid, sizeof( unsigned long ) );
   memcpy( entry_data + sizeof(unsigned long), data, strlen( data ) );
   entry_data[sizeof(unsigned long) + strlen( data )] = '\0';
-  silo_put_record( silo, sid, entry_data, 1 + strlen(data) + sizeof(unsigned long) );
+  silo_put_record( silo, sid, entry_data, save_size );
   
   // update the index
   free( index_data );
-  index_data = malloc( 1 + sizeof( int ) + sizeof( unsigned long )  );
+  index_data = calloc( store->index_silo->record_size, 1 );
   memcpy( index_data, &silo_idx, sizeof( int ) );
   memcpy( index_data + sizeof( int ), &sid, sizeof( unsigned long ) );
    
-  silo_put_record( store->index_silo, rid, index_data, sizeof( int ) + sizeof( unsigned long ) );
+  silo_put_record( store->index_silo, rid, index_data, store->index_silo->record_size );
 
   free( index_data );
   free( entry_data );
@@ -278,7 +281,7 @@ fetch( RecordStore *store, unsigned long rid )
           entry  = silo_get_record( silo, sid );
           
           size   = 1 + strlen(entry+sizeof( unsigned long ) );
-          record = malloc( size );
+          record = calloc( size, 1 );
           memcpy( record, entry + sizeof( unsigned long ), size );
           
           free( entry );
@@ -326,7 +329,7 @@ void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacat
       silo_put_record( silo, vacated_sid, swap_record, silo->record_size );
 
       // update the index
-      index_entry = malloc( sizeof( int ) + sizeof( unsigned long ) );
+      index_entry = calloc( sizeof( int ) + sizeof( unsigned long ), 1 );
       memcpy( index_entry, &silo_idx, sizeof( int ) );
       memcpy( index_entry + sizeof( int ), &swap_rid, sizeof( unsigned long ) );
       silo_put_record( silo, swap_rid, index_entry, sizeof( int ) + sizeof( unsigned long ) );
@@ -391,8 +394,8 @@ create_transaction( RecordStore *store )
   Transaction * trans;
   char        * silo_dir;
   
-  trans = malloc( store->transaction_catalog_silo->record_size + 
-                  sizeof( Silo * ) + sizeof( RecordStore * ) );
+  trans = calloc( store->transaction_catalog_silo->record_size + 
+                  sizeof( Silo * ) + sizeof( RecordStore * ), 1);
   trans->tid         = silo_next_id( store->transaction_catalog_silo );
   trans->pid         = getpid();
   trans->update_time = time(NULL);
@@ -522,7 +525,7 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
       free( record );
       
       next_trans_sid = silo_next_id( trans->silo );
-      trans_record = malloc( trans->silo->record_size );
+      trans_record = calloc( trans->silo->record_size, 1 );
       memcpy( trans_record, &trans_type, sizeof( int ) );
       memcpy( trans_record + sizeof( int ), &ridA, sizeof( unsigned long ) );
       memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ), &silo_idx, sizeof( int ) );
@@ -552,7 +555,20 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
   return 1;
 } //trans_recycle_id
 
-
+int _sort_purged( TransactionEntry * a, TransactionEntry * b )
+{
+  // -1 for a first
+  //  the higher the sid, the more to the left
+  if ( a->from_sid > b->from_sid )
+    {
+      return -1;
+    }
+  else if ( b->from_sid > a->from_sid )
+    {
+      return 1;
+    }
+  return 0;
+}
 
 int
 commit( Transaction *trans )
@@ -560,41 +576,87 @@ commit( Transaction *trans )
   unsigned long      i;
   unsigned long      actions;
   TransactionEntry * entry;
-  LinkedList       * purges, * entries;
+  
+  TransactionEntry ** entry_list;
+  unsigned long       entry_count;
+  unsigned long       entries;
+  int                 has_entry;
 
-
+  TransactionEntry ** purge_list;
+  unsigned long       purge_count;
+  
   if ( trans->state == TRA_ACTIVE         ||
        trans->state == TRA_IN_COMMIT      ||
        trans->state == TRA_IN_ROLLBACK    ||
        trans->state == TRA_CLEANUP_COMMIT )
     {
-      purges = NULL;
-      trans  = NULL;
-      actions = silo_entry_count( trans->silo );
+      purge_count  = 0;
+      entry_count  = 0;
+      
+      entries = silo_entry_count( trans->silo );
+      entry_list = calloc( sizeof(TransactionEntry*), entries );
       for ( i=actions; i > 0; i++ )
         {
           entry = (TransactionEntry *)silo_get_record( trans->silo, i );
-
-          if ( entries == NULL )
+          has_entry = 0;
+          for ( i=0; i<entry_count; i++ )
             {
-              entries = create_linked_list( entry );
+              if ( entry_list[i] == entry )
+                {
+                  has_entry = 1;
+                  break;
+                }
+            }
+          
+          if ( has_entry )
+            {
+              if ( entry->type == TRA_STOW )
+                {
+                  // update index
+                  
+                }
+              else
+                {
+                  // update index
+                }
+              purge_list[purge_count++] = entry;
             }
           else
             {
-
+              entry_list[entry_count++] = entry;
+              if ( entry->type == TRA_STOW )
+                {
+                  purge_list[purge_count++] = entry;
+                }
             }
-          
-          // check if it needs a purge
-          if ( purges == NULL )
+          qsort( purge_list, purge_count, sizeof( TransactionEntry *), (int*)_sort_purged );
+          for ( i=0; i<purge_count; i++ )
             {
-              purges = create_linked_list( entry );
+              entry = purge_list[i];
+              if ( entry->type == TRA_STOW )
+                {
+                  _swapout( trans->store, trans->store->silos[entry->from_silo_idx], entry->from_silo_idx, entry->from_sid );
+                }
+              else if ( entry->type == TRA_DELETE )
+                {
+                  delete_record( trans->store, entry->rid );
+                }
+              else // if ( entry->type == TRA_RECYCLE )
+                {
+                  recycle_id( trans->store, entry->rid );
+                }
             }
-          else
-            {
-              purges = insert_next( purges, entry );
-            }
-          
+          // update catalog
+          trans->state = TRA_DONE;
+          trans->pid   = getpid();
+          trans->update_time = time(NULL);
+          silo_put_record( trans->store->transaction_catalog_silo,
+                           trans->tid,
+                           (char*)trans,
+                           sizeof( Transaction ) );
+          unlink_silo( trans->silo );
         }
+      return 0;
     }
   
   return 1;

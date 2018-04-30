@@ -176,15 +176,49 @@ free_linked_list( LinkedList *list, int free_items )
       start = list;
     }
 } //free_linked_list
-/*
-void
-find_in_list( LinkedList *list, (void*) item )
+
+LinkedList *
+find_in_list( LinkedList *list, void * item )
 {
-  if( list->item == item )
+  LinkedList *start = list->head;
+  while ( start )
     {
-      return list;
+      if( start->item == item )
+        {
+          return start;
+        }
+      start = start->next;
     }
-  return ( list->prev && find_in_list( list->prev, item ) )
-    || ( list->next && find_in_list( list->next, item ) );
+  return NULL;
 } //find_in_list
-*/
+
+char *
+buildstring(int strs,...)
+{
+  int i, sum, s;
+  char * str;
+  char ** strl;
+  va_list valist;
+  sum = 0;
+  va_start(valist, strs);
+  strl = calloc( sizeof( char * ), strs );
+  for ( i=0; i<strs; i++ )
+    {
+      str = va_arg( valist, char * );
+      sum += strlen( str );
+      strl[i] = str;
+    }
+  str = malloc( 1 + sum );
+  sum = 0;
+  for ( i=0; i<strs; i++ )
+    {
+      s = sizeof( strs[i] );
+      memcpy( str + sum, strs[i], s );
+      sum += s;
+    }
+  str[sum] = '\0';
+  free( strl );
+  va_end( valist );
+  
+  return str;
+} //buildstring
