@@ -262,10 +262,7 @@ _files( char *directory, void (*fun)(char*,int) )
         if ( file_number > 0 || strcmp( dir->d_name, "0" ) == 0 )
           {
             filedir = malloc( dirlen + strlen( dir->d_name ) );
-            filedir[0] = '\0';
-            strcat( filedir, directory );
-            strcat( filedir, PATHSEP );
-            strcat( filedir, dir->d_name );
+            sprintf( filedir, "%s%s%s", directory, PATHSEP, dir->d_name );
             fun( filedir, file_number );
             free( filedir );
           }
