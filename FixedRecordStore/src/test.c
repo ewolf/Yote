@@ -8,7 +8,7 @@
 
 #include "util.h"
 #include "silo.h"
-//#include "record_store.h"
+#include "record_store.h"
 
 #define VERB 1
 
@@ -52,11 +52,22 @@ void chks( char * a, char * b, char * desc, Test *t ) {
   }
 }
 
+void test_util( Test * t )
+{
+  chkl( make_path( "///tmp/fooby/blecch/" ), 0, "make path double slash", t );
+  chkl( make_path( "/tmp/fooby/blecch/" ), 0, "remake path without double", t );
+  chkl( make_path( "/tmp/fooby/blecch" ), 0, "remake path no trailing /", t );
+  chkl( make_path( "/usr/sicklydo" ), 2, "make path no perms", t );
+
+  creat( "/tmp/nothingy", 0666 );
+  chkl( make_path( "/tmp/nothingy" ), 1, "make path against file", t );
+} //test_util
+
 void test_silo( Test * t )
 {
   char dir[] = "SILOONE";
-  char F1[] = "SILOONE/0";
-  char F2[] = "SILOONE/1";
+  char  F1[] = "SILOONE/0";
+  char  F2[] = "SILOONE/1";
   Silo *silo;
   unsigned long id;
   char * res;
@@ -88,6 +99,7 @@ void test_silo( Test * t )
       exit( 0 );
     }
   chkl( filecount( dir ), 1, "One file", t );
+  chkl( silo_entry_count(silo), 0, "starts at zero entry count", t );
   chkl( silo_put_record( silo, 1, "01234567890" ), 0, "record too large", t );
   chkl( silo_entry_count(silo), 0, "still zero entry count", t );
   chkl( filesize( F1 ), 0, "size 0", t );
@@ -169,15 +181,28 @@ void test_silo( Test * t )
   // test unlink_silo
   unlink_silo( silo );
   chkb( 0 != stat( dir, stat_buffer ), "Directory gone after unlink", t );
-
-  free( silo->directory );
+  
+  cleanup_silo( silo );
   free( silo );
   free( stat_buffer );
 } //test_silo
 
 void test_record_store( Test *t )
 {
+  unsigned long id;
+  RecordStore * store = open_store( "RECSTORE", 2000000 );
+  char * res;
+  id = next_id( store );
+  //  chkl( id, 1, "first record id", t );
+
+  stow( store, "EWERBOSDONNNN" , 1 );
   
+  res = fetch( store, 1 );
+  chks( res, "EWERBOSDONNNN" , "first item", t );
+  free( res );
+  
+  cleanup_store( store );
+  free( store );
 }//test_record_store
 
 int main() {
@@ -186,6 +211,7 @@ int main() {
   t->tests_run = 0;
   t->tests_fail = 0;
 
+  test_util( t );
   test_silo( t );
   test_record_store( t );
     

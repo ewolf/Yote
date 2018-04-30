@@ -16,7 +16,7 @@ typedef struct
   char        * directory;
   Silo        * index_silo;
   Silo        * recycle_silo;
-  Silo        * silos[MAX_SILOS-1];
+  Silo       ** silos;
   char        * version;
   unsigned long max_file_size;
   // TODO - add options
@@ -30,18 +30,14 @@ typedef struct
 
 typedef struct
 {
-  unsigned long rid;
-  char * data;
-} RecordEntry;
-
-typedef struct
-{
   
 } Transaction;
 
 /* RecordStore methods */
 RecordStore * open_store( char *directory, unsigned long max_file_size );
 void          empty_store( RecordStore *store );
+void          cleanup_store( RecordStore *store );
+
 unsigned long store_entry_count( RecordStore *store );
 unsigned long next_id( RecordStore *store );
 int           has_id( RecordStore *store, unsigned long rid );

@@ -16,30 +16,54 @@ open_store( char *directory, unsigned long max_file_size )
   int i;
   RecordStore * store;
   //   /S   /R   /I
-  char * dir = malloc( strlen( directory ) + 3 );
-  dir[0] = '\0';
-  strcat( dir, directory );
-  strcat( dir, PATHSEP );
-  i =  strlen(directory);
-  strcat( dir, "S" );
-  make_path( dir );
 
   store = (RecordStore *)malloc( sizeof( RecordStore ) );
-
-  store->version = RS_VERSION;
+  store->version       = RS_VERSION;
   store->max_file_size = max_file_size;
+  store->silos         = calloc( MAX_SILOS, sizeof( Silo * ) );
+  store->directory     = strdup(directory);
+
   
-  dir[ i ] = 'I';
+  char * dir = malloc( strlen( directory ) + 3  );
+  sprintf( dir, "%s%s%s", directory, PATHSEP, "S" );
+  i = strlen(dir);
+
+  make_path( dir );
+  
+  sprintf( dir, "%s%s%s", directory, PATHSEP, "I" );
+  
   store->index_silo = open_silo( dir, 1 + sizeof(int) + sizeof(long), max_file_size );
 
-
-  dir[ i ] = 'R';
-  store->recycle_silo = open_silo( dir, 1 + sizeof(int) + sizeof(long), max_file_size );  
-
+  sprintf( dir, "%s%s%s", directory, PATHSEP, "R" );
+  store->recycle_silo = open_silo( dir, 1 + sizeof(long), max_file_size );  
+  
   free( dir );
-
+  
   return store;
 } //open_store
+
+
+void
+cleanup_store( RecordStore *store )
+{
+  Silo * silo;
+  int i = 0;
+  cleanup_silo( store->index_silo );
+  free( store->index_silo );
+  cleanup_silo( store->recycle_silo );
+  free( store->recycle_silo );
+  for( i=0; i<MAX_SILOS; i++ )
+    {
+      silo = store->silos[i];
+      if( NULL != silo )
+        {
+          cleanup_silo( silo );
+          free( silo );
+        }
+    }
+  free( store->silos );
+  free( store->directory );
+} //cleanup_silo
 
 void
 empty_store( RecordStore *store )
@@ -68,9 +92,12 @@ store_entry_count( RecordStore *store )
 unsigned long
 next_id( RecordStore *store )
 {
-  char *recycled_id = silo_pop( store->recycle_silo );
-  if ( recycled_id != NULL ) {
-    return atol(recycled_id);
+  unsigned long recycled_rid;
+  char *recycled;
+  recycled = silo_pop( store->recycle_silo );
+  if ( recycled != NULL ) {
+    memcpy( &recycled_rid, recycled, sizeof( unsigned long ) );
+    return recycled_rid;
   }
   return silo_next_id( store->index_silo );
 } //next_id
@@ -114,72 +141,96 @@ unsigned long
 stow( RecordStore *store, char *data, unsigned long rid )
 {
   Silo        * silo;
-  IndexEntry  * ie;
-  RecordEntry   re;
+  int           silo_idx;
+  
+  unsigned long sid;
   unsigned long save_size;
-  char        * save_data;
+  char        * entry_data;
+  
+  char        * index_data;
   
   rid = rid == 0 ? silo_next_id( store->index_silo ) : rid;
 
-  // one for the \0
   save_size = 1 + strlen( data ) + sizeof( unsigned long );
-  save_data = malloc( save_size );
+  entry_data = malloc( save_size );
   
-  silo_ensure_entry_count( store->index_silo, rid );
-  ie = _index_entry( store, rid );
-  if ( ie != NULL )
+  index_data = silo_get_record( store->index_silo, rid );
+  if ( strlen( index_data ) > 0 )
     {
-      silo = _get_silo( store, ie->silo_idx );
+      memcpy( &silo_idx, index_data, sizeof( int ));
+      memcpy( &sid, index_data + sizeof( int ), sizeof( unsigned long ));
+      silo = _get_silo( store, silo_idx );
       if ( save_size > silo->record_size )
         { // needs to find a new silo
 
           // remove it from the old silo
-          _swapout( store, silo, ie->silo_idx, ie->sid );
+          _swapout( store, silo, silo_idx, sid );
 
           // add it to the new one
-          ie->silo_idx = 1 + (int)round( logf( save_size ) );
-          silo = _get_silo( store, ie->silo_idx );
-          ie->sid = silo_next_id( silo );
+          silo_idx = 1 + (int)round( logf( save_size ) );
+          silo = _get_silo( store, silo_idx );
+          sid = silo_next_id( silo );
 
         }
     }
   else
     { // new entry
-      ie = malloc( sizeof( IndexEntry ) );
-      ie->silo_idx = 1 + (int)round( logf( save_size ) );
-      silo = _get_silo( store, ie->silo_idx );
-      ie->sid = silo_next_id( silo );
+      silo_idx = 1 + (int)round( logf( save_size ) );
+      silo = _get_silo( store, silo_idx );
+      sid = silo_next_id( silo );
     }
-
-  // add the record
-  re.rid  = rid;
-  re.data = data;
-  memcpy( save_data, &re, save_size );
-  silo_put_record( silo, ie->sid, save_data );
+  // update the entry, which is id/data
+  memcpy( entry_data, &rid, sizeof( unsigned long ) );
+  entry_data[sizeof( unsigned long )] = '\0';
+  memcpy( entry_data + sizeof(unsigned long), data, strlen( data ) );
+  silo_put_record( silo, sid, entry_data );
   
   // update the index
-  memcpy( &entry, ie, sizeof( IndexEntry ) );
-  silo_put_record( store->index_silo, rid, entry );
+  memcpy( index_data, &silo_idx, sizeof( int ) );
+  printf( "WRITE 1 INDEX DATA %ld (%ld)\n", strlen( index_data ), sid );
+  memcpy( index_data + sizeof( int ), &sid, sizeof( unsigned long ) );
+  printf( "WRITE INDEX DATA %ld\n", strlen( index_data ) );
+  silo_put_record( store->index_silo, rid, index_data );
 
-  free( save_data );
-  free( ie );
+  free( index_data );
+  free( entry_data );
+  
   return 0;
 } //stow
 
 char *
 fetch( RecordStore *store, unsigned long rid )
 {
-  Silo       * silo;
-  IndexEntry * ie;
-  char       * record;
+  Silo       *  silo;
+  int           silo_idx;
   
-  ie     = _index_entry( store, rid );
-  silo   = _get_silo( store, ie->silo_idx );
-  record = silo_get_record( silo, ie->sid );
-  record = (char*)record[ sizeof( unsigned long ) ];
+  unsigned long sid;
+  char       *  index_data;
   
-  free( ie );
-  return record;
+  char       *  entry;
+  char       *  record;
+  unsigned long size;
+  
+  index_data = silo_get_record( store->index_silo, rid );
+  printf( "READ INDEX DATA %ld\n", strlen( index_data ) );
+  if( strlen( index_data ) > 0 )
+    {
+      memcpy( &silo_idx, index_data, sizeof( int ));
+      memcpy( &sid, index_data + sizeof( int ), sizeof( unsigned long ));
+      
+      silo   = _get_silo( store, silo_idx );
+      entry  = silo_get_record( silo, sid );
+      size   = 1 + strlen(entry) - sizeof( unsigned long );
+      record = malloc( size );
+      memcpy( record, entry + sizeof( unsigned long ), size );
+      
+      free( entry );
+      free( index_data );
+      
+      return record;
+    }
+  free( index_data );
+  return NULL;
 }
 
 
@@ -187,9 +238,10 @@ void
 recycle_id( RecordStore *store, unsigned long rid )
 {
   char * cid = malloc( sizeof( unsigned long ) );
-  sprintf( cid, "%ld", rid );
+  memcpy( cid, &rid, sizeof( unsigned long ) );
   silo_push( store->recycle_silo, cid );
   delete_record( store, rid );
+  free( cid );
 } //recycle_id
 void
 empty_recycler( RecordStore *store )
@@ -215,10 +267,11 @@ _index_entry( RecordStore *store, unsigned long rid )
 {
   IndexEntry * ie;
   char *index_entry = silo_get_record( store->index_silo, rid );
-  if ( index_entry != NULL )
+  if ( strlen( index_entry ) > 0 )
     {
       ie = malloc( sizeof( IndexEntry ) );
       memcpy( ie, index_entry, sizeof( IndexEntry ) );
+      free( index_entry );
       return ie;
     }
   
@@ -240,7 +293,6 @@ void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacat
       // than a pop which could lose data
       swap_record = silo_get_record( silo, last_sid );
       memcpy( &swap_rid, swap_record, sizeof( unsigned long ) );
-      printf( "Got swap record id of %ld\n", swap_rid );
       silo_put_record( silo, vacated_sid, swap_record );
 
       // update the index
@@ -278,9 +330,8 @@ _get_silo( RecordStore *store, int sidx )
     {
       return s;
     }
-  record_size = (long)round( exp( sidx ) );
-  
-  dir = malloc( strlen( store->directory ) + 10 + record_size );
+  record_size = (unsigned long)round( exp( sidx ) );
+  dir = malloc( 4 + strlen( store->directory ) + (sidx > 1 ? (1+((int)ceil(log10(sidx)))) : 1 ) );
   dir[0] = '\0';
   sprintf( dir, "%s%s%s%s%d",
            store->directory,
@@ -295,3 +346,4 @@ _get_silo( RecordStore *store, int sidx )
   free( dir );
   return s;
 } //_get_silo
+

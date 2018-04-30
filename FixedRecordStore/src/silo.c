@@ -26,11 +26,11 @@ open_silo( char        * directory,
 
   // create the directory if it doesnt exist.
   // print to stderr and return NULL if there is an error.
-  if( 0 == make_path( directory ) ) {
+  if( 0 != make_path( directory ) ) {
     fprintf( stderr, "Errorish : %s", strerror(errno) );
     return NULL;
   }
-  zeroFilename = malloc( strlen( directory ) + strlen( PATHSEP ) + strlen( "0" ) + 1);
+  zeroFilename = malloc( 3 + strlen( directory ) );
   sprintf( zeroFilename, "%s%s0", directory, PATHSEP );
   creat( zeroFilename, 0644 );
   free( zeroFilename );
@@ -53,6 +53,11 @@ open_silo( char        * directory,
   
 } //open_silo
 
+void
+cleanup_silo( Silo *silo )
+{
+  free( silo->directory );
+} //cleanup_silo
 
 silo_dir_info *
 _sum_filesizes( char *filename, int file_number )
@@ -169,12 +174,13 @@ silo_pop( Silo * silo )
   int file_number, file_position;  
   char * ret, * filename;
   unsigned long entries = silo_entry_count( silo );
+  
   if( entries > 0 ) {
     ret = silo_get_record( silo, entries );
     
     file_number     = entries / silo->file_max_records;
     file_position   = silo->record_size * ((entries-1) % silo->file_max_records);
-    filename = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) + 1 );
+    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) );
     sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
     if( file_position > 0 ) {
       if( 0 != truncate( filename, file_position ) ) {
@@ -224,8 +230,7 @@ silo_get_record( Silo *silo, unsigned long id )
     record_position = idx % silo->file_max_records;
     file_position   = silo->record_size * record_position;
   
-    filename = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) + 1 );
-
+    filename = malloc( 2 + strlen( silo->directory ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) );
     sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
   
     silo_file = fopen( filename, "r+" );
@@ -260,7 +265,7 @@ _files( char *directory, void (*fun)(char*,int) )
         file_number = atoi( dir->d_name );
         if ( file_number > 0 || strcmp( dir->d_name, "0" ) == 0 )
           {
-            filedir = malloc( strlen( directory ) + strlen( PATHSEP) + strlen( dir->d_name ) + 1 );
+            filedir = malloc( 2 + strlen( directory ) + strlen( dir->d_name ) );
             sprintf( filedir, "%s%s%s", directory, PATHSEP, dir->d_name );
             fun( filedir, file_number );
             free( filedir );
@@ -300,7 +305,7 @@ silo_ensure_entry_count( Silo *silo, unsigned long count )
       {
         // create a new file and fill it will nulls
         ++info->last_filenumber;
-        newfile = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + (info->last_filenumber > 1 ? ceil(log10(info->last_filenumber)) : 1 ) + 1 );
+        newfile = malloc( 2 + strlen( silo->directory ) + (info->last_filenumber > 1 ? ceil(log10(info->last_filenumber)) : 1 ) );
         sprintf( newfile, "%s%s%d", silo->directory, PATHSEP, info->last_filenumber );
         creat( newfile, 0644 );
         if( 0 != truncate( newfile, silo->file_max_size ) ) {

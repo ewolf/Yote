@@ -14,8 +14,10 @@
 
 #if defined _WIN32 || defined __CYGWIN__
 #define PATHSEP "\\"
+#define PATHSEPCHAR '\\'
 #else
 #define PATHSEP "/"
+#define PATHSEPCHAR '/'
 #endif
 
 int make_path( char *path );
