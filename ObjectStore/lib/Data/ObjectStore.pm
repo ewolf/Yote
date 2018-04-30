@@ -673,6 +673,7 @@ use Tie::Array;
 
 $Data::ObjectStore::Array::MAX_BLOCKS = 1_000_000;
 
+
 use constant {
     ID          => 0,
     DATA        => 1,
@@ -1119,6 +1120,7 @@ use constant {
     SIZE        => 7,
     NEXT        => 8,
 };
+
 sub _freezedry {
     my $self = shift;
     my $r = $self->[DATA];
@@ -1516,7 +1518,7 @@ use constant {
 # object ids to easily be stored as hash keys.
 #
 use overload
-    '""' => sub { shift->[ID] }, # for hash keys
+    '""' => sub { my $self = shift; ref($self).":".$self->[ID] },
     eq   => sub { ref($_[1]) && $_[1]->[ID] == $_[0]->[ID] },
     ne   => sub { ! ref($_[1]) || $_[1]->[ID] != $_[0]->[ID] },
     '=='   => sub { ref($_[1]) && $_[1]->[ID] == $_[0]->[ID] },
@@ -1738,7 +1740,6 @@ sub _load {}
 #     Private Methods
 #
 # -----------------------
-
 
 sub _freezedry {
     my $self = shift;

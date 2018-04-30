@@ -126,7 +126,7 @@ use Data::Dumper;
 
 use vars qw($VERSION);
 
-$VERSION = '3.21';
+$VERSION = '3.22';
 
 use constant {
     DIRECTORY    => 0,
@@ -403,7 +403,7 @@ sub delete_record {
 =cut
 sub has_id {
     my( $self, $id ) = @_;
-    my $ec = $self->entry_count;
+    my $ec = $self->[RECORD_INDEX]->entry_count;
 
     return 0 if $ec < $id || $id < 1;
 
@@ -885,7 +885,7 @@ sub _copy_record {
 } #_copy_record
 
 
-#Makes sure the data store has at least as many entries
+#Makes sure this silo has at least as many entries
 #as the count given. This creates empty records if needed
 #to rearch the target record count.
 sub _ensure_entry_count {
@@ -1399,6 +1399,6 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 3.21  (April, 2018))
+       Version 3.22  (April, 2018))
 
 =cut

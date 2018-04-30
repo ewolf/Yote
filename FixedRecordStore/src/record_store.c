@@ -1,205 +1,297 @@
 #include "record_store.h"
 #include "util.h"
 
-void main() {
-  Silo *silo;
-  silo = open_silo( INDEX_SILO, "/tmp/store", 0 );
-  make_path( "/tmp/foo/bar" );
-  printf("Hello world %d from %s (%d)\n", silo->record_size, silo->directory, errno);
+// rid  - record entry index id
+// sid  - silo entry index id
+// sidx - index of silo
+
+void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacated_sid );
+
+IndexEntry * _index_entry( RecordStore *store, unsigned long rid );
+Silo * _get_silo( RecordStore *store, int sidx );
+
+RecordStore *
+open_store( char *directory, unsigned long max_file_size )
+{
+  int i;
+  RecordStore * store;
+  //   /S   /R   /I
+  char * dir = malloc( strlen( directory ) + 3 );
+  dir[0] = '\0';
+  strcat( dir, directory );
+  strcat( dir, PATHSEP );
+  i =  strlen(directory);
+  strcat( dir, "S" );
+  make_path( dir );
+
+  store = (RecordStore *)malloc( sizeof( RecordStore ) );
+
+  store->version = RS_VERSION;
+  store->max_file_size = max_file_size;
+  
+  dir[ i ] = 'I';
+  store->index_silo = open_silo( dir, 1 + sizeof(int) + sizeof(long), max_file_size );
+
+
+  dir[ i ] = 'R';
+  store->recycle_silo = open_silo( dir, 1 + sizeof(int) + sizeof(long), max_file_size );  
+
+  free( dir );
+
+  return store;
+} //open_store
+
+void
+empty_store( RecordStore *store )
+{
+  int i;
+  Silo *s;
+  for ( i=0; i<MAX_SILOS; i++ )
+    {
+      s = store->silos[i];
+      if ( s != NULL ) {
+        store->silos[i] = NULL;
+        empty_silo( s );
+        free( s );
+      }
+    }
+  empty_silo( store->recycle_silo );
+  empty_silo( store->index_silo );
+} //empty_store
+
+unsigned long
+store_entry_count( RecordStore *store )
+{
+  return silo_entry_count( store->index_silo ) - silo_entry_count( store->recycle_silo );
+} //store_entry_count
+
+unsigned long
+next_id( RecordStore *store )
+{
+  char *recycled_id = silo_pop( store->recycle_silo );
+  if ( recycled_id != NULL ) {
+    return atol(recycled_id);
+  }
+  return silo_next_id( store->index_silo );
+} //next_id
+
+
+int
+has_id( RecordStore *store, unsigned long rid )
+{
+  int ret = 0;
+  IndexEntry * ie = _index_entry( store, rid );
+  if ( ie != NULL )
+    {
+      ret = ie->silo_idx > 0;
+      free( ie );
+      return ret;
+    }
+  return 0;
+} //has_id
+
+void
+delete_record( RecordStore *store, unsigned long rid )
+{
+  int silo_idx;
+  IndexEntry * ie = _index_entry( store, rid );
+  char entry[sizeof(IndexEntry)];
+  if ( ie != NULL )
+    {
+      silo_idx = ie->silo_idx;
+      if ( silo_idx > 0 )
+        {
+          ie->silo_idx = 0;
+          memcpy( &entry, ie, sizeof( IndexEntry ) );
+          silo_put_record( store->index_silo, rid, entry );
+          _swapout( store, store->silos[silo_idx], silo_idx, ie->sid );
+          free( ie );
+        }
+    }
+} //delete_record
+
+unsigned long
+stow( RecordStore *store, char *data, unsigned long rid )
+{
+  Silo        * silo;
+  IndexEntry  * ie;
+  RecordEntry   re;
+  unsigned long save_size;
+  char        * save_data;
+  
+  rid = rid == 0 ? silo_next_id( store->index_silo ) : rid;
+
+  // one for the \0
+  save_size = 1 + strlen( data ) + sizeof( unsigned long );
+  save_data = malloc( save_size );
+  
+  silo_ensure_entry_count( store->index_silo, rid );
+  ie = _index_entry( store, rid );
+  if ( ie != NULL )
+    {
+      silo = _get_silo( store, ie->silo_idx );
+      if ( save_size > silo->record_size )
+        { // needs to find a new silo
+
+          // remove it from the old silo
+          _swapout( store, silo, ie->silo_idx, ie->sid );
+
+          // add it to the new one
+          ie->silo_idx = 1 + (int)round( logf( save_size ) );
+          silo = _get_silo( store, ie->silo_idx );
+          ie->sid = silo_next_id( silo );
+
+        }
+    }
+  else
+    { // new entry
+      ie = malloc( sizeof( IndexEntry ) );
+      ie->silo_idx = 1 + (int)round( logf( save_size ) );
+      silo = _get_silo( store, ie->silo_idx );
+      ie->sid = silo_next_id( silo );
+    }
+
+  // add the record
+  re.rid  = rid;
+  re.data = data;
+  memcpy( save_data, &re, save_size );
+  silo_put_record( silo, ie->sid, save_data );
+  
+  // update the index
+  memcpy( &entry, ie, sizeof( IndexEntry ) );
+  silo_put_record( store->index_silo, rid, entry );
+
+  free( save_data );
+  free( ie );
+  return 0;
+} //stow
+
+char *
+fetch( RecordStore *store, unsigned long rid )
+{
+  Silo       * silo;
+  IndexEntry * ie;
+  char       * record;
+  
+  ie     = _index_entry( store, rid );
+  silo   = _get_silo( store, ie->silo_idx );
+  record = silo_get_record( silo, ie->sid );
+  record = (char*)record[ sizeof( unsigned long ) ];
+  
+  free( ie );
+  return record;
 }
 
+
+void
+recycle_id( RecordStore *store, unsigned long rid )
+{
+  char * cid = malloc( sizeof( unsigned long ) );
+  sprintf( cid, "%ld", rid );
+  silo_push( store->recycle_silo, cid );
+  delete_record( store, rid );
+} //recycle_id
+void
+empty_recycler( RecordStore *store )
+{
+  empty_silo( store->recycle_silo );
+} //empty_recycler
+
+Transaction *
+create_transaction( RecordStore *store )
+{
+  return NULL;
+} //create_transaction
+
+Transaction *
+list_transactions( RecordStore *store )
+{
+  return NULL;
+} //list_transactions
+
+
+IndexEntry *
+_index_entry( RecordStore *store, unsigned long rid )
+{
+  IndexEntry * ie;
+  char *index_entry = silo_get_record( store->index_silo, rid );
+  if ( index_entry != NULL )
+    {
+      ie = malloc( sizeof( IndexEntry ) );
+      memcpy( ie, index_entry, sizeof( IndexEntry ) );
+      return ie;
+    }
+  
+  return NULL;
+  
+} //_index_entry;
+
+void _swapout( RecordStore *store, Silo *silo, int silo_idx, unsigned long vacated_sid )
+{
+  char        * swap_record;
+  unsigned long swap_rid;
+  IndexEntry  * swap_entry;
+  unsigned long last_sid = silo_entry_count( silo );
+  
+  if ( vacated_sid < last_sid )
+    {
+      // move last record to the space left by the
+      // vacating record. Do a copy to be safer rather
+      // than a pop which could lose data
+      swap_record = silo_get_record( silo, last_sid );
+      memcpy( &swap_rid, swap_record, sizeof( unsigned long ) );
+      printf( "Got swap record id of %ld\n", swap_rid );
+      silo_put_record( silo, vacated_sid, swap_record );
+
+      // update the index
+      swap_entry = _index_entry( store, swap_rid );
+      swap_entry->sid = vacated_sid;
+      silo_put_record( store->index_silo, vacated_sid, swap_entry );
+      free( swap_entry );
+
+      // pop the old copy off
+      free( swap_record );
+      swap_record = silo_pop( silo );
+    }
+  else if ( vacated_sid == last_sid )
+    {
+      // at the end, so just pop it off
+      swap_record = silo_pop( silo );
+    }
+  free( swap_record );
+} //_swapout
 
 Silo *
-open_silo( unsigned int silo_type,
-           char         *directory,
-           unsigned int record_size )
+_get_silo( RecordStore *store, int sidx )
 {
-  unsigned int file_max_records;
-  Silo *silo;
+  Silo *s;
+  unsigned long record_size;
+  char * dir;
 
-  // create the directory if it doesnt exist.
-  // print to stderr and return NULL if there is an error.
-  if( 0 == make_path( directory ) ) {
-    fprintf( stderr, "Errorish : %s", strerror(errno) );
-    return NULL;
-  }
-
-  // calculate the record size based on silo
-  // type or use passed in value
-  if ( silo_type == INDEX_SILO ) {
-    record_size = sizeof( int ) + sizeof( long );
-  } else if ( silo_type == RECYC_SILO ) {
-    record_size = sizeof( long );
-  } else if ( silo_type == TRANS_SILO ) {
-    record_size = 2 * sizeof( int ) + sizeof( long );
-  }
-
-  file_max_records = (MAX_SILO_FILE_SIZE / record_size);
-  if ( file_max_records == 0 ) {
-    file_max_records = 1;
-  }
-
-  // malloc the silo and set its data
-  silo = (Silo *)malloc( sizeof( Silo ) );
+  if ( sidx >= MAX_SILOS )
+    {
+      return NULL;
+    }
   
-  silo->silo_type        = silo_type;
-  silo->record_size      = record_size;
-  silo->directory        = strdup( directory );
-  silo->file_max_records = file_max_records;
-  silo->file_max_size    = file_max_records * record_size;
-
-  return silo;
+  s = store->silos[ sidx ];
+  if ( s != NULL )
+    {
+      return s;
+    }
+  record_size = (long)round( exp( sidx ) );
   
-} //open_silo
-
-// _files iterates over the silo files in the silos directory
-// and runs the fun for each one of them.
-void
-_files( char *directory, void (*fun)(char*,int) )
-{
-  int file_number;
-  DIR *d;
-  struct dirent *dir;
-  char *filedir;
-
-  int dirlen = strlen( directory ) + 1; // the 1 is for the seperator
-  d = opendir( directory );
-  if ( d ) {
-    while ( NULL != (dir = readdir(d)) )
-      {
-        file_number = atoi( dir->d_name );
-        if ( file_number > 0 || strcmp( dir->d_name, "0" ) == 0 )
-          {
-            filedir = malloc( sizeof(char *) * (dirlen + strlen( dir->d_name ) ) );
-            filedir[0] = '\0';
-            strcat( filedir, directory );
-            strcat( filedir, PATHSEP );
-            strcat( filedir, dir->d_name );
-            fun( filedir, file_number );
-            free( filedir );
-          }
-      }
-  }
-
-  closedir(d);
-} //_files
-
-// reentrant function that sums filesizes.
-// if passed in NULL, it returns the tally and
-// resets it to zero
-typedef struct {
-  unsigned int       files;
-  unsigned long long total_filesize;
-  unsigned long long last_filesize;
-  int                last_filenumber;
-  char             * last_filename;
-} silo_dir_info;
-
-silo_dir_info *
-_sum_filesizes( char *filename, int file_number )
-{
-  struct stat statbuf;
-  int filenum;
-  static silo_dir_info *ret, info = { 0, 0, 0, 0 };
+  dir = malloc( strlen( store->directory ) + 10 + record_size );
+  dir[0] = '\0';
+  sprintf( dir, "%s%s%s%s%d",
+           store->directory,
+           PATHSEP,
+           "S",
+           PATHSEP,
+           sidx
+           );
   
-  if( filename ) {
-    stat( filename, &statbuf );
-    info.total_filesize += statbuf.st_size;
-    info.files++;
-    if ( file_number > info.last_filenumber )
-      {
-        info.last_filenumber = file_number;
-        info.last_filename = strdup( filename );
-        last_filesize = statbuf.st_size;
-      }
-    return NULL;
-  }
-  memcpy( ret, &info, sizeof( silo_dir_info ) );
-  info->total_filesize  = 0;
-  info->last_filesize   = 0;
-  info->last_filenumber = 0;
-  info->last_filename   = NULL;
-  info->files           = 0;
-  return ret;
-
-} //_sum_filesizes
-
-unsigned long
-silo_entry_count( Silo *silo )
-{
-  silo_dir_info *info;
-  unsigned long long size;
-  _files( silo->directory, (void*)_sum_filesizes );
-  info = _sum_filesizes( NULL );
-  size = info.total_filesize / silo->record_size;
-  free( info );
-  return size;
-} //silo_entry_count
-
- void _unlink( char *filename, int nada )
- {
-   unlink( filename );
- }
- 
-void
-empty_silo( Silo *silo )
-{
-  _files( silo->directory, _unlink );
-} //empty_silo
-
-void unlink_silo( Silo *silo ) {
-  empty_silo( silo );
-  unlink( silo->directory );
-}
-
-unsigned long
-put_record( Silo *silo, long idx, const char *data )
-{
-
-} //put_record
-
-void
-_ensure_entry_count( Silo *silo, unsigned long count )
-{
-  char *newfile;
-  int needed, records_needed_to_fill, existing_file_records;
-  silo_dir_info * info;
-
-  _files( silo->directory, (void*)_sum_filesizes );
-  info = _sum_filesizes( NULL );
-  
-  needed = count - info.total_filesize / silo->record_size;
-
-  if( needed > 0 ) {
-    
-    existing_file_records = info.last_filesize / silo->record_size;
-    records_needed_to_fill = $silo->file_max_records - existing_file_records;
-    records_needed_to_fill = records_needed_to_fill > needed ? needed : records_needed_to_fill;
-
-    if ( records_needed_to_fill > 0 )
-      {
-        // fill the record with nulls to its max size
-        truncate( info.last_filename, records_needed_to_fill );
-        needed -= records_needed_to_fill;
-      }
-    while ( needed > silo->file_max_records )
-      {
-        // create a new file and fill it will nulls
-        newfile = sprintf( "%s/%d", silo->directory, ++info.last_filenumber );
-        creat( newfile, 0644 );
-        truncate( newfile, silo->file_max_size );
-        free( newfile );
-        needed -= silo->file_max_records;
-      }
-    if ( needed > 0 )
-      {
-        // create a new file and fill it will nulls
-        newfile = sprintf( "%s/%d", silo->directory, ++info.last_filenumber );
-        creat( newfile, 0644 );
-        truncate( newfile, needed );
-        free( newfile );
-      }
-  }
-  free( info.last_filename );
-  free( info );
-} //_ensure_entry_count
+  s = open_silo( dir, record_size, store->max_file_size );
+  store->silos[ sidx ] = s;
+  free( dir );
+  return s;
+} //_get_silo
