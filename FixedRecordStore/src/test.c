@@ -121,7 +121,7 @@ void test_silo( Test * t )
   char  F1[] = "SILOONE/0";
   char  F2[] = "SILOONE/1";
   Silo *silo;
-  unsigned long id;
+  long long id;
   char * res;
   TransactionEntry * trans;
   struct stat stat_buffer;
@@ -129,7 +129,7 @@ void test_silo( Test * t )
   // TEST common and edge cases
   /*
     
-    open_silo( dir, rec_size, max_filesize )
+    open_silo( dir, rec_size )
        - test with dir already there
        - test with dir not there
        - test with unwriteable dir
@@ -208,7 +208,9 @@ void test_silo( Test * t )
       }
     }
 
-  silo = open_silo( dir, 11, 44, 1000 );
+  // want the MAX_FILE_SIZE to be defined as 44 for the test ( or 4 entries per )
+  silo = open_silo( dir, 11 );
+  silo->file_max_records = 4;
   CHKB( silo != NULL, "opened silo" );
   CHKL( stat( dir, &stat_buffer ), 0, "Directory created" );
   CHKL( stat( F1, &stat_buffer ), 0, "First silo file created" ); 
@@ -241,7 +243,8 @@ void test_silo( Test * t )
   free( silo );
   // reopen silo, verify the entry is still there
   CHKL( filesize( F1 ), 11, "still size 1  before reopen" );
-  silo = open_silo( dir, 11, 44, 1000 );
+  silo = open_silo( dir, 11 );
+  silo->file_max_records = 4;
   CHKL( silo_entry_count(silo), 1, "entry count after reopen" );
   
   res = silo_get_record( silo, id );
@@ -306,7 +309,7 @@ void test_silo( Test * t )
   free( silo );
 
   // new silo for TransactionEntry
-  silo  = open_silo( dir, sizeof( TransactionEntry ), 1000, 1000 );
+  silo  = open_silo( dir, sizeof( TransactionEntry ) );
   trans = calloc( sizeof( TransactionEntry ), 1 );
   trans->type = 1;
   trans->rid  = 2;
@@ -344,8 +347,9 @@ void test_record_store( Test *t )
   char iF1[] = "RECSTORE/I/0";
   struct stat stat_buffer;
    
-  unsigned long id;
-  RecordStore * store = open_store( "RECSTORE", 80 );
+  long long id;
+  // want the max filesize to be defined as 80 for the store
+  RecordStore * store = open_store( "RECSTORE" );
   CHKL( silo_entry_count(store->index_silo), 0, "store created and nothing in index" );
   char * res;
   
