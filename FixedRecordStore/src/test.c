@@ -10,6 +10,8 @@
 #include "silo.h"
 //#include "record_store.h"
 
+#define VERB 1
+
 typedef struct
 {
   int tests_run;
@@ -22,6 +24,10 @@ void chkb( int a, char * desc, Test *t ) {
     t->tests_fail++;
     printf( "Error : Failed : %s\n", desc );
   }
+  else if( VERB ) {
+    printf( "Passed : %s\n", desc );
+  }
+    
 }
 
 void chkl( long a, long b, char * desc, Test *t ) {
@@ -30,6 +36,9 @@ void chkl( long a, long b, char * desc, Test *t ) {
     t->tests_fail++;
     printf( "Error : Got %ld and expected %ld : %s\n", a, b, desc );
   }
+  else if( VERB ) {
+    printf( "Passed : %s\n", desc );
+  }
 }
 
 void chks( char * a, char * b, char * desc, Test *t ) {
@@ -37,6 +46,9 @@ void chks( char * a, char * b, char * desc, Test *t ) {
   if( a == NULL || strcmp(a, b) != 0 ) {
     t->tests_fail++;
     printf( "Error : Got '%s' and expected '%s' : %s\n", a, b, desc );
+  }
+  else if( VERB ) {
+    printf( "Passed : %s\n", desc );
   }
 }
 
@@ -54,8 +66,15 @@ void test_silo( Test * t )
   stat( dir, &stat_buffer );
   if ( S_ISDIR( stat_buffer.st_mode ) )
     {
+      printf( "Unlink %s\n", F1 );
+      if( 0 != rmdir( F1 ) ) {
+        perror( "unlink F1" );
+      }
+      if( 0 != rmdir( F2 ) ) {
+        perror( "unlink F2" );
+      }
       if( 0 != rmdir( dir ) ) {
-        perror( "unlink old file" );
+        perror( "unlink dir" );
       }
     }
   
@@ -121,7 +140,7 @@ void test_silo( Test * t )
   free( res );
   res = silo_last_entry( silo );
   chks( res, "0123456789", "last entry after pop", t );
-  free( res );
+
   id = silo_next_id( silo );
   chkl( id, 2, "next id after pop", t );
   chkl( silo_entry_count(silo), 2, "entry count after next_id", t );
@@ -163,6 +182,7 @@ void test_record_store( Test *t )
 }//test_record_store
 
 int main() {
+  printf( "Starting tests\n" );
   Test * t = malloc( sizeof(Test) );
   t->tests_run = 0;
   t->tests_fail = 0;
