@@ -637,7 +637,9 @@ record size is given or calculated.
 
 =over 2
 
-=item group - when files are created, they use this user group if able.
+=item group - permissions group id to write recordstore files to
+
+=item mode - permissions mode to write recordstore files to
 
 =back
 

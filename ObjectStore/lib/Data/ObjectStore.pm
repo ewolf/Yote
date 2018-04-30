@@ -8,10 +8,11 @@ no warnings 'uninitialized';
 no warnings 'recursion';
 
 use Data::RecordStore;
+
 use Scalar::Util qw(weaken);
 use vars qw($VERSION);
 
-$VERSION = '1.106';
+$VERSION = '1.2';
 
 use constant {
     RECORD_STORE => 0,
@@ -23,7 +24,10 @@ use constant {
 
     ID           => 0,
     DATA         => 1,
-    LEVEL        => 3,
+    CREATED      => 3,
+    UPDATED      => 4,
+    LEVEL        => 5,
+    
 };
 
 =head1 NAME
@@ -117,9 +121,18 @@ can be useful to override.
 
 =head1 PUBLIC METHODS
 
-=head2 open_store( '/path/to/directory' )
+=head2 open_store( '/path/to/directory', $options )
 
 Starts up a persistance engine that stores data in the given directory and returns it.
+Currently supported options :
+
+=over 2
+
+=item group - permissions group id
+
+=item mode - permissions mode
+
+=back
 
 =cut
 
@@ -146,9 +159,57 @@ sub open_store {
 
     $store->[STOREINFO] = $store->_fetch_store_info_node;
 
+    if( $store->get_store_version < 1.2 ) {
+        die "Unable to open store. Please run upgrade_store";
+    }
+    
     $store;
 
 } #open_store
+
+=head2 upgrade_store( '/path/to/directory', $options )
+
+This updagrades the object store to the current version.
+This uses transactions, but it is probably wise to back up
+the store before running this.
+
+Currently supported options :
+
+=over 2
+
+=item group - permissions group id to write object store files to
+
+=item mode - permissions mode to write object store files with
+
+=back
+
+=cut
+sub upgrade_store {
+    my( $base_path, $opts ) = @_;
+
+    my $record_store = Data::RecordStore->open_store( "$base_path/RECORDSTORE", $opts );
+
+    my $info = $record_store->fetch( 1 );
+    my $pos = 22 + index( $info, '`ObjectStore_version`v' );
+    my $vers = substr $info, $pos, index( $info, '`', $pos ) - $pos;
+    
+    if( $vers >= 1.2 ) {
+        warn "Store already at version 1.2 or above. No update needed\n";
+        return;
+    }
+    my $transaction = $record_store->create_transaction;
+    my $time = time;
+    for( my $id=1; $id<$record_store->entry_count; $id++ ) {
+        my $record = $record_store->fetch( $id );
+        if( $id == 1 ) {
+            $record =~ s/`ObjectStore_version`[^`]+`/`ObjectStore_version`v$VERSION`/;
+        }
+        $record =~ s/^([^ ]+) /$1|$time|$time /;
+        $transaction->stow( $record, $id );
+    }
+    $transaction->commit;
+    
+}
 
 =head2 load_root_container
 
@@ -197,7 +258,7 @@ Returns the version of Data::RecordStore that this was created under.
 =cut
 
 sub get_db_version {
-    shift->[STOREINFO]{db_version};
+    shift->info->{db_version};
 }
 
 =head2 get_store_version
@@ -207,7 +268,7 @@ Returns the version of Data::ObjectStore that this was created under.
 =cut
 
 sub get_store_version {
-    shift->[STOREINFO]{ObjectStore_version};
+    shift->info->{ObjectStore_version};
 }
 
 =head2 get_created_time
@@ -217,7 +278,7 @@ Returns when the store was created.
 =cut
 
 sub get_created_time {
-    shift->[STOREINFO]{created_time};
+    shift->info->{created_time};
 }
 
 =head2 get_last_update_time
@@ -227,7 +288,7 @@ Returns the last time this store was updated.
 =cut
 
 sub get_last_update_time {
-    shift->[STOREINFO]{last_update_time};
+    shift->info->{last_update_time};
 }
 
 =head2 create_container( optionalClass, { data } )
@@ -259,7 +320,10 @@ sub create_container {
     my $id = $self->_new_id;
     my $obj = bless [ $id,
                       { map { $_ => $self->_xform_in( $data->{$_} ) } keys %$data},
-                      $self ], $class;
+                      $self,
+                      time,
+                      time,
+        ], $class;
     $self->_dirty( $obj, $id );
     $self->_store_weak( $id, $obj );
 
@@ -379,8 +443,7 @@ sub save {
         my $thingy = $cls eq 'HASH' ? tied( %$obj ) : $cls eq 'ARRAY' ?  tied( @$obj ) : $obj;
         my $text_rep = $thingy->_freezedry;
         my $class = ref( $thingy );
-
-        $transaction->stow( "$class $text_rep", $id );
+        $transaction->stow( "$class|$thingy->[CREATED]|$thingy->[UPDATED] $text_rep", $id );
         $node->set_last_update_time( $now );
     }
     $transaction->commit;
@@ -425,7 +488,8 @@ sub _fetch {
     my $pos = index( $stowed, ' ' );
     die "Data::ObjectStore::_fetch : Malformed record '$stowed'" if $pos == -1;
 
-    my $class    = substr $stowed, 0, $pos;
+    my $meta     = substr $stowed, 0, $pos;
+    my( $class, $create_time, $update_time ) = split /\|/, $meta;
     my $dryfroze = substr $stowed, $pos + 1;
 
     unless( $INC{ $class } ) {
@@ -471,7 +535,7 @@ sub _fetch {
         $pieces = $newparts;
     } #if there were escaped ` characters
 
-    my $ret = $class->_reconstitute( $self, $id, $pieces );
+    my $ret = $class->_reconstitute( $self, $id, $pieces, $create_time, $update_time );
     $self->_store_weak( $id, $ret );
     return $ret;
 } #_fetch
@@ -501,9 +565,13 @@ sub _store_weak {
     weaken( $self->[WEAK]{$id} );
 } #_store_weak
 
-sub _dirty {
-    return unless $_[1];
-    $_[0]->[DIRTY]->{$_[2]} = $_[1];
+sub _dirty { # self, item, id
+    my( $self, $item, $id ) = @_;
+    $self->[DIRTY]{$id} = $item;
+    my $r = ref( $item );
+    $item = tied %$item if $r eq 'HASH';
+    $item = tied @$item if $r eq 'ARRAY';
+    $item->[UPDATED] = time();
 } #_dirty
 
 
@@ -511,6 +579,34 @@ sub _new_id {
     my( $self ) = @_;
     $self->[RECORD_STORE]->next_id;
 } #_new_id
+
+sub _meta {
+    my( $self, $ref ) = @_;
+    my $r = ref( $ref );
+    if( $r eq 'ARRAY' ) {
+        $ref = tied @$ref;
+    }
+    elsif( $r eq 'HASH' ) {
+        $ref = tied %$ref;
+    }
+    elsif( ! $r ) {
+        undef $ref;
+    }
+    if( $ref ) {
+        return {
+            created => $ref->[CREATED],
+            updated => $ref->[UPDATED],
+        };
+    }
+} #_meta
+
+sub last_updated {
+    shift->_meta( shift )->{updated};
+}
+
+sub created {
+    shift->_meta( shift )->{created};
+}
 
 sub _get_id {
     my( $self, $ref ) = @_;
@@ -524,7 +620,7 @@ sub _get_id {
         if( ! $thingy ) {
             my $id = $self->_new_id;
             my( @items ) = @$ref;
-            tie @$ref, 'Data::ObjectStore::Array', $self, $id, 0, $Data::ObjectStore::Array::MAX_BLOCKS;
+            tie @$ref, 'Data::ObjectStore::Array', $self, $id, time, time, 0, $Data::ObjectStore::Array::MAX_BLOCKS;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
             push @$ref, @items;
@@ -538,7 +634,7 @@ sub _get_id {
         if( ! $thingy ) {
             my $id = $self->_new_id;
             my( %items ) = %$ref;
-            tie %$ref, 'Data::ObjectStore::Hash', $self, $id;
+            tie %$ref, 'Data::ObjectStore::Hash', $self, $id, time, time;
             $self->_store_weak( $id, $ref );
             $self->_dirty( $self->[WEAK]{$id}, $id );
             for my $key (keys( %items) ) {
@@ -571,6 +667,7 @@ use strict;
 use warnings;
 use warnings FATAL => 'all';
 no  warnings 'numeric';
+no  warnings 'recursion';
 
 use Tie::Array;
 
@@ -580,11 +677,13 @@ use constant {
     ID          => 0,
     DATA        => 1,
     DSTORE      => 2,
-    LEVEL       => 3,
-    BLOCK_COUNT => 4,
-    BLOCK_SIZE  => 5,
-    ITEM_COUNT  => 6,
-    UNDERNEATH  => 7,
+    CREATED     => 3,
+    UPDATED     => 4,
+    LEVEL       => 5,
+    BLOCK_COUNT => 6,
+    BLOCK_SIZE  => 7,
+    ITEM_COUNT  => 8,
+    UNDERNEATH  => 9,
 
     WEAK         => 2,
 };
@@ -607,15 +706,15 @@ sub _freezedry {
 }
 
 sub _reconstitute {
-    my( $cls, $store, $id, $data ) = @_;
+    my( $cls, $store, $id, $data, $created, $updated ) = @_;
     my $arry = [];
-    tie @$arry, $cls, $store, $id, @$data;
+    tie @$arry, $cls, $store, $id, $created, $updated, @$data;
 
     return $arry;
 }
 
 sub TIEARRAY {
-    my( $class, $obj_store, $id, $level, $block_count, $item_count, $underneath, @list ) = @_;
+    my( $class, $obj_store, $id, $created, $updated, $level, $block_count, $item_count, $underneath, @list ) = @_;
     $item_count //= 0;
     my $block_size  = $block_count ** $level;
 
@@ -632,6 +731,9 @@ sub TIEARRAY {
         $id,
         $blocks,
         $obj_store,
+        0, # create
+        0, # update
+        
         $level,
         $block_count,
         $block_size,
@@ -681,7 +783,7 @@ sub _embiggen {
         #
         my $newblock = [];
         my $newid = $store->_new_id;
-        tie @$newblock, 'Data::ObjectStore::Array', $store, $newid, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[ITEM_COUNT], 1;
+        tie @$newblock, 'Data::ObjectStore::Array', $store, $newid, $self->[CREATED], time, $self->[LEVEL], $self->[BLOCK_COUNT], $self->[ITEM_COUNT], 1;
         $store->_store_weak( $newid, $newblock );
         $store->_dirty( $store->[WEAK]{$newid}, $newid );
 
@@ -717,7 +819,7 @@ sub _getblock {
     $block_id = $store->_new_id;
     my $block = [];
     my $level = $self->[LEVEL] - 1;
-    tie @$block, 'Data::ObjectStore::Array', $store, $block_id, $level, $self->[BLOCK_COUNT];
+    tie @$block, 'Data::ObjectStore::Array', $store, $block_id, $self->[CREATED], $self->[UPDATED], $level, $self->[BLOCK_COUNT];
 
     my $tied = tied( @$block );
     $tied->[UNDERNEATH] = 1;
@@ -1010,10 +1112,12 @@ use constant {
     ID          => 0,
     DATA        => 1,
     DSTORE      => 2,
-    LEVEL       => 3,
-    BUCKETS     => 4,
-    SIZE        => 5,
-    NEXT        => 6,
+    CREATED     => 3,
+    UPDATED     => 4,
+    LEVEL       => 5,
+    BUCKETS     => 6,
+    SIZE        => 7,
+    NEXT        => 8,
 };
 sub _freezedry {
     my $self = shift;
@@ -1027,14 +1131,15 @@ sub _freezedry {
 }
 
 sub _reconstitute {
-    my( $cls, $store, $id, $data ) = @_;
+    my( $cls, $store, $id, $data, $created, $updated ) = @_;
     my $hash = {};
-    tie %$hash, $cls, $store, $id, @$data;
+    tie %$hash, $cls, $store, $id, $created, $updated, @$data;
+
     return $hash;
 }
 
 sub TIEHASH {
-    my( $class, $obj_store, $id, $level, $buckets, $size, @fetch_buckets ) = @_;
+    my( $class, $obj_store, $id, $created, $updated, $level, $buckets, $size, @fetch_buckets ) = @_;
     $level ||= 0;
     $size  ||= 0;
     $buckets ||= $Data::ObjectStore::Hash::SIZE;
@@ -1049,7 +1154,16 @@ sub TIEHASH {
         }
     }
     else {
-        $hash = bless [ $id, $level ? [@fetch_buckets] : {@fetch_buckets}, $obj_store, $level, $buckets, $size, [undef,undef] ], $class;
+        $hash = bless [ $id, 
+                        $level ? [@fetch_buckets] : {@fetch_buckets}, 
+                        $obj_store,
+                        $created,
+                        $updated,
+                        $level, 
+                        $buckets, 
+                        $size, 
+                        [undef,undef],
+            ], $class;
     }
 
     $hash;
@@ -1186,7 +1300,7 @@ sub STORE {
                 } else {
                     $hash = {};
                     my $hash_id = $store->_new_id;
-                    tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
+                    tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, $self->[CREATED], $self->[UPDATED], 0, $self->[BUCKETS]+1, 1, $key, $data->{$key};
                     $store->_store_weak( $hash_id, $hash );
                     $store->_dirty( $store->[Data::ObjectStore::WEAK]{$hash_id}, $hash_id );
 
@@ -1222,7 +1336,7 @@ sub STORE {
         } else {
             $hash = {};
             $hash_id = $store->_new_id;
-            tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
+            tie %$hash, 'Data::ObjectStore::Hash', $store, $hash_id, $self->[CREATED], $self->[UPDATED], 0, $self->[BUCKETS]+1, 1, $key, $store->_xform_in( $val );
             $store->_store_weak( $hash_id, $hash );
             $store->_dirty( $store->[Data::ObjectStore::WEAK]{$hash_id}, $hash_id );
             $data->[$hval] = $hash_id;
@@ -1393,6 +1507,8 @@ use constant {
     ID          => 0,
     DATA        => 1,
     DSTORE      => 2,
+    CREATED     => 3,
+    UPDATED     => 4,
 };
 
 #
@@ -1452,7 +1568,7 @@ sub get {
         if( ref( $default ) ) {
             # this must be done to make sure the reference is saved
             # for cases where the reference has not yet made it to the store of things to save
-            $store->_dirty( $store->_get_id( $default ) );
+            $store->_dirty( $default, $store->_get_id( $default ) );
         }
         $store->_dirty( $self, $self->[ID] );
         $self->[DATA]{$fld} = $store->_xform_in( $default );
@@ -1554,6 +1670,7 @@ sub AUTOLOAD {
             my( $self, $val ) = @_;
             my $store = $self->[DSTORE];
             my $inval = $store->_xform_in( $val );
+
             $store->_dirty( $self, $self->[ID] ) if $self->[DATA]{$fld} ne $inval;
             unless( defined $inval ) {
                 delete $self->[DATA]{$fld};
@@ -1629,13 +1746,15 @@ sub _freezedry {
 }
 
 sub _reconstitute {
-    my( $cls, $store, $id, $data ) = @_;
+    my( $cls, $store, $id, $data, $created, $updated ) = @_;
     my $obj = [$id,{@$data},$store];
     if( $cls ne 'Data::ObjectStore::Container' && ! $INC{ $cls } ) {
         eval("use $cls");
     }
     bless $obj, $cls;
     $obj->_load;
+    $obj->[CREATED] = $created;
+    $obj->[UPDATED] = $updated;
     $obj;
 }
 
@@ -1661,7 +1780,7 @@ __END__
        under the same terms as Perl itself.
 
 =head1 VERSION
-       Version 1.106  (April, 2018))
+       Version 1.2  (April, 2018))
 
 =cut
 
