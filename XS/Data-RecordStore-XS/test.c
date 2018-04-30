@@ -113,6 +113,12 @@ void test_util( Test * t )
   
   free_linked_list( list, 1 );
   free( thing[5] );
+
+
+  
+  s = buildstringns( 4,"This ",4," the ", 1 );
+  CHKS( s, "This 4 the 1", "buildstringns" );
+  free( s );
 } //test_util
 
 void test_silo( Test * t )

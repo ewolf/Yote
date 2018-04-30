@@ -163,10 +163,10 @@ delete_record( RecordStore *store, RECSIZE rid )
   LOAD_INDEX( store, rid );
   if ( SID > 0 )
     {
-      // write a blank index record and swap out the old data
+      // write a blank index record and swap out the old data      
       PREP_SWAP;
       SWAP( store, SILO, SILO_IDX, SID );
-      SAVE_INDEX( store, rid, 0, 0 );
+      SAVE_INDEX( store, rid, 0, 0 );      
     }
 } //delete_record
 

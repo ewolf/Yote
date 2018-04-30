@@ -68,7 +68,7 @@ typedef struct
 #define FPOS silo->cur_filepos
 
 #define _FILE_OFFSET_BITS 64
-#define MAX_FILE_SIZE 10000000000000000LL
+#define MAX_FILE_SIZE 10000000000000LL
 #define SILO_MAX_FILES 1000
 
 /* Silo methods */

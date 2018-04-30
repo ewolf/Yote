@@ -153,7 +153,6 @@ silo_put_record( Silo *silo, RECSIZE sid, void *data, RECSIZE write_amount )
       // too big. must be at least one less than the record size for the '\0' byte.
       return 1;
     }
-  
   silo_ensure_entry_count( silo, sid );
   SILO_FD_ID( sid );
   lseek( FD, FPOS, SEEK_SET );
@@ -244,8 +243,8 @@ silo_get_record( Silo *silo, RECSIZE id )
 int
 silo_ensure_entry_count( Silo *silo, RECSIZE count )
 {
-  RECSIZE          cur_count, records_in_last, to_fill_last;
-  RECSIZE          needed;
+  RECSIZE      cur_count, records_in_last, to_fill_last;
+  RECSIZE      needed;
   unsigned int last_silo_idx;
 
   // cur_count = (file_max_records * (files - 1)) + last_records
@@ -262,9 +261,10 @@ silo_ensure_entry_count( Silo *silo, RECSIZE count )
   //  last_records = 21 - ( 7 * 21/7 ) = 0
   
   cur_count = silo_entry_count( silo );
-  needed = count - cur_count;
-  if ( needed > 0 )
+  if( count > cur_count )
     {
+      needed = count - cur_count;
+
       last_silo_idx = cur_count > 1 ? (cur_count-1) / silo->file_max_records : 0;
       
       records_in_last = cur_count - (silo->file_max_records * last_silo_idx );

@@ -264,3 +264,64 @@ buildstringn(int str_count,...)
   free( strs );
   return ret;
 } //buildstringn
+
+
+char *
+buildstringns(int str_count,...)
+{
+  char ** strs;
+  char *  ret;
+  va_list ap;
+  unsigned int size, s, isstr;
+  unsigned long i, val;
+
+  size = 0;
+  strs = calloc( sizeof(char *), str_count );
+  va_start( ap, str_count );
+  isstr = 1;
+  for ( i=0; i<str_count; i++ )
+    {
+      if ( isstr == 1 )
+        {
+          ret = va_arg( ap, char * );
+          size += strlen( ret );
+          strs[ i ] = ret;
+          isstr = 0;
+        }
+      else {
+        val = va_arg( ap, unsigned long );        
+        s = val > 10 ? 1+ceil(log10(val)) : 2;
+        strs[ i ] = calloc( s, 1 );
+        sprintf( strs[ i ], "%ld", val );
+        size += s;
+        isstr = 1;
+      }
+    }
+  
+  va_end( ap );
+
+  ret = calloc( 1 + size, 1 );
+  size = 0;
+  for ( i=0; i<str_count; i++ )
+    {
+      s = strlen( strs[i] );
+      memcpy( ret + size, strs[i], s );
+      size += s;
+    }
+  ret[size] = '\0';
+  isstr = 1;
+  for ( i=0; i<str_count; i++ )
+    {
+      if ( isstr )
+        {
+          isstr = 0;
+        }
+      else
+        {
+          free( strs[ i ] );
+          isstr = 1;
+        }
+    }
+  free( strs );
+  return ret;
+} //buildstringns

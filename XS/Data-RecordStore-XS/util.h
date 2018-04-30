@@ -35,6 +35,7 @@ int filecount( char *directory );
 int filesize( char *file );
 char * buildstring(int str_count,...);
 char * buildstringn(int str_count,...);
+char * buildstringns(int str_count,...);
 
 // not sure if the linked list stuff is useful
 typedef struct LinkedList {
