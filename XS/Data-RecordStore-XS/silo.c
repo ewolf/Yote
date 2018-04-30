@@ -5,11 +5,18 @@ open_silo( char * directory, RECSIZE record_size )
 {
   RECSIZE file_max_records;
   Silo *silo;
+
+  if ( record_size == 0 )
+    {
+      return NULL;
+    }
+  
   file_max_records = (MAX_FILE_SIZE / record_size);
 
-  if ( file_max_records == 0 ) {
-    return NULL;
-  }
+  if ( file_max_records == 0 )
+    {
+      return NULL;
+    }
 
   // create the directory if it doesnt exist.
   // print to stderr and return NULL if there is an error.
@@ -149,7 +156,7 @@ silo_put_record( Silo *silo, RECSIZE sid, void *data, RECSIZE write_amount )
       write_amount = strlen( data );
     }
 
-  if ( silo->record_size < write_amount )
+  if ( silo->record_size < write_amount || sid < 1 )
     {
       // too big. must be at least one less than the record size for the '\0' byte.
       return 1;

@@ -193,7 +193,34 @@ PPCODE:
      EXTEND( SP, i );
      SPAGAIN;
      XSRETURN( i );
-    
+
+void
+pop_silo( silo, templ, templ_size )
+     Silo * silo
+     char * templ
+     unsigned int templ_size
+PPCODE:
+     PUTBACK;
+     char * r = silo_pop( silo );
+     int i = unpackstring( templ, templ+templ_size, r, r + silo->record_size, SVt_PVAV );
+     EXTEND( SP, i );
+     SPAGAIN;
+     XSRETURN( i );
+
+void
+last_entry_silo( silo, templ, templ_size )
+     Silo * silo
+     char * templ
+     unsigned int templ_size
+PPCODE:
+     PUTBACK;
+     char * r = silo_last_entry( silo );
+     int i = unpackstring( templ, templ+templ_size, r, r + silo->record_size, SVt_PVAV );
+     EXTEND( SP, i );
+     SPAGAIN;
+     XSRETURN( i );
+
+
     
 int
 _silo_set_max_records( silo, recs )
@@ -204,3 +231,16 @@ CODE:
     RETVAL = silo->file_max_records;
 OUTPUT:
     RETVAL
+
+void
+silo_empty( silo )
+     Silo * silo
+CODE:
+    empty_silo( silo );
+
+void
+silo_unlink( silo )
+     Silo * silo
+CODE:
+    unlink_silo( silo );
+

@@ -64,6 +64,8 @@ void test_util( Test * t )
   CHKL( make_path( "///tmp/fooby/blecch/" ), 0, "make path double slash" );
   CHKL( make_path( "/tmp/fooby/blecch/" ), 0, "remake path without double" );
   CHKL( make_path( "/tmp/fooby/blecch" ), 0, "remake path no trailing /" );
+  CHKL( make_path( "/tmp/fooby/blecch" ), 0, "remake path again no trailing /" );
+  
   CHKL( make_path( "/usr/sicklydo" ), 2, "make path no perms" );
 
   creat( "/tmp/nothingy", 0666 );

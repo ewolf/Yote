@@ -107,6 +107,7 @@ sub open_silo {
     my( $pkg, $template, $directory, $size ) = @_;
     my $template_size = $template =~ /\*/ ? 0 : do { use bytes; length( pack( $template ) ) };
     my $record_size = $size // $template_size;
+    die "Data::RecordStore::Silo::XS->open_silo Cannot open a zero record sized fixed store" unless $record_size;
     my $silo = silo_open( $directory, $record_size );
     bless [ $silo, $template ], $pkg;
 }
@@ -118,6 +119,7 @@ sub next_id {
 
 sub put_record {
     my( $self, $id, $data ) = @_;
+    die "Data::RecordStore::Silo::XS : index $id out of bounds." if $id < 1;
     my $to_write = pack ( $self->[1], ref $data ? @$data : $data );
     my $write_size = do { use bytes; length( $to_write ) };
     0 == put_record_silo( $self->[0], $id, $to_write, $write_size );
@@ -139,31 +141,23 @@ sub entry_count {
     entry_count_silo(shift->[0]);
 }
 
-# sub get_record {
+sub empty {
+    silo_empty( shift->[0] );
+}
 
-# }
+sub pop {
+    my $self = shift;
+    [pop_silo( $self->[0], $self->[1], length( $self->[1] ) )];
+}
 
+sub last_entry {
+    my $self = shift;
+    [last_entry_silo( $self->[0], $self->[1], length( $self->[1] ) ) ];
+}
 
-# sub pop {
-
-# }
-
-# sub last_entry {
-
-# }
-
-# sub push {
-
-# }
-
-# sub put_record {
-
-# }
-
-# sub unlink_store {
-
-# }
-
+sub unlink_store {
+    silo_unlink( shift->[0] );
+}
 
 # package Data::RecordStore::Transaction::XS;
 
