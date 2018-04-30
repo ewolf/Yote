@@ -52,7 +52,6 @@ void chks( char * a, char * b, char * desc, Test *t ) {
   }
 }
 
-
 void test_silo( Test * t )
 {
   char dir[] = "SILOONE";
@@ -61,10 +60,9 @@ void test_silo( Test * t )
   Silo *silo;
   unsigned long id;
   char * res;
-  struct stat stat_buffer;
+  struct stat * stat_buffer = malloc( sizeof( struct stat ) );
   
-  stat( dir, &stat_buffer );
-  if ( S_ISDIR( stat_buffer.st_mode ) )
+  if ( 0 == stat( dir, stat_buffer ) && S_ISDIR( stat_buffer->st_mode ) )
     {
       printf( "Unlink %s\n", F1 );
       if( 0 != rmdir( F1 ) ) {
@@ -74,17 +72,17 @@ void test_silo( Test * t )
         perror( "unlink F2" );
       }
       if( 0 != rmdir( dir ) ) {
-        perror( "unlink dir" );
+            perror( "unlink dir" );
       }
     }
-  
+
   silo = open_silo( dir, 11, 44 );
   chkb( silo != NULL, "opened silo", t );
-  chkl( stat( dir, &stat_buffer ), 0, "Directory created", t );
-  chkl( stat( F1, &stat_buffer ), 0, "First silo file created", t );
+  chkl( stat( dir, stat_buffer ), 0, "Directory created", t );
+  chkl( stat( F1, stat_buffer ), 0, "First silo file created", t );
   
-  stat( dir, &stat_buffer );
-  if ( ! S_ISDIR( stat_buffer.st_mode ) )
+  stat( dir, stat_buffer );
+  if ( ! S_ISDIR( stat_buffer->st_mode ) )
     {
       printf( "FAIL : silo directory not created. bailing\n" );
       exit( 0 );
@@ -165,15 +163,16 @@ void test_silo( Test * t )
   // test emtpy_silo
   empty_silo( silo );
   chkl( silo_entry_count(silo), 0, "entry count after empty", t );
-  stat( dir, &stat_buffer );
-  chkb( S_ISDIR( stat_buffer.st_mode ), "Directory still exists after empty", t );
+  stat( dir, stat_buffer );
+  chkb( S_ISDIR( stat_buffer->st_mode ), "Directory still exists after empty", t );
 
   // test unlink_silo
   unlink_silo( silo );
-  chkb( 0 != stat( dir, &stat_buffer ), "Directory gone after unlink", t );
+  chkb( 0 != stat( dir, stat_buffer ), "Directory gone after unlink", t );
 
   free( silo->directory );
   free( silo );
+  free( stat_buffer );
 } //test_silo
 
 void test_record_store( Test *t )
@@ -192,7 +191,6 @@ int main() {
     
   // TODO BUSYWORK - make sure all of these have return values that can be analyzed
   // for success, etc.
-  
   if ( t->tests_fail == 0 )
     {
       printf( "Passed all %d tests\n", t->tests_run );

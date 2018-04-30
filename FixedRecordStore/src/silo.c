@@ -30,7 +30,7 @@ open_silo( char        * directory,
     fprintf( stderr, "Errorish : %s", strerror(errno) );
     return NULL;
   }
-  zeroFilename = malloc( strlen( directory ) + strlen( PATHSEP ) + strlen( "0" ) );
+  zeroFilename = malloc( strlen( directory ) + strlen( PATHSEP ) + strlen( "0" ) + 1);
   sprintf( zeroFilename, "%s%s0", directory, PATHSEP );
   creat( zeroFilename, 0644 );
   free( zeroFilename );
@@ -174,8 +174,8 @@ silo_pop( Silo * silo )
     
     file_number     = entries / silo->file_max_records;
     file_position   = silo->record_size * ((entries-1) % silo->file_max_records);
-    filename = malloc( strlen( silo->directory ) + 4 ); //TODO : reallyfix
-    sprintf( filename, "%s/%d", silo->directory, file_number );
+    filename = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) + 1 );
+    sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
     if( file_position > 0 ) {
       if( 0 != truncate( filename, file_position ) ) {
         perror( "TRUNCATE" );
@@ -224,7 +224,7 @@ silo_get_record( Silo *silo, unsigned long id )
     record_position = idx % silo->file_max_records;
     file_position   = silo->record_size * record_position;
   
-    filename = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + ceil(log10(file_number+1))  ); //TODO : reallyfix
+    filename = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + ( file_number > 1 ? ceil(log10(file_number)) : 1 ) + 1 );
 
     sprintf( filename, "%s%s%d", silo->directory, PATHSEP, file_number );
   
@@ -253,7 +253,6 @@ _files( char *directory, void (*fun)(char*,int) )
   struct dirent *dir;
   char *filedir;
 
-  int dirlen = strlen( directory ) + 1; // the 1 is for the seperator
   d = opendir( directory );
   if ( d ) {
     while ( NULL != (dir = readdir(d)) )
@@ -261,7 +260,7 @@ _files( char *directory, void (*fun)(char*,int) )
         file_number = atoi( dir->d_name );
         if ( file_number > 0 || strcmp( dir->d_name, "0" ) == 0 )
           {
-            filedir = malloc( dirlen + strlen( dir->d_name ) );
+            filedir = malloc( strlen( directory ) + strlen( PATHSEP) + strlen( dir->d_name ) + 1 );
             sprintf( filedir, "%s%s%s", directory, PATHSEP, dir->d_name );
             fun( filedir, file_number );
             free( filedir );
@@ -300,8 +299,9 @@ silo_ensure_entry_count( Silo *silo, unsigned long count )
     while ( needed > silo->file_max_records )
       {
         // create a new file and fill it will nulls
-        newfile = malloc( strlen( silo->directory ) + 4 ); //TODO : reallyfix
-        sprintf( newfile, "%s/%d", silo->directory, ++info->last_filenumber );
+        ++info->last_filenumber;
+        newfile = malloc( strlen( silo->directory ) + strlen( PATHSEP ) + (info->last_filenumber > 1 ? ceil(log10(info->last_filenumber)) : 1 ) + 1 );
+        sprintf( newfile, "%s%s%d", silo->directory, PATHSEP, info->last_filenumber );
         creat( newfile, 0644 );
         if( 0 != truncate( newfile, silo->file_max_size ) ) {
           perror( "TRUNCATE" );
