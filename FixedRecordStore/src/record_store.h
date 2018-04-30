@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /* public interface */
 typedef struct
@@ -33,7 +36,7 @@ typedef struct
 
 typedef struct
 {
-  const char     * directory;
+  char           * directory;
   unsigned int   record_size;
   unsigned int   file_max_size;
   unsigned int   file_max_records;
@@ -41,7 +44,7 @@ typedef struct
 } Silo;
 
 /* RecordStore methods */
-RecordStore * open_store( const char *directory );
+RecordStore * open_store( char *directory );
 void          empty( RecordStore *store );
 unsigned long entry_count( RecordStore *store );
 unsigned long next_id( RecordStore *store );
@@ -68,7 +71,7 @@ const char *  pop( Silo *silo );
 const char *  last_entry( Silo *silo );
 unsigned long push( Silo *silo, const char *data );
 unsigned long put_record( Silo *silo, long idx, const char *data );
-void          unlink_store( Silo *silo );
+void          unlink_silo( Silo *silo );
 
 /* Transaction methods */
 unsigned long get_update_time( Transaction *trans );

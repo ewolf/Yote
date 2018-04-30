@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <unistd.h>
 
 #if defined _WIN32 || defined __CYGWIN__
 #define PATHSEP "\\"
