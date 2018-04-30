@@ -629,7 +629,7 @@ commit( Transaction *trans )
                   purge_list[purge_count++] = entry;
                 }
             }
-          qsort( purge_list, purge_count, sizeof( TransactionEntry *), (int*)_sort_purged );
+          qsort( purge_list, purge_count, sizeof( TransactionEntry *), _sort_purged );
           for ( i=0; i<purge_count; i++ )
             {
               entry = purge_list[i];

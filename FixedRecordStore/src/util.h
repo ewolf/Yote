@@ -28,7 +28,7 @@
 int make_path( char *path );
 int filecount( char *directory );
 int filesize( char *file );
-char * buildstring(...);
+char * buildstring(const char *strs,...);
 
 // not sure if the linked list stuff is useful
 typedef struct LinkedList {

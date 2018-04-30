@@ -318,9 +318,9 @@ void test_record_store( Test *t )
 }//test_record_store
 
 int main() {
-  var x = buildstring( "THIS", "/", "IS A", " BIGSTRING" );
+  char * x = buildstring( "THIS", "/", "IS A", " BIGSTRING" );
   printf( "'%s'\n", x );
-  return;
+  return 0;
   
   printf( "Starting tests\n" );
   Test * t = malloc( sizeof(Test) );

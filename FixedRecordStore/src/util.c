@@ -193,32 +193,40 @@ find_in_list( LinkedList *list, void * item )
 } //find_in_list
 
 char *
-buildstring(int strs,...)
+buildstring(const char * strs,...)
 {
-  int i, sum, s;
+  char * ret;
   char * str;
-  char ** strl;
   va_list valist;
-  sum = 0;
-  va_start(valist, strs);
-  strl = calloc( sizeof( char * ), strs );
-  for ( i=0; i<strs; i++ )
-    {
-      str = va_arg( valist, char * );
-      sum += strlen( str );
-      strl[i] = str;
-    }
-  str = malloc( 1 + sum );
-  sum = 0;
-  for ( i=0; i<strs; i++ )
-    {
-      s = sizeof( strs[i] );
-      memcpy( str + sum, strs[i], s );
-      sum += s;
-    }
-  str[sum] = '\0';
-  free( strl );
+  unsigned int size = 0, s = 0;
+
+  va_start( valist, strs );
+
+  str = va_arg( valist, char * ); // gets the next one each time it is called
+  while(str) {
+    CRY("STRINGYDINGY (%d) %s\n",size, str);
+    size += strlen( str );
+    str = va_arg( valist, char * );
+  }
+  ret = malloc( 1 + size );
+  
+  va_end( valist );
+
+  size = 0;
+  va_start( valist, strs );
+
+  str = va_arg( valist, char * ); // gets the next one each time it is called
+  while(str) {
+    s = strlen( str );
+    CRY("S (%d) %s\n",s, str);
+    memcpy( ret + size, str, s );
+    size += s;
+    str = va_arg( valist, char * );
+  }
   va_end( valist );
   
-  return str;
+  ret[size] = '\0';
+  
+  
+  return ret;
 } //buildstring
