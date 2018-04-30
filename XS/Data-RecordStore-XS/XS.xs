@@ -7,13 +7,16 @@
 
 #include "record_store.h"
 
-  // store_fetch
-  // store_delete
-  // store_recycle
-  // store_has_id
-  // store_empty
-  // store_unlink
-  // store_empty_recyler
+// store_fetch
+// store_stow
+// store_next_id
+// store_delete
+// store_recycle
+// store_has_id
+// entry_count_store    
+// store_empty
+// store_unlink
+// store_empty_recyler
   
   // store_create_transaction
   // store_list_transactions
@@ -71,7 +74,64 @@ CODE:
 OUTPUT:
      RETVAL
        
-     
+void
+store_delete( store, rid )
+     RecordStore * store
+     uint64_t rid
+CODE:
+    delete_record( store, rid );
+
+void
+store_empty_recycler( store )
+     RecordStore * store
+CODE:
+    empty_recycler( store );
+
+void
+store_unlink( store )
+     RecordStore * store
+CODE:
+    unlink_store( store );
+
+void
+store_cleanup( store )
+     RecordStore * store
+CODE:
+    cleanup_store( store );
+        
+    
+void
+store_recycle( store, rid )
+     RecordStore * store
+     uint64_t rid
+CODE:
+    recycle_id( store, rid );
+
+int
+store_has_id( store, rid )
+     RecordStore * store
+     uint64_t rid
+CODE:
+    RETVAL = has_id( store, rid );
+OUTPUT:
+    RETVAL
+    
+uint64_t
+entry_count_store( store )
+    RecordStore * store
+CODE:
+    RETVAL = store_entry_count( store );
+OUTPUT:
+    RETVAL
+
+
+void
+store_empty( store )
+     RecordStore * store
+CODE:
+    empty_store( store );
+            
+         
 MODULE = Data::RecordStore::XS		PACKAGE = Data::RecordStore::Silo::XS
 
 Silo *
@@ -102,14 +162,19 @@ CODE:
 OUTPUT:
      RETVAL
 
-char *
-get_record_silo( silo, sid )
+void
+get_record_silo( silo, templ, templ_size, sid )
      Silo * silo
-     uint64_t sid
-CODE:
-     RETVAL = silo_get_record( silo, sid );
-OUTPUT:
-     RETVAL
+     char * templ
+     unsigned int templ_size
+     uint64_t sid    
+PPCODE:
+     PUTBACK;
+     char * r = silo_get_record( silo, sid );
+     int i = unpackstring( templ, templ+templ_size, r, r + silo->record_size, SVt_PVAV );
+     EXTEND( SP, i );
+     SPAGAIN;
+     XSRETURN( i );
     
     
 int

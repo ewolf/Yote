@@ -57,29 +57,44 @@ sub fetch {
     store_fetch( $store->[0], $rid );
 }
 
-# sub has_id {
+sub has_id {
+    my( $self, $rid ) = @_;
+    store_has_id( $self->[0], $rid );
+}
 
-# }
+sub entry_count {
+    entry_count_store( shift->[0] );
+}
 
-# sub entry_count {
+sub delete_record {
+    my( $self, $rid ) = @_;
+    store_delete( $self->[0], $rid );
+}
 
-# }
+sub recycle_id {
+    my( $self, $rid ) = @_;
+    store_recycle( $self->[0], $rid );
+}
 
-# sub delete_record {
+sub empty {
+    store_empty( shift->[0] );
+}
 
-# }
+sub empty_recycler {
+    store_empty_recycler( shift->[0] );
+}
 
-# sub recycle_id {
+sub unlink_store {
+    store_unlink( shift->[0] );
+}
 
-# }
+sub DESTROY {
+    store_cleanup( shift->[0] );
+}
 
-# sub empty_recycler {
-
-# }
-
-# sub create_transaction {
+#sub create_transaction {
     
-# }
+#}
 
 package Data::RecordStore::Silo::XS;
 
@@ -100,7 +115,6 @@ sub put_record {
     my( $self, $id, $data ) = @_;
     my $to_write = pack ( $self->[1], ref $data ? @$data : $data );
     my $write_size = do { use bytes; length( $to_write ) };
-    print STDERR Data::Dumper->Dump([[unpack $self->[1], $to_write],"'$to_write', $write_size,'UM"]);
     0 == put_record_silo( $self->[0], $id, $to_write, $write_size );
 }
 
@@ -111,17 +125,10 @@ sub push {
     return $id;
 }
 
-
 sub get_record {
     my( $self, $id ) = @_;
-    my $data = get_record_silo( $self->[0], $id );
-    print STDERR Data::Dumper->Dump([$self->[1],$data,[unpack( $self->[1],$data )],"DUH"]);
-    [unpack( $self->[1],$data )];
+    get_record_silo( $self->[0], $self->[1], length( $self->[1] ), $id );
 }
-
-# sub empty {
-
-# }
 
 # sub entry_count {
 

@@ -153,7 +153,7 @@ has_id( RecordStore *store, RECSIZE rid )
 {
   PREP_INDEX;
   LOAD_INDEX( store, rid );
-  return SID > 0;
+  return SID;// > 0;
 } //has_id
 
 void
