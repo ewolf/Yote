@@ -141,7 +141,7 @@ unlink_silo( Silo *silo ) {
 } //unlink_silo
 
 int
-silo_put_record( Silo *silo, RECSIZE rid, void *data, RECSIZE write_amount )
+silo_put_record( Silo *silo, RECSIZE sid, void *data, RECSIZE write_amount )
 {
   if ( write_amount == 0 )
     {
@@ -154,8 +154,8 @@ silo_put_record( Silo *silo, RECSIZE rid, void *data, RECSIZE write_amount )
       return 1;
     }
   
-  silo_ensure_entry_count( silo, rid );
-  SILO_FD_ID( rid );
+  silo_ensure_entry_count( silo, sid );
+  SILO_FD_ID( sid );
   lseek( FD, FPOS, SEEK_SET );
   write( FD, data, write_amount );
 

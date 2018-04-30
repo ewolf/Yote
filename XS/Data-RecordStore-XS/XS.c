@@ -15,7 +15,6 @@
 #include "ppport.h"
 
 #include "record_store.h"
-typedef RecordStore RecordStorey;
 
   // store_fetch
   // store_delete
@@ -42,7 +41,7 @@ typedef RecordStore RecordStorey;
   // silo_get
   // silo_unlink
 
-#line 46 "XS.c"
+#line 45 "XS.c"
 #ifndef PERL_UNUSED_VAR
 #  define PERL_UNUSED_VAR(var) if (0) var = var
 #endif
@@ -186,7 +185,7 @@ S_croak_xs_usage(const CV *const cv, const char *const params)
 #  define newXS_deffile(a,b) Perl_newXS_deffile(aTHX_ a,b)
 #endif
 
-#line 190 "XS.c"
+#line 189 "XS.c"
 
 XS_EUPXS(XS_Data__RecordStore__XS_store_open); /* prototype to pass -Wmissing-prototypes */
 XS_EUPXS(XS_Data__RecordStore__XS_store_open)
@@ -197,15 +196,14 @@ XS_EUPXS(XS_Data__RecordStore__XS_store_open)
     {
 	char *	directory = (char *)SvPV_nolen(ST(0))
 ;
-	RecordStorey *	RETVAL;
-#line 42 "XS.xs"
-    printf( "opening store '%s'\n", directory );
+	RecordStore *	RETVAL;
+#line 41 "XS.xs"
     RETVAL = open_store( directory );
-#line 205 "XS.c"
+#line 203 "XS.c"
 	{
 	    SV * RETVALSV;
 	    RETVALSV = sv_newmortal();
-	    sv_setref_pv(RETVALSV, "RecordStoreyPtr", (void*)RETVAL);
+	    sv_setref_pv(RETVALSV, "RecordStorePtr", (void*)RETVAL);
 	    ST(0) = RETVALSV;
 	}
     }
@@ -213,14 +211,45 @@ XS_EUPXS(XS_Data__RecordStore__XS_store_open)
 }
 
 
-XS_EUPXS(XS_Data__RecordStore__XS_stow); /* prototype to pass -Wmissing-prototypes */
-XS_EUPXS(XS_Data__RecordStore__XS_stow)
+XS_EUPXS(XS_Data__RecordStore__XS_store_fetch); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__XS_store_fetch)
+{
+    dVAR; dXSARGS;
+    if (items != 2)
+       croak_xs_usage(cv,  "store, rid");
+    {
+	RecordStore *	store;
+	uint64_t    rid = (unsigned long long)SvUV(ST(1))
+;
+	char *	RETVAL;
+	dXSTARG;
+
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "RecordStorePtr")) {
+	    IV tmp = SvIV((SV*)SvRV(ST(0)));
+	    store = INT2PTR(RecordStore *,tmp);
+	}
+	else
+	    Perl_croak_nocontext("%s: %s is not of type %s",
+			"Data::RecordStore::XS::store_fetch",
+			"store", "RecordStorePtr")
+;
+#line 50 "XS.xs"
+     RETVAL = fetch( store, rid );
+#line 239 "XS.c"
+	sv_setpv(TARG, RETVAL); XSprePUSH; PUSHTARG;
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__XS_store_stow); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__XS_store_stow)
 {
     dVAR; dXSARGS;
     if (items != 4)
        croak_xs_usage(cv,  "store, data, rid, write_amount");
     {
-	RecordStorey *	store;
+	RecordStore *	store;
 	char *	data = (char *)SvPV_nolen(ST(1))
 ;
 	uint64_t    rid = (unsigned long long)SvUV(ST(2))
@@ -230,18 +259,18 @@ XS_EUPXS(XS_Data__RecordStore__XS_stow)
 	uint64_t	RETVAL;
 	dXSTARG;
 
-	if (SvROK(ST(0)) && sv_derived_from(ST(0), "RecordStoreyPtr")) {
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "RecordStorePtr")) {
 	    IV tmp = SvIV((SV*)SvRV(ST(0)));
-	    store = INT2PTR(RecordStorey *,tmp);
+	    store = INT2PTR(RecordStore *,tmp);
 	}
 	else
 	    Perl_croak_nocontext("%s: %s is not of type %s",
-			"Data::RecordStore::XS::stow",
-			"store", "RecordStoreyPtr")
+			"Data::RecordStore::XS::store_stow",
+			"store", "RecordStorePtr")
 ;
-#line 54 "XS.xs"
+#line 61 "XS.xs"
      RETVAL = stow( store, data, rid, write_amount );
-#line 245 "XS.c"
+#line 274 "XS.c"
 	XSprePUSH; PUSHu((UV)RETVAL);
     }
     XSRETURN(1);
@@ -255,27 +284,176 @@ XS_EUPXS(XS_Data__RecordStore__XS_store_next_id)
     if (items != 1)
        croak_xs_usage(cv,  "store");
     {
-	RecordStorey *	store;
-#line 62 "XS.xs"
-    RecordStorey *thisrs;
-#line 262 "XS.c"
+	RecordStore *	store;
 	uint64_t	RETVAL;
 	dXSTARG;
 
-	if (SvROK(ST(0)) && sv_derived_from(ST(0), "RecordStoreyPtr")) {
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "RecordStorePtr")) {
 	    IV tmp = SvIV((SV*)SvRV(ST(0)));
-	    store = INT2PTR(RecordStorey *,tmp);
+	    store = INT2PTR(RecordStore *,tmp);
 	}
 	else
 	    Perl_croak_nocontext("%s: %s is not of type %s",
 			"Data::RecordStore::XS::store_next_id",
-			"store", "RecordStoreyPtr")
+			"store", "RecordStorePtr")
 ;
-#line 64 "XS.xs"
-     thisrs = (RecordStorey*)store;
-     RETVAL = next_id( thisrs );
-#line 278 "XS.c"
+#line 70 "XS.xs"
+     RETVAL = next_id( store );
+#line 303 "XS.c"
 	XSprePUSH; PUSHu((UV)RETVAL);
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_silo_open); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_silo_open)
+{
+    dVAR; dXSARGS;
+    if (items != 2)
+       croak_xs_usage(cv,  "directory, size");
+    {
+	char *	directory = (char *)SvPV_nolen(ST(0))
+;
+	uint64_t    size = (unsigned long long)SvUV(ST(1))
+;
+	Silo *	RETVAL;
+#line 82 "XS.xs"
+    RETVAL = open_silo( directory, size );
+#line 324 "XS.c"
+	{
+	    SV * RETVALSV;
+	    RETVALSV = sv_newmortal();
+	    sv_setref_pv(RETVALSV, "SiloPtr", (void*)RETVAL);
+	    ST(0) = RETVALSV;
+	}
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_next_id_silo); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_next_id_silo)
+{
+    dVAR; dXSARGS;
+    if (items != 1)
+       croak_xs_usage(cv,  "silo");
+    {
+	Silo *	silo;
+	uint64_t	RETVAL;
+	dXSTARG;
+
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "SiloPtr")) {
+	    IV tmp = SvIV((SV*)SvRV(ST(0)));
+	    silo = INT2PTR(Silo *,tmp);
+	}
+	else
+	    Perl_croak_nocontext("%s: %s is not of type %s",
+			"Data::RecordStore::Silo::XS::next_id_silo",
+			"silo", "SiloPtr")
+;
+#line 90 "XS.xs"
+     RETVAL = silo_next_id( silo );
+#line 358 "XS.c"
+	XSprePUSH; PUSHu((UV)RETVAL);
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_put_record_silo); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_put_record_silo)
+{
+    dVAR; dXSARGS;
+    if (items != 4)
+       croak_xs_usage(cv,  "silo, sid, data, write_size");
+    {
+	Silo *	silo;
+	uint64_t    sid = (unsigned long long)SvUV(ST(1))
+;
+	char *	data = (char *)SvPV_nolen(ST(2))
+;
+	uint64_t    write_size = (unsigned long long)SvUV(ST(3))
+;
+	int	RETVAL;
+	dXSTARG;
+
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "SiloPtr")) {
+	    IV tmp = SvIV((SV*)SvRV(ST(0)));
+	    silo = INT2PTR(Silo *,tmp);
+	}
+	else
+	    Perl_croak_nocontext("%s: %s is not of type %s",
+			"Data::RecordStore::Silo::XS::put_record_silo",
+			"silo", "SiloPtr")
+;
+#line 101 "XS.xs"
+     RETVAL = silo_put_record( silo, sid, data, write_size );
+#line 393 "XS.c"
+	XSprePUSH; PUSHi((IV)RETVAL);
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_get_record_silo); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__Silo__XS_get_record_silo)
+{
+    dVAR; dXSARGS;
+    if (items != 2)
+       croak_xs_usage(cv,  "silo, sid");
+    {
+	Silo *	silo;
+	uint64_t    sid = (unsigned long long)SvUV(ST(1))
+;
+	char *	RETVAL;
+	dXSTARG;
+
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "SiloPtr")) {
+	    IV tmp = SvIV((SV*)SvRV(ST(0)));
+	    silo = INT2PTR(Silo *,tmp);
+	}
+	else
+	    Perl_croak_nocontext("%s: %s is not of type %s",
+			"Data::RecordStore::Silo::XS::get_record_silo",
+			"silo", "SiloPtr")
+;
+#line 110 "XS.xs"
+     RETVAL = silo_get_record( silo, sid );
+#line 424 "XS.c"
+	sv_setpv(TARG, RETVAL); XSprePUSH; PUSHTARG;
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Data__RecordStore__Silo__XS__silo_set_max_records); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Data__RecordStore__Silo__XS__silo_set_max_records)
+{
+    dVAR; dXSARGS;
+    if (items != 2)
+       croak_xs_usage(cv,  "silo, recs");
+    {
+	Silo *	silo;
+	int	recs = (int)SvIV(ST(1))
+;
+	int	RETVAL;
+	dXSTARG;
+
+	if (SvROK(ST(0)) && sv_derived_from(ST(0), "SiloPtr")) {
+	    IV tmp = SvIV((SV*)SvRV(ST(0)));
+	    silo = INT2PTR(Silo *,tmp);
+	}
+	else
+	    Perl_croak_nocontext("%s: %s is not of type %s",
+			"Data::RecordStore::Silo::XS::_silo_set_max_records",
+			"silo", "SiloPtr")
+;
+#line 120 "XS.xs"
+    silo->file_max_records = recs;
+    RETVAL = silo->file_max_records;
+#line 456 "XS.c"
+	XSprePUSH; PUSHi((IV)RETVAL);
     }
     XSRETURN(1);
 }
@@ -309,8 +487,14 @@ XS_EXTERNAL(boot_Data__RecordStore__XS)
 #endif
 
         newXS_deffile("Data::RecordStore::XS::store_open", XS_Data__RecordStore__XS_store_open);
-        newXS_deffile("Data::RecordStore::XS::stow", XS_Data__RecordStore__XS_stow);
+        newXS_deffile("Data::RecordStore::XS::store_fetch", XS_Data__RecordStore__XS_store_fetch);
+        newXS_deffile("Data::RecordStore::XS::store_stow", XS_Data__RecordStore__XS_store_stow);
         newXS_deffile("Data::RecordStore::XS::store_next_id", XS_Data__RecordStore__XS_store_next_id);
+        newXS_deffile("Data::RecordStore::Silo::XS::silo_open", XS_Data__RecordStore__Silo__XS_silo_open);
+        newXS_deffile("Data::RecordStore::Silo::XS::next_id_silo", XS_Data__RecordStore__Silo__XS_next_id_silo);
+        newXS_deffile("Data::RecordStore::Silo::XS::put_record_silo", XS_Data__RecordStore__Silo__XS_put_record_silo);
+        newXS_deffile("Data::RecordStore::Silo::XS::get_record_silo", XS_Data__RecordStore__Silo__XS_get_record_silo);
+        newXS_deffile("Data::RecordStore::Silo::XS::_silo_set_max_records", XS_Data__RecordStore__Silo__XS__silo_set_max_records);
 #if PERL_VERSION_LE(5, 21, 5)
 #  if PERL_VERSION_GE(5, 9, 0)
     if (PL_unitcheckav)

@@ -4,6 +4,9 @@ use 5.022001;
 use strict;
 use warnings;
 
+use Test::More;
+use Data::Dumper;
+
 require Exporter;
 
 our @ISA = qw(Exporter);
@@ -32,7 +35,6 @@ XSLoader::load('Data::RecordStore::XS', $VERSION);
 
 # Preloaded methods go here.
 sub open_store {
-    my $opts = ref( $_[$#_] ) ? pop : {};
     my $directory = pop @_;
     my $pkg = shift @_ || 'Data::RecordStore::XS';
     my $store = store_open( $directory );
@@ -40,15 +42,20 @@ sub open_store {
 }
 
 sub next_id {
-    my $store = shift;
-    use Test::More; diag( "NEXT ID GOT $store, $store->[0]" );
-    store_next_id( $store->[0] );
+    my $store = shift->[0];
+    store_next_id( $store );
 }
 
 
-#sub stow {
-    
-#}
+sub stow {
+    my( $store, $data, $rid ) = @_;
+    store_stow( $store->[0], $data, $rid || 0, 0 );
+}
+
+sub fetch {
+    my( $store, $rid ) = @_;
+    store_fetch( $store->[0], $rid );
+}
 
 # sub has_id {
 
@@ -74,12 +81,43 @@ sub next_id {
     
 # }
 
-#package Data::RecordStore::Silo::XS;
+package Data::RecordStore::Silo::XS;
 
-# sub open_silo {
-#     my( $pkg, $template, $directory, $size ) = @_;
-    
-# }
+sub open_silo {
+    my( $pkg, $template, $directory, $size ) = @_;
+    my $template_size = $template =~ /\*/ ? 0 : do { use bytes; length( pack( $template ) ) };
+    my $record_size = $size // $template_size;
+    my $silo = silo_open( $directory, $record_size );
+    bless [ $silo, $template ], $pkg;
+}
+
+sub next_id {
+    my $silo = shift->[0];
+    next_id_silo( $silo );
+}
+
+sub put_record {
+    my( $self, $id, $data ) = @_;
+    my $to_write = pack ( $self->[1], ref $data ? @$data : $data );
+    my $write_size = do { use bytes; length( $to_write ) };
+    print STDERR Data::Dumper->Dump([[unpack $self->[1], $to_write],"'$to_write', $write_size,'UM"]);
+    0 == put_record_silo( $self->[0], $id, $to_write, $write_size );
+}
+
+sub push {
+    my( $self, $data ) = @_;
+    my $id = $self->next_id;
+    $self->put_record( $id, $data );
+    return $id;
+}
+
+
+sub get_record {
+    my( $self, $id ) = @_;
+    my $data = get_record_silo( $self->[0], $id );
+    print STDERR Data::Dumper->Dump([$self->[1],$data,[unpack( $self->[1],$data )],"DUH"]);
+    [unpack( $self->[1],$data )];
+}
 
 # sub empty {
 
