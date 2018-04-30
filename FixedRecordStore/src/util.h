@@ -23,10 +23,10 @@
 
 #define CRY printf
 
-typedef struct {
+typedef struct LinkedList {
   void * item;
-  void * next;
-  void * prev;
+  struct LinkedList * next;
+  struct LinkedList * prev;
 } LinkedList;
 
 int make_path( char *path );
@@ -38,5 +38,5 @@ LinkedList * set_next( LinkedList *list, void * item);
 LinkedList * set_prev( LinkedList *list, void * item);
 LinkedList * insert_next( LinkedList *list, void * item);
 LinkedList * insert_prev( LinkedList *list, void * item);
-void         cleanup_linked_list( LinkedList *list, int free_items );
+void         free_linked_list( LinkedList *list, int free_items );
 #endif

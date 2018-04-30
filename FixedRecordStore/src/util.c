@@ -116,7 +116,7 @@ create_linked_list( void * item )
 } //create_linked_list
 
 LinkedList *
-set_next( LinkedList list, void * item )
+set_next( LinkedList * list, void * item )
 {
   LinkedList * next = create_linked_list( item );
   list->next = next;
@@ -126,7 +126,7 @@ set_next( LinkedList list, void * item )
 } //set_next
 
 LinkedList *
-set_prev( LinkedList list, void * item )
+set_prev( LinkedList * list, void * item )
 {
   LinkedList * prev = create_linked_list( item );
   list->prev = list;
@@ -136,7 +136,7 @@ set_prev( LinkedList list, void * item )
 } //set_prev
 
 LinkedList *
-insert_next( LinkedList list, void * item )
+insert_next( LinkedList * list, void * item )
 {
   LinkedList * next;
   LinkedList * new_next = create_linked_list( item );
@@ -154,7 +154,7 @@ insert_next( LinkedList list, void * item )
 } //insert_next
 
 LinkedList *
-insert_prev( LinkedList list, void * item )
+insert_prev( LinkedList * list, void * item )
 {
   LinkedList * prev;
   LinkedList * new_prev = create_linked_list( item );
@@ -179,16 +179,16 @@ free_linked_list( LinkedList *list, int free_items )
       free( list->item );
       list->item = NULL;
     }
-  if ( l = list->next )
+  if ( (l = list->next) )
     {
       list->next = NULL;
-      free_linked_list( l );
+      free_linked_list( l, free_items );
       
     }
-  if ( l = list->prev )
+  if ( (l = list->prev) )
     {
       list->prev = NULL;
-      free_linked_list( l );
+      free_linked_list( l, free_items );
     }
   free( list );
-}
+} //free_linked_list

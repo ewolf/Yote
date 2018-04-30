@@ -66,14 +66,17 @@ void test_util( Test * t )
   // linked list test
   thing[0] = strdup("THIS IS THING A");
   thing[1] = strdup("THIS IS THING N");
-  thing[2] = strdup("THIS IS THING C");
-  thing[3] = strdup("THIS IS THING D");
-  thing[4] = strdup("THIS IS THING E");
+  //  thing[2] = strdup("THIS IS THING C");
+  //  thing[3] = strdup("THIS IS THING D");
+  //  thing[4] = strdup("THIS IS THING E");
   LinkedList * list = create_linked_list( thing[0] );
-  chks( list->item, thing[0], "string set properly", t );
+  chks( (char*)list->item, thing[0], "string set properly", t );
   set_next( list, thing[1] );
   chks( list->next->item, thing[1], "next string set properly", t );
-  chkb( list->prev, "no prev yet" );
+  chkb( list->prev == 0, "no prev yet", t );
+
+
+  free_linked_list( list, 1 );
   
 } //test_util
 
