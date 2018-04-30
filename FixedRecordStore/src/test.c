@@ -124,7 +124,7 @@ void test_silo( Test * t )
   unsigned long id;
   char * res;
   TransactionEntry * trans;
-  struct stat stat_buffer; // = malloc( sizeof( struct stat ) );
+  struct stat stat_buffer;
 
   // TEST common and edge cases
   /*
@@ -316,10 +316,11 @@ void test_silo( Test * t )
   trans->to_sid = 6;
 
   id = silo_next_id( silo );
-  CHKL( silo_put_record( silo, id, (char*)trans, sizeof( TransactionEntry ) ), 0, "Put Trans Record" );
+  CHKL( id, 1, "FIRST ID" );
+  CHKL( silo_put_record( silo, id, trans, sizeof( TransactionEntry ) ), 0, "Put Trans Record" );
   free( trans );
 
-  trans = (TransactionEntry*)silo_get_record( silo, 1 );
+  trans = (TransactionEntry*)silo_get_record( silo, id );
   CHKL( trans->type, 1, "Trans E a" );
   CHKL( trans->rid, 2, "Trans E b" );
   CHKL( trans->from_silo_idx, 3, "Trans E c" );
@@ -329,6 +330,9 @@ void test_silo( Test * t )
 
   free( trans );
   unlink_silo( silo );
+
+  // make sure directory is removed
+  CHKB( 0 != stat( dir, &stat_buffer ), "Directory gone after unlink" );
   
   cleanup_silo( silo );
   free( silo );
@@ -337,6 +341,9 @@ void test_silo( Test * t )
 
 void test_record_store( Test *t )
 {
+  char iF1[] = "RECSTORE/I/0";
+  struct stat stat_buffer;
+   
   unsigned long id;
   RecordStore * store = open_store( "RECSTORE", 80 );
   CHKL( silo_entry_count(store->index_silo), 0, "store created and nothing in index" );
@@ -349,8 +356,10 @@ void test_record_store( Test *t )
   res = fetch( store, 1 );
   CHKS( res, "0123456789" , "first item" );
   free( res );
+  CHKL( store_entry_count( store ), 1, "start with 1 entry in store" );
   stow( store, "1123456789" , 5, 0 );
-
+  CHKL( store_entry_count( store ), 5, "Now with 5 entries in store" );
+  
   id = next_id( store );
   CHKL( id, 6, "rec id now" );  
 
@@ -387,6 +396,9 @@ void test_record_store( Test *t )
   CHKB( res == 0, "nothing for recycled id" );
   delete_record( store, 3 );
   unlink_store( store );
+
+  // make sure directory is removed
+  CHKB( 0 != stat( "RECSTORE", &stat_buffer ), "Directory gone after store unlink" );
   
   cleanup_store( store );
   free( store );
@@ -402,7 +414,7 @@ int main() {
 
   test_util( t );
   test_silo( t );
-  //  test_record_store( t );
+  test_record_store( t );
     
   // TODO BUSYWORK - make sure all of these have return values that can be analyzed
   // for success, etc.

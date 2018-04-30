@@ -8,7 +8,6 @@ open_silo( char        * directory,
 {
   unsigned int file_max_records;
   Silo *silo;
-
   file_max_records = (max_file_size / record_size);
 
   if ( file_max_records == 0 ) {
@@ -30,19 +29,16 @@ open_silo( char        * directory,
   silo->file_max_records = file_max_records;
   
   silo->directory        = strdup( directory );
-  silo->dirl             = sizeof( directory ); // includes path sep
+  silo->dirl             = strlen( directory ) + 1; //for path sep
 
   // directory + / + (max file) \0
   silo->file_descriptors = malloc( sizeof( int ) * max_silo_files );
   memset( silo->file_descriptors, -1, sizeof( int ) * max_silo_files );
   silo->filename         = calloc( 2 + silo->dirl + (max_silo_files > 10 ? ceil(log10(max_silo_files)) : 1 ), 1 );
   memcpy( silo->filename, directory, silo->dirl );
-  silo->filename[ silo->dirl - 1 ] = PATHSEPCHAR;
-  CRY("SILO_OPEN '%s'\n", directory);   
-  silo->dir_dh = open( directory, O_DIRECTORY );
-  if( silo->dir_dh == -1 )
+  if ( silo->filename[ silo->dirl - 1 ] != PATHSEPCHAR )
     {
-      WARN( "open_silo");
+      silo->filename[ silo->dirl - 1 ] = PATHSEPCHAR;
     }
 
   SILO_FD( 0 );
@@ -77,8 +73,7 @@ silo_entry_count( Silo *silo )
   long last_filenum, filenum;
   
   last_filenum = -1;
-  d = fdopendir( silo->dir_dh );
-  rewinddir( d );
+  d = opendir( silo->directory );
   while ( NULL != (dir = readdir(d)) )
     {
       filenum = atoi( dir->d_name );
@@ -89,6 +84,7 @@ silo_entry_count( Silo *silo )
           last_filenum = filenum;
         }
     }
+  closedir( d );
   if( last_filenum >= 0 )
     {
       if( 0 == stat( silo->filename, &statbuf ) )
@@ -96,15 +92,9 @@ silo_entry_count( Silo *silo )
           return last_filenum * silo->file_max_records + statbuf.st_size / silo->record_size;
         }
     }
-  
   return 0;
   
 } //silo_entry_count
-
-void _unlink( char *filename, int nada )
-{
-  unlink( filename );
-}
  
 int
 empty_silo( Silo *silo )
@@ -114,7 +104,6 @@ empty_silo( Silo *silo )
   for ( i=silo->cur_silo_idx; i>0; i-- )
     {
       SILO_FD( i );
-      CRY("ES UL '%s'\n",silo->filename);
       if ( 0 != unlink( silo->filename ) )
         {
           perror( "empty_silo" );
@@ -123,7 +112,6 @@ empty_silo( Silo *silo )
       close( silo->file_descriptors[i] );
     }
   SILO_FD( 0 );
-  CRY("ES TRUN '%s'\n",silo->filename);
   if( 0 != ftruncate( FD, 0 ) )
     {
       perror( "empty_silo" );
@@ -136,26 +124,20 @@ empty_silo( Silo *silo )
 
 int
 unlink_silo( Silo *silo ) {
-  unsigned long i;
-  SILO_FD_ID( silo_entry_count(silo) );
-  if ( 0 != unlink( silo->filename ) )
+  long i;
+  unsigned long ec = silo_entry_count(silo);
+  SILO_FD_ID( ec == 0 ?  1 : ec  );
+  for ( i=silo->cur_silo_idx; i>=0; i-- )
     {
-      perror( "unlink_silo" );
-      return 1;
-    }
-  for ( i=silo->cur_silo_idx - 1; i>=0; i++ )
-    {
-      SILO_FD( i );
-      if ( 0 != unlink( silo->filename ) )
+      SILO_FILE( i );
+      unlink( FN );
+      if ( silo->file_descriptors[i] >= 0 )
         {
-          //          if it doesn't exist?
-          //          perror( "unlink_siloy" );
-          //          return 1;
+          close( silo->file_descriptors[i] );
         }
-      close( silo->file_descriptors[i] );
     }
   memset( silo->file_descriptors, -1, sizeof( int ) * silo->max_silo_files );
-  if( 0 != rmdir( silo->directory ) ) {
+  if ( 0 != rmdir( silo->directory ) ) {
     perror( "unlink_silo" );
     return 1;
   }
@@ -287,12 +269,10 @@ silo_ensure_entry_count( Silo *silo, unsigned long count )
   needed = count - cur_count;
   if ( needed > 0 )
     {
-      last_silo_idx = (cur_count-1) / silo->file_max_records;
-      CRY("CURC %ld, lsi %d\n", cur_count, last_silo_idx );
+      last_silo_idx = cur_count > 1 ? (cur_count-1) / silo->file_max_records : 0;
       
       records_in_last = cur_count - (silo->file_max_records * last_silo_idx );
       to_fill_last = silo->file_max_records - records_in_last;
-      CRY("ENSURE %ld, needs %ld, tofilllast %ld (last silo %d)\n",count,needed,to_fill_last, last_silo_idx);
       if ( to_fill_last > needed )
         {
           to_fill_last = needed;
@@ -312,7 +292,6 @@ silo_ensure_entry_count( Silo *silo, unsigned long count )
       to_fill_last = silo->file_max_records * silo->record_size;
       while ( needed > silo->file_max_records )
         {
-          CRY("  ENSURE needs %ld (%ld)\n",needed,silo->file_max_records);
           SILO_FD( ++last_silo_idx );
           if ( 0 != ftruncate( FD, to_fill_last ) )
             {

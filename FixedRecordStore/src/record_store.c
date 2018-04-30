@@ -24,11 +24,11 @@ open_store( char *directory, unsigned long max_file_size )
   sprintf( dir, "%s%s%s", directory, PATHSEP, "S" );
 
   make_path( dir );
-  
+
   sprintf( dir, "%s%s%s", directory, PATHSEP, "I" );
   
   store->index_silo = open_silo( dir, sizeof( IndexEntry ), max_file_size, 1000 );
-
+  
   sprintf( dir, "%s%s%s", directory, PATHSEP, "R" );
   store->recycle_silo = open_silo( dir, sizeof(long), max_file_size, 1000 );
 

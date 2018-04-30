@@ -31,16 +31,16 @@ typedef struct
   int            cur_fd;
   unsigned long  cur_silo_idx;
   unsigned long  cur_filepos;
-  int            dir_dh;
 } Silo;
+
+#define SILO_FILE( silo_idx )   sprintf( silo->filename + silo->dirl, "%ld%c", silo_idx, '\0');
 
 #define SILO_FD( silo_idx )                                             \
   silo->cur_silo_idx = silo_idx;                                        \
   sprintf( silo->filename + silo->dirl, "%ld%c", silo->cur_silo_idx, '\0'); \
-  if ( silo->file_descriptors[silo_idx] >= 0 ) {                         \
+  if ( silo->file_descriptors[silo_idx] >= 0 ) {                        \
     silo->cur_fd = silo->file_descriptors[silo_idx];                    \
   } else {                                                              \
-    CRY("SILO_FD (%d) OPEN '%s' < %ld >\n",__LINE__,silo->filename ,silo->cur_silo_idx); \
     silo->cur_fd = open( silo->filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR ); \
     if ( silo->cur_fd == -1 ) {                                         \
       WARN("SILO_FD");                                                  \
@@ -50,18 +50,17 @@ typedef struct
   silo->cur_filepos = silo->record_size * ( silo_idx % silo->file_max_records ); 
 
 #define SILO_FD_ID( id )                                                \
-  silo->cur_silo_idx = id/silo->file_max_records;                       \
+  silo->cur_silo_idx = (id-1)/silo->file_max_records;                   \
   sprintf( silo->filename + silo->dirl, "%ld%c", silo->cur_silo_idx, '\0'); \
   if ( silo->file_descriptors[silo->cur_silo_idx] >= 0 ) {              \
     silo->cur_fd = silo->file_descriptors[silo->cur_silo_idx];          \
   } else {                                                              \
-    CRY("SILO_FD_ID (%d) OPEN '%s' < %ld / %ld = %ld >\n",__LINE__,silo->filename, id ,silo->file_max_records,silo->cur_silo_idx); \
     silo->cur_fd = open( silo->filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR ); \
     silo->file_descriptors[silo->cur_silo_idx] = silo->cur_fd;          \
   }                                                                     \
-  silo->cur_filepos = silo->record_size *                               \
-    ( (id - 1) % silo->file_max_records ); 
+  silo->cur_filepos = silo->record_size * ( (id - 1) % silo->file_max_records ); 
 
+#define FN silo->filename
 #define FD silo->cur_fd
 #define FPOS silo->cur_filepos
   
