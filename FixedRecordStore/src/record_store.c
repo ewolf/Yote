@@ -33,12 +33,7 @@ open_store( char *directory, unsigned long max_file_size )
   store->recycle_silo = open_silo( dir, sizeof(long), max_file_size );
 
   sprintf( dir, "%s%s%s", directory, PATHSEP, "T" );  
-  store->transaction_catalog_silo = open_silo( dir,
-                                 sizeof( unsigned long ) +  // transaction id
-                                 sizeof( unsigned long ) +  // process id
-                                 sizeof( unsigned long ) +  // update time
-                                 sizeof( int ),             // state
-                                 max_file_size );
+  store->trans_silo = open_silo( dir, sizeof( Transaction ), max_file_size );
   store->skeletonKey = malloc( sizeof( IndexEntry ) );
   
   free( dir );
@@ -59,8 +54,8 @@ cleanup_store( RecordStore *store )
   cleanup_silo( store->recycle_silo );
   free( store->recycle_silo );
   
-  cleanup_silo( store->transaction_catalog_silo );
-  free( store->transaction_catalog_silo );
+  cleanup_silo( store->trans_silo );
+  free( store->trans_silo );
   
   for( i=0; i<MAX_SILOS; i++ )
     {
@@ -95,7 +90,7 @@ empty_store( RecordStore *store )
     }
   empty_silo( store->recycle_silo );
   empty_silo( store->index_silo );
-  empty_silo( store->transaction_catalog_silo );
+  empty_silo( store->trans_silo );
 } //empty_store
 
 void
@@ -116,7 +111,7 @@ unlink_store( RecordStore *store )
     }
   unlink_silo( store->recycle_silo );
   unlink_silo( store->index_silo );
-  unlink_silo( store->transaction_catalog_silo );
+  unlink_silo( store->trans_silo );
   dir = malloc( 3 + strlen( store->directory ));
   sprintf( dir, "%s%s%s", store->directory, PATHSEP, "S" );
   if ( 0 == rmdir( dir ) )
@@ -314,22 +309,21 @@ int _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned lon
 Transaction *
 create_transaction( RecordStore *store )
 {
-  // creates an entry in the transaction_catalog silo and
+  // creates an entry in the transaction silo and
   // creates a silo for this record
   Transaction * trans;
   char        * silo_dir;
   
-  trans = calloc( store->transaction_catalog_silo->record_size + 
-                  sizeof( Silo * ) + sizeof( RecordStore * ), 1);
-  trans->tid         = silo_next_id( store->transaction_catalog_silo );
+  trans = calloc( sizeof( Transaction ), 1 );
+  trans->tid         = silo_next_id( store->trans_silo );
   trans->pid         = getpid();
   trans->update_time = time(NULL);
   trans->state       = TRA_ACTIVE;
 
-  silo_put_record( store->transaction_catalog_silo,
+  silo_put_record( store->trans_silo,
                    trans->tid,
                    (char*)trans,
-                   store->transaction_catalog_silo->record_size );
+                   sizeof( Transaction ) );
   
   trans->store = store;
 
@@ -353,12 +347,12 @@ create_transaction( RecordStore *store )
 Transaction *
 open_transaction( RecordStore *store, unsigned long tid )
 {
-  // creates an entry in the transaction_catalog silo and
+  // creates an entry in the transaction silo and
   // creates a silo for this record
   Transaction * trans;
   char        * silo_dir;
   
-  trans = (Transaction*)silo_get_record( store->transaction_catalog_silo, tid );
+  trans = (Transaction*)silo_get_record( store->trans_silo, tid );
 
   // DIR/A/ID
   silo_dir = malloc( 4 + sizeof( store->directory ) + (trans->tid > 10 ? ceil(log10(tid)) : 1 ) );
@@ -369,7 +363,8 @@ open_transaction( RecordStore *store, unsigned long tid )
            PATHSEP,
            tid );
   
-  trans->silo = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  trans->silo  = open_silo( silo_dir, sizeof( TransactionEntry ), store->max_file_size );
+  trans->store = store;
   
   free( silo_dir );
        
@@ -435,14 +430,10 @@ trans_recycle_id( Transaction *trans, unsigned long rid )
 int
 _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ridB )
 {
-  char *        record;
-  int           silo_idx;
-  unsigned long sid;
+  RecordStore      * store;
+  TransactionEntry * trans_record;
+  unsigned long      next_trans_sid;
   
-  char *        trans_record;
-  RecordStore * store;
-  
-  unsigned long next_trans_sid;
   if( trans->state == TRA_ACTIVE )
     {
       store = trans->store;
@@ -450,28 +441,20 @@ _trans( Transaction *trans, int trans_type, unsigned long ridA, unsigned long ri
       LOAD_INDEX( store, ridA );
       
       next_trans_sid = silo_next_id( trans->silo );
-      trans_record = (TransactionEntry)calloc( trans->silo->record_size, 1 );
-      trans_record->type = trans_type;
-      trans_record->rid  = ridA;
+      trans_record = (TransactionEntry*)calloc( sizeof(TransactionEntry), 1 );
+      trans_record->type          = trans_type;
+      trans_record->rid           = ridA;
       trans_record->from_silo_idx = SILO_IDX;
-      trans_record->from_sid = SID;
+      trans_record->from_sid      = SID;
 
       if ( ridB > 0 )
         {
           LOAD_INDEX( store, ridB );
           trans_record->to_silo_idx = SILO_IDX;
-          trans_record->to_sid = SID;
-
-          memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) +
-                  sizeof( int ) + sizeof( unsigned long ),
-                  &silo_idx, sizeof( int ) );
-          memcpy( trans_record + sizeof( int ) + sizeof( unsigned long ) +
-                  sizeof( int ) + sizeof( unsigned long ) + sizeof( int ),
-                  &sid, sizeof( unsigned long ) );
+          trans_record->to_sid      = SID;
         }
       
-      
-      silo_put_record( trans->silo, next_trans_sid, trans_record, trans->silo->record_size );
+      silo_put_record( trans->silo, next_trans_sid, (char*)trans_record, sizeof( TransactionEntry ) );
       free( trans_record );
 
       return 0;
@@ -541,7 +524,7 @@ commit( Transaction *trans )
 
       
       trans->state = TRA_IN_COMMIT;
-      silo_put_record( store->transaction_catalog_silo,
+      silo_put_record( store->trans_silo,
                        trans->tid,
                        (char*)trans,
                        sizeof( Transaction ) );
@@ -640,7 +623,7 @@ commit( Transaction *trans )
           trans->state = TRA_DONE;
           trans->pid   = getpid();
           trans->update_time = time(NULL);
-          silo_put_record( store->transaction_catalog_silo,
+          silo_put_record( store->trans_silo,
                            trans->tid,
                            (char*)trans,
                            sizeof( Transaction ) );
@@ -680,7 +663,7 @@ rollback( Transaction *trans )
       store = trans->store;
       
       trans->state = TRA_IN_ROLLBACK;
-      silo_put_record( store->transaction_catalog_silo,
+      silo_put_record( store->trans_silo,
                        trans->tid,
                        (char*)trans,
                        sizeof( Transaction ) );

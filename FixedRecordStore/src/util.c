@@ -97,7 +97,7 @@ int
 filesize( char *file ) {
     struct stat statbuf;
     if( stat( file, &statbuf ) ) {
-      perror( "filesize" );
+      return 0;
     }
     return statbuf.st_size;
 } //filesize

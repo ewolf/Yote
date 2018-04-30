@@ -20,7 +20,7 @@ typedef struct {
   char        * directory;
   Silo        * index_silo;
   Silo        * recycle_silo;
-  Silo        * transaction_catalog_silo;
+  Silo        * trans_silo;
   Silo       ** silos;
   char        * version;
   unsigned long max_file_size;

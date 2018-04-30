@@ -168,6 +168,23 @@ void test_silo( Test * t )
        - when empty
        - when at end of silo file
        - when at start of silo file past the first
+
+    create_transaction
+
+    open_transaction
+
+    list_transactions
+
+    trans_stow
+
+    trans_delete_record
+
+    trans_recycle_id
+
+    commit
+
+    rollback
+
    */
   
   
@@ -205,12 +222,22 @@ void test_silo( Test * t )
   id = silo_next_id( silo );
   chkl( id, 1, "first id", t );
   chkl( filesize( F1 ), 11, "size 1", t );
-  
+  chkl( silo_entry_count(silo), 1, "first (empty) entry from silo_next_id", t );
   chkl( silo_put_record( silo, id, "0123456789", 0 ), 1, "first record put", t );
-  
+
+  chkl( filesize( F1 ), 11, "still size 1", t );
+    
   res = silo_get_record( silo, id );
   chks( res, "0123456789", "first entry", t );
 
+  cleanup_silo( silo );
+  free( silo );
+  // reopen silo, verify the entry is still there
+  silo = open_silo( dir, 11, 44 );
+  free( res );
+  res = silo_get_record( silo, id );
+  chks( res, "0123456789", "first entry", t );
+  
   free( res );
   res = silo_last_entry(silo);
   chks( res, "0123456789", "last entry", t );
@@ -374,6 +401,12 @@ void test_record_store( Test *t )
 
 int main() {
 
+  char * one = strdup( "1111111" );
+  char * two = strdup( one );
+  sprintf( two + 1, "%d\0", 2 );
+  CRY("TWO '%s'\n", two);
+  return;
+  
   printf( "Starting tests\n" );
   Test * t = malloc( sizeof(Test) );
   t->tests_run = 0;
@@ -381,7 +414,7 @@ int main() {
 
   test_util( t );
   test_silo( t );
-  test_record_store( t );
+  //  test_record_store( t );
     
   // TODO BUSYWORK - make sure all of these have return values that can be analyzed
   // for success, etc.
